@@ -171,14 +171,34 @@ public sealed class ListBrowsingPositionTests
             var thumb = scrollbar.GetVisualDescendants().OfType<Thumb>().Single();
             Assert.True(thumb.Bounds.Width >= 8, $"Engaged thumb width was {thumb.Bounds.Width}.");
             var centeredWave = Assert.IsType<Avalonia.Media.Transformation.TransformOperations>(
-                jumpToT.RenderTransform).Value.M31;
+                currentLocation.RenderTransform).Value.M31;
             Assert.InRange(centeredWave, -13.01, -12.99);
-            window.MouseMove(PointOnAlphabet(window, spine, 20.35));
+            Assert.Contains("alphalocation4", currentLocation.Classes);
+
+            window.MouseMove(PointOnAlphabet(window, spine, 2));
+            window.MouseDown(PointOnAlphabet(window, spine, 2), Avalonia.Input.MouseButton.Left);
             Flush();
-            var fractionalWave = Assert.IsType<Avalonia.Media.Transformation.TransformOperations>(
-                jumpToT.RenderTransform).Value.M31;
-            Assert.InRange(fractionalWave, -12.9, -12.5);
-            Assert.NotEqual(centeredWave, fractionalWave);
+            var waveBeforeFractionalDrag = spine.GetVisualDescendants().OfType<Button>()
+                .Select(WaveDisplacement)
+                .ToArray();
+            window.MouseMove(PointOnAlphabet(window, spine, 2.35));
+            Flush();
+            var waveAfterFractionalDrag = spine.GetVisualDescendants().OfType<Button>()
+                .Select(WaveDisplacement)
+                .ToArray();
+            Assert.Contains(
+                waveBeforeFractionalDrag.Zip(waveAfterFractionalDrag),
+                pair => Math.Abs(pair.First - pair.Second) > 0.01);
+            var sharedLocationRow = ExpectedAlphabetRow(library, scroll);
+            var sharedLocationIndex = (int)Math.Round(sharedLocationRow);
+            var sharedLocationButton = spine.GetVisualDescendants().OfType<Button>().ElementAt(sharedLocationIndex);
+            Assert.Contains("alphalocation4", sharedLocationButton.Classes);
+            Assert.InRange(
+                WaveDisplacement(sharedLocationButton),
+                ExpectedWaveDisplacement(sharedLocationIndex - sharedLocationRow) - 0.01,
+                ExpectedWaveDisplacement(sharedLocationIndex - sharedLocationRow) + 0.01);
+            window.MouseUp(PointOnAlphabet(window, spine, 2.35), Avalonia.Input.MouseButton.Left);
+            Flush();
             Assert.True(jumpToT.Transitions is null or { Count: 0 });
             library.Ramp.ReducedMotion = true;
             Flush();
@@ -199,14 +219,14 @@ public sealed class ListBrowsingPositionTests
             var scrollableHeight = scroll.Extent.Height - scroll.Viewport.Height;
             Assert.True(scrollableHeight > 0);
             Assert.InRange(scroll.Offset.Y / scrollableHeight, 0.48, 0.52);
-            var expectedTile = library.VisibleTiles[(int)Math.Round(
-                scroll.Offset.Y / scrollableHeight * (library.VisibleTiles.Count - 1))];
-            var expectedSection = LibraryViewModel.AlphabetSectionFor(expectedTile.Title);
             var locationButtons = spine.GetVisualDescendants().OfType<Button>().ToArray();
-            var locationIndex = Array.FindIndex(locationButtons, button =>
-                button.DataContext is AlphabetSectionViewModel section && section.Label == expectedSection);
-            Assert.True(locationIndex >= 0);
+            var expectedLocationRow = ExpectedAlphabetRow(library, scroll);
+            var locationIndex = (int)Math.Round(expectedLocationRow);
             Assert.Contains("alphalocation4", locationButtons[locationIndex].Classes);
+            Assert.InRange(
+                WaveDisplacement(locationButtons[locationIndex]),
+                ExpectedWaveDisplacement(locationIndex - expectedLocationRow) - 0.01,
+                ExpectedWaveDisplacement(locationIndex - expectedLocationRow) + 0.01);
             if (locationIndex > 0)
             {
                 Assert.Contains("alphalocation3", locationButtons[locationIndex - 1].Classes);
@@ -298,6 +318,32 @@ public sealed class ListBrowsingPositionTests
         => spine.TranslatePoint(
             new Point(spine.Bounds.Width / 2, spine.Bounds.Height * (row + 0.5) / 27),
             window)!.Value;
+
+    private static double ExpectedAlphabetRow(LibraryViewModel library, ScrollViewer scroll)
+    {
+        var maximum = scroll.Extent.Height - scroll.Viewport.Height;
+        var proportion = maximum <= 0 ? 0 : Math.Clamp(scroll.Offset.Y / maximum, 0, 1);
+        var tilePosition = proportion * (library.VisibleTiles.Count - 1);
+        var lowerTile = (int)Math.Floor(tilePosition);
+        var upperTile = (int)Math.Ceiling(tilePosition);
+        var sections = library.DisplayedAlphabetSections.ToArray();
+        var lowerSection = LibraryViewModel.AlphabetSectionFor(library.VisibleTiles[lowerTile].Title);
+        var upperSection = LibraryViewModel.AlphabetSectionFor(library.VisibleTiles[upperTile].Title);
+        var lowerRow = Array.FindIndex(sections, section => section.Label == lowerSection);
+        var upperRow = Array.FindIndex(sections, section => section.Label == upperSection);
+        return lowerRow + ((upperRow - lowerRow) * (tilePosition - lowerTile));
+    }
+
+    private static double WaveDisplacement(Button button)
+        => Assert.IsType<Avalonia.Media.Transformation.TransformOperations>(button.RenderTransform).Value.M31;
+
+    private static double ExpectedWaveDisplacement(double signedDistance)
+    {
+        const double radius = 4;
+        const double reach = 13;
+        var distance = Math.Abs(signedDistance);
+        return distance >= radius ? 0 : -reach * (1 + Math.Cos(Math.PI * distance / radius)) / 2;
+    }
 
     private static void Flush() => Dispatcher.UIThread.RunJobs();
 }

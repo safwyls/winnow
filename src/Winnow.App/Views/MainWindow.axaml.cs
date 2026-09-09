@@ -1211,8 +1211,6 @@ public partial class MainWindow : Window
     private void OnAlphabetPointerMoved(object? sender, PointerEventArgs e)
     {
         var position = e.GetPosition(AlphabetSpine);
-        UpdateAlphabetWave(position);
-
         if (!_alphabetDragging)
         {
             return;
@@ -1238,7 +1236,7 @@ public partial class MainWindow : Window
     private void OnAlphabetPointerEntered(object? sender, PointerEventArgs e)
     {
         SetAlphabetScrollBarEngaged(true);
-        UpdateAlphabetWave(e.GetPosition(AlphabetSpine));
+        UpdateAlphabetLocation();
     }
 
     private void OnAlphabetPointerExited(object? sender, PointerEventArgs e)
@@ -1273,6 +1271,7 @@ public partial class MainWindow : Window
         var maximum = Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height);
         var proportion = Math.Clamp(position.Y / AlphabetSpine.Bounds.Height, 0, 1);
         scroll.Offset = scroll.Offset.WithY(maximum * proportion);
+        UpdateAlphabetLocation();
     }
 
     private ScrollViewer? ActiveLibraryScroll()
@@ -1327,18 +1326,11 @@ public partial class MainWindow : Window
         else scrollBar.Classes.Remove("alphabetengaged");
     }
 
-    private void UpdateAlphabetWave(Point position)
+    private void UpdateAlphabetWave(IReadOnlyList<Button> buttons, double locationRow)
     {
-        var buttons = AlphabetSpine.GetVisualDescendants().OfType<Button>().ToArray();
-        if (buttons.Length == 0 || AlphabetSpine.Bounds.Height <= 0)
+        for (var row = 0; row < buttons.Count; row++)
         {
-            return;
-        }
-
-        var pointerRow = position.Y / AlphabetSpine.Bounds.Height * buttons.Length - 0.5;
-        for (var row = 0; row < buttons.Length; row++)
-        {
-            SetAlphabetWave(buttons[row], row - pointerRow);
+            SetAlphabetWave(buttons[row], row - locationRow);
         }
     }
 
@@ -1380,21 +1372,35 @@ public partial class MainWindow : Window
 
         var maximum = Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height);
         var proportion = maximum <= 0 ? 0 : Math.Clamp(scroll.Offset.Y / maximum, 0, 1);
-        var tileIndex = Math.Clamp(
-            (int)Math.Round(proportion * (_library.VisibleTiles.Count - 1)),
-            0,
-            _library.VisibleTiles.Count - 1);
-        var section = LibraryViewModel.AlphabetSectionFor(_library.VisibleTiles[tileIndex].Title);
+        var tilePosition = proportion * (_library.VisibleTiles.Count - 1);
+        var lowerTile = Math.Clamp((int)Math.Floor(tilePosition), 0, _library.VisibleTiles.Count - 1);
+        var upperTile = Math.Clamp((int)Math.Ceiling(tilePosition), 0, _library.VisibleTiles.Count - 1);
         var sections = _library.DisplayedAlphabetSections.ToArray();
-        var locationRow = Array.FindIndex(sections, candidate => candidate.Label == section);
-        if (locationRow < 0)
+        var lowerSection = LibraryViewModel.AlphabetSectionFor(_library.VisibleTiles[lowerTile].Title);
+        var upperSection = LibraryViewModel.AlphabetSectionFor(_library.VisibleTiles[upperTile].Title);
+        var lowerRow = Array.FindIndex(sections, candidate => candidate.Label == lowerSection);
+        var upperRow = Array.FindIndex(sections, candidate => candidate.Label == upperSection);
+        if (lowerRow < 0 || upperRow < 0)
         {
             return;
         }
 
+        // Interpolate between the adjacent titles rather than between A and Z.
+        // This preserves the smooth scrub while accounting for a library whose
+        // titles are unevenly distributed across the alphabet.
+        var locationRow = lowerRow + ((upperRow - lowerRow) * (tilePosition - lowerTile));
+
         for (var row = 0; row < buttons.Length; row++)
         {
             SetAlphabetLocation(buttons[row], Math.Abs(row - locationRow));
+        }
+
+        if (_alphabetDragging || AlphabetSpine.IsPointerOver)
+        {
+            // The content position is the source of truth for both effects.
+            // Pointer Y controls the scrollbar; uneven title distribution means
+            // it does not itself identify the alphabet section now on screen.
+            UpdateAlphabetWave(buttons, locationRow);
         }
     }
 
@@ -1407,10 +1413,10 @@ public partial class MainWindow : Window
 
         var strength = distance switch
         {
-            < 0.5 => 4,
-            < 1.5 => 3,
-            < 2.5 => 2,
-            < 3.5 => 1,
+            <= 0.5 => 4,
+            <= 1.5 => 3,
+            <= 2.5 => 2,
+            <= 3.5 => 1,
             _ => 0,
         };
         if (strength > 0)

@@ -5,12 +5,16 @@ status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-08 23:44'
-updated_date: '2026-09-09 01:24'
+updated_date: '2026-09-09 01:41'
 labels: []
 dependencies: []
 references:
   - game-library-design.md
 documentation:
+  - design-system.md
+modified_files:
+  - src/Winnow.App/Views/MainWindow.axaml.cs
+  - tests/Winnow.Ui.Tests/ListBrowsingPositionTests.cs
   - design-system.md
 priority: medium
 type: enhancement
@@ -34,12 +38,13 @@ Improve large-library browsing in three related ways: strip copyright and tradem
 - [x] #7 Pointer hover over the alphabet expands the adjacent native scrollbar; pointer press and vertical drag continuously maps to the scrollable extent like dragging its thumb, while nearby letters form a restrained horizontal wave that snaps under reduced motion.
 - [x] #8 The spine uses slightly larger glyphs and the ordinary arrow cursor, while the current scroll location has a persistent glow whose intensity falls off across neighboring alphabet stops in grid and list views.
 - [x] #9 Every alphabet glyph shares one fixed visual centerline, and sub-row pointer movement produces continuously varying horizontal displacement rather than switching among discrete wave bands.
+- [x] #10 While the alphabet rail is active, the wave and glow use the same continuous position derived from the visible ordered titles and scrollbar offset, so uneven title distribution cannot separate them.
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Normalize IGDB title search terms by removing copyright and trademark symbols before query and cache-key construction, with focused tests. 2. Add an accessible #/A-Z rail shared by grid and list, derive available sections from visible titles, and preserve the active alphabetical direction. 3. Snapshot and restore the active viewport across ordinary detail close. 4. Update governing documentation and run focused and full verification. 5. Place the rail immediately left of the native scrollbar and hide it outside name sorts. 6. Capture pointer drags on the spine while retaining button activation for keyboard use. 7. Map spine dragging proportionally to the active ScrollViewer extent, engage the native thumb on hover, and add a pointer-following horizontal wave. 8. Increase glyph legibility, restore the arrow cursor, and derive a persistent location glow from the visible title section. 9. Center every glyph in an exact 12px column and drive its transform directly from a compact cosine curve with no inherited easing, so sub-row pointer movement remains continuous.
+1. Normalize metadata lookup terms without changing stored titles. 2. Provide one accessible alphabetical rail for grid and list views, preserving name-sort direction and hiding it for other sorts. 3. Preserve the active viewport across detail open and close. 4. Combine the alphabet rail with continuous scrollbar scrubbing; derive both the cosine wave and halo from the scroll position interpolated through the ordered visible titles. 5. Keep the visual specification and focused UI coverage current, then render both layouts and run the full build and test suite.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -66,10 +71,16 @@ Fourth follow-up complete: alphabet glyphs increased from 10px to 11px and both 
 Fifth follow-up requested from an in-app capture: correct the alphabet centerline and replace the visibly stepped wave with a continuous function.
 
 Fifth follow-up complete: each glyph now occupies an exact 12px column and rendered centerlines agree within 0.01px. The four class-based displacement bands and inherited button easing were removed. Pointer distance now feeds a compact cosine curve on every move, yielding a 13px peak and continuously varying intermediate transforms; the focused test verifies a distinct sub-row value at 0.35 rows. Rendered grid/list captures show a smooth arc. Zero-warning build and all 4,103 Windows tests passed; 2 Linux-only monitor tests skipped as expected.
+
+Sixth follow-up requested: align the glow with the wave peak by deriving both from the same pointer signal while the rail is active.
+
+Clarification: the pointer row was not the correct shared source because alphabet sections are unevenly populated. The active effects should instead follow the title position represented by the scrollbar offset.
+
+Sixth follow-up complete: scrollbar offset is converted to a fractional position in the ordered visible-title sequence, then interpolated between the adjacent titles' alphabet rows. That single value now drives both cosine displacement and halo falloff, including half-row ties. Hover no longer pulls the wave toward a pointer row that may not represent the content. Focused grid/list tests and rendered captures passed. Full build completed with zero warnings/errors; all 4,103 Windows tests passed and 2 Linux-only monitor tests skipped as expected.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Removed metadata title decoration, added alphabetical navigation, and preserved detail-close position. The alphabet rail now combines continuous thumb-equivalent scrubbing, a pointer-following cosine wave, a theme-aware current-location glow, and an exact fixed glyph centerline. The wave bypasses inherited easing so each pointer coordinate renders directly instead of stepping or chasing stale positions. Verified with rendered grid/list captures, 0.01px alignment and sub-row transform assertions, a zero-warning build, and 4,103 passing tests with 2 expected Linux-only skips.
+Removed metadata title decoration, added a shared alphabetical navigation/scrub rail, and preserved detail-close position. The rail now uses one content-derived fractional alphabet position for both its smooth cosine wave and glow, so uneven title distribution cannot separate the visual cues from the scrolled library. Verified with focused headless interaction tests, rendered grid/list inspection, a zero-warning build, and 4,103 passing tests with 2 expected Linux-only skips.
 <!-- SECTION:FINAL_SUMMARY:END -->
