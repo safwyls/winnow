@@ -1,5 +1,7 @@
 ﻿using Dapper;
 using Winnow.Core.Domain;
+using System.Text.Json;
+using Winnow.Core.Lifecycle;
 using Winnow.Core.Identity;
 using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
@@ -522,6 +524,22 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             )
             SELECT o.id                                AS OwnershipId,
                    o.release_id                        AS ReleaseId,
+                   (SELECT json_group_array(json_object(
+                       'Id', lo.id, 'ReleaseId', lo.release_id,
+                       'Source', lo.source, 'SourceId', lo.source_id,
+                       'ObservedAt', strftime('%Y-%m-%dT%H:%M:%fZ', lo.observed_at),
+                       'Signals', json(lo.signals_json)))
+                    FROM lifecycle_observations lo
+                    WHERE lo.release_id = o.release_id
+                      AND (lo.source <> 'igdb' OR lo.source_id IS NULL
+                           OR lo.source_id = CAST(w.igdb_id AS TEXT))
+                      AND (lo.observed_at >= @LifecycleHistorySince
+                           OR lo.id = (
+                               SELECT prior.id FROM lifecycle_observations prior
+                               WHERE prior.release_id = lo.release_id
+                                 AND prior.source = lo.source AND prior.source_id IS lo.source_id
+                                 AND json_extract(prior.signals_json, '$.StoreListed') = 1
+                               ORDER BY prior.observed_at DESC, prior.id DESC LIMIT 1))) AS LifecycleJson,
                    w.id                                AS WorkId,
                    -- Total by construction: COALESCE makes every work resolve,
                    -- to its parent or to itself, which is the same contract
@@ -609,6 +627,8 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             thresholds.StaleWindowMonths,
             thresholds.UpdateCorrelationWindowDays,
             ScopeOverride = scopeOverride,
+            LifecycleHistorySince = DateTime.UtcNow.AddDays(-Math.Max(
+                LifecycleTuning.Default.EvidenceFreshDays, LifecycleTuning.Default.PlayerHistoryDays)),
             ScopeKey = AccountScope.SettingKey,
             ScopeAll = AccountScope.All,
             ScopeOwn = AccountScope.Own,
@@ -898,6 +918,10 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         }
 
         var games = new Dictionary<long, GameGrouping>(members.Count);
+        var now = DateTime.UtcNow;
+        var lifecycles = survivors.DistinctBy(r => r.ReleaseId).ToDictionary(r => r.ReleaseId,
+            r => LifecycleClassifier.Classify(JsonSerializer.Deserialize(
+                r.LifecycleJson ?? "[]", LifecycleJsonContext.Default.LifecycleObservationArray) ?? [], now));
         foreach (var (resolvedWorkId, rows) in members)
         {
             DateTime? update = null;
@@ -920,7 +944,12 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                 }
             }
 
-            games[resolvedWorkId] = GameGrouping.Of(resolvedWorkId, rows, update, unread, thresholds);
+            // A healthy or unknown sibling is not made derelict by another store edition.
+            var releaseStates = rows.Select(r => lifecycles[r.ReleaseId]).ToArray();
+            var lifecycle = releaseStates.All(s => s.IsDerelict)
+                ? releaseStates.MinBy(s => s.Confidence)
+                : releaseStates.First(s => !s.IsDerelict);
+            games[resolvedWorkId] = GameGrouping.Of(resolvedWorkId, rows, update, unread, thresholds, lifecycle);
         }
 
         var result = new List<OwnershipBucket>(survivors.Count);
@@ -935,7 +964,8 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                 PlaytimeMinutes = row.PlaytimeMinutes,
                 LastPlayedAt = row.LastPlayedAt,
                 MajorUpdateAt = row.MajorUpdateAt,
-                Bucket = LibraryBucketRules.Classify(
+                Lifecycle = lifecycles[row.ReleaseId],
+                Bucket = lifecycles[row.ReleaseId].IsDerelict ? LibraryBuckets.Derelict : LibraryBucketRules.Classify(
                     row.PlaytimeMinutes, row.LastPlayedAt, row.MajorUpdateAt, thresholds),
                 Game = games[row.ResolvedWorkId],
 
@@ -955,6 +985,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
     /// </summary>
     private sealed record BucketRow : IPlayedEntry
     {
+        public string? LifecycleJson { get; init; }
         public long OwnershipId { get; init; }
         public long ReleaseId { get; init; }
         public long WorkId { get; init; }

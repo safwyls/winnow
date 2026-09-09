@@ -328,6 +328,8 @@ public static class Program
                         // requests at all.
                         await services.GetRequiredService<ReceptionSyncService>()
                             .SyncAsync(Shutdown.Token);
+                        var lifecycleRows = await services.GetRequiredService<LifecycleSyncService>()
+                            .SyncAsync(Shutdown.Token);
 
                         await services.GetRequiredService<LibrarySoftMatchSweep>()
                             .SweepAsync(Shutdown.Token);
@@ -349,6 +351,7 @@ public static class Program
                         // promotes nothing — and the detail view would keep
                         // showing the gaps until the next launch.
                         if (report.Promoted > 0
+                            || lifecycleRows > 0
                             || report.MetadataFilled > 0
                             || facets.RowsWritten > 0
                             || poll.AnnouncementsRecorded > 0
@@ -507,6 +510,7 @@ public static class Program
         services.AddSingleton<IPlaytimeSnapshotRepository, PlaytimeSnapshotRepository>();
         services.AddSingleton<ISessionRepository, SessionRepository>();
         services.AddSingleton<IUpdateEventRepository, UpdateEventRepository>();
+        services.AddSingleton<ILifecycleRepository, LifecycleRepository>();
         services.AddSingleton<IGameListRepository, GameListRepository>();
         services.AddSingleton<IMergeCandidateRepository, MergeCandidateRepository>();
 
@@ -670,6 +674,12 @@ public static class Program
             sp.GetRequiredService<TimeProvider>(),
             refresh: _ => RefreshLibraryAsync(sp)));
         services.AddHostedService<RemoteOwnershipSchedulerService>();
+        services.AddHostedService(sp => new LifecycleSchedulerService(
+            sp.GetRequiredService<LifecycleSyncService>(),
+            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<RemoteOwnershipSchedulerOptions>>(),
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetRequiredService<ILogger<LifecycleSchedulerService>>(),
+            refresh: () => RefreshLibraryAsync(sp)));
         services.AddHostedService(sp => new SteamInstallRefreshService(
             sp.GetRequiredService<SteamLibrarySource>().ReadInstallFingerprint,
             ct => sp.GetRequiredService<LocalLibrarySyncService>().SyncAsync(ct),
@@ -930,6 +940,7 @@ public static class Program
         // clients' own rate limiters.
         services.AddSingleton<WorkReceptionWriter>();
         services.AddSingleton<ReceptionSyncService>();
+        services.AddSingleton<LifecycleSyncService>();
         services.AddSingleton<GameRefetchService>();
         services.AddSingleton<IGameRefetch>(sp => sp.GetRequiredService<GameRefetchService>());
 

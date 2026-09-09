@@ -27,6 +27,8 @@ public sealed record TileEntry : IPlayedEntry
     /// <summary>The store as stored: <c>steam</c>, <c>epic</c>, <c>gog</c>.</summary>
     public required string Store { get; init; }
 
+    public Winnow.Core.Lifecycle.GameLifecycle? Lifecycle { get; init; }
+
     /// <summary>This entry's own minutes.</summary>
     public required long PlaytimeMinutes { get; init; }
 

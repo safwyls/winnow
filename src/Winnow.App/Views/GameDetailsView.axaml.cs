@@ -3,6 +3,8 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
+using System.ComponentModel;
 using Winnow.App.ViewModels;
 
 namespace Winnow.App.Views;
@@ -14,6 +16,10 @@ namespace Winnow.App.Views;
 /// </summary>
 public partial class GameDetailsView : UserControl
 {
+    private GameDetailsViewModel? _observedDetails;
+    private bool _wasFocusedView;
+    private readonly List<MenuItem> _linkRows = [];
+
     public GameDetailsView()
     {
         InitializeComponent();
@@ -30,21 +36,78 @@ public partial class GameDetailsView : UserControl
     }
 
     /// <summary>
-    /// Closing a disclosed section hands focus to the More trigger — the
-    /// control the section was opened from, and the destination Escape and
-    /// an activated row already use (§10.3). The trigger sits in Band 3,
-    /// outside the rest band's scroll region, so it is always on screen
-    /// and focus is never dropped below the fold. Both sections route
-    /// here: the IGDB close button is in this view's own tree and calls
-    /// <see cref="OnSectionClosePressed"/> directly; the editor is a
-    /// separate <see cref="GameMetadataEditorView"/> that raises
-    /// <see cref="GameMetadataEditorView.CloseRequested"/>, wired in the
-    /// constructor.
+    /// Both tool views return to the persistent More trigger when their own close
+    /// control is used. The selected tab and its scroll position remain in place.
     /// </summary>
     private void OnSectionClosePressed(object? sender, RoutedEventArgs e)
         => OnSectionClosed(sender, EventArgs.Empty);
 
     private void OnSectionClosed(object? sender, EventArgs e) => MoreActionsButton.Focus();
+
+    private void OnDetailsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is null or "" or nameof(GameDetailsViewModel.Links)) RefreshLinkRows();
+        if (e.PropertyName != nameof(GameDetailsViewModel.IsFocusedView)
+            || _observedDetails is not { } details) return;
+
+        var wasFocused = _wasFocusedView;
+        _wasFocusedView = details.IsFocusedView;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (!ReferenceEquals(DataContext, details) || !IsVisible) return;
+            if (details.IsMatchFocused) MatchQueryField.Focus(NavigationMethod.Tab);
+            else if (details.IsMetadataFocused)
+            {
+                // The editor may still be loading its first field rows. Back
+                // remains an available keyboard destination throughout that load.
+                var field = MetadataEditorView.GetVisualDescendants().OfType<TextBox>()
+                    .FirstOrDefault(control => control.IsEffectivelyVisible && control.IsEnabled);
+                if (field is not null) field.Focus(NavigationMethod.Tab);
+                else BackToDetailsButton.Focus(NavigationMethod.Tab);
+            }
+            else if (wasFocused) MoreActionsButton.Focus(NavigationMethod.Tab);
+        }, DispatcherPriority.Background);
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        if (!e.Handled && e.Key == Key.Escape && DataContext is GameDetailsViewModel { IsFocusedView: true } details)
+        {
+            details.BackToDetailsCommand.Execute(null);
+            e.Handled = true;
+        }
+        base.OnKeyDown(e);
+    }
+
+    private void OnUpdatesShortcutPressed(object? sender, RoutedEventArgs e)
+        => Dispatcher.UIThread.Post(() => UpdatesTab.Focus(NavigationMethod.Tab), DispatcherPriority.Background);
+
+    private void OnDetailsTabsKeyDown(object? sender, KeyEventArgs e)
+    {
+        // Arrow keys use TabControl's native selection behavior. Home and End
+        // apply only on the tab strip, so fields and timelines keep their keys.
+        if (e.Handled || e.Source is not TabItem || e.Key is not (Key.Home or Key.End)
+            || DataContext is not GameDetailsViewModel details) return;
+        details.SelectedTabIndex = e.Key == Key.Home ? 0 : 4;
+        (e.Key == Key.Home ? OverviewTab : LibraryTab).Focus(NavigationMethod.Directional);
+        e.Handled = true;
+    }
+
+    private void RefreshLinkRows()
+    {
+        if (MoreActionsButton?.Flyout is not MenuFlyout menu) return;
+        foreach (var row in _linkRows) menu.Items.Remove(row);
+        _linkRows.Clear();
+        if (DataContext is not GameDetailsViewModel details) return;
+        foreach (var link in details.Links)
+        {
+            var row = new MenuItem { Header = link.Label, DataContext = link };
+            ToolTip.SetTip(row, link.Tooltip);
+            row.AddHandler(MenuItem.ClickEvent, OnLinkPressed, handledEventsToo: true);
+            menu.Items.Insert(_linkRows.Count, row);
+            _linkRows.Add(row);
+        }
+    }
 
     /// <summary>
     /// Wires the three action-menu rows that need view work on top of their
@@ -89,6 +152,12 @@ public partial class GameDetailsView : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
+
+        if (_observedDetails is not null) _observedDetails.PropertyChanged -= OnDetailsPropertyChanged;
+        _observedDetails = DataContext as GameDetailsViewModel;
+        if (_observedDetails is not null) _observedDetails.PropertyChanged += OnDetailsPropertyChanged;
+        _wasFocusedView = _observedDetails?.IsFocusedView == true;
+        RefreshLinkRows();
 
         // A new subject means the remembered thumbnail belongs to a game that
         // is no longer on screen. The strip's buttons are recycled containers,
@@ -149,13 +218,8 @@ public partial class GameDetailsView : UserControl
     }
 
     /// <summary>
-    /// The same arrangement <see cref="OnWrongGamePressed"/> uses. The editor
-    /// opens in the right column's bounded rest band, below the fold, so
-    /// without <c>BringIntoView</c> the row would appear to do nothing. The
-    /// scroll is posted at Background priority so it runs after the command
-    /// has set <c>IsOpen</c> and the surface has been laid out. The row only
-    /// ever opens, so the scroll always runs: choosing an already-open row
-    /// brings its section back into view rather than folding it away.
+    /// Choosing an already-open tool restores keyboard focus without loading its
+    /// fields again. Opening and closing are view-model state changes.
     /// </summary>
     private void OnEditDetailsPressed(object? sender, RoutedEventArgs e)
     {
@@ -164,9 +228,7 @@ public partial class GameDetailsView : UserControl
             return;
         }
 
-        Dispatcher.UIThread.Post(
-            MetadataEditorHost.BringIntoView,
-            DispatcherPriority.Background);
+        OnDetailsPropertyChanged(DataContext, new PropertyChangedEventArgs(nameof(GameDetailsViewModel.IsFocusedView)));
     }
 
     private void OnWrongGamePressed(object? sender, RoutedEventArgs e)
@@ -176,13 +238,7 @@ public partial class GameDetailsView : UserControl
             return;
         }
 
-        Dispatcher.UIThread.Post(
-            () =>
-            {
-                IgdbMatchDisclosure.BringIntoView();
-                MatchQueryField.Focus();
-            },
-            DispatcherPriority.Background);
+        OnDetailsPropertyChanged(DataContext, new PropertyChangedEventArgs(nameof(GameDetailsViewModel.IsFocusedView)));
     }
 
     /// <summary>

@@ -130,6 +130,26 @@ public sealed class IgdbSearchTests
         Assert.DoesNotContain("where id", query.Body[..query.Body.IndexOf("search", StringComparison.Ordinal)], StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("Civilization© VI", "Civilization VI")]
+    [InlineData("Civilization® VI", "Civilization VI")]
+    [InlineData("Civilization™ VI", "Civilization VI")]
+    [InlineData("Civilization℠ VI", "Civilization VI")]
+    public async Task Title_decoration_marks_are_removed_from_the_search_term(
+        string title, string expected)
+    {
+        using var host = new IgdbTestHost(IgdbTestHost.DefaultResponder());
+
+        await host.Client.SearchGamesAsync(title);
+
+        var query = host.Handler.Requests.Single(r => r.Endpoint == "games");
+        Assert.Equal(expected, IgdbFixtures.SearchedTerm(query.Body));
+        Assert.NotNull(await host.Cache.GetAsync(
+            IgdbClient.CacheProvider, IgdbClient.SearchCacheKey(expected, 20)));
+        Assert.Null(await host.Cache.GetAsync(
+            IgdbClient.CacheProvider, IgdbClient.SearchCacheKey(title, 20)));
+    }
+
     [Fact]
     public async Task The_result_limit_is_the_one_the_caller_asked_for()
     {

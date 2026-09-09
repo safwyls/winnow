@@ -18,9 +18,8 @@ namespace Winnow.App.ViewModels;
 /// (the IGDB assignment control in the same modal) rewrites every field in
 /// one pass.
 ///
-/// <para>Disclosed from an "Edit details" row in the action band's menu
-/// (§10.3), beside "Wrong game?", and drawn full width in the right column's
-/// rest band under the IGDB reassignment control. Omitting any one optional
+/// <para>Opened from "Edit details" in More (§10.3), beside "Wrong game?",
+/// in focused content beneath the persistent header. Omitting any one optional
 /// constructor argument costs exactly that one capability; with no
 /// IWorkMetadataEditService registered or no resolved work id the row is
 /// not drawn at all.</para>
@@ -159,13 +158,9 @@ public partial class GameMetadataEditorViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// One-way open, loading the six field rows on first disclosure only.
-    /// When already open the command returns early — the view turns that
-    /// no-op into a <c>BringIntoView</c> that scrolls the section back into
-    /// the rest band's viewport — so drafts survive and nothing reloads.
-    /// The editor is disclosed inline in the modal's own tree, never a
-    /// flyout, because the global FocusAdorner does not render inside a
-    /// popup (§10.7).
+    /// Loads the field rows on first opening only. Reopening preserves drafts and
+    /// the host restores focus. The editor stays in the modal tree, outside the
+    /// More popup, so its fields use the same focus treatment as the rest of details.
     /// </summary>
     [RelayCommand]
     private async Task OpenAsync(CancellationToken ct)
@@ -185,9 +180,8 @@ public partial class GameMetadataEditorViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// Folds the section. This is the only user route that sets
-    /// <see cref="IsOpen"/> false — the close button in the section's header
-    /// row drives it.
+    /// Returns to details without discarding field drafts. The editor close button,
+    /// the shared Back control and Escape all use this command.
     /// </summary>
     [RelayCommand]
     private void Close() => IsOpen = false;

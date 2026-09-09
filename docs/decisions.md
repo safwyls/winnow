@@ -2581,3 +2581,677 @@ The modal uses aligned rows and a separate creation area. Previous visual-spec t
 
 > The modal has a bounded, vertically scrollable list of targets, followed by a new-list field
 > and Cancel / confirm buttons. Long names truncate with their full name in a tooltip.
+
+## 2026-09-08 — Optically center the feed bookmark
+
+The bookmark's pointed outline carries more visual weight to the left than the circular feed
+icons, so its vector shifts right by one pixel inside the unchanged button bounds. The visual
+spec previously said: “The bookmark and its inset plus are symmetric around the same
+centerline as the other icons.”
+
+## 2026-09-08 — Derelict uses dated lifecycle evidence
+
+Derelict replaces the unimplemented Won't Run bucket. Its states distinguish cancellation,
+shutdown, delisting and inferred inactivity; delisting does not establish that an owned copy
+cannot launch. Observations remain raw facts and classification is recomputed on read.
+The following text was replaced in the governing documents:
+
+> | Bucket: unrunnable (hidden from the rail until the signal is viable) | `Won't run` | `Dead` |
+
+> | Dead | No viable platform, delisted, or launch-failure flagged |
+
+> **Precedence**, in the order the query tests: never-played, retired, stale-but-patched,
+> bounced, active.
+
+> Unassigned tasks left outside beta are new scoring signals and evaluation research
+> (TASK-135–138), achievement ingestion (TASK-15), per-edition years (TASK-13), Dead-bucket
+> support (TASK-14), broader cross-store automation (TASK-37), notification and navigation
+> features (TASK-108–110, TASK-114), optional presentation work (TASK-27, TASK-42, TASK-43,
+> TASK-80–82), and deferred import/research or test maintenance (TASK-40, TASK-41, TASK-44,
+> TASK-46, TASK-49, TASK-65).
+
+> `GetShelvesAsync(request)` is the second entry point and the one a feed UI should use: the
+> same scoring pass served as **several themed shelves**, each with its own one-line pitch and
+> its own membership rule, every one of them fully populated at Tier 0. §6a is the argument.
+
+> **Will-it-run / Dead bucket**: §6.1 lists Dead (delisted, no viable platform); nothing
+> ingests that fact yet. When it exists it becomes hard exclusion #6.
+
+## 2026-09-09 — User lists replace the previous predefined bucket
+
+Opening a user-created list now starts from the list itself. A manual list shows its stored
+membership, while a live list restores its saved rules, including any bucket saved as part of
+those rules. The visual spec previously said:
+
+> **A manual list is one more AND term** over the library, not a separate screen, so the rail,
+> the panel and the search box all still work inside it.
+
+
+## 2026-09-09 — Game details separates Overview, Activity and Library
+
+The user approved a compact persistent header, three reading tabs and focused correction
+tools. The following visual-spec passages were replaced as part of TASK-167:
+
+> ### 10.1 What it answers, in the order people ask
+>
+> ```
+> ┌─ 200px ────┬──────────────────────────────────────────────────┐
+> │            │  Empyrion: Galactic Survival                 [×] │  1 WHAT IS THIS
+> │  cover     │  2020 · Eleon Game Studios                       │
+> │  200×300   │  IGDB USERS 78 / 1,204 · STEAM 91% / 41,203    │
+> │            │  [STEAM] [Patched] [Not installed]               │
+> │            │                                                  │
+> │            │  37h    SINCE YOU PLAYED               9y 7mo    │  2 MY HISTORY
+> │            │  PLAYED ┆▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁┤     │    lifetime axis
+> │            │         Dec 2015                       today     │
+> │            │                                                  │
+> │            │  [Install] [Store page] [All patch notes] [More] │  3 GET ME IN
+> │ STEAM APPID├──────────────────────────────────────────────────┤
+> │ 383120     │  UPDATES                              (scrolls)  │  4 THE REST
+> │ ON DISK    │  ● v1.19.2 Patch        11 Aug 2026  Patch notes │
+> │ C:\…       │  ABOUT                                           │
+> │ ACQUIRED   │  …text…   [thumb] [thumb] [thumb] →              │
+> │ 4 Nov 2016 │  ALSO COVERS · EXPANSIONS · LISTS                │
+> │ Gift       │                                                  │
+> └────────────┴──────────────────────────────────────────────────┘
+> ```
+>
+> **Two columns, split by what they are about rather than by where the art fit.** Left is the
+> object: its art, the id Steam calls it, where it lives on disk. Right is your relationship with
+> it. The divider spans the right column only, because the left one keeps going. That split also
+> fills the ~130px of nothing a game with no last-played date used to leave beside a 300px cover,
+> which read as broken rather than as sparse.
+>
+> **The card scales against the window, not the display.** Two named `ScaledLength` resources
+> at the top of the view — `CardWidthCap` and `CardHeightCap` — each bound to
+> `$parent[Window].Bounds`. A `ScaledLength` carries a `Fraction`, a `Least` floor and an
+> optional `Most` ceiling, so each cap is one named object rather than a number buried in a
+> layout attribute. Both are unit-tested at seven window sizes
+> (`tests/Winnow.Tests/DetailsModalScaleTests.cs`).
+>
+> - `MinWidth` = 700, unchanged. `Margin` = 40, unchanged.
+> - `MaxWidth` = half the window's width, never below 860, never above 1582.
+> - `MaxHeight` = two-thirds of the window's height, never below 720. No ceiling.
+>
+> The two floors are exactly what the card had when it carried fixed caps, so no window size the
+> app allows (its own minimum is 1200x640) produces a smaller card than shipped. The card is
+> content-sized between its floor and its cap: it is only as wide as its content asks for within
+> that range. Why the window and not the display: the window is what the user sized, and a
+> display-relative card would overflow a small window on a large screen. Why `Window.Bounds`:
+> they never depend on what is inside the window, so a cap bound to them cannot feed back into
+> layout, while a cap bound to the modal's own host could.
+>
+> **1582 is retained rather than derived.** It was the card width at which the in-modal
+> screenshot hero reached the native 1280x720 of IGDB's `t_screenshot_huge`; that hero has moved
+> to the lightbox (§10.7), which is sized against the window rather than against the card, so the
+> number no longer follows from anything inside the card. Nothing else in the card rewards more
+> width: the left column is a fixed 200px, and prose is bounded by the reading measure (§3). A
+> future pass wanting a different ceiling would have to measure a new reason for one; leaving the
+> number where it is costs nothing and re-deriving it buys nothing. See
+> `docs/spikes/details-modal-scale.md` for the measurements that produced it.
+>
+> **There is deliberately no height ceiling.** Nothing in the card has a native height that
+> stops rewarding growth: the rest band and the left column are bounded scroll regions, so more
+> height is more content on screen rather than more empty card.
+>
+> **What a window produces:**
+>
+> | window | card cap | right column |
+> |---|---|---|
+> | 1200x640 (the app's own minimum) | 860 x 720 | 580 |
+> | 1280x820 (default) | 860 x 720 | 580 |
+> | 1600x900 | 860 x 720 | 580 |
+> | 1920x1080 | 960 x 720 | 680 |
+> | 2560x1440 | 1280 x 960 | 1000 |
+> | 3440x1440 | 1582 x 960 | 1302 |
+> | 3840x2160 | 1582 x 1441 | 1302 |
+>
+> **What the right column's width means for the next addition.** The right column is 420px at
+> the card's `MinWidth` and never narrower. That is the width every measurement in this section
+> and in §10.3 was taken against. A control or a row added to the right column must still fit
+> 420px and may assume nothing wider. Above the minimum the column is 580px at the width floor
+> and 1302px at the ceiling. The reception line is one row at 580px and at every width above it,
+> and two rows at 420px, so the `WrapPanel` is still the right panel and no figure changes.
+>
+> **Each column's lower part is a bounded scroll region.** The right column scrolls the rest band;
+> the left column scrolls the facts under the cover. Both sit in star rows so each is bounded by
+> whatever height the card has and scrolls inside it. An Auto row is measured against infinity, so
+> a ScrollViewer inside one takes its content's full height and never scrolls — that is what let
+> long content draw past the card and be cut off at the window edge (measured on Avalonia 11.3.20).
+>
+> Avalonia's Fluent ScrollViewer draws its scrollbar over the content while auto-hide is on: the
+> content presenter is given both spans, so the bar takes no column of its own (verified against
+> Avalonia 11.3.20's own theme). Four inner scroll regions in the modal carry the same
+> problem. In the right column's rest
+> band, the close glyph on each disclosed section's header row (§10.9, §10.10) and the per-row
+> Separate, Ungroup and Patch notes buttons sit under the bar. In the IGDB candidate list
+> (§10.9), a bounded region with a bar of its own drawn inside the rest band's content, the
+> swelled 12px track covered roughly 8px of each row's assign control behind a 4px content
+> margin; its gutter does not double-count against the rest band's, because the two regions
+> scroll independently. In the left column, a wrapped ON DISK path could run under its bar. In
+> the screenshot thumbnail strip in ABOUT, a horizontal bar is drawn over the foot of the strip
+> rather than over its trailing edge. The three vertical regions carry the same 20px right margin
+> on their content; the token is `InnerScrollGutter`. The horizontal strip carries the same 20px
+> as a bottom margin; the token is `InnerScrollGutterBottom`. 20
+> is 12, the width Fluent's track swells to under the pointer, plus 8, §4's own spacing step —
+> the 8 is what makes the clearance read as deliberate space rather than as a control that merely
+> stopped touching the bar. In the rest band the gutter is one margin on the band's content
+> rather than one per header, so every section the band carries now and every section added later
+> is clear of the bar without solving it again. The left column's 18px top margin — the gap
+> between the cover and the facts — moved onto the ScrollViewer itself, because a `Thickness`
+> token cannot be composed with a second value in XAML and a `Margin` on a ScrollViewer is not
+> the inert `Padding` case; the gap no longer scrolls away with the content. It is not carried
+> by the `ScrollViewer.inner` class: that class is §9.1's
+> opt-out, saying this scrollbar's edge is a divider of ours rather than the window's, and the
+> only property it could set for a gutter is the ScrollViewer's own `Padding`, which
+> `ScrollContentPresenter` ignores in measure and in arrange. The cover wall already records the
+> same finding by setting `Padding="0"` and clearing the bar with the wall's own margin; a
+> class-level style reaching the content instead would lose to the local `Margin` values that
+> content already carries, which is worse than an explicit margin because it would fail silently
+> on exactly the regions that need it. The modal's own close button, beside the title in Band 1,
+> is outside the scroll region and needs none of this.
+>
+> **Below the year and publisher, the identity block carries a reception line.** Up to three
+> attributed figures, in this order: IGDB's own user rating, IGDB's aggregation of external
+> critics, and Steam's review summary. Each draws a short uppercase source attribution, the
+> value, and the count of people behind it — IGDB USERS 78 / 1,204 ratings; IGDB CRITICS 85 /
+> 42 critic scores; STEAM 91% / 41,203 reviews. The count is on the line, not only in the
+> tooltip, because a 9 from four people and a 9 from four thousand are different claims. The
+> three are never blended and Winnow computes no verdict of its own: they are three populations
+> answering three different questions. Steam's own words ("Very Positive") are not on the line;
+> they arrive with the percentage and the count on hover. A source with no figure writes no row
+> in `work_ratings`, so it contributes nothing, and when no source has a figure the line is not
+> drawn at all — never a zero, never an empty scale. The value takes `Text` and the attribution
+> and count take `TextDim`. `TextFaint` is not available here for the reason §10.3 already gives
+> for section headings. The line is a `WrapPanel`: measured, the three figures sum to 564px and
+> the right column is 420px at the card's `MinWidth`, so the line takes a second row at that
+> width and a single row at 580px (`docs/spikes/details-modal-additions-width.md`). A second row
+> is cheaper than trimming a count away.
+>
+> **The rest band's order is:** corrections (IGDB MATCH, EDIT DETAILS), JOURNAL, UPDATES, ABOUT with
+> screenshots inside it, ALSO COVERS, EXTENDS, EXPANSIONS, LISTS. The governing rule: **a
+> `label section` heading in Band 4 is earned by a list of rows the user can act on. ABOUT is
+> the single prose exception. A fact about the game goes in Band 1; a fact about this copy goes
+> in the left column; a picture goes inside ABOUT; an act goes in the More menu with its status
+> on the strip.** UPDATES provides the event list summarised by Band 2's axis. Its heading is the constant `UPDATES`, whether or
+> not anything landed since the last session. It previously took `SINCE YOU PLAYED` in one state
+> and `UPDATE HISTORY` in the other, and the first of those is Band 2's own rail label, so one
+> modal said the same words about two different things; the rail keeps the name.
+>
+> **JOURNAL lists saved post-session notes**, newest session first. Each row shows the
+> session date in Data, an optional rating out of five, and the note. An empty list says
+> “No notes yet. After you play, Winnow will ask how it went.” when prompting is enabled,
+> or “Journal prompts are off. Turn them on in Display preferences after a game.” when
+> it is disabled. Editing is inline, with the existing five-dot rating control. Deletion
+> asks “Delete this note?” and only that confirmation uses Danger.
+>
+> **Screenshots sit inside ABOUT, not in a section of their own.** A horizontal thumbnail strip
+> at 120x68, with a caption naming the count and the source. Picking a thumbnail opens the
+> lightbox (§10.7). Each thumbnail is a real `Button`, so it is a Tab stop with the panel's drawn
+> ring, and a thumbnail reached by Tab is scrolled into view — the same arrangement the IGDB
+> candidate list (§10.9) uses. A game with no screenshots draws nothing at all, never an empty
+> frame; that is a property of the data: no ids in `work_images` means no view model. The images
+> ride the existing cover cache under a `CoverKey.IgdbScreenshot`, which resolves to
+> `t_screenshot_huge` — an IGDB cover is 3:4 and a screenshot is 16:9, so the provider is what
+> picks the size token; there is no second image path. The strip is a bounded horizontal scroll
+> region, the fourth such region in the modal. An ordinary mouse wheel scrolls it horizontally;
+> Shift-wheel and horizontal trackpad input also work. At either edge, wheel input stays with
+> the strip rather than scrolling the details body.
+>
+> **Accessibility: the modal's own tree.** Band 1, Band 2, Band 3 and the reception line are
+> named groups — `AutomationProperties.Name` plus `AccessibilityView="Control"`, which is what
+> un-prunes a panel whose own peer reports itself out of the control view;
+> `AutomationControlType.None` maps to the UIA Group type. The title is a level-1 heading and
+> every section heading is level 2, through `AutomationProperties.HeadingLevel`. Update rows and
+> screenshot thumbnails carry `ControlTypeOverride="ListItem"` on the DataTemplate root — never
+> on the ItemsControl, whose containers are ContentPresenters that report themselves out of the
+> control view, so a list addressed at the control reports no items (§8). An update row's name
+> states in words whether it landed since the last session, because the `Flare` dot is a mark
+> and §8's decorative-redundant rule wants the same fact as text. `AutomationProperties.Name` is
+> never placed on a `TextBlock`: its peer ignores the property and returns `Text` instead (§8).
+> All four attached properties — `AccessibilityView`, `HeadingLevel`, `ControlTypeOverride` and
+> `LiveSetting` — were verified wired to Windows UIA in the Avalonia 11.3.20 source.
+
+> §5.3 caps the tile's hover overlay at four facts. This is the detail view that cap presupposes.
+> It stays a **modal over the library**, opened by `Enter` or a double click, dismissed by
+> `Escape` or a click on the scrim. The library is a scanning surface and the panel is a decision
+> the user made about one tile in the middle of a scan; a modal keeps the wall's scroll position,
+> so `Escape` returns them to exactly the row they were reading.
+
+> Beside it, `Store page` and `All patch notes` in `Azure`, and the `More` control — four
+> controls on the strip for Steam. Other stores have fewer, because their launchers expose less:
+
+> **Epic's own protocol-activation documentation names the wrong verbs.** The working install
+> route is `?action=install`, verified by execution against Epic Games Launcher build 20.2.9 on
+> 2026-09-05: the launcher refreshed the entitlement, resolved the catalog item, dispatched the
+> install and opened its own install-location selector; Epic does the downloading after the user
+> confirms there, not Winnow. That verb is undocumented. The documented `?action=installer` routes
+> to the optional-components screen for an already-installed app and is a no-op on an uninstalled
+> one; the documented `?action=updatecheck` is not registered at all in build 20.2.9 and is
+> rejected before dispatch. See `docs/spikes/store-actions-per-launcher.md` for the full evidence.
+> Epic's cached namespace-to-slug map supplies `https://store.epicgames.com/p/<slug>`; unresolved
+> namespaces draw no link. GOG's cached product response supplies its store-page URL and patch
+> notes. When notes exist, a collapsed `GOG patch notes` disclosure in the scrollable rest band
+> opens readable text; it is absent when the response has no changelog. The API and cache are
+> background work, so opening details never waits for either store.
+
+> **When a store entry has no primary action and no links, Band 3 says why** instead of showing
+> a strip whose only control is `More`. The sentence takes `Text`, not `TextDim`, on the same
+> reasoning as the no-rail sentence: it is the whole of what Band 3 says about getting in when
+> there is nothing to press. Two sentences, one per cause: the install state was never read, or
+> the store's identifier is not held.
+
+> `More` opens a menu whose rows are installation management, `Open folder`, `Refetch metadata`, `Wrong game?`,
+> `Edit details` and `Hide`, in that order. A row is drawn only when it has something to do:
+> `Open folder` when the game is on disk, `Refetch metadata` when enrichment services are
+> registered, `Wrong game?` and `Edit details` when their controls exist, `Hide` when the library
+> handed its command over. A row with nothing behind it is not drawn rather than drawn inert. The
+> trigger's face does not change — the menu owns whether it is open, so the button always reads
+> `More`. Its tooltip is `Installation, folder, metadata, corrections and hide`.
+
+> **A row's name does not change with the state of what it opens.** The row opens; the surface
+> it opens carries its own close control — a `×` glyph in the trailing Auto column of the
+> section's header row, beside a heading that names the section. The close control's tooltip
+> names the section; it does not say "(Esc)", because Escape closes the whole modal, not a
+> section. Choosing a row whose section is already open scrolls the section into view rather
+> than closing it: closing is the close control's job. The close control returns focus to the
+> `More` trigger — the control the section was opened from, on the strip outside the rest band's
+> scroll region, so it is always drawn.
+
+> **The menu floats.** It is not in any row of the card's grid, so opening it reflows nothing:
+> Band 3's height does not change and the rest band is not pushed. A further action costs one
+> row of menu height and no width at all. Measured, the menu card is 134 x 103px at three rows
+> and 134 x 134px at four — about 31px per row, with no cost to the modal's layout at all.
+
+> **What earns a place on the strip.** The band is "GET ME IN". A control belongs on the strip
+> only if pressing it moves the user toward playing this game now: the primary action, and the
+> outbound links that answer what this is and what changed before launching. Everything else
+> joins the menu. A new control joins the menu by default; putting one on the strip requires
+> both that it passes that test and that the strip is re-measured and still fits 420px. See
+> `docs/spikes/details-action-band-width.md` for the measurements.
+
+> **Keyboard.** Tab order on the strip follows declaration order (§10.7): primary action,
+> `Store page`, `All patch notes`, `More`. The five menu rows are never Tab stops; they are
+> reached by opening the menu. Opening it puts focus on the first row that is drawn, skipping
+> any that is not. Up and Down walk every drawn row in declaration order and wrap round rather
+> than dead-ending. Enter runs the row and closes the menu. Escape closes it. Both routes hand
+> focus back to the trigger.
+
+> **Refetch metadata is in the menu, not on the strip.** Re-asking a source moves nobody closer
+> to playing this game now, which is the strip's own test stated above. Its status is reported in
+> words on a line in Band 3, outside the rest band's bounded scroll region, so an act started
+> from the menu is answered where it can always be seen. The line is absent entirely at rest. It
+> is `TextDim` while running and after a result lands, and `Amber` for a refusal, which is the
+> register the rest of the panel already uses. Progress is words and never a percentage: no total
+> is knowable in advance. A refetch that wrote something reloads the library and reopens the
+> modal carrying its confirmation, the same arrangement §10.9 already describes for a landed
+> assignment and for the same reason — the reception line and the cover are computed when the
+> library loads.
+
+> The left column's ACQUIRED block draws the date and the licence type in words when the parser
+> recognises one — Steam Store, Complimentary, Gift or guest pass, Retail key. An unrecognised
+> licence says nothing rather than showing a stored token. It draws only for a user who has run
+> the saved-page import, and is absent rather than empty for everyone else. It is in the object
+> column because it is a fact about this copy — this ownership row — rather than about the game,
+> which is the same split §10.1 draws between the two columns.
+
+> **`Wrong game?` is a row in the action band's menu (§10.3)**, beside `Open folder`,
+> `Edit details` and `Hide`. The search field and the candidate list draw full width in the
+> right column's rest band, the scrolling star row, which is what makes the bounded-scrolling
+> behaviour structural rather than arithmetic. Only the Clear control is in the left column,
+> under the cover and ON DISK — §10.1's object column, where the identity facts live.
+
+> **The section carries an `IGDB MATCH` heading and its own close control** (§10.3's rule). The
+> `×` glyph sits in the trailing Auto column of the header row, beside the heading; its tooltip
+> is `Close IGDB match`. The heading names the surface: the menu row that opened it closes
+> itself as the section appears, so nothing else on screen would identify it. Choosing the row
+> while the section is already open scrolls it into view and puts the caret back in the search
+> field; nothing standing in the section is discarded — a same-game offer the user may be
+> part-way through answering, and any search results, survive. The two places the section folds
+> itself on success — a landed assignment and a landed same-game link — are unaffected: those
+> reload the library and reopen the modal, so focus belongs to the reopened modal, not to the
+> trigger.
+
+> **Clear is drawn only while a pin stands**, read when the modal opens. It sits in the left
+> column, under the cover and ON DISK, at the foot of the identity facts and inside that
+> column's own scroll region; the search surface it used to sit above stays in the right column,
+> because a candidate row carrying cover, name, year and platforms does not fit 200px and a
+> single link-styled button does. Clearing writes no metadata — it only stops the pin — but it
+> reloads the library and reopens the modal, because dropping the pin changes the cover key back
+> to the store capsule and only a reload draws it. The metadata the pin wrote stays in place and
+> the next automatic pass fills what is empty around it.
+
+> **`Edit details` is a row in the action band's menu (§10.3)**, beside `Wrong game?`, because
+> it is the same kind of act: correcting what Winnow believes about this game. `Wrong game?`
+> answers which game this is; `Edit details` answers what each of its values should be. The editor draws full width in the right column's rest band, directly
+> under the IGDB reassignment control's own block. The identity question comes first on the
+> surface because it is first in fact: assigning an IGDB entry rewrites every field in one pass.
+> **Inline, never a flyout** — §10.7's rule applied again, for §10.7's own reason. The rest band
+> is a bounded scroll region and the editor opens below the fold; the scroll that brings it into
+> view runs whether the editor was just opened or was already open, so choosing the row again is
+> a way back to the section rather than a way to lose it. Drafts in all six rows survive, and
+> the editor does not reload. Nothing of this control is in the left column. §10.9 puts only
+> Clear there, under the cover and ON DISK, and six labelled rows with previews and per-field
+> buttons do not fit 200px.
+
+> **What a candidate row draws.** Four facts: a 34x51 cover at `RadiusControl` — §4's rule that
+> the three radii rank by the size of the object they round, and §6's list-view precedent — the
+> name, the year in Plex Mono, and the platforms in Jakarta: the modal's own identity-line split,
+> §3's rule that every number is Plex. Those four facts are what separate Prey (2006, Xbox 360)
+> from Prey (2017, PlayStation 4), which is the failure the whole control exists to fix. The row
+> draws full width in the right column on one line: the 34x51 cover, then the name over the year
+> and platforms, then the assign control in a trailing Auto column. The platforms trim with an
+> ellipsis inside the text column and carry the full list as a tooltip, because a trimmed platform
+> list is how a user tells *Fortnite* (2018, Android/PC) from *Fortnite* (2020, everything); the
+> row's height comes from the cover, so a short and a long subtext measure the same. An entry IGDB
+> gave neither a year nor a platform draws no second line. The covers ride the existing image path and add no new one:
+> IGDB's cover URL carries the asset's image id, and an image-id cover key is one the registered
+> IGDB cover source already answers without credentials. They draw at full saturation — the
+> dormancy ramp is about your own library and none of these candidates is in it yet.
+
+> 1. Measured months exist. The axis draws both zones, the bars carry the ramp, and the copy
+>    states the user's own hours and their coverage.
+> 2. Every hour predates the record and the measured months are all zero. The flat band fills
+>    the axis, the bars are empty, and the copy says so.
+> 3. No release year, or fewer than two month-end readings. The shipped gap rail draws unchanged:
+>    normalised from the last session to today, `Volt` at the last-played end fading to `Line` at
+>    today, with update marks in `Flare`, capped at 14, and the span stated as a number beside
+>    it. The rail is normalised, never scaled to duration — a 14-day gap and a 9-year gap draw
+>    the same length — because scaling would be a second, competing encoding of a fact the digits
+>    already carry. The record sentence still stands: *"Checked 12 times since 23 Aug 2026 — up
+>    1h 7m."* The delta is between the first and last reading Winnow holds, which is the part it
+>    actually watched happen, not the total Steam already knew. At one reading it says so; at
+>    zero it says nothing at all.
+> 4. No last-played date at all. The sentence is the whole of Band 2 and there is no rail of any
+>    kind. Two different absences, kept apart by the copy: *"You've never opened this."* and
+>    *"Steam has no date for your last session."*
+
+> **The one thing Winnow can draw that nothing else can.** Storefronts hold your playtime and
+> they hold a game's patch history; nobody puts them on the same axis. For a game with a release
+> year and at least two month-end playtime readings, Band 2 draws one time axis from the game's
+> release to today, in two zones.
+
+> Ten runs take `Text`. The gap rail's caption and its longitudinal record line, and the same
+> record line in the no-rail branch — §10.2 says everything the rail draws is restated in words
+> underneath, and §8's decorative-redundant rule makes those words the carrier of the fact; the
+> carrier of a fact is primary text. The no-rail sentence itself ("You've never opened this." /
+> "Steam has no date for your last session."), which is the whole of what Band 2 says when there
+> is no rail. The EXTENDS blurb ("A separate game, grouped for display.") and the EXPANSIONS
+> blurb ("Counted separately. Not added above."), both directly under a section heading — the
+> pair that prompted the change. The LISTS empty state ("Choose Add to list above to create a
+> list for this game."), a direction the user acts on (§7). The ABOUT summary — the
+> game's own description — and the empty-body line that stands in the same slot ("No description
+> yet. Metadata fills in automatically."). The metadata editor's intro ("Each field tracks its
+> own source, so editing one leaves the rest alone."). The no-way-in sentence in Band 3
+> ("Winnow has not read this copy's install state yet." / "Winnow does not yet hold the
+> identifier this store needs to reach this game."), which is the whole of what Band 3 says
+> about getting in when there is nothing to press. None carries a local `Foreground` override;
+> the ink comes from the `.body` type style, which §2 already gives `Text`. A prose run that
+> states no ink of its own is correct by default.
+
+> Ten runs take `Text`. The gap rail's caption and its longitudinal record line, and the same
+> record line in the no-rail branch — §10.2 says everything the rail draws is restated in words
+> underneath, and §8's decorative-redundant rule makes those words the carrier of the fact; the
+> carrier of a fact is primary text. The no-rail sentence itself ("You've never opened this." /
+> "Steam has no date for your last session."), which is the whole of what Activity says about history when there
+> is no rail. The EXTENDS blurb ("A separate game, grouped for display.") and the EXPANSIONS
+> blurb ("Counted separately. Not added above."), both directly under a section heading — the
+> pair that prompted the change. The LISTS empty state ("Choose Add to list above to create a
+> list for this game."), a direction the user acts on (§7). The ABOUT summary — the
+> game's own description — and the empty-body line that stands in the same slot ("No description
+> yet. Metadata fills in automatically."). The metadata editor's intro ("Each field tracks its
+> own source, so editing one leaves the rest alone."). The no-way-in sentence in Band 3
+> ("Winnow has not read this copy's install state yet." / "Winnow does not yet hold the
+> identifier this store needs to reach this game."), which is the whole of what Band 3 says
+> about getting in when there is nothing to press. None carries a local `Foreground` override;
+> the ink comes from the `.body` type style, which §2 already gives `Text`. A prose run that
+> states no ink of its own is correct by default.
+
+> Ten runs take `Text`. The gap rail's caption and its longitudinal record line, and the same
+> record line in the no-rail branch — §10.2 says everything the rail draws is restated in words
+> underneath, and §8's decorative-redundant rule makes those words the carrier of the fact; the
+> carrier of a fact is primary text. The no-rail sentence itself ("You've never opened this." /
+> "Steam has no date for your last session."), which is the whole of what Activity says about history when there
+> is no rail. The EXTENDS blurb ("A separate game, grouped for display.") and the EXPANSIONS
+> blurb ("Counted separately. Not added above."), both directly under a section heading — the
+> pair that prompted the change. The LISTS empty state ("Choose Add to list above to create a
+> list for this game."), a direction the user acts on (§7). The ABOUT summary — the
+> game's own description — and the empty-body line that stands in the same slot ("No description
+> yet. Metadata fills in automatically."). The metadata editor's intro ("Each field tracks its
+> own source, so editing one leaves the rest alone."). The no-way-in sentence in the header
+> ("Winnow has not read this copy's install state yet." / "Winnow does not yet hold the
+> identifier this store needs to reach this game."), which is the whole of what Band 3 says
+> about getting in when there is nothing to press. None carries a local `Foreground` override;
+> the ink comes from the `.body` type style, which §2 already gives `Text`. A prose run that
+> states no ink of its own is correct by default.
+
+> **The disclosure is `Button.secondary`, not `Button.link`.** `Store page` and `All patch notes`
+> are outbound links and draw in `Azure`; the disclosure acts here rather than leaving, so it
+> takes the panel's `Text`-ink treatment. `Button.secondary` and `Button.link` have identical
+> geometry, so the choice costs no width.
+
+> - **The saturation ramp is decorative-redundant.** Idle time also appears as text on hover and
+>   as a sortable column in list view. A user who cannot perceive the fade loses nothing. The
+>   unread badge is likewise backed by the rail's `Patched` count, by the same bucket name on the
+>   back of the tile, and by the tile's accessible name, which states the badge in words and
+>   gives the number of updates.
+> - **Focus is a brush swap on a border whose thickness never changes** (§10.7). It is drawn per
+>   control rather than left to Avalonia's global `FocusAdorner`, which measurably underdelivers
+>   and does not render inside a popup at all. Every focusable control carries a visible ring;
+>   `Volt` everywhere except on a `Volt` fill, where it is `VoltInk`.
+> - Full keyboard grid navigation: arrows, `/` to search, `Enter` to launch.
+> - **An accessible name belongs on a control that has an automation peer of its own** — in
+>   practice the `UserControl` root, the `Button`, the `TextBox`, the `CheckBox` — and never on a
+>   `Border`, a `Panel` or a `Grid`. Avalonia gives those a `NoneAutomationPeer` and Windows
+>   prunes it from the control view, the tree a screen reader walks; the element's children still
+>   appear, so what is lost is the name alone. Where there is no peer-bearing control to move the
+>   name to, the element states `AutomationProperties.AccessibilityView="Control"`, which is
+>   consulted before the peer's own answer and puts it back in that tree with its name intact.
+>   Verified against Avalonia 11.3.20.
+> - **A name on a `TextBlock` is discarded.** `TextBlockAutomationPeer` returns the `Text` and
+>   never reads `AutomationProperties.Name`, so a `TextBlock` says its `Text` and nothing else.
+>   Put the words in the `Text`.
+> - **A value that changes while its surface is on screen travels on
+>   `AutomationProperties.ItemStatus`, or on a bound `TextBlock`'s `Text`.** Changing a name at
+>   runtime raises no UIA event, so the new one is never announced; `ItemStatus` is the one
+>   attached property that raises one.
+> - **A count is spelled into the name string** — `Patched since you played: 3 updates.` —
+>   because `AutomationProperties.PositionInSet` and `SizeOfSet` compile and are read by nothing.
+> - **These four are enforced by a test rather than by review.** The failure is silent: the
+>   element keeps its children and nothing throws, so a name that stops arriving looks exactly
+>   like a name that does. `AutomationNameReachabilityTests` scans every `.axaml` under
+>   `src/Winnow.App` and fails when a name sits where UIA will drop it.
+> - **Composed controls name themselves explicitly.** A button containing a layout panel does
+>   not inherit the text drawn inside that panel. Rail navigation, list choices, filter options,
+>   theme cards and glyph buttons bind their visible label as their name; list and filter counts
+>   are included in words and also travel on `ItemStatus` when they change. Primary screens are
+>   named groups, screen titles are level-1 headings and section titles are level 2. The details
+>   surface itself has a `Window` role and a name identifying the game, because its focusable
+>   root must be named as well as its inner bands. `InteractiveControlNameTests` checks the
+>   authored controls; `docs/spikes/accessibility-navigation.ps1` exercises the Windows UIA
+>   provider on an isolated sample library.
+> - **Reduced motion disables the hover saturation animation** — state snaps instead of fading.
+> - **When the interface cannot state a proportion, it says what it is doing and what it is
+>   waiting for, in words, in a status field, and offers Cancel when there is one.** This is the
+>   Stores panel's pattern — a `Volt`-edged status field naming where to look, plus Cancel —
+>   generalised. §7 already says the same thing about the first-run grid: placeholder tiles with
+>   the title set in Bricolage on a `Surface` field, never a spinner, never an empty grid. When
+>   nothing is yet known, the surface says what it is waiting for; it never draws an empty box or
+>   a placeholder that claims a measurement it does not have. Because the indicator is words,
+>   reduced motion has nothing to disable and the surface is the same in both motion settings.
+>   An accessibility floor with no branch in it cannot be got wrong.
+> - **Motion may be added to a status field; a status field may never be replaced by motion.**
+>   Four conditions on any animated indeterminate indicator: (a) the words are the indicator and
+>   the motion is decoration over them, so a screen reader reads a state rather than nothing;
+>   (b) at most one moving element on a screen; (c) it is removed entirely under reduced motion,
+>   leaving the words — removed by a style, never present as a local `Transitions` value, which
+>   is §12.5's rule; (d) it is never the only thing saying that work is happening.
+> - **A determinate indicator stays shown and stays accurate under reduced motion** — it is
+>   information, not decoration. What goes is the continuous movement: values step at a coarse
+>   cadence rather than updating thirty times a second, and the transition that smoothed them is
+>   removed by a style, never present as a local value (§12.5).
+> - `TextDim` on `Surface` measures **5.88:1**, and on `SurfaceRaised` — what a selected list row
+>   puts under the store and idle columns — **5.04:1**. **Do not dim further.** `Text` on
+>   `Surface` is 13.1:1, `Azure` 6.03:1, and `Volt` on `Ground` 11.3:1.
+> - **A watermark the user is expected to read is `TextDim`, not `TextFaint`.** `TextFaint`
+>   measures 4.13 / 3.69 / 3.58 / 4.12 across the four themes on the *opaque* ground, which is
+>   under AA before transparency exists. `TextFaint` is for disabled arrows and decoration.
+> - A settings toggle disables the dormancy ramp entirely for users who prefer uniform art. The
+>   badges and buckets carry the signal without it.
+> - The caption buttons are real buttons, reachable by Tab like anything else. `Danger` is never
+>   the only thing distinguishing close: it has its own glyph and its own tooltip.
+
+> **Saving art reloads the library and reopens the modal on the same ownership**, carrying its
+> confirmation across — the same arrangement §10.9 already describes for an assignment, and for
+> the same reason: the stored value becomes a user-art reference, the tile's cover key is
+> computed when the library loads, and only a reload draws the new art on the wall. **A text save does not reload**, and does not need to: the save hands the library the field
+> key and the value as stored, after the editor's own rows refresh. Only `name` is acted on; the
+> other three text fields are drawn nowhere outside the modal, which has already refreshed
+> itself. The library renames every live tile behind that work — several when a same-game link
+> group sits behind one work — and with it the grid tile, the list-view row, the modal headline,
+> the tile's filterable row (so search and every live list follow), and any feed card, which
+> borrows the same tile instance. The provisional-name badge is cleared, because a name save
+> clears `works.name_is_provisional`. The placeholder gradient is recomputed, because it is
+> derived from the title. The current sort and filter are re-applied in the same pass, so a
+> renamed game takes its new place in the order immediately. Every draft in the other five rows
+> survives, the modal stays open on the same ownership, and the editor stays disclosed — which
+> is precisely what a reload would have cost. The seam is optional like every other seam on this
+> modal: unwired, the save is exactly what it was. The carried
+> confirmation is drawn outside the disclosure's own open/closed gate, because reopening leaves
+> the editor closed and a confirmation nobody can see is not one.
+
+> **Tab order follows the tree, not `TabIndex`.** Avalonia's tab navigation walks declaration
+> order and ignores `TabIndex` on a non-focusable container — measured, not assumed. The right
+> column is therefore declared first and placed second by `Grid.Column`, so the keyboard reaches
+> `Play` before it reaches an appid.
+
+> **This panel has exactly one popup: the action band's menu (§10.3).** It is allowed because a
+> menu draws its own mark inside the item template and therefore never needed the adorner layer.
+> Everything else stays in the modal's own tree — the IGDB search and its candidate list
+> (§10.9), the per-field editor (§10.10), the list ticks — because those are surfaces to read
+> and type in, where a hand-drawn ring per control would be the whole cost of the surface.
+
+> **The screenshot lightbox is an overlay, not a popup.** §10.7's ban is on popups: a popup is
+> its own root with no adorner layer, so `FocusAdorner` draws nothing inside one and every ring
+> would have to be hand-drawn per control. The detail modal is not a popup either —
+> `MainWindow.axaml` hosts `GameDetailsView` as a child spanning all columns of the window's own
+> `Grid`, and that is exactly why its focus rings work. The lightbox is the same pattern one
+> layer up: an ordinary child of that same Grid, declared after the modal so it draws over it, in
+> the window's visual tree. The rings draw there for the same reason they draw in the modal, and
+> nothing is hand-drawn. The lightbox is therefore not a second exception alongside the action
+> band's menu. The menu is an exception because it is a popup that draws its own mark; the
+> lightbox needs no exception at all. A `Popup` or a `Flyout` here would be the mistake, and it
+> is held by a test (`tests/Winnow.Tests/Enforcement/ScreenshotLightboxStructureTests.cs`) rather
+> than by review, because the failure is silent — the rings would simply stop drawing.
+
+> A patched game's `Patch notes` button on an update row, and the `All patch notes` link beside
+> `Store page`, open the notes in an embedded browser window rather than in the system browser.
+
+> Hiding is done from the game, in two places: the library's context menu and the details
+> modal's action band. The context menu acts on the whole picked set and names the number once
+> there is more than one, exactly as `Add to list` does. The action band places it as a row in the `More` menu (§10.3) rather than on the strip,
+> because that band is about getting into the game and hiding is the quiet answer behind it;
+> the context menu remains the route that acts on a whole picked set.
+
+> Each feed card states the inferred or explicit status,
+> confidence and source-based reason; the details modal repeats that information in its
+> identity band.
+
+## 2026-09-09 — Compact activity timeline (TASK-169)
+
+The approved timeline replaces the lifetime/gap-rail branches. The superseded visual specification follows.
+
+### 10.2 The lifetime axis
+
+**The one thing Winnow can draw that nothing else can.** Storefronts hold your playtime and
+they hold a game's patch history; nobody puts them on the same axis. For a game with a release
+year and at least two month-end playtime readings, Activity draws one time axis from the game's
+release to today, in two zones.
+
+- **The left zone is play whose amount Winnow knows and whose shape it does not.**
+  `SteamPlaytimeBackfillService` reconstructs a month-end cumulative series from Steam Replay,
+  and everything before the first covered month is stamped as one figure at one instant — the
+  floor point in `PlaytimeSeriesReconstruction.cs`. It is drawn as a flat band with a dashed
+  boundary, never as bars and never as a slope, because a slope across that span would invent a
+  month-by-month pattern nobody measured.
+- **The right zone is one bar per closed month.** A bar spans the true time between two
+  consecutive readings and its height is the play gained between them, so a stretch the backfill
+  did not cover draws as one wide bar carrying the whole stretch's hours rather than being
+  silently compressed into the ordinal sequence.
+- **Only month-end readings are differenced.** A live snapshot is written only while Winnow is
+  running, so a user who closes it for three weeks gets three weeks of accumulated play stamped
+  on one instant; a chart from those deltas would draw a spike on the day the app reopened, not
+  on the days the play happened. Snapshots that are not stamped at a month end contribute no
+  bar at all.
+- **Sessions are not mixed in.** They exist only from Winnow's own install and only for
+  processes it watched, so overlaying them would make a game heavily played for four years
+  before that install look dormant for those four years. Two data sets, two coverage windows,
+  two questions.
+- **The last session is a `Volt` stop mark on the axis.** Update marks are `Flare` on the
+  baseline, capped at 14, the same signal the gap rail carried and placed on the whole axis
+  rather than on the gap alone.
+- **The bars ride §5.1's ramp turned on its side**, `Line` at the release end to `Volt` at
+  today. This runs the opposite way to the gap rail's own ramp: the gap rail encodes a
+  dormancy that begins at a single known moment, the last session, so `Volt` sits there; the
+  lifetime axis has no such single moment and encodes recency, so `Volt` sits at today. The
+  gap rail's rule is unchanged where the gap rail still draws.
+- **What is drawn is the user's own hours.** Per-game player-population activity is not
+  obtainable — the whole finding is in `docs/spikes/activity-graph-data-availability.md` — and
+  the copy under the axis says whose hours these are so the reader cannot mistake it for a
+  population curve.
+- **Everything it draws is restated in words underneath** (§8). A user who cannot resolve a 7px
+  dot or a 3px bar loses nothing.
+
+**Four states.**
+
+1. Measured months exist. The axis draws both zones, the bars carry the ramp, and the copy
+   states the user's own hours and their coverage.
+2. Every hour predates the record and the measured months are all zero. The flat band fills
+   the axis, the bars are empty, and the copy says so.
+3. No release year, or fewer than two month-end readings. The shipped gap rail draws unchanged:
+   normalised from the last session to today, `Volt` at the last-played end fading to `Line` at
+   today, with update marks in `Flare`, capped at 14, and the span stated as a number beside
+   it. The rail is normalised, never scaled to duration — a 14-day gap and a 9-year gap draw
+   the same length — because scaling would be a second, competing encoding of a fact the digits
+   already carry. The record sentence still stands: *"Checked 12 times since 23 Aug 2026 — up
+   1h 7m."* The delta is between the first and last reading Winnow holds, which is the part it
+   actually watched happen, not the total Steam already knew. At one reading it says so; at
+   zero it says nothing at all.
+4. No last-played date at all. The sentence is the whole history summary in Activity and there is no rail of any
+   kind. Two different absences, kept apart by the copy: *"You've never opened this."* and
+   *"Steam has no date for your last session."*
+
+**The axis starts at 1 January of `works.first_release_year`**, and the axis's left label is
+that year. Winnow stores a release year, not a release date, so the axis cannot start at a
+month and does not pretend to. A series or a last session that predates the stated year extends
+the axis back to that month rather than being clipped off the left edge.
+
+Full play-history axis or its honest fallback, updates and read controls, GOG patch notes when present, journal
+**Activity retains the evidence, not just the summary.** The axis follows §10.2. UPDATES is
+the constant list heading, distinct from the axis's SINCE YOU PLAYED label.
+
+### 2026-09-09 — Dedicated Updates and Journal details tabs (TASK-171)
+
+The user requested separate tabs for update reading and journal editing. Superseded visual-spec text:
+
+### 10.1 Overview, Activity and Library
+
+The modal has a compact persistent header and three tabs.
+
+│ Overview       Activity ●       Library                      │
+
+| Activity | Lifetime and tracked-session history, updates and read controls, GOG patch notes when present, journal |
+
+The shortcut opens Activity in the same modal. All three
+
+Activity carries the same unread marker
+
+**Activity retains the evidence, not just the summary.** The tracker follows §10.2. UPDATES is
+
+**Keyboard and accessibility.** The three headers
+
+update list below remains the route
+
+`GOG patch notes` disclosure in Activity
+
+patch-note links within Activity retain

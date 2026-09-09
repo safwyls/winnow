@@ -90,6 +90,7 @@ public sealed record Recommendation
     /// only — absolute magnitude shrinks at cold start because missing evidence
     /// contributes zero rather than being renormalised away, and that
     /// shrinkage is honest. Never store this anywhere.
+    /// Derelict review entries are unscored and carry zero with an empty signal list.
     /// </summary>
     public required double Score { get; init; }
 

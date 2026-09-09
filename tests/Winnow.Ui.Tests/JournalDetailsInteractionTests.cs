@@ -36,7 +36,7 @@ public sealed class JournalDetailsInteractionTests
             },
         ], promptEnabled: true, repository);
         var tile = TileFixture.Tile(now, ownershipId: 1, bucket: LibraryBuckets.Bounced, title: "Bluebird");
-        var model = new GameDetailsViewModel(tile, "Started", [], now, journal: journal);
+        var model = new GameDetailsViewModel(tile, "Started", [], now, journal: journal) { SelectedTabIndex = 3 };
         var view = new GameDetailsView { DataContext = model };
         var window = new Window { Width = 1200, Height = 640, Content = view };
         window.Show();
@@ -48,6 +48,8 @@ public sealed class JournalDetailsInteractionTests
             var heading = Assert.Single(view.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "JOURNAL");
             Assert.True(heading.IsEffectivelyVisible);
             var edit = Button(view, "Edit");
+            Assert.Equal(new Thickness(9, 4), edit.Padding);
+            Assert.Equal(new Thickness(9, 4), Button(view, "Delete").Padding);
             Click(edit, window);
             Flush();
 
@@ -55,6 +57,12 @@ public sealed class JournalDetailsInteractionTests
                 AutomationProperties.GetName(box) == "Journal note");
             Assert.True(note.IsEffectivelyVisible);
             note.Text = "Found the key behind the waterfall.";
+            model.SelectedTabIndex = 4;
+            Flush();
+            model.SelectedTabIndex = 3;
+            Flush();
+            Assert.Equal("Found the key behind the waterfall.", journal.Entries[0].DraftNote);
+            Assert.True(journal.Entries[0].IsEditing);
             Click(Button(view, "Save"), window);
             await journal.Entries[0].SaveCommand.ExecutionTask!;
             Flush();
@@ -84,7 +92,7 @@ public sealed class JournalDetailsInteractionTests
         var journal = new GameJournalViewModel([], promptEnabled: false, new JournalRepository());
         var model = new GameDetailsViewModel(
             TileFixture.Tile(now, ownershipId: 1, bucket: LibraryBuckets.NeverPlayed, title: "Bluebird"),
-            "Never played", [], now, journal: journal);
+            "Never played", [], now, journal: journal) { SelectedTabIndex = 3 };
         var view = new GameDetailsView { DataContext = model };
         var window = new Window { Width = 1200, Height = 640, Content = view };
         window.Show();
@@ -106,6 +114,8 @@ public sealed class JournalDetailsInteractionTests
 
     private static void Click(Control control, Window window)
     {
+        control.BringIntoView();
+        Flush();
         var point = control.TranslatePoint(
             new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), window)!.Value;
         window.MouseMove(point);
@@ -120,7 +130,7 @@ public sealed class JournalDetailsInteractionTests
         Dispatcher.UIThread.RunJobs();
     }
 
-    private sealed class JournalRepository : ISessionRepository
+    internal sealed class JournalRepository : ISessionRepository
     {
         public List<SessionNote> Saved { get; } = [];
         public List<long> Deleted { get; } = [];

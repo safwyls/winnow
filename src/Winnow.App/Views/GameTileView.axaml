@@ -213,6 +213,13 @@
         <Style Selector="Button.details-fold:pointerover Path.fold-field">
             <Setter Property="Fill" Value="{StaticResource SurfaceHigh}"/>
         </Style>
+        <!-- The Fluent button hover paints the transparent half of the fold's
+             40px square. Promote that translucent dogear from button hover to
+             tile hover so the same affordance appears before the pointer
+             reaches the corner hit target. -->
+        <Style Selector="Border#Lift:pointerover Button.details-fold /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ButtonBackgroundPointerOver}"/>
+        </Style>
         <Style Selector="Button.details-fold:focus-visible Path#FoldFocus">
             <Setter Property="Opacity" Value="1"/>
         </Style>
@@ -430,7 +437,7 @@
                             <Panel Width="40" Height="40">
                                 <Path Classes="fold-field"
                                       Data="M 0,0 L 40,0 L 40,40 Z"
-                                      Fill="{StaticResource SurfaceRaised}"/>
+                                      Fill="{StaticResource SurfaceHigh}"/>
                                 <Path Data="M 0,0 L 40,40"
                                       Stroke="{StaticResource Line}" StrokeThickness="1"/>
                                 <Path Width="12" Height="12" Margin="21,5,7,23"

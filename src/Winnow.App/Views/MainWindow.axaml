@@ -175,6 +175,91 @@
             <Setter Property="Margin" Value="0"/>
         </Style>
 
+        <!-- The alphabet spine shares the native scrollbar's interaction rail.
+             Its hit targets stay 24px wide, but the glyphs rest against the
+             thumb and bow into the library around the pointer. -->
+        <Style Selector="Button.alphaindex">
+            <Setter Property="MinWidth" Value="24"/>
+            <Setter Property="MinHeight" Value="16"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="2"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+            <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="HorizontalContentAlignment" Value="Right"/>
+            <Setter Property="RenderTransform" Value="translateX(0px)"/>
+            <Setter Property="Transitions"><Transitions/></Setter>
+            <Setter Property="Cursor" Value="Arrow"/>
+        </Style>
+        <Style Selector="Button.alphaindex /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Padding" Value="0,2,0,0"/>
+            <Setter Property="CornerRadius" Value="2"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="TextElement.Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Button.alphaindex:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="TextElement.Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Button.alphaindex:disabled">
+            <Setter Property="Opacity" Value="0.36"/>
+            <Setter Property="Cursor" Value="Arrow"/>
+        </Style>
+        <Style Selector="Button.alphaindex:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="TextElement.Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+        <!-- Persistent viewport location. The halo belongs only to the current
+             stop; neighboring ink walks back to the resting TextDim. -->
+        <Style Selector="Border.alphaglyph">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.alphaindex.alphalocation2 /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="TextElement.Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Button.alphaindex.alphalocation3 /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="TextElement.Foreground" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="Button.alphaindex.alphalocation4 /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="TextElement.Foreground" Value="{StaticResource VoltHover}"/>
+        </Style>
+        <Style Selector="Button.alphaindex.alphalocation4 Border.alphaglyph">
+            <Setter Property="Background" Value="{StaticResource VoltSelectionSoft}"/>
+            <Setter Property="BoxShadow" Value="{DynamicResource AlphabetLocationGlow}"/>
+        </Style>
+
+        <!-- The same browse rail becomes a quiet position scale when the
+             ordering has no alphabetic meaning. Its marks inherit the spine's
+             pointer wave without pretending to be 27 keyboard actions. -->
+        <Style Selector="Border.sortnotch">
+            <Setter Property="Width" Value="24"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="RenderTransform" Value="translateX(0px)"/>
+        </Style>
+        <Style Selector="Border.sortnotch Border.notchmark">
+            <Setter Property="Width" Value="5"/>
+            <Setter Property="Height" Value="1"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Background" Value="{StaticResource TextFaint}"/>
+        </Style>
+        <Style Selector="Border.sortnotch.alphalocation2 Border.notchmark">
+            <Setter Property="Width" Value="6"/>
+            <Setter Property="Background" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Border.sortnotch.alphalocation3 Border.notchmark">
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="Background" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="Border.sortnotch.alphalocation4 Border.notchmark">
+            <Setter Property="Width" Value="10"/>
+            <Setter Property="Height" Value="2"/>
+            <Setter Property="Background" Value="{StaticResource VoltHover}"/>
+            <Setter Property="BoxShadow" Value="{DynamicResource AlphabetLocationGlow}"/>
+        </Style>
+
         <!-- ══ Rail bucket (§6) ══════════════════════════════════════════════
              Hover and selection both fill SurfaceRaised; selection adds the
              2px Volt left edge. Zero-count rows dim to 40% — never hide, so
@@ -1633,9 +1718,10 @@
                               VerticalScrollBarVisibility="Auto"
                               Padding="0">
                     <!-- Custom CoverWall (not ItemsRepeater) — see CoverWall.
-                         24px right margin clears the scrollbar overlay + resize inset. -->
+                         58px right margin clears the browse spine and the
+                         native scrollbar without changing their positions. -->
                     <views:CoverWall Name="TileWall"
-                                     Margin="20,20,24,20"
+                                     Margin="20,20,58,20"
                                      Spacing="16"
                                      CellAspect="1.5"
                                      MinCellWidth="{Binding Library.TileWidth}"
@@ -1662,7 +1748,7 @@
                             Background="{StaticResource ChromeSurface}"
                             BorderBrush="{StaticResource Line}"
                             BorderThickness="0,0,0,1">
-                        <Grid ColumnDefinitions="2,32,18,*,136,104,92,24">
+                        <Grid ColumnDefinitions="2,32,18,*,136,104,92,58">
                             <Button AutomationProperties.Name="TITLE" Grid.Column="3" Classes="colhead"
                                     Command="{Binding Library.SortByTitleCommand}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
@@ -1725,7 +1811,7 @@
                                 <Border BorderBrush="{StaticResource Line}"
                                         BorderThickness="0,0,0,1"
                                         Height="44">
-                                    <Grid ColumnDefinitions="2,32,18,*,136,104,92,24">
+                                    <Grid ColumnDefinitions="2,32,18,*,136,104,92,58">
                                         <!-- 2px Volt selection edge (§6), bound to
                                              the row's own state for the same
                                              name-scope reason as the rail. -->
@@ -1816,6 +1902,67 @@
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"
                                Text="{Binding Library.EmptyMessage}"/>
+                </Border>
+
+                <!-- Fixed-position browsing: #/A-Z for name sorts, a notch
+                     scale otherwise. Its hit area meets the native scrollbar;
+                     glyphs and marks wave inward under the pointer. -->
+                <Border Name="AlphabetSpine"
+                        Width="24"
+                        Margin="0,6,12,10"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Stretch"
+                        Background="Transparent"
+                        Cursor="Arrow"
+                        ToolTip.Tip="{Binding Library.BrowseSpineTooltip}"
+                        IsVisible="{Binding Library.ShowBrowseSpine}"
+                        ZIndex="2">
+                    <Grid>
+                    <ItemsControl Name="AlphabetStops"
+                                  IsVisible="{Binding Library.ShowAlphabetLabels}"
+                                  ItemsSource="{Binding Library.DisplayedAlphabetSections}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="27"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:AlphabetSectionViewModel">
+                                <Button Classes="alphaindex scrubstop"
+                                        IsEnabled="{Binding IsAvailable}"
+                                        AutomationProperties.Name="{Binding AutomationName}"
+                                        ToolTip.Tip="{Binding Tooltip}"
+                                        Click="OnAlphabetJumpClick">
+                                    <Border Classes="alphaglyph"
+                                            Width="12"
+                                            Height="14"
+                                            Padding="1,0"
+                                            CornerRadius="7">
+                                        <TextBlock Text="{Binding Label}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <ItemsControl Name="SortNotches"
+                                  IsVisible="{Binding Library.ShowSortNotches}"
+                                  ItemsSource="{Binding Library.AlphabetSections}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="27"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Classes="sortnotch scrubstop">
+                                    <Border Classes="notchmark"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    </Grid>
                 </Border>
 
             </Panel>

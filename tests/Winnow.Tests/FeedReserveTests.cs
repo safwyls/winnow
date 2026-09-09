@@ -346,6 +346,26 @@ public sealed class FeedReserveTests
     }
 
     [Fact]
+    public async Task Derelict_reserve_can_repeat_the_same_source_fact()
+    {
+        var tiles = new FakeTileSource();
+        const string reason = "IGDB reports offline status (98% confidence).";
+        var shelf = new FeedShelf("derelict", "Derelict", "Lifecycle evidence.",
+            [Said(tiles, 1, "Closed one", reason), Said(tiles, 2, "Closed two", reason)])
+        {
+            Reserve = [Said(tiles, 3, "Closed three", reason)],
+        };
+        var service = new FakeFeedService(new FeedSnapshot([shelf], 0, FeedConfidence.EarlyDays, Failed: false));
+        var feed = new FeedViewModel(service, tiles);
+        await feed.LoadCommand.ExecuteAsync(null);
+        await feed.Shelves[0].Cards[0].NotInterestedCommand.ExecuteAsync(null);
+
+        feed.Tick(FeedCardViewModel.Countdown);
+
+        Assert.Equal("Closed three", feed.Shelves[0].Cards[0].Tile.Title);
+    }
+
+    [Fact]
     public async Task A_shelf_with_nothing_held_keeps_the_receipt_it_shipped_with()
     {
         var (feed, service, _) = await ScreenAsync(cards: 2, reserve: 0);

@@ -405,7 +405,7 @@ public sealed class AccountStatsViewModelTests
         var shell = Shell(db, DetachedAccountStats.Create());
 
         Assert.Equal("STEAM STATS", shell.AccountStats.RailRow);
-        Assert.DoesNotContain(shell.Library.Buckets, bucket => bucket.Key == LibraryViewModel.WontRunKey);
+        Assert.Contains(shell.Library.Buckets, bucket => bucket.Key == LibraryViewModel.DerelictKey && bucket.Name == "Derelict");
 
         await shell.ToggleAccountStatsCommand.ExecuteAsync(null);
         Assert.True(shell.IsAccountStatsVisible);

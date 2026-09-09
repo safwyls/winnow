@@ -3,7 +3,7 @@ namespace Winnow.App.ViewModels;
 /// <summary>
 /// Copy for the details modal's action band (§10.3). The trigger label and
 /// tooltip serve the More menu; the two no-way-in sentences serve the line
-/// Band 3 draws when there is no primary action and no outbound link,
+/// the header draws when there is no primary action and no outbound link,
 /// stating why rather than sitting silent.
 /// </summary>
 public static class GameActionBandCopy
@@ -12,7 +12,7 @@ public static class GameActionBandCopy
     public const string OpenLabel = "More";
 
     /// <summary>Tooltip on the trigger.</summary>
-    public const string OpenTooltip = "Installation, folder, metadata, corrections and hide";
+    public const string OpenTooltip = "Store and news links, installation, folder, metadata, corrections and hide";
 
     /// <summary>
     /// Shown when Winnow holds a store id but no source has established
@@ -34,7 +34,7 @@ public static class GameActionBandCopy
         "Winnow does not yet hold the identifier this store needs to reach this game.";
 
     /// <summary>
-    /// Maps a <see cref="NoWayIn"/> reason to the sentence Band 3 draws, or
+    /// Maps a <see cref="NoWayIn"/> reason to the sentence the header draws, or
     /// null for <see cref="NoWayIn.None"/>. The sentence takes <c>Text</c>
     /// ink rather than <c>TextDim</c>, because it carries the fact in the
     /// way §10.2's no-rail sentence does — it is not a status line about an

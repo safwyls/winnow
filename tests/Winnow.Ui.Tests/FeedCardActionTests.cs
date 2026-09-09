@@ -3,6 +3,8 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
+using Winnow.App.Design;
 using Winnow.App.Services;
 using Winnow.App.ViewModels;
 using Winnow.App.Views;
@@ -14,6 +16,26 @@ namespace Winnow.Ui.Tests;
 
 public sealed class FeedCardActionTests
 {
+    [AvaloniaFact]
+    public async Task Built_in_shelf_headers_explain_their_membership_in_tooltips()
+    {
+        await PreviewData.LoadShellAsync();
+        var model = PreviewData.Feed;
+        await model.LoadCommand.ExecuteAsync(null);
+        var view = new FeedView { DataContext = model };
+        var window = new Window { Width = 1000, Height = 700, Content = view };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            var explanations = view.GetVisualDescendants().OfType<StackPanel>()
+                .Select(ToolTip.GetTip).OfType<string>().ToArray();
+            Assert.All(model.Shelves, shelf => Assert.Contains(shelf.Blurb, explanations));
+        }
+        finally { window.Close(); }
+    }
+
     [AvaloniaTheory]
     [InlineData(420)]
     [InlineData(560)]

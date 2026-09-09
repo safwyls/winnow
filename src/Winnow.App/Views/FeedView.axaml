@@ -130,11 +130,16 @@
 
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:FeedShelfViewModel">
-                        <Border Classes="section" AutomationProperties.Name="{Binding Title}" AutomationProperties.AccessibilityView="Control" AutomationProperties.ControlTypeOverride="Group">
+                        <Border Classes="section"
+                                AutomationProperties.Name="{Binding Title}"
+                                AutomationProperties.AccessibilityView="Control"
+                                AutomationProperties.ControlTypeOverride="Group">
                             <StackPanel>
 
                                 <!-- The section's header band. -->
-                                <StackPanel Margin="18,15,18,14" Spacing="3">
+                                <StackPanel Margin="18,15,18,14"
+                                            Spacing="3"
+                                            ToolTip.Tip="{Binding Blurb}">
                                     <StackPanel Orientation="Horizontal" Spacing="10">
                                         <TextBlock AutomationProperties.HeadingLevel="2" Classes="shelf" Text="{Binding Title}"/>
 

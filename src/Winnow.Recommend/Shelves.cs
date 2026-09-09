@@ -7,6 +7,9 @@ namespace Winnow.Recommend;
 /// </summary>
 public static class ShelfIds
 {
+    /// <summary>Lifecycle evidence for review, excluded from play recommendations.</summary>
+    public const string Derelict = "derelict";
+
     /// <summary>Bucket stale_but_patched: a major update landed after the user walked away. The headline shelf.</summary>
     public const string PatchedWhileAway = "patched_while_away";
 
@@ -26,8 +29,8 @@ public static class ShelfIds
 /// <summary>
 /// One shelf of the feed: a themed slice of the same scored candidates, with
 /// its own one-line pitch. A Netflix-style surface is several shelves with
-/// different REASONS, not one ranked list — each shelf is a different query
-/// over the same scores, and every one of them works at Tier 0.
+/// different reasons, not one ranked list. Play shelves query the same scores;
+/// Derelict carries lifecycle evidence separately without scoring.
 /// </summary>
 public sealed record RecommendationShelf
 {

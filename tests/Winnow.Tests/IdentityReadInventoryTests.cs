@@ -64,7 +64,7 @@ public sealed class IdentityReadInventoryTests
             + "counts, All Games, the filter options, list counts, the recommender, the feed and "
             + "the account-visibility count."),
 
-        new("src/Winnow.App/ViewModels/LibraryViewModel.cs", "LoadAsync", Policy.Resolve,
+        new("src/Winnow.App/ViewModels/LibraryViewModel.cs", "LoadLibraryAsync", Policy.Resolve,
             "The display title and cover. The row keeps its OWN work for everything enrichment "
             + "reads; the user is shown the primary's name and art, so both store entries of one "
             + "game read as one tile per resolved work."),

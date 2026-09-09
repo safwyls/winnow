@@ -7,27 +7,41 @@ namespace Winnow.App.ViewModels;
 /// </summary>
 public static class GameDetailsCopy
 {
-    /// <summary>Accessible group name for Band 1: title, year, publisher, reception and chips.</summary>
+    public const string OverviewTab = "Overview";
+    public const string ActivityTab = "Activity";
+    public const string UpdatesTab = "Updates";
+    public const string JournalTab = "Journal";
+    public const string LibraryTab = "Library";
+    public const string BackToDetails = "Back to details";
+    public const string YourCopies = "YOUR COPIES";
+    public const string TechnicalFacts = "Installation & identifiers";
+    public const string ReadMore = "Read more";
+    public const string ReadLess = "Show less";
+    public const string UpdatesEmpty = "No updates recorded yet. This fills in as Winnow checks for changes.";
+    public static string UpdatesSincePlayed(int count) => count == 1
+        ? "1 update since you played"
+        : $"{count:N0} updates since you played";
+    /// <summary>Accessible group name for the header: title, year, publisher and chips.</summary>
     public const string IdentityGroupName = "What this is";
 
-    /// <summary>Accessible group name for Band 2: hours played, the axis, and the sentences under it.</summary>
+    /// <summary>Accessible group name for Activity: hours played, the axis, and its explanation.</summary>
     public const string HistoryGroupName = "Your history";
 
-    /// <summary>Accessible group name for Band 3: the primary action, outbound links, More and refetch status.</summary>
+    /// <summary>Accessible group name for the header actions: primary action, Add to list and More.</summary>
     public const string ActionsGroupName = "Actions";
 
     /// <summary>Accessible name for the modal's close button, beside the title.</summary>
     public const string CloseAutomationName = "Close this game";
 
-    /// <summary>Value label in the object column, in the idiom of its neighbours STEAM APPID and ON DISK.</summary>
+    /// <summary>Value label in Library, in the idiom of its neighbours STEAM APPID and ON DISK.</summary>
     public const string AcquiredLabel = "ACQUIRED";
 
-    /// <summary>Section heading for the summary and screenshots in Band 4.</summary>
+    /// <summary>Section heading for the summary and screenshots in Overview.</summary>
     public const string AboutHeading = "ABOUT";
 
     /// <summary>
     /// Section heading for the update list. Constant whether or not anything
-    /// landed since the last session. SINCE YOU PLAYED is Band 2's own rail
+    /// landed since the last session. SINCE YOU PLAYED is the history rail
     /// label; one modal was saying the same words about two different things,
     /// so the list took a name of its own.
     /// </summary>

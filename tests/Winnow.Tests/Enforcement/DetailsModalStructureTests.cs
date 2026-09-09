@@ -13,60 +13,57 @@ public sealed class DetailsModalStructureTests
 {
     private const string View = "src/Winnow.App/Views/GameDetailsView.axaml";
 
-    /// <summary>
-    /// The order §10.1 fixes: corrections, then what shipped, then the prose
-    /// and the pictures inside it, then the three grouping sections, then the
-    /// lists. Read off the markup, because the order the file declares IS the
-    /// order the band draws and the order Tab walks.
-    /// </summary>
+    /// <summary>Tabs partition content by purpose while preserving the reading order within each.</summary>
     [Fact]
-    public void The_rest_band_declares_its_sections_in_the_order_the_design_fixes()
+    public void Tabs_keep_their_stable_order_and_own_their_content()
     {
-        var markup = RepositoryTree.Read(View);
-
-        string[] anchors =
-        [
-            "{Binding IgdbMatch.OpenLabel}",
-            "{Binding MetadataEditor.OpenLabel}",
-            "{Binding UpdatesLabel}",
-            "{Binding AboutHeading}",
-            "IsVisible=\"{Binding ShowCoverage}\"",
-            "IsVisible=\"{Binding ShowExtends}\"",
-            "IsVisible=\"{Binding ShowExpansions}\"",
-            "IsVisible=\"{Binding ShowLists}\"",
-        ];
-
-        var positions = anchors
-            .Select(a => (Anchor: a, At: markup.IndexOf(a, StringComparison.Ordinal)))
-            .ToList();
-
-        Assert.All(positions, p => Assert.True(p.At >= 0, $"{View} no longer contains {p.Anchor}"));
-
-        for (var i = 1; i < positions.Count; i++)
+        var document = System.Xml.Linq.XDocument.Parse(RepositoryTree.Read(View));
+        var tabs = document.Descendants().Where(element => element.Name.LocalName == "TabItem").ToList();
+        Assert.Equal(["OverviewTab", "ActivityTab", "UpdatesTab", "JournalTab", "LibraryTab"],
+            tabs.Select(tab => (string?)tab.Attribute("Name")));
+        foreach (var tab in tabs)
         {
-            Assert.True(
-                positions[i].At > positions[i - 1].At,
-                $"{positions[i].Anchor} is declared before {positions[i - 1].Anchor} in {View}");
+            var name = (string)tab.Attribute("Name")!;
+            Assert.Contains("{x:Static vm:GameDetailsCopy." + name + "}", tab.ToString(), StringComparison.Ordinal);
+        }
+
+        string[][] anchors =
+        [
+            ["{Binding AboutHeading}", "{Binding ShowExtends}", "{Binding ShowExpansions}"],
+            ["{Binding Tracker}"],
+            ["{Binding UpdatesLabel}"],
+            ["{Binding Journal}"],
+            ["{Binding ShowCopyBreakdown}", "{Binding ShowLists}"],
+        ];
+        for (var index = 0; index < tabs.Count; index++)
+        {
+            var markup = tabs[index].ToString();
+            foreach (var anchor in anchors[index])
+            {
+                Assert.Contains(anchor, markup, StringComparison.Ordinal);
+                foreach (var other in tabs.Where(tab => tab != tabs[index]))
+                    Assert.DoesNotContain(anchor, other.ToString(), StringComparison.Ordinal);
+            }
+            Assert.Single(tabs[index].Elements(), element => element.Name.LocalName == "ScrollViewer");
         }
     }
 
     /// <summary>
-    /// The update list's heading and Band 2's rail label were the same string,
-    /// so one modal said SINCE YOU PLAYED twice about two different things.
-    /// The rail keeps the name; the list took one of its own, and it is
-    /// constant whether or not anything landed since the last session.
+    /// Lifetime play and updates keep distinct labels; the former gap-rail
+    /// heading must not return above a chart of the entire ownership.
     /// </summary>
     [Fact]
-    public void The_update_heading_does_not_collide_with_the_rail_label()
+    public void The_activity_tracker_replaces_the_ambiguous_gap_rail_heading()
     {
         Assert.NotEqual("SINCE YOU PLAYED", GameDetailsCopy.UpdatesHeading);
         Assert.NotEmpty(GameDetailsCopy.UpdatesHeading);
 
         var markup = RepositoryTree.Read(View);
 
-        // The rail label is a literal in the markup and appears once per Band 2
-        // branch — the axis and the gap rail — and nowhere else.
-        Assert.Equal(2, Regex.Matches(markup, "\"SINCE YOU PLAYED\"").Count);
+        Assert.DoesNotContain("\"SINCE YOU PLAYED\"", markup, StringComparison.Ordinal);
+        Assert.Contains("<views:ActivityTrackerView", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("<views:GapRail", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("<views:PlayAxis", markup, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -107,11 +104,9 @@ public sealed class DetailsModalStructureTests
         Assert.Contains("Text=\"{Binding Refetch.Status}\"", field.Value, StringComparison.Ordinal);
         Assert.DoesNotContain("AutomationProperties.Name", field.Value, StringComparison.Ordinal);
 
-        // Outside the rest band's ScrollViewer: an act started from a popup is
-        // answered where it can always be seen.
-        var scroll = markup.IndexOf("<ScrollViewer Grid.Row=\"2\"", StringComparison.Ordinal);
-        Assert.True(scroll > 0);
-        Assert.True(field.Index < scroll, "The refetch status moved inside the rest band's scroll region.");
+        var document = System.Xml.Linq.XDocument.Parse(markup);
+        var status = document.Descendants().Single(element => (string?)element.Attribute("Name") == "RefetchStatus");
+        Assert.DoesNotContain(status.Ancestors(), ancestor => ancestor.Name.LocalName == "ScrollViewer");
     }
 
     /// <summary>
@@ -160,8 +155,8 @@ public sealed class DetailsModalStructureTests
 
     /// <summary>
     /// Every bounded scroll region in the modal clears its own bar, because
-    /// Fluent draws the bar over the content rather than beside it. The three
-    /// vertical regions take the trailing gutter; the screenshot strip, whose
+    /// Fluent draws the bar over the content rather than beside it. Each
+    /// vertical region takes the trailing gutter; the screenshot strip, whose
     /// bar is horizontal, takes the same width at its foot.
     /// </summary>
     [Fact]
@@ -169,7 +164,14 @@ public sealed class DetailsModalStructureTests
     {
         var markup = RepositoryTree.Read(View);
 
-        Assert.Equal(3, Regex.Matches(markup, @"\{StaticResource InnerScrollGutter\}").Count);
+        var document = System.Xml.Linq.XDocument.Parse(markup);
+        foreach (var scroll in document.Descendants().Where(element => element.Name.LocalName == "ScrollViewer"))
+        {
+            var horizontal = (string?)scroll.Attribute("HorizontalScrollBarVisibility") == "Auto";
+            var gutter = horizontal ? "InnerScrollGutterBottom" : "InnerScrollGutter";
+            Assert.Equal("{StaticResource " + gutter + "}",
+                (string?)scroll.Elements().First().Attribute("Margin"));
+        }
         Assert.Single(Regex.Matches(markup, @"\{StaticResource InnerScrollGutterBottom\}"));
     }
 
@@ -247,5 +249,16 @@ public sealed class DetailsModalStructureTests
         var tokens = RepositoryTree.Read("src/Winnow.App/Themes/tokens.axaml");
         Assert.Contains("<x:Double x:Key=\"ProseMeasure\">410</x:Double>", tokens, StringComparison.Ordinal);
         Assert.Contains("{StaticResource ProseMeasure}", tokens, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Reception_precedes_about_and_technical_facts_are_not_disclosed()
+    {
+        var markup = RepositoryTree.Read(View);
+
+        Assert.True(markup.IndexOf("{Binding Reception.Figures}", StringComparison.Ordinal)
+            < markup.IndexOf("{Binding AboutHeading}", StringComparison.Ordinal));
+        Assert.Contains("Name=\"TechnicalFacts\"", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("TechnicalFactsDisclosure", markup, StringComparison.Ordinal);
     }
 }

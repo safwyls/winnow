@@ -1,0 +1,152 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Winnow.App.ViewModels"
+             xmlns:views="using:Winnow.App.Views"
+             x:Class="Winnow.App.Views.ActivityTrackerView"
+             x:DataType="vm:ActivityTrackerViewModel"
+             AutomationProperties.Name="Your play history"
+             AutomationProperties.AccessibilityView="Control">
+    <UserControl.Styles>
+        <Style Selector="RadioButton.range">
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="RangeBorder" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{StaticResource RadiusControl}" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="RadioButton.range:checked">
+            <Setter Property="Foreground" Value="{StaticResource Volt}"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+        <Style Selector="RadioButton.range:focus-visible /template/ Border#RangeBorder">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="Expander.recorded-hours">
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <StackPanel>
+                        <ToggleButton Name="ExpanderHeader" Classes="records-toggle"
+                                      Content="{TemplateBinding Header}"
+                                      IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                      HorizontalAlignment="Left"/>
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                          HorizontalContentAlignment="Stretch"
+                                          IsVisible="{TemplateBinding IsExpanded}" Margin="0,10,0,0"/>
+                    </StackPanel>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="ToggleButton.records-toggle">
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="MinHeight" Value="26"/>
+            <Setter Property="Padding" Value="0,3"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="DisclosureBorder" Padding="{TemplateBinding Padding}"
+                            Background="Transparent" BorderBrush="Transparent" BorderThickness="1">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Path Name="DisclosureArrow" Data="M 0,0 L 4,4 L 0,8 Z"
+                                  Fill="{TemplateBinding Foreground}" Width="8" Height="8"
+                                  VerticalAlignment="Center"/>
+                            <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="ToggleButton.records-toggle:checked /template/ Path#DisclosureArrow">
+            <Setter Property="Data" Value="M 0,0 L 8,0 L 4,4 Z"/>
+        </Style>
+        <Style Selector="ToggleButton.records-toggle:pointerover">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="ToggleButton.records-toggle:focus-visible /template/ Border#DisclosureBorder">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+    </UserControl.Styles>
+    <StackPanel Spacing="8">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <TextBlock Classes="label" Text="YOUR PLAY" VerticalAlignment="Center"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <RadioButton Name="LifetimeButton" Classes="range" Content="Lifetime"
+                              IsChecked="{Binding IsLifetime, Mode=OneWay}" Command="{Binding ShowLifetimeCommand}"/>
+                <RadioButton Name="TrackedSessionsButton" Classes="range" Content="Tracked sessions"
+                              IsChecked="{Binding IsTrackedSessions, Mode=OneWay}" Command="{Binding ShowTrackedSessionsCommand}"/>
+            </StackPanel>
+        </Grid>
+        <WrapPanel Orientation="Horizontal">
+            <TextBlock Classes="data" FontSize="30" LineHeight="34" Text="{Binding TotalText}"/>
+            <TextBlock Classes="body" FontSize="12" Foreground="{StaticResource TextDim}"
+                       Text="{Binding TotalLabel}" VerticalAlignment="Center" Margin="10,0,20,0"/>
+            <TextBlock Classes="body" FontSize="12" Text="{Binding LastPlayedText}"
+                       VerticalAlignment="Center" TextWrapping="Wrap"/>
+        </WrapPanel>
+        <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0" IsVisible="{Binding ShowPlot}">
+            <TextBlock Classes="data-s" FontSize="11" Text="{Binding ScaleText}"/>
+            <TextBlock Grid.Column="1" Classes="data-s" FontSize="11" Text="{Binding Series.PeriodLabel}"/>
+        </Grid>
+        <views:ActivityTimelinePlot Name="TimelinePlot" IsVisible="{Binding ShowPlot}"
+                                    Series="{Binding Series}" Updates="{Binding Updates}"
+                                    IsTrackedSessions="{Binding IsTrackedSessions}" LastPlayedUtc="{Binding LastPlayedUtc}"
+                                    HistoryBrush="{StaticResource VoltEdgeSoft}" TrackedBrush="{StaticResource Volt}"
+                                    LineBrush="{StaticResource Line}" TextBrush="{StaticResource TextDim}"
+                                    UpdateBrush="{StaticResource Flare}" SurfaceBrush="{StaticResource Surface}"/>
+        <WrapPanel IsVisible="{Binding ShowPlot}" Orientation="Horizontal">
+            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,16,4" IsVisible="{Binding ShowHistoricalLegend}">
+                <Border Width="13" Height="9" Background="{StaticResource VoltEdgeSoft}"/>
+                <TextBlock Classes="body" FontSize="11" Text="Steam · monthly"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,16,4">
+                <Border Width="10" Height="9" Background="{StaticResource Volt}"/>
+                <TextBlock Classes="body" FontSize="11" Text="{Binding TrackedLegend}"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,16,4">
+                <Border Width="7" Height="7" CornerRadius="4" Background="{StaticResource Flare}"/>
+                <TextBlock Classes="body" FontSize="11" Text="Unread update"/>
+            </StackPanel>
+            <TextBlock Classes="body" FontSize="11" Text="╱╱ No monthly record" Margin="0,0,0,4"/>
+        </WrapPanel>
+        <Border BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="0,8,0,0">
+            <TextBlock Name="TimelineDetail" Classes="body" FontSize="12" TextWrapping="Wrap"
+                       Text="{Binding DetailText}" AutomationProperties.LiveSetting="Polite"/>
+        </Border>
+        <TextBlock Classes="body" FontSize="11" TextWrapping="Wrap" Text="{Binding Series.CoverageNote}"/>
+        <TextBlock Classes="body" FontSize="11" Text="{Binding UpdateSummary}"/>
+        <Expander Name="RecordedHoursDisclosure" Classes="recorded-hours" Header="Recorded hours" IsVisible="{Binding HasRecords}">
+            <ItemsControl ItemsSource="{Binding Series.Bars}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ActivityTimelineBar">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16" Margin="0,0,0,6"
+                              ToolTip.Tip="{Binding Label}">
+                            <TextBlock FontFamily="{StaticResource DataFont}" FontFeatures="tnum"
+                                       Foreground="{StaticResource TextDim}" FontSize="12"
+                                       Text="{Binding RecordDate}" TextWrapping="Wrap"/>
+                            <TextBlock Grid.Column="1" FontFamily="{StaticResource DataFont}" FontFeatures="tnum"
+                                       Foreground="{StaticResource TextDim}" FontSize="12"
+                                       Text="{Binding RecordedHours}" HorizontalAlignment="Right"/>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Expander>
+    </StackPanel>
+</UserControl>

@@ -186,8 +186,9 @@ public static class Apicalypse
     ///
     /// <para>Unlike <see cref="IsSafeStringValue"/>, which rejects unsafe
     /// input, this method replaces the dangerous characters — the double
-    /// quote, the backslash, the semicolon and control characters — with
-    /// spaces and collapses the whitespace. Rejecting is right for a
+    /// quote, the backslash, the semicolon and control characters — plus
+    /// title-decoration marks (copyright, registered trademark, trademark
+    /// and service mark) with spaces and collapses the whitespace. Rejecting is right for a
     /// machine-generated store id that must never be mangled; a search
     /// term is free text a person typed, and a title containing a quote
     /// should still search rather than silently fail.</para>
@@ -202,7 +203,10 @@ public static class Apicalypse
         var builder = new StringBuilder(title.Length);
         foreach (var c in title)
         {
-            builder.Append(char.IsControl(c) || c is '"' or '\\' or ';' ? ' ' : c);
+            builder.Append(char.IsControl(c)
+                || c is '"' or '\\' or ';' or '\u00a9' or '\u00ae' or '\u2120' or '\u2122'
+                    ? ' '
+                    : c);
         }
 
         var cleaned = string.Join(

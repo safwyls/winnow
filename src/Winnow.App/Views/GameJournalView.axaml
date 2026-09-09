@@ -35,6 +35,9 @@
             <Setter Property="Fill" Value="{StaticResource Volt}"/>
             <Setter Property="Stroke" Value="{StaticResource Volt}"/>
         </Style>
+        <Style Selector="Button.journal-action">
+            <Setter Property="Padding" Value="9,4"/>
+        </Style>
         <Style Selector="TextBox.journal-note">
             <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
             <Setter Property="FontSize" Value="12"/>
@@ -86,11 +89,11 @@
                                            IsVisible="{Binding HasNote}"
                                            Text="{Binding Note}"/>
                                 <StackPanel Orientation="Horizontal" Spacing="12">
-                                    <Button Classes="secondary" Padding="0"
+                                    <Button Classes="secondary journal-action"
                                             AutomationProperties.Name="Edit journal entry"
                                             ToolTip.Tip="Edit journal entry"
                                             Command="{Binding EditCommand}">Edit</Button>
-                                    <Button Classes="secondary" Padding="0"
+                                    <Button Classes="secondary journal-action"
                                             IsVisible="{Binding !IsConfirmingDelete}"
                                             AutomationProperties.Name="Delete journal entry"
                                             ToolTip.Tip="Delete journal entry"
@@ -119,7 +122,7 @@
                                     <Button Classes="act primary" Padding="12,5"
                                             AutomationProperties.Name="Save journal entry"
                                             Command="{Binding SaveCommand}">Save</Button>
-                                    <Button Classes="secondary" Padding="0"
+                                    <Button Classes="secondary journal-action"
                                             AutomationProperties.Name="Cancel journal edit"
                                             Command="{Binding CancelEditCommand}">Cancel</Button>
                                 </StackPanel>
@@ -131,7 +134,7 @@
                                 <Button Classes="act danger" Padding="12,5"
                                         AutomationProperties.Name="Delete journal entry"
                                         Command="{Binding DeleteCommand}">Delete</Button>
-                                <Button Classes="secondary" Padding="0"
+                                <Button Classes="secondary journal-action"
                                         AutomationProperties.Name="Keep journal entry"
                                         Command="{Binding CancelDeleteCommand}">Keep</Button>
                             </StackPanel>

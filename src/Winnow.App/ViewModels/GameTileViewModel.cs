@@ -67,11 +67,14 @@ public partial class GameTileViewModel : ObservableObject
         OwnershipId = Primary.OwnershipId;
         ReleaseId = Primary.ReleaseId;
 
-        // Play launches the copy that is on disk, whichever store sold it,
-        // falling back to the primary's own route. A tile that offered Play
-        // for a Steam copy while the Epic copy is the installed one would
-        // name an action it cannot perform (§10.3).
-        PlayableEntry = entries.FirstOrDefault(static e => e.IsOnDisk) ?? Primary;
+        // Prefer a copy without Derelict evidence, then its installed route.
+        // All-Derelict groups retain manual launch: delisting does not mean
+        // that an existing installation cannot run.
+        var viable = entries.Where(static e => e.Lifecycle?.IsDerelict != true).ToArray();
+        PlayableEntry = viable.FirstOrDefault(static e => e.IsOnDisk)
+            ?? viable.FirstOrDefault()
+            ?? entries.FirstOrDefault(static e => e.IsOnDisk)
+            ?? Primary;
         Installed = PlayableEntry.Installed;
         InstallPath = PlayableEntry.InstallPath;
         SteamAppId = PlayableEntry.SteamAppId;
@@ -108,6 +111,7 @@ public partial class GameTileViewModel : ObservableObject
         // though neither entry is.
         Bucket = game.Bucket;
         BucketLabel = string.IsNullOrWhiteSpace(bucketLabel) ? game.Bucket : bucketLabel;
+        Lifecycle = game.Lifecycle;
 
         // Headline figures come off the grouping and are never recomputed
         // here. The grouping got them from CoveragePlaytime.Across, which
@@ -432,6 +436,14 @@ public partial class GameTileViewModel : ObservableObject
 
     /// <summary>The §7 bucket name this tile falls in ("Never played"), shared with details.</summary>
     public string BucketLabel { get; }
+
+    public Winnow.Core.Lifecycle.GameLifecycle? Lifecycle { get; }
+
+    public bool HasLifecycle => Lifecycle is { Status: not Winnow.Core.Lifecycle.GameLifecycleStatus.Unknown };
+
+    public string? LifecycleText => HasLifecycle
+        ? $"{Lifecycle!.Status} · {Lifecycle.Confidence:P0} confidence. {Lifecycle.Reason}"
+        : null;
 
     /// <summary>
     /// Whether the store's local files say this is on disk right now — and

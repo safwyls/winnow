@@ -1,7 +1,13 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
+using Avalonia.Interactivity;
+using Avalonia.Media;
+using Avalonia.VisualTree;
 using Winnow.App.Design;
 using Winnow.App.ViewModels.Lists;
 using Winnow.App.ViewModels;
@@ -67,4 +73,285 @@ public sealed class ListBrowsingPositionTests
             window.Close();
         }
     }
+
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Closing_details_restores_the_scrolled_library_position(bool grid)
+    {
+        var (library, shell) = await LoadedLibraryAsync(grid);
+        var window = new MainWindow { Width = 1200, Height = 640, DataContext = shell };
+        try
+        {
+            window.Show();
+            Flush();
+            var scroll = ScrollFor(window, grid);
+            ((Control)scroll).MaxHeight = 160;
+            Flush();
+            scroll.Offset = new Vector(0, 200);
+            Flush();
+            var before = scroll.Offset;
+            Assert.True(before.Y > 0);
+
+            await library.OpenDetailsCommand.ExecuteAsync(library.VisibleTiles.Last());
+            Flush();
+            // Exercise the close-time restore rather than merely proving that
+            // opening details happens not to disturb this synthetic viewport.
+            scroll.Offset = default;
+            Flush();
+            Assert.Equal(0, scroll.Offset.Y);
+            library.CloseDetailsCommand.Execute(null);
+            Flush();
+
+            Assert.Equal(before, scroll.Offset);
+        }
+        finally
+        {
+            library.CloseDetailsCommand.Execute(null);
+            window.Close();
+        }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Alphabet_spine_switches_to_name_order_and_jumps_the_active_view(bool grid)
+    {
+        var (library, shell) = await LoadedLibraryAsync(grid);
+        var window = new MainWindow { Width = 1200, Height = 640, DataContext = shell };
+        try
+        {
+            window.Show();
+            Flush();
+            var scroll = ScrollFor(window, grid);
+            ((Control)scroll).MaxHeight = 160;
+            Flush();
+            Assert.Equal(0, scroll.Offset.Y);
+
+            var spine = window.FindControl<Border>("AlphabetSpine")!;
+            var alphabetStops = window.FindControl<ItemsControl>("AlphabetStops")!;
+            var sortNotches = window.FindControl<ItemsControl>("SortNotches")!;
+            Assert.True(spine.IsVisible);
+            Assert.True(spine.Background is null || Equals(spine.Background, Brushes.Transparent));
+            Assert.False(alphabetStops.IsVisible);
+            Assert.True(sortNotches.IsVisible);
+            var notches = sortNotches.GetVisualDescendants().OfType<Border>()
+                .Where(border => border.Classes.Contains("sortnotch"))
+                .ToArray();
+            Assert.Equal(27, notches.Length);
+            DragAlphabet(window, spine, fromRow: 2, toRow: 13);
+            var notchScrollableHeight = scroll.Extent.Height - scroll.Viewport.Height;
+            Assert.True(notchScrollableHeight > 0);
+            Assert.InRange(scroll.Offset.Y / notchScrollableHeight, 0.48, 0.52);
+            Assert.Contains("alphalocation4", notches[13].Classes);
+            Assert.InRange(WaveDisplacement(notches[13]), -13.01, -12.99);
+            var scrollbar = scroll.GetVisualDescendants().OfType<ScrollBar>()
+                .Single(bar => bar.Orientation == Avalonia.Layout.Orientation.Vertical);
+            Assert.DoesNotContain("alphabetengaged", scrollbar.Classes);
+            if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } notchDirectory)
+            {
+                Directory.CreateDirectory(notchDirectory);
+                using var frame = window.CaptureRenderedFrame();
+                frame!.Save(Path.Combine(notchDirectory, $"notches-{(grid ? "grid" : "list")}.png"));
+            }
+            window.MouseMove(new Point(400, 300));
+            scroll.Offset = default;
+            Flush();
+
+            library.Sort = LibrarySort.NameAscending;
+            Flush();
+            Assert.True(spine.IsVisible);
+            Assert.True(alphabetStops.IsVisible);
+            Assert.False(sortNotches.IsVisible);
+            Assert.Contains("Arrow", spine.Cursor!.ToString()!, StringComparison.OrdinalIgnoreCase);
+            var spineBounds = new Rect(spine.TranslatePoint(default, window)!.Value, spine.Bounds.Size);
+            var scrollbarBounds = new Rect(
+                scrollbar.TranslatePoint(default, window)!.Value, scrollbar.Bounds.Size);
+            Assert.True(spineBounds.Right <= scrollbarBounds.Left);
+            Assert.InRange(scrollbarBounds.Left - spineBounds.Right, 0, 2);
+
+            var buttons = window.GetVisualDescendants().OfType<Button>().ToArray();
+            var jumpToT = buttons.Single(button => AutomationProperties.GetName(button) == "Jump to T");
+            var jumpToA = buttons.Single(button => AutomationProperties.GetName(button) == "Jump to A");
+            var jumpToSymbols = buttons.Single(button =>
+                AutomationProperties.GetName(button) == "Jump to numbers and symbols");
+            Assert.True(jumpToT.IsEnabled);
+            Assert.False(jumpToA.IsEnabled);
+            Assert.False(jumpToSymbols.IsEnabled);
+            Assert.Equal(11, jumpToT.FontSize);
+            var initialSection = LibraryViewModel.AlphabetSectionFor(library.VisibleTiles[0].Title);
+            var currentLocation = spine.GetVisualDescendants().OfType<Button>().Single(button =>
+                button.DataContext is AlphabetSectionViewModel section && section.Label == initialSection);
+            Assert.Contains("alphalocation4", currentLocation.Classes);
+            var currentGlyph = currentLocation.GetVisualDescendants().OfType<Border>()
+                .Single(border => border.Classes.Contains("alphaglyph"));
+            Assert.NotEqual(Brushes.Transparent, currentGlyph.Background);
+            var glyphCenters = spine.GetVisualDescendants().OfType<Border>()
+                .Where(border => border.Classes.Contains("alphaglyph"))
+                .Select(border => border.TranslatePoint(new Point(border.Bounds.Width / 2, 0), window)!.Value.X)
+                .ToArray();
+            Assert.Equal(27, glyphCenters.Length);
+            Assert.InRange(glyphCenters.Max() - glyphCenters.Min(), 0, 0.01);
+
+            window.MouseMove(PointOnAlphabet(window, spine, 20));
+            Flush();
+            Assert.DoesNotContain("alphabetengaged", scrollbar.Classes);
+            Assert.Equal(0, scroll.Offset.Y);
+            var centeredWave = WaveDisplacement(jumpToT);
+            Assert.InRange(centeredWave, -13.01, -12.99);
+            Assert.Contains("alphalocation4", jumpToT.Classes);
+
+            window.MouseMove(PointOnAlphabet(window, spine, 20.35));
+            Flush();
+            var fractionalWave = WaveDisplacement(jumpToT);
+            Assert.InRange(fractionalWave, -12.9, -12.5);
+            Assert.NotEqual(centeredWave, fractionalWave);
+            Assert.Contains("alphalocation4", jumpToT.Classes);
+            Flush();
+            Assert.True(jumpToT.Transitions is null or { Count: 0 });
+            library.Ramp.ReducedMotion = true;
+            Flush();
+            Assert.True(jumpToT.Transitions is null or { Count: 0 });
+            library.Ramp.ReducedMotion = false;
+            Flush();
+
+            window.MouseDown(PointOnAlphabet(window, spine, 20), Avalonia.Input.MouseButton.Left);
+            window.MouseUp(PointOnAlphabet(window, spine, 20), Avalonia.Input.MouseButton.Left);
+            Flush();
+
+            Assert.Equal(LibrarySort.NameAscending, library.Sort);
+            Assert.True(scroll.Offset.Y > 0);
+            Assert.StartsWith("T", library.VisibleTiles.Last().Title, StringComparison.OrdinalIgnoreCase);
+
+            scroll.Offset = default;
+            Flush();
+            DragAlphabet(window, spine, fromRow: 2, toRow: 13);
+            var scrollableHeight = scroll.Extent.Height - scroll.Viewport.Height;
+            Assert.True(scrollableHeight > 0);
+            var locationButtons = spine.GetVisualDescendants().OfType<Button>().ToArray();
+            Assert.Contains("alphalocation4", locationButtons[13].Classes);
+            Assert.InRange(WaveDisplacement(locationButtons[13]), -13.01, -12.99);
+            var scrubbedOffset = scroll.Offset;
+            scroll.Offset = default;
+            var jumpToP = buttons.Single(button => AutomationProperties.GetName(button) == "Jump to P");
+            jumpToP.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Flush();
+            Assert.Equal(scroll.Offset, scrubbedOffset);
+
+            library.Sort = LibrarySort.NameDescending;
+            Flush();
+            scroll.Offset = default;
+            var descendingButtons = window.GetVisualDescendants().OfType<Button>().ToArray();
+            var jumpToC = descendingButtons.Single(button =>
+                AutomationProperties.GetName(button) == "Jump to C");
+            jumpToC.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Flush();
+            Assert.Equal(LibrarySort.NameDescending, library.Sort);
+            Assert.True(scroll.Offset.Y > 0);
+
+            window.MouseMove(PointOnAlphabet(window, spine, 8));
+            Flush();
+
+            if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
+            {
+                Directory.CreateDirectory(directory);
+                using var frame = window.CaptureRenderedFrame();
+                frame!.Save(Path.Combine(directory, $"alphabet-{(grid ? "grid" : "list")}.png"));
+            }
+
+            window.MouseMove(new Point(400, 300));
+            Flush();
+            Assert.All(spine.GetVisualDescendants().OfType<Button>(), button =>
+                Assert.InRange(Math.Abs(Assert.IsType<Avalonia.Media.Transformation.TransformOperations>(
+                    button.RenderTransform).Value.M31), 0, 0.01));
+            scroll.Offset = default;
+            Flush();
+            var viewportLocationIndex = (int)Math.Round(ExpectedAlphabetRow(library, scroll));
+            Assert.Contains("alphalocation4", spine.GetVisualDescendants().OfType<Button>()
+                .ElementAt(viewportLocationIndex).Classes);
+
+            library.Sort = LibrarySort.PlaytimeHighToLow;
+            Flush();
+            Assert.True(spine.IsVisible);
+            Assert.False(alphabetStops.IsVisible);
+            Assert.True(sortNotches.IsVisible);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [Theory]
+    [InlineData("Élan", "E")]
+    [InlineData("  Zelda", "Z")]
+    [InlineData("123 Robots", "#")]
+    [InlineData("™Game", "#")]
+    public void Alphabet_sections_fold_diacritics_and_group_non_letters(string title, string expected)
+        => Assert.Equal(expected, LibraryViewModel.AlphabetSectionFor(title));
+
+    private static async Task<(LibraryViewModel Library, MainWindowViewModel Shell)> LoadedLibraryAsync(bool grid)
+    {
+        var library = new LibraryViewModel(new PreviewLibraryQueryRepository(),
+            new PreviewOwnershipRepository(), new PreviewReleaseRepository(),
+            new PreviewWorkRepository(), new PreviewUpdateEventRepository());
+        var shell = new MainWindowViewModel(library, PreviewData.MergeQueue, PreviewData.Stores,
+            PreviewData.Appearance, new FeedViewModel(new PreviewFeedService(), library),
+            PreviewData.AccountStats, PreviewData.LibrarySettings,
+            applicationSettings: PreviewData.ApplicationSettings);
+        await library.LoadCommand.ExecuteAsync(null);
+        shell.ShowLibraryCommand.Execute(null);
+        if (grid) library.ShowGridViewCommand.Execute(null);
+        else library.ShowListViewCommand.Execute(null);
+        return (library, shell);
+    }
+
+    private static ScrollViewer ScrollFor(MainWindow window, bool grid)
+        => grid ? window.FindControl<ScrollViewer>("GridScroll")!
+            : (ScrollViewer)window.FindControl<ListBox>("ListRows")!.Scroll!;
+
+    private static void DragAlphabet(Window window, Border spine, int fromRow, int toRow)
+    {
+        var start = PointOnAlphabet(window, spine, fromRow);
+        var end = PointOnAlphabet(window, spine, toRow);
+        window.MouseMove(start);
+        window.MouseDown(start, Avalonia.Input.MouseButton.Left);
+        window.MouseMove(end);
+        Flush();
+        window.MouseUp(end, Avalonia.Input.MouseButton.Left);
+        Flush();
+    }
+
+    private static Point PointOnAlphabet(Window window, Border spine, double row)
+        => spine.TranslatePoint(
+            new Point(spine.Bounds.Width / 2, spine.Bounds.Height * (row + 0.5) / 27),
+            window)!.Value;
+
+    private static double ExpectedAlphabetRow(LibraryViewModel library, ScrollViewer scroll)
+    {
+        var maximum = scroll.Extent.Height - scroll.Viewport.Height;
+        var proportion = maximum <= 0 ? 0 : Math.Clamp(scroll.Offset.Y / maximum, 0, 1);
+        var tilePosition = proportion * (library.VisibleTiles.Count - 1);
+        var lowerTile = (int)Math.Floor(tilePosition);
+        var upperTile = (int)Math.Ceiling(tilePosition);
+        var sections = library.DisplayedAlphabetSections.ToArray();
+        var lowerSection = LibraryViewModel.AlphabetSectionFor(library.VisibleTiles[lowerTile].Title);
+        var upperSection = LibraryViewModel.AlphabetSectionFor(library.VisibleTiles[upperTile].Title);
+        var lowerRow = Array.FindIndex(sections, section => section.Label == lowerSection);
+        var upperRow = Array.FindIndex(sections, section => section.Label == upperSection);
+        return lowerRow + ((upperRow - lowerRow) * (tilePosition - lowerTile));
+    }
+
+    private static double WaveDisplacement(Control stop)
+        => Assert.IsType<Avalonia.Media.Transformation.TransformOperations>(stop.RenderTransform).Value.M31;
+
+    private static double ExpectedWaveDisplacement(double signedDistance)
+    {
+        const double radius = 4;
+        const double reach = 13;
+        var distance = Math.Abs(signedDistance);
+        return distance >= radius ? 0 : -reach * (1 + Math.Cos(Math.PI * distance / radius)) / 2;
+    }
+
+    private static void Flush() => Dispatcher.UIThread.RunJobs();
 }

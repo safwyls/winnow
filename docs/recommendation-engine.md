@@ -22,9 +22,9 @@ nothing, caches nothing, and decides no identity questions. Scores are derived v
 exactly the §6.1 sense: computed on every read, comparable **within one feed**, never
 stored, never trusted by anything else.
 
-`GetShelvesAsync(request)` is the second entry point and the one a feed UI should use: the
-same scoring pass served as **several themed shelves**, each with its own one-line pitch and
-its own membership rule, every one of them fully populated at Tier 0. §6a is the argument.
+`GetShelvesAsync(request)` serves the scoring pass as themed shelves with their own pitches
+and membership rules available at Tier 0. It also adds a separate Derelict shelf when
+external lifecycle evidence warrants review (§6a); this shelf does not recommend playing.
 
 Unowned/store recommendations are explicitly out of scope (charter: priority 1 is
 owned-but-unplayed; catalog data for anything else does not exist yet).
@@ -119,7 +119,7 @@ score = Σ (weight_s × value_s) − Σ penalties + jitter
   `RecommendationScorer.HasProbablyDoneShape` is the coverage-free half, kept separate so
   the engine can decide which rows are worth reading update history for at all.
 
-### Hard exclusions (never scored, never surfaced)
+### Hard exclusions from play recommendations
 
 1. **Retired** (§6.1 precedence: retired outranks everything, patches included). The
    200-hour game does not come back, ever.
@@ -133,6 +133,10 @@ score = Σ (weight_s × value_s) − Σ penalties + jitter
 4. Works with **provisional names** — unexplainable tiles (6 rows today).
 5. Everything the §6.1 query already dropped upstream: consolidated demos/betas, and
    non-game entries (tools, soundtracks) under the default setting.
+6. **Derelict** lifecycle groups: cancelled, offline, delisted, abandoned or dead. These
+   enter only the dedicated review shelf, with no recommendation score or history probe.
+   Inactive and unknown evidence do not justify exclusion. The game's derived bucket is
+   authoritative, so a viable linked store copy can keep a game in the ordinary pool.
 
 ## 4a. Shortlist bounding and work collapse
 
@@ -359,6 +363,60 @@ a verdict and hard-excluded from the next pass; every shelf shifts up by one, an
 arrives at the bottom is a game no queue has held. One backfill reads at a time; a second
 request waits behind it, and a backfill from a pass the feed has since replaced is
 discarded.
+
+### Derelict: lifecycle review
+
+Derelict follows the five recommendation shelves when eligible evidence exists. Its
+membership comes from the same scoped, hidden-filtered, same-game bucket rows as the
+library. Dismissal and snooze widen to the resolved game before either pool is assembled.
+Each card carries the classifier's one-sentence reason and confidence, retained as
+`ReasonEvidence.Lifecycle`; no taste or playtime score pretends to explain a shutdown.
+The score is zero and the scoring-signal list is empty. Candidate, work and history-probe
+counts describe ordinary recommendations only. Library maturity still measures the whole
+library, including these games' real historical sessions.
+
+Recently surfaced entries follow unseen entries, then the existing daily deterministic
+shuffle rotates each group. No confidence cutoff is added here: classification owns its
+evidence gates, and a second cutoff would conceal cases the library already explains.
+The same `MaxPerShelf` depth holds visible cards and reserves; a deeper request leaves
+the visible prefix unchanged. Genre and franchise caps do not hide lifecycle evidence.
+Delisting and abandonment need not mean unplayability, so the shelf says some games may
+still be playable. No local launch failure or low single-player population alone can
+justify calling a game dead.
+
+Lifecycle confidence expresses the strength of the available evidence. Its defaults are
+conservative policy choices, not probabilities calibrated against a labelled dataset;
+the percentage on the card must be read alongside its source reason. Play-history tiers
+do not increase lifecycle confidence, and the feed suppresses its playtime-confidence
+note when Derelict is the only shelf.
+
+Lifecycle gates use `LifecycleTuning`, separate from the weighted play model. These are
+initial conservative defaults requiring later evaluation against labelled real libraries;
+they are not measurements of universal multiplayer population or development cadence.
+
+Dead requires released status and explicit multiplayer-only metadata. Abandoned requires
+unfinished status. Both need known old patch-note and announcement dates; missing feeds
+cannot establish silence. A newer activity signal vetoes the corresponding quiet inference.
+
+| Parameter | Default | Argument |
+|---|---|---|
+| `EvidenceFreshDays` | 30 days | A monthly recheck bounds how long mutable catalog assertions can exclude a game; older observations remain evidence history, not a current verdict. |
+| `ActivityFreshDays` | 7 days | Player and review activity changes faster than catalog status, so a week-old activity snapshot cannot assert current engagement. |
+| `PlayerHistoryDays` | 30 days | A month brackets the repeated population observations; distant samples cannot manufacture sustained current inactivity. |
+| `LowPlayerCeiling` | 5 | A small lobby-sized population is a warning worth corroborating, never proof of shutdown; multiplayer mode, repeated measurements and other activity gates remain mandatory. |
+| `LowReviewCeiling` | 2 | At most two recent reviews is sparse supporting testimony, not an independent measure of viability; Steam supplies both population and reviews. |
+| `MinimumPlayerSamples` / `MinimumPlayerSpanDays` | 3 / 14 days | At least three observations across a fortnight resist a single off-peak reading; even these require separate development and communication evidence for dead. |
+| `DeadQuietDays` | 365 days | A full annual cycle allows seasonal development and communication before silence can support the multiplayer inference. Missing dates do not pass. |
+| `AbandonedQuietDays` | 730 days | Two annual cycles give unfinished projects a wider allowance than released multiplayer services; development and communication need known old dates. Known recent store activity vetoes abandonment; an unknown store-change date is not a prerequisite. |
+| `CancelledConfidence` / `OfflineConfidence` / `DelistedConfidence` | 0.99 / 0.98 / 0.93 | Explicit source assertions outrank inference; delisting has weaker implications because availability and ownership differ. None guarantees that a particular installed copy cannot run. |
+| `DeadConfidence` / `AbandonedConfidence` | 0.80 / 0.75 | Corroborated behavioral inference remains below explicit status; unfinished projects have particularly uncertain schedules. |
+| `InactiveConfidence` / `ActiveConfidence` / `UnknownConfidence` | 0.55 / 0.65 / 0 | Low activity is weak negative evidence; observed activity supports a modest positive claim; absence of usable evidence contributes no confidence. |
+
+The review shelf does not vary these gates by play-history tier. A cold library can carry
+explicit catalog evidence immediately, while behavioral classifications wait for dated
+external observations. Shared source silence, store failures and low single-player counts
+cannot be promoted into proof of death. Identical source reasons may repeat on Derelict
+and in its replacement reserve: varying prose must never conceal a lifecycle fact.
 
 ## 6b. The feedback loop (2026-08-27)
 
@@ -724,8 +782,6 @@ whitespace or end of string, outside quoted spans.
   [VERIFY]). Would become a Tier-2 value on `RecommendationScorer`.
 - **Return latency** as a scoring input (how long this user's round trips take): needs
   months of recorded sessions and update responses; monthly Replay snapshots cannot supply exact return times.
-- **Will-it-run / Dead bucket**: §6.1 lists Dead (delisted, no viable platform); nothing
-  ingests that fact yet. When it exists it becomes hard exclusion #6.
 - **Session-note ratings** as taste/verdict evidence: the table is empty and the journal
   prompt is opt-in; wire it into the probably-done gate when real rows exist.
 - **Genre-conditional thresholds** (2h in a roguelike vs. 2h in a CRPG): §6.1's own open

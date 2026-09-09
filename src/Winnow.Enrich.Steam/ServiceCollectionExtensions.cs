@@ -68,6 +68,11 @@ public static class ServiceCollectionExtensions
             .AddHttpMessageHandler<SteamStoreResilienceHandler>()
             .AddHttpMessageHandler<SteamStoreRateLimitingHandler>();
 
+        services.AddHttpClient<ISteamLifecycleClient, SteamLifecycleClient>(client =>
+            client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent))
+            .AddHttpMessageHandler<SteamStoreResilienceHandler>()
+            .AddHttpMessageHandler<SteamStoreRateLimitingHandler>();
+
         return services;
     }
 }

@@ -53,8 +53,13 @@ public sealed class IgdbAssignmentModalTests : IDisposable
 
     public void Dispose() => _db.Dispose();
 
-    [Fact]
-    public async Task Choosing_a_candidate_rewrites_the_metadata_and_the_cover()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    public async Task Choosing_a_candidate_rewrites_the_metadata_and_the_cover_and_preserves_the_tab(int tabIndex)
     {
         await SeedAsync();
 
@@ -66,6 +71,7 @@ public sealed class IgdbAssignmentModalTests : IDisposable
         Assert.Equal("co1r76", tile.CoverKey?.Id);
 
         await library.OpenDetailsCommand.ExecuteAsync(tile);
+        library.Details!.SelectedTabIndex = tabIndex;
 
         var match = library.Details?.IgdbMatch;
         Assert.NotNull(match);
@@ -85,6 +91,7 @@ public sealed class IgdbAssignmentModalTests : IDisposable
         // supplied has been replaced.
         var reopened = library.Details;
         Assert.NotNull(reopened);
+        Assert.Equal(tabIndex, reopened.SelectedTabIndex);
         Assert.Equal(tile.OwnershipId, reopened.Tile.OwnershipId);
         Assert.Equal(2017, reopened.Tile.ReleaseYear);
         Assert.Equal("Bethesda Softworks", reopened.Tile.Publisher);
@@ -101,6 +108,10 @@ public sealed class IgdbAssignmentModalTests : IDisposable
         Assert.True(reopened.IgdbMatch.IsPinned);
         Assert.True(reopened.IgdbMatch.HasNote);
         Assert.False(reopened.IgdbMatch.HasProblem);
+
+        library.CloseDetailsCommand.Execute(null);
+        await library.OpenDetailsCommand.ExecuteAsync(Assert.Single(library.VisibleTiles));
+        Assert.Equal(0, library.Details!.SelectedTabIndex);
     }
 
     [Fact]

@@ -5,6 +5,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Media.Transformation;
 using Avalonia.Reactive;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -34,6 +35,13 @@ public partial class MainWindow : Window
     private DateTime _lastTitleBarPress = DateTime.MinValue;
     private PixelPoint _lastTitleBarPoint;
     private bool _allowClose;
+    private bool _detailsWereOpen;
+    private bool _detailsOpenedFromGrid;
+    private Vector _detailsViewportOffset;
+    private IReadOnlyList<GameTileViewModel>? _detailsVisibleSource;
+    private bool _alphabetDragging;
+    private string? _lastAlphabetScrubLabel;
+    private ScrollViewer? _trackedListScroll;
 
     internal bool StartHidden { get; init; }
 
@@ -54,6 +62,16 @@ public partial class MainWindow : Window
         // See the card gesture before a child handles it, while leaving the
         // hover actions to handle their own presses.
         TileWall.AddHandler(PointerPressedEvent, OnTilePressed, RoutingStrategies.Tunnel);
+
+        // Buttons own click and keyboard activation; the surrounding spine sees
+        // pointer input first so a held press can scrub across their boundaries.
+        AlphabetSpine.AddHandler(PointerPressedEvent, OnAlphabetPointerPressed, RoutingStrategies.Tunnel);
+        AlphabetSpine.AddHandler(PointerMovedEvent, OnAlphabetPointerMoved, RoutingStrategies.Tunnel);
+        AlphabetSpine.AddHandler(PointerReleasedEvent, OnAlphabetPointerReleased, RoutingStrategies.Tunnel);
+        AlphabetSpine.PointerEntered += OnAlphabetPointerEntered;
+        AlphabetSpine.PointerExited += OnAlphabetPointerExited;
+        AlphabetSpine.PointerCaptureLost += OnAlphabetPointerCaptureLost;
+        GridScroll.ScrollChanged += OnAlphabetScrollChanged;
 
         RequestBackdrop();
 
@@ -315,6 +333,7 @@ public partial class MainWindow : Window
         if (_library is not null)
         {
             _library.PropertyChanged -= OnLibraryPropertyChanged;
+            _library.PropertyChanging -= OnLibraryPropertyChanging;
         }
 
         if (_theme is not null)
@@ -324,6 +343,8 @@ public partial class MainWindow : Window
 
         _shell = DataContext as MainWindowViewModel;
         _library = _shell?.Library;
+        _detailsWereOpen = _library?.IsDetailsOpen == true;
+        _detailsVisibleSource = null;
 
         // The theme service reaches the window through the shell rather than
         // through the container, so the window keeps one source of state and a
@@ -338,12 +359,16 @@ public partial class MainWindow : Window
         if (_library is not null)
         {
             _library.PropertyChanged += OnLibraryPropertyChanged;
+            _library.PropertyChanging += OnLibraryPropertyChanging;
         }
     }
 
     protected override async void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
+
+        TrackListScroll();
+        UpdateAlphabetLocation();
 
         if (StartHidden)
         {
@@ -1154,6 +1179,324 @@ public partial class MainWindow : Window
         }
     }
 
+    private void OnAlphabetJumpClick(object? sender, RoutedEventArgs e)
+    {
+        if (_library is null
+            || sender is not Button
+            {
+                DataContext: AlphabetSectionViewModel { IsAvailable: true } section,
+            })
+        {
+            return;
+        }
+
+        // Visibility guarantees a name sort is already active. Keep its
+        // direction: Z-A is as deliberate a browsing order as A-Z.
+        Dispatcher.UIThread.Post(() => ScrollToAlphabetSection(section.Label), DispatcherPriority.Background);
+        e.Handled = true;
+    }
+
+    private void OnAlphabetPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(AlphabetSpine).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        _alphabetDragging = true;
+        _lastAlphabetScrubLabel = null;
+        e.Pointer.Capture(AlphabetSpine);
+        var position = e.GetPosition(AlphabetSpine);
+        UpdateAlphabetPointerFeedback(position);
+        ScrubBrowseRail(position);
+        e.Handled = true;
+    }
+
+    private void OnAlphabetPointerMoved(object? sender, PointerEventArgs e)
+    {
+        var position = e.GetPosition(AlphabetSpine);
+        UpdateAlphabetPointerFeedback(position);
+        if (!_alphabetDragging)
+        {
+            return;
+        }
+
+        ScrubBrowseRail(position);
+        e.Handled = true;
+    }
+
+    private void OnAlphabetPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_alphabetDragging)
+        {
+            return;
+        }
+
+        var position = e.GetPosition(AlphabetSpine);
+        UpdateAlphabetPointerFeedback(position);
+        ScrubBrowseRail(position);
+        _alphabetDragging = false;
+        _lastAlphabetScrubLabel = null;
+        e.Pointer.Capture(null);
+        e.Handled = true;
+    }
+
+    private void OnAlphabetPointerEntered(object? sender, PointerEventArgs e)
+    {
+        UpdateAlphabetPointerFeedback(e.GetPosition(AlphabetSpine));
+    }
+
+    private void OnAlphabetPointerExited(object? sender, PointerEventArgs e)
+    {
+        if (_alphabetDragging)
+        {
+            return;
+        }
+
+        ResetAlphabetWave();
+        UpdateAlphabetLocation();
+    }
+
+    private void OnAlphabetPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        _alphabetDragging = false;
+        _lastAlphabetScrubLabel = null;
+        if (!AlphabetSpine.IsPointerOver)
+        {
+            ResetAlphabetWave();
+            UpdateAlphabetLocation();
+        }
+    }
+
+    private void ScrubBrowseRail(Point position)
+    {
+        if (_library is null || AlphabetSpine.Bounds.Height <= 0)
+        {
+            return;
+        }
+
+        if (!_library.ShowAlphabetLabels)
+        {
+            var scroll = ActiveLibraryScroll();
+            if (scroll is null)
+            {
+                return;
+            }
+
+            var maximum = Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height);
+            var proportion = Math.Clamp(position.Y / AlphabetSpine.Bounds.Height, 0, 1);
+            scroll.Offset = scroll.Offset.WithY(maximum * proportion);
+            return;
+        }
+
+        var sections = _library.DisplayedAlphabetSections.ToArray();
+        var pointerRow = PointerAlphabetRow(position, sections.Length);
+        var target = sections
+            .Select((section, row) => (section, row))
+            .Where(candidate => candidate.section.IsAvailable)
+            .OrderBy(candidate => Math.Abs(candidate.row - pointerRow))
+            .ThenBy(candidate => candidate.row)
+            .FirstOrDefault();
+        if (target.section is null || target.section.Label == _lastAlphabetScrubLabel)
+        {
+            return;
+        }
+
+        _lastAlphabetScrubLabel = target.section.Label;
+        ScrollToAlphabetSection(target.section.Label);
+    }
+
+    private ScrollViewer? ActiveLibraryScroll()
+        => _library?.IsGridView == true ? GridScroll : ListRows.Scroll as ScrollViewer;
+
+    private void TrackListScroll()
+    {
+        var scroll = ListRows.Scroll as ScrollViewer;
+        if (_trackedListScroll == scroll)
+        {
+            return;
+        }
+
+        if (_trackedListScroll is not null)
+        {
+            _trackedListScroll.ScrollChanged -= OnAlphabetScrollChanged;
+        }
+
+        _trackedListScroll = scroll;
+        if (_trackedListScroll is not null)
+        {
+            _trackedListScroll.ScrollChanged += OnAlphabetScrollChanged;
+        }
+    }
+
+    private void OnAlphabetScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        if (ReferenceEquals(sender, ActiveLibraryScroll())
+            && !_alphabetDragging
+            && !AlphabetSpine.IsPointerOver)
+        {
+            UpdateAlphabetLocation();
+        }
+    }
+
+    private void UpdateAlphabetPointerFeedback(Point position)
+    {
+        var stops = BrowseRailStops();
+        if (stops.Length == 0 || AlphabetSpine.Bounds.Height <= 0)
+        {
+            return;
+        }
+
+        var pointerRow = PointerAlphabetRow(position, stops.Length);
+        for (var row = 0; row < stops.Length; row++)
+        {
+            var distance = row - pointerRow;
+            SetAlphabetWave(stops[row], distance);
+            SetAlphabetLocation(stops[row], Math.Abs(distance));
+        }
+    }
+
+    private Control[] BrowseRailStops()
+        => AlphabetSpine.GetVisualDescendants()
+            .OfType<Control>()
+            .Where(control => control.IsEffectivelyVisible && control.Classes.Contains("scrubstop"))
+            .ToArray();
+
+    private double PointerAlphabetRow(Point position, int rowCount)
+        => Math.Clamp(position.Y / AlphabetSpine.Bounds.Height * rowCount - 0.5, 0, rowCount - 1);
+
+    private static void SetAlphabetWave(Control stop, double signedDistance)
+    {
+        const double radius = 4;
+        const double reach = 13;
+        var distance = Math.Abs(signedDistance);
+        var displacement = distance >= radius
+            ? 0
+            : reach * (1 + Math.Cos(Math.PI * distance / radius)) / 2;
+
+        var transform = TransformOperations.CreateBuilder(1);
+        transform.AppendTranslate(-displacement, 0);
+        stop.RenderTransform = transform.Build();
+    }
+
+    private void ResetAlphabetWave()
+    {
+        foreach (var stop in BrowseRailStops())
+        {
+            SetAlphabetWave(stop, 4);
+        }
+    }
+
+    private void UpdateAlphabetLocation()
+    {
+        var stops = BrowseRailStops();
+        foreach (var stop in stops)
+        {
+            SetAlphabetLocation(stop, double.PositiveInfinity);
+        }
+
+        var scroll = ActiveLibraryScroll();
+        if (_library is null || scroll is null || stops.Length == 0 || _library.VisibleTiles.Count == 0)
+        {
+            return;
+        }
+
+        var maximum = Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height);
+        var proportion = maximum <= 0 ? 0 : Math.Clamp(scroll.Offset.Y / maximum, 0, 1);
+        if (!_library.ShowAlphabetLabels)
+        {
+            var notchRow = proportion * (stops.Length - 1);
+            for (var row = 0; row < stops.Length; row++)
+            {
+                SetAlphabetLocation(stops[row], Math.Abs(row - notchRow));
+            }
+
+            return;
+        }
+
+        var tilePosition = proportion * (_library.VisibleTiles.Count - 1);
+        var lowerTile = Math.Clamp((int)Math.Floor(tilePosition), 0, _library.VisibleTiles.Count - 1);
+        var upperTile = Math.Clamp((int)Math.Ceiling(tilePosition), 0, _library.VisibleTiles.Count - 1);
+        var sections = _library.DisplayedAlphabetSections.ToArray();
+        var lowerSection = LibraryViewModel.AlphabetSectionFor(_library.VisibleTiles[lowerTile].Title);
+        var upperSection = LibraryViewModel.AlphabetSectionFor(_library.VisibleTiles[upperTile].Title);
+        var lowerRow = Array.FindIndex(sections, candidate => candidate.Label == lowerSection);
+        var upperRow = Array.FindIndex(sections, candidate => candidate.Label == upperSection);
+        if (lowerRow < 0 || upperRow < 0)
+        {
+            return;
+        }
+
+        // Between interactions, keep the persistent location cue smooth across
+        // adjacent titles instead of pretending the library is uniform A-Z.
+        var locationRow = lowerRow + ((upperRow - lowerRow) * (tilePosition - lowerTile));
+
+        for (var row = 0; row < stops.Length; row++)
+        {
+            SetAlphabetLocation(stops[row], Math.Abs(row - locationRow));
+        }
+    }
+
+    private static void SetAlphabetLocation(Control stop, double distance)
+    {
+        stop.Classes.Remove("alphalocation1");
+        stop.Classes.Remove("alphalocation2");
+        stop.Classes.Remove("alphalocation3");
+        stop.Classes.Remove("alphalocation4");
+
+        var strength = distance switch
+        {
+            <= 0.5 => 4,
+            <= 1.5 => 3,
+            <= 2.5 => 2,
+            <= 3.5 => 1,
+            _ => 0,
+        };
+        if (strength > 0)
+        {
+            stop.Classes.Add($"alphalocation{strength}");
+        }
+    }
+
+    private void ScrollToAlphabetSection(string label)
+    {
+        if (_library is null)
+        {
+            return;
+        }
+
+        var index = _library.VisibleTiles
+            .Select((tile, index) => (tile, index))
+            .FirstOrDefault(pair => LibraryViewModel.AlphabetSectionFor(pair.tile.Title) == label)
+            .index;
+
+        if (index < 0 || index >= _library.VisibleTiles.Count
+            || LibraryViewModel.AlphabetSectionFor(_library.VisibleTiles[index].Title) != label)
+        {
+            return;
+        }
+
+        if (_library.IsGridView)
+        {
+            TileWall.ScrollIntoView(index);
+        }
+        else
+        {
+            ListRows.ScrollIntoView(index);
+        }
+    }
+
+    private Vector? _hideViewportOffset;
+
+    private void OnLibraryPropertyChanging(object? sender, PropertyChangingEventArgs e)
+    {
+        if (e.PropertyName == nameof(LibraryViewModel.VisibleTiles))
+        {
+            _hideViewportOffset = _library?.IsPreservingViewport == true
+                ? ActiveLibraryScroll()?.Offset : null;
+        }
+    }
+
     private void OnLibraryPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         switch (e.PropertyName)
@@ -1164,10 +1507,47 @@ public partial class MainWindow : Window
             // user looking at empty space below the content.
             case nameof(LibraryViewModel.VisibleTiles):
             case nameof(LibraryViewModel.IsGridView):
-                ResetScroll();
+                var preservedOffset = e.PropertyName == nameof(LibraryViewModel.VisibleTiles)
+                    ? _hideViewportOffset : null;
+                _hideViewportOffset = null;
+                var source = _library?.VisibleTiles;
+                var scroll = ActiveLibraryScroll();
+                if (preservedOffset is null)
+                {
+                    ResetScroll();
+                }
+                Dispatcher.UIThread.Post(() =>
+                {
+                    // Restore after the replacement source has been laid out;
+                    // ScrollViewer clamps the offset if the last row disappeared.
+                    if (preservedOffset is { } offset && scroll is not null
+                        && ReferenceEquals(source, _library?.VisibleTiles)
+                        && ReferenceEquals(scroll, ActiveLibraryScroll()))
+                    {
+                        scroll.Offset = offset;
+                    }
+                    TrackListScroll();
+                    UpdateAlphabetLocation();
+                }, DispatcherPriority.Background);
+                break;
+
+            case nameof(LibraryViewModel.Sort):
+                Dispatcher.UIThread.Post(UpdateAlphabetLocation, DispatcherPriority.Background);
                 break;
 
             case nameof(LibraryViewModel.Details):
+                var detailsAreOpen = _library?.IsDetailsOpen == true;
+                if (detailsAreOpen && !_detailsWereOpen)
+                {
+                    CaptureDetailsViewport();
+                }
+                else if (!detailsAreOpen && _detailsWereOpen)
+                {
+                    RestoreDetailsViewport();
+                }
+
+                _detailsWereOpen = detailsAreOpen;
+
                 // Focus follows the modal, so Escape and Tab reach it wherever
                 // the user's focus happened to be (§8).
                 if (_library is { IsDetailsOpen: true })
@@ -1179,6 +1559,53 @@ public partial class MainWindow : Window
 
                 break;
         }
+    }
+
+    private void CaptureDetailsViewport()
+    {
+        if (_library is null)
+        {
+            return;
+        }
+
+        _detailsOpenedFromGrid = _library.IsGridView;
+        _detailsVisibleSource = _library.VisibleTiles;
+        _detailsViewportOffset = _detailsOpenedFromGrid
+            ? GridScroll.Offset
+            : ListRows.Scroll?.Offset ?? default;
+    }
+
+    private void RestoreDetailsViewport()
+    {
+        if (_library is null
+            || _library.IsGridView != _detailsOpenedFromGrid
+            || !ReferenceEquals(_detailsVisibleSource, _library.VisibleTiles))
+        {
+            _detailsVisibleSource = null;
+            return;
+        }
+
+        var offset = _detailsViewportOffset;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_library is null
+                || _library.IsGridView != _detailsOpenedFromGrid
+                || !ReferenceEquals(_detailsVisibleSource, _library.VisibleTiles))
+            {
+                return;
+            }
+
+            if (_detailsOpenedFromGrid)
+            {
+                GridScroll.Offset = offset;
+            }
+            else if (ListRows.Scroll is { } listScroll)
+            {
+                listScroll.Offset = offset;
+            }
+
+            _detailsVisibleSource = null;
+        }, DispatcherPriority.Background);
     }
 
     /// <summary>Sends both views back to the top after a set or view change.</summary>

@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using System.Globalization;
+using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Winnow.App.Services;
@@ -23,8 +25,8 @@ namespace Winnow.App.ViewModels;
 /// </summary>
 public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGameTileSource
 {
-    /// <summary>Rail stub for the unrunnable bucket — no data source in M0, always zero.</summary>
-    public const string WontRunKey = "wont_run";
+    /// <summary>The lifecycle bucket, derived from dated external evidence.</summary>
+    public const string DerelictKey = LibraryBuckets.Derelict;
 
     /// <summary>
     /// The rail's "All games" row. Not a bucket key — no tile is ever in it, and
@@ -285,6 +287,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             new BucketViewModel(LibraryBuckets.NeverPlayed, "Never played"),
             new BucketViewModel(LibraryBuckets.Bounced, "Started"),
             new BucketViewModel(LibraryBuckets.Retired, "Played out"),
+            new BucketViewModel(LibraryBuckets.Derelict, "Derelict"),
         ];
 
         // §4: the view mode is remembered per session — and so is the order, for
@@ -533,6 +536,11 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     public partial IReadOnlyList<GameTileViewModel> VisibleTiles { get; set; } = [];
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(
+        nameof(HasAlphabetSections), nameof(ShowBrowseSpine), nameof(DisplayedAlphabetSections))]
+    public partial IReadOnlyList<AlphabetSectionViewModel> AlphabetSections { get; set; } = [];
+
+    [ObservableProperty]
     public partial string SearchText { get; set; } = string.Empty;
 
     [ObservableProperty]
@@ -591,7 +599,9 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         nameof(SortLabel),
         nameof(ShowTitleSortUp), nameof(ShowTitleSortDown),
         nameof(ShowPlaytimeSortUp), nameof(ShowPlaytimeSortDown),
-        nameof(ShowIdleSortUp), nameof(ShowIdleSortDown))]
+        nameof(ShowIdleSortUp), nameof(ShowIdleSortDown),
+        nameof(ShowBrowseSpine), nameof(ShowAlphabetLabels), nameof(ShowSortNotches),
+        nameof(BrowseSpineTooltip), nameof(DisplayedAlphabetSections))]
     public partial LibrarySort Sort { get; set; } = LibrarySort.DormantLongest;
 
     [ObservableProperty]
@@ -761,6 +771,27 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
     public bool ShowList => EmptyMessage is null && !IsGridView;
 
+    public bool HasAlphabetSections => AlphabetSections.Any(section => section.IsAvailable);
+
+    public bool ShowBrowseSpine => HasAlphabetSections;
+
+    public bool ShowAlphabetLabels
+        => Sort is LibrarySort.NameAscending or LibrarySort.NameDescending;
+
+    public bool ShowSortNotches => !ShowAlphabetLabels;
+
+    public string BrowseSpineTooltip
+        => ShowAlphabetLabels ? "Drag to browse by letter" : "Drag to browse this order";
+
+    /// <summary>
+    /// The drag surface follows the list's direction, so moving down the spine
+    /// always moves down the alphabetically sorted library.
+    /// </summary>
+    public IEnumerable<AlphabetSectionViewModel> DisplayedAlphabetSections
+        => Sort == LibrarySort.NameDescending
+            ? AlphabetSections.Reverse()
+            : AlphabetSections;
+
     /// <summary>Command-bar button face: the order currently in force.</summary>
     public string SortLabel => LabelFor(Sort);
 
@@ -778,7 +809,11 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     public bool ShowIdleSortDown => Sort == LibrarySort.DormantLongest;
 
     [RelayCommand]
-    private async Task LoadAsync()
+    private Task LoadAsync() => LoadLibraryAsync();
+
+    internal bool IsPreservingViewport { get; private set; }
+
+    private async Task LoadLibraryAsync(bool preserveViewport = false)
     {
         var thresholds = BucketThresholds.Default with
         {
@@ -1059,7 +1094,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                     epicLaunchKey: EpicKeyFor(member.ReleaseId),
                     storefront: storefronts.GetValueOrDefault(ownership?.Store == "epic"
                         ? "epic:" + EpicKeyFor(member.ReleaseId)?.Namespace
-                        : "gog:" + gogProductIdByRelease.GetValueOrDefault(member.ReleaseId))));
+                        : "gog:" + gogProductIdByRelease.GetValueOrDefault(member.ReleaseId)))
+                    with { Lifecycle = member.Lifecycle });
 
                 coverage.Add(new CoverageEntry
                 {
@@ -1208,7 +1244,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         MarkRailSelection();
 
         _loaded = true;
-        ApplyFilter();
+        ApplyFilter(preserveViewport);
         if (selectedOwnershipId is { } selectedId)
         {
             var selected = VisibleTiles.FirstOrDefault(t => t.Covers(selectedId));
@@ -1334,6 +1370,10 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             ? []
             : await _snapshots.GetByOwnershipAsync(target.OwnershipId);
 
+        IReadOnlyList<Session> sessions = _sessions is null
+            ? []
+            : await _sessions.GetByOwnershipAsync(target.OwnershipId);
+
         var workId = GameWorkIdFor(target);
 
         IReadOnlyList<WorkRating> ratings = _workRatings is null || workId is null
@@ -1364,7 +1404,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             refetch: BuildRefetch(workId),
             lightbox: Lightbox,
             journal: await BuildJournalAsync(target),
-            addToList: new RelayCommand(() => BeginAddToListFor([target])));
+            addToList: new RelayCommand(() => BeginAddToListFor([target])),
+            sessions: sessions);
     }
 
     /// <summary>
@@ -1422,7 +1463,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     }
 
     /// <summary>
-    /// Builds the left column's IGDB reassignment control, or null when no
+    /// Builds the focused IGDB reassignment control, or null when no
     /// assignment service is registered or the tile resolves to no work id.
     /// Uses the same resolved work id the LISTS and EXPANSIONS sections
     /// derive, so all three answer for the game rather than for a store
@@ -1453,7 +1494,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     }
 
     /// <summary>
-    /// Builds the right column's per-field metadata editor, or null when no
+    /// Builds the focused per-field metadata editor, or null when no
     /// edit service is registered or the tile resolves to no work id. Uses
     /// the same resolved work id <see cref="BuildIgdbMatchAsync"/> uses,
     /// through <c>GameWorkIdFor</c>, so the editor writes the row the lists,
@@ -1637,13 +1678,15 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     }
 
     /// <summary>
-    /// Reloads the library and reopens the detail modal on the ownership it
-    /// was already showing. Nothing reopens when that game is no longer in
-    /// the library.
+    /// Reloads the library and reopens the detail modal on the ownership and
+    /// tab it was already showing. Nothing reopens when that game is no
+    /// longer in the library.
     /// </summary>
     private async Task ReopenDetailsAsync()
     {
         var ownershipId = Details?.Tile.OwnershipId;
+        var selectedTabIndex = Details?.SelectedTabIndex ?? 0;
+        var trackedSessions = Details?.Tracker.IsTrackedSessions ?? false;
         await LoadAsync();
 
         if (ownershipId is not { } id)
@@ -1660,6 +1703,11 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         if (reopened is not null)
         {
             await OpenDetailsAsync(reopened);
+            if (Details is { } details)
+            {
+                details.SelectedTabIndex = selectedTabIndex;
+                details.Tracker.IsTrackedSessions = trackedSessions;
+            }
         }
     }
 
@@ -1956,12 +2004,12 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         Details = null;
         SelectedTiles = [];
         SelectedCount = 0;
-        await LoadAsync();
+        await LoadLibraryAsync(preserveViewport: true);
     }
 
     // ══ Lists ═══════════════════════════════════════════════════════════════
 
-    /// <summary>Opens a list: manual adds an AND term, live restores its saved rules into the panel.</summary>
+    /// <summary>Opens a list from its own membership or saved rules, without carrying the previous bucket.</summary>
     [RelayCommand]
     private void OpenList(GameListViewModel? list) => Batched(() =>
     {
@@ -1973,6 +2021,9 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             return;
         }
 
+        // A rail bucket describes the place we just left, not an extra term the
+        // user added to this list. Live lists restore their own saved bucket below.
+        SelectedBucket = null;
         Lists.Select(list);
 
         if (list.IsLive)
@@ -2474,7 +2525,9 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     }
 
     /// <summary>Applies all filter terms (bucket, list, panel, search) and rebuilds the visible set.</summary>
-    private void ApplyFilter()
+    private void ApplyFilter() => ApplyFilter(preserveViewport: false);
+
+    private void ApplyFilter(bool preserveViewport)
     {
         if (!_loaded || _suspended > 0)
         {
@@ -2510,7 +2563,15 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         // the same source so the views retain their scroll position and selection.
         if (!VisibleTiles.SequenceEqual(visible))
         {
-            VisibleTiles = visible;
+            IsPreservingViewport = preserveViewport;
+            try
+            {
+                VisibleTiles = visible;
+            }
+            finally
+            {
+                IsPreservingViewport = false;
+            }
             if (SelectedTile is { } selected && !visible.Contains(selected))
             {
                 SelectTile(null);
@@ -2519,9 +2580,53 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             SelectedCount = SelectedTile is null ? 0 : 1;
             SelectedTiles = SelectedTile is null ? [] : [SelectedTile];
         }
+
+        var alphabetSections = BuildAlphabetSections(visible);
+        if (!AlphabetSections.SequenceEqual(alphabetSections))
+        {
+            AlphabetSections = alphabetSections;
+        }
+
         EmptyMessage = BuildEmptyMessage(visible.Count, search);
         RefreshListCounts();
         RefreshCutBar(visible.Count);
+    }
+
+    private static IReadOnlyList<AlphabetSectionViewModel> BuildAlphabetSections(
+        IReadOnlyList<GameTileViewModel> tiles)
+    {
+        var available = tiles.Select(tile => AlphabetSectionFor(tile.Title)).ToHashSet();
+        return [
+            new("#", available.Contains("#")),
+            .. Enumerable.Range('A', 26)
+                .Select(value => ((char)value).ToString())
+                .Select(label => new AlphabetSectionViewModel(label, available.Contains(label))),
+        ];
+    }
+
+    /// <summary>
+    /// Maps a title to the fixed #/A-Z spine. Latin letters with diacritics
+    /// fold onto their base letter; numbers, symbols and other scripts use #.
+    /// </summary>
+    internal static string AlphabetSectionFor(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return "#";
+        }
+
+        foreach (var rune in title.TrimStart().Normalize(NormalizationForm.FormD).EnumerateRunes())
+        {
+            if (Rune.GetUnicodeCategory(rune) == UnicodeCategory.NonSpacingMark)
+            {
+                continue;
+            }
+
+            var upper = Rune.ToUpperInvariant(rune).Value;
+            return upper is >= 'A' and <= 'Z' ? ((char)upper).ToString() : "#";
+        }
+
+        return "#";
     }
 
     /// <summary>Returns tiles matching the filter. Keyed on ownership id (not release) to preserve cross-store dupes.</summary>
@@ -2734,6 +2839,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                 "Nothing's been patched since you last played. This fills up on its own.",
             LibraryBuckets.NeverPlayed =>
                 "You've played everything you own past the refund window. Genuinely rare.",
+            LibraryBuckets.Derelict =>
+                "No games have enough lifecycle evidence for Derelict yet. This fills in as metadata arrives.",
             _ => "Nothing here yet.",
         };
     }
