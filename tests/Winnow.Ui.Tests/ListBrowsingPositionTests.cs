@@ -129,13 +129,40 @@ public sealed class ListBrowsingPositionTests
             Assert.Equal(0, scroll.Offset.Y);
 
             var spine = window.FindControl<Border>("AlphabetSpine")!;
-            Assert.False(spine.IsVisible);
+            var alphabetStops = window.FindControl<ItemsControl>("AlphabetStops")!;
+            var sortNotches = window.FindControl<ItemsControl>("SortNotches")!;
+            Assert.True(spine.IsVisible);
+            Assert.False(alphabetStops.IsVisible);
+            Assert.True(sortNotches.IsVisible);
+            var notches = sortNotches.GetVisualDescendants().OfType<Border>()
+                .Where(border => border.Classes.Contains("sortnotch"))
+                .ToArray();
+            Assert.Equal(27, notches.Length);
+            DragAlphabet(window, spine, fromRow: 2, toRow: 13);
+            var notchScrollableHeight = scroll.Extent.Height - scroll.Viewport.Height;
+            Assert.True(notchScrollableHeight > 0);
+            Assert.InRange(scroll.Offset.Y / notchScrollableHeight, 0.48, 0.52);
+            Assert.Contains("alphalocation4", notches[13].Classes);
+            Assert.InRange(WaveDisplacement(notches[13]), -13.01, -12.99);
+            var scrollbar = scroll.GetVisualDescendants().OfType<ScrollBar>()
+                .Single(bar => bar.Orientation == Avalonia.Layout.Orientation.Vertical);
+            Assert.DoesNotContain("alphabetengaged", scrollbar.Classes);
+            if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } notchDirectory)
+            {
+                Directory.CreateDirectory(notchDirectory);
+                using var frame = window.CaptureRenderedFrame();
+                frame!.Save(Path.Combine(notchDirectory, $"notches-{(grid ? "grid" : "list")}.png"));
+            }
+            window.MouseMove(new Point(400, 300));
+            scroll.Offset = default;
+            Flush();
+
             library.Sort = LibrarySort.NameAscending;
             Flush();
             Assert.True(spine.IsVisible);
+            Assert.True(alphabetStops.IsVisible);
+            Assert.False(sortNotches.IsVisible);
             Assert.Contains("Arrow", spine.Cursor!.ToString()!, StringComparison.OrdinalIgnoreCase);
-            var scrollbar = scroll.GetVisualDescendants().OfType<ScrollBar>()
-                .Single(bar => bar.Orientation == Avalonia.Layout.Orientation.Vertical);
             var spineBounds = new Rect(spine.TranslatePoint(default, window)!.Value, spine.Bounds.Size);
             var scrollbarBounds = new Rect(
                 scrollbar.TranslatePoint(default, window)!.Value, scrollbar.Bounds.Size);
@@ -244,7 +271,9 @@ public sealed class ListBrowsingPositionTests
 
             library.Sort = LibrarySort.PlaytimeHighToLow;
             Flush();
-            Assert.False(spine.IsVisible);
+            Assert.True(spine.IsVisible);
+            Assert.False(alphabetStops.IsVisible);
+            Assert.True(sortNotches.IsVisible);
         }
         finally
         {
@@ -312,8 +341,8 @@ public sealed class ListBrowsingPositionTests
         return lowerRow + ((upperRow - lowerRow) * (tilePosition - lowerTile));
     }
 
-    private static double WaveDisplacement(Button button)
-        => Assert.IsType<Avalonia.Media.Transformation.TransformOperations>(button.RenderTransform).Value.M31;
+    private static double WaveDisplacement(Control stop)
+        => Assert.IsType<Avalonia.Media.Transformation.TransformOperations>(stop.RenderTransform).Value.M31;
 
     private static double ExpectedWaveDisplacement(double signedDistance)
     {

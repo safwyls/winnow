@@ -139,18 +139,20 @@ does not govern the Stores panel's 720px, which is a card width holding controls
 
 **Grid is the default view. List is a toggle**, remembered per-session.
 
-A slim `# · A–Z` jump spine appears only while `Name A–Z` or `Name Z–A` is in force. It sits
-immediately left of the native scrollbar in both views, uses Data S in `TextDim`, keeps all 27
-stops fixed, and dims unavailable sections without removing them. Activating a stop preserves
-the active name-sort direction and brings the first visible title in that section into view;
-`#` owns titles that begin with a number or symbol. The spine keeps a 24px hit area whose glyphs
+A slim browse spine appears immediately left of the native scrollbar in both views. Under `Name A–Z`
+or `Name Z–A` it is a `# · A–Z` jump spine in Data S, keeping all 27 stops fixed and dimming
+unavailable sections without removing them. Activating a stop preserves the active name-sort
+direction and brings the first visible title in that section into view; `#` owns titles that begin
+with a number or symbol. Under every other sort, the same 27 positions become short unlabeled
+`TextFaint` notches; dragging them moves proportionally through the ordering already in force rather
+than inventing labels for playtime or recency. The spine keeps a 24px hit area whose glyphs or marks
 rest against the native scrollbar; that scrollbar keeps the window's 10px resize inset, so
 neither control overlays cover art nor enters the OS hit-test band. The spine and native scrollbar are
 adjacent but independent controls: entering the spine does not engage the thumb, and dragging the
 spine scrubs directly among alphabet sections rather than mapping to the scrollbar's extent. An
-unavailable stop resolves to the nearest populated section without moving the pointer feedback away
-from the stop under the pointer. Each 11px glyph is centred in the same exact 12px column. While the
-spine is active, the fractional pointer row anchors a compact four-row cosine curve that reaches 13px
+unavailable alphabet stop resolves to the nearest populated section without moving the pointer
+feedback away from the stop under the pointer. Each 11px glyph and each notch shares the same exact
+right edge. While the spine is active, the fractional pointer row anchors a compact four-row cosine curve that reaches 13px
 into the library and returns smoothly to rest, the desktop version of Niagara Launcher's Wave Alphabet.
 It has no transition, so sub-row movement renders directly. The same pointer row places a compact Volt
 halo, and three neighbors step outward through Volt, Text and TextDim. The pointer remains the ordinary

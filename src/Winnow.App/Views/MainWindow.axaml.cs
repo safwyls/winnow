@@ -1206,7 +1206,7 @@ public partial class MainWindow : Window
         e.Pointer.Capture(AlphabetSpine);
         var position = e.GetPosition(AlphabetSpine);
         UpdateAlphabetPointerFeedback(position);
-        ScrubAlphabetSections(position);
+        ScrubBrowseRail(position);
         e.Handled = true;
     }
 
@@ -1219,7 +1219,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        ScrubAlphabetSections(position);
+        ScrubBrowseRail(position);
         e.Handled = true;
     }
 
@@ -1232,7 +1232,7 @@ public partial class MainWindow : Window
 
         var position = e.GetPosition(AlphabetSpine);
         UpdateAlphabetPointerFeedback(position);
-        ScrubAlphabetSections(position);
+        ScrubBrowseRail(position);
         _alphabetDragging = false;
         _lastAlphabetScrubLabel = null;
         e.Pointer.Capture(null);
@@ -1266,10 +1266,24 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ScrubAlphabetSections(Point position)
+    private void ScrubBrowseRail(Point position)
     {
         if (_library is null || AlphabetSpine.Bounds.Height <= 0)
         {
+            return;
+        }
+
+        if (!_library.ShowAlphabetLabels)
+        {
+            var scroll = ActiveLibraryScroll();
+            if (scroll is null)
+            {
+                return;
+            }
+
+            var maximum = Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height);
+            var proportion = Math.Clamp(position.Y / AlphabetSpine.Bounds.Height, 0, 1);
+            scroll.Offset = scroll.Offset.WithY(maximum * proportion);
             return;
         }
 
@@ -1325,25 +1339,31 @@ public partial class MainWindow : Window
 
     private void UpdateAlphabetPointerFeedback(Point position)
     {
-        var buttons = AlphabetSpine.GetVisualDescendants().OfType<Button>().ToArray();
-        if (buttons.Length == 0 || AlphabetSpine.Bounds.Height <= 0)
+        var stops = BrowseRailStops();
+        if (stops.Length == 0 || AlphabetSpine.Bounds.Height <= 0)
         {
             return;
         }
 
-        var pointerRow = PointerAlphabetRow(position, buttons.Length);
-        for (var row = 0; row < buttons.Length; row++)
+        var pointerRow = PointerAlphabetRow(position, stops.Length);
+        for (var row = 0; row < stops.Length; row++)
         {
             var distance = row - pointerRow;
-            SetAlphabetWave(buttons[row], distance);
-            SetAlphabetLocation(buttons[row], Math.Abs(distance));
+            SetAlphabetWave(stops[row], distance);
+            SetAlphabetLocation(stops[row], Math.Abs(distance));
         }
     }
+
+    private Control[] BrowseRailStops()
+        => AlphabetSpine.GetVisualDescendants()
+            .OfType<Control>()
+            .Where(control => control.IsEffectivelyVisible && control.Classes.Contains("scrubstop"))
+            .ToArray();
 
     private double PointerAlphabetRow(Point position, int rowCount)
         => Math.Clamp(position.Y / AlphabetSpine.Bounds.Height * rowCount - 0.5, 0, rowCount - 1);
 
-    private static void SetAlphabetWave(Button button, double signedDistance)
+    private static void SetAlphabetWave(Control stop, double signedDistance)
     {
         const double radius = 4;
         const double reach = 13;
@@ -1354,33 +1374,44 @@ public partial class MainWindow : Window
 
         var transform = TransformOperations.CreateBuilder(1);
         transform.AppendTranslate(-displacement, 0);
-        button.RenderTransform = transform.Build();
+        stop.RenderTransform = transform.Build();
     }
 
     private void ResetAlphabetWave()
     {
-        foreach (var button in AlphabetSpine.GetVisualDescendants().OfType<Button>())
+        foreach (var stop in BrowseRailStops())
         {
-            SetAlphabetWave(button, 4);
+            SetAlphabetWave(stop, 4);
         }
     }
 
     private void UpdateAlphabetLocation()
     {
-        var buttons = AlphabetSpine.GetVisualDescendants().OfType<Button>().ToArray();
-        foreach (var button in buttons)
+        var stops = BrowseRailStops();
+        foreach (var stop in stops)
         {
-            SetAlphabetLocation(button, double.PositiveInfinity);
+            SetAlphabetLocation(stop, double.PositiveInfinity);
         }
 
         var scroll = ActiveLibraryScroll();
-        if (_library is null || scroll is null || buttons.Length == 0 || _library.VisibleTiles.Count == 0)
+        if (_library is null || scroll is null || stops.Length == 0 || _library.VisibleTiles.Count == 0)
         {
             return;
         }
 
         var maximum = Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height);
         var proportion = maximum <= 0 ? 0 : Math.Clamp(scroll.Offset.Y / maximum, 0, 1);
+        if (!_library.ShowAlphabetLabels)
+        {
+            var notchRow = proportion * (stops.Length - 1);
+            for (var row = 0; row < stops.Length; row++)
+            {
+                SetAlphabetLocation(stops[row], Math.Abs(row - notchRow));
+            }
+
+            return;
+        }
+
         var tilePosition = proportion * (_library.VisibleTiles.Count - 1);
         var lowerTile = Math.Clamp((int)Math.Floor(tilePosition), 0, _library.VisibleTiles.Count - 1);
         var upperTile = Math.Clamp((int)Math.Ceiling(tilePosition), 0, _library.VisibleTiles.Count - 1);
@@ -1398,18 +1429,18 @@ public partial class MainWindow : Window
         // adjacent titles instead of pretending the library is uniform A-Z.
         var locationRow = lowerRow + ((upperRow - lowerRow) * (tilePosition - lowerTile));
 
-        for (var row = 0; row < buttons.Length; row++)
+        for (var row = 0; row < stops.Length; row++)
         {
-            SetAlphabetLocation(buttons[row], Math.Abs(row - locationRow));
+            SetAlphabetLocation(stops[row], Math.Abs(row - locationRow));
         }
     }
 
-    private static void SetAlphabetLocation(Button button, double distance)
+    private static void SetAlphabetLocation(Control stop, double distance)
     {
-        button.Classes.Remove("alphalocation1");
-        button.Classes.Remove("alphalocation2");
-        button.Classes.Remove("alphalocation3");
-        button.Classes.Remove("alphalocation4");
+        stop.Classes.Remove("alphalocation1");
+        stop.Classes.Remove("alphalocation2");
+        stop.Classes.Remove("alphalocation3");
+        stop.Classes.Remove("alphalocation4");
 
         var strength = distance switch
         {
@@ -1421,7 +1452,7 @@ public partial class MainWindow : Window
         };
         if (strength > 0)
         {
-            button.Classes.Add($"alphalocation{strength}");
+            stop.Classes.Add($"alphalocation{strength}");
         }
     }
 

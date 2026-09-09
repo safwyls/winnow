@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-08 23:44'
-updated_date: '2026-09-09 01:55'
+updated_date: '2026-09-09 02:08'
 labels: []
 dependencies: []
 references:
@@ -13,6 +13,7 @@ references:
 documentation:
   - design-system.md
 modified_files:
+  - src/Winnow.App/ViewModels/LibraryViewModel.cs
   - src/Winnow.App/Views/MainWindow.axaml
   - src/Winnow.App/Views/MainWindow.axaml.cs
   - tests/Winnow.Ui.Tests/ListBrowsingPositionTests.cs
@@ -34,17 +35,17 @@ Improve large-library browsing in three related ways: strip copyright and tradem
 - [x] #2 Grid and list layouts show an accessible alphabetic jump rail that jumps to the requested title section and handles non-letter titles
 - [x] #3 Closing game details restores the prior grid or list scroll position without jumping to the top
 - [x] #4 Focused automated tests cover lookup normalization, alphabet jumps, and detail-close position restoration
-- [x] #5 The alphabet spine sits immediately left of the native scrollbar, is hidden for non-name sorts, and preserves ascending or descending name order when used
-- [x] #6 The alphabetical scroll control keeps the native thumb and lets pointer users press and drag across the letter spine to scrub through available title sections
-- [x] #7 The spine uses slightly larger glyphs and the ordinary arrow cursor, while the current scroll location has a persistent glow whose intensity falls off across neighboring alphabet stops in grid and list views.
-- [x] #8 Every alphabet glyph shares one fixed visual centerline, and sub-row pointer movement produces continuously varying horizontal displacement rather than switching among discrete wave bands.
-- [x] #9 The alphabet spine scrubs directly among alphabet sections without engaging or proportionally controlling the native scrollbar; its wave and glow follow the pointer gesture, and ordinary scrollbar scrolling remains independent.
+- [x] #5 The alphabetical scroll control keeps the native thumb and lets pointer users press and drag across the letter spine to scrub through available title sections
+- [x] #6 The spine uses slightly larger glyphs and the ordinary arrow cursor, while the current scroll location has a persistent glow whose intensity falls off across neighboring alphabet stops in grid and list views.
+- [x] #7 Every alphabet glyph shares one fixed visual centerline, and sub-row pointer movement produces continuously varying horizontal displacement rather than switching among discrete wave bands.
+- [x] #8 The alphabet spine scrubs directly among alphabet sections without engaging or proportionally controlling the native scrollbar; its wave and glow follow the pointer gesture, and ordinary scrollbar scrolling remains independent.
+- [x] #9 For every non-name sort, the right-side scrub rail remains visible as an unlabeled notch scale; dragging it moves proportionally through the current ordering while name sorts retain direct alphabet-section scrubbing.
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Remove hover/drag coupling between the alphabet spine and native scrollbar. 2. Map pointer movement on the spine to alphabet stops, resolving unavailable stops to the nearest populated section and avoiding duplicate jumps. 3. Drive the wave and temporary glow from the fractional alphabet pointer position; restore the viewport glow when the gesture leaves. 4. Update the visual specification and focused tests, render both layouts, and run full verification.
+1. Give the shared browse rail explicit alphabet and notch modes derived from the active sort. 2. Render 27 quiet notches in the existing footprint for non-name sorts without exposing empty letter buttons to accessibility. 3. Reuse pointer wave/glow feedback for both modes; route alphabet drags to populated sections and notch drags proportionally through the active ordering, without engaging the native thumb. 4. Update documentation and grid/list interaction tests, inspect rendered states, then run full verification.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -81,10 +82,14 @@ Sixth follow-up complete: scrollbar offset is converted to a fractional position
 Seventh follow-up requested: separate the alphabet scrubber from the native scrollbar and make it navigate alphabet sections directly.
 
 Seventh follow-up complete: the alphabet spine no longer engages the native thumb or maps pointer Y to scrollbar extent. Hover only drives the local wave and halo. Press-drag resolves each pointer position to the nearest populated alphabet stop and brings that section into view, suppressing repeated jumps while remaining on the same target. Leaving restores the viewport-derived halo; normal scrollbar movement updates that resting cue independently. The frontend-design guidance kept the gesture as the one expressive motion while the native scrollbar returned to quiet chrome. Focused and rendered grid/list checks passed. Full build completed with zero warnings/errors; all 4,103 Windows tests passed and 2 Linux-only monitor tests skipped as expected.
+
+Eighth follow-up requested: retain the browse rail for non-name sorts as a notch scale.
+
+Eighth follow-up complete: the browse rail now remains present for every sort. Name sorts show the accessible #/A-Z buttons and retain section-based scrubbing; dormant, recent, playtime, and manual-list orders show 27 unlabeled TextFaint notches in the same footprint and scrub proportionally through that ordering. Both modes share the pointer-following wave and location halo, while the native scrollbar remains visually and behaviorally independent. The frontend-design guidance led to reusing the existing 24px rail and motion signature instead of adding a second control. Focused headless tests cover grid/list mode switching, 27-notch geometry, midpoint scrubbing, and native-thumb independence. Rendered alphabet and notch states were inspected in both layouts. Full build completed with zero warnings/errors; all 4,103 Windows tests passed and 2 Linux-only monitor tests skipped as expected.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Removed metadata title decoration, added alphabetical navigation, and preserved detail-close position. The alphabet spine is now an independent section scrubber: its pointer-following cosine wave and halo stay local to the gesture, while dragging jumps among populated letter sections and the adjacent native scrollbar retains ordinary independent behavior. Verified with rendered grid/list inspection, focused headless interaction coverage, a zero-warning build, and 4,103 passing tests with 2 expected Linux-only skips.
+Removed metadata title decoration, preserved detail-close position, and built one adaptive browse rail for grid and list views. Name sorts expose accessible alphabet-section scrubbing; every other sort converts the same rail to a quiet 27-notch position scale with proportional scrubbing. The wave and halo remain local to the rail, and the adjacent native scrollbar behaves independently. Verified with four rendered layout/mode captures, focused headless interaction coverage, a zero-warning build, and 4,103 passing tests with 2 expected Linux-only skips.
 <!-- SECTION:FINAL_SUMMARY:END -->

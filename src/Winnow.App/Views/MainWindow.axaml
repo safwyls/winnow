@@ -230,6 +230,36 @@
             <Setter Property="BoxShadow" Value="{DynamicResource AlphabetLocationGlow}"/>
         </Style>
 
+        <!-- The same browse rail becomes a quiet position scale when the
+             ordering has no alphabetic meaning. Its marks inherit the spine's
+             pointer wave without pretending to be 27 keyboard actions. -->
+        <Style Selector="Border.sortnotch">
+            <Setter Property="Width" Value="24"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="RenderTransform" Value="translateX(0px)"/>
+        </Style>
+        <Style Selector="Border.sortnotch Border.notchmark">
+            <Setter Property="Width" Value="5"/>
+            <Setter Property="Height" Value="1"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Background" Value="{StaticResource TextFaint}"/>
+        </Style>
+        <Style Selector="Border.sortnotch.alphalocation2 Border.notchmark">
+            <Setter Property="Width" Value="6"/>
+            <Setter Property="Background" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Border.sortnotch.alphalocation3 Border.notchmark">
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="Background" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="Border.sortnotch.alphalocation4 Border.notchmark">
+            <Setter Property="Width" Value="10"/>
+            <Setter Property="Height" Value="2"/>
+            <Setter Property="Background" Value="{StaticResource VoltHover}"/>
+            <Setter Property="BoxShadow" Value="{DynamicResource AlphabetLocationGlow}"/>
+        </Style>
+
         <!-- ══ Rail bucket (§6) ══════════════════════════════════════════════
              Hover and selection both fill SurfaceRaised; selection adds the
              2px Volt left edge. Zero-count rows dim to 40% — never hide, so
@@ -1688,7 +1718,7 @@
                               VerticalScrollBarVisibility="Auto"
                               Padding="0">
                     <!-- Custom CoverWall (not ItemsRepeater) — see CoverWall.
-                         58px right margin clears the alphabet spine and the
+                         58px right margin clears the browse spine and the
                          native scrollbar without changing their positions. -->
                     <views:CoverWall Name="TileWall"
                                      Margin="20,20,58,20"
@@ -1874,9 +1904,9 @@
                                Text="{Binding Library.EmptyMessage}"/>
                 </Border>
 
-                <!-- Fixed-position #/A-Z navigation for alphabetical views.
-                     Its hit area meets the native scrollbar; glyphs align to
-                     that shared edge and wave inward under the pointer. -->
+                <!-- Fixed-position browsing: #/A-Z for name sorts, a notch
+                     scale otherwise. Its hit area meets the native scrollbar;
+                     glyphs and marks wave inward under the pointer. -->
                 <Border Name="AlphabetSpine"
                         Width="24"
                         Margin="0,6,12,10"
@@ -1884,10 +1914,13 @@
                         VerticalAlignment="Stretch"
                         Background="{StaticResource PaneGround}"
                         Cursor="Arrow"
-                        ToolTip.Tip="Drag to browse by letter"
-                        IsVisible="{Binding Library.ShowAlphabetSpine}"
+                        ToolTip.Tip="{Binding Library.BrowseSpineTooltip}"
+                        IsVisible="{Binding Library.ShowBrowseSpine}"
                         ZIndex="2">
-                    <ItemsControl ItemsSource="{Binding Library.DisplayedAlphabetSections}">
+                    <Grid>
+                    <ItemsControl Name="AlphabetStops"
+                                  IsVisible="{Binding Library.ShowAlphabetLabels}"
+                                  ItemsSource="{Binding Library.DisplayedAlphabetSections}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <UniformGrid Rows="27"/>
@@ -1895,7 +1928,7 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="vm:AlphabetSectionViewModel">
-                                <Button Classes="alphaindex"
+                                <Button Classes="alphaindex scrubstop"
                                         IsEnabled="{Binding IsAvailable}"
                                         AutomationProperties.Name="{Binding AutomationName}"
                                         ToolTip.Tip="{Binding Tooltip}"
@@ -1913,6 +1946,23 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    <ItemsControl Name="SortNotches"
+                                  IsVisible="{Binding Library.ShowSortNotches}"
+                                  ItemsSource="{Binding Library.AlphabetSections}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="27"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Classes="sortnotch scrubstop">
+                                    <Border Classes="notchmark"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    </Grid>
                 </Border>
 
             </Panel>

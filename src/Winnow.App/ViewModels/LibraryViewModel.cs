@@ -536,7 +536,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(
-        nameof(HasAlphabetSections), nameof(ShowAlphabetSpine), nameof(DisplayedAlphabetSections))]
+        nameof(HasAlphabetSections), nameof(ShowBrowseSpine), nameof(DisplayedAlphabetSections))]
     public partial IReadOnlyList<AlphabetSectionViewModel> AlphabetSections { get; set; } = [];
 
     [ObservableProperty]
@@ -599,7 +599,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         nameof(ShowTitleSortUp), nameof(ShowTitleSortDown),
         nameof(ShowPlaytimeSortUp), nameof(ShowPlaytimeSortDown),
         nameof(ShowIdleSortUp), nameof(ShowIdleSortDown),
-        nameof(ShowAlphabetSpine), nameof(DisplayedAlphabetSections))]
+        nameof(ShowBrowseSpine), nameof(ShowAlphabetLabels), nameof(ShowSortNotches),
+        nameof(BrowseSpineTooltip), nameof(DisplayedAlphabetSections))]
     public partial LibrarySort Sort { get; set; } = LibrarySort.DormantLongest;
 
     [ObservableProperty]
@@ -771,8 +772,15 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
     public bool HasAlphabetSections => AlphabetSections.Any(section => section.IsAvailable);
 
-    public bool ShowAlphabetSpine => HasAlphabetSections
-        && Sort is LibrarySort.NameAscending or LibrarySort.NameDescending;
+    public bool ShowBrowseSpine => HasAlphabetSections;
+
+    public bool ShowAlphabetLabels
+        => Sort is LibrarySort.NameAscending or LibrarySort.NameDescending;
+
+    public bool ShowSortNotches => !ShowAlphabetLabels;
+
+    public string BrowseSpineTooltip
+        => ShowAlphabetLabels ? "Drag to browse by letter" : "Drag to browse this order";
 
     /// <summary>
     /// The drag surface follows the list's direction, so moving down the spine
