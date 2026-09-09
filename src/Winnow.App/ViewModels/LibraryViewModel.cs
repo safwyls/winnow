@@ -535,7 +535,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     public partial IReadOnlyList<GameTileViewModel> VisibleTiles { get; set; } = [];
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasAlphabetSections))]
+    [NotifyPropertyChangedFor(nameof(HasAlphabetSections), nameof(ShowAlphabetSpine))]
     public partial IReadOnlyList<AlphabetSectionViewModel> AlphabetSections { get; set; } = [];
 
     [ObservableProperty]
@@ -597,7 +597,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         nameof(SortLabel),
         nameof(ShowTitleSortUp), nameof(ShowTitleSortDown),
         nameof(ShowPlaytimeSortUp), nameof(ShowPlaytimeSortDown),
-        nameof(ShowIdleSortUp), nameof(ShowIdleSortDown))]
+        nameof(ShowIdleSortUp), nameof(ShowIdleSortDown),
+        nameof(ShowAlphabetSpine))]
     public partial LibrarySort Sort { get; set; } = LibrarySort.DormantLongest;
 
     [ObservableProperty]
@@ -768,6 +769,9 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     public bool ShowList => EmptyMessage is null && !IsGridView;
 
     public bool HasAlphabetSections => AlphabetSections.Any(section => section.IsAvailable);
+
+    public bool ShowAlphabetSpine => HasAlphabetSections
+        && Sort is LibrarySort.NameAscending or LibrarySort.NameDescending;
 
     /// <summary>Command-bar button face: the order currently in force.</summary>
     public string SortLabel => LabelFor(Sort);

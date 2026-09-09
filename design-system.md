@@ -139,12 +139,13 @@ does not govern the Stores panel's 720px, which is a card width holding controls
 
 **Grid is the default view. List is a toggle**, remembered per-session.
 
-A slim `# · A–Z` jump spine sits at the right of both views. It uses Data S in `TextDim`,
-keeps all 27 stops fixed, and dims unavailable sections without removing them. Activating a
-stop establishes `Name A–Z` order and brings the first visible title in that section into view;
-`#` owns titles that begin with a number or symbol. The spine takes its own 24px column plus
-the window's 10px resize inset, so it neither overlays cover art nor enters the OS hit-test band.
-Each stop is a named button with the standard visible focus treatment.
+A slim `# · A–Z` jump spine appears only while `Name A–Z` or `Name Z–A` is in force. It sits
+immediately left of the native scrollbar in both views, uses Data S in `TextDim`, keeps all 27
+stops fixed, and dims unavailable sections without removing them. Activating a stop preserves
+the active name-sort direction and brings the first visible title in that section into view;
+`#` owns titles that begin with a number or symbol. The spine takes its own 24px column while
+the scrollbar keeps the window's 10px resize inset, so neither overlays cover art nor enters
+the OS hit-test band. Each stop is a named button with the standard visible focus treatment.
 
 ```
 ┌──────────────┬────────────────────────────────────────────────────────┐

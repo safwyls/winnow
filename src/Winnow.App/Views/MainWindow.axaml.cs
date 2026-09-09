@@ -1171,9 +1171,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        // The spine is an alphabetic breakdown, so activating it establishes
-        // the order it describes before locating the requested section.
-        _library.Sort = LibrarySort.NameAscending;
+        // Visibility guarantees a name sort is already active. Keep its
+        // direction: Z-A is as deliberate a browsing order as A-Z.
         Dispatcher.UIThread.Post(() => ScrollToAlphabetSection(section.Label), DispatcherPriority.Background);
         e.Handled = true;
     }

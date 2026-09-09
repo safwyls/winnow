@@ -1661,16 +1661,15 @@
 
                 <!-- Cover wall. -->
                 <ScrollViewer Name="GridScroll"
-                              Classes="inner"
                               IsVisible="{Binding Library.ShowGrid}"
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto"
-                              Margin="0,0,34,0"
                               Padding="0">
                     <!-- Custom CoverWall (not ItemsRepeater) — see CoverWall.
-                         24px right margin clears its scrollbar overlay. -->
+                         58px right margin clears the alphabet spine and the
+                         native scrollbar without changing their positions. -->
                     <views:CoverWall Name="TileWall"
-                                     Margin="20,20,24,20"
+                                     Margin="20,20,58,20"
                                      Spacing="16"
                                      CellAspect="1.5"
                                      MinCellWidth="{Binding Library.TileWidth}"
@@ -1690,7 +1689,6 @@
                      Virtualized. PaneGround (opaque) because text must not
                      sit on a translucent field. -->
                 <Grid RowDefinitions="30,*" IsVisible="{Binding Library.ShowList}"
-                      Margin="0,0,34,0"
                       Background="{StaticResource PaneGround}">
 
                     <!-- Column headers. Click to sort; click active to flip. -->
@@ -1698,7 +1696,7 @@
                             Background="{StaticResource ChromeSurface}"
                             BorderBrush="{StaticResource Line}"
                             BorderThickness="0,0,0,1">
-                        <Grid ColumnDefinitions="2,32,18,*,136,104,92,24">
+                        <Grid ColumnDefinitions="2,32,18,*,136,104,92,58">
                             <Button AutomationProperties.Name="TITLE" Grid.Column="3" Classes="colhead"
                                     Command="{Binding Library.SortByTitleCommand}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
@@ -1761,7 +1759,7 @@
                                 <Border BorderBrush="{StaticResource Line}"
                                         BorderThickness="0,0,0,1"
                                         Height="44">
-                                    <Grid ColumnDefinitions="2,32,18,*,136,104,92,24">
+                                    <Grid ColumnDefinitions="2,32,18,*,136,104,92,58">
                                         <!-- 2px Volt selection edge (§6), bound to
                                              the row's own state for the same
                                              name-scope reason as the rail. -->
@@ -1854,14 +1852,16 @@
                                Text="{Binding Library.EmptyMessage}"/>
                 </Border>
 
-                <!-- Fixed-position #/A-Z navigation for large libraries. The
-                     10px right inset stays outside Windows' resize band. -->
-                <Border Width="24"
-                        Margin="0,6,10,10"
+                <!-- Fixed-position #/A-Z navigation for alphabetical views.
+                     Its right edge meets the native scrollbar's left edge;
+                     the scrollbar keeps §9.1's 10px resize inset. -->
+                <Border Name="AlphabetSpine"
+                        Width="24"
+                        Margin="0,6,22,10"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Stretch"
                         Background="{StaticResource PaneGround}"
-                        IsVisible="{Binding Library.HasAlphabetSections}"
+                        IsVisible="{Binding Library.ShowAlphabetSpine}"
                         ZIndex="2">
                     <ItemsControl ItemsSource="{Binding Library.AlphabetSections}">
                         <ItemsControl.ItemsPanel>

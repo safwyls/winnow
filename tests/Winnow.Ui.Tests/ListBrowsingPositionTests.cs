@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
@@ -126,6 +127,19 @@ public sealed class ListBrowsingPositionTests
             Flush();
             Assert.Equal(0, scroll.Offset.Y);
 
+            var spine = window.FindControl<Border>("AlphabetSpine")!;
+            Assert.False(spine.IsVisible);
+            library.Sort = LibrarySort.NameAscending;
+            Flush();
+            Assert.True(spine.IsVisible);
+            var scrollbar = scroll.GetVisualDescendants().OfType<ScrollBar>()
+                .Single(bar => bar.Orientation == Avalonia.Layout.Orientation.Vertical);
+            var spineBounds = new Rect(spine.TranslatePoint(default, window)!.Value, spine.Bounds.Size);
+            var scrollbarBounds = new Rect(
+                scrollbar.TranslatePoint(default, window)!.Value, scrollbar.Bounds.Size);
+            Assert.True(spineBounds.Right <= scrollbarBounds.Left);
+            Assert.InRange(scrollbarBounds.Left - spineBounds.Right, 0, 12);
+
             var buttons = window.GetVisualDescendants().OfType<Button>().ToArray();
             var jumpToT = buttons.Single(button => AutomationProperties.GetName(button) == "Jump to T");
             var jumpToA = buttons.Single(button => AutomationProperties.GetName(button) == "Jump to A");
@@ -142,12 +156,25 @@ public sealed class ListBrowsingPositionTests
             Assert.True(scroll.Offset.Y > 0);
             Assert.StartsWith("T", library.VisibleTiles.Last().Title, StringComparison.OrdinalIgnoreCase);
 
+            library.Sort = LibrarySort.NameDescending;
+            Flush();
+            scroll.Offset = default;
+            var jumpToC = buttons.Single(button => AutomationProperties.GetName(button) == "Jump to C");
+            jumpToC.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Flush();
+            Assert.Equal(LibrarySort.NameDescending, library.Sort);
+            Assert.True(scroll.Offset.Y > 0);
+
             if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
             {
                 Directory.CreateDirectory(directory);
                 using var frame = window.CaptureRenderedFrame();
                 frame!.Save(Path.Combine(directory, $"alphabet-{(grid ? "grid" : "list")}.png"));
             }
+
+            library.Sort = LibrarySort.PlaytimeHighToLow;
+            Flush();
+            Assert.False(spine.IsVisible);
         }
         finally
         {
