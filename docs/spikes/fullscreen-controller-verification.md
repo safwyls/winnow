@@ -133,6 +133,35 @@ detach. The IGDB source test verifies the separate high-resolution URL and cache
 The chosen rendition follows [IGDB's documented image sizes](https://api-docs.igdb.com/#images).
 Synthetic artwork proves layout and request behavior, not live publisher source quality.
 
+## Centered navigation and keyboard layout follow-up
+
+Header tests vary clock and controller text and assert the view list stays at the canvas
+center. Hovered actions remain unmarked after focus moves; selected sections retain a
+neutral underline distinct from mint focus. Details tests traverse the overview horizontally
+with zero, one and two screenshots, then return through the section tabs to the primary action.
+
+The controller guide has no ScrollViewer. Rendered text bounds fit at 1920×1080 and
+1280×720, including 140% text and 10% safe margins. The inspected capture is
+`C:/Temp/winnow-guide-fit-captures/fullscreen-controller-large-text-safe-area.png`.
+
+The shared keyboard has five weighted rows and an inverted-T arrow cluster. Tests exercise
+X backspace, RT Enter, masking, binding and length constraints, grapheme deletion and
+multiline caret movement on desktop and fullscreen. Inspected keyboard captures are
+`C:/Temp/winnow-keyboard-layout-captures/keyboard-tv-720p.png` and `keyboard-desktop.png`
+in that directory; the desktop fixture uses the minimum 1200×640 window.
+The other composition changes are fullscreen-only; desktop layout and shared commands
+retain their behavior.
+
+The full Release UI suite passed 211 tests in 34 seconds using
+`dotnet test tests/Winnow.Ui.Tests --artifacts-path C:/Temp/winnow-guide-fit -c Release -m:1
+--verbosity quiet --blame-hang-timeout 30s`. An initial full-suite run stalled while the
+guide fixture drained unrelated Home render jobs. The hang dump located the active UI
+thread in the render timer under that initial dispatcher drain. The fixture now mounts
+the controller guide before draining jobs; all visibility assertions remain in place.
+Focused keyboard, desktop navigation and fullscreen interaction checks also passed together
+(30 tests). No core/domain code changed in this follow-up.
+The final solution Release build passed with zero warnings and errors.
+
 ### Remaining device checks
 
 No physical controller or TV seating-distance test was performed in this environment. Check

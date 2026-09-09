@@ -90,6 +90,10 @@ up/down crosses library page edges; left/right in Activity changes weeks.
 - **Menu / Start:** open the quick menu.
 - **Right stick up / down:** scroll long content.
 
+While the on-screen keyboard is open, **X** backspaces and **RT** presses Enter.
+Enter closes the keyboard and sends Enter to a single-line field, or adds a newline to
+a multiline field; **B** closes the keyboard without submitting.
+
 Windows supports XInput controllers; Linux supports controllers exposed through readable
 `/dev/input/js*` devices. Battery status appears when XInput supplies it. Input pauses while
 Winnow is inactive, and held buttons must be released after reconnecting or returning from

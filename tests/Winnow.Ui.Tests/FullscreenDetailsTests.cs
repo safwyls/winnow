@@ -24,6 +24,64 @@ namespace Winnow.Ui.Tests;
 public sealed class FullscreenDetailsTests
 {
     [AvaloniaTheory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void Overview_actions_and_screenshots_are_horizontal_neighbors(int screenshotCount)
+    {
+        var now = DateTime.UtcNow;
+        using var details = new GameDetailsViewModel(TileFixture.Tile(now, title: "Across the room"), "Started", [], now,
+            images: [new WorkImages { WorkId = 1, Source = ImageSources.Igdb, Kind = ImageKinds.Screenshot,
+                ImageIds = string.Join(",", Enumerable.Range(1, screenshotCount).Select(index => $"shot{index}")), ObservedAt = now }]);
+        var page = new FullscreenDetailsPage(null!, details);
+        var window = new Window { Width = 1920, Height = 1080, Content = page };
+        window.Show();
+        try
+        {
+            Dispatcher.UIThread.RunJobs();
+            var buttons = page.GetVisualDescendants().OfType<Button>().ToArray();
+            var history = Assert.Single(buttons, button => Equals(button.Content, "Play history"));
+            var about = Assert.Single(buttons, button => Equals(button.Content, "About game"));
+            var screenshots = buttons.Where(button => button.Content is Image).ToArray();
+            Assert.Equal(screenshotCount, screenshots.Length);
+            page.FocusInitial();
+            var primary = window.FocusManager!.GetFocusedElement();
+            Assert.Equal(details.PrimaryAction?.Label ?? "More", Assert.IsType<Button>(primary).Content);
+            page.Handle(GamepadButtons.Down);
+            var tab = window.FocusManager.GetFocusedElement();
+            page.Handle(GamepadButtons.Down);
+            Assert.Same(history, window.FocusManager.GetFocusedElement());
+            page.Handle(GamepadButtons.Right);
+            Assert.Same(about, window.FocusManager.GetFocusedElement());
+            page.Handle(GamepadButtons.Down);
+            Assert.Same(about, window.FocusManager.GetFocusedElement());
+            foreach (var screenshot in screenshots)
+            {
+                page.Handle(GamepadButtons.Right);
+                Assert.Same(screenshot, window.FocusManager.GetFocusedElement());
+                page.Handle(GamepadButtons.Up);
+                Assert.Contains(Assert.IsType<Button>(window.FocusManager.GetFocusedElement()).Content, new object[] { "Journal", "Library" });
+                page.Handle(GamepadButtons.Down);
+                Assert.Same(screenshot, window.FocusManager.GetFocusedElement());
+            }
+            page.Handle(GamepadButtons.Right);
+            Assert.Same(screenshots.LastOrDefault() ?? about, window.FocusManager.GetFocusedElement());
+            var neighbors = new[] { history, about }.Concat(screenshots).ToArray();
+            for (var index = neighbors.Length - 2; index >= 0; index--)
+            {
+                page.Handle(GamepadButtons.Left);
+                Assert.Same(neighbors[index], window.FocusManager.GetFocusedElement());
+            }
+            Assert.Same(history, window.FocusManager.GetFocusedElement());
+            page.Handle(GamepadButtons.Up);
+            Assert.Same(tab, window.FocusManager.GetFocusedElement());
+            page.Handle(GamepadButtons.Up);
+            Assert.Same(primary, window.FocusManager.GetFocusedElement());
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
     [InlineData(true, false)]
     [InlineData(false, false)]
     [InlineData(true, true)]

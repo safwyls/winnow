@@ -3491,3 +3491,20 @@ Fullscreen landscapes have a separate cache provider so previously downloaded 72
 cannot satisfy high-resolution background requests. Desktop screenshot downloads retain their
 existing rendition. IGDB documents 1080p and its 2x suffix at
 [Images](https://api-docs.igdb.com/#images); source resolution still limits visible detail.
+
+## 2026-09-09 — Restore selected-section markers
+
+Selected sections and collections again retain a neutral underline; focus remains mint and
+hover remains unmarked. The visual specification previously said:
+
+> Text actions have transparent backgrounds and a mint underline only on focus. Hover leaves
+> no underline; current sections use bold text. The focused cover retains its outline.
+
+Main navigation now uses equal side regions so controller status and clock widths cannot
+shift its center. Details overview navigation follows the horizontal arrangement of actions
+and screenshot previews.
+
+Controller help now fits within16:9, including140%text and10%safe margins. The visual
+specification previously said:
+
+> Controller help shows a controller diagram with action callouts.

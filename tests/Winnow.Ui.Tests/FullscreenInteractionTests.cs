@@ -17,7 +17,7 @@ namespace Winnow.Ui.Tests;
 public sealed class FullscreenInteractionTests
 {
     [AvaloniaFact]
-    public void Hovered_and_current_actions_have_no_underline_when_focus_moves_elsewhere()
+    public void Hover_does_not_underline_actions_but_selected_sections_keep_a_neutral_underline()
     {
         var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell);
         using var television = new FullscreenView(context);
@@ -37,9 +37,41 @@ public sealed class FullscreenInteractionTests
             Assert.NotSame(margins, window.FocusManager!.GetFocusedElement());
             Assert.Equal(0, Assert.IsAssignableFrom<Avalonia.Media.ISolidColorBrush>(margins.BorderBrush).Color.A);
             foreach (var current in actions.Where(b => b.Classes.Contains("current") && !b.IsFocused))
-                Assert.Equal(0, Assert.IsAssignableFrom<Avalonia.Media.ISolidColorBrush>(current.BorderBrush).Color.A);
+                Assert.NotEqual(0, Assert.IsAssignableFrom<Avalonia.Media.ISolidColorBrush>(current.BorderBrush).Color.A);
             var focused = Assert.IsAssignableFrom<Button>(window.FocusManager.GetFocusedElement());
             Assert.NotEqual(0, Assert.IsAssignableFrom<Avalonia.Media.ISolidColorBrush>(focused.BorderBrush).Color.A);
+            Assert.All(actions.Where(b => b.Classes.Contains("current") && !b.IsFocused), current =>
+                Assert.NotEqual(((Avalonia.Media.ISolidColorBrush)focused.BorderBrush!).Color,
+                    ((Avalonia.Media.ISolidColorBrush)current.BorderBrush!).Color));
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public void Main_navigation_stays_centered_with_varying_controller_status_and_clock()
+    {
+        var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell);
+        using var television = new FullscreenView(context);
+        var window = new Window { Width = 1280, Height = 720, Content = television };
+        window.Show();
+        try
+        {
+            Dispatcher.UIThread.RunJobs();
+            var header = television.GetVisualDescendants().OfType<Grid>().Single(c => c.Name == "FullscreenHeader");
+            var nav = television.GetVisualDescendants().OfType<StackPanel>().Single(c => c.Name == "FullscreenRootNavigation");
+            var status = television.GetVisualDescendants().OfType<TextBlock>().Single(c => c.Name == "FullscreenControllerStatus");
+            var clock = television.GetVisualDescendants().OfType<TextBlock>().Single(c => c.Name == "FullscreenClock");
+            foreach (var text in new[] { "", "Controller disconnected", "Controller connected · Battery 100%" })
+            {
+                status.Text = text;
+                clock.Text = text.Length == 0 ? "1:01" : "11:59 PM";
+                Dispatcher.UIThread.RunJobs();
+                Assert.InRange(Math.Abs(nav.Bounds.Center.X - header.Bounds.Width / 2), 0, .01);
+                var clockEnd = clock.TranslatePoint(new Point(clock.Bounds.Width, 0), header)!.Value.X;
+                Assert.InRange(clockEnd, header.Bounds.Width - 1, header.Bounds.Width + 1);
+                var statusStart = status.TranslatePoint(default, header)!.Value.X;
+                Assert.True(statusStart >= nav.Bounds.Right);
+            }
         }
         finally { window.Close(); }
     }

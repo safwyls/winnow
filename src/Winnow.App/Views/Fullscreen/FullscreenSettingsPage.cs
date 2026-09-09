@@ -153,7 +153,17 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             rows.Children.Add(FullscreenUi.Text($"Winnow {app.ApplicationVersion}", 28, "TextDim"));
         }
         var main = new Grid { ColumnDefinitions = new ColumnDefinitions("2*,*"), ColumnSpacing = 56 };
-        main.Children.Add(FullscreenUi.Scroll(rows));
+        if (_section == "Controller")
+        {
+            // The guide is a single screen; give the illustration the remaining height.
+            var guide = new Grid { RowDefinitions = new RowDefinitions("*,Auto"), RowSpacing = 24 };
+            var contents = rows.Children.ToArray();
+            rows.Children.Clear();
+            guide.Children.Add(contents[0]);
+            Grid.SetRow(contents[1], 1); guide.Children.Add(contents[1]);
+            main.Children.Add(guide);
+        }
+        else main.Children.Add(FullscreenUi.Scroll(rows));
         var preview = FullscreenUi.Stack(FullscreenUi.Text(_section == "Appearance" ? "PREVIEW" : _section.ToUpperInvariant(), 24, "TextDim"),
             FullscreenUi.Text("Your next game is already here.", 48),
             FullscreenUi.Text(_section == "Appearance" ? "Changes here apply to fullscreen. Your desktop layout stays the same." : "Library and account settings apply to both desktop and fullscreen.", 28, "TextDim"));
@@ -213,36 +223,38 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             Canvas.SetLeft(icon, x); Canvas.SetTop(icon, y); art.Children.Add(icon);
         }
         var diagram = new Grid { ColumnDefinitions = new ColumnDefinitions("*,1.6*,*"), ColumnSpacing = 24 };
-        StackPanel Callouts(params (string Glyph, string Label, string Detail)[] items)
+        StackPanel Callouts(params (string Glyph, string Label)[] items)
         {
-            var panel = new StackPanel { Spacing = 16, VerticalAlignment = VerticalAlignment.Center };
-            foreach (var (glyph, label, detail) in items)
+            var panel = new StackPanel { Spacing = 24, VerticalAlignment = VerticalAlignment.Center };
+            foreach (var (glyph, label) in items)
             {
-                var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
-                heading.Children.Add(FullscreenGlyphs.Icon(glyph, 36)); heading.Children.Add(FullscreenUi.Text(label, 28));
-                var line = new Border { Height = 1, Margin = new Thickness(0, 8, 0, 0) };
+                var heading = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), ColumnSpacing = 16 };
+                var keys = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+                foreach (var key in glyph.Split('/')) keys.Children.Add(FullscreenGlyphs.Icon(key, 36));
+                heading.Children.Add(keys);
+                var labelText = FullscreenUi.Text(label, 28);
+                Grid.SetColumn(labelText, 1); heading.Children.Add(labelText);
+                var line = new Border { Height = 1, Margin = new Thickness(0, 12, 0, 0) };
                 line[!Border.BackgroundProperty] = new DynamicResourceExtension("Line");
-                var callout = FullscreenUi.Stack(heading, FullscreenUi.Text(detail, 24, "TextDim"), line);
-                callout.Spacing = 8; panel.Children.Add(callout);
+                var callout = FullscreenUi.Stack(heading, line);
+                callout.Spacing = 0; panel.Children.Add(callout);
             }
             return panel;
         }
-        diagram.Children.Add(Callouts(("LB", "Main screens", "LB / RB switches sections."),
-            ("LT", "Tabs & shelves", "LT / RT switches local sections."),
-            ("Dpad", "Move", "D-pad or left stick."),
-            ("View", "Search", "Find a game.")));
+        diagram.Children.Add(Callouts(("LB/RB", "Main screens"),
+            ("LT/RT", "Tabs & shelves"),
+            ("Dpad/LS", "Move"),
+            ("View", "Search"),
+            ("Menu", "Quick menu")));
         var center = new Viewbox { Child = art, Stretch = Stretch.Uniform, VerticalAlignment = VerticalAlignment.Center };
         Grid.SetColumn(center, 1); diagram.Children.Add(center);
-        var right = Callouts(("Y", "Context action", "More, filters or reset."),
-            ("B", "Back", "Return or discard an edit."),
-            ("A", "Select", "Open a game or choice."),
-            ("X", "Play / edit note", "As shown in the footer."));
+        var right = Callouts(("Y", "More / filters / reset"),
+            ("B", "Back / cancel"),
+            ("A", "Select"),
+            ("X", "Play / edit note"),
+            ("RS", "Scroll long content"));
         Grid.SetColumn(right, 2); diagram.Children.Add(right);
-        var extras = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*"), ColumnSpacing = 48, Margin = new Thickness(0, 24, 0, 0) };
-        extras.Children.Add(FullscreenGlyphs.Hints("Menu  Quick menu"));
-        var scrolling = FullscreenUi.Text("Right stick  Scroll long content", 24, "TextDim");
-        Grid.SetColumn(scrolling, 1); extras.Children.Add(scrolling);
-        return FullscreenUi.Stack(diagram, extras);
+        return diagram;
     }
 
     private async Task RefreshLibraryAsync(int version)

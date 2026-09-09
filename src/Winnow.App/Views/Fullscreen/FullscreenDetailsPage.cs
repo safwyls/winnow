@@ -126,7 +126,7 @@ public sealed class FullscreenDetailsPage : FullscreenPage
         var historyButton = FullscreenUi.Button("Play history", () => Context.Push(new FullscreenDetailsHistoryPage(Context, _details.Tracker)));
         var aboutButton = FullscreenUi.Button("About game", ShowAbout);
         history.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16, Children = { historyButton, aboutButton } });
-        _rows.Add([historyButton, aboutButton]);
+        var overviewControls = new List<Control> { historyButton, aboutButton };
         var summary = FullscreenUi.Text(_details.SummaryText ?? _details.EmptyBodyText, 28);
         summary.MaxLines = 2;
         summary.TextTrimming = TextTrimming.CharacterEllipsis;
@@ -160,8 +160,10 @@ public sealed class FullscreenDetailsPage : FullscreenPage
             }
             Grid.SetRow(row, 2);
             about.Children.Add(row);
-            _rows.Add(controls.ToArray());
+            overviewControls.AddRange(controls);
         }
+        // These controls occupy adjacent columns, so their focus neighbors run horizontally.
+        _rows.Add(overviewControls.ToArray());
         var columns = new Grid { ColumnDefinitions = new ColumnDefinitions("4*,5*"), Name = "FullscreenDetailsOverview" };
         history.Margin = new Thickness(0, 0, 48, 0);
         columns.Children.Add(history);

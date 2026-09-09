@@ -542,8 +542,9 @@ ratio while keeping the 1080px reference height and uniform scaling. The default
 **For you** opens on a focused recommendation in a horizontal cover shelf. A large title,
 one-sentence reason and game artwork above the shelf follow the selection. Up/down changes
 shelves; left/right moves among their games. The selected cover has the only focus ring.
-Text actions have transparent backgrounds and a mint underline only on focus. Hover leaves
-no underline; current sections use bold text. The focused cover retains its outline. No desktop
+Text actions have transparent backgrounds and a mint underline on focus. Hover leaves
+no underline; current sections and collections use bold text and a neutral underline.
+The focused cover retains its outline. No desktop
 rail, density control, hover actions or small cover buttons appear here.
 
 **Library** uses a regular cover grid and a short row of collection choices. A dedicated
@@ -575,6 +576,10 @@ top corner. Unknown battery state is omitted. Nested sheets trap focus and resto
 close. Destructive actions require confirmation; unplugging a controller preserves position
 and provides a reconnect message with keyboard fallback. Reduced motion removes travel and
 zoom while retaining immediate selection feedback.
+
+The main view list stays centered on the canvas independently of controller status and clock
+width. Equal side regions hold the wordmark and status; long status text truncates within
+its region instead of moving the view list.
 
 Search, staged filtering, text entry, journal editing and a paged file browser use their own
 fullscreen pages. Native and third-party windows need separate controller validation;
@@ -615,6 +620,8 @@ Overview is a bounded composition without a scroll fold. A vertical rule separat
 history/return reason and Play history/About game actions from a two-line synopsis and two
 visible screenshot previews. About game opens the full description, publisher and reception
 in a reading page. LT/RT changes local sections; all management actions remain controller-accessible.
+Play history, About game and screenshot previews form one left-to-right focus row matching
+their placement; Up returns to the section tabs.
 
 **Activity** is a personal history view. Sessions, Updates and Journal are local choices
 reached with directional navigation; bumpers continue switching the main screens. Large
@@ -635,8 +642,9 @@ or activates toggles, and B returns. Appearance has a readable live sample. Full
 its text scale (100–140% in ten-point steps), screen margins (0–10% in one-point steps),
 motion, theme and dormancy preferences. Defaults are 100%, 5%, motion enabled, Winnow and
 cover dimming enabled; Fit ultrawide defaults off. Boolean settings use visible switch tracks
-and thumbs with an On/Off status. Controller help shows a controller diagram with action
-callouts. These preferences do not change desktop appearance, library facts or
+and thumbs with an On/Off status. Controller help fits one 16:9 screen with five concise
+action mappings on either side of a proportional diagram and keyboard fallback below.
+These preferences do not change desktop appearance, library facts or
 recommendations. Content visibility, platform credentials, journal opt-in and application
 startup settings use the same value and validation in both UIs. Reset requires a confirmation
 naming the affected appearance settings. Library tools has TV-owned forms for manual games,
@@ -651,6 +659,14 @@ entry is closed. Embedded patch notes use the same window bridge with up/down sc
 bumper link navigation. Provider CAPTCHAs, third-party sign-in pages and phone approval can
 still require their own input; real provider/controller validation remains required before
 claiming complete controller-only sign-in.
+
+The on-screen keyboard uses five QWERTY rows with Backspace beside the number row,
+Delete at the upper right, Case at the left of the home row, Enter at its right, and a wide
+bottom Space key beside an inverted-T arrow cluster. X backspaces and RT invokes Enter
+from any key. Enter inserts a newline in multiline fields; in single-line fields it closes
+the keyboard and sends Enter to the original field. B and Done close without submitting.
+Desktop and fullscreen share editing behavior, password masking and field constraints,
+with separate key sizes for each surface.
 
 Steam configuration includes a masked, surface-local API key draft, save and confirmed
 removal, account ownership scope, and the shared sign-in consent with optional purchase

@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Headless;
@@ -40,17 +41,20 @@ public sealed class FullscreenSettingsTests
         finally { window.Close(); page.Dispose(); }
     }
 
-    [AvaloniaFact]
-    public void Controller_diagram_keeps_text_and_scroll_reachable_at_large_text()
+    [AvaloniaTheory]
+    [InlineData(1920, 1080, 1, 5)]
+    [InlineData(1280, 720, 1.4, 5)]
+    [InlineData(1280, 720, 1.4, 10)]
+    public void Controller_guide_fits_one_screen_at_16_by_9(double width, double height, double textScale, double margins)
     {
-        var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell) { TextScale = 1.4 };
+        var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell) { TextScale = textScale, SafeMarginPercent = margins };
         using var television = new FullscreenView(context);
-        var window = new Window { Width = 1280, Height = 720, Content = television };
+        var window = new Window { Width = width, Height = height, Content = television };
         try
         {
-            window.Show(); Dispatcher.UIThread.RunJobs();
+            window.Show();
+            // Mount the guide before draining frames; this fixture does not exercise the feed.
             for (var i = 0; i < 3; i++) television.Handle(GamepadButtons.Next);
-            Dispatcher.UIThread.RunJobs();
             var settings = Assert.IsType<FullscreenSettingsPage>(television.CurrentPage);
             settings.Handle(GamepadButtons.PageNext);
             Dispatcher.UIThread.RunJobs();
@@ -58,17 +62,20 @@ public sealed class FullscreenSettingsTests
             Assert.Equal(Avalonia.Media.Stretch.Uniform, Assert.IsType<Viewbox>(diagram.Parent).Stretch);
             var outline = Assert.IsType<Avalonia.Controls.Shapes.Path>(diagram.Children[0]);
             Assert.InRange(outline.Data!.Bounds.Width / outline.Data.Bounds.Height, 1.4, 1.5);
-            Assert.Contains(settings.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "D-pad or left stick.");
-            Assert.Contains(settings.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Open a game or choice.");
-            Capture(window, "controller-large-text");
-            settings.Handle(GamepadButtons.ScrollDown); Dispatcher.UIThread.RunJobs();
-            var scrolling = settings.GetVisualDescendants().OfType<ScrollViewer>().Single();
-            Assert.True(scrolling.Extent.Height <= scrolling.Viewport.Height || scrolling.Offset.Y > 0);
-            Capture(window, "controller-large-text-scrolled");
+            Assert.Contains(settings.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Move");
+            Assert.Contains(settings.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Select");
+            Assert.Empty(settings.GetVisualDescendants().OfType<ScrollViewer>());
+            foreach (var text in settings.GetVisualDescendants().OfType<TextBlock>())
+            {
+                var position = text.TranslatePoint(default, settings)!.Value;
+                Assert.True(position.Y >= 0 && position.Y + text.Bounds.Height <= settings.Bounds.Height + 1,
+                    $"{text.Text}: bottom {position.Y + text.Bounds.Height}, page {settings.Bounds.Height}");
+            }
+            Capture(window, margins > 5 ? "controller-large-text-safe-area" : textScale > 1 ? "controller-large-text" : "controller");
             settings.Handle(GamepadButtons.PageNext); Dispatcher.UIThread.RunJobs();
             Assert.Contains(settings.GetVisualDescendants().OfType<Button>(), b => AutomationProperties.GetName(b) == "Journal after playing");
             settings.Handle(GamepadButtons.PagePrevious); Dispatcher.UIThread.RunJobs();
-            Assert.Contains(settings.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "LT / RT switches local sections.");
+            Assert.Contains(settings.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Tabs & shelves");
         }
         finally { window.Close(); }
     }

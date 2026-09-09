@@ -76,7 +76,8 @@ public sealed class FullscreenView : UserControl, IDisposable
             }
         });
         Styles.Add(new Style(s => s.OfType<Button>().Class("tv-action").Class("current"))
-        { Setters = { new Setter(TemplatedControl.FontWeightProperty, FontWeight.Bold) } });
+        { Setters = { new Setter(TemplatedControl.FontWeightProperty, FontWeight.Bold),
+            new Setter(TemplatedControl.BorderBrushProperty, new DynamicResourceExtension("TextDim")) } });
         Styles.Add(new Style(s => s.OfType<Button>().Class("tv-action").Class(":focus"))
         { Setters = { new Setter(TemplatedControl.BorderBrushProperty, new DynamicResourceExtension("Volt")), new Setter(TemplatedControl.ForegroundProperty, new DynamicResourceExtension("Volt")) } });
         _roots = [new FullscreenBrowsePage(context, true), new FullscreenBrowsePage(context, false), new FullscreenActivityPage(context), new FullscreenSettingsPage(context)];
@@ -88,13 +89,14 @@ public sealed class FullscreenView : UserControl, IDisposable
             tab.Background = Brushes.Transparent;
             tab.Padding = new Thickness(12, 8);
         }
-        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto") };
+        var header = new Grid { Name = "FullscreenHeader", ColumnDefinitions = new ColumnDefinitions("*,Auto,*") };
         var brand = FullscreenUi.Text("WINNOW", 32);
         brand[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension("DisplayFont");
         brand.FontWeight = FontWeight.Bold;
         _clock[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension("DataFont");
         _brand.Children.Add(FullscreenGlyphs.Icon("Winnow", 42));
         _brand.Children.Add(brand);
+        _brand.HorizontalAlignment = HorizontalAlignment.Left;
         header.Children.Add(_brand);
         _navigation.Children.Add(FullscreenGlyphs.Icon("LB"));
         foreach (var tab in _tabs) _navigation.Children.Add(tab);
@@ -113,9 +115,16 @@ public sealed class FullscreenView : UserControl, IDisposable
         backContent.Children.Add(_backLabel);
         _back.Content = backContent;
         header.Children.Add(_back);
-        _status.Margin = new Thickness(16, 0, 24, 0);
-        Grid.SetColumn(_status, 2); header.Children.Add(_status);
-        Grid.SetColumn(_clock, 3); header.Children.Add(_clock);
+        var status = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(16, 0, 0, 0) };
+        _status.Name = "FullscreenControllerStatus";
+        _clock.Name = "FullscreenClock";
+        _status.Margin = new Thickness(0, 0, 24, 0);
+        _status.HorizontalAlignment = HorizontalAlignment.Right;
+        _status.TextWrapping = TextWrapping.NoWrap;
+        _status.TextTrimming = TextTrimming.CharacterEllipsis;
+        status.Children.Add(_status);
+        Grid.SetColumn(_clock, 1); status.Children.Add(_clock);
+        Grid.SetColumn(status, 2); header.Children.Add(status);
         _safe.Children.Add(header); Grid.SetRow(_body, 1); _safe.Children.Add(_body);
         var footer = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), VerticalAlignment = VerticalAlignment.Bottom };
         footer.Children.Add(_hints);
