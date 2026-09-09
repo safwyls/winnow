@@ -146,6 +146,9 @@ public sealed class DataDirectoryOverrideTests : IDisposable
 
         using var provider = services.BuildServiceProvider();
 
+        Assert.NotNull(provider.GetRequiredService<LifecycleSyncService>());
+        Assert.NotNull(provider.GetRequiredService<Winnow.Core.Repositories.ILifecycleRepository>());
+
         Assert.Equal(
             location.DatabasePath,
             provider.GetRequiredService<ISqliteConnectionFactory>().DatabasePath);

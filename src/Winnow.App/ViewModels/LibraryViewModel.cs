@@ -25,8 +25,8 @@ namespace Winnow.App.ViewModels;
 /// </summary>
 public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGameTileSource
 {
-    /// <summary>Rail stub for the unrunnable bucket — no data source in M0, always zero.</summary>
-    public const string WontRunKey = "wont_run";
+    /// <summary>The lifecycle bucket, derived from dated external evidence.</summary>
+    public const string DerelictKey = LibraryBuckets.Derelict;
 
     /// <summary>
     /// The rail's "All games" row. Not a bucket key — no tile is ever in it, and
@@ -287,6 +287,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             new BucketViewModel(LibraryBuckets.NeverPlayed, "Never played"),
             new BucketViewModel(LibraryBuckets.Bounced, "Started"),
             new BucketViewModel(LibraryBuckets.Retired, "Played out"),
+            new BucketViewModel(LibraryBuckets.Derelict, "Derelict"),
         ];
 
         // §4: the view mode is remembered per session — and so is the order, for
@@ -1089,7 +1090,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                     epicLaunchKey: EpicKeyFor(member.ReleaseId),
                     storefront: storefronts.GetValueOrDefault(ownership?.Store == "epic"
                         ? "epic:" + EpicKeyFor(member.ReleaseId)?.Namespace
-                        : "gog:" + gogProductIdByRelease.GetValueOrDefault(member.ReleaseId))));
+                        : "gog:" + gogProductIdByRelease.GetValueOrDefault(member.ReleaseId)))
+                    with { Lifecycle = member.Lifecycle });
 
                 coverage.Add(new CoverageEntry
                 {
@@ -2808,6 +2810,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                 "Nothing's been patched since you last played. This fills up on its own.",
             LibraryBuckets.NeverPlayed =>
                 "You've played everything you own past the refund window. Genuinely rare.",
+            LibraryBuckets.Derelict =>
+                "No games have enough lifecycle evidence for Derelict yet. This fills in as metadata arrives.",
             _ => "Nothing here yet.",
         };
     }

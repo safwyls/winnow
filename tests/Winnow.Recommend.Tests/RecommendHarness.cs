@@ -34,6 +34,8 @@ public sealed class RecommendHarness : IDisposable
         UpdateEvents = new UpdateEventRepository(_db.Factory);
         Facets = new FacetRepository(_db.Factory);
         Feedback = new FeedFeedbackRepository(_db.Factory);
+        Lifecycle = new LifecycleRepository(_db.Factory);
+        HiddenGames = new HiddenGameRepository(_db.Factory);
 
         // The account-visibility filter's two halves: the preference and the
         // per-account rows it is decided from. Both live behind the bucket
@@ -68,6 +70,8 @@ public sealed class RecommendHarness : IDisposable
 
     /// <summary>The feedback loop's storage — verdicts, surfacings, endorsements (migration 0011).</summary>
     public FeedFeedbackRepository Feedback { get; }
+    public LifecycleRepository Lifecycle { get; }
+    public HiddenGameRepository HiddenGames { get; }
 
     /// <summary>Stored preferences, including the account scope the bucket query reads.</summary>
     public SettingsRepository Settings { get; }

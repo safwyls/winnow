@@ -95,6 +95,8 @@ public sealed class IgdbTestHost : IDisposable
             .ConfigurePrimaryHttpMessageHandler(() => Handler);
         services.AddHttpClient<IIgdbClient, IgdbClient>()
             .ConfigurePrimaryHttpMessageHandler(() => Handler);
+        services.AddHttpClient<IIgdbLifecycleClient, IgdbLifecycleClient>()
+            .ConfigurePrimaryHttpMessageHandler(() => Handler);
 
         _services = services.BuildServiceProvider();
     }

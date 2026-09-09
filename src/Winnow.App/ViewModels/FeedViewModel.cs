@@ -317,7 +317,9 @@ public partial class FeedViewModel : ObservableObject
 
         CandidateCountText = snapshot.CandidateCount.ToString("N0");
         HasCandidates = !snapshot.Failed && snapshot.CandidateCount > 0;
-        ConfidenceNote = NoteFor(snapshot.Confidence, snapshot.Failed);
+        ConfidenceNote = snapshot.Shelves.Count > 0 && snapshot.Shelves.All(s => s.Id == "derelict")
+            ? null
+            : NoteFor(snapshot.Confidence, snapshot.Failed);
 
         if (snapshot.Failed)
         {
@@ -629,7 +631,9 @@ public partial class FeedViewModel : ObservableObject
                 continue;
             }
 
-            if (Spoken(shelf, item.Reason))
+            // Lifecycle facts may legitimately repeat across games; holding them back
+            // for prose variety would prevent a review shelf from replenishing.
+            if (shelf.Id != "derelict" && Spoken(shelf, item.Reason))
             {
                 continue;
             }

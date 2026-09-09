@@ -19,6 +19,20 @@ public sealed class GameDetailsViewModelTests
 {
     private static readonly DateTime Now = new(2026, 8, 24, 12, 0, 0, DateTimeKind.Utc);
 
+    [Fact]
+    public void Default_action_prefers_viable_copy_to_installed_offline_copy()
+    {
+        var offline = TileEntry.For(1, 1, 1, "steam", 0, null,
+            new Ownership { ReleaseId = 1, Store = "steam", Installed = true }, steamAppId: "80")
+            with { Lifecycle = new(Winnow.Core.Lifecycle.GameLifecycleStatus.Offline, 0.98, "IGDB reports offline status.") };
+        var viable = TileEntry.For(2, 2, 1, "steam", 0, null,
+            new Ownership { ReleaseId = 2, Store = "steam", Installed = false }, steamAppId: "81");
+        var tile = TileFixture.Tile(Now, [offline, viable], 1, LibraryBuckets.NeverPlayed);
+        Assert.Same(viable, tile.PlayableEntry);
+        Assert.True(tile.IsInstallAction);
+        Assert.Same(offline, tile.Primary);
+    }
+
     // ══ Link validation — the security boundary ═════════════════════════════
     //
     // update_events.url is captured from a network response (§4.5), and an

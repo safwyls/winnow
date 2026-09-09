@@ -2588,3 +2588,31 @@ The bookmark's pointed outline carries more visual weight to the left than the c
 icons, so its vector shifts right by one pixel inside the unchanged button bounds. The visual
 spec previously said: “The bookmark and its inset plus are symmetric around the same
 centerline as the other icons.”
+
+## 2026-09-08 — Derelict uses dated lifecycle evidence
+
+Derelict replaces the unimplemented Won't Run bucket. Its states distinguish cancellation,
+shutdown, delisting and inferred inactivity; delisting does not establish that an owned copy
+cannot launch. Observations remain raw facts and classification is recomputed on read.
+The following text was replaced in the governing documents:
+
+> | Bucket: unrunnable (hidden from the rail until the signal is viable) | `Won't run` | `Dead` |
+
+> | Dead | No viable platform, delisted, or launch-failure flagged |
+
+> **Precedence**, in the order the query tests: never-played, retired, stale-but-patched,
+> bounced, active.
+
+> Unassigned tasks left outside beta are new scoring signals and evaluation research
+> (TASK-135–138), achievement ingestion (TASK-15), per-edition years (TASK-13), Dead-bucket
+> support (TASK-14), broader cross-store automation (TASK-37), notification and navigation
+> features (TASK-108–110, TASK-114), optional presentation work (TASK-27, TASK-42, TASK-43,
+> TASK-80–82), and deferred import/research or test maintenance (TASK-40, TASK-41, TASK-44,
+> TASK-46, TASK-49, TASK-65).
+
+> `GetShelvesAsync(request)` is the second entry point and the one a feed UI should use: the
+> same scoring pass served as **several themed shelves**, each with its own one-line pitch and
+> its own membership rule, every one of them fully populated at Tier 0. §6a is the argument.
+
+> **Will-it-run / Dead bucket**: §6.1 lists Dead (delisted, no viable platform); nothing
+> ingests that fact yet. When it exists it becomes hard exclusion #6.

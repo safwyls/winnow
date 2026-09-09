@@ -30,6 +30,11 @@ internal static class ReasonBuilder
         RecommendationTuning tuning,
         ShelfReasonLedger? ledger = null)
     {
+        if (reason.Primary == ReasonSignal.Lifecycle && reason.Evidence.Lifecycle is { } lifecycle)
+        {
+            return $"{lifecycle.Reason.TrimEnd('.', '!', '?')} ({lifecycle.Confidence.ToString("P0", System.Globalization.CultureInfo.InvariantCulture)} confidence).";
+        }
+
         var budget = Math.Max(40, tuning.ReasonCharacterBudget);
         var evidence = reason.Evidence;
 

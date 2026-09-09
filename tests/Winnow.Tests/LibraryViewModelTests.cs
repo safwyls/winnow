@@ -23,6 +23,30 @@ public sealed class LibraryViewModelTests
 {
     private static readonly DateTime Now = new(2026, 8, 23, 12, 0, 0, DateTimeKind.Utc);
 
+    [Fact]
+    public async Task Derelict_rail_filters_games_and_details_explain_the_evidence()
+    {
+        using var fixture = new LibraryFixture();
+        var releaseId = await fixture.SeedAsync("Closed world", minutes: 0, lastPlayed: null);
+        await fixture.SeedAsync("Still waiting", minutes: 0, lastPlayed: null);
+        await fixture.AddLifecycleAsync(releaseId);
+        var library = fixture.CreateViewModel();
+        await library.LoadCommand.ExecuteAsync(null);
+
+        var derelict = library.Buckets.Single(b => b.Key == LibraryViewModel.DerelictKey);
+        Assert.Equal(1, derelict.Count);
+        library.SelectBucketCommand.Execute(derelict);
+        var tile = Assert.Single(library.VisibleTiles);
+        Assert.Equal("Closed world", tile.Title);
+        Assert.Equal("Derelict", tile.BucketLabel);
+        Assert.True(tile.HasLifecycle);
+        Assert.Contains("Offline", tile.LifecycleText);
+        Assert.Contains("IGDB", tile.LifecycleText, StringComparison.OrdinalIgnoreCase);
+        using var details = new GameDetailsViewModel(tile, tile.BucketLabel, [], DateTime.UtcNow);
+        Assert.Equal(tile.LifecycleText, details.LifecycleText);
+        Assert.True(details.HasLifecycle);
+    }
+
     // ── Sort (§4: remembered per session, and view-agnostic) ─────────────────
 
     [Fact]
@@ -1251,6 +1275,20 @@ public sealed class LibraryViewModelTests
         public IUpdateEventRepository Updates { get; }
 
         public ILibraryQueryRepository Queries { get; }
+
+        public async Task<long> AddLifecycleAsync(long releaseId)
+        {
+            var release = (await Releases.GetAsync(releaseId))!;
+            await Works.ApplyEnrichmentAsync(new Winnow.Core.Queries.WorkEnrichment(release.WorkId, IgdbId: 123));
+            return await new LifecycleRepository(_db.Factory).AppendAsync(new Winnow.Core.Lifecycle.LifecycleObservation
+            {
+                ReleaseId = releaseId,
+                Source = "igdb",
+                SourceId = "123",
+                ObservedAt = DateTime.UtcNow,
+                Signals = new() { IgdbStatus = "offline" },
+            });
+        }
 
         public IPlaytimeSnapshotRepository Snapshots { get; }
 

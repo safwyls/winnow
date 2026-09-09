@@ -6,6 +6,7 @@
 /// </summary>
 public static class LibraryBuckets
 {
+    public const string Derelict = "derelict";
     /// <summary>Zero minutes and no last-played date: the game was never opened.</summary>
     public const string NeverPlayed = "never_played";
 
@@ -194,7 +195,9 @@ public sealed class GameGrouping
     /// entries at sixty minutes each are two Active rows and one Bounced game,
     /// so the thresholds are re-applied to the sum.
     /// </summary>
-    public string Bucket { get; }
+    public string Bucket { get; private init; }
+
+    public Winnow.Core.Lifecycle.GameLifecycle? Lifecycle { get; private init; }
 
     /// <summary>Minutes summed across every visible entry of this game.</summary>
     public long PlaytimeMinutes { get; }
@@ -246,26 +249,28 @@ public sealed class GameGrouping
         IEnumerable<Winnow.Core.Identity.IPlayedEntry> entries,
         DateTime? majorUpdateAt,
         int unreadUpdateCount,
-        BucketThresholds thresholds)
+        BucketThresholds thresholds,
+        Winnow.Core.Lifecycle.GameLifecycle? lifecycle = null)
     {
         var total = Winnow.Core.Identity.CoveragePlaytime.Across(entries);
 
         return new GameGrouping(
             resolvedWorkId,
-            LibraryBucketRules.Classify(
+            lifecycle?.IsDerelict == true ? LibraryBuckets.Derelict : LibraryBucketRules.Classify(
                 total.PlaytimeMinutes, total.LastPlayedAt, majorUpdateAt, thresholds),
             total.PlaytimeMinutes,
             total.LastPlayedAt,
             majorUpdateAt,
             // No push, no count. The pair is derived here so it cannot disagree.
             majorUpdateAt is null ? 0 : unreadUpdateCount,
-            total.EntryCount);
+            total.EntryCount) { Lifecycle = lifecycle };
     }
 }
 
 /// <summary>One row of the derived-bucket query: the bucket for a single ownership.</summary>
 public sealed record OwnershipBucket : Winnow.Core.Identity.IPlayedEntry
 {
+    public Winnow.Core.Lifecycle.GameLifecycle? Lifecycle { get; init; }
     public required long OwnershipId { get; init; }
     public required long ReleaseId { get; init; }
 

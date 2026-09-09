@@ -601,6 +601,10 @@
                                 </Border>
                             </StackPanel>
 
+                            <TextBlock Classes="body" TextWrapping="Wrap"
+                                       IsVisible="{Binding HasLifecycle}"
+                                       Text="{Binding LifecycleText}"/>
+
                             <!-- ── Band 2: my history ─────────────────────────── -->
                             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="26"
                                   AutomationProperties.Name="{Binding HistoryGroupName}"

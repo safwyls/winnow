@@ -11,6 +11,24 @@ namespace Winnow.Tests;
 /// </summary>
 public sealed class FeedViewModelTests
 {
+    [Fact]
+    public async Task Derelict_only_feed_shows_evidence_without_playtime_confidence_claim()
+    {
+        var tiles = new FakeTileSource();
+        const string reason = "IGDB reports cancellation (99% confidence).";
+        var shelf = Shelf("derelict", "Derelict", "Games with lifecycle evidence.", Item(tiles, 1, reason));
+        var snapshot = new FeedSnapshot([shelf], 0, FeedConfidence.EarlyDays, Failed: false);
+        var feed = new FeedViewModel(new FakeFeedService(snapshot), tiles);
+
+        await feed.LoadCommand.ExecuteAsync(null);
+
+        Assert.True(feed.ShowShelves);
+        Assert.False(feed.ShowMessage);
+        Assert.False(feed.ShowCandidates);
+        Assert.False(feed.HasConfidenceNote);
+        Assert.Equal(reason, Assert.Single(Assert.Single(feed.Shelves).Cards).Reason);
+    }
+
     /// <summary>A real reason string covering playtime, year, patch title and taste clause.</summary>
     private const string PatchedReason =
         "You put 2.8 hours into this in 2021 and it has had an update since, most recently \"PATCH NOTES - S06.05.02\". This matches your taste in Survival games.";

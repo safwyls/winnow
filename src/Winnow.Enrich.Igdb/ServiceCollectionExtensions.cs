@@ -98,6 +98,15 @@ public static class ServiceCollectionExtensions
             .AddHttpMessageHandler<IgdbResilienceHandler>()
             .AddHttpMessageHandler<IgdbRateLimitingHandler>();
 
+        services.AddHttpClient<IIgdbLifecycleClient, IgdbLifecycleClient>(client =>
+            {
+                client.BaseAddress = options.BaseAddress;
+                client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
+            })
+            .AddHttpMessageHandler<IgdbAuthenticationHandler>()
+            .AddHttpMessageHandler<IgdbResilienceHandler>()
+            .AddHttpMessageHandler<IgdbRateLimitingHandler>();
+
         return services;
     }
 

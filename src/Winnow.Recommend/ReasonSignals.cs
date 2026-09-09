@@ -63,6 +63,9 @@ public enum ReasonSignal
 
     /// <summary>Nothing else was true. The last-resort frame.</summary>
     Rotation,
+
+    /// <summary>External lifecycle evidence, independent of recommendation scores.</summary>
+    Lifecycle,
 }
 
 /// <summary>
@@ -74,6 +77,9 @@ public enum ReasonSignal
 /// </summary>
 public sealed record ReasonEvidence
 {
+    /// <summary>Derived lifecycle and its source explanation for the Derelict shelf.</summary>
+    public Core.Lifecycle.GameLifecycle? Lifecycle { get; init; }
+
     /// <summary>The release whose card this is. Also the deterministic variant selector.</summary>
     public required long ReleaseId { get; init; }
 

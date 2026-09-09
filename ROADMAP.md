@@ -83,14 +83,17 @@ verification. TASK-32 now has passing Ubuntu smoke coverage for native discovery
 Proton-environment attribution. Actual Wine/Proton game compatibility remains unmeasured.
 
 Unassigned tasks left outside beta are new scoring signals and evaluation research
-(TASK-135–138), achievement ingestion (TASK-15), per-edition years (TASK-13), Dead-bucket
-support (TASK-14), broader
+(TASK-135–138), achievement ingestion (TASK-15), per-edition years (TASK-13), broader
 cross-store automation (TASK-37), notification and navigation features (TASK-108–110,
 TASK-114), optional presentation work (TASK-27, TASK-42, TASK-43, TASK-80–82), and deferred
 import/research or test maintenance (TASK-40, TASK-41, TASK-44, TASK-46, TASK-49, TASK-65).
 These remain useful work, but do not repair the beta's existing core loop. Exact history
 aggregates (TASK-139) are included because they fix tier decisions and avoid repeated sampling
 reads; new ranking weights can wait for evidence from beta use.
+
+TASK-14 implements the Derelict library bucket and feed shelf using dated IGDB and Steam
+lifecycle evidence. Classification is local and recomputed; missing data remains unknown.
+PCGamingWiki and Wikidata enrichment remain optional follow-up work.
 
 ## 4. Excluded, and deferred
 

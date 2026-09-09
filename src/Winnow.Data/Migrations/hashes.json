@@ -26,5 +26,6 @@
   "0025_manual_entries.sql": "7594e8a8d9d58b626e6cf959ff35ed9ea860e0d3c921f7051178d2e378cb953f",
   "0026_igdb_pins.sql": "68beb98e71e69a325459b95a18ca65a02119ee5caf8d5d8414d954404ed9cddf",
   "0027_work_field_sources.sql": "abb68ab465b9f348722eb110f35936e3b651272e851f3ca9053854bcbec82320",
-  "0028_reception_and_screenshots.sql": "e959c6a2327a227ed4b4fa13c4e5dcbad93c7e754b91102f749448e07bb12b6c"
+  "0028_reception_and_screenshots.sql": "e959c6a2327a227ed4b4fa13c4e5dcbad93c7e754b91102f749448e07bb12b6c",
+  "0029_lifecycle_observations.sql": "7dd4f20b90d7404899ab5368bb65dd9becf4f61a7ff5e7ba1db0348b2bc47f9b"
 }

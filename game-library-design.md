@@ -251,6 +251,41 @@ stored locally.
 
 ### 4.5 Update detection
 
+#### Lifecycle evidence for Derelict
+
+Lifecycle collection is separate from patch badges and includes never-opened games. IGDB
+remains the identity source. Its expanded `game_status.status` and `game_modes.name` fields
+use a separate `igdb-lifecycle-v1` cache with a seven-day TTL; the main catalog payload is
+unchanged. The query uses the current work's IGDB ID, never a fuzzy title match.
+See the [IGDB game and game-status reference](https://api-docs.igdb.com/#game).
+
+Steam contributes keyless
+[current player counts](https://partner.steamgames.com/doc/webapi/ISteamUserStats#GetNumberOfCurrentPlayers),
+[dated reviews](https://partner.steamgames.com/doc/store/getreviews), and
+[official announcements](https://partner.steamgames.com/doc/webapi/ISteamNews).
+The lifecycle client shares the store client's rate limiter and retry handlers and caches
+successful responses for 24 hours. A cached response retains its original observation time.
+Failed requests do not become observations or refresh the evidence clock.
+Persisted review evidence keeps timestamps, window and completeness rather than review
+prose or author profiles. Store evidence records the app ID, presence and original fetch time.
+
+Reviews request `filter=recent`, all languages, purchase types and review types, with a
+100-review page. Count reviews created within 30 days only when the page reaches an older
+review or contains fewer than 100 entries. A full page still inside the window is incomplete
+and cannot establish low activity. The API's summary count is lifetime activity.
+Announcements request the latest `steam_community_announcements` item; a separate request
+adds `tags=patchnotes`. Their publication dates describe Steam activity, not every developer
+channel or the date a build was uploaded. Empty feeds remain unknown; a 403 is cached as an
+absent feed. Store presence is positive evidence only: regional misses and failed lookups
+never establish delisting.
+
+Each pass attempts at most 50 due releases, oldest attempts first, with a persisted daily
+schedule. Initial collection runs in the background enrichment pipeline; an hourly scheduler
+continues it. New observations refresh the library and feed. PCGamingWiki and Wikidata are
+not initial dependencies. No SteamDB scraping or exact build-upload history is used.
+
+#### Patch badges
+
 Two independent signals, combined.
 
 Each due eligible title polls news and build history independently, including absent,
@@ -749,6 +784,11 @@ work_field_sources(work_id FK works ON DELETE CASCADE, field, source, set_at,
 work_maturity(work_id FK works ON DELETE CASCADE, source, ratings, descriptors,
               observed_at, PRIMARY KEY(work_id, source))
 
+-- Lifecycle source observations
+lifecycle_observations(id, release_id FK releases ON DELETE CASCADE, source, source_id,
+                       observed_at, signals_json, raw_json)
+  -- dated source answers; nullable signals mean unknown; classification is never stored
+
 -- Reception and media
 work_images(work_id FK works ON DELETE CASCADE, source, kind, image_ids, observed_at,
             PRIMARY KEY(work_id, source, kind))
@@ -784,10 +824,26 @@ the enforcement test's short list of recorded observations.
 | Stale but patched | `last_played_at < update_event.occurred_at` by > N months, on a game that was actually opened |
 | Retired | `playtime_minutes >= retired_floor`; excluded from surfacing |
 | Active | Residual: nonzero playtime under `bounced_floor`, or a last-played date beside zero (unknown) minutes |
-| Dead | No viable platform, delisted, or launch-failure flagged |
+| Derelict | Dated lifecycle evidence classifies every visible owned release as cancelled, offline, delisted, abandoned or dead |
 
 **Never played means never opened.** Zero minutes *and* no last-played date, nothing else. A
 game with real playtime under the refund line was opened and played.
+
+Derelict is derived from `lifecycle_observations`, preserving each source answer and its
+timestamp so the rules can be recomputed. Classification returns a status, confidence and
+reason. Explicit cancellation, offline status and delisting precede inferred abandonment,
+dead and inactive states; active and unknown are the remainder. Inactive is not Derelict.
+Confidence is a heuristic estimate, not a calibrated probability. Thresholds and evidence
+gates are documented in `docs/recommendation-engine.md`.
+
+A release is classified independently. A same-game group enters Derelict only when every
+visible release qualifies; evidence about one store copy cannot condemn an unknown or
+active sibling. Hidden games and account scope are applied before grouping, as for the
+other buckets. Derelict games appear in their own feed shelf and are excluded from ordinary
+play recommendations. Delisted and abandoned games may still run; this classification does
+not disable launch actions. When a group has a copy without Derelict evidence, ordinary
+recommendations and the default launch/install route prefer that copy. If every copy
+qualifies, manual launch remains available.
 
 `bounced_floor` defaults to **120 minutes**, Steam's refund window. At or above it the money
 is spent for good, and the label `Started` names the band between that line and `retired_floor`.
@@ -797,7 +853,7 @@ windows. The retired floor must strictly exceed the bounced floor. Constructor c
 record-copy updates enforce these invariants before the values can reach a query. Use a new
 threshold instance when changing both floors would pass through an invalid intermediate range.
 
-**Precedence**, in the order the query tests: never-played, retired, stale-but-patched,
+**Precedence**, in the order the query tests: derelict, never-played, retired, stale-but-patched,
 bounced, active. Retired outranks stale so a 200-hour game is never resurfaced. Stale outranks
 bounced, because Bounced spans everything between the refund line and the retired floor and
 would otherwise swallow "Stale but patched" whole. `active` is consequently a residue rather

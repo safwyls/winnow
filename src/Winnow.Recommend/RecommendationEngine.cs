@@ -50,13 +50,14 @@ public sealed class RecommendationEngine : IRecommendationEngine
     private sealed record CandidatePool(
         List<CandidateFacts> Candidates,
         IReadOnlyList<Core.Queries.OwnershipBucket> BucketRows,
-        int Seed);
+        int Seed,
+        List<Recommendation> Derelict);
 
     public async Task<RecommendationFeed> GetFeedAsync(
         RecommendationRequest request, CancellationToken ct = default)
     {
         var tuning = request.Tuning;
-        var (candidates, bucketRows, seed) = await AssemblePoolAsync(request, ct);
+        var (candidates, bucketRows, seed, _) = await AssemblePoolAsync(request, ct);
         var history = new HistoryReader(_snapshots, _sessions);
 
         IReadOnlyList<SignalContribution> Score(CandidateFacts facts)
@@ -114,7 +115,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
         RecommendationRequest request, CancellationToken ct = default)
     {
         var tuning = request.Tuning;
-        var (candidates, bucketRows, seed) = await AssemblePoolAsync(request, ct);
+        var (candidates, bucketRows, seed, derelict) = await AssemblePoolAsync(request, ct);
         var history = new HistoryReader(_snapshots, _sessions);
 
         IReadOnlyList<SignalContribution> Score(CandidateFacts facts)
@@ -156,9 +157,26 @@ public sealed class RecommendationEngine : IRecommendationEngine
             scored.Add(new ScoredCandidate(enriched, signals, RecommendationScorer.Total(signals)));
         }
 
+        var shelves = ShelfBuilder.Build(definitions, scored, request, request.MaxPerShelf).ToList();
+        if (derelict.Count > 0)
+        {
+            shelves.Add(new RecommendationShelf
+            {
+                Id = ShelfIds.Derelict,
+                Title = "Derelict",
+                Blurb = "Games with evidence of closure, delisting or abandonment; some may still be playable.",
+                Items = derelict
+                    .OrderBy(item => request.RecentlySurfacedReleaseIds.Contains(item.ReleaseId))
+                    .ThenBy(item => RecommendationScorer.JitterValue(seed, item.ReleaseId))
+                    .ThenBy(item => item.ReleaseId)
+                    .Take(Math.Max(1, request.MaxPerShelf))
+                    .ToList(),
+            });
+        }
+
         return new ShelfFeed
         {
-            Shelves = ShelfBuilder.Build(definitions, scored, request, request.MaxPerShelf),
+            Shelves = shelves,
             Tier = await DetectTierAsync(bucketRows, tuning, history, ct),
             CandidateCount = candidates.Count,
             WorkCount = works.Count,
@@ -347,6 +365,16 @@ public sealed class RecommendationEngine : IRecommendationEngine
 
         static bool Precedes(Core.Queries.OwnershipBucket a, Core.Queries.OwnershipBucket b)
         {
+            // A viable sibling keeps the game recommendable, but must also be
+            // the copy the card launches; identity precedence cannot select a
+            // known closed release over that sibling.
+            var aDerelict = a.Lifecycle?.IsDerelict == true;
+            var bDerelict = b.Lifecycle?.IsDerelict == true;
+            if (aDerelict != bDerelict)
+            {
+                return !aDerelict;
+            }
+
             var aOwn = a.WorkId == a.ResolvedWorkId ? 0 : 1;
             var bOwn = b.WorkId == b.ResolvedWorkId ? 0 : 1;
             if (aOwn != bOwn)
@@ -360,6 +388,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
         }
 
         var candidates = new List<CandidateFacts>(primaryRows.Count);
+        var derelict = new List<Recommendation>();
         foreach (var row in bucketRows)
         {
             if (!ReferenceEquals(primaryRows[row.ResolvedWorkId], row))
@@ -394,6 +423,36 @@ public sealed class RecommendationEngine : IRecommendationEngine
             }
 
             ownershipsById.TryGetValue(row.OwnershipId, out var ownership);
+            if (row.Game.Bucket == LibraryBuckets.Derelict)
+            {
+                var lifecycle = row.Game.Lifecycle;
+                var explanation = new RecommendationReason
+                {
+                    Primary = ReasonSignal.Lifecycle,
+                    Evidence = new ReasonEvidence
+                    {
+                        ReleaseId = row.ReleaseId,
+                        Title = identity.MatchTitle,
+                        Store = ownership?.Store ?? string.Empty,
+                        Lifecycle = lifecycle,
+                    },
+                };
+                derelict.Add(new Recommendation
+                {
+                    OwnershipId = row.OwnershipId,
+                    ReleaseId = row.ReleaseId,
+                    WorkId = identity.WorkId,
+                    Title = identity.MatchTitle,
+                    Store = ownership?.Store ?? string.Empty,
+                    Bucket = LibraryBuckets.Derelict,
+                    Score = 0,
+                    Signals = [],
+                    Explanation = explanation,
+                    Reason = ReasonBuilder.Build(explanation, tuning),
+                });
+                continue;
+            }
+
             var (affinity, facetName) = taste.AffinityFor(row.ReleaseId);
 
             candidates.Add(new CandidateFacts
@@ -418,7 +477,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
             });
         }
 
-        return new CandidatePool(candidates, bucketRows, seed);
+        return new CandidatePool(candidates, bucketRows, seed, derelict);
     }
 
     /// <summary>Genre-kind facet ids for one release — the shelf diversity cap's raw material.</summary>

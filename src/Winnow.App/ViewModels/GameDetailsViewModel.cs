@@ -251,6 +251,10 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     /// <summary>The §7 bucket name this game currently falls in ("Never played").</summary>
     public string BucketLabel { get; }
 
+    public bool HasLifecycle => Tile.HasLifecycle;
+
+    public string? LifecycleText => Tile.LifecycleText;
+
     /// <summary>Install state text. Three-valued: null means unknown and hides the chip.</summary>
     public string InstallText => Tile.Installed == true ? "Installed" : "Not installed";
 

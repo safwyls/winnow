@@ -490,7 +490,7 @@ carries one fact wrapped in reasoning, the fact stays and the reasoning moves he
 | Bucket: never opened | `Never played` | `Pile of shame` |
 | Bucket: refund line to retired | `Started` | `Barely played`, `Bounced off` |
 | Bucket: high playtime | `Played out` | `Completed` |
-| Bucket: unrunnable (hidden from the rail until the signal is viable) | `Won't run` | `Dead` |
+| Bucket: lifecycle evidence of closure, delisting or abandonment | `Derelict` | `Won't run`, `Dead` |
 | Steam account statistics rail row | `STEAM STATS` | `STATS` |
 | Badge tooltip | `3 updates since you played` | `New content available!` |
 | Journal prompt | `How was that?` | `Rate your session!` |
@@ -502,7 +502,14 @@ which asks about games rather than records.
 
 **Empty states are directions, not moods.**
 
+Derelict is a library bucket and a separate feed shelf. It names lifecycle evidence, not a
+promise that a game cannot launch. Each feed card states the inferred or explicit status,
+confidence and source-based reason; the details modal repeats that information in its
+identity band. Confidence is a heuristic estimate, not a measured probability. Delisted
+games may still run. Launch actions keep their existing availability rules.
+
 - Patched, empty: *"Nothing's been patched since you last played. This fills up on its own."*
+- Derelict, empty: *"No games have enough lifecycle evidence for Derelict yet. This fills in as metadata arrives."*
 - Never played, empty: *"You've played everything you own past the refund window. Genuinely rare."*
 - First run, mid-scan: *"Reading your Steam library. Covers and metadata fill in over the next few minutes — you can browse now."*
 
