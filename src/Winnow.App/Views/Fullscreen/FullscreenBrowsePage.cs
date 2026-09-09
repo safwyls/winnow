@@ -31,6 +31,9 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     private int _headerFocus = -1;
     private int _shelf;
     private int _card;
+    private int _columns = 6;
+    private int _shelfCapacity = 5;
+    private double _wallWidth = double.NaN;
     private bool _pending;
     private ContentControl _hero = new();
     private ContentControl _art = new();
@@ -85,7 +88,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     {
         if (!_feed && _headerFocus >= 0 && _headerFocus < _collectionButtons.Length) FocusControl(_collectionButtons[_headerFocus]);
         else if (_tiles.Count > 0)
-            FocusControl(_tiles[Math.Clamp(_feed ? _card % 5 : _state.PositionOnPage, 0, _tiles.Count - 1)]);
+            FocusControl(_tiles[Math.Clamp(_feed ? _card % _shelfCapacity : _state.PositionOnPage, 0, _tiles.Count - 1)]);
         else base.FocusInitial();
         QueueObservation();
     }
@@ -137,7 +140,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         {
             var shelf = Context.Feed.Shelves[_shelf];
             var next = Math.Clamp(_card + (buttons.HasFlag(GamepadButtons.Right) ? 1 : -1), 0, Math.Max(0, shelf.Cards.Count - 1));
-            if (next / 5 != _card / 5)
+            if (next / _shelfCapacity != _card / _shelfCapacity)
             {
                 _shelfPositions[shelf.Id] = next;
                 Rebuild();
@@ -149,9 +152,9 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         {
             var down = buttons.HasFlag(GamepadButtons.Down);
             var up = buttons.HasFlag(GamepadButtons.Up);
-            var lastRow = (_tiles.Count - 1) / 6;
-            if ((down && _state.PositionOnPage / 6 == lastRow || up && _state.PositionOnPage < 6)
-                && _state.MoveGridEdge(down ? 1 : -1, 6, Context.Library.VisibleTiles.Select(t => t.ReleaseId).ToArray()))
+            var lastRow = (_tiles.Count - 1) / _columns;
+            if ((down && _state.PositionOnPage / _columns == lastRow || up && _state.PositionOnPage < _columns)
+                && _state.MoveGridEdge(down ? 1 : -1, _columns, Context.Library.VisibleTiles.Select(t => t.ReleaseId).ToArray()))
             { Rebuild(); FocusInitial(); return true; }
         }
         if (!_feed && (buttons.HasFlag(GamepadButtons.PageNext) || buttons.HasFlag(GamepadButtons.PagePrevious)))
@@ -224,13 +227,13 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         var heading = FullscreenUi.Text($"{shelf.Title}     {_shelf + 1} / {Context.Feed.Shelves.Count}", 32);
         heading.Margin = new Thickness(0, 12, 0, 12);
         Grid.SetRow(heading, 1);
-        var shelfGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*,*,*"), HorizontalAlignment = HorizontalAlignment.Left };
+        var shelfGrid = new Grid { ColumnDefinitions = new ColumnDefinitions(string.Join(",", Enumerable.Repeat("*", _shelfCapacity))), Width = _wallWidth, HorizontalAlignment = HorizontalAlignment.Left };
         _wall = shelfGrid;
         shelfGrid.SizeChanged += (_, _) => SizeWall();
         Grid.SetRow(shelfGrid, 2);
-        // The feed's engine currently offers five cards per shelf; paging keeps any larger shelf reachable.
-        var offset = _card / 5 * 5;
-        foreach (var (card, index) in shelf.Cards.Skip(offset).Take(5).Select((c, i) => (c, i)))
+        // Only real recommendations are shown; a short shelf stays left aligned.
+        var offset = _card / _shelfCapacity * _shelfCapacity;
+        foreach (var (card, index) in shelf.Cards.Skip(offset).Take(_shelfCapacity).Select((c, i) => (c, i)))
         {
             var button = MakeTile(card.Tile, index, () =>
             {
@@ -275,7 +278,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
             if (!_collections.TryGetValue(key, out var state)) _collections[key] = state = new FullscreenBrowseState();
             _state = state;
         }
-        _state.Reconcile(library.VisibleTiles.Select(t => t.ReleaseId).ToArray());
+        _state.Resize(_columns * 2, library.VisibleTiles.Select(t => t.ReleaseId).ToArray());
         _art = new ContentControl { Opacity = .45 };
         var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*") };
         var heading = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
@@ -313,21 +316,21 @@ public sealed class FullscreenBrowsePage : FullscreenPage
             collections.Children.Add(control);
         }
         grid.Children.Add(collections);
-        var wall = new Grid { RowDefinitions = new RowDefinitions("*,*"), ColumnDefinitions = new ColumnDefinitions("*,*,*,*,*,*"), HorizontalAlignment = HorizontalAlignment.Center };
+        var wall = new Grid { RowDefinitions = new RowDefinitions("*,*"), ColumnDefinitions = new ColumnDefinitions(string.Join(",", Enumerable.Repeat("*", _columns))), Width = _wallWidth, HorizontalAlignment = HorizontalAlignment.Left };
         _wall = wall;
         wall.SizeChanged += (_, _) => SizeWall();
         Grid.SetRow(wall, 2);
-        foreach (var (tile, index) in library.VisibleTiles.Skip(_state.Page * FullscreenBrowseState.PageSize).Take(FullscreenBrowseState.PageSize).Select((t, i) => (t, i)))
+        foreach (var (tile, index) in library.VisibleTiles.Skip(_state.Page * _state.PageSize).Take(_state.PageSize).Select((t, i) => (t, i)))
         {
             var button = MakeTile(tile, index, () => { _state.Select(tile.ReleaseId, index); SetLibraryArt(tile); Changed(); });
-            Grid.SetRow(button, index / 6);
-            Grid.SetColumn(button, index % 6);
+            Grid.SetRow(button, index / _columns);
+            Grid.SetColumn(button, index % _columns);
             wall.Children.Add(button);
         }
         if (_tiles.Count == 0) wall.Children.Add(FullscreenUi.Text(library.EmptyMessage ?? "No games match this collection. Change your filters or search."));
         grid.Children.Add(wall);
         Content = new Panel { Children = { _art, grid } };
-        SetFocusRows(_collectionButtons.Cast<Control>().ToArray(), _tiles.Take(6).Cast<Control>().ToArray(), _tiles.Skip(6).Cast<Control>().ToArray());
+        SetFocusRows(_collectionButtons.Cast<Control>().ToArray(), _tiles.Take(_columns).Cast<Control>().ToArray(), _tiles.Skip(_columns).Cast<Control>().ToArray());
         _selected = library.VisibleTiles.FirstOrDefault(t => t.ReleaseId == _state.SelectedReleaseId);
         if (_selected is { } selected) SetLibraryArt(selected);
         SizeWall();
@@ -341,16 +344,22 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     private void SizeWall()
     {
         if (_wall is null || _wall.Bounds.Height <= 0 || Bounds.Width <= 0) return;
-        // Pack the mock's portrait frames around the available height instead of spreading gaps across the screen.
-        var columns = _feed ? 5 : 6;
-        var rows = _feed ? 1 : 2;
-        var width = Math.Min(Bounds.Width, ((_wall.Bounds.Height / rows - 44) * 5 / 6 + 24) * columns);
-        if (width > 0 && (Math.Abs(_wall.Width - width) > 1 || double.IsNaN(_wall.Width))) _wall.Width = width;
+        var columns = FullscreenCoverLayout.Columns(Bounds.Width, _wall.Bounds.Height, _feed ? 1 : 2, Context.TextScale);
+        _wallWidth = Bounds.Width;
+        if (Math.Abs(_wall.Width - _wallWidth) > 1 || double.IsNaN(_wall.Width)) _wall.Width = _wallWidth;
+        if (columns == (_feed ? _shelfCapacity : _columns)) return;
+        if (_feed) _shelfCapacity = columns;
+        else
+        {
+            _columns = columns;
+            _state.Resize(columns * 2, Context.Library.VisibleTiles.Select(tile => tile.ReleaseId).ToArray());
+        }
+        QueueRebuild();
     }
 
     private Button MakeTile(GameTileViewModel tile, int index, Action selected)
     {
-        var cover = new FullscreenCover(tile, aspectRatio: 5d / 6);
+        var cover = new FullscreenCover(tile);
         var title = FullscreenUi.Text(tile.Title, 24);
         title.MaxLines = 1;
         title.TextTrimming = TextTrimming.CharacterEllipsis;
@@ -472,6 +481,18 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     }
 }
 
+/// <summary>Two-row grids spend extra width on games, keeping full portrait art and compact gaps.</summary>
+internal static class FullscreenCoverLayout
+{
+    public static int Columns(double width, double height, int rows, double textScale)
+    {
+        // Title line, its gap, button padding and bottom margin all occupy height outside the art.
+        var artHeight = Math.Max(1, height / rows - (36 * textScale + 28));
+        var cellWidth = artHeight * 2 / 3 + 24;
+        return Math.Max(1, (int)Math.Ceiling(width / cellWidth));
+    }
+}
+
 /// <summary>Each fullscreen surface leases its own cover; leaving a page releases decoded art.</summary>
 public sealed class FullscreenCover : Border
 {
@@ -493,7 +514,7 @@ public sealed class FullscreenCover : Border
         CornerRadius = new CornerRadius(6);
         BorderThickness = new Thickness(background ? 0 : 3);
         BorderBrush = Brushes.Transparent;
-        if (!background) HorizontalAlignment = HorizontalAlignment.Left;
+        if (!background) { HorizontalAlignment = HorizontalAlignment.Left; VerticalAlignment = VerticalAlignment.Top; }
         this[!BackgroundProperty] = new DynamicResourceExtension("Surface");
         _placeholder = FullscreenUi.Text(tile.Title, 24);
         _placeholder.TextWrapping = TextWrapping.WrapWithOverflow;
@@ -509,7 +530,7 @@ public sealed class FullscreenCover : Border
             layers.Children.Add(dot);
         }
         Child = layers;
-        if (!background && aspectRatio == 2d / 3) { _floor.Stretch = Stretch.Uniform; _vivid.Stretch = Stretch.Uniform; }
+        if (!background) { _floor.Stretch = Stretch.Uniform; _vivid.Stretch = Stretch.Uniform; }
         if (background) { Opacity = .16; IsHitTestVisible = false; }
         AttachedToVisualTree += (_, _) =>
         {
@@ -579,6 +600,8 @@ public sealed class FullscreenBrowseSearchPage : FullscreenPage
     private readonly Button _showResults;
     private readonly List<Button> _games = [];
     private bool _inResults;
+    private int _columns = 6;
+    private bool _resizePending;
     private IReadOnlyList<GameTileViewModel> _matches = [];
 
     public FullscreenBrowseSearchPage(FullscreenContext context) : base(context)
@@ -603,6 +626,7 @@ public sealed class FullscreenBrowseSearchPage : FullscreenPage
         Grid.SetRow(_results, 3);
         grid.Children.Add(_results);
         Content = grid;
+        _results.SizeChanged += (_, _) => ResizeResults();
         _query.TextChanged += (_, _) => Refresh();
         Refresh();
     }
@@ -619,6 +643,14 @@ public sealed class FullscreenBrowseSearchPage : FullscreenPage
     public override bool Handle(GamepadButtons buttons)
     {
         if (buttons.HasFlag(GamepadButtons.Keyboard)) { Context.EditText(_query); return true; }
+        if (_inResults && _games.Count > 0)
+        {
+            var down = buttons.HasFlag(GamepadButtons.Down);
+            var up = buttons.HasFlag(GamepadButtons.Up);
+            if ((down && _state.PositionOnPage / _columns == (_games.Count - 1) / _columns || up && _state.PositionOnPage < _columns)
+                && _state.MoveGridEdge(down ? 1 : -1, _columns, _matches.Select(tile => tile.ReleaseId).ToArray()))
+            { DrawResults(); FocusInitial(); return true; }
+        }
         if (buttons.HasFlag(GamepadButtons.PageNext) || buttons.HasFlag(GamepadButtons.PagePrevious))
         {
             if (_state.MovePage(buttons.HasFlag(GamepadButtons.PageNext) ? 1 : -1, _matches.Select(t => t.ReleaseId).ToArray()))
@@ -629,6 +661,24 @@ public sealed class FullscreenBrowseSearchPage : FullscreenPage
             return true;
         }
         return base.Handle(buttons);
+    }
+
+    private void ResizeResults()
+    {
+        if (_results.Bounds.Width <= 0 || _results.Bounds.Height <= 0) return;
+        var columns = FullscreenCoverLayout.Columns(_results.Bounds.Width, _results.Bounds.Height, 2, Context.TextScale);
+        if (columns == _columns) return;
+        _columns = columns;
+        _state.Resize(columns * 2, _matches.Select(tile => tile.ReleaseId).ToArray());
+        if (_resizePending) return;
+        _resizePending = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _resizePending = false;
+            var focused = IsKeyboardFocusWithin;
+            DrawResults();
+            if (focused) FocusInitial();
+        });
     }
 
     private void Refresh()
@@ -643,10 +693,10 @@ public sealed class FullscreenBrowseSearchPage : FullscreenPage
     {
         _games.Clear();
         _count.Text = $"{_matches.Count:N0} games";
-        var wall = new Grid { RowDefinitions = new RowDefinitions("*,*"), ColumnDefinitions = new ColumnDefinitions("*,*,*,*,*,*") };
-        foreach (var (tile, index) in _matches.Skip(_state.Page * FullscreenBrowseState.PageSize).Take(FullscreenBrowseState.PageSize).Select((t, i) => (t, i)))
+        var wall = new Grid { RowDefinitions = new RowDefinitions("*,*"), ColumnDefinitions = new ColumnDefinitions(string.Join(",", Enumerable.Repeat("*", _columns))) };
+        foreach (var (tile, index) in _matches.Skip(_state.Page * _state.PageSize).Take(_state.PageSize).Select((t, i) => (t, i)))
         {
-            var cover = new FullscreenCover(tile, aspectRatio: 5d / 6);
+            var cover = new FullscreenCover(tile);
             var panel = new Grid { RowDefinitions = new RowDefinitions("*,Auto") };
             panel.Children.Add(cover);
             var label = FullscreenUi.Text(tile.Title, 24);
@@ -666,8 +716,8 @@ public sealed class FullscreenBrowseSearchPage : FullscreenPage
             button.VerticalContentAlignment = VerticalAlignment.Stretch;
             button.GotFocus += (_, _) => { _inResults = true; _state.Select(tile.ReleaseId, index); cover.SetSelected(true); };
             button.LostFocus += (_, _) => cover.SetSelected(false);
-            Grid.SetRow(button, index / 6);
-            Grid.SetColumn(button, index % 6);
+            Grid.SetRow(button, index / _columns);
+            Grid.SetColumn(button, index % _columns);
             AutomationProperties.SetName(button, tile.AutomationName);
             wall.Children.Add(button);
             _games.Add(button);
@@ -675,7 +725,7 @@ public sealed class FullscreenBrowseSearchPage : FullscreenPage
         _showResults.IsEnabled = _games.Count > 0;
         if (_games.Count == 0) wall.Children.Add(FullscreenUi.Text("No games match. Try a different title."));
         _results.Content = wall;
-        SetFocusRows([_query, _edit, _showResults], _games.Take(6).Cast<Control>().ToArray(), _games.Skip(6).Cast<Control>().ToArray());
+        SetFocusRows([_query, _edit, _showResults], _games.Take(_columns).Cast<Control>().ToArray(), _games.Skip(_columns).Cast<Control>().ToArray());
         Changed();
     }
 }

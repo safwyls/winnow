@@ -3434,3 +3434,29 @@ The initial implementation count in the verification report is now labelled as h
 evidence rather than the final result after the visual follow-up. It previously said:
 
 > The final Release run passed 4,273 tests, including 177 UI tests.
+
+## 2026-09-09 — Complete covers and landscape details
+
+The user preferred whole cover artwork and adaptive column counts over the cropped TV
+frames. Comparing the details mock to runtime also exposed a boxed thumbnail and persistent
+root header where the mock uses a full-canvas landscape and a back link. The visual spec
+now records these corrections. It previously said:
+
+> **Library** trades the home's large featured artwork for two rows of six covers at the
+> reference size. Titles sit below the covers. The focused game remains clear through its
+> mint outline; unread dots and dormancy retain their shared meaning. A dimmed landscape
+> backdrop follows the selected game. Covers sit in compact columns sized to the available
+> height, with smaller gaps and headings to give artwork more room. Browse uses 5:6 cover
+> frames with uniform cropping, matching the mock; it does not stretch images or change desktop covers. Up from the first row
+> on the first page reaches the collection choices. At grid edges, down advances a page and
+> up returns to the previous page, preserving the column where possible. Triggers also page
+> through the collection. Y opens Filter & sort; View
+> opens Search. Opening a game and returning restores the collection, page and exact game.
+> Actual density remains subject to distance testing and may reduce at larger text settings.
+
+The verification report now labels the earlier cropped-cover result as historical evidence.
+It previously said:
+
+> The follow-up polish uses bundled Kenney CC0 controller glyphs, transparent underline
+> controls, a dragon wordmark, themed original SVG backdrops and a persisted ultrawide-fit
+> preference. Browse covers use 5:6 frames with uniform cropping and compact spacing.

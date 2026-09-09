@@ -1,4 +1,9 @@
 using Avalonia.Controls;
+using Avalonia;
+using Avalonia.Headless;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Microsoft.Extensions.DependencyInjection;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -10,12 +15,125 @@ using Winnow.Tests;
 using Winnow.Core.Domain;
 using Winnow.Core.Identity;
 using Winnow.Core.Queries;
+using Winnow.Core.Repositories;
+using Winnow.Covers;
 using Xunit;
 
 namespace Winnow.Ui.Tests;
 
 public sealed class FullscreenDetailsTests
 {
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Cinematic_details_lease_saved_landscape_across_the_canvas_and_release_on_close(bool userBackground)
+    {
+        // An original geometric landscape exercises real bitmap decoding/display without live library art.
+        using var pixels = new RenderTargetBitmap(new PixelSize(1600, 900));
+        using (var draw = pixels.CreateDrawingContext())
+        {
+            draw.DrawRectangle(new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+                GradientStops = [new GradientStop(Color.Parse("#203E60"), 0), new GradientStop(Color.Parse("#D7A37C"), .55),
+                    new GradientStop(Color.Parse("#17434B"), 1)]
+            }, null, new Rect(0, 0, 1600, 900));
+            draw.DrawEllipse(Brushes.Wheat, null, new Point(1200, 210), 70, 70);
+            draw.DrawGeometry(new SolidColorBrush(Color.Parse("#244954")), null,
+                Geometry.Parse("M 0,650 L 350,290 L 610,570 L 990,180 L 1420,560 L 1600,390 L 1600,900 L 0,900 Z"));
+            draw.DrawGeometry(new SolidColorBrush(Color.Parse("#102D32")), null,
+                Geometry.Parse("M 0,760 L 260,550 L 600,760 L 1050,510 L 1330,700 L 1600,580 L 1600,900 L 0,900 Z"));
+        }
+        var leases = new DetailLeases(new CoverArt(pixels, pixels));
+        var work = new Work { Id = 1, Name = "A distant shore", Summary = "Explore the mountain coast and find your way home.",
+            BackgroundUrl = userBackground ? UserArtRef.Format("landscape") : null };
+        var images = new DetailImages();
+        using var services = new ServiceCollection().AddSingleton<ICoverLeases>(leases)
+            .AddSingleton<IWorkRepository>(new DetailWorks(work)).AddSingleton<IWorkImageRepository>(images).BuildServiceProvider();
+        var library = new LibraryViewModel(new PreviewLibraryQueryRepository(), new PreviewOwnershipRepository(),
+            new PreviewReleaseRepository(), new PreviewWorkRepository(), new PreviewUpdateEventRepository());
+        using var context = new FullscreenContext(library, new FeedViewModel(new PreviewFeedService(), library), PreviewData.Shell, services);
+        using var details = new GameDetailsViewModel(TileFixture.Tile(DateTime.UtcNow, title: work.Name, work: work, steamAppId: "42",
+            ownership: new Ownership { ReleaseId = 1, Store = "steam", Installed = true }),
+            "Never played", [], DateTime.UtcNow, covers: leases, images: images.Rows);
+        using var view = new FullscreenView(context);
+        context.Push(new FullscreenDetailsPage(context, details));
+        var window = new Window { Width = 1920, Height = 1080, Content = view };
+        window.Show();
+        try
+        {
+            Dispatcher.UIThread.RunJobs();
+            var backdrop = Assert.IsType<FullscreenBackdrop>(view.CurrentPage.Backdrop);
+            Assert.Equal(1920, backdrop.Bounds.Width);
+            Assert.Equal(1080, backdrop.Bounds.Height);
+            Assert.Same(pixels, Assert.Single(backdrop.Children.OfType<Image>()).Source);
+            Assert.Contains(userBackground ? CoverKey.User("landscape") : CoverKey.IgdbScreenshot("detailshot"), leases.Keys);
+            Assert.Equal(userBackground ? 0 : 1, images.Reads);
+            var hero = Assert.IsType<Grid>(Assert.IsType<Grid>(view.CurrentPage.Content).Children[0]);
+            Assert.Empty(hero.GetVisualDescendants().OfType<Image>());
+            if (userBackground && Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
+            {
+                Directory.CreateDirectory(directory);
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                Dispatcher.UIThread.RunJobs();
+                using var frame = window.CaptureRenderedFrame();
+                frame!.Save(Path.Combine(directory, "fullscreen-details-landscape.png"));
+            }
+            context.TextScale = 1.4;
+            window.Width = 1280;
+            window.Height = 720;
+            Dispatcher.UIThread.RunJobs();
+            var layout = Assert.IsType<Grid>(view.CurrentPage.Content);
+            Assert.True(hero.Bounds.Bottom <= layout.Children[1].Bounds.Top);
+            Assert.True(layout.Children[2].Bounds.Height > 100);
+            window.Content = null;
+            details.Dispose();
+            Assert.Equal(0, leases.Active);
+            Assert.Null(Assert.Single(backdrop.Children.OfType<Image>()).Source);
+        }
+        finally { window.Close(); }
+    }
+
+    private sealed class DetailImages : IWorkImageRepository
+    {
+        public int Reads { get; private set; }
+        public IReadOnlyList<WorkImages> Rows { get; } = [new() { WorkId = 1, Source = ImageSources.Igdb,
+            Kind = ImageKinds.Screenshot, ImageIds = "detailshot,detailshot2", ObservedAt = DateTime.UtcNow }];
+        public Task<IReadOnlyList<WorkImages>> GetForWorkAsync(long workId, CancellationToken ct = default) { Reads++; return Task.FromResult(Rows); }
+        public Task UpsertAsync(WorkImages images, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<bool> DeleteAsync(long workId, string source, string kind, CancellationToken ct = default) => throw new NotSupportedException();
+    }
+
+    private sealed class DetailWorks(Work work) : IWorkRepository
+    {
+        public Task<Work?> GetAsync(long id, CancellationToken ct = default) => Task.FromResult<Work?>(work);
+        public Task<long> InsertAsync(Work value, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task UpdateNameAsync(long id, string name, bool provisional, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<Work?> GetByIgdbIdAsync(long id, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<Work>> GetAllAsync(CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<ProvisionalNameTarget>> GetProvisionalNameTargetsAsync(string provider, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<EnrichmentTarget>> GetEnrichmentTargetsAsync(CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<bool> ApplyEnrichmentAsync(WorkEnrichment enrichment, CancellationToken ct = default) => throw new NotSupportedException();
+    }
+
+    private sealed class DetailLeases(CoverArt art) : ICoverLeases
+    {
+        public int Active { get; private set; }
+        public List<CoverKey> Keys { get; } = [];
+        public ICoverLease Acquire(CoverKey key, double width, CoverLayers layers = CoverLayers.VividAndFloor)
+        { Active++; Keys.Add(key); return new DetailLease(this, art, key, CoverImaging.SnapWidth(width), layers); }
+        private sealed class DetailLease(DetailLeases owner, CoverArt art, CoverKey key, int width, CoverLayers layers) : ICoverLease
+        {
+            private bool _disposed;
+            public CoverKey Key => key;
+            public int Width => width;
+            public CoverLayers Layers => layers;
+            public bool TryGetArt(out CoverArt value) { value = art; return true; }
+            public Task<CoverArt?> GetAsync(CancellationToken ct = default) => Task.FromResult<CoverArt?>(art);
+            public void Dispose() { if (_disposed) return; _disposed = true; owner.Active--; }
+        }
+    }
+
     [AvaloniaFact]
     public void Single_copy_achievements_remain_visible_without_an_identity_link()
     {

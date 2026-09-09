@@ -10,27 +10,47 @@ using Winnow.Covers.Igdb;
 
 namespace Winnow.App.Views.Fullscreen;
 
-/// <summary>Real landscape art for the home hero, with independent cache lifetime and cover fallback.</summary>
+/// <summary>Landscape art with independent cache lifetime and a quiet cover fallback.</summary>
 public sealed class FullscreenBackdrop : Panel
 {
     private LeasedCover? _lease;
     private int _generation;
-    public FullscreenBackdrop(FullscreenContext context, GameTileViewModel tile)
+    public FullscreenBackdrop(FullscreenContext context, GameTileViewModel tile, bool cinematic = false)
     {
         IsHitTestVisible = false; ClipToBounds = true;
         var fallback = new FullscreenCover(tile, background: true);
-        var image = new Image { Stretch = Stretch.UniformToFill, Opacity = .8 };
+        var image = new Image { Stretch = Stretch.UniformToFill, Opacity = cinematic ? 1 : .8 };
         Children.Add(fallback); Children.Add(image);
-        OpacityMask = new LinearGradientBrush
+        if (!cinematic) OpacityMask = new LinearGradientBrush
         {
             StartPoint = new RelativePoint(0, .5, RelativeUnit.Relative), EndPoint = new RelativePoint(1, .5, RelativeUnit.Relative),
             GradientStops = [new GradientStop(Colors.Transparent, 0), new GradientStop(Colors.White, .6)]
         };
         var ground = context.Themes.FirstOrDefault(t => t.Id == context.ThemeId)?.Ground ?? Color.Parse("#0F1C1E");
+        var clearGround = Color.FromArgb(0, ground.R, ground.G, ground.B);
+        if (cinematic)
+        {
+            // The title reads against a solid left edge while landscape detail survives on the right.
+            Children.Add(new Border { Background = new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(0, .5, RelativeUnit.Relative), EndPoint = new RelativePoint(1, .5, RelativeUnit.Relative),
+                GradientStops = [new GradientStop(ground, 0), new GradientStop(Color.FromArgb(220, ground.R, ground.G, ground.B), .48),
+                    new GradientStop(Color.FromArgb(55, ground.R, ground.G, ground.B), .75), new GradientStop(clearGround, 1)]
+            } });
+            Children.Add(new Border { Background = new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(.5, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(.5, 1, RelativeUnit.Relative),
+                GradientStops = [new GradientStop(ground, 0), new GradientStop(Color.FromArgb(220, ground.R, ground.G, ground.B), .1),
+                    new GradientStop(clearGround, .2)]
+            } });
+        }
         Children.Add(new Border { Background = new LinearGradientBrush
         {
             StartPoint = new RelativePoint(.5, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(.5, 1, RelativeUnit.Relative),
-            GradientStops = [new GradientStop(Color.FromArgb(0, ground.R, ground.G, ground.B), 0), new GradientStop(ground, .85)]
+            GradientStops = cinematic
+                ? [new GradientStop(clearGround, 0), new GradientStop(Color.FromArgb(35, ground.R, ground.G, ground.B), .25),
+                    new GradientStop(ground, .55), new GradientStop(ground, 1)]
+                : [new GradientStop(clearGround, 0), new GradientStop(ground, .85)]
         } });
         AttachedToVisualTree += async (_, _) =>
         {

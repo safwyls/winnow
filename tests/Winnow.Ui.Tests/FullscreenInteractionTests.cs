@@ -17,6 +17,44 @@ namespace Winnow.Ui.Tests;
 public sealed class FullscreenInteractionTests
 {
     [AvaloniaFact]
+    public async Task Details_backdrop_fills_canvas_and_back_header_restores_its_origin()
+    {
+        var library = new App.ViewModels.LibraryViewModel(new PreviewLibraryQueryRepository(),
+            new PreviewOwnershipRepository(), new PreviewReleaseRepository(), new PreviewWorkRepository(), new PreviewUpdateEventRepository());
+        await library.LoadCommand.ExecuteAsync(null);
+        var context = new FullscreenContext(library, new App.ViewModels.FeedViewModel(new PreviewFeedService(), library), PreviewData.Shell);
+        using var television = new FullscreenView(context);
+        var window = new Window { Width = 1920, Height = 1080, Content = television };
+        window.Show();
+        try
+        {
+            television.Handle(GamepadButtons.Next);
+            Dispatcher.UIThread.RunJobs();
+            await library.OpenDetailsCommand.ExecuteAsync(library.VisibleTiles[0]);
+            context.Push(new FullscreenDetailsPage(context, library.Details!));
+            Dispatcher.UIThread.RunJobs();
+            var nav = television.GetVisualDescendants().OfType<StackPanel>().Single(c => c.Name == "FullscreenRootNavigation");
+            var back = television.GetVisualDescendants().OfType<Button>().Single(c => c.Name == "FullscreenBack");
+            var art = television.GetVisualDescendants().OfType<ContentControl>().Single(c => c.Name == "FullscreenPageBackdrop");
+            Assert.False(nav.IsVisible);
+            Assert.True(back.IsVisible);
+            Assert.Equal("Back to Library", Avalonia.Automation.AutomationProperties.GetName(back));
+            Assert.Same(television.CurrentPage.Backdrop, art.Content);
+            Assert.NotNull(art.Content);
+            Assert.Equal(new Size(1920, 1080), art.Bounds.Size);
+            var action = Assert.IsAssignableFrom<Button>(window.FocusManager!.GetFocusedElement());
+            Assert.Contains(television.CurrentPage, action.GetVisualAncestors());
+            television.Handle(GamepadButtons.Back);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal("Library", television.CurrentPage.Title);
+            Assert.True(nav.IsVisible);
+            Assert.False(back.IsVisible);
+            Assert.Null(art.Content);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
     public void Controller_hides_cursor_until_mouse_moves_and_exit_restores_it()
     {
         var window = new MainWindow { DataContext = PreviewData.Shell };

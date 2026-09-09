@@ -60,9 +60,10 @@ Follow-up Release verification passed 4,284 tests: 4,096 non-UI tests and 188 UI
 Two Linux-native cases skipped on Windows. The final solution build had zero warnings and
 errors. The complete UI suite passed after correcting the render-timing check described below.
 
-The follow-up polish uses bundled Kenney CC0 controller glyphs, transparent underline
-controls, a dragon wordmark, themed original SVG backdrops and a persisted ultrawide-fit
-preference. Browse covers use 5:6 frames with uniform cropping and compact spacing.
+The first visual polish introduced bundled Kenney CC0 controller glyphs, transparent
+underline controls, a dragon wordmark, themed original SVG backdrops and a persisted
+ultrawide-fit preference. That version used 5:6 cropped browse frames; the subsequent art
+revision below verifies the complete-cover replacement.
 
 Added interaction checks cover directional grid page edges with retained columns, selected
 library backdrops, filter application from nested choices, cancellation, persistent filter
@@ -83,6 +84,27 @@ Two consecutive full UI runs passed after this correction. A subsequent scaled-c
 also caught a coordinate mismatch: both tile corners now transform into window coordinates
 when checking visibility. The final 188-test UI run covers both reference and 720p scaling;
 production visibility and obscured-shelf checks remain intact.
+
+## Cover and details art revision
+
+The next refinement passed all 194 UI tests and a solution Release build with zero warnings
+and errors. The UI suite includes desktop regression coverage. Non-UI suites were not rerun
+for these presentation-only changes.
+
+Compare `docs/mockups/fullscreen-v2/game-details.png` with the rendered detail page. The
+previous implementation put a 320px-high image beside the title and retained global navigation.
+The revised page supplies landscape art behind the whole canvas and uses a back header. It
+has a 96px title, larger primary action, a stronger history lead, an overview divider and
+larger screenshot previews. Unread updates have a count and marker beside their local tab.
+Tests cover background preference over repository screenshots, independent art lease cleanup,
+header/back navigation, fallback rendering and long titles at 140% text/720p.
+
+The artwork-present capture uses an original geometric landscape bitmap fixture; it proves
+rendering and composition, not the quality of a publisher's artwork. Reference, wide and
+large-text captures also check whole cover images, adaptive column counts, selected-game
+identity through reflow, partial pages and directional navigation. A synthetic 60-game page
+fills both rows so fixture scarcity cannot hide spacing defects. Desktop cover composition
+and application action semantics remain unchanged.
 
 ## Remaining device checks
 

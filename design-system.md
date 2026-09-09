@@ -584,17 +584,33 @@ falling back to a desktop dialog does not satisfy M10.
 The remaining screens use the same typography, safe area and focus treatment, with a separate
 composition for each task. The mock images are design references, not evidence of device testing.
 
-**Library** trades the home's large featured artwork for two rows of six covers at the
-reference size. Titles sit below the covers. The focused game remains clear through its
-mint outline; unread dots and dormancy retain their shared meaning. A dimmed landscape
-backdrop follows the selected game. Covers sit in compact columns sized to the available
-height, with smaller gaps and headings to give artwork more room. Browse uses 5:6 cover
-frames with uniform cropping, matching the mock; it does not stretch images or change desktop covers. Up from the first row
-on the first page reaches the collection choices. At grid edges, down advances a page and
-up returns to the previous page, preserving the column where possible. Triggers also page
-through the collection. Y opens Filter & sort; View
-opens Search. Opening a game and returning restores the collection, page and exact game.
-Actual density remains subject to distance testing and may reduce at larger text settings.
+**Library** uses two rows of complete portrait covers. The column count responds to available
+width, row height and text size; wider displays show more games instead of stretching or
+cropping artwork. Stable 2:3 frames use uniform fitting so user-supplied art keeps its whole
+image even when its proportions differ. Titles sit below the covers, with a mint outline on
+the focused game. Unread dots and dormancy retain their shared meaning. A dimmed landscape
+backdrop follows the selection. Home and search use the same uncropped art treatment; home
+only shows the recommendations actually returned by the feed.
+
+Resizing recomputes page capacity while keeping the selected release anchored. Up from the
+first row on the first page reaches the collection choices. At grid edges, down advances a
+page and up returns to the previous page, preserving the column where possible. Triggers
+also page through the collection. Y opens Filter & sort; View opens Search. Opening a game
+and returning restores the collection and selected game.
+
+**Game details** uses a landscape backdrop across the full canvas, including the header.
+A dark left and top veil protects the title and status text; a vertical fade settles into
+Ground before the overview content. Prefer the saved game background, then an available
+landscape screenshot, then a quiet cover fallback. Artwork has its own display-sized lease.
+The header shows B and the previous page name plus controller status and the clock. The
+root navigation and wordmark return when leaving details.
+
+The game title starts at 96px and wraps to at most two lines in a bounded left region. The
+primary action is larger than adjacent actions while retaining transparent underline focus.
+The hero grows for long titles and large text. Overview separates the history/return reason
+from the description and screenshots with a vertical rule; history leads use 48px display
+type and descriptions use 32px body type. Local sections and all management actions remain
+controller-accessible. Long overview content scrolls below the stable header and actions.
 
 **Activity** is a personal history view. Sessions, Updates and Journal are local choices
 reached with directional navigation; bumpers continue switching the main screens. Large

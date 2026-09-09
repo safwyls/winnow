@@ -18,6 +18,7 @@ public abstract class FullscreenPage : UserControl, IDisposable
     public virtual string Title => "Winnow";
     public virtual string Hints => "A  Select     B  Back";
     public virtual string RightHints => string.Empty;
+    public virtual Control? Backdrop => null;
     public event EventHandler? PageChanged;
     protected FullscreenPage(FullscreenContext context) { Context = context; }
     public virtual void Dispose() { GC.SuppressFinalize(this); }

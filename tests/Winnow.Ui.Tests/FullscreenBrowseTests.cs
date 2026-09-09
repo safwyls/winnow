@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Threading;
 using Avalonia;
 using Avalonia.Media.Imaging;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using Avalonia.Interactivity;
 using Winnow.App.Design;
@@ -92,6 +93,125 @@ public sealed class FullscreenBrowseTests
         Assert.False(state.MovePage(1, []));
     }
 
+    [Fact]
+    public void Density_changes_anchor_identity_and_page_edges_use_the_new_columns()
+    {
+        var ids = Enumerable.Range(1, 71).Select(i => (long)i).ToArray();
+        var state = new FullscreenBrowseState();
+        state.Select(28, 3);
+        state.Reconcile(ids);
+        state.Resize(18, ids);
+        Assert.Equal(28, state.SelectedReleaseId);
+        Assert.Equal(1, state.Page);
+        Assert.Equal(9, state.PositionOnPage);
+        Assert.True(state.MoveGridEdge(1, 9, ids));
+        Assert.Equal(37, state.SelectedReleaseId);
+        state.Resize(26, ids);
+        Assert.Equal(37, state.SelectedReleaseId);
+        Assert.Equal(10, state.PositionOnPage);
+        state.Resize(18, ids);
+        Assert.Equal(37, state.SelectedReleaseId);
+        state.Select(71, 16);
+        state.Reconcile(ids);
+        state.Resize(28, ids);
+        Assert.Equal(71, state.SelectedReleaseId);
+        Assert.Equal(14, state.PositionOnPage);
+        Assert.False(state.MovePage(1, ids));
+    }
+
+    [AvaloniaFact]
+    public async Task Library_resize_adds_columns_without_cropping_or_losing_the_selected_game()
+    {
+        var library = CreateLibrary();
+        await library.LoadCommand.ExecuteAsync(null);
+        library.VisibleTiles = Enumerable.Range(1, 60).Select(id => TileFixture.Tile(DateTime.UtcNow, releaseId: id, title: $"Game {id}")).ToArray();
+        using var context = new FullscreenContext(library, new FeedViewModel(new PreviewFeedService(), library), PreviewData.Shell);
+        var page = new FullscreenBrowsePage(context, false);
+        var window = new Window { Width = 1728, Height = 820, Content = page };
+        window.Show();
+        try
+        {
+            Dispatcher.UIThread.RunJobs();
+            page.FocusInitial();
+            page.Handle(GamepadButtons.PageNext);
+            Dispatcher.UIThread.RunJobs();
+            var selected = AutomationProperties.GetName((Control)window.FocusManager!.GetFocusedElement()!);
+            var initialColumns = CoverColumns(page);
+            Assert.True(initialColumns > 6);
+            window.Width = 2500;
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(CoverColumns(page) > initialColumns);
+            Assert.Equal(selected, AutomationProperties.GetName((Control)window.FocusManager.GetFocusedElement()!));
+            foreach (var cover in page.GetVisualDescendants().OfType<FullscreenCover>().Where(cover => cover.GetVisualAncestors().OfType<Button>().Any(button => button.Classes.Contains("tv-cover"))))
+            {
+                Assert.InRange(cover.Bounds.Width / cover.Bounds.Height, .665, .668);
+                Assert.All(cover.GetVisualDescendants().OfType<Image>(), image => Assert.Equal(Stretch.Uniform, image.Stretch));
+            }
+            Capture(window, "fullscreen-library-native-covers-wide-full-grid");
+            window.Width = 1728;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(initialColumns, CoverColumns(page));
+            Capture(window, "fullscreen-library-native-covers-full-grid");
+            Assert.Equal(selected, AutomationProperties.GetName((Control)window.FocusManager.GetFocusedElement()!));
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Fitted_ultrawide_and_text_scale_reflow_both_browse_grids_with_focus_intact()
+    {
+        var library = CreateLibrary();
+        await library.LoadCommand.ExecuteAsync(null);
+        using var context = new FullscreenContext(library, new FeedViewModel(new PreviewFeedService(), library), PreviewData.Shell);
+        using var television = new FullscreenView(context);
+        var window = new Window { Width = 2560, Height = 1080, Content = television };
+        window.Show();
+        try
+        {
+            television.Handle(GamepadButtons.Next);
+            Dispatcher.UIThread.RunJobs();
+            var page = Assert.IsType<FullscreenBrowsePage>(television.CurrentPage);
+            var initialColumns = CoverColumns(page);
+            television.Handle(GamepadButtons.Right);
+            var selected = AutomationProperties.GetName((Control)window.FocusManager!.GetFocusedElement()!);
+            context.SetFitUltrawide(true);
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(CoverColumns(page) > initialColumns);
+            Assert.Equal(selected, AutomationProperties.GetName((Control)window.FocusManager.GetFocusedElement()!));
+            Capture(window, "fullscreen-library-native-covers-ultrawide");
+            context.TextScale = 1.4;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(selected, AutomationProperties.GetName((Control)window.FocusManager.GetFocusedElement()!));
+            Capture(window, "fullscreen-library-native-covers-large-text");
+            television.Handle(GamepadButtons.Search);
+            Dispatcher.UIThread.RunJobs();
+            var search = Assert.IsType<FullscreenBrowseSearchPage>(television.CurrentPage);
+            Click(window, "Go to results");
+            selected = AutomationProperties.GetName((Control)window.FocusManager.GetFocusedElement()!);
+            var wideColumns = CoverColumns(search);
+            context.SetFitUltrawide(false);
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(CoverColumns(search) < wideColumns);
+            Assert.Equal(selected, AutomationProperties.GetName((Control)window.FocusManager.GetFocusedElement()!));
+            Assert.All(search.GetVisualDescendants().OfType<FullscreenCover>(), cover =>
+                Assert.All(cover.GetVisualDescendants().OfType<Image>(), image => Assert.Equal(Stretch.Uniform, image.Stretch)));
+            Capture(window, "fullscreen-search-native-covers-large-text");
+        }
+        finally { window.Close(); }
+    }
+
+    private static void Capture(Window window, string name)
+    {
+        if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is not { } directory) return;
+        Directory.CreateDirectory(directory);
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        using var image = window.CaptureRenderedFrame();
+        image!.Save(Path.Combine(directory, name + ".png"));
+    }
+
+    private static int CoverColumns(Control page) => ((Grid)page.GetVisualDescendants().OfType<Button>()
+        .First(button => button.Classes.Contains("tv-cover")).Parent!).ColumnDefinitions.Count;
+
     [AvaloniaFact]
     public async Task Filter_draft_does_not_change_collection_until_apply_or_touch_desktop()
     {
@@ -125,6 +245,7 @@ public sealed class FullscreenBrowseTests
         var library = CreateLibrary();
         await library.LoadCommand.ExecuteAsync(null);
         var context = new FullscreenContext(library, new FeedViewModel(new PreviewFeedService(), library), PreviewData.Shell);
+        library.VisibleTiles = Enumerable.Range(1, 60).Select(id => TileFixture.Tile(DateTime.UtcNow, releaseId: id, title: $"Game {id}")).ToArray();
         var page = new FullscreenBrowsePage(context, false);
         var window = new Window { Width = 1920, Height = 1080, Content = page };
         window.Show();
@@ -133,15 +254,16 @@ public sealed class FullscreenBrowseTests
             Dispatcher.UIThread.RunJobs();
             page.FocusInitial();
             Assert.Equal(library.VisibleTiles[0].AutomationName, AutomationProperties.GetName((Control)window.FocusManager!.GetFocusedElement()!));
+            var columns = CoverColumns(page);
             page.Handle(GamepadButtons.Right);
             page.Handle(GamepadButtons.Down);
             var selected = (Control)window.FocusManager.GetFocusedElement()!;
-            Assert.Equal(library.VisibleTiles[7].AutomationName, AutomationProperties.GetName(selected));
+            Assert.Equal(library.VisibleTiles[columns + 1].AutomationName, AutomationProperties.GetName(selected));
             window.Content = new Button { Content = "Another page" };
             window.Content = page;
             Dispatcher.UIThread.RunJobs();
             page.FocusInitial();
-            Assert.Equal(library.VisibleTiles[7].AutomationName, AutomationProperties.GetName((Control)window.FocusManager.GetFocusedElement()!));
+            Assert.Equal(library.VisibleTiles[columns + 1].AutomationName, AutomationProperties.GetName((Control)window.FocusManager.GetFocusedElement()!));
         }
         finally { window.Close(); }
     }
@@ -160,14 +282,15 @@ public sealed class FullscreenBrowseTests
         {
             Dispatcher.UIThread.RunJobs();
             page.FocusInitial();
+            var columns = CoverColumns(page);
             page.Handle(GamepadButtons.Right);
             page.Handle(GamepadButtons.Down);
             page.Handle(GamepadButtons.Down);
             Dispatcher.UIThread.RunJobs();
-            Assert.Equal(library.VisibleTiles[13].AutomationName, AutomationProperties.GetName((Control)window.FocusManager!.GetFocusedElement()!));
+            Assert.Equal(library.VisibleTiles[columns * 2 + 1].AutomationName, AutomationProperties.GetName((Control)window.FocusManager!.GetFocusedElement()!));
             page.Handle(GamepadButtons.Up);
             Dispatcher.UIThread.RunJobs();
-            Assert.Equal(library.VisibleTiles[7].AutomationName, AutomationProperties.GetName((Control)window.FocusManager.GetFocusedElement()!));
+            Assert.Equal(library.VisibleTiles[columns + 1].AutomationName, AutomationProperties.GetName((Control)window.FocusManager.GetFocusedElement()!));
         }
         finally { window.Close(); }
     }

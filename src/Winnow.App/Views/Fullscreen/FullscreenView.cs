@@ -25,6 +25,12 @@ public sealed class FullscreenView : UserControl, IDisposable
     private readonly List<FullscreenPage> _stack = [];
     private readonly FullscreenPage[] _roots;
     private readonly ContentControl _body = new();
+    private readonly ContentControl _backdrop = new() { Name = "FullscreenPageBackdrop", IsHitTestVisible = false,
+        HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch };
+    private readonly StackPanel _brand = new() { Orientation = Orientation.Horizontal, Spacing = 14, VerticalAlignment = VerticalAlignment.Center };
+    private readonly StackPanel _navigation = new() { Name = "FullscreenRootNavigation", Orientation = Orientation.Horizontal, Spacing = 16, HorizontalAlignment = HorizontalAlignment.Center };
+    private readonly Button _back;
+    private readonly TextBlock _backLabel = FullscreenUi.Text("", 28);
     private readonly Panel _overlay = new();
     private readonly Grid _safe = new() { RowDefinitions = new RowDefinitions("80,*,64") };
     private readonly Grid _canvas = new() { Width = 1920, Height = 1080 };
@@ -89,15 +95,26 @@ public sealed class FullscreenView : UserControl, IDisposable
         brand[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension("DisplayFont");
         brand.FontWeight = FontWeight.Bold;
         _clock[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension("DataFont");
-        var lockup = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 14, VerticalAlignment = VerticalAlignment.Center };
-        lockup.Children.Add(FullscreenGlyphs.Icon("Winnow", 42));
-        lockup.Children.Add(brand);
-        header.Children.Add(lockup);
-        var nav = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16, HorizontalAlignment = HorizontalAlignment.Center };
-        nav.Children.Add(FullscreenGlyphs.Icon("LB"));
-        foreach (var tab in _tabs) nav.Children.Add(tab);
-        nav.Children.Add(FullscreenGlyphs.Icon("RB"));
-        Grid.SetColumn(nav, 1); header.Children.Add(nav);
+        _brand.Children.Add(FullscreenGlyphs.Icon("Winnow", 42));
+        _brand.Children.Add(brand);
+        header.Children.Add(_brand);
+        _navigation.Children.Add(FullscreenGlyphs.Icon("LB"));
+        foreach (var tab in _tabs) _navigation.Children.Add(tab);
+        _navigation.Children.Add(FullscreenGlyphs.Icon("RB"));
+        Grid.SetColumn(_navigation, 1); header.Children.Add(_navigation);
+        _back = FullscreenUi.Button("Back", Back);
+        _back.Name = "FullscreenBack";
+        _back.Padding = new Thickness(0, 8);
+        _back.HorizontalAlignment = HorizontalAlignment.Left;
+        _backLabel.MaxWidth = 700;
+        _backLabel.TextWrapping = TextWrapping.NoWrap;
+        _backLabel.TextTrimming = TextTrimming.CharacterEllipsis;
+        _backLabel.VerticalAlignment = VerticalAlignment.Center;
+        var backContent = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 20 };
+        backContent.Children.Add(FullscreenGlyphs.Icon("B", 40));
+        backContent.Children.Add(_backLabel);
+        _back.Content = backContent;
+        header.Children.Add(_back);
         _status.Margin = new Thickness(16, 0, 24, 0);
         Grid.SetColumn(_status, 2); header.Children.Add(_status);
         Grid.SetColumn(_clock, 3); header.Children.Add(_clock);
@@ -106,7 +123,7 @@ public sealed class FullscreenView : UserControl, IDisposable
         footer.Children.Add(_hints);
         Grid.SetColumn(_rightHints, 1); footer.Children.Add(_rightHints);
         Grid.SetRow(footer, 2); _safe.Children.Add(footer);
-        _canvas.Children.Add(_safe); _canvas.Children.Add(_overlay);
+        _canvas.Children.Add(_backdrop); _canvas.Children.Add(_safe); _canvas.Children.Add(_overlay);
         _launch.HorizontalAlignment = HorizontalAlignment.Center;
         _launch.VerticalAlignment = VerticalAlignment.Top;
         _launch.Margin = new Thickness(0, 125, 0, 0);
@@ -246,6 +263,12 @@ public sealed class FullscreenView : UserControl, IDisposable
     {
         if (_body.Content is FullscreenPage old) old.PageChanged -= PageChanged;
         var page = CurrentPage; _body.Content = page; page.PageChanged += PageChanged;
+        _backdrop.Content = page.Backdrop;
+        var details = page is FullscreenDetailsPage;
+        _brand.IsVisible = _navigation.IsVisible = !details;
+        _back.IsVisible = details;
+        _backLabel.Text = _stack.Count > 1 ? _stack[^2].Title : _roots[_section].Title;
+        Avalonia.Automation.AutomationProperties.SetName(_back, $"Back to {_backLabel.Text}");
         for (var i = 0; i < _tabs.Length; i++)
         {
             _tabs[i].Opacity = i == _section ? 1 : .7;

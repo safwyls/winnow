@@ -3,7 +3,13 @@ namespace Winnow.App.ViewModels.Fullscreen;
 /// <summary>Stable page and game identity, owned by the fullscreen presentation.</summary>
 public sealed class FullscreenBrowseState
 {
-    public const int PageSize = 12;
+    public int PageSize { get; private set; } = 12;
+
+    public void Resize(int pageSize, IReadOnlyList<long> releases)
+    {
+        PageSize = Math.Max(1, pageSize);
+        Reconcile(releases);
+    }
     public int Page { get; private set; }
     public long? SelectedReleaseId { get; private set; }
     public int PositionOnPage { get; private set; }

@@ -604,6 +604,10 @@ Share palette and font identities; keep layout, spacing and type scales surface-
 The fullscreen host reuses the input-source/filter code and dispatches to explicit focus rows
 owned by each page. It creates independent library, feed, list and dormancy state over the
 shared repositories and action services. It never scales or navigates the desktop tree.
+Fullscreen pages may supply a backdrop for the shell to mount behind its safe area and
+header. Detaching that layer releases its artwork lease; the detail page still owns its
+content and focus rows. Browse page capacity is presentation state and reflows around the
+selected release identity when the available columns change.
 
 Controller input lives in `Winnow.App.Services`, independent of ingest and process monitoring.
 The window polls a read-only source at 33 ms while open. Windows loads XInput from the system
