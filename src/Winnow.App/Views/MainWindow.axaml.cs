@@ -5,6 +5,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Media.Transformation;
 using Avalonia.Reactive;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -1337,36 +1338,29 @@ public partial class MainWindow : Window
         var pointerRow = position.Y / AlphabetSpine.Bounds.Height * buttons.Length - 0.5;
         for (var row = 0; row < buttons.Length; row++)
         {
-            SetAlphabetWave(buttons[row], Math.Abs(row - pointerRow));
+            SetAlphabetWave(buttons[row], row - pointerRow);
         }
     }
 
-    private static void SetAlphabetWave(Button button, double distance)
+    private static void SetAlphabetWave(Button button, double signedDistance)
     {
-        button.Classes.Remove("alphawave1");
-        button.Classes.Remove("alphawave2");
-        button.Classes.Remove("alphawave3");
-        button.Classes.Remove("alphawave4");
+        const double radius = 4;
+        const double reach = 13;
+        var distance = Math.Abs(signedDistance);
+        var displacement = distance >= radius
+            ? 0
+            : reach * (1 + Math.Cos(Math.PI * distance / radius)) / 2;
 
-        var strength = distance switch
-        {
-            < 0.65 => 4,
-            < 1.5 => 3,
-            < 2.5 => 2,
-            < 3.5 => 1,
-            _ => 0,
-        };
-        if (strength > 0)
-        {
-            button.Classes.Add($"alphawave{strength}");
-        }
+        var transform = TransformOperations.CreateBuilder(1);
+        transform.AppendTranslate(-displacement, 0);
+        button.RenderTransform = transform.Build();
     }
 
     private void ResetAlphabetWave()
     {
         foreach (var button in AlphabetSpine.GetVisualDescendants().OfType<Button>())
         {
-            SetAlphabetWave(button, double.PositiveInfinity);
+            SetAlphabetWave(button, 4);
         }
     }
 

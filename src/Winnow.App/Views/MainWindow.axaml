@@ -190,6 +190,7 @@
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="HorizontalContentAlignment" Value="Right"/>
             <Setter Property="RenderTransform" Value="translateX(0px)"/>
+            <Setter Property="Transitions"><Transitions/></Setter>
             <Setter Property="Cursor" Value="Arrow"/>
         </Style>
         <Style Selector="Button.alphaindex /template/ ContentPresenter#PART_ContentPresenter">
@@ -210,34 +211,6 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="TextElement.Foreground" Value="{StaticResource TextDim}"/>
         </Style>
-        <Style Selector="Window.motion Button.alphaindex">
-            <Setter Property="Transitions">
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform"
-                                                   Duration="0:0:0.07"
-                                                   Easing="CubicEaseOut"/>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Window.reducedmotion Button.alphaindex">
-            <Setter Property="Transitions"><Transitions/></Setter>
-        </Style>
-        <Style Selector="Button.alphaindex.alphawave1">
-            <Setter Property="RenderTransform" Value="translateX(-2px)"/>
-        </Style>
-        <Style Selector="Button.alphaindex.alphawave2">
-            <Setter Property="RenderTransform" Value="translateX(-5px)"/>
-        </Style>
-        <Style Selector="Button.alphaindex.alphawave3">
-            <Setter Property="RenderTransform" Value="translateX(-9px)"/>
-        </Style>
-        <Style Selector="Button.alphaindex.alphawave4">
-            <Setter Property="RenderTransform" Value="translateX(-13px)"/>
-        </Style>
-        <Style Selector="Button.alphaindex.alphawave4 /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="TextElement.Foreground" Value="{StaticResource Text}"/>
-        </Style>
-
         <!-- Persistent viewport location. The halo belongs only to the current
              stop; neighboring ink walks back to the resting TextDim. -->
         <Style Selector="Border.alphaglyph">
@@ -1936,7 +1909,7 @@
                                         ToolTip.Tip="{Binding Tooltip}"
                                         Click="OnAlphabetJumpClick">
                                     <Border Classes="alphaglyph"
-                                            MinWidth="12"
+                                            Width="12"
                                             Height="14"
                                             Padding="1,0"
                                             CornerRadius="7">

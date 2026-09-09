@@ -158,17 +158,31 @@ public sealed class ListBrowsingPositionTests
             var currentGlyph = currentLocation.GetVisualDescendants().OfType<Border>()
                 .Single(border => border.Classes.Contains("alphaglyph"));
             Assert.NotEqual(Brushes.Transparent, currentGlyph.Background);
+            var glyphCenters = spine.GetVisualDescendants().OfType<Border>()
+                .Where(border => border.Classes.Contains("alphaglyph"))
+                .Select(border => border.TranslatePoint(new Point(border.Bounds.Width / 2, 0), window)!.Value.X)
+                .ToArray();
+            Assert.Equal(27, glyphCenters.Length);
+            Assert.InRange(glyphCenters.Max() - glyphCenters.Min(), 0, 0.01);
 
             window.MouseMove(PointOnAlphabet(window, spine, 20));
             Flush();
             Assert.Contains("alphabetengaged", scrollbar.Classes);
             var thumb = scrollbar.GetVisualDescendants().OfType<Thumb>().Single();
             Assert.True(thumb.Bounds.Width >= 8, $"Engaged thumb width was {thumb.Bounds.Width}.");
-            Assert.Contains("alphawave4", jumpToT.Classes);
-            Assert.NotEmpty(jumpToT.Transitions!);
+            var centeredWave = Assert.IsType<Avalonia.Media.Transformation.TransformOperations>(
+                jumpToT.RenderTransform).Value.M31;
+            Assert.InRange(centeredWave, -13.01, -12.99);
+            window.MouseMove(PointOnAlphabet(window, spine, 20.35));
+            Flush();
+            var fractionalWave = Assert.IsType<Avalonia.Media.Transformation.TransformOperations>(
+                jumpToT.RenderTransform).Value.M31;
+            Assert.InRange(fractionalWave, -12.9, -12.5);
+            Assert.NotEqual(centeredWave, fractionalWave);
+            Assert.True(jumpToT.Transitions is null or { Count: 0 });
             library.Ramp.ReducedMotion = true;
             Flush();
-            Assert.Empty(jumpToT.Transitions!);
+            Assert.True(jumpToT.Transitions is null or { Count: 0 });
             library.Ramp.ReducedMotion = false;
             Flush();
 
@@ -226,8 +240,9 @@ public sealed class ListBrowsingPositionTests
             window.MouseMove(new Point(400, 300));
             Flush();
             Assert.DoesNotContain("alphabetengaged", scrollbar.Classes);
-            Assert.DoesNotContain(window.GetVisualDescendants().OfType<Button>(),
-                button => button.Classes.Any(name => name?.StartsWith("alphawave", StringComparison.Ordinal) == true));
+            Assert.All(spine.GetVisualDescendants().OfType<Button>(), button =>
+                Assert.InRange(Math.Abs(Assert.IsType<Avalonia.Media.Transformation.TransformOperations>(
+                    button.RenderTransform).Value.M31), 0, 0.01));
 
             library.Sort = LibrarySort.PlaytimeHighToLow;
             Flush();
@@ -279,7 +294,7 @@ public sealed class ListBrowsingPositionTests
         Flush();
     }
 
-    private static Point PointOnAlphabet(Window window, Border spine, int row)
+    private static Point PointOnAlphabet(Window window, Border spine, double row)
         => spine.TranslatePoint(
             new Point(spine.Bounds.Width / 2, spine.Bounds.Height * (row + 0.5) / 27),
             window)!.Value;
