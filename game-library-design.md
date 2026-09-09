@@ -593,6 +593,65 @@ IRemoteOwnershipSync` handles entitlement backfill on a 6-hour timer. Both live 
 `ResolveResult` and Core cannot reference Resolve. **No enrichment or remote client may be
 reachable from the first-paint path.**
 
+#### Controller input
+
+Desktop and fullscreen are separate UI paths. Each owns its views, presentation view models, focus
+graph, navigation history, dialogs and text-entry layout. Fullscreen must not navigate the
+desktop visual tree or reuse desktop control templates merely to avoid maintaining a second
+surface. Share domain records, repositories, application services, validation and action
+semantics for launch, install, lists, journal, settings and recommendation explanations.
+Share palette and font identities; keep layout, spacing and type scales surface-specific.
+The fullscreen host reuses the input-source/filter code and dispatches to explicit focus rows
+owned by each page. It creates independent library, feed, list and dormancy state over the
+shared repositories and action services. It never scales or navigates the desktop tree.
+Fullscreen pages may supply a backdrop for the shell to mount behind its safe area and
+header. Detaching that layer releases its artwork lease; the detail page still owns its
+content and focus rows. Browse page capacity is presentation state and reflows around the
+selected release identity when the available columns change.
+Adaptive cover capacity is recalculated once queued text scaling and layout have settled;
+reading transient unscaled geometry can make a long Home hero alternate capacities and
+continuously rebuild.
+
+Fullscreen IGDB landscapes use an `igdb-backdrop` cache key and the documented
+`t_1080p_2x` rendition, separate from desktop screenshot assets. Decode buckets extend to
+1920, 2560 and 3840 pixels, bounded by source dimensions and the shared memory budget.
+Resizing requests the appropriate display-sized lease. Desktop covers and screenshot
+renditions remain unchanged; both presentations share lease and eviction behavior.
+
+Controller input lives in `Winnow.App.Services`, independent of ingest and process monitoring.
+The window polls a read-only source at 33 ms while open. Windows loads XInput from the system
+directory; Linux reads nonblocking joydev events using kernel-reported button and axis maps.
+Discovery retries every two seconds. Battery readings are optional and queried every thirty
+seconds on Windows; Linux joydev does not report battery state. The input filter suppresses
+held buttons on reconnect or activation and repeats navigation after 400 ms, then every 110 ms.
+Only the active, visible window dispatches actions. Closing disposes the native source.
+
+Fullscreen Activity reads ownerships, sessions, notes and update events from repositories,
+filtered through its own visible library tile source. The current repository contracts require
+per-ownership session/note reads and per-release update reads; those reads run off the UI thread.
+This is not a constant-query bulk history operation. Session-note edits write through
+`ISessionRepository`, and account summaries reuse the currency-safe `AccountStatsViewModel`
+with independent presentation state. Manual-game and identity tools construct their own
+`LibrarySettingsViewModel` and `MergeQueueViewModel` from DI; editor state and focus do not
+leak into desktop tools. Shared settings remain common application state. Both surfaces use
+the shared `ThemeService` and `appearance.theme`; the former `fullscreen.theme` preference is
+ignored. Fullscreen keeps separate `fullscreen.*` sizing, margins, motion and dormancy
+preferences and renders the shared theme with opaque local resource overrides.
+The optional ultrawide setting expands the TV reference canvas width to the viewport aspect
+ratio while retaining its reference height and uniform scaling. Controller prompts use a
+bundled CC0 vector subset; ambient page art uses bundled original SVG path geometry.
+`IWebViewInputSupport` lets the app supply controller chrome before a native browser is
+attached. Steam sign-in, Epic consent/sign-in and the patch-notes reader opt into it through
+DI. Desktop calls retain their existing presentation. TV browser windows poll their own
+read-only controller source while active and dispose it on close or content replacement.
+Input goes through ordered WebView2 DevTools keyboard and text-insertion methods; this bridge
+does not inspect the DOM, read field values or change the existing origin gates and capture
+policies. The local composer is always masked and cleared on insertion, cancellation or
+navigation. It occupies layout space beside the native HWND, rather than overlaying it.
+Programmatic controller input obeys the host's input-disabled state during token capture.
+Provider-specific CAPTCHA, third-party sign-in and phone approval remain external validation
+boundaries. The Windows-only WebView2 availability rules remain unchanged.
+
 ### 5.2 Session detection
 
 **Process watching** is the shipped mechanism and needs no setup. A launch-option wrapper

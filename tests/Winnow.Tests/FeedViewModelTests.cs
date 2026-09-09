@@ -12,6 +12,36 @@ namespace Winnow.Tests;
 public sealed class FeedViewModelTests
 {
     [Fact]
+    public async Task Disposing_a_feed_releases_cards_and_detaches_library_reload()
+    {
+        var tiles = new FakeTileSource();
+        var service = new FakeFeedService(FullFeed(tiles));
+        var feed = new FeedViewModel(service, tiles);
+        await feed.LoadCommand.ExecuteAsync(null);
+        Assert.NotEmpty(feed.Shelves);
+        var calls = service.Calls;
+        feed.Dispose();
+        tiles.Reload();
+        await feed.LoadCommand.ExecuteAsync(null);
+        Assert.Equal(calls, service.Calls);
+        Assert.Empty(feed.Shelves);
+    }
+
+    [Fact]
+    public async Task A_load_finishing_after_disposal_cannot_restore_feed_cards()
+    {
+        var tiles = new FakeTileSource();
+        var service = new FakeFeedService(FullFeed(tiles)) { Gate = new TaskCompletionSource() };
+        var feed = new FeedViewModel(service, tiles);
+        var loading = feed.LoadCommand.ExecuteAsync(null);
+        feed.Dispose();
+        service.Gate.SetResult();
+        await loading;
+        Assert.Empty(feed.Shelves);
+        Assert.Equal(0, service.HistoryCalls);
+    }
+
+    [Fact]
     public async Task Derelict_only_feed_shows_evidence_without_playtime_confidence_claim()
     {
         var tiles = new FakeTileSource();

@@ -78,6 +78,20 @@
                 <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
                            Margin="0,6,0,0" AutomationProperties.HeadingLevel="2"
                            Text="STARTUP"/>
+                <Border Classes="card" AutomationProperties.Name="Fullscreen startup"
+                        AutomationProperties.AccessibilityView="Control">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
+                        <StackPanel Grid.Column="0" Spacing="5">
+                            <TextBlock Classes="body-l" Text="Start in fullscreen"/>
+                            <TextBlock Classes="para" Foreground="{StaticResource TextDim}"
+                                       TextWrapping="Wrap" Text="{Binding FullscreenStartupNote}"/>
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" VerticalAlignment="Center"
+                                      IsChecked="{Binding StartInFullscreen, Mode=TwoWay}"
+                                      OnContent="Start in fullscreen" OffContent="Start in fullscreen"
+                                      AutomationProperties.Name="Start in fullscreen"/>
+                    </Grid>
+                </Border>
                 <Border Classes="card" AutomationProperties.Name="Startup behavior"
                         AutomationProperties.AccessibilityView="Control">
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">

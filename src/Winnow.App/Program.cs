@@ -779,6 +779,7 @@ public static class Program
         // The Chromium profile lives beside the database rather than beside the
         // executable, because WebView2's default is the executable's own folder
         // and that is read-only for an installed app.
+        services.AddSingleton<IWebViewInputSupport, FullscreenWebViewInputSupport>();
         services.AddWebViewAuthPrompt(Path.Combine(data.Root, "WebView2"));
         services.AddSingleton<IInteractiveAuthPrompt, ConsoleAuthPrompt>();
 

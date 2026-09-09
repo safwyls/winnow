@@ -36,6 +36,25 @@ public sealed class ApplicationSettingsViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task Fullscreen_startup_defaults_off_and_round_trips_both_values()
+    {
+        var repository = new SettingsRepository(_db.Factory);
+        var model = new ApplicationSettingsViewModel(repository);
+        await model.LoadAsync();
+        Assert.False(model.StartInFullscreen);
+        model.StartInFullscreen = true;
+        await model.PendingSave;
+        var reloaded = new ApplicationSettingsViewModel(repository);
+        await reloaded.LoadAsync();
+        Assert.True(reloaded.StartInFullscreen);
+        Assert.False(reloaded.TrayIconWanted);
+        reloaded.StartInFullscreen = false;
+        await reloaded.PendingSave;
+        await model.LoadAsync();
+        Assert.False(model.StartInFullscreen);
+    }
+
+    [Fact]
     public async Task Startup_toggle_updates_the_operating_system_registration()
     {
         var startup = new FakeStartupRegistration();

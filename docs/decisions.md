@@ -3268,3 +3268,285 @@ The promo site now uses https://winnow.gg/ and builds links and assets from the
 > Set `PAGES_BASE_PATH` to an empty string for a domain root, or another slash-prefixed path without a trailing slash when hosting under a different repository name.
 
 > Update the workflow environment to match when changing the published location.
+
+### 2026-09-09 — Fullscreen and controller input
+
+Fullscreen scales the existing shell and retains its commands, dialogs and focus styles.
+The M10 roadmap row previously said:
+
+> | M10 | Full-screen mode + gamepad navigation | The whole app is navigable on a controller at 10 feet | last |
+
+Physical-controller validation and controller-only access to external input surfaces remain
+unverified; implementing the shell does not establish those broader exit criteria.
+
+### 2026-09-09 — Separate fullscreen design requested
+
+The user rejected adapting the desktop shell for controller use and requested a separate TV-distance interface, with image mockups and design review before implementation. Desktop and fullscreen will share application behavior while maintaining separate presentation and interaction paths. The prior visual specification said:
+
+### Fullscreen and controller navigation
+
+Fullscreen reuses the shell and its dialogs, with the caption hidden and a persistent footer
+outside the dialog layers. The rail offers Fullscreen; F11 and Menu / Start toggle it from
+any screen. Exiting restores the preceding normal or maximized state. The footer shows a
+local-time clock, controller status when connected, and an Exit fullscreen button.
+
+The shell scales uniformly from 1 to 1.5, limited by 1200 logical pixels of width and 688
+of height (640 for content plus 48 for the footer). Small displays retain the desktop scale.
+It uses the same theme tokens, control templates and focus rings. Controller focus uses
+keyboard focus styling and scrolls controls into view. D-pad and left stick navigate;
+LB/RB follow the control order inside the current dialog or popup; A activates and B backs
+out one layer. Right-stick vertical movement scrolls long bodies without moving focus.
+
+A on an editable field, or Y while it is focused, opens a keyboard above the content and
+below the fullscreen footer. It includes case, punctuation, caret movement and deletion.
+Its selected key uses a fixed-width Volt border; the text preview masks password fields.
+Done or B closes text entry and restores visible focus to the original field. Escape closes
+text entry before any underlying dialog. Native file dialogs and store sign-in are separate
+input surfaces and do not inherit these controls.
+
+
+The roadmap previously described the first implementation as:
+
+> | M10 | Full-screen mode + gamepad navigation | The whole app is navigable on a controller at 10 feet | fullscreen, controller navigation and text entry implemented; physical-device and complete controller-only operation validation pending; native dialogs and embedded sign-in retain their own input requirements |
+
+### 2026-09-09 — Contextual fullscreen actions across screens
+
+The extended mock set gives Y a labelled action appropriate to the current screen. The
+first-pass controller table previously said:
+
+> | Y | Open a short contextual action sheet, including list, snooze and hide actions where applicable |
+
+### 2026-09-09 — Fullscreen activity and settings implementation
+
+Activity now reads saved session history and journal notes, and Settings owns its fullscreen
+appearance choices and TV tool forms. Secure platform sign-in remains an explicit keyboard
+and pointer boundary. The visual proposal previously said:
+
+> **Activity** is a personal history view. Sessions, Updates and Journal are local choices
+> reached with directional navigation; bumpers continue switching the main screens. Large
+> chronological rows occupy the left side and the selected event's art, facts and user note
+> occupy the right. A opens the event; X edits the selected session's note when applicable.
+> Triggers change the visible time period. Account-wide statistics remain reachable through
+> a separate Library summary page, without crowding the session history with charts.
+
+> **Settings** has Appearance, Controller, Library, Platforms and Application sections. Large
+> rows expose a label and current value; left/right changes bounded values, A opens pickers
+> or activates toggles, and B returns. Appearance has a readable live sample. Text size,
+> screen margins and motion have fullscreen-specific preferences. The proposed fullscreen
+> appearance page also permits its own theme and dormancy presentation; these do not change
+> library facts or recommendation behavior. Shared settings such as content visibility,
+> platform credentials and journal opt-in have the same value and validation in both UIs.
+> Reset requires a confirmation naming the settings affected. Platform status has no Winnow
+> account or cloud-sync fiction.
+
+The first implementation draft kept sign-in outside the TV input path. A host-owned browser
+input bridge now covers ordinary form navigation, masked composition and reading without
+reading credentials or changing auth policy. The draft sentences were:
+
+> Platform pages show real connection status and sign-out actions. Connecting Steam or Epic
+> still requires the secure sign-in window with keyboard and pointer; the fullscreen page
+> states that boundary and directs users to the quick menu's Return to desktop action. This
+> remains an exception to controller-only coverage, not a completed TV sign-in flow.
+
+> Secure platform sign-in remains an external input boundary requiring keyboard and pointer;
+> the TV platform page states this limitation rather than embedding the desktop settings view.
+
+### Fullscreen implementation after mock review (2026-09-09)
+
+The user approved full implementation of the five-screen mock set. The dedicated TV host
+owns its navigation stack, focus graph, text entry and presentation state. Desktop remains
+a separate presentation over shared operations. Prior design-only statements were replaced:
+
+> **Design review, not implemented.** Fullscreen is a separate TV-distance interface with its
+> own composition, components, navigation and focus model. The user rejected scaling the
+> desktop shell on 2026-09-09. Image mockups precede implementation; the details below are the
+> first proposal for review. The desktop specifications elsewhere in this document continue
+> to govern the desktop path.
+
+> **Presentation direction, agreed 2026-09-09; implementation pending design review.** Desktop
+> and fullscreen are separate UI paths.
+
+> The existing input-source/filter code is a candidate for reuse, subject to the approved
+> controller model. Image mockups and review precede new UI implementation.
+
+> Before implementation, review the home composition and game page, then mock the library,
+> filters, text entry, settings, journal, empty states and controller disconnect. Native file
+> selection and embedded sign-in need an explicit controller-accessible design; falling back
+> to a desktop dialog does not satisfy M10. Do not mark those paths covered by the first mock.
+
+> The user endorsed the initial visual direction and requested the remaining views. Continue
+> with the same typography, safe area, focus treatment and controller glyphs; each screen has
+> its own composition. These proposals do not establish implemented behavior or device testing.
+
+> Repeat to return to the previous window state. Fullscreen enlarges the interface when the
+> display has room and shows a clock and available controller status.
+
+> The footer shows only actions available in the current state. It uses positional controller
+> glyphs appropriate to the connected device.
+
+> M10 status: design reset: separate TV-distance UI; mockups and user review before implementation;
+> scaled-desktop approach rejected.
+
+> Merge *execution* (the queue records intent; nothing applies it), full JSON export/import, install
+> management, and full-screen gamepad navigation.
+
+> The user endorsed the initial home direction. The remaining screens are proposals for review.
+
+> The next design reviews cover search and filtering, text entry, list and metadata tools,
+> and controller-accessible sign-in/file selection. The screen inventory in the visual spec
+> records these separately from the completed image concepts.
+
+> Library, Activity and Settings have image concepts for this review. Supporting views in the
+> table are an interaction inventory, not finished mocks; review search, filtering and text
+> entry next, followed by library tools and external input boundaries.
+
+
+## 2026-09-09 — Fullscreen visual refinement
+
+The user requested closer fidelity to the reviewed TV mock after using the implementation.
+The visual spec now records controller glyphs, underline actions, direct apply and navigation
+shortcuts, switch controls, backdrops and an optional wider canvas. Desktop presentation
+remains independent. The following text was replaced in `design-system.md`:
+
+> 4K increases rendering resolution rather than content density. Validate readability from the
+> actual seating position before accepting the scale.
+
+> The current top-level section uses an underline, visually distinct from focus.
+
+> The footer shows actions available in the current state. The current input sources use
+> Xbox-style button labels; device-specific glyph families are not detected.
+
+> A dedicated
+> filter page carries large choices and an explicit Apply action.
+
+> Triggers change the visible Monday-based
+> week and cannot advance past the current week.
+
+> cover dimming enabled. These preferences do not change desktop appearance, library facts or
+
+> | Filter & sort | Large groups and choices, result count, explicit Apply and Clear; B discards uncommitted edits |
+
+> mint outline; unread dots and dormancy retain their shared meaning. Up from the first row
+> reaches All games, Installed, Never played, Patched and My lists. Triggers page through the
+> collection while preserving the focused column where possible.
+
+The initial implementation count in the verification report is now labelled as historical
+evidence rather than the final result after the visual follow-up. It previously said:
+
+> The final Release run passed 4,273 tests, including 177 UI tests.
+
+## 2026-09-09 — Complete covers and landscape details
+
+The user preferred whole cover artwork and adaptive column counts over the cropped TV
+frames. Comparing the details mock to runtime also exposed a boxed thumbnail and persistent
+root header where the mock uses a full-canvas landscape and a back link. The visual spec
+now records these corrections. It previously said:
+
+> **Library** trades the home's large featured artwork for two rows of six covers at the
+> reference size. Titles sit below the covers. The focused game remains clear through its
+> mint outline; unread dots and dormancy retain their shared meaning. A dimmed landscape
+> backdrop follows the selected game. Covers sit in compact columns sized to the available
+> height, with smaller gaps and headings to give artwork more room. Browse uses 5:6 cover
+> frames with uniform cropping, matching the mock; it does not stretch images or change desktop covers. Up from the first row
+> on the first page reaches the collection choices. At grid edges, down advances a page and
+> up returns to the previous page, preserving the column where possible. Triggers also page
+> through the collection. Y opens Filter & sort; View
+> opens Search. Opening a game and returning restores the collection, page and exact game.
+> Actual density remains subject to distance testing and may reduce at larger text settings.
+
+The verification report now labels the earlier cropped-cover result as historical evidence.
+It previously said:
+
+> The follow-up polish uses bundled Kenney CC0 controller glyphs, transparent underline
+> controls, a dragon wordmark, themed original SVG backdrops and a persisted ultrawide-fit
+> preference. Browse covers use 5:6 frames with uniform cropping and compact spacing.
+
+## 2026-09-09 — Focus-only underlines and local trigger navigation
+
+Fullscreen reserves the underline for focus, maps triggers to local sections, and keeps
+screenshot previews visible in a bounded overview. Desktop presentation stays independent.
+The corrected fullscreen visual specification previously said:
+
+> Text actions have transparent backgrounds and a mint underline on focus. The current top-level
+> section has a persistent underline; the focused cover retains its outline.
+> LB / RB: Switch For you, Library, Activity and Settings at the root; switch local sections on a game page.
+> Paging prompts sit at the right edge.
+> Stable 2:3 frames use uniform fitting so user-supplied art keeps its whole image even when its proportions differ.
+> Triggers also page through the collection.
+> Artwork has its own display-sized lease.
+> The game title starts at 96px and wraps to at most two lines in a bounded left region.
+> The hero grows for long titles and large text. Overview separates the history/return reason
+> from the description and screenshots with a vertical rule; history leads use 48px display
+> type and descriptions use 32px body type. Local sections and all management actions remain
+> controller-accessible. Long overview content scrolls below the stable header and actions.
+> Triggers change the visible Monday-based week; left/right does the same from the event region.
+> Neither can advance past the current week.
+
+README previously said:
+
+> **LB / RB:** switch main screens; switch local sections on a game page.
+> **LT / RT:** page through games or activity.
+
+Fullscreen landscapes have a separate cache provider so previously downloaded 720p screenshots
+cannot satisfy high-resolution background requests. Desktop screenshot downloads retain their
+existing rendition. IGDB documents 1080p and its 2x suffix at
+[Images](https://api-docs.igdb.com/#images); source resolution still limits visible detail.
+
+## 2026-09-09 — Restore selected-section markers
+
+Selected sections and collections again retain a neutral underline; focus remains mint and
+hover remains unmarked. The visual specification previously said:
+
+> Text actions have transparent backgrounds and a mint underline only on focus. Hover leaves
+> no underline; current sections use bold text. The focused cover retains its outline.
+
+Main navigation now uses equal side regions so controller status and clock widths cannot
+shift its center. Details overview navigation follows the horizontal arrangement of actions
+and screenshot previews.
+
+Controller help now fits within16:9, including140%text and10%safe margins. The visual
+specification previously said:
+
+> Controller help shows a controller diagram with action callouts.
+
+## 2026-09-09 — Share themes and refresh fullscreen platform state
+
+Both surfaces now select the same ThemeService theme. Fullscreen retains independent layout,
+motion and dormancy settings. The former fullscreen.theme value is ignored; the desktop's
+persisted appearance.theme is authoritative. Resetting TV layout does not reset the theme.
+The architecture specification previously said:
+
+> Shared settings remain common application state. Fullscreen appearance uses `fullscreen.*`
+> settings and local resource overrides instead of changing the desktop theme.
+
+The visual specification previously said:
+
+> Activity and Settings use quiet original SVG backdrops with theme-colored paths.
+> Fullscreen owns its text scale (100–140% in ten-point steps), screen margins (0–10% in
+> one-point steps), motion, theme and dormancy preferences. Defaults are 100%, 5%, motion
+> enabled, Winnow and cover dimming enabled; Fit ultrawide defaults off.
+> These preferences do not change desktop appearance, library facts or recommendations.
+
+README previously said:
+
+> Choose **Fullscreen** at the foot of the rail, press **F11**, or press the controller's
+> **Menu / Start** button.
+> Desktop and fullscreen retain separate browsing positions, filters and appearance preferences.
+
+The Activity art is an original open-journal vector instead of a landscape. Platform screens
+now bind to the shared connection state and refresh it on entry. Vertical action groups
+navigate vertically; sign-out confirmation dismisses one level.
+
+The visual specification's reference-size sentence previously said:
+
+> Start with a 1920×1080 reference canvas, 5% safe margins, 64px game titles, 32px section
+> headings and 28px body text; essential labels stay at least 24px.
+
+### 2026-09-09 — Fullscreen startup and stable Home descriptions
+
+The shared startup preference applies only on normal launch; background launches retain
+quiet tray behavior. Home descriptions now reserve two lines at the selected text size,
+including empty descriptions, so switching recommendations cannot resize the shelf because
+of description length. The visual specification previously said:
+
+> A large title, one-sentence reason and game artwork above the shelf follow the selection.

@@ -1,4 +1,5 @@
 using Winnow.App.Services;
+using Winnow.App.Design;
 using Winnow.App.ViewModels;
 using Winnow.Monitor;
 using Microsoft.Extensions.Time.Testing;
@@ -11,6 +12,29 @@ namespace Winnow.Tests;
 /// </summary>
 public sealed class GameLaunchTests
 {
+    [Fact]
+    public async Task Collapsed_game_attributes_launch_and_status_to_the_copy_it_actually_plays()
+    {
+        var clock = new FakeTimeProvider(T0);
+        var intents = new LaunchIntents();
+        var dispatcher = new RecordingDispatcher();
+        using var status = new LaunchStatusViewModel(intents, clock, post: action => action());
+        var library = new LibraryViewModel(new PreviewLibraryQueryRepository(), new PreviewOwnershipRepository(),
+            new PreviewReleaseRepository(), new PreviewWorkRepository(), new PreviewUpdateEventRepository(),
+            launcher: new GameLaunchService(dispatcher, intents, clock), launchStatus: status);
+        var primary = TileFixture.Tile(T0).Primary with { OwnershipId = 1, SteamAppId = "10", Installed = false };
+        var installed = primary with { OwnershipId = 2, SteamAppId = "20", Installed = true };
+        var tile = new GameTileViewModel([primary, installed], TileFixture.Tile(T0).Game, "Two copies", T0);
+        Assert.Equal(1, tile.OwnershipId);
+        await library.LaunchCommand.ExecuteAsync(tile);
+        Assert.Equal(["steam://run/20"], dispatcher.Opened);
+        Assert.False(intents.IsLive(1, T0));
+        Assert.True(intents.IsLive(2, T0));
+        intents.Fulfil(2, T0.AddSeconds(1));
+        Assert.False(status.IsWaiting);
+        Assert.Equal("Two copies is running.", status.Message);
+    }
+
     private static readonly DateTime T0 = new(2026, 8, 27, 20, 0, 0, DateTimeKind.Utc);
 
     private static readonly GameLink Play = GameLink.Create(

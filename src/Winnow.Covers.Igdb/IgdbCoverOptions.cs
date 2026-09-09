@@ -41,6 +41,12 @@ public sealed class IgdbCoverOptions
     /// </summary>
     public string ScreenshotSizeToken { get; set; } = "t_screenshot_huge";
 
+    /// <summary>
+    /// Fullscreen landscapes use IGDB's documented 1080p size with its 2x suffix
+    /// (up to 3840x2160). Source quality still limits detail; decoding never upscales.
+    /// </summary>
+    public string BackdropSizeToken { get; set; } = "t_1080p_2x";
+
     /// <summary>Image CDN root. Only the size token is rewritten; the host comes from IGDB's own URL.</summary>
     public string ImageHostPrefix { get; set; } = "https://images.igdb.com/";
 

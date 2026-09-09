@@ -28,7 +28,7 @@ public static class PatchNotesServiceCollectionExtensions
 
         services.AddSingleton<IPatchNotesReader>(sp => new WebView2PatchNotesReader(
             profileRoot,
-            sp.GetService<ILogger<WebView2PatchNotesReader>>()));
+            sp.GetService<ILogger<WebView2PatchNotesReader>>(), sp.GetService<IWebViewInputSupport>()));
 
         return services;
     }

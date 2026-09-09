@@ -66,6 +66,47 @@ fetching titles and covers. Give it a minute or two.
 **`Patched` grows over the first week.** The update poller spreads its sweep across seven
 days, so a game enters that bucket when its slot comes up.
 
+### Fullscreen and controllers
+
+Choose the **Fullscreen** icon beside the settings cog, press **F11**, or press the controller's
+**Menu / Start** button. Fullscreen has its own For you, Library, Activity, Settings and
+game-detail screens, designed for a TV. Press F11 or choose **Exit fullscreen** in the
+controller's quick menu to restore the previous window state. Desktop and fullscreen retain
+separate browsing positions, filters and layout preferences. Theme selection is shared and
+updates both surfaces immediately. Fullscreen text size ranges from 70% to 140%, with −/+
+buttons for mouse adjustment and left/right adjustment on a controller.
+
+Enable **Start in fullscreen** in **Settings → Application** on either surface to use the
+TV interface on the next launch. It defaults off. Windows sign-in and explicit background
+launches still start quietly in the notification area.
+
+Fullscreen Appearance includes **Fit ultrawide displays** to use the full screen width
+without stretching text. Controller input hides the cursor; moving or clicking the mouse
+restores it. In Filter & sort, **Y** applies and closes and **B** cancels. D-pad/left-stick
+up/down crosses library page edges; left/right in Activity changes weeks.
+
+- **D-pad / left stick:** navigate games and controls.
+- **A / south button:** select; on an editable text field, open the on-screen keyboard.
+- **B / east button:** back; closes text entry before the underlying dialog.
+- **LB / RB:** switch main screens at the root.
+- **LT / RT:** switch local sections or shelves in Home, Library, Activity, Settings and game details.
+- **X / west button:** play the selected installed game.
+- **Y / north button:** the contextual action shown in the footer.
+- **View / Back button:** search from browsing.
+- **Menu / Start:** open the quick menu.
+- **Right stick up / down:** scroll long content.
+
+While the on-screen keyboard is open, **X** backspaces and **RT** presses Enter.
+Enter closes the keyboard and sends Enter to a single-line field, or adds a newline to
+a multiline field; **B** closes the keyboard without submitting.
+
+Windows supports XInput controllers; Linux supports controllers exposed through readable
+`/dev/input/js*` devices. Battery status appears when XInput supplies it. Input pauses while
+Winnow is inactive, and held buttons must be released after reconnecting or returning from
+a game. A fullscreen file browser supports controller selection. External launchers and
+third-party authentication challenges retain their own input requirements.
+Physical-controller compatibility and readability at your seating distance need device validation.
+
 ### Connecting platforms
 
 `SETTINGS › PLATFORMS` (the gear at the foot of the rail) shows what each platform contributes.
@@ -252,8 +293,9 @@ One document owns each domain, and [`AGENTS.md`](AGENTS.md) carries the full lis
 Settings → Library offers an acquisition CSV export with title, store, acquisition date,
 licence and price paid. Missing values stay blank; prices are stored cents without a currency.
 
-Merge *execution* (the queue records intent; nothing applies it), full JSON export/import, install
-management, and full-screen gamepad navigation. [`ROADMAP.md`](ROADMAP.md) §5 lists the
+Merge *execution* (the queue records intent; nothing applies it), full JSON export/import and install
+management remain deferred. Fullscreen has its own UI; physical controller and TV-distance
+validation remain open. [`ROADMAP.md`](ROADMAP.md) §5 lists the
 carried debt against its backlog tasks.
 
 ### A note on shipped credentials

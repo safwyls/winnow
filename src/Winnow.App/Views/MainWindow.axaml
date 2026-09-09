@@ -868,7 +868,7 @@
     <Panel Margin="{Binding $parent[Window].OffScreenMargin}">
     <!-- ShellGround here (not on Row=1) so every pane composites over it
          exactly once. A second coat would break MinPaneAlpha's arithmetic. -->
-    <Grid RowDefinitions="36,*" Background="{StaticResource ShellGround}">
+    <Grid Name="DesktopHost" RowDefinitions="36,*" Background="{StaticResource ShellGround}">
 
         <!-- ══ TITLE BAR ═══════════════════════════════════════════════════
              CaptionFill: ground in floating layout, rail tone in flush (see
@@ -932,7 +932,7 @@
          (not an overlay). Element order = reading order = Tab walk order.
          Auto rail column so floating margins widen the column, not the content.
          No Background: ShellGround is on the Grid above (see note there). -->
-    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto">
+    <Grid Name="ShellContent" Grid.Row="1" ColumnDefinitions="Auto,*,Auto">
 
         <!-- ══ RAIL (220px) ════════════════════════════════════════════════ -->
         <!-- BorderThickness in a style so the floating layout can override it. -->
@@ -1316,7 +1316,7 @@
                                 Command="{Binding Library.BeginSaveLiveListCommand}"
                                 ToolTip.Tip="Save the current library filters. Matching games update automatically."/>
                     </StackPanel>
-                    <Grid ColumnDefinitions="*,Auto">
+                    <Grid ColumnDefinitions="*,Auto,Auto">
                         <Button Name="NewListButton" Classes="listrow" FontFamily="{StaticResource BodyFont}" FontSize="{StaticResource BodySize}" Padding="8,0"
                                 HorizontalAlignment="Left"
                                 Command="{Binding Library.Lists.ToggleCreateMenuCommand}"
@@ -1329,7 +1329,13 @@
                                 <TextBlock Text="New list" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
-                <Button Grid.Column="1" Name="SettingsButton"
+                <Button Grid.Column="1" Name="EnterFullscreenButton" Classes="railglyph"
+                        Click="OnFullscreenPressed" AutomationProperties.Name="Fullscreen"
+                        ToolTip.Tip="Fullscreen (F11)">
+                    <Path Data="M 1,6 L 1,1 L 6,1 L 6,2.6 L 2.6,2.6 L 2.6,6 Z M 10,1 L 15,1 L 15,6 L 13.4,6 L 13.4,2.6 L 10,2.6 Z M 15,10 L 15,15 L 10,15 L 10,13.4 L 13.4,13.4 L 13.4,10 Z M 6,15 L 1,15 L 1,10 L 2.6,10 L 2.6,13.4 L 6,13.4 Z"
+                          Width="16" Height="16"/>
+                </Button>
+                <Button Grid.Column="2" Name="SettingsButton"
                         Classes="railglyph"
                         Classes.on="{Binding IsSettingsVisible}"
                         Command="{Binding ShowSettingsCommand}"
@@ -2313,6 +2319,7 @@
 
     </Grid>
     </Grid>
+    <ContentControl Name="TvHost" IsVisible="False" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
     </Panel>
 
 </Window>

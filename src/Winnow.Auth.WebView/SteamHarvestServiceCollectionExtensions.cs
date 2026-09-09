@@ -29,7 +29,7 @@ public static class SteamHarvestServiceCollectionExtensions
 
         services.AddSingleton<ISteamAccountPageHarvester>(sp => new WebView2SteamPageHarvester(
             profileRoot,
-            sp.GetService<ILogger<WebView2SteamPageHarvester>>()));
+            sp.GetService<ILogger<WebView2SteamPageHarvester>>(), sp.GetService<IWebViewInputSupport>()));
 
         return services;
     }
