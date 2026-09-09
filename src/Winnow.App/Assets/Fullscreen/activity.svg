@@ -1,8 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1728 800">
-  <title>Paths through a mountain landscape</title>
-  <path d="M480 800 L900 260 L1060 470 L1240 170 L1728 800 Z" fill="#1D3437" data-fill="SurfaceRaised" opacity=".65"/>
-  <path d="M780 800 L1160 460 L1280 550 L1510 280 L1728 510 L1728 800 Z" fill="#2B4A4C" data-fill="Line" opacity=".5"/>
-  <path d="M820 800 C900 650 1220 800 1150 645 S890 560 1100 430 S1440 340 1460 160" fill="none" stroke="#8FA5A0" data-stroke="TextDim" stroke-width="3" opacity=".25"/>
-  <path d="M950 800 C1090 670 1430 730 1390 590 S1180 480 1420 390 S1680 290 1710 190" fill="none" stroke="#8FA5A0" data-stroke="TextDim" stroke-width="2" opacity=".18"/>
-  <path d="M1290 240 A150 150 0 1 0 1590 240 A150 150 0 1 0 1290 240 Z" fill="none" stroke="#2B4A4C" data-stroke="Line" stroke-width="2"/>
+  <title>Open journal with a ribbon bookmark</title>
+  <path d="M966 190 Q1120 122 1280 200 Q1470 110 1708 180 L1670 694 Q1450 624 1264 708 Q1088 630 916 682 Z"
+        fill="#1D3437" data-fill="SurfaceRaised" opacity=".55"/>
+  <path d="M966 190 Q1120 122 1280 200 Q1470 110 1708 180 L1670 694 Q1450 624 1264 708 Q1088 630 916 682 Z M1280 200 L1264 708"
+        fill="none" stroke="#8FA5A0" data-stroke="TextDim" stroke-width="3" opacity=".24"/>
+  <path d="M940 214 L894 704 Q1080 654 1264 730 Q1460 651 1692 718 L1730 207 M915 239 L872 726 Q1070 680 1264 752 Q1470 678 1714 741"
+        fill="none" stroke="#2B4A4C" data-stroke="Line" stroke-width="3" opacity=".65"/>
+  <path d="M1020 267 Q1110 242 1215 275 M1012 335 Q1102 310 1209 343 M1004 403 Q1094 378 1203 411 M996 471 Q1086 446 1197 479 M988 539 Q1078 514 1191 547"
+        fill="none" stroke="#2B4A4C" data-stroke="Line" stroke-width="3" opacity=".75"/>
+  <path d="M1350 273 Q1470 226 1623 267 M1346 341 Q1466 294 1617 335 M1342 409 Q1462 362 1611 403 M1338 477 Q1458 430 1605 471 M1334 545 Q1454 498 1599 539"
+        fill="none" stroke="#2B4A4C" data-stroke="Line" stroke-width="3" opacity=".75"/>
+  <path d="M1506 155 L1491 335 L1521 312 L1547 340 L1563 155"
+        fill="#2B4A4C" data-fill="Line" opacity=".6"/>
 </svg>

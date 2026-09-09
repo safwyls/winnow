@@ -608,6 +608,9 @@ Fullscreen pages may supply a backdrop for the shell to mount behind its safe ar
 header. Detaching that layer releases its artwork lease; the detail page still owns its
 content and focus rows. Browse page capacity is presentation state and reflows around the
 selected release identity when the available columns change.
+Adaptive cover capacity is recalculated once queued text scaling and layout have settled;
+reading transient unscaled geometry can make a long Home hero alternate capacities and
+continuously rebuild.
 
 Fullscreen IGDB landscapes use an `igdb-backdrop` cache key and the documented
 `t_1080p_2x` rendition, separate from desktop screenshot assets. Decode buckets extend to
@@ -630,8 +633,10 @@ This is not a constant-query bulk history operation. Session-note edits write th
 `ISessionRepository`, and account summaries reuse the currency-safe `AccountStatsViewModel`
 with independent presentation state. Manual-game and identity tools construct their own
 `LibrarySettingsViewModel` and `MergeQueueViewModel` from DI; editor state and focus do not
-leak into desktop tools. Shared settings remain common application state. Fullscreen appearance
-uses `fullscreen.*` settings and local resource overrides instead of changing the desktop theme.
+leak into desktop tools. Shared settings remain common application state. Both surfaces use
+the shared `ThemeService` and `appearance.theme`; the former `fullscreen.theme` preference is
+ignored. Fullscreen keeps separate `fullscreen.*` sizing, margins, motion and dormancy
+preferences and renders the shared theme with opaque local resource overrides.
 The optional ultrawide setting expands the TV reference canvas width to the viewport aspect
 ratio while retaining its reference height and uniform scaling. Controller prompts use a
 bundled CC0 vector subset; ambient page art uses bundled original SVG path geometry.

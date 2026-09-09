@@ -1,6 +1,6 @@
 # Fullscreen vector art
 
-Original Winnow artwork: `activity.svg` draws a quiet mountain landscape and paths;
+Original Winnow artwork: `activity.svg` draws an open journal with layered page edges and a ribbon bookmark;
 `settings.svg` draws concentric contours. `controller.svg` adapts the bundled Kenney CC0
 Xbox Series controller silhouette into a themed outline for the input map (see
 `../Controller/License.txt`). These are decorative illustrations, not activity data.

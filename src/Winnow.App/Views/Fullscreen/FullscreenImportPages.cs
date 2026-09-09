@@ -104,7 +104,7 @@ internal sealed class FullscreenSavedPagesPage : FullscreenPage
         var read = FullscreenUi.Button("Read selected pages", () => { _completion.TrySetResult(_paths.ToArray()); context.Back(); });
         var cancel = FullscreenUi.Button("Cancel", context.Back);
         Content = FullscreenUi.Scroll(FullscreenUi.Stack(FullscreenUi.Text(Title, 64), _picked, add, read, cancel));
-        SetFocusRows([add], [read, cancel]);
+        SetFocusRows([add], [read], [cancel]);
     }
     public override void Dispose() { _completion.TrySetResult([]); base.Dispose(); }
 }

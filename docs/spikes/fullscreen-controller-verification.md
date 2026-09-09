@@ -162,6 +162,37 @@ Focused keyboard, desktop navigation and fullscreen interaction checks also pass
 (30 tests). No core/domain code changed in this follow-up.
 The final solution Release build passed with zero warnings and errors.
 
+## Shared appearance, platform state and Home hang revision
+
+The next follow-up passed 221 Release UI tests, including shared theme persistence and
+live palette/backdrop updates, text scaling from 70% to 140%, mouse decrease/increase,
+platform session transitions and directional action groups. The suite used
+`--artifacts-path C:/Temp/winnow-followup-state -c Release -m:1 --verbosity quiet
+--blame-hang-timeout 60s` and completed in 36 seconds. Desktop fullscreen entry remains
+accessible by name and F11, now through an icon beside Settings. Desktop and fullscreen
+share account state and theme selection; fullscreen retains its layout preferences.
+The final solution Release build passed with zero warnings and errors.
+
+The reported failure was recorded by Windows Application events 1001/1002 at
+2026-09-09 15:36:43 local time as AppHangB1 and closure. Application diagnostics contained
+no new exception; no corresponding new crash dump was available. The user reported
+changing theme in Settings and returning Home. Read-only settings inspection showed 140%
+text, 2% margins and ultrawide fitting off.
+
+A long-title/long-reason Home fixture reproduced an unbounded rebuild loop at both 720p
+and 4K. Before the fix, its bounded event assertion failed after 80 page changes: transient
+unscaled and scaled hero heights made the cover capacity alternate between seven and eight.
+The final fix coalesces capacity calculation at background dispatcher priority after text
+scaling and layout settle. Both tests now settle, including changing to Bottle Green in
+Settings and returning Home. Separate loaded-shelf tests traverse every theme at both sizes
+and verify directional navigation still works. This is a confirmed matching freeze mechanism;
+without the original process dump, it cannot establish that it was the only cause of that hang.
+
+Inspected captures at `C:/Temp/winnow-art-entry-capture/` show the original open-journal
+Activity vector (`fullscreen-activity.png`) and the desktop fullscreen icon next to the cog
+(`fullscreen-desktop-fullscreen-entry.png`). Platform tests use fake sessions and shared
+view-model updates; no real Steam or Epic login was performed.
+
 ### Remaining device checks
 
 No physical controller or TV seating-distance test was performed in this environment. Check

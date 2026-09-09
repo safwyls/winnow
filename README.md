@@ -68,11 +68,13 @@ days, so a game enters that bucket when its slot comes up.
 
 ### Fullscreen and controllers
 
-Choose **Fullscreen** at the foot of the rail, press **F11**, or press the controller's
+Choose the **Fullscreen** icon beside the settings cog, press **F11**, or press the controller's
 **Menu / Start** button. Fullscreen has its own For you, Library, Activity, Settings and
 game-detail screens, designed for a TV. Press F11 or choose **Exit fullscreen** in the
 controller's quick menu to restore the previous window state. Desktop and fullscreen retain
-separate browsing positions, filters and appearance preferences.
+separate browsing positions, filters and layout preferences. Theme selection is shared and
+updates both surfaces immediately. Fullscreen text size ranges from 70% to 140%, with −/+
+buttons for mouse adjustment and left/right adjustment on a controller.
 
 Fullscreen Appearance includes **Fit ultrawide displays** to use the full screen width
 without stretching text. Controller input hides the cursor; moving or clicking the mouse

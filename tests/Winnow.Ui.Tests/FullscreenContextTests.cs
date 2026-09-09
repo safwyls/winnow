@@ -14,7 +14,7 @@ namespace Winnow.Ui.Tests;
 public sealed class FullscreenContextTests
 {
     [AvaloniaFact]
-    public async Task Runtime_factory_isolates_library_lists_journal_and_theme_from_desktop()
+    public async Task Runtime_factory_isolates_library_state_but_shares_the_persisted_theme()
     {
         var settings = new MemorySettings();
         var registrations = new ServiceCollection();
@@ -30,7 +30,11 @@ public sealed class FullscreenContextTests
         registrations.AddSingleton(PreviewData.Library.Ramp);
         using var services = registrations.BuildServiceProvider();
         var titleLookup = PreviewData.Library.Journal.TitleFor;
-        var context = FullscreenContext.Create(services, PreviewData.Shell);
+        var original = PreviewData.Shell;
+        var appearance = new AppearanceViewModel(new ThemeService(settings));
+        var shell = new MainWindowViewModel(original.Library, original.MergeQueue, original.Stores, appearance,
+            original.Feed, original.AccountStats, original.LibrarySettings);
+        var context = FullscreenContext.Create(services, shell);
         Assert.NotSame(PreviewData.Library, context.Library);
         Assert.NotSame(PreviewData.Library.Lists, context.Library.Lists);
         Assert.NotSame(PreviewData.Library.Journal, context.Library.Journal);
@@ -47,16 +51,41 @@ public sealed class FullscreenContextTests
         context.DimCovers = !desktopDimming;
         Assert.Equal(!desktopDimming, context.Library.Ramp.DimsDormantCovers);
         Assert.Equal(desktopDimming, PreviewData.Library.Ramp.DimsDormantCovers);
-        var desktopTheme = PreviewData.Shell.Appearance.Service.Theme;
+        settings.Values["fullscreen.theme"] = context.Themes.Last().Id;
+        await context.LoadAsync();
+        Assert.Equal(appearance.Service.Theme.Id, context.ThemeId);
         using var view = new FullscreenView(context);
-        var window = new Window { Width = 1920, Height = 1080, Content = view };
+        var backdrop = new FullscreenBackdrop(context, PreviewData.Tile, cinematic: true);
+        var window = new Window { Width = 1920, Height = 1080, Content = new Grid { Children = { view, backdrop } } };
         window.Show();
         try
         {
             context.ThemeId = context.Themes.Last().Id;
             Dispatcher.UIThread.RunJobs();
-            Assert.Same(desktopTheme, PreviewData.Shell.Appearance.Service.Theme);
-            Assert.Equal(context.ThemeId, settings.Values["fullscreen.theme"]);
+            Assert.Equal(context.ThemeId, appearance.Service.Theme.Id);
+            Assert.True(appearance.Themes.Single(t => t.Theme.Id == context.ThemeId).IsSelected);
+            await appearance.Service.PendingSave;
+            Assert.Equal(context.ThemeId, settings.Values[ThemeService.ThemeSettingKey]);
+            Assert.Equal(appearance.Service.Theme.Ground, Assert.IsType<Avalonia.Media.SolidColorBrush>(view.Resources["Ground"]).Color);
+            appearance.Service.SelectTheme(context.Themes.First());
+            Assert.Equal(appearance.Service.Theme.Id, context.ThemeId);
+            Assert.Equal(appearance.Service.Theme.Ground, Assert.IsType<Avalonia.Media.SolidColorBrush>(view.Resources["Ground"]).Color);
+            var gradients = backdrop.Children.OfType<Border>().Select(b => b.Background).OfType<Avalonia.Media.LinearGradientBrush>().ToArray();
+            Assert.Equal(3, gradients.Length);
+            foreach (var gradient in gradients)
+                foreach (var stop in gradient.GradientStops)
+                {
+                    Assert.Equal(appearance.Service.Theme.Ground.R, stop.Color.R);
+                    Assert.Equal(appearance.Service.Theme.Ground.G, stop.Color.G);
+                    Assert.Equal(appearance.Service.Theme.Ground.B, stop.Color.B);
+                }
+            await appearance.Service.PendingSave;
+            var reloaded = new ThemeService(settings);
+            await reloaded.LoadAsync();
+            Assert.Equal(context.ThemeId, reloaded.Theme.Id);
+            context.TextScale = .7;
+            await context.LoadAsync();
+            Assert.Equal(.7, context.TextScale);
         }
         finally { window.Close(); }
     }

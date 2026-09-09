@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Data;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
@@ -21,7 +22,9 @@ public sealed class FullscreenSettingsPage : FullscreenPage
     private Control? _initial;
     private readonly SemaphoreSlim _libraryRefresh = new(1);
     private int _refreshVersion;
+    private bool _disposed;
     public Task PendingLibraryRefresh { get; private set; } = Task.CompletedTask;
+    public Task PendingPlatformRefresh { get; private set; } = Task.CompletedTask;
     public override string Title => "Settings";
     public override string Hints => _section == "Appearance" ? "← / →  Adjust     A  Select     Y  Reset page" : "A  Select     B  Back";
     public override string RightHints => "LT / RT  Section";
@@ -31,6 +34,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         Render();
         context.PreferencesChanged += RefreshValues;
         AttachedToVisualTree += RefreshValues;
+        AttachedToVisualTree += (_, _) => { if (_section == "Platforms") PendingPlatformRefresh = RefreshPlatformsAsync(); };
     }
 
     private void RefreshValues(object? sender, EventArgs e)
@@ -38,7 +42,18 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         foreach (var refresh in _valueRefreshers) refresh();
     }
 
-    public override void Dispose() { Context.PreferencesChanged -= RefreshValues; base.Dispose(); }
+    public override void Dispose() { _disposed = true; Context.PreferencesChanged -= RefreshValues; base.Dispose(); }
+
+    private async Task RefreshPlatformsAsync()
+    {
+        try
+        {
+            var refresh = Context.Shared.Stores.RefreshCommand;
+            if (refresh.IsRunning && refresh.ExecutionTask is { } running) await running;
+            else await refresh.ExecuteAsync(null);
+        }
+        catch (Exception) { if (!_disposed) Context.Notify("Couldn't read the platform connection status. Reopen Platforms to try again."); }
+    }
 
     private void Render()
     {
@@ -59,7 +74,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             rows.Children.Add(button); focus.Add([button]);
             return button;
         }
-        void Adjust(string label, string description, Func<string> value, Action<int> change)
+        void Adjust(string label, string description, Func<string> value, Action<int> change, bool mouseStepper = false)
         {
             var text = FullscreenHistoryTypography.Data($"‹   {value()}   ›", 28);
             void Change(int direction)
@@ -76,7 +91,25 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             _initial ??= button;
             _adjustments[button] = direction => { Change(direction); AutomationProperties.SetItemStatus(button, value()); };
             button.GotFocus += (_, _) => _focused = button;
-            rows.Children.Add(button); focus.Add([button]);
+            if (mouseStepper)
+            {
+                var decrease = FullscreenUi.Button($"Decrease {label.ToLowerInvariant()}", () => Change(-1));
+                var increase = FullscreenUi.Button($"Increase {label.ToLowerInvariant()}", () => Change(1));
+                decrease.Content = "−"; increase.Content = "+";
+                decrease.MinWidth = increase.MinWidth = 64;
+                var adjustment = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), ColumnSpacing = 8 };
+                adjustment.Children.Add(button);
+                Grid.SetColumn(decrease, 1); adjustment.Children.Add(decrease);
+                Grid.SetColumn(increase, 2); adjustment.Children.Add(increase);
+                rows.Children.Add(adjustment);
+                foreach (var step in new[] { decrease, increase })
+                {
+                    _adjustments[step] = Change;
+                    step.GotFocus += (_, _) => _focused = step;
+                }
+                focus.Add([button, decrease, increase]);
+            }
+            else { rows.Children.Add(button); focus.Add([button]); }
         }
         void Toggle(string label, string description, Func<bool> value, Action<bool> change)
         {
@@ -113,9 +146,9 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         }
         if (_section == "Appearance")
         {
-            Adjust("Text size", "Adjust until this reads comfortably from your seat.", () => $"{Context.TextScale:P0}", d => Context.TextScale = Math.Clamp(Math.Round(Context.TextScale + d * .1, 1), 1, 1.4));
+            Adjust("Text size", "Adjust until this reads comfortably from your seat.", () => $"{Context.TextScale:P0}", d => Context.TextScale = Math.Clamp(Math.Round(Context.TextScale + d * .1, 1), .7, 1.4), mouseStepper: true);
             string ThemeLabel() => $"Theme     {Context.Themes.FirstOrDefault(t => t.Id == Context.ThemeId)?.Name ?? Context.ThemeId}";
-            var theme = Action(ThemeLabel(), () => Context.ShowActions("Fullscreen theme", Context.Themes.Select(theme => new FullscreenAction(theme.Name, () => { Context.ThemeId = theme.Id; Render(); FocusInitial(); })).ToArray()));
+            var theme = Action(ThemeLabel(), () => Context.ShowActions("Theme", Context.Themes.Select(theme => new FullscreenAction(theme.Name, () => { Context.ThemeId = theme.Id; Render(); FocusInitial(); })).ToArray()));
             _valueRefreshers.Add(() => { theme.Content = ThemeLabel(); AutomationProperties.SetName(theme, ThemeLabel()); });
             Adjust("Screen margins", "Keep important content within your TV’s safe area.", () => $"{Context.SafeMarginPercent:0}%", d => Context.SafeMarginPercent = Math.Clamp(Context.SafeMarginPercent + d, 0, 10));
             Toggle("Fit ultrawide displays", "Use the full width of your display.", () => Context.FitUltrawide, Context.SetFitUltrawide);
@@ -140,9 +173,13 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         else if (_section == "Platforms")
         {
             var stores = Context.Shared.Stores;
-            Action($"Steam     {stores.SteamStatusLabel}", () => Context.Push(new FullscreenPlatformPage(Context, "Steam")));
-            Action($"Epic     {stores.EpicStatusLabel}", () => Context.Push(new FullscreenPlatformPage(Context, "Epic")));
-            Action($"GOG     {stores.GogStatusLabel}", () => Context.Push(new FullscreenPlatformPage(Context, "GOG")));
+            foreach (var (platform, property) in new[] { ("Steam", nameof(stores.SteamStatusLabel)), ("Epic", nameof(stores.EpicStatusLabel)), ("GOG", nameof(stores.GogStatusLabel)) })
+            {
+                var button = Action(platform, () => Context.Push(new FullscreenPlatformPage(Context, platform)));
+                button.Bind(ContentControl.ContentProperty, new Binding(property) { Source = stores, StringFormat = platform + "     {0}" });
+                button.Bind(AutomationProperties.NameProperty, new Binding(property) { Source = stores, StringFormat = platform + "     {0}" });
+            }
+            PendingPlatformRefresh = RefreshPlatformsAsync();
         }
         else
         {
@@ -166,7 +203,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         else main.Children.Add(FullscreenUi.Scroll(rows));
         var preview = FullscreenUi.Stack(FullscreenUi.Text(_section == "Appearance" ? "PREVIEW" : _section.ToUpperInvariant(), 24, "TextDim"),
             FullscreenUi.Text("Your next game is already here.", 48),
-            FullscreenUi.Text(_section == "Appearance" ? "Changes here apply to fullscreen. Your desktop layout stays the same." : "Library and account settings apply to both desktop and fullscreen.", 28, "TextDim"));
+            FullscreenUi.Text(_section == "Appearance" ? "Theme applies to both views. Other appearance settings apply to fullscreen." : "Library and account settings apply to both desktop and fullscreen.", 28, "TextDim"));
         if (_section == "Controller") Grid.SetColumnSpan(main.Children[0], 2);
         else { Grid.SetColumn(preview, 1); main.Children.Add(preview); }
         if (_section == "Appearance" && Context.Library.VisibleTiles.FirstOrDefault() is { } sample)
@@ -176,7 +213,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             preview.Children.Add(new FullscreenCover(sample) { Height = 320, HorizontalAlignment = HorizontalAlignment.Stretch });
             preview.Children.Add(FullscreenUi.Text(sample.Title, 48));
             preview.Children.Add(FullscreenUi.Text(sample.UnreadText, 28));
-            preview.Children.Add(FullscreenUi.Text("Changes here apply to fullscreen. Your desktop layout stays the same.", 28, "TextDim"));
+            preview.Children.Add(FullscreenUi.Text("Theme applies to both views. Other appearance settings apply to fullscreen.", 28, "TextDim"));
         }
         var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*"), RowSpacing = 24 };
         layout.Children.Add(FullscreenUi.Text("Make yourself comfortable", 64)); Grid.SetRow(nav, 1); layout.Children.Add(nav); Grid.SetRow(main, 2); layout.Children.Add(main);
@@ -199,8 +236,8 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         }
         if (_section == "Appearance" && (buttons & GamepadButtons.Keyboard) != 0)
         {
-            Context.ShowActions("Reset fullscreen text size, theme, margins, display fit, motion and cover dimming?", [new("Reset fullscreen appearance", () =>
-            { Context.TextScale = 1; Context.SafeMarginPercent = 5; Context.SetFitUltrawide(false); Context.ReducedMotion = false; Context.DimCovers = true; Context.ThemeId = "winnow"; Render(); FocusInitial(); }), new("Cancel", () => { })]);
+            Context.ShowActions("Reset fullscreen text size, margins, display fit, motion and cover dimming?", [new("Reset fullscreen appearance", () =>
+            { Context.TextScale = 1; Context.SafeMarginPercent = 5; Context.SetFitUltrawide(false); Context.ReducedMotion = false; Context.DimCovers = true; Render(); FocusInitial(); }), new("Cancel", () => { })]);
             return true;
         }
         return base.Handle(buttons);
@@ -273,52 +310,5 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         }
         catch (Exception) { Context.Notify("Couldn't refresh your fullscreen library. Try again."); }
         finally { _libraryRefresh.Release(); }
-    }
-}
-
-public sealed class FullscreenPlatformPage : FullscreenPage
-{
-    private readonly string _platform;
-    public override string Title => _platform;
-    public FullscreenPlatformPage(FullscreenContext context, string platform) : base(context)
-    {
-        _platform = platform;
-        var stores = context.Shared.Stores;
-        var body = FullscreenUi.Stack(FullscreenUi.Text(platform, 64));
-        var status = FullscreenUi.Text("", 28, "TextDim");
-        var controls = new List<Control[]>();
-        void Add(string text, Action action) { var b = FullscreenUi.Button(text, action); body.Children.Add(b); controls.Add([b]); }
-        if (platform == "Steam")
-        {
-            body.Children.Add(FullscreenUi.Text(stores.SteamConnectionMessage));
-            body.Children.Add(FullscreenUi.Text(stores.SteamLocalMessage, 28, "TextDim"));
-            if (stores.SteamHasSession) Add("Sign out of Steam", () => context.ShowActions(stores.SteamSignOutMessage, [new("Sign out", async () => { await stores.SignOutOfSteamCommand.ExecuteAsync(null); context.Back(); }), new("Cancel", () => { })]));
-            if (stores.SteamSignInAvailable) Add(stores.SteamSignInButtonText, () => context.Push(new FullscreenSteamConsentPage(context, () => status.Text = stores.SteamSignInProblemMessage ?? stores.SteamSignInNoticeMessage ?? stores.SteamConnectionMessage)));
-            else body.Children.Add(FullscreenUi.Text(stores.SteamSignInUnavailableMessage, 28, "TextDim"));
-            Add("Steam Web API key", () => context.Push(new FullscreenSteamApiKeyPage(context)));
-            if (stores.ShowPurchaseImport) Add("Purchase history", () => context.Push(new FullscreenPurchaseHistoryPage(context)));
-            body.Children.Add(FullscreenUi.Text(stores.AccountScopeMessage));
-            body.Children.Add(FullscreenUi.Text(stores.AccountScopeCaveatMessage, 24, "TextDim"));
-            if (stores.CanChooseAccountScope) Add(stores.AccountScopeToggleLabel, async () =>
-            {
-                stores.ShowOwnAccountOnly = !stores.ShowOwnAccountOnly;
-                try { await stores.PendingAccountScopeSave; await context.RefreshAsync(); status.Text = $"{stores.AccountScopeToggleLabel}: {(stores.ShowOwnAccountOnly ? "On" : "Off")}"; }
-                catch (Exception) { status.Text = "Couldn't change account visibility. Try again."; }
-            });
-            else body.Children.Add(FullscreenUi.Text(stores.AccountScopeBlockedMessage, 28, "TextDim"));
-        }
-        else if (platform == "Epic")
-        {
-            body.Children.Add(FullscreenUi.Text(stores.EpicIsSignedIn ? stores.EpicAccountLine : stores.EpicLocalMessage));
-            if (stores.EpicIsSignedIn) Add("Sign out of Epic", () => context.ShowActions(stores.EpicSignOutMessage, [new("Sign out", async () => { await stores.SignOutOfEpicCommand.ExecuteAsync(null); context.Back(); }), new("Cancel", () => { })]));
-            if (stores.EpicCanSignIn) Add(stores.EpicSignInButtonText, async () =>
-            {
-                try { await stores.SignInToEpicCommand.ExecuteAsync(null); status.Text = stores.EpicIsSignedIn ? stores.EpicAccountLine : stores.EpicProblemMessage ?? stores.EpicStatusLabel; }
-                catch (Exception) { status.Text = "Couldn't sign in to Epic. Try again."; }
-            });
-        }
-        else { body.Children.Add(FullscreenUi.Text(stores.GogLocalMessage)); body.Children.Add(FullscreenUi.Text(stores.GogNoSignInMessage)); }
-        if (platform != "GOG") body.Children.Add(FullscreenUi.Text("The sign-in window supports controller field navigation and text entry. Provider challenges may still ask for a phone or pointer.", 28, "TextDim"));
-        body.Children.Add(status); Add("Back", context.Back); Content = FullscreenUi.Scroll(body); SetFocusRows(controls.ToArray());
     }
 }

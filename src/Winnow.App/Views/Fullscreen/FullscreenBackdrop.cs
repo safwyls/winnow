@@ -52,8 +52,18 @@ public sealed class FullscreenBackdrop : Panel
                     new GradientStop(ground, .55), new GradientStop(ground, 1)]
                 : [new GradientStop(clearGround, 0), new GradientStop(ground, .85)]
         } });
+        void RefreshTint(object? sender, EventArgs e)
+        {
+            var current = context.Shared.Appearance.Service.Theme.Ground;
+            foreach (var veil in Children.OfType<Border>())
+                if (veil.Background is LinearGradientBrush gradient)
+                    foreach (var stop in gradient.GradientStops)
+                        stop.Color = Color.FromArgb(stop.Color.A, current.R, current.G, current.B);
+        }
         AttachedToVisualTree += async (_, _) =>
         {
+            context.Shared.Appearance.Service.Applied += RefreshTint;
+            RefreshTint(this, EventArgs.Empty);
             var generation = ++_generation;
             try
             {
@@ -79,7 +89,11 @@ public sealed class FullscreenBackdrop : Panel
         };
         // A Viewbox can change pixel scale without changing this reference canvas size.
         LayoutUpdated += (_, _) => RequestDisplaySize();
-        DetachedFromVisualTree += (_, _) => { _generation++; _lease?.Dispose(); _lease = null; image.Source = null; };
+        DetachedFromVisualTree += (_, _) =>
+        {
+            context.Shared.Appearance.Service.Applied -= RefreshTint;
+            _generation++; _lease?.Dispose(); _lease = null; image.Source = null;
+        };
     }
 
     private void RequestDisplaySize()

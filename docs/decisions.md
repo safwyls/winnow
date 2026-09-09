@@ -3508,3 +3508,36 @@ Controller help now fits within16:9, including140%text and10%safe margins. The v
 specification previously said:
 
 > Controller help shows a controller diagram with action callouts.
+
+## 2026-09-09 — Share themes and refresh fullscreen platform state
+
+Both surfaces now select the same ThemeService theme. Fullscreen retains independent layout,
+motion and dormancy settings. The former fullscreen.theme value is ignored; the desktop's
+persisted appearance.theme is authoritative. Resetting TV layout does not reset the theme.
+The architecture specification previously said:
+
+> Shared settings remain common application state. Fullscreen appearance uses `fullscreen.*`
+> settings and local resource overrides instead of changing the desktop theme.
+
+The visual specification previously said:
+
+> Activity and Settings use quiet original SVG backdrops with theme-colored paths.
+> Fullscreen owns its text scale (100–140% in ten-point steps), screen margins (0–10% in
+> one-point steps), motion, theme and dormancy preferences. Defaults are 100%, 5%, motion
+> enabled, Winnow and cover dimming enabled; Fit ultrawide defaults off.
+> These preferences do not change desktop appearance, library facts or recommendations.
+
+README previously said:
+
+> Choose **Fullscreen** at the foot of the rail, press **F11**, or press the controller's
+> **Menu / Start** button.
+> Desktop and fullscreen retain separate browsing positions, filters and appearance preferences.
+
+The Activity art is an original open-journal vector instead of a landscape. Platform screens
+now bind to the shared connection state and refresh it on entry. Vertical action groups
+navigate vertically; sign-out confirmation dismisses one level.
+
+The visual specification's reference-size sentence previously said:
+
+> Start with a 1920×1080 reference canvas, 5% safe margins, 64px game titles, 32px section
+> headings and 28px body text; essential labels stay at least 24px.

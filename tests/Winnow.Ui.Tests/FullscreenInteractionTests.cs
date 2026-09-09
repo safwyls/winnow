@@ -233,7 +233,14 @@ public sealed class FullscreenInteractionTests
         try
         {
             window.Show();
-            window.FindControl<Button>("EnterFullscreenButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var entry = window.FindControl<Button>("EnterFullscreenButton")!;
+            var settings = window.FindControl<Button>("SettingsButton")!;
+            Assert.IsType<Avalonia.Controls.Shapes.Path>(entry.Content);
+            Assert.Equal("Fullscreen", Avalonia.Automation.AutomationProperties.GetName(entry));
+            Assert.Equal(settings.Parent, entry.Parent);
+            Assert.Equal(settings.Bounds.Center.Y, entry.Bounds.Center.Y, 1);
+            Assert.True(entry.Bounds.Right <= settings.Bounds.Left);
+            entry.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Assert.True(window.IsFullscreen);
             window.KeyPressQwerty(PhysicalKey.F11, RawInputModifiers.None);
             window.KeyReleaseQwerty(PhysicalKey.F11, RawInputModifiers.None);
@@ -256,6 +263,7 @@ public sealed class FullscreenInteractionTests
         try
         {
             window.Show();
+            Capture(window, "desktop-fullscreen-entry");
             window.ToggleFullscreen();
             Dispatcher.UIThread.RunJobs();
             var television = Assert.IsType<FullscreenView>(window.FindControl<ContentControl>("TvHost")!.Content);

@@ -43,6 +43,7 @@ public sealed class FullscreenSettingsTests
 
     [AvaloniaTheory]
     [InlineData(1920, 1080, 1, 5)]
+    [InlineData(1280, 720, .7, 5)]
     [InlineData(1280, 720, 1.4, 5)]
     [InlineData(1280, 720, 1.4, 10)]
     public void Controller_guide_fits_one_screen_at_16_by_9(double width, double height, double textScale, double margins)
@@ -107,7 +108,20 @@ public sealed class FullscreenSettingsTests
             for (var i = 0; i < 20; i++) page.Handle(GamepadButtons.Right);
             Assert.Equal(1.4, context.TextScale);
             for (var i = 0; i < 20; i++) page.Handle(GamepadButtons.Left);
-            Assert.Equal(1, context.TextScale);
+            Assert.Equal(.7, context.TextScale);
+            var increase = page.GetVisualDescendants().OfType<Button>().Single(b => AutomationProperties.GetName(b) == "Increase text size");
+            var decrease = page.GetVisualDescendants().OfType<Button>().Single(b => AutomationProperties.GetName(b) == "Decrease text size");
+            void Click(Button button)
+            {
+                var point = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), window)!.Value;
+                window.MouseDown(point, Avalonia.Input.MouseButton.Left);
+                window.MouseUp(point, Avalonia.Input.MouseButton.Left);
+                Dispatcher.UIThread.RunJobs();
+            }
+            Click(increase);
+            Assert.Equal(.8, context.TextScale);
+            Click(decrease);
+            Assert.Equal(.7, context.TextScale);
             Assert.Equal(desktopDimming, context.Shared.Display.DimDormantCovers);
         }
         finally { window.Close(); page.Dispose(); }

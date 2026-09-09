@@ -35,6 +35,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     private int _shelfCapacity = 5;
     private double _wallWidth = double.NaN;
     private bool _pending;
+    private bool _sizePending;
     private ContentControl _hero = new();
     private ContentControl _art = new();
     private GameTileViewModel? _selected;
@@ -356,6 +357,19 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     }
 
     private void SizeWall()
+    {
+        if (_sizePending) return;
+        _sizePending = true;
+        // The shell applies text scaling after first layout. Read the settled wall size,
+        // otherwise each rebuild can alternate between scaled and unscaled capacities.
+        Dispatcher.UIThread.Post(() =>
+        {
+            _sizePending = false;
+            if (TopLevel.GetTopLevel(this) is not null) ResizeWall();
+        }, DispatcherPriority.Background);
+    }
+
+    private void ResizeWall()
     {
         if (_wall is null || _wall.Bounds.Height <= 0 || Bounds.Width <= 0) return;
         var columns = FullscreenCoverLayout.Columns(Bounds.Width, _wall.Bounds.Height, _feed ? 1 : 2, Context.TextScale);

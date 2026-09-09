@@ -533,7 +533,8 @@ govern the desktop path; features must be maintained and verified in both presen
 The shared identity is the teal palette, three font families, cover art, dormancy and unread
 markers. Fullscreen gets its own type and spacing scale. Start with a 1920×1080 reference
 canvas, 5% safe margins, 64px game titles, 32px section headings and 28px body text; essential
-labels stay at least 24px. These are design starting points, not measured distance guarantees.
+labels start at 24px at 100% text size. The user's text scale adjusts body labels from that
+reference. These are design starting points, not measured distance guarantees.
 4K increases rendering resolution rather than content density. Fit ultrawide is an optional
 fullscreen preference: it expands the reference canvas horizontally to the display aspect
 ratio while keeping the 1080px reference height and uniform scaling. The default retains the
@@ -631,7 +632,8 @@ for games visible in the fullscreen library. A opens session actions or the upda
 X edits the selected session's note when applicable. Triggers change local sections;
 left/right changes the Monday-based week from the event region and cannot advance past the current
 week. Sessions and Journal have distinct empty-state copy: Journal requires a saved note or
-rating. Activity and Settings use quiet original SVG backdrops with theme-colored paths. The note editor offers deliberate Save and
+rating. Activity uses a quiet open-journal vector with page contours and a bookmark; Settings
+uses contour art. Both use theme-colored paths. The note editor offers deliberate Save and
 Cancel actions and an optional one-to-five rating. Library summary provides the current
 visible game count and separate reading pages for captured Steam account statistics; it
 retains the shared rules for mixed currencies and wallet credit.
@@ -639,19 +641,25 @@ retains the shared rules for mixed currencies and wallet credit.
 **Settings** has Appearance, Controller, Library, Platforms and Application sections. Large
 rows expose a label and current value; left/right changes bounded values, A opens pickers
 or activates toggles, and B returns. Appearance has a readable live sample. Fullscreen owns
-its text scale (100–140% in ten-point steps), screen margins (0–10% in one-point steps),
-motion, theme and dormancy preferences. Defaults are 100%, 5%, motion enabled, Winnow and
-cover dimming enabled; Fit ultrawide defaults off. Boolean settings use visible switch tracks
+its text scale (70–140% in ten-point steps), screen margins (0–10% in one-point steps),
+motion and dormancy preferences. Text size has separate mouse decrease/increase buttons
+and controller left/right adjustment. Theme selection is shared with desktop and updates
+both surfaces immediately, including artwork veils. Fullscreen reset preserves that shared
+theme. Defaults are 100%, 5%, motion and cover dimming enabled; Fit ultrawide defaults off.
+Boolean settings use visible switch tracks
 and thumbs with an On/Off status. Controller help fits one 16:9 screen with five concise
 action mappings on either side of a proportional diagram and keyboard fallback below.
-These preferences do not change desktop appearance, library facts or
+Fullscreen sizing, margins, motion and dormancy do not change desktop appearance, library facts or
 recommendations. Content visibility, platform credentials, journal opt-in and application
 startup settings use the same value and validation in both UIs. Reset requires a confirmation
 naming the affected appearance settings. Library tools has TV-owned forms for manual games,
 hidden games and identity proposals. Identity answers use the existing validated operations;
 resolved groups offer Separate again. Platform pages show real connection status and sign-in
 and sign-out actions. When opened from fullscreen, the secure browser uses a fullscreen window
-at 150% browser zoom. Up/down moves to the previous/next field, A selects, X checks an option,
+at 150% browser zoom. Platform status, session health and account identity bind to the shared
+connection state and refresh on entry. Vertically stacked consent, API-key and import actions
+use up/down navigation; horizontal control groups use left/right.
+Up/down moves to the previous/next browser field, A selects, X checks an option,
 and triggers page the document. Y opens a masked text composer in a reserved region below the
 browser; Done inserts only the newly composed text and B discards it. Page navigation discards
 unfinished text so it cannot arrive in a different document. B closes the browser after text
