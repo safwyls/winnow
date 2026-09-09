@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { cpSync, mkdirSync, readFileSync, existsSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-const basePath = process.env.PAGES_BASE_PATH ?? '/winnow';
+const basePath = process.env.PAGES_BASE_PATH ?? '';
 if (basePath !== '' && !/^\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/.test(basePath)) {
   throw new Error('PAGES_BASE_PATH must be empty or a slash-prefixed path without a trailing slash.');
 }

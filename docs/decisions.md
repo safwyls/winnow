@@ -3255,3 +3255,16 @@ update list below remains the route
 `GOG patch notes` disclosure in Activity
 
 patch-note links within Activity retain
+
+### 2026-09-09 — Promo site custom domain
+
+The promo site now uses https://winnow.gg/ and builds links and assets from the
+ domain root. The previous deployment instructions said:
+
+> The player page, developer page, and interactive architecture diagram deploy to https://safwyls.github.io/winnow/ through `.github/workflows/pages.yml`.
+
+> The Pages build uses `/winnow` for links and bundled assets.
+
+> Set `PAGES_BASE_PATH` to an empty string for a domain root, or another slash-prefixed path without a trailing slash when hosting under a different repository name.
+
+> Update the workflow environment to match when changing the published location.

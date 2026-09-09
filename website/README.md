@@ -1,7 +1,7 @@
 # Winnow promo site
 
 The player page, developer page, and interactive architecture diagram deploy to
-https://safwyls.github.io/winnow/ through `.github/workflows/pages.yml`.
+https://winnow.gg/ through `.github/workflows/pages.yml`.
 GitHub Pages must use **GitHub Actions** as its publishing source in repository
 Settings → Pages. No deployment secret is required.
 
@@ -16,10 +16,9 @@ Upload only `dist/pages` to Pages. The build renders both routes, arranges the
 developer page as `developers/index.html`, and checks local HTML and CSS links.
 Missing rendered pages or assets fail the build.
 
-The Pages build uses `/winnow` for links and bundled assets. Set `PAGES_BASE_PATH`
-to an empty string for a domain root, or another slash-prefixed path without a
-trailing slash when hosting under a different repository name. Update the workflow
-environment to match when changing the published location.
+The Pages build uses the domain root for links and bundled assets. Set
+`PAGES_BASE_PATH` to a slash-prefixed path without a trailing slash only when
+hosting under a repository path instead of the custom domain.
 
 `npm run dev` and `npm run build` retain the Sites development and hosting flow.
 The Pages build omits the Cloudflare and Sites plugins because its output is static.
