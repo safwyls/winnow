@@ -1,3 +1,4 @@
+import { sitePath } from '@/lib/site-path';
 import type { Metadata } from 'next';
 import { ArrowUpRight, Code2, Layers3, LockKeyhole, Radar, Workflow } from 'lucide-react';
 
@@ -21,7 +22,7 @@ export default function Developers() {
   return (
     <main className="dev-page">
       <header className="site-header dev-header">
-        <a className="brand" href="/" aria-label="Winnow home"><span className="brand-mark" aria-hidden="true" /><span>Winnow</span><span className="dev-slash">/ developers</span></a>
+        <a className="brand" href={sitePath('/')} aria-label="Winnow home"><span className="brand-mark" aria-hidden="true" /><span>Winnow</span><span className="dev-slash">/ developers</span></a>
         <nav aria-label="Developer navigation"><a href="#architecture">Architecture</a><a href="#modules">Modules</a><a className="nav-cta" href="https://github.com/safwyls/winnow"><Code2 size={15} aria-hidden="true" /> GitHub</a></nav>
       </header>
 
@@ -49,9 +50,9 @@ export default function Developers() {
           <p>The Avalonia UI reads one SQLite library and raises commands. Local ingest, identity resolution, session monitoring, enrichment, and recommendations run behind interfaces under the same generic host.</p>
         </div>
         <div className="diagram-frame shell">
-          <iframe title="Interactive Winnow runtime architecture diagram" src="/architecture-diagram.html" loading="lazy" />
+          <iframe title="Interactive Winnow runtime architecture diagram" src={sitePath('/architecture-diagram.html')} loading="lazy" />
         </div>
-        <div className="shell diagram-link"><a href="/architecture-diagram.html">Open the full interactive diagram <ArrowUpRight size={16} aria-hidden="true" /></a><span>Built and validated with Archify</span></div>
+        <div className="shell diagram-link"><a href={sitePath('/architecture-diagram.html')}>Open the full interactive diagram <ArrowUpRight size={16} aria-hidden="true" /></a><span>Built and validated with Archify</span></div>
       </section>
 
       <section className="module-section shell" id="modules">
@@ -67,7 +68,7 @@ export default function Developers() {
         <a className="button button-primary" href="https://github.com/safwyls/winnow"><Code2 size={18} aria-hidden="true" /> Browse the source</a>
       </section>
 
-      <footer><a className="brand" href="/"><span className="brand-mark" aria-hidden="true" /><span>Winnow</span></a><p>Local-first game discovery, built in the open.</p><div><a href="/">For players</a><a href="https://github.com/safwyls/winnow">GitHub</a></div></footer>
+      <footer><a className="brand" href={sitePath('/')}><span className="brand-mark" aria-hidden="true" /><span>Winnow</span></a><p>Local-first game discovery, built in the open.</p><div><a href={sitePath('/')}>For players</a><a href="https://github.com/safwyls/winnow">GitHub</a></div></footer>
     </main>
   );
 }
