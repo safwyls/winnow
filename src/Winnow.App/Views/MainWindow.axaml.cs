@@ -40,7 +40,7 @@ public partial class MainWindow : Window
     private Vector _detailsViewportOffset;
     private IReadOnlyList<GameTileViewModel>? _detailsVisibleSource;
     private bool _alphabetDragging;
-    private ScrollBar? _engagedAlphabetScrollBar;
+    private string? _lastAlphabetScrubLabel;
     private ScrollViewer? _trackedListScroll;
 
     internal bool StartHidden { get; init; }
@@ -63,9 +63,8 @@ public partial class MainWindow : Window
         // hover actions to handle their own presses.
         TileWall.AddHandler(PointerPressedEvent, OnTilePressed, RoutingStrategies.Tunnel);
 
-        // The letters and native thumb read as one scroll control. Buttons own
-        // click and keyboard activation; the surrounding spine sees pointer
-        // input first so a held press can scrub across their boundaries.
+        // Buttons own click and keyboard activation; the surrounding spine sees
+        // pointer input first so a held press can scrub across their boundaries.
         AlphabetSpine.AddHandler(PointerPressedEvent, OnAlphabetPointerPressed, RoutingStrategies.Tunnel);
         AlphabetSpine.AddHandler(PointerMovedEvent, OnAlphabetPointerMoved, RoutingStrategies.Tunnel);
         AlphabetSpine.AddHandler(PointerReleasedEvent, OnAlphabetPointerReleased, RoutingStrategies.Tunnel);
@@ -1203,20 +1202,24 @@ public partial class MainWindow : Window
         }
 
         _alphabetDragging = true;
+        _lastAlphabetScrubLabel = null;
         e.Pointer.Capture(AlphabetSpine);
-        ScrubAlphabetScroll(e.GetPosition(AlphabetSpine));
+        var position = e.GetPosition(AlphabetSpine);
+        UpdateAlphabetPointerFeedback(position);
+        ScrubAlphabetSections(position);
         e.Handled = true;
     }
 
     private void OnAlphabetPointerMoved(object? sender, PointerEventArgs e)
     {
         var position = e.GetPosition(AlphabetSpine);
+        UpdateAlphabetPointerFeedback(position);
         if (!_alphabetDragging)
         {
             return;
         }
 
-        ScrubAlphabetScroll(position);
+        ScrubAlphabetSections(position);
         e.Handled = true;
     }
 
@@ -1227,16 +1230,18 @@ public partial class MainWindow : Window
             return;
         }
 
-        ScrubAlphabetScroll(e.GetPosition(AlphabetSpine));
+        var position = e.GetPosition(AlphabetSpine);
+        UpdateAlphabetPointerFeedback(position);
+        ScrubAlphabetSections(position);
         _alphabetDragging = false;
+        _lastAlphabetScrubLabel = null;
         e.Pointer.Capture(null);
         e.Handled = true;
     }
 
     private void OnAlphabetPointerEntered(object? sender, PointerEventArgs e)
     {
-        SetAlphabetScrollBarEngaged(true);
-        UpdateAlphabetLocation();
+        UpdateAlphabetPointerFeedback(e.GetPosition(AlphabetSpine));
     }
 
     private void OnAlphabetPointerExited(object? sender, PointerEventArgs e)
@@ -1246,32 +1251,43 @@ public partial class MainWindow : Window
             return;
         }
 
-        SetAlphabetScrollBarEngaged(false);
         ResetAlphabetWave();
+        UpdateAlphabetLocation();
     }
 
     private void OnAlphabetPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
     {
         _alphabetDragging = false;
+        _lastAlphabetScrubLabel = null;
         if (!AlphabetSpine.IsPointerOver)
         {
-            SetAlphabetScrollBarEngaged(false);
             ResetAlphabetWave();
+            UpdateAlphabetLocation();
         }
     }
 
-    private void ScrubAlphabetScroll(Point position)
+    private void ScrubAlphabetSections(Point position)
     {
-        var scroll = ActiveLibraryScroll();
-        if (scroll is null || AlphabetSpine.Bounds.Height <= 0)
+        if (_library is null || AlphabetSpine.Bounds.Height <= 0)
         {
             return;
         }
 
-        var maximum = Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height);
-        var proportion = Math.Clamp(position.Y / AlphabetSpine.Bounds.Height, 0, 1);
-        scroll.Offset = scroll.Offset.WithY(maximum * proportion);
-        UpdateAlphabetLocation();
+        var sections = _library.DisplayedAlphabetSections.ToArray();
+        var pointerRow = PointerAlphabetRow(position, sections.Length);
+        var target = sections
+            .Select((section, row) => (section, row))
+            .Where(candidate => candidate.section.IsAvailable)
+            .OrderBy(candidate => Math.Abs(candidate.row - pointerRow))
+            .ThenBy(candidate => candidate.row)
+            .FirstOrDefault();
+        if (target.section is null || target.section.Label == _lastAlphabetScrubLabel)
+        {
+            return;
+        }
+
+        _lastAlphabetScrubLabel = target.section.Label;
+        ScrollToAlphabetSection(target.section.Label);
     }
 
     private ScrollViewer? ActiveLibraryScroll()
@@ -1299,40 +1315,33 @@ public partial class MainWindow : Window
 
     private void OnAlphabetScrollChanged(object? sender, ScrollChangedEventArgs e)
     {
-        if (ReferenceEquals(sender, ActiveLibraryScroll()))
+        if (ReferenceEquals(sender, ActiveLibraryScroll())
+            && !_alphabetDragging
+            && !AlphabetSpine.IsPointerOver)
         {
             UpdateAlphabetLocation();
         }
     }
 
-    private void SetAlphabetScrollBarEngaged(bool engaged)
+    private void UpdateAlphabetPointerFeedback(Point position)
     {
-        var scrollBar = ActiveLibraryScroll()?.GetVisualDescendants()
-            .OfType<ScrollBar>()
-            .FirstOrDefault(bar => bar.Orientation == Avalonia.Layout.Orientation.Vertical);
-
-        if (_engagedAlphabetScrollBar != scrollBar)
-        {
-            _engagedAlphabetScrollBar?.Classes.Remove("alphabetengaged");
-            _engagedAlphabetScrollBar = scrollBar;
-        }
-
-        if (scrollBar is null)
+        var buttons = AlphabetSpine.GetVisualDescendants().OfType<Button>().ToArray();
+        if (buttons.Length == 0 || AlphabetSpine.Bounds.Height <= 0)
         {
             return;
         }
 
-        if (engaged) scrollBar.Classes.Add("alphabetengaged");
-        else scrollBar.Classes.Remove("alphabetengaged");
-    }
-
-    private void UpdateAlphabetWave(IReadOnlyList<Button> buttons, double locationRow)
-    {
-        for (var row = 0; row < buttons.Count; row++)
+        var pointerRow = PointerAlphabetRow(position, buttons.Length);
+        for (var row = 0; row < buttons.Length; row++)
         {
-            SetAlphabetWave(buttons[row], row - locationRow);
+            var distance = row - pointerRow;
+            SetAlphabetWave(buttons[row], distance);
+            SetAlphabetLocation(buttons[row], Math.Abs(distance));
         }
     }
+
+    private double PointerAlphabetRow(Point position, int rowCount)
+        => Math.Clamp(position.Y / AlphabetSpine.Bounds.Height * rowCount - 0.5, 0, rowCount - 1);
 
     private static void SetAlphabetWave(Button button, double signedDistance)
     {
@@ -1385,22 +1394,13 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Interpolate between the adjacent titles rather than between A and Z.
-        // This preserves the smooth scrub while accounting for a library whose
-        // titles are unevenly distributed across the alphabet.
+        // Between interactions, keep the persistent location cue smooth across
+        // adjacent titles instead of pretending the library is uniform A-Z.
         var locationRow = lowerRow + ((upperRow - lowerRow) * (tilePosition - lowerTile));
 
         for (var row = 0; row < buttons.Length; row++)
         {
             SetAlphabetLocation(buttons[row], Math.Abs(row - locationRow));
-        }
-
-        if (_alphabetDragging || AlphabetSpine.IsPointerOver)
-        {
-            // The content position is the source of truth for both effects.
-            // Pointer Y controls the scrollbar; uneven title distribution means
-            // it does not itself identify the alphabet section now on screen.
-            UpdateAlphabetWave(buttons, locationRow);
         }
     }
 

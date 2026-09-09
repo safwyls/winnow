@@ -167,37 +167,18 @@ public sealed class ListBrowsingPositionTests
 
             window.MouseMove(PointOnAlphabet(window, spine, 20));
             Flush();
-            Assert.Contains("alphabetengaged", scrollbar.Classes);
-            var thumb = scrollbar.GetVisualDescendants().OfType<Thumb>().Single();
-            Assert.True(thumb.Bounds.Width >= 8, $"Engaged thumb width was {thumb.Bounds.Width}.");
-            var centeredWave = Assert.IsType<Avalonia.Media.Transformation.TransformOperations>(
-                currentLocation.RenderTransform).Value.M31;
+            Assert.DoesNotContain("alphabetengaged", scrollbar.Classes);
+            Assert.Equal(0, scroll.Offset.Y);
+            var centeredWave = WaveDisplacement(jumpToT);
             Assert.InRange(centeredWave, -13.01, -12.99);
-            Assert.Contains("alphalocation4", currentLocation.Classes);
+            Assert.Contains("alphalocation4", jumpToT.Classes);
 
-            window.MouseMove(PointOnAlphabet(window, spine, 2));
-            window.MouseDown(PointOnAlphabet(window, spine, 2), Avalonia.Input.MouseButton.Left);
+            window.MouseMove(PointOnAlphabet(window, spine, 20.35));
             Flush();
-            var waveBeforeFractionalDrag = spine.GetVisualDescendants().OfType<Button>()
-                .Select(WaveDisplacement)
-                .ToArray();
-            window.MouseMove(PointOnAlphabet(window, spine, 2.35));
-            Flush();
-            var waveAfterFractionalDrag = spine.GetVisualDescendants().OfType<Button>()
-                .Select(WaveDisplacement)
-                .ToArray();
-            Assert.Contains(
-                waveBeforeFractionalDrag.Zip(waveAfterFractionalDrag),
-                pair => Math.Abs(pair.First - pair.Second) > 0.01);
-            var sharedLocationRow = ExpectedAlphabetRow(library, scroll);
-            var sharedLocationIndex = (int)Math.Round(sharedLocationRow);
-            var sharedLocationButton = spine.GetVisualDescendants().OfType<Button>().ElementAt(sharedLocationIndex);
-            Assert.Contains("alphalocation4", sharedLocationButton.Classes);
-            Assert.InRange(
-                WaveDisplacement(sharedLocationButton),
-                ExpectedWaveDisplacement(sharedLocationIndex - sharedLocationRow) - 0.01,
-                ExpectedWaveDisplacement(sharedLocationIndex - sharedLocationRow) + 0.01);
-            window.MouseUp(PointOnAlphabet(window, spine, 2.35), Avalonia.Input.MouseButton.Left);
+            var fractionalWave = WaveDisplacement(jumpToT);
+            Assert.InRange(fractionalWave, -12.9, -12.5);
+            Assert.NotEqual(centeredWave, fractionalWave);
+            Assert.Contains("alphalocation4", jumpToT.Classes);
             Flush();
             Assert.True(jumpToT.Transitions is null or { Count: 0 });
             library.Ramp.ReducedMotion = true;
@@ -206,7 +187,8 @@ public sealed class ListBrowsingPositionTests
             library.Ramp.ReducedMotion = false;
             Flush();
 
-            jumpToT.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            window.MouseDown(PointOnAlphabet(window, spine, 20), Avalonia.Input.MouseButton.Left);
+            window.MouseUp(PointOnAlphabet(window, spine, 20), Avalonia.Input.MouseButton.Left);
             Flush();
 
             Assert.Equal(LibrarySort.NameAscending, library.Sort);
@@ -218,23 +200,15 @@ public sealed class ListBrowsingPositionTests
             DragAlphabet(window, spine, fromRow: 2, toRow: 13);
             var scrollableHeight = scroll.Extent.Height - scroll.Viewport.Height;
             Assert.True(scrollableHeight > 0);
-            Assert.InRange(scroll.Offset.Y / scrollableHeight, 0.48, 0.52);
             var locationButtons = spine.GetVisualDescendants().OfType<Button>().ToArray();
-            var expectedLocationRow = ExpectedAlphabetRow(library, scroll);
-            var locationIndex = (int)Math.Round(expectedLocationRow);
-            Assert.Contains("alphalocation4", locationButtons[locationIndex].Classes);
-            Assert.InRange(
-                WaveDisplacement(locationButtons[locationIndex]),
-                ExpectedWaveDisplacement(locationIndex - expectedLocationRow) - 0.01,
-                ExpectedWaveDisplacement(locationIndex - expectedLocationRow) + 0.01);
-            if (locationIndex > 0)
-            {
-                Assert.Contains("alphalocation3", locationButtons[locationIndex - 1].Classes);
-            }
-            if (locationIndex < locationButtons.Length - 1)
-            {
-                Assert.Contains("alphalocation3", locationButtons[locationIndex + 1].Classes);
-            }
+            Assert.Contains("alphalocation4", locationButtons[13].Classes);
+            Assert.InRange(WaveDisplacement(locationButtons[13]), -13.01, -12.99);
+            var scrubbedOffset = scroll.Offset;
+            scroll.Offset = default;
+            var jumpToP = buttons.Single(button => AutomationProperties.GetName(button) == "Jump to P");
+            jumpToP.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Flush();
+            Assert.Equal(scroll.Offset, scrubbedOffset);
 
             library.Sort = LibrarySort.NameDescending;
             Flush();
@@ -259,10 +233,14 @@ public sealed class ListBrowsingPositionTests
 
             window.MouseMove(new Point(400, 300));
             Flush();
-            Assert.DoesNotContain("alphabetengaged", scrollbar.Classes);
             Assert.All(spine.GetVisualDescendants().OfType<Button>(), button =>
                 Assert.InRange(Math.Abs(Assert.IsType<Avalonia.Media.Transformation.TransformOperations>(
                     button.RenderTransform).Value.M31), 0, 0.01));
+            scroll.Offset = default;
+            Flush();
+            var viewportLocationIndex = (int)Math.Round(ExpectedAlphabetRow(library, scroll));
+            Assert.Contains("alphalocation4", spine.GetVisualDescendants().OfType<Button>()
+                .ElementAt(viewportLocationIndex).Classes);
 
             library.Sort = LibrarySort.PlaytimeHighToLow;
             Flush();

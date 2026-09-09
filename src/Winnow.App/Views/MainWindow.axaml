@@ -230,14 +230,6 @@
             <Setter Property="BoxShadow" Value="{DynamicResource AlphabetLocationGlow}"/>
         </Style>
 
-        <!-- Pointer entry over the letters deliberately wakes the sibling
-             scrollbar's thumb, making the two adjacent surfaces read as one. -->
-        <Style Selector="ScrollBar.alphabetengaged /template/ Thumb#PART_Thumb">
-            <Setter Property="Width" Value="8"/>
-            <Setter Property="MinWidth" Value="8"/>
-            <Setter Property="Opacity" Value="1"/>
-        </Style>
-
         <!-- ══ Rail bucket (§6) ══════════════════════════════════════════════
              Hover and selection both fill SurfaceRaised; selection adds the
              2px Volt left edge. Zero-count rows dim to 40% — never hide, so
@@ -1892,7 +1884,7 @@
                         VerticalAlignment="Stretch"
                         Background="{StaticResource PaneGround}"
                         Cursor="Arrow"
-                        ToolTip.Tip="Drag to scroll the library"
+                        ToolTip.Tip="Drag to browse by letter"
                         IsVisible="{Binding Library.ShowAlphabetSpine}"
                         ZIndex="2">
                     <ItemsControl ItemsSource="{Binding Library.DisplayedAlphabetSections}">

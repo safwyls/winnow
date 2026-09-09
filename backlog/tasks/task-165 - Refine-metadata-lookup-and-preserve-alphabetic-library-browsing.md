@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-08 23:44'
-updated_date: '2026-09-09 01:41'
+updated_date: '2026-09-09 01:55'
 labels: []
 dependencies: []
 references:
@@ -13,6 +13,7 @@ references:
 documentation:
   - design-system.md
 modified_files:
+  - src/Winnow.App/Views/MainWindow.axaml
   - src/Winnow.App/Views/MainWindow.axaml.cs
   - tests/Winnow.Ui.Tests/ListBrowsingPositionTests.cs
   - design-system.md
@@ -35,16 +36,15 @@ Improve large-library browsing in three related ways: strip copyright and tradem
 - [x] #4 Focused automated tests cover lookup normalization, alphabet jumps, and detail-close position restoration
 - [x] #5 The alphabet spine sits immediately left of the native scrollbar, is hidden for non-name sorts, and preserves ascending or descending name order when used
 - [x] #6 The alphabetical scroll control keeps the native thumb and lets pointer users press and drag across the letter spine to scrub through available title sections
-- [x] #7 Pointer hover over the alphabet expands the adjacent native scrollbar; pointer press and vertical drag continuously maps to the scrollable extent like dragging its thumb, while nearby letters form a restrained horizontal wave that snaps under reduced motion.
-- [x] #8 The spine uses slightly larger glyphs and the ordinary arrow cursor, while the current scroll location has a persistent glow whose intensity falls off across neighboring alphabet stops in grid and list views.
-- [x] #9 Every alphabet glyph shares one fixed visual centerline, and sub-row pointer movement produces continuously varying horizontal displacement rather than switching among discrete wave bands.
-- [x] #10 While the alphabet rail is active, the wave and glow use the same continuous position derived from the visible ordered titles and scrollbar offset, so uneven title distribution cannot separate them.
+- [x] #7 The spine uses slightly larger glyphs and the ordinary arrow cursor, while the current scroll location has a persistent glow whose intensity falls off across neighboring alphabet stops in grid and list views.
+- [x] #8 Every alphabet glyph shares one fixed visual centerline, and sub-row pointer movement produces continuously varying horizontal displacement rather than switching among discrete wave bands.
+- [x] #9 The alphabet spine scrubs directly among alphabet sections without engaging or proportionally controlling the native scrollbar; its wave and glow follow the pointer gesture, and ordinary scrollbar scrolling remains independent.
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Normalize metadata lookup terms without changing stored titles. 2. Provide one accessible alphabetical rail for grid and list views, preserving name-sort direction and hiding it for other sorts. 3. Preserve the active viewport across detail open and close. 4. Combine the alphabet rail with continuous scrollbar scrubbing; derive both the cosine wave and halo from the scroll position interpolated through the ordered visible titles. 5. Keep the visual specification and focused UI coverage current, then render both layouts and run the full build and test suite.
+1. Remove hover/drag coupling between the alphabet spine and native scrollbar. 2. Map pointer movement on the spine to alphabet stops, resolving unavailable stops to the nearest populated section and avoiding duplicate jumps. 3. Drive the wave and temporary glow from the fractional alphabet pointer position; restore the viewport glow when the gesture leaves. 4. Update the visual specification and focused tests, render both layouts, and run full verification.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -77,10 +77,14 @@ Sixth follow-up requested: align the glow with the wave peak by deriving both fr
 Clarification: the pointer row was not the correct shared source because alphabet sections are unevenly populated. The active effects should instead follow the title position represented by the scrollbar offset.
 
 Sixth follow-up complete: scrollbar offset is converted to a fractional position in the ordered visible-title sequence, then interpolated between the adjacent titles' alphabet rows. That single value now drives both cosine displacement and halo falloff, including half-row ties. Hover no longer pulls the wave toward a pointer row that may not represent the content. Focused grid/list tests and rendered captures passed. Full build completed with zero warnings/errors; all 4,103 Windows tests passed and 2 Linux-only monitor tests skipped as expected.
+
+Seventh follow-up requested: separate the alphabet scrubber from the native scrollbar and make it navigate alphabet sections directly.
+
+Seventh follow-up complete: the alphabet spine no longer engages the native thumb or maps pointer Y to scrollbar extent. Hover only drives the local wave and halo. Press-drag resolves each pointer position to the nearest populated alphabet stop and brings that section into view, suppressing repeated jumps while remaining on the same target. Leaving restores the viewport-derived halo; normal scrollbar movement updates that resting cue independently. The frontend-design guidance kept the gesture as the one expressive motion while the native scrollbar returned to quiet chrome. Focused and rendered grid/list checks passed. Full build completed with zero warnings/errors; all 4,103 Windows tests passed and 2 Linux-only monitor tests skipped as expected.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Removed metadata title decoration, added a shared alphabetical navigation/scrub rail, and preserved detail-close position. The rail now uses one content-derived fractional alphabet position for both its smooth cosine wave and glow, so uneven title distribution cannot separate the visual cues from the scrolled library. Verified with focused headless interaction tests, rendered grid/list inspection, a zero-warning build, and 4,103 passing tests with 2 expected Linux-only skips.
+Removed metadata title decoration, added alphabetical navigation, and preserved detail-close position. The alphabet spine is now an independent section scrubber: its pointer-following cosine wave and halo stay local to the gesture, while dragging jumps among populated letter sections and the adjacent native scrollbar retains ordinary independent behavior. Verified with rendered grid/list inspection, focused headless interaction coverage, a zero-warning build, and 4,103 passing tests with 2 expected Linux-only skips.
 <!-- SECTION:FINAL_SUMMARY:END -->

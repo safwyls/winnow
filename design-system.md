@@ -145,16 +145,17 @@ stops fixed, and dims unavailable sections without removing them. Activating a s
 the active name-sort direction and brings the first visible title in that section into view;
 `#` owns titles that begin with a number or symbol. The spine keeps a 24px hit area whose glyphs
 rest against the native scrollbar; that scrollbar keeps the window's 10px resize inset, so
-neither control overlays cover art nor enters the OS hit-test band. Pointer entry over the spine
-expands the native thumb. Pressing and dragging there maps continuously across the same scrollable
-extent as dragging the thumb rather than stepping between title sections. Each 11px glyph is centred
-in the same exact 12px column. While the spine is active, the letter matching the current visible
-title anchors a compact four-row cosine curve that reaches 13px into the library and returns smoothly
-to rest, the desktop version of Niagara Launcher's Wave Alphabet. It has no transition: the transform
-is scroll-position-bound and does not ease toward stale coordinates. The pointer remains the ordinary
-arrow. That same visible-title signal places a compact Volt halo, and three neighbors step outward
-through Volt, Text and TextDim so the wave and location cue cannot disagree. The halo remains when the
-pointer leaves and the wave returns to rest. The spine reverses to
+neither control overlays cover art nor enters the OS hit-test band. The spine and native scrollbar are
+adjacent but independent controls: entering the spine does not engage the thumb, and dragging the
+spine scrubs directly among alphabet sections rather than mapping to the scrollbar's extent. An
+unavailable stop resolves to the nearest populated section without moving the pointer feedback away
+from the stop under the pointer. Each 11px glyph is centred in the same exact 12px column. While the
+spine is active, the fractional pointer row anchors a compact four-row cosine curve that reaches 13px
+into the library and returns smoothly to rest, the desktop version of Niagara Launcher's Wave Alphabet.
+It has no transition, so sub-row movement renders directly. The same pointer row places a compact Volt
+halo, and three neighbors step outward through Volt, Text and TextDim. The pointer remains the ordinary
+arrow. When it leaves, the wave returns to rest and the halo again marks the current visible title.
+The spine reverses to
 `Z–A` with the sort so downward motion always moves down the library. Each stop remains a named
 button with the standard visible focus treatment.
 
