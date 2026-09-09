@@ -559,7 +559,7 @@ position; Back restores the exact origin, including after viewing details.
 | A | Open the focused game or activate the focused action; opening details never launches |
 | B | Close the top layer or return one level; root never exits immediately |
 | X | Play the selected installed game from a browse screen; unavailable shortcuts are omitted |
-| Y | Open a short contextual action sheet, including list, snooze and hide actions where applicable |
+| Y | Invoke the labelled contextual action: More on For you, Filter & sort in Library, or Reset page in appearance; confirmation protects destructive changes |
 | View | Open search from browsing |
 | Menu | Open a quick menu with controller help, readability settings and Return to desktop |
 
@@ -574,6 +574,57 @@ Before implementation, review the home composition and game page, then mock the 
 filters, text entry, settings, journal, empty states and controller disconnect. Native file
 selection and embedded sign-in need an explicit controller-accessible design; falling back
 to a desktop dialog does not satisfy M10. Do not mark those paths covered by the first mock.
+
+#### Other fullscreen views — design review
+
+The user endorsed the initial visual direction and requested the remaining views. Continue
+with the same typography, safe area, focus treatment and controller glyphs; each screen has
+its own composition. These proposals do not establish implemented behavior or device testing.
+
+**Library** trades the home's large featured artwork for two rows of six covers at the
+reference size. Titles sit below the covers. The focused game remains clear through its
+mint outline; unread dots and dormancy retain their shared meaning. Up from the first row
+reaches All games, Installed, Never played, Patched and My lists. Triggers page through the
+collection while preserving the focused column where possible. Y opens Filter & sort; View
+opens Search. Opening a game and returning restores the collection, page and exact game.
+Actual density remains subject to distance testing and may reduce at larger text settings.
+
+**Activity** is a personal history view. Sessions, Updates and Journal are local choices
+reached with directional navigation; bumpers continue switching the main screens. Large
+chronological rows occupy the left side and the selected event's art, facts and user note
+occupy the right. A opens the event; X edits the selected session's note when applicable.
+Triggers change the visible time period. Account-wide statistics remain reachable through
+a separate Library summary page, without crowding the session history with charts.
+
+**Settings** has Appearance, Controller, Library, Platforms and Application sections. Large
+rows expose a label and current value; left/right changes bounded values, A opens pickers
+or activates toggles, and B returns. Appearance has a readable live sample. Text size,
+screen margins and motion have fullscreen-specific preferences. The proposed fullscreen
+appearance page also permits its own theme and dormancy presentation; these do not change
+library facts or recommendation behavior. Shared settings such as content visibility,
+platform credentials and journal opt-in have the same value and validation in both UIs.
+Reset requires a confirmation naming the settings affected. Platform status has no Winnow
+account or cloud-sync fiction.
+
+| Supporting view | Composition and focus contract |
+|---|---|
+| Search | Dedicated keyboard and results regions; an explicit control moves between them; return preserves query and selected result |
+| Filter & sort | Large groups and choices, result count, explicit Apply and Clear; B discards uncommitted edits |
+| My lists / live lists | Large list rows with counts; opening restores the list's browsing position; naming uses dedicated text entry |
+| Contextual actions | Short ordered sheet for the selected game; cancel restores that game; destructive actions get their own confirmation |
+| Game updates | Large update headlines and dates, then a full reading page; marks unread state according to the shared application rules |
+| Game journal / note editor | Session-linked entries; editor has a readable text area and deliberate Save/Cancel actions with controller text entry |
+| Library tools | Reachable from Library actions: hidden games, add game, possible identity matches and metadata corrections; one focused operation per page |
+| Library summary | Reachable from Activity; readable summary pages, with detailed analytics progressively disclosed |
+| Platforms / sign-in | Large status and action rows; the embedded sign-in and native-file-selection boundaries require separate controller-accessible flow designs |
+| Quick menu | Return to desktop, controller help and readability access; B closes it and restores focus |
+| Empty / unavailable / disconnected | One clear explanation and recovery action; preserve selection and never redirect input to an obscured surface |
+
+Library, Activity and Settings have image concepts for this review. Supporting views in the
+table are an interaction inventory, not finished mocks; review search, filtering and text
+entry next, followed by library tools and external input boundaries. All cover art, history,
+counts and battery readings in generated images are illustrative. Generated pixels do not
+establish actual sorting, measured text sizes, data provenance or supported device behavior.
 
 ### Keyboard and assistive technology
 

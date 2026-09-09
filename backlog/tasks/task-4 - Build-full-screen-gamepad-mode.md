@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - codex
 created_date: '2026-08-29 21:52'
-updated_date: '2026-09-09 17:52'
+updated_date: '2026-09-09 18:05'
 labels:
   - ui
   - accessibility
@@ -35,6 +35,8 @@ Implement the M10 deliverable: a 10-foot UI navigable entirely by gamepad. This 
 
 <!-- SECTION:PLAN:BEGIN -->
 Design reset requested by user: 1. Establish a separate TV-distance fullscreen information architecture and controller focus model. 2. Produce image mockups of the recommendation home and game detail screen for discussion, without writing application or prototype code. 3. Document dual desktop/fullscreen UI maintenance and shared domain behavior. 4. Review and iterate with the user before implementation. Existing scaled-desktop implementation is superseded as the intended M10 design.
+
+Continue design review with Library, Activity and Settings image mockups using the accepted home identity; record secondary-screen coverage and unresolved controller flows before implementation.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -47,4 +49,10 @@ Release solution build passed with zero warnings and zero errors. Changes are on
 User rejected the scaled desktop approach as bolted on and explicitly requested a fresh gamepad-first fullscreen surface. Current turn is design and mockups only. Desktop and fullscreen will be maintained as distinct presentation paths with shared domain/application behavior; implementation waits for design review.
 
 First design review proposes For you, Library, Activity and Settings as fullscreen sections; a focused recommendation shelf drives the home artwork/reason, and game details becomes a separate full page. The visual spec records candidate TV typography and explicit controller navigation. AGENTS.md now requires assessing both presentation paths for user-facing changes; game-library-design.md records shared application behavior and separate UI ownership. Existing acceptance checks are reset because they verified the superseded adapter, not the proposed fullscreen surface. No application or prototype code changed during this design turn.
+
+User responded positively to the initial visual direction and requested the other views. This authorizes continuing mock design, not implementing the new fullscreen UI.
+
+Extended the design review to Library, Activity and Settings. The visual spec now records each composition plus a supporting-view inventory covering search, filter/sort, lists, context actions, updates, journal editing, library tools, account summary, platform sign-in, quick menu and recovery states. Mock data and generated imagery are illustrative; controller flow and distance validation remain pending. No application or prototype code changed.
+
+Saved the five-screen concept set under docs/mockups/fullscreen-v2 with generation prompts and a review index. Visually checked all three new screens; corrected Library sort copy and journal icon color. Mockups remain design proposals; application code is unchanged.
 <!-- SECTION:NOTES:END -->

@@ -3308,3 +3308,10 @@ input surfaces and do not inherit these controls.
 The roadmap previously described the first implementation as:
 
 > | M10 | Full-screen mode + gamepad navigation | The whole app is navigable on a controller at 10 feet | fullscreen, controller navigation and text entry implemented; physical-device and complete controller-only operation validation pending; native dialogs and embedded sign-in retain their own input requirements |
+
+### 2026-09-09 — Contextual fullscreen actions across screens
+
+The extended mock set gives Y a labelled action appropriate to the current screen. The
+first-pass controller table previously said:
+
+> | Y | Open a short contextual action sheet, including list, snooze and hide actions where applicable |
