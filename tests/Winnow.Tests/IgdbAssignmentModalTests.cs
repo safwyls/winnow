@@ -57,6 +57,8 @@ public sealed class IgdbAssignmentModalTests : IDisposable
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
     public async Task Choosing_a_candidate_rewrites_the_metadata_and_the_cover_and_preserves_the_tab(int tabIndex)
     {
         await SeedAsync();

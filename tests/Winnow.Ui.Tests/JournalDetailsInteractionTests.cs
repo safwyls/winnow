@@ -36,7 +36,7 @@ public sealed class JournalDetailsInteractionTests
             },
         ], promptEnabled: true, repository);
         var tile = TileFixture.Tile(now, ownershipId: 1, bucket: LibraryBuckets.Bounced, title: "Bluebird");
-        var model = new GameDetailsViewModel(tile, "Started", [], now, journal: journal) { SelectedTabIndex = 1 };
+        var model = new GameDetailsViewModel(tile, "Started", [], now, journal: journal) { SelectedTabIndex = 3 };
         var view = new GameDetailsView { DataContext = model };
         var window = new Window { Width = 1200, Height = 640, Content = view };
         window.Show();
@@ -57,9 +57,9 @@ public sealed class JournalDetailsInteractionTests
                 AutomationProperties.GetName(box) == "Journal note");
             Assert.True(note.IsEffectivelyVisible);
             note.Text = "Found the key behind the waterfall.";
-            model.SelectedTabIndex = 2;
+            model.SelectedTabIndex = 4;
             Flush();
-            model.SelectedTabIndex = 1;
+            model.SelectedTabIndex = 3;
             Flush();
             Assert.Equal("Found the key behind the waterfall.", journal.Entries[0].DraftNote);
             Assert.True(journal.Entries[0].IsEditing);
@@ -92,7 +92,7 @@ public sealed class JournalDetailsInteractionTests
         var journal = new GameJournalViewModel([], promptEnabled: false, new JournalRepository());
         var model = new GameDetailsViewModel(
             TileFixture.Tile(now, ownershipId: 1, bucket: LibraryBuckets.NeverPlayed, title: "Bluebird"),
-            "Never played", [], now, journal: journal) { SelectedTabIndex = 1 };
+            "Never played", [], now, journal: journal) { SelectedTabIndex = 3 };
         var view = new GameDetailsView { DataContext = model };
         var window = new Window { Width = 1200, Height = 640, Content = view };
         window.Show();

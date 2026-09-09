@@ -79,8 +79,8 @@ public partial class GameDetailsView : UserControl
         base.OnKeyDown(e);
     }
 
-    private void OnActivityShortcutPressed(object? sender, RoutedEventArgs e)
-        => Dispatcher.UIThread.Post(() => ActivityTab.Focus(NavigationMethod.Tab), DispatcherPriority.Background);
+    private void OnUpdatesShortcutPressed(object? sender, RoutedEventArgs e)
+        => Dispatcher.UIThread.Post(() => UpdatesTab.Focus(NavigationMethod.Tab), DispatcherPriority.Background);
 
     private void OnDetailsTabsKeyDown(object? sender, KeyEventArgs e)
     {
@@ -88,7 +88,7 @@ public partial class GameDetailsView : UserControl
         // apply only on the tab strip, so fields and timelines keep their keys.
         if (e.Handled || e.Source is not TabItem || e.Key is not (Key.Home or Key.End)
             || DataContext is not GameDetailsViewModel details) return;
-        details.SelectedTabIndex = e.Key == Key.Home ? 0 : 2;
+        details.SelectedTabIndex = e.Key == Key.Home ? 0 : 4;
         (e.Key == Key.Home ? OverviewTab : LibraryTab).Focus(NavigationMethod.Directional);
         e.Handled = true;
     }

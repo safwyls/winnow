@@ -3229,3 +3229,29 @@ the axis back to that month rather than being clipped off the left edge.
 Full play-history axis or its honest fallback, updates and read controls, GOG patch notes when present, journal
 **Activity retains the evidence, not just the summary.** The axis follows §10.2. UPDATES is
 the constant list heading, distinct from the axis's SINCE YOU PLAYED label.
+
+### 2026-09-09 — Dedicated Updates and Journal details tabs (TASK-171)
+
+The user requested separate tabs for update reading and journal editing. Superseded visual-spec text:
+
+### 10.1 Overview, Activity and Library
+
+The modal has a compact persistent header and three tabs.
+
+│ Overview       Activity ●       Library                      │
+
+| Activity | Lifetime and tracked-session history, updates and read controls, GOG patch notes when present, journal |
+
+The shortcut opens Activity in the same modal. All three
+
+Activity carries the same unread marker
+
+**Activity retains the evidence, not just the summary.** The tracker follows §10.2. UPDATES is
+
+**Keyboard and accessibility.** The three headers
+
+update list below remains the route
+
+`GOG patch notes` disclosure in Activity
+
+patch-note links within Activity retain

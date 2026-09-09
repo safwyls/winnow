@@ -19,7 +19,7 @@ public sealed class DetailsModalStructureTests
     {
         var document = System.Xml.Linq.XDocument.Parse(RepositoryTree.Read(View));
         var tabs = document.Descendants().Where(element => element.Name.LocalName == "TabItem").ToList();
-        Assert.Equal(["OverviewTab", "ActivityTab", "LibraryTab"],
+        Assert.Equal(["OverviewTab", "ActivityTab", "UpdatesTab", "JournalTab", "LibraryTab"],
             tabs.Select(tab => (string?)tab.Attribute("Name")));
         foreach (var tab in tabs)
         {
@@ -30,7 +30,9 @@ public sealed class DetailsModalStructureTests
         string[][] anchors =
         [
             ["{Binding AboutHeading}", "{Binding ShowExtends}", "{Binding ShowExpansions}"],
-            ["{Binding UpdatesLabel}", "{Binding Journal}"],
+            ["{Binding Tracker}"],
+            ["{Binding UpdatesLabel}"],
+            ["{Binding Journal}"],
             ["{Binding ShowCopyBreakdown}", "{Binding ShowLists}"],
         ];
         for (var index = 0; index < tabs.Count; index++)

@@ -9,6 +9,8 @@ public static class GameDetailsCopy
 {
     public const string OverviewTab = "Overview";
     public const string ActivityTab = "Activity";
+    public const string UpdatesTab = "Updates";
+    public const string JournalTab = "Journal";
     public const string LibraryTab = "Library";
     public const string BackToDetails = "Back to details";
     public const string YourCopies = "YOUR COPIES";

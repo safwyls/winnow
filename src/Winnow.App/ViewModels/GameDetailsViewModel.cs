@@ -158,7 +158,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void ShowActivity() => SelectedTabIndex = 1;
+    private void ShowUpdates() => SelectedTabIndex = 2;
 
     public string OverviewHistoryText => HasGap
         ? $"Last played {LastPlayedText} · {IdleText} ago"
@@ -167,9 +167,9 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     public int UnreadUpdateCount => Updates.Count(update => update.IsUnread);
     public bool HasUnreadUpdates => UnreadUpdateCount > 0;
     public string UpdatesShortcutText => GameDetailsCopy.UpdatesSincePlayed(UnreadUpdateCount);
-    public string ActivityTabAutomationName => HasUnreadUpdates
-        ? $"{GameDetailsCopy.ActivityTab}: {UpdatesShortcutText}"
-        : GameDetailsCopy.ActivityTab;
+    public string UpdatesTabAutomationName => HasUnreadUpdates
+        ? $"{GameDetailsCopy.UpdatesTab}: {UpdatesShortcutText}"
+        : GameDetailsCopy.UpdatesTab;
     public bool HasNoUpdates => !HasUpdates && !HasGogPatchNotes;
 
     public bool ShowCopyBreakdown => Coverage is { Rows.Count: > 0 };
@@ -630,7 +630,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(UnreadUpdateCount));
         OnPropertyChanged(nameof(HasUnreadUpdates));
         OnPropertyChanged(nameof(UpdatesShortcutText));
-        OnPropertyChanged(nameof(ActivityTabAutomationName));
+        OnPropertyChanged(nameof(UpdatesTabAutomationName));
     }
 
     /// <summary>Reloads the library after a flag change so bucket counts update.</summary>

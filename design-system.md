@@ -692,9 +692,9 @@ over the library**, opened from a tile's Details control or the library's detail
 Closing it returns to the same library position. Escape closes a focused metadata tool first,
 then the modal; the close button and a click on the scrim dismiss the modal directly.
 
-### 10.1 Overview, Activity and Library
+### 10.1 Overview, Activity, Updates, Journal and Library
 
-The modal has a compact persistent header and three tabs. The header carries an 82x123
+The modal has a compact persistent header and five tabs. The header carries an 82x123
 cover, title, year and publisher, store and install state, and the Play/Install, Add to list
 and More controls. The cover keeps its 2:3 geometry and full saturation. Its existing 200px
 decode also supplies the subdued backdrop (§5.5).
@@ -710,7 +710,7 @@ names remain the controls' labels.
 │         STEAM · Not installed                                │
 │         [Install] [Add to list] [More ▾]                      │
 │                                                              │
-│ Overview       Activity ●       Library                      │
+│ Overview    Activity    Updates ●    Journal    Library      │
 ├──────────────────────────────────────────────────────────────┤
 │ 37h played · Last played 3 years ago                          │
 │ ● 4 updates since you played →                               │
@@ -729,10 +729,12 @@ names remain the controls' labels.
 | Tab | Content, in reading order |
 |---|---|
 | Overview | Hours and last-played summary, unread-update shortcut, lifecycle evidence when present, description and screenshots, reception, base-game and expansion relationships |
-| Activity | Lifetime and tracked-session history, updates and read controls, GOG patch notes when present, journal |
+| Activity | Lifetime and tracked-session history |
+| Updates | Updates and read controls, GOG patch notes when present |
+| Journal | Saved session notes, ratings and inline editing |
 | Library | Owned copies and linked-entry breakdown, list membership, acquisition, disclosed installation and identifier facts |
 
-Ordinary Details opens Overview. The shortcut opens Activity in the same modal. All three
+Ordinary Details opens Overview. The shortcut opens Updates in the same modal. All five
 tabs remain present when data is sparse; absent integrations do not change their names or
 positions. A refresh or correction that rebuilds details on the same ownership keeps the
 selected tab. A new ordinary opening starts on Overview again.
@@ -740,7 +742,7 @@ selected tab. A new ordinary opening starts on Overview again.
 **Overview keeps the reason to return visible.** Its summary reuses the stored hours and
 last-played date; no date keeps the distinction between never opened and a session whose date
 is not recorded. The update shortcut counts unread updates and disappears when none remain.
-Activity carries the same unread marker and an accessible name that states the count.
+Updates carries the same unread marker and an accessible name that states the count.
 The full timeline lives in Activity, so it does not consume space above every tab.
 
 **Description is readable before it is exhaustive.** A summary longer than 360 characters
@@ -764,7 +766,7 @@ Values take `Text`; attribution and counts take `TextDim`. A `WrapPanel` lets co
 wrap without dropping counts. A base-game relationship remains a single visible row;
 expansion rows open behind a collapsed disclosure so long collections do not crowd Overview.
 
-**Activity retains the evidence, not just the summary.** The tracker follows §10.2. UPDATES is
+**Activity retains the play evidence.** The tracker follows §10.2. Updates and Journal have dedicated tabs. UPDATES is
 the constant list heading, distinct from the tracker ranges. Missing update
 records say that no updates are recorded, not that nothing shipped. JOURNAL lists saved notes
 newest first with session date, optional rating out of five and note. Editing stays inline,
@@ -800,7 +802,7 @@ The 20px clearance is the 12px expanded track plus an 8px spacing step. ScrollVi
 does not provide this clearance. `ScrollViewer.inner` opts out of the window-edge resize
 inset (§9.1); it does not supply the content gutter.
 
-**Keyboard and accessibility.** The three headers are native TabItems in a TabControl, with
+**Keyboard and accessibility.** The five headers are native TabItems in a TabControl, with
 selection semantics and visible focus. Arrow keys move among tab headers; Tab enters the
 selected content. Inactive pages are outside the interactive focus path. The modal retains
 its named Window role, a level-1 title, level-2 section headings and named identity, history,
@@ -852,7 +854,7 @@ no plot when there is no temporal evidence. It never falls back to the old norma
 use `Flare`, other recorded updates use neutral ink. Nearby marks group into a count instead
 of dropping everything after an arbitrary cap. Selection names the updates and their dates;
 a grouped lifetime mark switches to the closer tracked view when that range exists. The full
-update list below remains the route to patch notes and read controls. Acknowledgement refreshes
+Updates tab remains the route to patch notes and read controls. Acknowledgement refreshes
 the marks without switching the selected range.
 
 **The chart has one ownership scope.** Cumulative counters for linked copies cannot be joined
@@ -897,7 +899,7 @@ one; the documented `?action=updatecheck` is not registered at all in build 20.2
 rejected before dispatch. See `docs/spikes/store-actions-per-launcher.md` for the full evidence.
 Epic's cached namespace-to-slug map supplies `https://store.epicgames.com/p/<slug>`; unresolved
 namespaces draw no link. GOG's cached product response supplies its store-page URL and patch
-notes. When notes exist, a collapsed `GOG patch notes` disclosure in Activity
+notes. When notes exist, a collapsed `GOG patch notes` disclosure in Updates
 opens readable text; it is absent when the response has no changelog. The API and cache are
 background work, so opening details never waits for either store.
 
@@ -997,7 +999,7 @@ ink cannot drift back down.
 
 **More uses `Button.secondary`.** It opens an in-app menu and takes the panel's `Text`-ink
 treatment. Outbound destinations inside that menu use the shared menu-row treatment;
-patch-note links within Activity retain `Azure`.
+patch-note links within Updates retain `Azure`.
 
 **The menu's presenter wears the `actions` class** from `Themes/controls.axaml` — the same
 treatment the library grid's context menu wears, one set of setters covering both. The modal

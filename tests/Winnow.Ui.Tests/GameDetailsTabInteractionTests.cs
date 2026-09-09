@@ -35,14 +35,19 @@ public sealed class GameDetailsTabInteractionTests
         var initialHeader = BoundsIn(fixture.Find<Grid>("DetailsHeader"), fixture.Window);
         AssertContained(BoundsIn(card, fixture.Window), new Rect(fixture.Window.ClientSize));
 
-        string[] tabs = ["OverviewTab", "ActivityTab", "LibraryTab"];
-        string[] scrolls = ["OverviewScroll", "ActivityScroll", "LibraryScroll"];
+        string[] tabs = ["OverviewTab", "ActivityTab", "UpdatesTab", "JournalTab", "LibraryTab"];
+        string[] scrolls = ["OverviewScroll", "ActivityScroll", "UpdatesScroll", "JournalScroll", "LibraryScroll"];
         for (var index = 0; index < tabs.Length; index++)
         {
             fixture.Click(fixture.Find<TabItem>(tabs[index]));
             Assert.Equal(index, model.SelectedTabIndex);
             var scroll = fixture.Find<ScrollViewer>(scrolls[index]);
             Assert.True(scroll.IsEffectivelyVisible);
+            foreach (var other in scrolls.Where(name => name != scrolls[index]))
+            {
+                var inactive = fixture.Find<ScrollViewer>(other);
+                Assert.True(inactive.GetVisualRoot() is null || !inactive.IsEffectivelyVisible);
+            }
             Assert.InRange(scroll.Viewport.Height, 80, card.Bounds.Height);
             AssertContained(BoundsIn(scroll, card), new Rect(card.Bounds.Size));
             Assert.Equal(initialHeader, BoundsIn(fixture.Find<Grid>("DetailsHeader"), fixture.Window));
@@ -92,12 +97,12 @@ public sealed class GameDetailsTabInteractionTests
         fixture.Press(PhysicalKey.ArrowRight);
         Flush();
         Assert.Equal(2, model.SelectedTabIndex);
-        Assert.True(fixture.Find<TabItem>("LibraryTab").IsKeyboardFocusWithin);
+        Assert.True(fixture.Find<TabItem>("UpdatesTab").IsKeyboardFocusWithin);
         fixture.Press(PhysicalKey.ArrowLeft);
         Flush();
         Assert.Equal(1, model.SelectedTabIndex);
         fixture.Press(PhysicalKey.End);
-        Assert.Equal(2, model.SelectedTabIndex);
+        Assert.Equal(4, model.SelectedTabIndex);
         fixture.Press(PhysicalKey.Home);
         Assert.Equal(0, model.SelectedTabIndex);
     }
@@ -108,10 +113,10 @@ public sealed class GameDetailsTabInteractionTests
         using var model = SparseModel();
         using var fixture = new DetailsFixture(model);
         var tabs = fixture.Find<TabControl>("DetailsTabs");
-        Assert.Equal(3, tabs.Items.Count);
+        Assert.Equal(5, tabs.Items.Count);
         var shortcut = fixture.Find<Button>("UpdatesShortcutButton");
         Assert.False(shortcut.IsEffectivelyVisible);
-        foreach (var name in new[] { "OverviewTab", "ActivityTab", "LibraryTab" })
+        foreach (var name in new[] { "OverviewTab", "ActivityTab", "UpdatesTab", "JournalTab", "LibraryTab" })
         {
             var tab = fixture.Find<TabItem>(name);
             Assert.True(tab.IsEnabled);
@@ -122,7 +127,7 @@ public sealed class GameDetailsTabInteractionTests
     }
 
     [AvaloniaFact]
-    public void Update_shortcut_opens_activity_without_replacing_the_details_model()
+    public void Update_shortcut_opens_updates_without_replacing_the_details_model()
     {
         var model = PreviewData.GameDetails;
         model.SelectedTabIndex = 0;
@@ -130,9 +135,12 @@ public sealed class GameDetailsTabInteractionTests
         var shortcut = fixture.Find<Button>("UpdatesShortcutButton");
         Assert.True(shortcut.IsEffectivelyVisible);
         fixture.Click(shortcut);
-        Assert.Equal(1, model.SelectedTabIndex);
+        Assert.Equal(2, model.SelectedTabIndex);
         Assert.Same(model, fixture.View.DataContext);
-        Assert.True(fixture.Find<ScrollViewer>("ActivityScroll").IsEffectivelyVisible);
+        Assert.True(fixture.Find<ScrollViewer>("UpdatesScroll").IsEffectivelyVisible);
+        Assert.Equal(model.UpdatesTabAutomationName,
+            AutomationProperties.GetName(fixture.Find<TabItem>("UpdatesTab")));
+        Assert.Equal("Activity", AutomationProperties.GetName(fixture.Find<TabItem>("ActivityTab")));
         model.SelectedTabIndex = 0;
     }
 
@@ -166,7 +174,7 @@ public sealed class GameDetailsTabInteractionTests
         var service = new MetadataService();
         using var editor = new GameMetadataEditorViewModel(service, 1, service.Snapshot);
         using var model = SparseModel(editor);
-        model.SelectedTabIndex = 2;
+        model.SelectedTabIndex = 4;
         using var fixture = new DetailsFixture(model);
         await editor.OpenCommand.ExecuteAsync(null);
         Flush();
@@ -177,7 +185,7 @@ public sealed class GameDetailsTabInteractionTests
         field.Text = "A name still being considered";
         Flush();
         fixture.Click(fixture.Find<Button>("BackToDetailsButton"));
-        Assert.Equal(2, model.SelectedTabIndex);
+        Assert.Equal(4, model.SelectedTabIndex);
         Assert.True(fixture.Find<TabControl>("DetailsTabs").IsEffectivelyVisible);
         Assert.True(fixture.Find<Button>("MoreActionsButton").IsKeyboardFocusWithin);
 
@@ -190,7 +198,7 @@ public sealed class GameDetailsTabInteractionTests
         fixture.Press(PhysicalKey.Escape);
         Flush();
         Assert.True(fixture.Find<TabControl>("DetailsTabs").IsEffectivelyVisible);
-        Assert.Equal(2, model.SelectedTabIndex);
+        Assert.Equal(4, model.SelectedTabIndex);
         Assert.Equal("A name still being considered", row.Draft);
     }
 
@@ -220,7 +228,7 @@ public sealed class GameDetailsTabInteractionTests
         Capture(fixture.Window, "details-focused-match-1200x640");
 
         fixture.Click(fixture.Find<Button>("BackToDetailsButton"));
-        Assert.Equal(2, model.SelectedTabIndex);
+        Assert.Equal(4, model.SelectedTabIndex);
         Assert.True(fixture.Find<Button>("MoreActionsButton").IsKeyboardFocusWithin);
         fixture.Click(fixture.Find<Button>("MoreActionsButton"));
         fixture.Press(PhysicalKey.Enter);
@@ -230,7 +238,7 @@ public sealed class GameDetailsTabInteractionTests
         Assert.Equal(1, service.Searches);
         fixture.Press(PhysicalKey.Escape);
         Assert.True(fixture.Find<TabControl>("DetailsTabs").IsEffectivelyVisible);
-        Assert.Equal(2, model.SelectedTabIndex);
+        Assert.Equal(4, model.SelectedTabIndex);
         Assert.Same(candidates, match.Candidates);
     }
 

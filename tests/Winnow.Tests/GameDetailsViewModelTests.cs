@@ -560,6 +560,22 @@ public sealed class GameDetailsViewModelTests
         Assert.Equal(LibrarySettingsCopy.HideTooltip, with.HideTooltip);
     }
 
+    [Fact]
+    public void Update_shortcut_selects_the_updates_tab_and_names_its_unread_state()
+    {
+        using var model = Details(Tile(lastPlayed: Now.AddDays(-10)),
+            [Update("A new expedition", Now.AddDays(-1))]);
+
+        Assert.Equal(0, model.SelectedTabIndex);
+        Assert.True(model.HasUnreadUpdates);
+        Assert.StartsWith("Updates:", model.UpdatesTabAutomationName, StringComparison.Ordinal);
+        model.ShowUpdatesCommand.Execute(null);
+        Assert.Equal(2, model.SelectedTabIndex);
+
+        using var empty = Details(Tile());
+        Assert.Equal("Updates", empty.UpdatesTabAutomationName);
+    }
+
     // ── Builders ─────────────────────────────────────────────────────────────
 
     private static GameTileViewModel Tile(
