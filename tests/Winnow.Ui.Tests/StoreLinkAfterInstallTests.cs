@@ -82,7 +82,9 @@ public sealed class StoreLinkAfterInstallTests
         try
         {
             var launch = view.FindControl<Button>("LaunchButton")!;
-            Assert.Equal("Install", launch.Content);
+            Assert.Equal("Install", ButtonLabel(launch));
+            Assert.True(view.FindControl<Control>("HeaderInstallGlyph")!.IsEffectivelyVisible);
+            Assert.False(view.FindControl<Control>("HeaderPlayGlyph")!.IsEffectivelyVisible);
             var before = OpenStoreMenu(view, window);
             AssertReadableAndClickable(before, window, BoundsInWindow(before, window));
             Click(before, window);
@@ -96,7 +98,9 @@ public sealed class StoreLinkAfterInstallTests
             Flush();
 
             Assert.Same(model, view.DataContext);
-            Assert.Equal("Play", launch.Content);
+            Assert.Equal("Play", ButtonLabel(launch));
+            Assert.False(view.FindControl<Control>("HeaderInstallGlyph")!.IsEffectivelyVisible);
+            Assert.True(view.FindControl<Control>("HeaderPlayGlyph")!.IsEffectivelyVisible);
             Assert.Same(installed, launch.CommandParameter);
             var store = OpenStoreMenu(view, window);
             var bounds = BoundsInWindow(store, window);
@@ -119,7 +123,7 @@ public sealed class StoreLinkAfterInstallTests
             using var reopened = new GameDetailsViewModel(installed, "Never played", [], now, patchNotes: reader);
             view.DataContext = reopened;
             Flush();
-            Assert.Equal("Play", launch.Content);
+            Assert.Equal("Play", ButtonLabel(launch));
             var reopenedStore = OpenStoreMenu(view, window);
             AssertReadableAndClickable(reopenedStore, window, bounds);
             Click(reopenedStore, window);
@@ -160,7 +164,7 @@ public sealed class StoreLinkAfterInstallTests
         try
         {
             var launch = view.FindControl<Button>("LaunchButton")!;
-            Assert.Equal("Install", launch.Content);
+            Assert.Equal("Install", ButtonLabel(launch));
             var store = OpenStoreMenu(view, window);
             var bounds = BoundsInWindow(store, window);
             var more = view.FindControl<Button>("MoreActionsButton")!;
@@ -265,6 +269,9 @@ public sealed class StoreLinkAfterInstallTests
 
     private static Rect BoundsInWindow(Control control, Window window)
         => new(control.TranslatePoint(default, window)!.Value, control.Bounds.Size);
+
+    private static string? ButtonLabel(Button button)
+        => button.GetVisualDescendants().OfType<TextBlock>().Single().Text;
 
     private static MenuItem OpenStoreMenu(GameDetailsView view, Window window)
     {

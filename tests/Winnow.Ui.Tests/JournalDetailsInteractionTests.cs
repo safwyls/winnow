@@ -48,6 +48,8 @@ public sealed class JournalDetailsInteractionTests
             var heading = Assert.Single(view.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "JOURNAL");
             Assert.True(heading.IsEffectivelyVisible);
             var edit = Button(view, "Edit");
+            Assert.Equal(new Thickness(9, 4), edit.Padding);
+            Assert.Equal(new Thickness(9, 4), Button(view, "Delete").Padding);
             Click(edit, window);
             Flush();
 

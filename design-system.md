@@ -699,6 +699,10 @@ cover, title, year and publisher, store and install state, and the Play/Install,
 and More controls. The cover keeps its 2:3 geometry and full saturation. Its existing 200px
 decode also supplies the subdued backdrop (§5.5).
 
+Play and Install keep their text and carry the matching 16px play or download glyph. Add to
+list carries the 16px list-plus glyph. The icons reinforce the verbs; the text and automation
+names remain the controls' labels.
+
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │ cover   Empyrion: Galactic Survival                       [×] │

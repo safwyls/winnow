@@ -253,6 +253,8 @@ public sealed class GameDetailsTabInteractionTests
             Assert.True(button.IsEffectivelyVisible);
             AssertContained(BoundsIn(button, header), new Rect(header.Bounds.Size));
         }
+        Assert.True(fixture.Find<Control>("HeaderPlayGlyph").IsEffectivelyVisible);
+        Assert.True(fixture.Find<Control>("HeaderAddToListGlyph").IsEffectivelyVisible);
         Assert.InRange(fixture.Find<ScrollViewer>("OverviewScroll").Viewport.Height, 80, 640);
         Capture(fixture.Window, "details-long-header-1200x640");
     }
