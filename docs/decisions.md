@@ -3268,3 +3268,13 @@ The promo site now uses https://winnow.gg/ and builds links and assets from the
 > Set `PAGES_BASE_PATH` to an empty string for a domain root, or another slash-prefixed path without a trailing slash when hosting under a different repository name.
 
 > Update the workflow environment to match when changing the published location.
+
+### 2026-09-09 — Fullscreen and controller input
+
+Fullscreen scales the existing shell and retains its commands, dialogs and focus styles.
+The M10 roadmap row previously said:
+
+> | M10 | Full-screen mode + gamepad navigation | The whole app is navigable on a controller at 10 feet | last |
+
+Physical-controller validation and controller-only access to external input surfaces remain
+unverified; implementing the shell does not establish those broader exit criteria.

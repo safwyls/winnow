@@ -523,6 +523,29 @@ panel's strings were written from the auth spikes instead. TASK-81.
 
 ## 8. Accessibility floor
 
+### Fullscreen and controller navigation
+
+Fullscreen reuses the shell and its dialogs, with the caption hidden and a persistent footer
+outside the dialog layers. The rail offers Fullscreen; F11 and Menu / Start toggle it from
+any screen. Exiting restores the preceding normal or maximized state. The footer shows a
+local-time clock, controller status when connected, and an Exit fullscreen button.
+
+The shell scales uniformly from 1 to 1.5, limited by 1200 logical pixels of width and 688
+of height (640 for content plus 48 for the footer). Small displays retain the desktop scale.
+It uses the same theme tokens, control templates and focus rings. Controller focus uses
+keyboard focus styling and scrolls controls into view. D-pad and left stick navigate;
+LB/RB follow the control order inside the current dialog or popup; A activates and B backs
+out one layer. Right-stick vertical movement scrolls long bodies without moving focus.
+
+A on an editable field, or Y while it is focused, opens a keyboard above the content and
+below the fullscreen footer. It includes case, punctuation, caret movement and deletion.
+Its selected key uses a fixed-width Volt border; the text preview masks password fields.
+Done or B closes text entry and restores visible focus to the original field. Escape closes
+text entry before any underlying dialog. Native file dialogs and store sign-in are separate
+input surfaces and do not inherit these controls.
+
+### Keyboard and assistive technology
+
 - **The saturation ramp is decorative-redundant.** Idle time also appears as text on hover and
   as a sortable column in list view. A user who cannot perceive the fade loses nothing. The
   unread badge is likewise backed by the rail's `Patched` count, by the same bucket name on the

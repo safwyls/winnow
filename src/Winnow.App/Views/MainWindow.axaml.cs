@@ -52,6 +52,8 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        InitializeFullscreen();
+        InitializeGamepad();
 
         // The modal and the lightbox are built the first time they are shown
         // (LazyPane), so their events are wired when they appear rather than
@@ -252,6 +254,8 @@ public partial class MainWindow : Window
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
+        if (_chromeReady && (change.Property == WindowStateProperty || change.Property == BoundsProperty))
+            UpdateFullscreenPresentation();
 
         if (_chromeReady && change.Property == WindowStateProperty)
         {
@@ -654,6 +658,12 @@ public partial class MainWindow : Window
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
+        if (e.Key == Key.F11)
+        {
+            ToggleFullscreen();
+            e.Handled = true;
+            return;
+        }
         base.OnKeyDown(e);
 
         if (e.Handled)

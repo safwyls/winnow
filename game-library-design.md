@@ -593,6 +593,16 @@ IRemoteOwnershipSync` handles entitlement backfill on a 6-hour timer. Both live 
 `ResolveResult` and Core cannot reference Resolve. **No enrichment or remote client may be
 reachable from the first-paint path.**
 
+#### Controller input
+
+Controller input lives in `Winnow.App.Services`, independent of ingest and process monitoring.
+The window polls a read-only source at 33 ms while open. Windows loads XInput from the system
+directory; Linux reads nonblocking joydev events using kernel-reported button and axis maps.
+Discovery retries every two seconds. Battery readings are optional and queried every thirty
+seconds on Windows; Linux joydev does not report battery state. The input filter suppresses
+held buttons on reconnect or activation and repeats navigation after 400 ms, then every 110 ms.
+Only the active, visible window dispatches actions. Closing disposes the native source.
+
 ### 5.2 Session detection
 
 **Process watching** is the shipped mechanism and needs no setup. A launch-option wrapper

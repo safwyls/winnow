@@ -66,6 +66,25 @@ fetching titles and covers. Give it a minute or two.
 **`Patched` grows over the first week.** The update poller spreads its sweep across seven
 days, so a game enters that bucket when its slot comes up.
 
+### Fullscreen and controllers
+
+Choose **Fullscreen** at the foot of the rail, press **F11**, or press the controller's
+**Menu / Start** button. Repeat to return to the previous window state. Fullscreen enlarges
+the interface when the display has room and shows a clock and available controller status.
+
+- **D-pad / left stick:** navigate games and controls.
+- **A / south button:** select; on an editable text field, open the on-screen keyboard.
+- **B / east button:** back; closes text entry before the underlying dialog.
+- **LB / RB:** previous / next control, including secondary actions.
+- **Y / north button:** open text entry for the focused field.
+- **Right stick up / down:** scroll long content.
+
+Windows supports XInput controllers; Linux supports controllers exposed through readable
+`/dev/input/js*` devices. Battery status appears when XInput supplies it. Input pauses while
+Winnow is inactive, and held buttons must be released after reconnecting or returning from
+a game. External launcher windows, native file dialogs, and embedded store sign-in retain
+their own input requirements. Physical-controller compatibility is not yet validated.
+
 ### Connecting platforms
 
 `SETTINGS › PLATFORMS` (the gear at the foot of the rail) shows what each platform contributes.
