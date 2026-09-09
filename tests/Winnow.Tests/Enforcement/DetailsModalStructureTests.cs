@@ -47,22 +47,21 @@ public sealed class DetailsModalStructureTests
     }
 
     /// <summary>
-    /// The update list's heading and Band 2's rail label were the same string,
-    /// so one modal said SINCE YOU PLAYED twice about two different things.
-    /// The rail keeps the name; the list took one of its own, and it is
-    /// constant whether or not anything landed since the last session.
+    /// Lifetime play and updates keep distinct labels; the former gap-rail
+    /// heading must not return above a chart of the entire ownership.
     /// </summary>
     [Fact]
-    public void The_update_heading_does_not_collide_with_the_rail_label()
+    public void The_activity_tracker_replaces_the_ambiguous_gap_rail_heading()
     {
         Assert.NotEqual("SINCE YOU PLAYED", GameDetailsCopy.UpdatesHeading);
         Assert.NotEmpty(GameDetailsCopy.UpdatesHeading);
 
         var markup = RepositoryTree.Read(View);
 
-        // The rail label is a literal in the markup and appears once per Band 2
-        // branch — the axis and the gap rail — and nowhere else.
-        Assert.Equal(2, Regex.Matches(markup, "\"SINCE YOU PLAYED\"").Count);
+        Assert.DoesNotContain("\"SINCE YOU PLAYED\"", markup, StringComparison.Ordinal);
+        Assert.Contains("<views:ActivityTrackerView", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("<views:GapRail", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("<views:PlayAxis", markup, StringComparison.Ordinal);
     }
 
     /// <summary>

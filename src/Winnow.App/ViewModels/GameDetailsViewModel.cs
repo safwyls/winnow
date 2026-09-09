@@ -77,7 +77,8 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         GameRefetchViewModel? refetch = null,
         ScreenshotLightboxViewModel? lightbox = null,
         GameJournalViewModel? journal = null,
-        System.Windows.Input.ICommand? addToList = null)
+        System.Windows.Input.ICommand? addToList = null,
+        IReadOnlyList<Session>? sessions = null)
     {
         Reception = GameReceptionViewModel.From(ratings);
         Screenshots = GameScreenshotsViewModel.From(images, covers, lightbox);
@@ -110,6 +111,10 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         DismissalStands = acknowledgedThrough is not null;
 
         _snapshots = snapshots ?? [];
+        Tracker = new ActivityTrackerViewModel(_snapshots, sessions ?? [],
+            ownerships?.FirstOrDefault(ownership => ownership.Id == tile.OwnershipId)?.AcquiredAt,
+            tile.Primary.LastPlayedAt, tile.Primary.PlaytimeMinutes, nowUtc,
+            tile.Entries.Count > 1 ? $"{tile.StoreBadge} copy" : string.Empty);
         RecordLine = BuildRecordLine(_snapshots, nowUtc);
         (PrimaryAction, Links, NoWayInSentence) = BuildLinks(tile);
         GogPatchNotes = tile.PlayableEntry.Store == "gog" ? tile.PlayableEntry.Storefront?.PatchNotes : null;
@@ -321,6 +326,8 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
 
     /// <summary>Total on the clock — the one number big enough to read from across the room.</summary>
     public string PlaytimeText => Tile.PlaytimeText;
+
+    public ActivityTrackerViewModel Tracker { get; }
 
     public DateTime? LastPlayedUtc { get; }
 
@@ -607,6 +614,8 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
             update.IsAcknowledged = readThrough is { } through && update.OccurredAtUtc <= through;
         }
 
+        Tracker.RefreshUpdates(Updates);
+
         RailMarks = BuildRailMarks(Updates, LastPlayedUtc, _nowUtc);
 
         Axis = PlayAxisSeries.Build(
@@ -862,7 +871,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>Minutes as the app writes durations: "45m", "3h", "3h 20m".</summary>
-    private static string SpanText(long minutes)
+    internal static string SpanText(long minutes)
     {
         if (minutes < 60)
         {

@@ -1366,6 +1366,10 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             ? []
             : await _snapshots.GetByOwnershipAsync(target.OwnershipId);
 
+        IReadOnlyList<Session> sessions = _sessions is null
+            ? []
+            : await _sessions.GetByOwnershipAsync(target.OwnershipId);
+
         var workId = GameWorkIdFor(target);
 
         IReadOnlyList<WorkRating> ratings = _workRatings is null || workId is null
@@ -1396,7 +1400,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             refetch: BuildRefetch(workId),
             lightbox: Lightbox,
             journal: await BuildJournalAsync(target),
-            addToList: new RelayCommand(() => BeginAddToListFor([target])));
+            addToList: new RelayCommand(() => BeginAddToListFor([target])),
+            sessions: sessions);
     }
 
     /// <summary>
@@ -1677,6 +1682,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     {
         var ownershipId = Details?.Tile.OwnershipId;
         var selectedTabIndex = Details?.SelectedTabIndex ?? 0;
+        var trackedSessions = Details?.Tracker.IsTrackedSessions ?? false;
         await LoadAsync();
 
         if (ownershipId is not { } id)
@@ -1696,6 +1702,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             if (Details is { } details)
             {
                 details.SelectedTabIndex = selectedTabIndex;
+                details.Tracker.IsTrackedSessions = trackedSessions;
             }
         }
     }

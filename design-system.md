@@ -729,7 +729,7 @@ names remain the controls' labels.
 | Tab | Content, in reading order |
 |---|---|
 | Overview | Hours and last-played summary, unread-update shortcut, lifecycle evidence when present, description and screenshots, reception, base-game and expansion relationships |
-| Activity | Full play-history axis or its honest fallback, updates and read controls, GOG patch notes when present, journal |
+| Activity | Lifetime and tracked-session history, updates and read controls, GOG patch notes when present, journal |
 | Library | Owned copies and linked-entry breakdown, list membership, acquisition, disclosed installation and identifier facts |
 
 Ordinary Details opens Overview. The shortcut opens Activity in the same modal. All three
@@ -764,8 +764,8 @@ Values take `Text`; attribution and counts take `TextDim`. A `WrapPanel` lets co
 wrap without dropping counts. A base-game relationship remains a single visible row;
 expansion rows open behind a collapsed disclosure so long collections do not crowd Overview.
 
-**Activity retains the evidence, not just the summary.** The axis follows §10.2. UPDATES is
-the constant list heading, distinct from the axis's SINCE YOU PLAYED label. Missing update
+**Activity retains the evidence, not just the summary.** The tracker follows §10.2. UPDATES is
+the constant list heading, distinct from the tracker ranges. Missing update
 records say that no updates are recorded, not that nothing shipped. JOURNAL lists saved notes
 newest first with session date, optional rating out of five and note. Editing stays inline,
 including the existing five-dot rating control. Deletion asks “Delete this note?” and uses
@@ -808,70 +808,64 @@ actions and reception groups. Update rows and screenshot buttons remain named li
 unread state is also stated in words. `AutomationProperties.Name` belongs on peer-bearing
 controls or explicitly included groups, never on a TextBlock (§8).
 
-### 10.2 The lifetime axis
+### 10.2 The activity timeline
 
-**The one thing Winnow can draw that nothing else can.** Storefronts hold your playtime and
-they hold a game's patch history; nobody puts them on the same axis. For a game with a release
-year and at least two month-end playtime readings, Activity draws one time axis from the game's
-release to today, in two zones.
+Activity opens a compact tracker with **Lifetime** and **Tracked sessions** controls. The
+summary shows total played and the last-played date. The plot is 98px high; dates and a thin
+coverage strip sit below it. The range controls, 11–12px supporting text and 30px total stay
+readable; condensation comes from spacing and plot height rather than smaller type.
 
-- **The left zone is play whose amount Winnow knows and whose shape it does not.**
-  `SteamPlaytimeBackfillService` reconstructs a month-end cumulative series from Steam Replay,
-  and everything before the first covered month is stamped as one figure at one instant — the
-  floor point in `PlaytimeSeriesReconstruction.cs`. It is drawn as a flat band with a dashed
-  boundary, never as bars and never as a slope, because a slope across that span would invent a
-  month-by-month pattern nobody measured.
-- **The right zone is one bar per closed month.** A bar spans the true time between two
-  consecutive readings and its height is the play gained between them, so a stretch the backfill
-  did not cover draws as one wide bar carrying the whole stretch's hours rather than being
-  silently compressed into the ordinal sequence.
-- **Only month-end readings are differenced.** A live snapshot is written only while Winnow is
-  running, so a user who closes it for three weeks gets three weeks of accumulated play stamped
-  on one instant; a chart from those deltas would draw a spike on the day the app reopened, not
-  on the days the play happened. Snapshots that are not stamped at a month end contribute no
-  bar at all.
-- **Sessions are not mixed in.** They exist only from Winnow's own install and only for
-  processes it watched, so overlaying them would make a game heavily played for four years
-  before that install look dormant for those four years. Two data sets, two coverage windows,
-  two questions.
-- **The last session is a `Volt` stop mark on the axis.** Update marks are `Flare` on the
-  baseline, capped at 14, the same signal the gap rail carried and placed on the whole axis
-  rather than on the gap alone.
-- **The bars ride §5.1's ramp turned on its side**, `Line` at the release end to `Volt` at
-  today. This runs the opposite way to the gap rail's own ramp: the gap rail encodes a
-  dormancy that begins at a single known moment, the last session, so `Volt` sits there; the
-  lifetime axis has no such single moment and encodes recency, so `Volt` sits at today. The
-  gap rail's rule is unchanged where the gap rail still draws.
-- **What is drawn is the user's own hours.** Per-game player-population activity is not
-  obtainable — the whole finding is in `docs/spikes/activity-graph-data-availability.md` — and
-  the copy under the axis says whose hours these are so the reader cannot mistake it for a
-  population curve.
-- **Everything it draws is restated in words underneath** (§8). A user who cannot resolve a 7px
-  dot or a 3px bar loses nothing.
+**Lifetime uses equal-width monthly bars.** Every bar represents hours in a calendar month,
+with the same width for Steam history and Winnow observations. Stored monthly history uses
+`VoltEdgeSoft`; Winnow uses `Volt`. A shared linear hours scale makes the tallest displayed
+bar fill the plot, with its value stated above. There is no height clipping or independent
+normalisation by source. Session duration remains the height measure in Tracked sessions,
+whose bars are up to 10px wide. Dense sessions group spatially: the tallest contained session
+determines height and selection states the count, total and longest duration.
 
-**Four states.**
+**Time remains proportional.** Lifetime begins at the acquisition date when available and
+extends earlier for older evidence. Without acquisition it begins at the earliest usable
+record or last-played date, labelled without inventing a purchase or release date. Tracked
+sessions spans recorded completed sessions through today, with at least 30 days of context.
+The baseline uses `Line` until the known last-played tick, then fades from `Volt` to `Line`.
+Date ticks adapt to width. A missing last-played date removes the tick and fade.
 
-1. Measured months exist. The axis draws both zones, the bars carry the ramp, and the copy
-   states the user's own hours and their coverage.
-2. Every hour predates the record and the measured months are all zero. The flat band fills
-   the axis, the bars are empty, and the copy says so.
-3. No release year, or fewer than two month-end readings. The shipped gap rail draws unchanged:
-   normalised from the last session to today, `Volt` at the last-played end fading to `Line` at
-   today, with update marks in `Flare`, capped at 14, and the span stated as a number beside
-   it. The rail is normalised, never scaled to duration — a 14-day gap and a 9-year gap draw
-   the same length — because scaling would be a second, competing encoding of a fact the digits
-   already carry. The record sentence still stands: *"Checked 12 times since 23 Aug 2026 — up
-   1h 7m."* The delta is between the first and last reading Winnow holds, which is the part it
-   actually watched happen, not the total Steam already knew. At one reading it says so; at
-   zero it says nothing at all.
-4. No last-played date at all. The sentence is the whole history summary in Activity and there is no rail of any
-   kind. Two different absences, kept apart by the copy: *"You've never opened this."* and
-   *"Steam has no date for your last session."*
+**Monthly history and sessions cannot be added indiscriminately.** Only consecutive, adjacent
+month-end cumulative readings with consistent, nonnegative differences produce imported
+monthly hours. Live observations are not redistributed into months. Resets, conflicting
+readings and missing months leave unknown coverage. The stored snapshot shape does not carry
+source provenance; month-end recognition retains the historical import convention rather
+than claiming a separately verified source flag. Winnow session durations are split across
+UTC month boundaries. An imported monthly total takes precedence over sessions in that same
+month, so the same hours never appear twice. Individual sessions remain available in the
+tracked view. Open, invalid or future sessions do not contribute completed duration.
 
-**The axis starts at 1 January of `works.first_release_year`**, and the axis's left label is
-that year. Winnow stores a release year, not a release date, so the axis cannot start at a
-month and does not pretend to. A series or a last session that predates the stated year extends
-the axis back to that month rather than being clipped off the left edge.
+**Coverage is separate from play.** Solid muted segments mark months with usable imported
+readings, including measured zeroes. Hatching means no monthly record. Session observations
+do not imply uninterrupted monitoring. A zero month has no positive-height bar; the coverage
+strip and Recorded hours distinguish it from missing history. An earlier cumulative reading
+is stated as an amount recorded by its date, outside the plot, rather than drawn across an
+unknown span. Sparse history retains the same controls, states the missing facts, and draws
+no plot when there is no temporal evidence. It never falls back to the old normalised gap rail.
+
+**Update marks retain their reading state.** Dated updates sit on the baseline; unread marks
+use `Flare`, other recorded updates use neutral ink. Nearby marks group into a count instead
+of dropping everything after an arbitrary cap. Selection names the updates and their dates;
+a grouped lifetime mark switches to the closer tracked view when that range exists. The full
+update list below remains the route to patch notes and read controls. Acknowledgement refreshes
+the marks without switching the selected range.
+
+**The chart has one ownership scope.** Cumulative counters for linked copies cannot be joined
+as one series. Like the prior history reader, this tracker uses the primary ownership's
+snapshots; its sessions, acquisition, total and last-played summary use that same copy. Linked
+games label this scope beside the total. The Library tab retains the other copies' figures.
+Updates continue to include the linked game's release records.
+
+**Every mark is accessible.** Bars and update groups are named buttons with tooltips, keyboard
+focus and a selected-detail sentence. Recorded hours discloses the exact dated values. Small
+or grouped marks never become the only way to obtain the data. The tracker stays inside the
+Activity tab's bounded scroll area, uses the existing theme tokens, and has no animation.
+Refreshing the same game's details preserves the selected timeline range.
 
 ### 10.3 Getting in
 

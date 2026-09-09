@@ -3156,3 +3156,76 @@ tools. The following visual-spec passages were replaced as part of TASK-167:
 > Each feed card states the inferred or explicit status,
 > confidence and source-based reason; the details modal repeats that information in its
 > identity band.
+
+## 2026-09-09 — Compact activity timeline (TASK-169)
+
+The approved timeline replaces the lifetime/gap-rail branches. The superseded visual specification follows.
+
+### 10.2 The lifetime axis
+
+**The one thing Winnow can draw that nothing else can.** Storefronts hold your playtime and
+they hold a game's patch history; nobody puts them on the same axis. For a game with a release
+year and at least two month-end playtime readings, Activity draws one time axis from the game's
+release to today, in two zones.
+
+- **The left zone is play whose amount Winnow knows and whose shape it does not.**
+  `SteamPlaytimeBackfillService` reconstructs a month-end cumulative series from Steam Replay,
+  and everything before the first covered month is stamped as one figure at one instant — the
+  floor point in `PlaytimeSeriesReconstruction.cs`. It is drawn as a flat band with a dashed
+  boundary, never as bars and never as a slope, because a slope across that span would invent a
+  month-by-month pattern nobody measured.
+- **The right zone is one bar per closed month.** A bar spans the true time between two
+  consecutive readings and its height is the play gained between them, so a stretch the backfill
+  did not cover draws as one wide bar carrying the whole stretch's hours rather than being
+  silently compressed into the ordinal sequence.
+- **Only month-end readings are differenced.** A live snapshot is written only while Winnow is
+  running, so a user who closes it for three weeks gets three weeks of accumulated play stamped
+  on one instant; a chart from those deltas would draw a spike on the day the app reopened, not
+  on the days the play happened. Snapshots that are not stamped at a month end contribute no
+  bar at all.
+- **Sessions are not mixed in.** They exist only from Winnow's own install and only for
+  processes it watched, so overlaying them would make a game heavily played for four years
+  before that install look dormant for those four years. Two data sets, two coverage windows,
+  two questions.
+- **The last session is a `Volt` stop mark on the axis.** Update marks are `Flare` on the
+  baseline, capped at 14, the same signal the gap rail carried and placed on the whole axis
+  rather than on the gap alone.
+- **The bars ride §5.1's ramp turned on its side**, `Line` at the release end to `Volt` at
+  today. This runs the opposite way to the gap rail's own ramp: the gap rail encodes a
+  dormancy that begins at a single known moment, the last session, so `Volt` sits there; the
+  lifetime axis has no such single moment and encodes recency, so `Volt` sits at today. The
+  gap rail's rule is unchanged where the gap rail still draws.
+- **What is drawn is the user's own hours.** Per-game player-population activity is not
+  obtainable — the whole finding is in `docs/spikes/activity-graph-data-availability.md` — and
+  the copy under the axis says whose hours these are so the reader cannot mistake it for a
+  population curve.
+- **Everything it draws is restated in words underneath** (§8). A user who cannot resolve a 7px
+  dot or a 3px bar loses nothing.
+
+**Four states.**
+
+1. Measured months exist. The axis draws both zones, the bars carry the ramp, and the copy
+   states the user's own hours and their coverage.
+2. Every hour predates the record and the measured months are all zero. The flat band fills
+   the axis, the bars are empty, and the copy says so.
+3. No release year, or fewer than two month-end readings. The shipped gap rail draws unchanged:
+   normalised from the last session to today, `Volt` at the last-played end fading to `Line` at
+   today, with update marks in `Flare`, capped at 14, and the span stated as a number beside
+   it. The rail is normalised, never scaled to duration — a 14-day gap and a 9-year gap draw
+   the same length — because scaling would be a second, competing encoding of a fact the digits
+   already carry. The record sentence still stands: *"Checked 12 times since 23 Aug 2026 — up
+   1h 7m."* The delta is between the first and last reading Winnow holds, which is the part it
+   actually watched happen, not the total Steam already knew. At one reading it says so; at
+   zero it says nothing at all.
+4. No last-played date at all. The sentence is the whole history summary in Activity and there is no rail of any
+   kind. Two different absences, kept apart by the copy: *"You've never opened this."* and
+   *"Steam has no date for your last session."*
+
+**The axis starts at 1 January of `works.first_release_year`**, and the axis's left label is
+that year. Winnow stores a release year, not a release date, so the axis cannot start at a
+month and does not pretend to. A series or a last session that predates the stated year extends
+the axis back to that month rather than being clipped off the left edge.
+
+Full play-history axis or its honest fallback, updates and read controls, GOG patch notes when present, journal
+**Activity retains the evidence, not just the summary.** The axis follows §10.2. UPDATES is
+the constant list heading, distinct from the axis's SINCE YOU PLAYED label.
