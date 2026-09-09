@@ -54,8 +54,6 @@ public sealed class GameDetailsTabInteractionTests
             Capture(fixture.Window, $"details-{tabs[index]}-{width}x{height}");
 
             if (index == 0) fixture.Click(fixture.Find<Expander>("ExpansionsDisclosure"));
-            if (index == 2) fixture.Click(fixture.Find<Expander>("TechnicalFactsDisclosure"));
-
             scroll.ScrollToEnd();
             Flush();
             Assert.Equal(initialHeader, BoundsIn(fixture.Find<Grid>("DetailsHeader"), fixture.Window));
@@ -123,7 +121,7 @@ public sealed class GameDetailsTabInteractionTests
             fixture.Click(tab);
             Assert.True(tab.IsSelected);
         }
-        Assert.False(fixture.Find<Expander>("TechnicalFactsDisclosure").IsEffectivelyVisible);
+        Assert.False(fixture.Find<StackPanel>("TechnicalFacts").IsEffectivelyVisible);
     }
 
     [AvaloniaFact]
@@ -209,9 +207,9 @@ public sealed class GameDetailsTabInteractionTests
         using var match = new GameIgdbMatchViewModel(service, 1, "An unplayed game");
         var now = DateTime.UtcNow;
         using var model = new GameDetailsViewModel(TileFixture.Tile(now, title: "An unplayed game"),
-            "Never played", [], now, igdbMatch: match) { SelectedTabIndex = 2 };
+            "Never played", [], now, igdbMatch: match) { SelectedTabIndex = 4 };
         using var fixture = new DetailsFixture(model);
-        Assert.False(fixture.Find<Expander>("TechnicalFactsDisclosure").IsEffectivelyVisible);
+        Assert.False(fixture.Find<StackPanel>("TechnicalFacts").IsEffectivelyVisible);
 
         fixture.Click(fixture.Find<Button>("MoreActionsButton"));
         var menuItem = fixture.Find<MenuItem>("WrongGameItem");

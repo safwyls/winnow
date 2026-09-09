@@ -152,6 +152,7 @@
         </Style>
         <Style Selector="Button.cardaside:pressed /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource SurfaceHigh}"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
         <Style Selector="Button.cardaside:focus-visible /template/ ContentPresenter#PART_ContentPresenter">

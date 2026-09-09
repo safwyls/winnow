@@ -92,6 +92,9 @@ public sealed class CardDetailsInteractionTests
         var detailsHost = fixture.TileView.FindControl<Border>("DetailsActionHost")!;
         var primary = fixture.Button("Play");
         var details = fixture.Button("Details");
+        var detailsPresenter = details.GetVisualDescendants()
+            .OfType<Avalonia.Controls.Presenters.ContentPresenter>()
+            .Single(presenter => presenter.Name == "PART_ContentPresenter");
         var primaryOrigin = primary.TranslatePoint(default, primaryHost)!.Value;
         var detailsOrigin = details.TranslatePoint(default, detailsHost)!.Value;
 
@@ -109,6 +112,8 @@ public sealed class CardDetailsInteractionTests
         Assert.Equal(detailsOrigin, details.TranslatePoint(default, detailsHost)!.Value);
         Assert.Equal("Launch through Steam", ToolTip.GetTip(primary));
         Assert.Equal("Full details", ToolTip.GetTip(details));
+        var dogearHover = Assert.IsAssignableFrom<Avalonia.Media.ISolidColorBrush>(detailsPresenter.Background);
+        Assert.NotEqual(Avalonia.Media.Colors.Transparent, dogearHover.Color);
     }
 
     [AvaloniaTheory]

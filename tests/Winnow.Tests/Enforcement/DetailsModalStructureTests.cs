@@ -250,4 +250,15 @@ public sealed class DetailsModalStructureTests
         Assert.Contains("<x:Double x:Key=\"ProseMeasure\">410</x:Double>", tokens, StringComparison.Ordinal);
         Assert.Contains("{StaticResource ProseMeasure}", tokens, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Reception_precedes_about_and_technical_facts_are_not_disclosed()
+    {
+        var markup = RepositoryTree.Read(View);
+
+        Assert.True(markup.IndexOf("{Binding Reception.Figures}", StringComparison.Ordinal)
+            < markup.IndexOf("{Binding AboutHeading}", StringComparison.Ordinal));
+        Assert.Contains("Name=\"TechnicalFacts\"", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("TechnicalFactsDisclosure", markup, StringComparison.Ordinal);
+    }
 }

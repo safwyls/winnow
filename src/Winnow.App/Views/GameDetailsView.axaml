@@ -638,6 +638,40 @@
                                                        TextWrapping="Wrap"
                                                        IsVisible="{Binding HasLifecycle}"
                                                        Text="{Binding LifecycleText}"/>
+                                            <ItemsControl ItemsSource="{Binding Reception.Figures}"
+                                                          IsVisible="{Binding ShowReception}"
+                                                          AutomationProperties.Name="{Binding Reception.AutomationName}"
+                                                          AutomationProperties.AccessibilityView="Control"
+                                                          AutomationProperties.ControlTypeOverride="Group">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel Orientation="Horizontal"/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="vm:ReceptionFigureViewModel">
+                                                        <StackPanel Orientation="Horizontal"
+                                                                    Spacing="6"
+                                                                    Margin="0,0,14,0"
+                                                                    ToolTip.Tip="{Binding Tooltip}"
+                                                                    AutomationProperties.Name="{Binding AutomationName}"
+                                                                    AutomationProperties.AccessibilityView="Control">
+                                                            <TextBlock Classes="label"
+                                                                       FontSize="10"
+                                                                       VerticalAlignment="Center"
+                                                                       Text="{Binding Source}"/>
+                                                            <TextBlock Classes="data"
+                                                                       FontSize="13"
+                                                                       VerticalAlignment="Center"
+                                                                       Foreground="{StaticResource Text}"
+                                                                       Text="{Binding Value}"/>
+                                                            <TextBlock Classes="data-s"
+                                                                       VerticalAlignment="Center"
+                                                                       Text="{Binding Count}"/>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
                                             <StackPanel Spacing="7">
                                                 <TextBlock Classes="label section"
                                                            Text="{Binding AboutHeading}"
@@ -706,40 +740,6 @@
                                                     </StackPanel>
                                                 </StackPanel>
                                             </StackPanel>
-                                            <ItemsControl ItemsSource="{Binding Reception.Figures}"
-                                                          IsVisible="{Binding ShowReception}"
-                                                          AutomationProperties.Name="{Binding Reception.AutomationName}"
-                                                          AutomationProperties.AccessibilityView="Control"
-                                                          AutomationProperties.ControlTypeOverride="Group">
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate>
-                                                        <WrapPanel Orientation="Horizontal"/>
-                                                    </ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate DataType="vm:ReceptionFigureViewModel">
-                                                        <StackPanel Orientation="Horizontal"
-                                                                    Spacing="6"
-                                                                    Margin="0,0,14,0"
-                                                                    ToolTip.Tip="{Binding Tooltip}"
-                                                                    AutomationProperties.Name="{Binding AutomationName}"
-                                                                    AutomationProperties.AccessibilityView="Control">
-                                                            <TextBlock Classes="label"
-                                                                       FontSize="10"
-                                                                       VerticalAlignment="Center"
-                                                                       Text="{Binding Source}"/>
-                                                            <TextBlock Classes="data"
-                                                                       FontSize="13"
-                                                                       VerticalAlignment="Center"
-                                                                       Foreground="{StaticResource Text}"
-                                                                       Text="{Binding Value}"/>
-                                                            <TextBlock Classes="data-s"
-                                                                       VerticalAlignment="Center"
-                                                                       Text="{Binding Count}"/>
-                                                        </StackPanel>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
                                             <StackPanel IsVisible="{Binding ShowExtends}">
                                                 <StackPanel Spacing="10"
                                                             DataContext="{Binding Expansions}"
@@ -1238,13 +1238,16 @@
                                                                Text="{Binding LicenseText}"/>
                                                 </StackPanel>
                                             </StackPanel>
-                                            <Expander Name="TechnicalFactsDisclosure"
-                                                      Classes="gog-notes"
-                                                      Header="{x:Static vm:GameDetailsCopy.TechnicalFacts}"
-                                                      AutomationProperties.Name="{x:Static vm:GameDetailsCopy.TechnicalFacts}"
-                                                      IsVisible="{Binding HasTechnicalFacts}"
-                                                      HorizontalAlignment="Stretch">
-                                                <StackPanel Spacing="18" Margin="0,16,0,0">
+                                            <StackPanel Name="TechnicalFacts"
+                                                        Spacing="12"
+                                                        IsVisible="{Binding HasTechnicalFacts}"
+                                                        AutomationProperties.Name="{x:Static vm:GameDetailsCopy.TechnicalFacts}"
+                                                        AutomationProperties.AccessibilityView="Control"
+                                                        AutomationProperties.ControlTypeOverride="Group">
+                                                <TextBlock Classes="label section"
+                                                           Text="{x:Static vm:GameDetailsCopy.TechnicalFacts}"
+                                                           AutomationProperties.HeadingLevel="2"/>
+                                                <StackPanel Spacing="18">
                                                     <StackPanel Spacing="3" IsVisible="{Binding HasSteamAppId}">
                                                         <TextBlock Classes="label" FontSize="10" Text="STEAM APPID"/>
                                                         <SelectableTextBlock Classes="data copyable"
@@ -1272,7 +1275,7 @@
                                                                    Text="{Binding IgdbMatch.ClearLabel}"/>
                                                     </Button>
                                                 </StackPanel>
-                                            </Expander>
+                                            </StackPanel>
                                         </StackPanel>
                                     </StackPanel>
                                 </ScrollViewer>
