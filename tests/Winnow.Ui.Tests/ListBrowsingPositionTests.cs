@@ -138,7 +138,7 @@ public sealed class ListBrowsingPositionTests
             var scrollbarBounds = new Rect(
                 scrollbar.TranslatePoint(default, window)!.Value, scrollbar.Bounds.Size);
             Assert.True(spineBounds.Right <= scrollbarBounds.Left);
-            Assert.InRange(scrollbarBounds.Left - spineBounds.Right, 0, 12);
+            Assert.InRange(scrollbarBounds.Left - spineBounds.Right, 0, 2);
 
             var buttons = window.GetVisualDescendants().OfType<Button>().ToArray();
             var jumpToT = buttons.Single(button => AutomationProperties.GetName(button) == "Jump to T");
@@ -149,6 +149,19 @@ public sealed class ListBrowsingPositionTests
             Assert.False(jumpToA.IsEnabled);
             Assert.False(jumpToSymbols.IsEnabled);
 
+            window.MouseMove(PointOnAlphabet(window, spine, 20));
+            Flush();
+            Assert.Contains("alphabetengaged", scrollbar.Classes);
+            var thumb = scrollbar.GetVisualDescendants().OfType<Thumb>().Single();
+            Assert.True(thumb.Bounds.Width >= 8, $"Engaged thumb width was {thumb.Bounds.Width}.");
+            Assert.Contains("alphawave4", jumpToT.Classes);
+            Assert.NotEmpty(jumpToT.Transitions!);
+            library.Ramp.ReducedMotion = true;
+            Flush();
+            Assert.Empty(jumpToT.Transitions!);
+            library.Ramp.ReducedMotion = false;
+            Flush();
+
             jumpToT.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Flush();
 
@@ -158,8 +171,10 @@ public sealed class ListBrowsingPositionTests
 
             scroll.Offset = default;
             Flush();
-            DragAlphabet(window, spine, fromRow: 2, toRow: 20);
-            Assert.True(scroll.Offset.Y > 0);
+            DragAlphabet(window, spine, fromRow: 2, toRow: 13);
+            var scrollableHeight = scroll.Extent.Height - scroll.Viewport.Height;
+            Assert.True(scrollableHeight > 0);
+            Assert.InRange(scroll.Offset.Y / scrollableHeight, 0.48, 0.52);
 
             library.Sort = LibrarySort.NameDescending;
             Flush();
@@ -172,12 +187,21 @@ public sealed class ListBrowsingPositionTests
             Assert.Equal(LibrarySort.NameDescending, library.Sort);
             Assert.True(scroll.Offset.Y > 0);
 
+            window.MouseMove(PointOnAlphabet(window, spine, 8));
+            Flush();
+
             if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
             {
                 Directory.CreateDirectory(directory);
                 using var frame = window.CaptureRenderedFrame();
                 frame!.Save(Path.Combine(directory, $"alphabet-{(grid ? "grid" : "list")}.png"));
             }
+
+            window.MouseMove(new Point(400, 300));
+            Flush();
+            Assert.DoesNotContain("alphabetengaged", scrollbar.Classes);
+            Assert.DoesNotContain(window.GetVisualDescendants().OfType<Button>(),
+                button => button.Classes.Any(name => name?.StartsWith("alphawave", StringComparison.Ordinal) == true));
 
             library.Sort = LibrarySort.PlaytimeHighToLow;
             Flush();
@@ -219,12 +243,8 @@ public sealed class ListBrowsingPositionTests
 
     private static void DragAlphabet(Window window, Border spine, int fromRow, int toRow)
     {
-        Point At(int row) => spine.TranslatePoint(
-            new Point(spine.Bounds.Width / 2, spine.Bounds.Height * (row + 0.5) / 27),
-            window)!.Value;
-
-        var start = At(fromRow);
-        var end = At(toRow);
+        var start = PointOnAlphabet(window, spine, fromRow);
+        var end = PointOnAlphabet(window, spine, toRow);
         window.MouseMove(start);
         window.MouseDown(start, Avalonia.Input.MouseButton.Left);
         window.MouseMove(end);
@@ -232,6 +252,11 @@ public sealed class ListBrowsingPositionTests
         window.MouseUp(end, Avalonia.Input.MouseButton.Left);
         Flush();
     }
+
+    private static Point PointOnAlphabet(Window window, Border spine, int row)
+        => spine.TranslatePoint(
+            new Point(spine.Bounds.Width / 2, spine.Bounds.Height * (row + 0.5) / 27),
+            window)!.Value;
 
     private static void Flush() => Dispatcher.UIThread.RunJobs();
 }

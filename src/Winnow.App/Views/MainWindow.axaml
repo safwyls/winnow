@@ -175,8 +175,9 @@
             <Setter Property="Margin" Value="0"/>
         </Style>
 
-        <!-- The alphabet spine is navigation, not a second scrollbar. Its
-             fixed #/A-Z map stays still; unavailable stops dim in place. -->
+        <!-- The alphabet spine shares the native scrollbar's interaction rail.
+             Its hit targets stay 24px wide, but the glyphs rest against the
+             thumb and bow into the library around the pointer. -->
         <Style Selector="Button.alphaindex">
             <Setter Property="MinWidth" Value="24"/>
             <Setter Property="MinHeight" Value="16"/>
@@ -187,10 +188,12 @@
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
             <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
             <Setter Property="FontSize" Value="10"/>
+            <Setter Property="HorizontalContentAlignment" Value="Right"/>
+            <Setter Property="RenderTransform" Value="translateX(0px)"/>
             <Setter Property="Cursor" Value="SizeNorthSouth"/>
         </Style>
         <Style Selector="Button.alphaindex /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Padding" Value="0,2,0,0"/>
             <Setter Property="CornerRadius" Value="2"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="TextElement.Foreground" Value="{StaticResource TextDim}"/>
@@ -206,6 +209,41 @@
         <Style Selector="Button.alphaindex:disabled /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="TextElement.Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Window.motion Button.alphaindex">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform"
+                                                   Duration="0:0:0.07"
+                                                   Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Window.reducedmotion Button.alphaindex">
+            <Setter Property="Transitions"><Transitions/></Setter>
+        </Style>
+        <Style Selector="Button.alphaindex.alphawave1">
+            <Setter Property="RenderTransform" Value="translateX(-2px)"/>
+        </Style>
+        <Style Selector="Button.alphaindex.alphawave2">
+            <Setter Property="RenderTransform" Value="translateX(-5px)"/>
+        </Style>
+        <Style Selector="Button.alphaindex.alphawave3">
+            <Setter Property="RenderTransform" Value="translateX(-9px)"/>
+        </Style>
+        <Style Selector="Button.alphaindex.alphawave4">
+            <Setter Property="RenderTransform" Value="translateX(-13px)"/>
+        </Style>
+        <Style Selector="Button.alphaindex.alphawave4 /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="TextElement.Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
+        <!-- Pointer entry over the letters deliberately wakes the sibling
+             scrollbar's thumb, making the two adjacent surfaces read as one. -->
+        <Style Selector="ScrollBar.alphabetengaged /template/ Thumb#PART_Thumb">
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="MinWidth" Value="8"/>
+            <Setter Property="Opacity" Value="1"/>
         </Style>
 
         <!-- ══ Rail bucket (§6) ══════════════════════════════════════════════
@@ -1853,16 +1891,16 @@
                 </Border>
 
                 <!-- Fixed-position #/A-Z navigation for alphabetical views.
-                     Its right edge meets the native scrollbar's left edge;
-                     the scrollbar keeps §9.1's 10px resize inset. -->
+                     Its hit area meets the native scrollbar; glyphs align to
+                     that shared edge and wave inward under the pointer. -->
                 <Border Name="AlphabetSpine"
                         Width="24"
-                        Margin="0,6,22,10"
+                        Margin="0,6,12,10"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Stretch"
                         Background="{StaticResource PaneGround}"
                         Cursor="SizeNorthSouth"
-                        ToolTip.Tip="Drag to scrub the alphabet"
+                        ToolTip.Tip="Drag to scroll the library"
                         IsVisible="{Binding Library.ShowAlphabetSpine}"
                         ZIndex="2">
                     <ItemsControl ItemsSource="{Binding Library.DisplayedAlphabetSections}">

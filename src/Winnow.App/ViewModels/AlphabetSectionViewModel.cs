@@ -10,5 +10,5 @@ public sealed record AlphabetSectionViewModel(string Label, bool IsAvailable)
         ? "Jump to numbers and symbols"
         : $"Jump to {Label}";
 
-    public string Tooltip => $"{AutomationName}. Drag to scrub the alphabet.";
+    public string Tooltip => $"{AutomationName}. Drag to scroll the library.";
 }
