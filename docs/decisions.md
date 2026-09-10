@@ -3660,3 +3660,17 @@ The architecture previously said:
 
 > It creates independent library, feed, list and dormancy state over the shared repositories and action services.
 > Fullscreen keeps separate `fullscreen.*` sizing, margins, motion and dormancy preferences and renders the shared theme with opaque local resource overrides.
+
+### 2026-09-10 — Overall fullscreen scale and stable Home titles
+
+Fullscreen UI scale adjusts the reference canvas inversely so every control and cover uses
+one Viewbox transform, with safe margins remaining a percentage of the available display.
+Text size remains independent. Home titles use a single line with ellipsis to retain the
+preferred shelf size; full titles remain available in details. The artwork fade is shifted
+right to preserve a quieter reading area.
+
+The visual specification previously said:
+
+> Fit ultrawide is an optional fullscreen preference: it expands the reference canvas horizontally to the display aspect ratio while keeping the 1080px reference height and uniform scaling.
+> Fullscreen owns its text scale (70–140% in ten-point steps), screen margins (0–10% in one-point steps), and motion preferences.
+> Text size has separate mouse decrease/increase buttons and controller left/right adjustment.

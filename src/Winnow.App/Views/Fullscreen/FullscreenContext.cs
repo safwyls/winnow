@@ -26,12 +26,14 @@ public sealed class FullscreenContext : IDisposable
     public Func<string, IReadOnlyList<string>?, Task<string?>>? FilePicker { get; set; }
     public Func<string, string, Task<string?>>? SaveFilePicker { get; set; }
     private readonly SemaphoreSlim _writes = new(1);
-    private double _textScale = 1, _safeMargin = 5;
+    private double _textScale = 1, _uiScale = 1, _safeMargin = 5;
     private bool _reducedMotion, _fitUltrawide;
     private bool _openingGame;
     private bool _disposed, _refreshPending, _active;
     private Task? _refreshTask;
     public double TextScale { get => _textScale; set { _textScale = Math.Clamp(value, .7, 1.4); Preference("text-scale", _textScale.ToString(CultureInfo.InvariantCulture)); } }
+    public double UiScale { get => _uiScale; set { _uiScale = NormalizeUiScale(value); Preference("ui-scale", _uiScale.ToString(CultureInfo.InvariantCulture)); } }
+    private static double NormalizeUiScale(double value) => double.IsFinite(value) ? Math.Clamp(value, .8, 1.2) : 1;
     public double SafeMarginPercent { get => _safeMargin; set { _safeMargin = Math.Clamp(value, 0, 10); Preference("safe-margin", _safeMargin.ToString(CultureInfo.InvariantCulture)); } }
     public bool ReducedMotion { get => _reducedMotion; set { _reducedMotion = value; Library.Ramp.ReducedMotion = value; Preference("reduced-motion", value.ToString()); } }
     public bool DimCovers { get => Shared.Display.DimDormantCovers; set => Shared.Display.DimDormantCovers = value; }
@@ -68,6 +70,7 @@ public sealed class FullscreenContext : IDisposable
         if (Services?.GetService<ISettingsRepository>() is { } settings)
         {
             if (double.TryParse(await settings.GetAsync("fullscreen.text-scale"), CultureInfo.InvariantCulture, out var scale)) _textScale = Math.Clamp(scale, .7, 1.4);
+            if (double.TryParse(await settings.GetAsync("fullscreen.ui-scale"), CultureInfo.InvariantCulture, out var uiScale)) _uiScale = NormalizeUiScale(uiScale);
             if (double.TryParse(await settings.GetAsync("fullscreen.safe-margin"), CultureInfo.InvariantCulture, out var margin)) _safeMargin = Math.Clamp(margin, 0, 10);
             if (bool.TryParse(await settings.GetAsync("fullscreen.reduced-motion"), out var motion)) _reducedMotion = motion;
             if (bool.TryParse(await settings.GetAsync("fullscreen.fit-ultrawide"), out var fit)) _fitUltrawide = fit;

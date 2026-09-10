@@ -155,6 +155,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         if (_section == "Appearance")
         {
             Adjust("Text size", "Adjust until this reads comfortably from your seat.", () => $"{Context.TextScale:P0}", d => Context.TextScale = Math.Clamp(Math.Round(Context.TextScale + d * .1, 1), .7, 1.4), mouseStepper: true);
+            Adjust("Interface scale", "Resize covers, controls and text together.", () => $"{Context.UiScale:P0}", d => Context.UiScale = Math.Round(Context.UiScale + d * .05, 2), mouseStepper: true);
             string ThemeLabel() => $"Theme     {Context.Themes.FirstOrDefault(t => t.Id == Context.ThemeId)?.Name ?? Context.ThemeId}";
             var theme = Action(ThemeLabel(), () => Context.ShowActions("Theme", Context.Themes.Select(theme => new FullscreenAction(theme.Name, () => { Context.ThemeId = theme.Id; Render(); FocusInitial(); })).ToArray()));
             _valueRefreshers.Add(() => { theme.Content = ThemeLabel(); AutomationProperties.SetName(theme, ThemeLabel()); });
@@ -276,8 +277,8 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         }
         if (_section == "Appearance" && (buttons & GamepadButtons.Keyboard) != 0)
         {
-            Context.ShowActions("Reset fullscreen text size, margins, display fit and motion?", [new("Reset fullscreen appearance", () =>
-            { Context.TextScale = 1; Context.SafeMarginPercent = 5; Context.SetFitUltrawide(false); Context.ReducedMotion = false; Render(); FocusInitial(); }), new("Cancel", () => { })]);
+            Context.ShowActions("Reset fullscreen interface scale, text size, margins, display fit and motion?", [new("Reset fullscreen appearance", () =>
+            { Context.UiScale = 1; Context.TextScale = 1; Context.SafeMarginPercent = 5; Context.SetFitUltrawide(false); Context.ReducedMotion = false; Render(); FocusInitial(); }), new("Cancel", () => { })]);
             return true;
         }
         return base.Handle(buttons);

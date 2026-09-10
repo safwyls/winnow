@@ -169,10 +169,12 @@ public sealed class FullscreenView : UserControl, IDisposable
     }
     private void FitCanvas()
     {
-        // Keep pixel proportions and the TV type scale while opening horizontal space on wide displays.
-        _canvas.Width = _context.FitUltrawide && Bounds.Height > 0
+        // A smaller reference canvas enlarges every control through the same uniform Viewbox transform.
+        var referenceWidth = _context.FitUltrawide && Bounds.Height > 0
             ? Math.Max(1920, 1080 * Bounds.Width / Bounds.Height) : 1920;
-        _safe.Margin = new Thickness(_canvas.Width * _context.SafeMarginPercent / 100, 1080 * _context.SafeMarginPercent / 100);
+        _canvas.Width = referenceWidth / _context.UiScale;
+        _canvas.Height = 1080 / _context.UiScale;
+        _safe.Margin = new Thickness(_canvas.Width * _context.SafeMarginPercent / 100, _canvas.Height * _context.SafeMarginPercent / 100);
     }
     private void ApplyTextSize()
     {

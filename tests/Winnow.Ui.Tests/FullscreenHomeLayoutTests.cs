@@ -15,6 +15,38 @@ namespace Winnow.Ui.Tests;
 public sealed class FullscreenHomeLayoutTests
 {
     [AvaloniaTheory]
+    [InlineData(.7)]
+    [InlineData(1)]
+    [InlineData(1.4)]
+    public void Long_title_keeps_single_line_cover_geometry(double scale)
+    {
+        var source = PreviewData.Tile;
+        using var feed = new FeedViewModel(new PreviewFeedService(), PreviewData.Library);
+        feed.Shelves.Add(new FeedShelfViewModel("titles", "Ready to play", "",
+            new[] { "A short title", string.Join(" ", Enumerable.Repeat("The Forgotten Kingdom", 10)) }
+                .Select(name => new FeedCardViewModel(new GameTileViewModel(source.Entries, source.Game, name, DateTime.UtcNow), "An update arrived."))));
+        using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell) { TextScale = scale };
+        using var television = new FullscreenView(context);
+        var window = new Window { Width = 1280, Height = 720, Content = television };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            var initial = television.CurrentPage.GetVisualDescendants().OfType<FullscreenCover>()
+                .Select(c => (c.Bounds, c.TranslatePoint(default, television))).ToArray();
+            Assert.NotEmpty(initial);
+            television.Handle(GamepadButtons.Right); Dispatcher.UIThread.RunJobs();
+            var title = television.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == "FullscreenHomeTitle");
+            Assert.True(title.Text!.Length > 100);
+            Assert.Single(title.TextLayout.TextLines);
+            Assert.Equal(64, title.FontSize);
+            Assert.Equal(TextTrimming.WordEllipsis, title.TextTrimming);
+            Assert.Equal(initial, television.CurrentPage.GetVisualDescendants().OfType<FullscreenCover>()
+                .Select(c => (c.Bounds, c.TranslatePoint(default, television))).ToArray());
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
     public void Root_backdrops_fill_canvas_outside_safe_margins(bool ultrawide)

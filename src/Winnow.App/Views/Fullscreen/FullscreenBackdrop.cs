@@ -24,7 +24,7 @@ public sealed class FullscreenBackdrop : Panel
         if (!cinematic) OpacityMask = new LinearGradientBrush
         {
             StartPoint = new RelativePoint(0, .5, RelativeUnit.Relative), EndPoint = new RelativePoint(1, .5, RelativeUnit.Relative),
-            GradientStops = [new GradientStop(Colors.Transparent, 0), new GradientStop(Colors.White, .6)]
+            GradientStops = [new GradientStop(Colors.Transparent, .3), new GradientStop(Colors.White, .85)]
         };
         var ground = context.Themes.FirstOrDefault(t => t.Id == context.ThemeId)?.Ground ?? Color.Parse("#0F1C1E");
         var clearGround = Color.FromArgb(0, ground.R, ground.G, ground.B);
@@ -34,8 +34,8 @@ public sealed class FullscreenBackdrop : Panel
             Children.Add(new Border { Background = new LinearGradientBrush
             {
                 StartPoint = new RelativePoint(0, .5, RelativeUnit.Relative), EndPoint = new RelativePoint(1, .5, RelativeUnit.Relative),
-                GradientStops = [new GradientStop(ground, 0), new GradientStop(Color.FromArgb(220, ground.R, ground.G, ground.B), .48),
-                    new GradientStop(Color.FromArgb(55, ground.R, ground.G, ground.B), .75), new GradientStop(clearGround, 1)]
+                GradientStops = [new GradientStop(ground, 0), new GradientStop(Color.FromArgb(220, ground.R, ground.G, ground.B), .58),
+                    new GradientStop(Color.FromArgb(55, ground.R, ground.G, ground.B), .85), new GradientStop(clearGround, 1)]
             } });
             Children.Add(new Border { Background = new LinearGradientBrush
             {

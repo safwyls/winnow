@@ -86,6 +86,8 @@ controller's quick menu to restore the previous window state. Desktop and fullsc
 separate browsing positions, filters and layout preferences. Theme selection is shared and
 updates both surfaces immediately. Fullscreen text size ranges from 70% to 140%, with −/+
 buttons for mouse adjustment and left/right adjustment on a controller.
+Fullscreen Appearance also offers **Interface scale** from 80% to 120% in 5% steps. This adjusts
+text, covers and controls together; text size remains a separate readability adjustment.
 
 Enable **Start in fullscreen** in **Settings → Application** on either surface to use the
 TV interface on the next launch. It defaults off. Windows sign-in and explicit background

@@ -552,13 +552,18 @@ labels start at 24px at 100% text size. The user's text scale adjusts body label
 reference. These are design starting points, not measured distance guarantees.
 4K increases rendering resolution rather than content density. Fit ultrawide is an optional
 fullscreen preference: it expands the reference canvas horizontally to the display aspect
-ratio while keeping the 1080px reference height and uniform scaling. The default retains the
+ratio at the default 1080px reference height. Overall UI scale adjusts both reference dimensions
+inversely, uniformly scaling text, controls and artwork while retaining percentage safe margins.
+Adaptive shelves reflow within the changed layout space, so final cover dimensions are not
+an exact percentage of their previous size. The default retains the
 16:9 composition. Validate readability from the actual seating position before accepting the scale.
 
 **For you** opens on a focused recommendation in a horizontal cover shelf. A large title,
 one-sentence reason and game artwork above the shelf follow the selection. The reason reserves
 two lines at the chosen text size and truncates overflow with an ellipsis, so description
-length does not resize the cover shelf. Up/down changes
+length does not resize the cover shelf. Titles keep one line at the reference title size and
+ellipsize overflow; opening game details reveals the full title. Title length never consumes
+a second row or reduces the preferred cover size. Up/down changes
 shelves; left/right moves among their games. The selected cover has the only focus ring.
 Text actions have transparent backgrounds and a mint underline on focus. Hover leaves
 no underline; current sections and collections use bold text and a neutral underline.
@@ -611,6 +616,9 @@ composition for each task. The mock images are design references, not evidence o
 Home, Library, Activity, Settings and setup place decorative backdrops on the full fullscreen canvas,
 outside the display margins and behind the header and footer. Safe margins constrain text
 and controls, not artwork. Game selection updates the background without moving the content.
+Game artwork fades in further to the right to keep the left content area quiet: browsing
+backdrops reveal between 30% and 85% of the canvas width, and the details veil stays dense
+through 58% before opening toward the right edge.
 
 **Library** uses two rows of complete portrait covers. The column count responds to available
 width, row height and text size; wider displays show more games instead of stretching or
@@ -662,8 +670,9 @@ retains the shared rules for mixed currencies and wallet credit.
 **Settings** has Appearance, Controller, Library, Platforms and Application sections. Large
 rows expose a label and current value; left/right changes bounded values, A opens pickers
 or activates toggles, and B returns. Appearance has a readable live sample. Fullscreen owns
-its text scale (70–140% in ten-point steps), screen margins (0–10% in one-point steps),
-and motion preferences. Text size has separate mouse decrease/increase buttons
+its UI scale (80–120% in five-point steps), text scale (70–140% in ten-point steps),
+screen margins (0–10% in one-point steps), and motion preferences. UI scale defaults to 100%
+and scales the entire presentation, independently of text size. Both scale controls have separate mouse decrease/increase buttons
 and controller left/right adjustment. Theme selection is shared with desktop and updates
 both surfaces immediately, including artwork veils. Dim dormant covers is also shared and
 updates every dormancy-bearing cover immediately. Fullscreen reset preserves the shared

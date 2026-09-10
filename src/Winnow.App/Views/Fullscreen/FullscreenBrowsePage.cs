@@ -288,7 +288,9 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         reason.PropertyChanged += (_, e) => { if (e.Property == TextBlock.FontSizeProperty) SizeReason(); };
         SizeReason();
         var title = FullscreenUi.Text(card.Tile.Title, 64);
-        title.MaxLines = 2;
+        title.Name = "FullscreenHomeTitle";
+        title.MaxLines = 1;
+        title.TextWrapping = TextWrapping.NoWrap;
         title.TextTrimming = TextTrimming.WordEllipsis;
         _hero.Content = FullscreenUi.Stack(FullscreenUi.Text(shelf.Title.ToUpperInvariant(), 24, "TextDim"),
             title, reason,
