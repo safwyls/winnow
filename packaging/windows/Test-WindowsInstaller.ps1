@@ -62,6 +62,40 @@ $uninstallerPath = Join-Path $installDirectory 'unins000.exe'
 $databasePath = Join-Path $dataDirectory 'winnow.db'
 $applicationProcess = $null
 $lockedFile = $null
+$helper = $null
+
+# Hidden CI windows are not returned by Process.MainWindowHandle. Send the same
+# WM_CLOSE to the test process's titled top-level window without making it visible.
+Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+public static class WinnowSmokeWindow {
+    private delegate bool Enumerate(IntPtr window, IntPtr state);
+    [DllImport("user32.dll")] private static extern bool EnumWindows(Enumerate callback, IntPtr state);
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
+    [DllImport("user32.dll", CharSet=CharSet.Unicode)] private static extern int GetWindowText(IntPtr window, StringBuilder text, int count);
+    [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr window, uint message, IntPtr wparam, IntPtr lparam);
+    public static bool Close(uint process) {
+        bool sent = false;
+        EnumWindows((window, state) => {
+            GetWindowThreadProcessId(window, out uint owner);
+            if (owner != process) return true;
+            var title = new StringBuilder(512);
+            GetWindowText(window, title, title.Capacity);
+            if (!title.ToString().StartsWith("Winnow", StringComparison.Ordinal)) return true;
+            sent = PostMessage(window, 0x0010, IntPtr.Zero, IntPtr.Zero);
+            return !sent;
+        }, IntPtr.Zero);
+        return sent;
+    }
+}
+'@
+function Close-SmokeApplication($Process) {
+    if (-not $Process.CloseMainWindow() -and -not [WinnowSmokeWindow]::Close($Process.Id)) {
+        throw "No Winnow window accepted a close request for process $($Process.Id)."
+    }
+}
 
 try {
     $null = New-Item -ItemType Directory -Path $smokeRoot -Force
@@ -115,6 +149,7 @@ try {
     $helperScript = Join-Path $PSScriptRoot '../../src/Winnow.App/Services/Install-Update.ps1'
     $previousBinaryDigest = (Get-FileHash -LiteralPath $applicationPath -Algorithm SHA256).Hash
     foreach ($scenario in @('bad-digest', 'cancelled', 'shutdown-timeout', 'locked-file', 'upgrade')) {
+        Write-Host "Updater smoke scenario: $scenario"
         $scenarioDirectory = Join-Path $smokeRoot $scenario
         $null = New-Item -ItemType Directory -Path $scenarioDirectory
         $applicationProcess = Start-Process -FilePath $applicationPath -ArgumentList $applicationArguments -WindowStyle Hidden -PassThru
@@ -150,7 +185,7 @@ try {
             if (-not (Test-Path -LiteralPath (Join-Path $scenarioDirectory 'ready'))) { throw 'Update helper was not ready.' }
             Set-Content -LiteralPath (Join-Path $scenarioDirectory 'proceed') -Value 'ready'
             # The production app requests its normal shutdown after the same handshake.
-            $null = $applicationProcess.CloseMainWindow()
+            Close-SmokeApplication $applicationProcess
             if (-not $applicationProcess.WaitForExit(30000)) { throw 'Winnow did not close normally for the upgrade.' }
         }
         if (-not $helper.WaitForExit(180000)) { throw 'Update helper did not finish.' }
@@ -164,7 +199,7 @@ try {
                 Remove-Item -LiteralPath $lockedPath
             }
             if (-not $applicationProcess.HasExited) {
-                $null = $applicationProcess.CloseMainWindow()
+                Close-SmokeApplication $applicationProcess
                 if (-not $applicationProcess.WaitForExit(30000)) { throw 'Winnow did not close after failure smoke test.' }
             }
         } else {
@@ -176,7 +211,7 @@ try {
             if ($applicationProcess.Path -ine $applicationPath) { throw 'The helper relaunched a different app.' }
             $commandLine = (Get-CimInstance Win32_Process -Filter "ProcessId = $restartedId").CommandLine
             if (-not $commandLine.Contains($dataDirectory) -or -not $commandLine.Contains('--no-sync')) { throw 'Restart arguments lost the selected data directory or no-sync.' }
-            $null = $applicationProcess.CloseMainWindow()
+            Close-SmokeApplication $applicationProcess
             if (-not $applicationProcess.WaitForExit(30000)) { throw 'Updated Winnow did not close.' }
         }
         $applicationProcess = $null
@@ -207,10 +242,28 @@ try {
 
     Write-Host "Windows installer smoke test passed: $installerPath"
 }
+catch {
+    Write-Host "Windows updater smoke failed: $($_.Exception.Message)"
+    $diagnosticsDirectory = Join-Path $PSScriptRoot '../../artifacts/windows-smoke-logs'
+    $null = New-Item -ItemType Directory -Path $diagnosticsDirectory -Force
+    Get-ChildItem -LiteralPath $smokeRoot -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -eq 'failure.txt' -or $_.Extension -eq '.log' } |
+        ForEach-Object {
+            if ($_.Name -eq 'failure.txt') { Write-Host (Get-Content -LiteralPath $_.FullName -Raw) }
+            Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $diagnosticsDirectory ($_.Directory.Name + '-' + $_.Name)) -ErrorAction Continue
+        }
+    throw
+}
 finally {
     if ($null -ne $lockedFile) { $lockedFile.Dispose() }
+    if ($null -ne $helper -and -not $helper.HasExited) {
+        Stop-Process -Id $helper.Id -Force -ErrorAction SilentlyContinue
+        $null = $helper.WaitForExit(10000)
+    }
     if ($null -ne $applicationProcess -and -not $applicationProcess.HasExited) {
         Stop-Process -Id $applicationProcess.Id -Force -ErrorAction SilentlyContinue
+        $null = $applicationProcess.WaitForExit(10000)
     }
-    Remove-VerifiedSmokeRoot -Path $smokeRoot
+    try { Remove-VerifiedSmokeRoot -Path $smokeRoot }
+    catch { Write-Warning "Disposable smoke directory could not be removed: $($_.Exception.Message)" }
 }
