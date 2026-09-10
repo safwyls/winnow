@@ -671,6 +671,16 @@ Cancel actions and an optional one-to-five rating. Library summary provides the 
 visible game count and separate reading pages for captured Steam account statistics; it
 retains the shared rules for mixed currencies and wallet credit.
 
+Settings content uses subdued uppercase group headings, separate from focusable rows.
+Navigation and picker rows end in **Open ›**; immediate commands end in **Run** with an
+A-button glyph, and external links end in **Browser ↗**. Toggles retain switches and
+adjustments retain their value and left/right cues. These cues remain visible without an
+underline; only focus and selected tabs use the existing underline treatment. Live theme
+and platform labels update inside their rows without replacing the navigation cues.
+Updater actions appear only when available, matching desktop behavior. When an update
+transition removes the focused action, focus moves to another available update action,
+with the settings controls as a fallback; it never activates restart automatically.
+
 **Settings** has Appearance, Controller, Library, Platforms and Application sections. Large
 rows expose a label and current value; left/right changes bounded values, A opens pickers
 or activates toggles, and B returns. Appearance has a readable live sample. Fullscreen owns

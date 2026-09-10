@@ -72,7 +72,7 @@ public sealed class FirstRunSetupFullscreenTests
             context.Push(new FullscreenSettingsPage(context, "Application"));
             Dispatcher.UIThread.RunJobs();
             var replay = view.CurrentPage.GetVisualDescendants().OfType<Button>()
-                .Single(b => Equals(b.Content, "Run setup again"));
+                .Single(b => Avalonia.Automation.AutomationProperties.GetName(b) == "Run setup again");
             replay.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
             Dispatcher.UIThread.RunJobs();
             Assert.True(shell.Setup.IsOpen);

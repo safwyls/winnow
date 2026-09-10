@@ -30,7 +30,10 @@ public sealed class FullscreenPlatformTests
             var epic = FindButton(page, "Epic     SIGNED IN");
             epic.Focus();
             await context.Shared.Stores.SignOutOfEpicCommand.ExecuteAsync(null); Dispatcher.UIThread.RunJobs();
-            Assert.Equal("Epic     NOT SIGNED IN", epic.Content);
+            var labels = epic.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToArray();
+            Assert.Contains("Epic     NOT SIGNED IN", labels);
+            Assert.Contains("Open", labels);
+            Assert.Contains("›", labels);
             Assert.Same(epic, window.FocusManager!.GetFocusedElement());
             context.Shared.Stores.SteamSessionState = SteamSessionHealth.Expired;
             Dispatcher.UIThread.RunJobs();
@@ -162,7 +165,9 @@ public sealed class FullscreenPlatformTests
         return new(library, feed, shell);
     }
     private static Button FindButton(Control page, string content, bool visible = true)
-        => page.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Content, content) && (!visible || b.IsEffectivelyVisible));
+        => page.GetVisualDescendants().OfType<Button>().Single(b =>
+            (Equals(b.Content, content) || Avalonia.Automation.AutomationProperties.GetName(b) == content)
+            && (!visible || b.IsEffectivelyVisible));
     private static void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(Avalonia.Controls.Button.ClickEvent));
     private static void AssertText(Control page, string content)
         => Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.IsEffectivelyVisible && t.Text == content);

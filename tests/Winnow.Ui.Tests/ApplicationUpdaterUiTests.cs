@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
@@ -80,6 +81,117 @@ public sealed class ApplicationUpdaterUiTests
             Assert.Equal(1, updater.Restarts);
         }
         finally { window.Close(); television.Close(); }
+    }
+
+    [AvaloniaFact]
+    public void Fullscreen_hides_unavailable_update_actions_and_reaches_available_links_vertically()
+    {
+        var updater = new FakeUpdater();
+        var settings = new ApplicationSettingsViewModel(updater: updater);
+        var shell = Shell(settings);
+        using var context = new FullscreenContext(shell.Library, shell.Feed, shell);
+        using var page = new FullscreenSettingsPage(context);
+        var television = new Window { Width = 1280, Height = 720, Content = page };
+        try
+        {
+            television.Show();
+            for (var i = 0; i < 4; i++) page.Handle(GamepadButtons.PageNext);
+            Dispatcher.UIThread.RunJobs();
+            foreach (var label in new[] { "Download update", "Cancel download", "Restart to update", "Release notes", "Download in browser" })
+                Assert.False(FindButton(page, label).IsVisible);
+
+            updater.Publish(updater.Snapshot with
+            {
+                CanDownload = true,
+                ReleaseUrl = "https://github.com/test/releases/tag/v2",
+                DownloadUrl = "https://github.com/test/releases/download/v2/setup.exe"
+            });
+            Dispatcher.UIThread.RunJobs();
+            FindButton(page, "Check for updates").Focus();
+            foreach (var label in new[] { "Download update", "Release notes", "Download in browser" })
+            {
+                page.Handle(GamepadButtons.Down);
+                Dispatcher.UIThread.RunJobs();
+                var action = FindButton(page, label);
+                Assert.Same(action, television.FocusManager!.GetFocusedElement());
+                Assert.True(action.IsEffectivelyVisible);
+                Assert.True(action.IsEffectivelyEnabled);
+                var scroll = action.GetVisualAncestors().OfType<ScrollViewer>().First();
+                var position = action.TranslatePoint(default, scroll)!.Value;
+                Assert.InRange(position.Y, -1, scroll.Viewport.Height - action.Bounds.Height + 1);
+            }
+            Assert.Contains(page.GetVisualDescendants().OfType<ScrollViewer>(), scroll => scroll.Offset.Y > 0);
+            foreach (var label in new[] { "Release notes", "Download update", "Check for updates" })
+            {
+                page.Handle(GamepadButtons.Up);
+                Dispatcher.UIThread.RunJobs();
+                Assert.Same(FindButton(page, label), television.FocusManager!.GetFocusedElement());
+            }
+        }
+        finally { television.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Fullscreen_recovers_focus_when_download_actions_change_availability()
+    {
+        var updater = new FakeUpdater();
+        updater.Publish(updater.Snapshot with { CanDownload = true });
+        var settings = new ApplicationSettingsViewModel(updater: updater);
+        var shell = Shell(settings);
+        using var context = new FullscreenContext(shell.Library, shell.Feed, shell);
+        using var page = new FullscreenSettingsPage(context);
+        var television = new Window { Width = 1280, Height = 720, Content = page };
+        try
+        {
+            television.Show();
+            for (var i = 0; i < 4; i++) page.Handle(GamepadButtons.PageNext);
+            Dispatcher.UIThread.RunJobs();
+            FindButton(page, "Check for updates").Focus();
+            page.Handle(GamepadButtons.Down);
+            Assert.Same(FindButton(page, "Download update"), television.FocusManager!.GetFocusedElement());
+            page.Handle(GamepadButtons.Accept);
+            await settings.DownloadUpdateCommand.ExecutionTask!;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(1, updater.Downloads);
+            AssertAvailableFocus();
+            Reach("Cancel download");
+            page.Handle(GamepadButtons.Accept);
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(settings.UpdateBusy);
+            AssertAvailableFocus();
+            Reach("Download update");
+            page.Handle(GamepadButtons.Accept);
+            await settings.DownloadUpdateCommand.ExecutionTask!;
+            Dispatcher.UIThread.RunJobs();
+            Reach("Cancel download");
+            updater.Publish(updater.Snapshot with { Busy = false, CanCancel = false, CanDownload = false, CanRestart = true });
+            Dispatcher.UIThread.RunJobs();
+            AssertAvailableFocus();
+            Reach("Restart to update");
+            Assert.Equal(0, updater.Restarts);
+            page.Handle(GamepadButtons.Accept);
+            await settings.RestartUpdateCommand.ExecutionTask!;
+            Assert.Equal(1, updater.Restarts);
+
+            void AssertAvailableFocus()
+            {
+                var focused = Assert.IsAssignableFrom<Control>(television.FocusManager!.GetFocusedElement());
+                Assert.True(focused.IsEffectivelyVisible);
+                Assert.True(focused.IsEffectivelyEnabled);
+                Assert.Contains(focused, page.GetVisualDescendants());
+            }
+            void Reach(string label)
+            {
+                var target = FindButton(page, label);
+                for (var i = 0; i < 20 && !ReferenceEquals(target, television.FocusManager!.GetFocusedElement()); i++)
+                {
+                    page.Handle(GamepadButtons.Down);
+                    Dispatcher.UIThread.RunJobs();
+                }
+                Assert.Same(target, television.FocusManager!.GetFocusedElement());
+            }
+        }
+        finally { television.Close(); }
     }
 
     [AvaloniaFact]

@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - codex
 created_date: '2026-08-29 21:52'
-updated_date: '2026-09-10 21:39'
+updated_date: '2026-09-10 21:49'
 labels:
   - ui
   - accessibility
@@ -53,6 +53,8 @@ Move Home, Library, Activity and Settings decorative backdrops to the existing f
 Shift non-cinematic backdrop reveal right, keep Home titles on one fixed-size line with ellipsis to preserve the preferred shelf geometry, and add persisted fullscreen UI scale 80–120 percent in 5 percent steps with mouse/controller controls and reset. Verify full-shell scaling, ultrawide, persistence and title-selection stability; desktop presentation stays unchanged.
 
 Right-align My lists, Filter & sort and More in the fullscreen Library toolbar while preserving left collection tabs and existing horizontal controller order. Verify browse navigation; desktop unaffected.
+
+Hide unavailable fullscreen updater actions in parity with desktop and preserve focus through availability changes. Differentiate Settings groups, navigation rows, external links, commands, toggles and adjustments using labelled sections and trailing semantic cues. Keep live theme/platform labels. Verify update lifecycle controller reachability and both settings surfaces with fake updater tests.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -95,4 +97,6 @@ Fullscreen decorative art now uses the full-canvas shell layer for Home, Library
 Shifted artwork reveal right on browse and cinematic backdrops. Home titles now remain at64px on one line with ellipsis, retaining cover sizes and positions for long titles at70/100/140 percent text. Added fullscreen Appearance Interface scale80–120 percent in5-point steps, persisted and included in reset, with mouse +/- and dpad adjustment. The uniform canvas transform covers chrome, controls and artwork; responsive cover shelves also reflow with available space rather than guaranteeing exact percentage changes to final cover bounds. Desktop sizing is unchanged; existing ApplicationSettingsView.axaml edits are preserved. All261 Release UI tests passed in38s; solution Release build passed with zero warnings/errors. Scale tests cover persistence, nonfinite/clamped values, reset, rendered navigation scaling, safe margins, edge-to-edge backgrounds and keyboard fit at maximum scale on16:9/ultrawide.
 
 Moved My lists, Filter & sort and More to the far-right group of the fullscreen Library toolbar, with collection tabs left and unchanged horizontal controller focus order. Desktop unaffected. All 22 fullscreen browse Release tests passed. Updated visual spec; preserved unrelated ApplicationSettingsView.axaml edits.
+
+Fullscreen update actions now appear only when available, matching desktop visibility; the screenshot showed disabled actions without a release to download. Controller focus is repaired after availability changes and available actions scroll fully into view. Main Settings groups now use subdued headings, Open chevrons for menus/pickers, Run with A glyph for commands, and Browser arrows for external links; toggle/value controls keep their distinct presentation. Live platform/theme labels retain cues. Desktop updater behavior is unchanged and cross-surface updater tests pass. Added lifecycle/navigation regressions with fake updater, including explicit restart only. Full UI run passed 262 of263; the remaining test used old string-content lookup and passed in the subsequent five-test platform run after switching to accessible names. Existing setup navigation test likewise uses accessible name. Preserved unrelated desktop ApplicationSettingsView.axaml changes.
 <!-- SECTION:NOTES:END -->
