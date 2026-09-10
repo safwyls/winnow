@@ -88,6 +88,12 @@ public sealed class ApplicationUpdaterTests
         await scope.Updater.RestartAsync();
         Assert.True(scope.Shutdown);
         Assert.Equal(Payload, await File.ReadAllBytesAsync(scope.Installer.Path!));
+        await scope.Updater.RestartAsync();
+        await scope.Updater.SetIncludeBetaAsync(true);
+        Assert.Equal(1, scope.Installer.Preparations);
+        Assert.True(scope.Updater.Snapshot.Busy);
+        Assert.False(scope.Updater.Snapshot.IncludeBeta);
+        Assert.False(scope.Updater.Snapshot.CanRestart);
     }
 
     [Fact]
@@ -178,6 +184,46 @@ public sealed class ApplicationUpdaterTests
     }
 
     private const string Suffix = "win-x64-setup.exe";
+    [Fact]
+    public async Task Shutdown_drains_a_manual_check_after_the_UI_dispatcher_has_stopped()
+    {
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var scope = new Scope(new HttpClient(new AsyncHandler(async (_, ct) =>
+        {
+            entered.SetResult();
+            await release.Task.ConfigureAwait(false);
+            ct.ThrowIfCancellationRequested();
+            return Json(Array.Empty<object>());
+        })));
+        var stoppedDispatcher = new StoppedDispatcher();
+        var previous = SynchronizationContext.Current;
+        Task check;
+        try
+        {
+            SynchronizationContext.SetSynchronizationContext(stoppedDispatcher);
+            check = scope.Updater.CheckAsync();
+        }
+        finally { SynchronizationContext.SetSynchronizationContext(previous); }
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Task stop;
+        try
+        {
+            SynchronizationContext.SetSynchronizationContext(stoppedDispatcher);
+            stop = scope.Updater.StopAsync(default);
+        }
+        finally { SynchronizationContext.SetSynchronizationContext(previous); }
+        release.SetResult();
+        await Task.WhenAll(check, stop).WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(0, stoppedDispatcher.Posts);
+    }
+
+    private sealed class StoppedDispatcher : SynchronizationContext
+    {
+        public int Posts;
+        public override void Post(SendOrPostCallback callback, object? state) => Interlocked.Increment(ref Posts);
+    }
+
     [Fact]
     public async Task Turning_off_automatic_updates_cancels_an_inflight_check_before_it_can_download()
     {
@@ -285,9 +331,11 @@ public sealed class ApplicationUpdaterTests
         public bool IsSupported => supported;
         public string? Path { get; private set; }
         public bool Fail { get; set; }
+        public int Preparations { get; private set; }
         public Task PrepareAsync(string installerPath, string sha256, CancellationToken ct = default)
         {
             if (Fail) throw new InvalidDataException("Installer changed after staging.");
+            Preparations++;
             Path = installerPath;
             return Task.CompletedTask;
         }

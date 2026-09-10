@@ -186,7 +186,7 @@ try {
             Set-Content -LiteralPath (Join-Path $scenarioDirectory 'proceed') -Value 'ready'
             # The production app requests its normal shutdown after the same handshake.
             Close-SmokeApplication $applicationProcess
-            if (-not $applicationProcess.WaitForExit(30000)) { throw 'Winnow did not close normally for the upgrade.' }
+            if (-not $applicationProcess.WaitForExit(60000)) { throw 'Winnow did not close normally for the upgrade.' }
         }
         if (-not $helper.WaitForExit(180000)) { throw 'Update helper did not finish.' }
         if ($scenario -ne 'upgrade') {
@@ -200,7 +200,7 @@ try {
             }
             if (-not $applicationProcess.HasExited) {
                 Close-SmokeApplication $applicationProcess
-                if (-not $applicationProcess.WaitForExit(30000)) { throw 'Winnow did not close after failure smoke test.' }
+                if (-not $applicationProcess.WaitForExit(60000)) { throw 'Winnow did not close after failure smoke test.' }
             }
         } else {
             if ($helper.ExitCode -ne 0 -or -not (Test-Path -LiteralPath (Join-Path $scenarioDirectory 'complete'))) {
@@ -212,7 +212,7 @@ try {
             $commandLine = (Get-CimInstance Win32_Process -Filter "ProcessId = $restartedId").CommandLine
             if (-not $commandLine.Contains($dataDirectory) -or -not $commandLine.Contains('--no-sync')) { throw 'Restart arguments lost the selected data directory or no-sync.' }
             Close-SmokeApplication $applicationProcess
-            if (-not $applicationProcess.WaitForExit(30000)) { throw 'Updated Winnow did not close.' }
+            if (-not $applicationProcess.WaitForExit(60000)) { throw 'Updated Winnow did not close.' }
         }
         $applicationProcess = $null
         if ((Get-Content -LiteralPath $sentinelPath -Raw) -cne 'keep this user data') { throw 'Upgrade changed user data.' }

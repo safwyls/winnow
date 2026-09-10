@@ -20,6 +20,7 @@ internal sealed class ApplicationUpdater(
     private bool _loaded;
     private ApplicationRelease? _release;
     private string? _staged;
+    private volatile bool _handoffPrepared;
 
     public event EventHandler? Changed;
     public UpdateSnapshot Snapshot => Volatile.Read(ref _snapshot);
@@ -35,15 +36,15 @@ internal sealed class ApplicationUpdater(
         try
         {
             // Load preferences promptly; network work waits until startup has settled.
-            await _operation.WaitAsync(stoppingToken);
-            try { await LoadAsync(stoppingToken); }
+            await _operation.WaitAsync(stoppingToken).ConfigureAwait(false);
+            try { await LoadAsync(stoppingToken).ConfigureAwait(false); }
             finally { _operation.Release(); }
-            await Task.Delay(TimeSpan.FromSeconds(20), stoppingToken);
+            await Task.Delay(TimeSpan.FromSeconds(20), stoppingToken).ConfigureAwait(false);
             using var timer = new PeriodicTimer(TimeSpan.FromHours(6));
             do
             {
-                if (Snapshot.Automatic) await CheckAsync(stoppingToken);
-            } while (await timer.WaitForNextTickAsync(stoppingToken));
+                if (Snapshot.Automatic) await CheckAsync(stoppingToken).ConfigureAwait(false);
+            } while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false));
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { }
         catch (Exception ex)
@@ -56,8 +57,8 @@ internal sealed class ApplicationUpdater(
     private async Task LoadAsync(CancellationToken ct)
     {
         if (_loaded) return;
-        var automatic = await settings.GetAsync(AutomaticKey, ct);
-        var beta = await settings.GetAsync(BetaKey, ct);
+        var automatic = await settings.GetAsync(AutomaticKey, ct).ConfigureAwait(false);
+        var beta = await settings.GetAsync(BetaKey, ct).ConfigureAwait(false);
         CleanAbandonedDownloads();
         Publish(Snapshot with { Automatic = automatic != "false", IncludeBeta = beta == "true" });
         _loaded = true;
@@ -65,12 +66,13 @@ internal sealed class ApplicationUpdater(
 
     public async Task CheckAsync(CancellationToken ct = default)
     {
-        if (!await _operation.WaitAsync(0, ct)) return;
+        if (_handoffPrepared) return;
+        if (!await _operation.WaitAsync(0, ct).ConfigureAwait(false)) return;
         using var checkCancellation = CancellationTokenSource.CreateLinkedTokenSource(ct, _lifetime.Token);
         Volatile.Write(ref _checkCancellation, checkCancellation);
         try
         {
-            await LoadAsync(ct);
+            await LoadAsync(ct).ConfigureAwait(false);
             var current = ReleaseVersion.Parse(currentVersion);
             if (current is null || current.IsDevelopment)
             {
@@ -85,7 +87,7 @@ internal sealed class ApplicationUpdater(
             Publish(Snapshot with { Busy = true, Status = "Checking for updates…" });
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(checkCancellation.Token);
             timeout.CancelAfter(TimeSpan.FromSeconds(60));
-            var found = await releases.FindAsync(current, Snapshot.IncludeBeta, assetSuffix, timeout.Token);
+            var found = await releases.FindAsync(current, Snapshot.IncludeBeta, assetSuffix, timeout.Token).ConfigureAwait(false);
             if (_release?.Version.Text != found?.Version.Text || _release?.Sha256 != found?.Sha256)
             {
                 DeleteStaged();
@@ -106,7 +108,7 @@ internal sealed class ApplicationUpdater(
                     : found.Sha256 is null ? "This release has no verification digest. Use the release page to update manually."
                     : "A new version is available." });
             checkCancellation.Token.ThrowIfCancellationRequested();
-            if (Snapshot.Automatic && Snapshot.CanDownload) await DownloadCoreAsync(checkCancellation.Token);
+            if (Snapshot.Automatic && Snapshot.CanDownload) await DownloadCoreAsync(checkCancellation.Token).ConfigureAwait(false);
         }
         catch (Exception ex) { ReportFailure(ex, ct); }
         finally { Volatile.Write(ref _checkCancellation, null); Publish(Snapshot with { Busy = false }); _operation.Release(); }
@@ -114,14 +116,16 @@ internal sealed class ApplicationUpdater(
 
     public async Task DownloadAsync(CancellationToken ct = default)
     {
-        if (!await _operation.WaitAsync(0, ct)) return;
-        try { await DownloadCoreAsync(ct); }
+        if (_handoffPrepared) return;
+        if (!await _operation.WaitAsync(0, ct).ConfigureAwait(false)) return;
+        try { await DownloadCoreAsync(ct).ConfigureAwait(false); }
         catch (Exception ex) { ReportFailure(ex, ct); }
         finally { Publish(Snapshot with { Busy = false }); _operation.Release(); }
     }
 
     private async Task DownloadCoreAsync(CancellationToken ct)
     {
+        if (_handoffPrepared) return;
         if (_release is not { Sha256: not null } release || !installer.IsSupported || _staged is not null) return;
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(ct, _lifetime.Token);
         cancellation.CancelAfter(TimeSpan.FromMinutes(30));
@@ -139,7 +143,7 @@ internal sealed class ApplicationUpdater(
                 if (percent == lastProgress) return;
                 lastProgress = percent;
                 Publish(Snapshot with { Progress = progress });
-            }, cancellation.Token);
+            }, cancellation.Token).ConfigureAwait(false);
             cancellation.Token.ThrowIfCancellationRequested();
             var staged = Path.ChangeExtension(partial, ".exe");
             File.Move(partial, staged);
@@ -163,12 +167,15 @@ internal sealed class ApplicationUpdater(
 
     public async Task RestartAsync(CancellationToken ct = default)
     {
-        if (!await _operation.WaitAsync(0, ct)) return;
+        if (_handoffPrepared) return;
+        if (!await _operation.WaitAsync(0, ct).ConfigureAwait(false)) return;
         try
         {
             if (_staged is null || _release?.Sha256 is not { } hash || !installer.IsSupported) return;
             Publish(Snapshot with { Busy = true, Status = "Preparing to restart…" });
-            await installer.PrepareAsync(_staged, hash, ct);
+            await installer.PrepareAsync(_staged, hash, ct).ConfigureAwait(false);
+            _handoffPrepared = true;
+            Publish(Snapshot with { CanRestart = false, CanDownload = false });
             requestShutdown();
         }
         catch (Exception ex)
@@ -177,7 +184,11 @@ internal sealed class ApplicationUpdater(
             Publish(Snapshot with { CanRestart = false, CanDownload = _release?.Sha256 is not null && installer.IsSupported });
             ReportFailure(ex, ct);
         }
-        finally { Publish(Snapshot with { Busy = false }); _operation.Release(); }
+        finally
+        {
+            if (!_handoffPrepared) Publish(Snapshot with { Busy = false });
+            _operation.Release();
+        }
     }
 
     public Task SetAutomaticAsync(bool value, CancellationToken ct = default) => SetPreferenceAsync(false, value, ct);
@@ -185,16 +196,18 @@ internal sealed class ApplicationUpdater(
 
     private async Task SetPreferenceAsync(bool beta, bool value, CancellationToken ct)
     {
+        if (_handoffPrepared) return;
         if (_loaded && (beta ? Snapshot.IncludeBeta : Snapshot.Automatic) == value) return;
         try { Volatile.Read(ref _checkCancellation)?.Cancel(); }
         catch (ObjectDisposedException) { }
         CancelDownload();
-        await _operation.WaitAsync(ct);
+        await _operation.WaitAsync(ct).ConfigureAwait(false);
         var recheck = false;
         try
         {
-            await LoadAsync(ct);
-            await settings.SetAsync(beta ? BetaKey : AutomaticKey, value ? "true" : "false", ct);
+            if (_handoffPrepared) return;
+            await LoadAsync(ct).ConfigureAwait(false);
+            await settings.SetAsync(beta ? BetaKey : AutomaticKey, value ? "true" : "false", ct).ConfigureAwait(false);
             if (beta)
             {
                 DeleteStaged();
@@ -207,7 +220,7 @@ internal sealed class ApplicationUpdater(
         }
         catch (Exception ex) { ReportFailure(ex, ct); }
         finally { _operation.Release(); }
-        if (recheck) await CheckAsync(ct);
+        if (recheck) await CheckAsync(ct).ConfigureAwait(false);
     }
 
     private void ReportFailure(Exception ex, CancellationToken ct)
@@ -252,10 +265,12 @@ internal sealed class ApplicationUpdater(
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        await _lifetime.CancelAsync();
+        // Program drains the host after Avalonia's message loop has stopped.
+        // No update operation may depend on that dispatcher to release its gate.
+        await _lifetime.CancelAsync().ConfigureAwait(false);
         CancelDownload();
-        await base.StopAsync(cancellationToken);
-        await _operation.WaitAsync(cancellationToken);
+        await base.StopAsync(cancellationToken).ConfigureAwait(false);
+        await _operation.WaitAsync(cancellationToken).ConfigureAwait(false);
         _operation.Release();
     }
 }

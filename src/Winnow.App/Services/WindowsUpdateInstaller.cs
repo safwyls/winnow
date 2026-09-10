@@ -63,7 +63,7 @@ public sealed class WindowsUpdateInstaller : IUpdateInstaller
             throw new InvalidDataException("The update has no valid SHA-256 digest.");
         await using (var payload = File.OpenRead(installerPath))
         {
-            if (!string.Equals(Convert.ToHexString(await SHA256.HashDataAsync(payload, ct)), sha256, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(Convert.ToHexString(await SHA256.HashDataAsync(payload, ct).ConfigureAwait(false)), sha256, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("The update checksum does not match. Download it again.");
         }
 
@@ -72,7 +72,7 @@ public sealed class WindowsUpdateInstaller : IUpdateInstaller
         var script = Path.Combine(directory, "Install-Update.ps1");
         await using (var source = typeof(WindowsUpdateInstaller).Assembly.GetManifestResourceStream("Winnow.UpdateHelper.ps1")
             ?? throw new InvalidOperationException("The update helper is missing. Install this release manually."))
-        await using (var destination = File.Create(script)) await source.CopyToAsync(destination, ct);
+        await using (var destination = File.Create(script)) await source.CopyToAsync(destination, ct).ConfigureAwait(false);
         using var current = Process.GetCurrentProcess();
         var manifest = Path.Combine(directory, "handoff.json");
         await File.WriteAllTextAsync(manifest, JsonSerializer.Serialize(new
@@ -85,7 +85,7 @@ public sealed class WindowsUpdateInstaller : IUpdateInstaller
             Sha256 = sha256,
             Arguments = RestartArguments(Program.DataLocation.Root, Environment.GetCommandLineArgs()),
             WaitSeconds = 120
-        }), ct);
+        }), ct).ConfigureAwait(false);
         var start = new ProcessStartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), @"WindowsPowerShell\v1.0\powershell.exe"))
         { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden };
         foreach (var argument in new[] { "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", script, "-ManifestPath", manifest })
@@ -98,10 +98,10 @@ public sealed class WindowsUpdateInstaller : IUpdateInstaller
             while (!File.Exists(Path.Combine(directory, "ready")))
             {
                 if (helper.HasExited) throw new IOException($"The update helper failed. See {directory} for recovery details.");
-                await Task.Delay(100, timeout.Token);
+                await Task.Delay(100, timeout.Token).ConfigureAwait(false);
             }
             ct.ThrowIfCancellationRequested();
-            await File.WriteAllTextAsync(Path.Combine(directory, "proceed"), "ready", ct);
+            await File.WriteAllTextAsync(Path.Combine(directory, "proceed"), "ready", ct).ConfigureAwait(false);
         }
         catch
         {

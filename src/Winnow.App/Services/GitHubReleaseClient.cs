@@ -22,10 +22,10 @@ internal sealed class GitHubReleaseClient(HttpClient http)
             request.Headers.UserAgent.ParseAdd("Winnow-Updater/1.0");
             request.Headers.Accept.ParseAdd("application/vnd.github+json");
             request.Headers.Add("X-GitHub-Api-Version", "2022-11-28");
-            using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
-            await response.Content.LoadIntoBufferAsync(8 * 1024 * 1024, ct);
-            using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+            await response.Content.LoadIntoBufferAsync(8 * 1024 * 1024, ct).ConfigureAwait(false);
+            using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
             if (json.RootElement.ValueKind != JsonValueKind.Array) throw new InvalidDataException("Invalid release list.");
             foreach (var release in json.RootElement.EnumerateArray())
             {
@@ -77,7 +77,7 @@ internal sealed class GitHubReleaseClient(HttpClient http)
                 if (uri.Scheme != "https" || !uri.IsDefaultPort || uri.UserInfo.Length != 0
                     || uri.Host is not ("github.com" or "release-assets.githubusercontent.com" or "objects.githubusercontent.com"))
                     throw new InvalidDataException("The download left GitHub's release storage.");
-                response = await http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct);
+                response = await http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
                 if (response.StatusCode is not (HttpStatusCode.MovedPermanently or HttpStatusCode.Found
                     or HttpStatusCode.SeeOther or HttpStatusCode.TemporaryRedirect or HttpStatusCode.PermanentRedirect)) break;
                 var location = response.Headers.Location ?? throw new InvalidDataException("Missing redirect location.");
@@ -89,23 +89,23 @@ internal sealed class GitHubReleaseClient(HttpClient http)
             response.EnsureSuccessStatusCode();
             if (response.Content.Headers.ContentLength is { } length && length != release.Size)
                 throw new InvalidDataException("The installer size changed.");
-            await using var input = await response.Content.ReadAsStreamAsync(ct);
+            await using var input = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
             await using var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true);
             using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
             var buffer = new byte[81920];
             long total = 0;
             int read;
-            while ((read = await input.ReadAsync(buffer, ct)) != 0)
+            while ((read = await input.ReadAsync(buffer, ct).ConfigureAwait(false)) != 0)
             {
                 total += read;
                 if (total > release.Size) throw new InvalidDataException("The installer is larger than expected.");
                 hash.AppendData(buffer, 0, read);
-                await output.WriteAsync(buffer.AsMemory(0, read), ct);
+                await output.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
                 progress(total * 100d / release.Size);
             }
             if (total != release.Size || !Convert.ToHexString(hash.GetHashAndReset()).Equals(release.Sha256, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("The installer failed SHA-256 verification. Try downloading again.");
-            await output.FlushAsync(ct);
+            await output.FlushAsync(ct).ConfigureAwait(false);
         }
         finally { response?.Dispose(); }
     }
