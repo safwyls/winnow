@@ -61,7 +61,7 @@ public sealed class FullscreenContext : IDisposable
         var journal = new JournalPromptViewModel();
         var launch = ActivatorUtilities.CreateInstance<LaunchStatusViewModel>(services);
         var library = ActivatorUtilities.CreateInstance<LibraryViewModel>(services, new DormancyRamp(), journal, launch);
-        var feed = ActivatorUtilities.CreateInstance<FeedViewModel>(services, library, library.Lists);
+        var feed = ActivatorUtilities.CreateInstance<FeedViewModel>(services, library, library.Lists, true);
         return new(library, feed, shared, services);
     }
     public async Task LoadAsync()

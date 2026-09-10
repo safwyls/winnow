@@ -14,6 +14,29 @@ namespace Winnow.Ui.Tests;
 
 public sealed class FullscreenHomeLayoutTests
 {
+    [AvaloniaFact]
+    public void Wide_home_can_show_and_navigate_all_ten_recommendations()
+    {
+        using var feed = new FeedViewModel(new PreviewFeedService(), PreviewData.Library);
+        feed.Shelves.Add(new FeedShelfViewModel("ten", "Ready to play", "",
+            Enumerable.Range(0, 10).Select(_ => new FeedCardViewModel(PreviewData.Tile, "An update arrived."))));
+        using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell);
+        context.SetFitUltrawide(true);
+        using var view = new FullscreenView(context);
+        var window = new Window { Width = 3440, Height = 1440, Content = view };
+        try
+        {
+            context.UiScale = .8;
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            var cards = view.CurrentPage.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("tv-cover")).ToArray();
+            Assert.Equal(10, cards.Length);
+            for (var i = 0; i < 9; i++) view.Handle(GamepadButtons.Right);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Same(cards[^1], window.FocusManager!.GetFocusedElement());
+        }
+        finally { window.Close(); }
+    }
+
     [AvaloniaTheory]
     [InlineData(5, 1)]
     [InlineData(10, 1.4)]

@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - codex
 created_date: '2026-08-29 21:52'
-updated_date: '2026-09-10 22:25'
+updated_date: '2026-09-10 22:29'
 labels:
   - ui
   - accessibility
@@ -63,6 +63,8 @@ Bottom-anchor the Home cover row and align the shelf-dot rail to its vertical ce
 Attach the Home shelf heading to the bottom-anchored cover group. Investigate backdrop fallback/loading transitions and remove intermediate imagery while guarding async results and releasing art leases. Verify Home alignment and controlled artwork loading/navigation; desktop artwork behavior remains intact.
 
 User follow-up: crossfade loaded backdrop replacements over roughly200ms, retain existing art while loading, honor reduced motion with instant swap, and verify rapid selection/detach lease safety.
+
+Expose the existing six visible plus four reserve recommendations as up to ten fullscreen cards per shelf, without changing scoring or desktop six-card presentation. Keep fullscreen adaptive capacity, overflow navigation and actual-viewport impression accounting. Verify both presentation modes and fullscreen rendering of more than six cards.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -113,4 +115,6 @@ Home covers now use the equivalent100 percent layout as their target, so reducin
 Bottom-anchored the fullscreen Home cover row above the footer and centered the shelf-dot rail in a matching bottom-anchored host. The rail scales down only when necessary to fit; excess height remains above covers as backdrop space. Existing cover scaling, shelf navigation and desktop layout remain unchanged. All37 focused Release Home, browse and indicator tests passed, including bottom/center alignment at80/100/120 percent interface scale and large text/margins. Updated visual spec and preserved unrelated ApplicationSettingsView.axaml edits.
 
 Pinned the Home shelf heading12px above the bottom-anchored covers; alignment tests pass at80/100/120 percent interface scale. Browse pages retain a backdrop instance across selection/rebuild and wait for replacement landscape before swapping. Added180ms crossfade over previous art, reduced-motion instant swap, delayed fallback only on missing/failed landscape, stale-result rejection and lease cleanup on fade completion/detach. Fake delayed-lease tests cover rapid selection, failure, motion settings and closing midfade. Full UI run passed268 of271; three cinematic tests expected the old direct-child Image and passed after updating lookup for the crossfade panel (including all sources cleared ondetach). Solution Release build passed without warnings/errors. Desktop artwork unchanged; preserved unrelated ApplicationSettingsView.axaml edits. Updated visual/architecture specs and decisions.
+
+Confirmed shared feed computes six primary cards plus four reserves, up to ten per shelf. Fullscreen now includes those reserves as cards at initial load, preserving score order and unique spent tracking; adaptive layout renders more than six when space permits and retains overflow navigation. Desktop default remains six cards with four held replacements. Loading cards does not record impressions; only viewport entry does. Verified106 feed tests and36 fullscreen Home/browse/context tests, including ten simultaneously visible/reachable cards on ultrawide and separate desktop/fullscreen presentation counts. Updated visual/architecture docs and contract comments. Preserved unrelated ApplicationSettingsView.axaml edit.
 <!-- SECTION:NOTES:END -->

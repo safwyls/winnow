@@ -36,7 +36,7 @@ public sealed record FeedShelf(
     IReadOnlyList<FeedItem> Items)
 {
     /// <summary>
-    /// Items this shelf computed but is not showing: the replacements a
+    /// Additional computed items held back by desktop (fullscreen may expose them): the replacements a
     /// dismissed card is swapped for, in score order, cap-legal against
     /// <see cref="Items"/> because the same pass placed them.
     ///

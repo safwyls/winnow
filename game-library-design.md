@@ -621,6 +621,9 @@ while a replacement loads and through its short crossfade. Generation checks dis
 loads. Detaching releases displayed, outgoing and pending leases; the detail page still owns its
 content and focus rows. Browse page capacity is presentation state and reflows around the
 selected release identity when the available columns change.
+Its feed view-model exposes both the primary recommendations and the scored reserve as
+cards, while desktop retains the reserve for replacements. The shared scoring pass and its
+ordering remain unchanged. Both surfaces record surfacing only on actual viewport entry.
 Adaptive cover capacity is recalculated once queued text scaling and layout have settled;
 reading transient unscaled geometry can make a long Home hero alternate capacities and
 continuously rebuild.

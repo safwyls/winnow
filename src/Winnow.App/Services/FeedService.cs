@@ -18,7 +18,7 @@ public sealed class FeedService : IFeedService
     private static readonly RecommendationTuning Tuning = RecommendationTuning.Default;
 
     /// <summary>
-    /// Cards a shelf puts on screen.
+    /// Cards a desktop shelf puts on screen. Fullscreen also exposes the scored reserve.
     ///
     /// Six, and the number came from measuring the grid rather than from
     /// taste. Ten was a RAIL's number: items past the right edge cost no

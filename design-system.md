@@ -560,8 +560,13 @@ games, rather than enlarging art to fill the extra height. Available height stil
 covers when increasing scale or using large margins. The default retains the
 16:9 composition. Validate readability from the actual seating position before accepting the scale.
 
-**For you** opens on a focused recommendation in a horizontal cover shelf. A large title,
-one-sentence reason and game artwork above the shelf follow the selection. The reason reserves
+**For you** opens on a focused recommendation in a horizontal cover shelf.
+Fullscreen makes the complete scored shelf available: up to six primary recommendations
+plus four reserve items. Show as many as fit at the chosen scale, with left/right navigation
+to overflow games; do not enlarge covers just to fill a short shelf. Desktop retains six
+cards with a hidden replacement reserve. Only actual viewport entry records an impression.
+
+A large title, one-sentence reason and game artwork above the shelf follow the selection. The reason reserves
 two lines at the chosen text size and truncates overflow with an ellipsis, so description
 length does not resize the cover shelf. Titles keep one line at the reference title size and
 ellipsize overflow; opening game details reveals the full title. Title length never consumes

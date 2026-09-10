@@ -36,6 +36,7 @@ public partial class FeedViewModel : ObservableObject, IDisposable
     private readonly TimeProvider _clock;
     private readonly Action<Action> _post;
     private readonly ListsViewModel? _lists;
+    private readonly bool _includeReserve;
 
     private ITimer? _ticker;
     private long _tickedAt;
@@ -76,11 +77,13 @@ public partial class FeedViewModel : ObservableObject, IDisposable
         IGameTileSource? tiles = null,
         TimeProvider? clock = null,
         Action<Action>? post = null,
-        ListsViewModel? lists = null)
+        ListsViewModel? lists = null,
+        bool includeReserve = false)
     {
         _feed = feed;
         _tiles = tiles;
         _lists = lists;
+        _includeReserve = includeReserve;
         _clock = clock ?? TimeProvider.System;
         _post = post ?? (action => Avalonia.Threading.Dispatcher.UIThread.Post(action));
 
@@ -338,8 +341,10 @@ public partial class FeedViewModel : ObservableObject, IDisposable
 
         foreach (var shelf in snapshot.Shelves)
         {
-            var cards = new List<FeedCardViewModel>(shelf.Items.Count);
-            foreach (var item in shelf.Items)
+            // TV can show the full scored shelf horizontally; desktop keeps replacements hidden.
+            var shown = _includeReserve ? shelf.Items.Concat(shelf.Reserve).ToArray() : shelf.Items;
+            var cards = new List<FeedCardViewModel>(shown.Count);
+            foreach (var item in shown)
             {
                 // Drop items with no matching tile (no cover to draw).
                 if (_tiles?.TileForOwnership(item.OwnershipId) is { } tile)
@@ -356,14 +361,14 @@ public partial class FeedViewModel : ObservableObject, IDisposable
             // A reserve item with no tile is dropped here for the same reason a
             // visible one is, and here rather than at the swap: a receipt that
             // offers a replacement has to have one.
-            var reserve = shelf.Reserve
+            var reserve = (_includeReserve ? [] : shelf.Reserve)
                 .Where(item => _tiles?.TileForOwnership(item.OwnershipId) is not null)
                 .ToList();
 
             // Everything this pass accounted for, shown or held, so a backfill
             // reading the feed again can tell what is new from what is already
             // spoken for.
-            foreach (var item in shelf.Items.Concat(reserve))
+            foreach (var item in shown.Concat(reserve))
             {
                 _spent.Add(item.ReleaseId);
             }

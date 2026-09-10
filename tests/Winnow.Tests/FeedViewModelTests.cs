@@ -11,6 +11,26 @@ namespace Winnow.Tests;
 /// </summary>
 public sealed class FeedViewModelTests
 {
+    [Theory]
+    [InlineData(false, 6, 4)]
+    [InlineData(true, 10, 0)]
+    public async Task Fullscreen_can_present_the_scored_reserve_while_desktop_keeps_it_hidden(bool includeReserve, int visible, int reserve)
+    {
+        var tiles = new FakeTileSource();
+        var items = Enumerable.Range(1, 10).Select(id => Item(tiles, id, $"Reason {id}")).ToArray();
+        var shelf = Shelf("patched", "Patched", "Updates", items.Take(6).ToArray()) with { Reserve = items.Skip(6).ToArray() };
+        var service = new FakeFeedService(Snapshot(shelf));
+        using var feed = new FeedViewModel(service, tiles, includeReserve: includeReserve);
+        await feed.LoadCommand.ExecuteAsync(null);
+        var displayed = Assert.Single(feed.Shelves);
+        Assert.Equal(visible, displayed.Cards.Count);
+        Assert.Equal(reserve, displayed.Reserve.Count);
+        Assert.Equal(items.Take(visible).Select(i => i.Reason), displayed.Cards.Select(c => c.Reason));
+        Assert.Empty(service.Surfaced);
+        await feed.RecordViewportEntryAsync(displayed.Cards[^1]);
+        Assert.Equal(items[visible - 1].ReleaseId, Assert.Single(service.Surfaced).ReleaseId);
+    }
+
     [Fact]
     public async Task Disposing_a_feed_releases_cards_and_detaches_library_reload()
     {
