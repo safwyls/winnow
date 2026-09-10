@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - codex
 created_date: '2026-08-29 21:52'
-updated_date: '2026-09-10 22:08'
+updated_date: '2026-09-10 22:25'
 labels:
   - ui
   - accessibility
@@ -59,6 +59,10 @@ Hide unavailable fullscreen updater actions in parity with desktop and preserve 
 Correct Home cover sizing so reducing interface scale cannot enlarge covers: use a scale-independent target tile height and width with adaptive capacity. Replace shelf fraction with themed vertical previous/next arrows and selected shelf dots, retaining controller shelf navigation and adding mouse access. Verify rendered cover sizes at80/100 percent and shelf indicator navigation. Desktop unchanged.
 
 Bottom-anchor the Home cover row and align the shelf-dot rail to its vertical center, leaving surplus height above covers as backdrop space. Keep existing cover scaling and safe footer; verify alignment across interface scale changes. Desktop unchanged.
+
+Attach the Home shelf heading to the bottom-anchored cover group. Investigate backdrop fallback/loading transitions and remove intermediate imagery while guarding async results and releasing art leases. Verify Home alignment and controlled artwork loading/navigation; desktop artwork behavior remains intact.
+
+User follow-up: crossfade loaded backdrop replacements over roughly200ms, retain existing art while loading, honor reduced motion with instant swap, and verify rapid selection/detach lease safety.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -107,4 +111,6 @@ Fullscreen update actions now appear only when available, matching desktop visib
 Home covers now use the equivalent100 percent layout as their target, so reducing interface scale shrinks rendered covers rather than expanding them into newly available height; extra width admits more real cards. Regression checks measure80 percent cover height within2 percent at normal and140 percent text/10 percent margins, including shelf changes and return to100 percent. Replaced shelf fraction with right-side themed chevrons and one dot per shelf, current Volt fill, other TextDim outlines, disabled endpoints, accessible44px mouse targets and unchanged controller shelf controls. All268 Release UI tests passed in38s. Desktop unchanged; preserved unrelated ApplicationSettingsView.axaml edit. Updated visual spec and decisions.
 
 Bottom-anchored the fullscreen Home cover row above the footer and centered the shelf-dot rail in a matching bottom-anchored host. The rail scales down only when necessary to fit; excess height remains above covers as backdrop space. Existing cover scaling, shelf navigation and desktop layout remain unchanged. All37 focused Release Home, browse and indicator tests passed, including bottom/center alignment at80/100/120 percent interface scale and large text/margins. Updated visual spec and preserved unrelated ApplicationSettingsView.axaml edits.
+
+Pinned the Home shelf heading12px above the bottom-anchored covers; alignment tests pass at80/100/120 percent interface scale. Browse pages retain a backdrop instance across selection/rebuild and wait for replacement landscape before swapping. Added180ms crossfade over previous art, reduced-motion instant swap, delayed fallback only on missing/failed landscape, stale-result rejection and lease cleanup on fade completion/detach. Fake delayed-lease tests cover rapid selection, failure, motion settings and closing midfade. Full UI run passed268 of271; three cinematic tests expected the old direct-child Image and passed after updating lookup for the crossfade panel (including all sources cleared ondetach). Solution Release build passed without warnings/errors. Desktop artwork unchanged; preserved unrelated ApplicationSettingsView.axaml edits. Updated visual/architecture specs and decisions.
 <!-- SECTION:NOTES:END -->

@@ -126,7 +126,7 @@ public sealed class FullscreenDetailsTests
             var backdrop = Assert.IsType<FullscreenBackdrop>(view.CurrentPage.Backdrop);
             Assert.Equal(1920, backdrop.Bounds.Width);
             Assert.Equal(1080, backdrop.Bounds.Height);
-            Assert.Same(pixels, Assert.Single(backdrop.Children.OfType<Image>()).Source);
+            Assert.Same(pixels, Assert.Single(backdrop.GetVisualDescendants().OfType<Image>(), image => image.Source is not null).Source);
             Assert.Contains(userBackground ? CoverKey.User("landscape") : CoverKey.IgdbBackdrop("detailshot"), leases.Keys);
             Assert.Equal(userBackground ? 0 : 1, images.Reads);
             var hero = Assert.IsType<Grid>(Assert.IsType<Grid>(view.CurrentPage.Content).Children[0]);
@@ -178,7 +178,7 @@ public sealed class FullscreenDetailsTests
             window.Content = null;
             details.Dispose();
             Assert.Equal(0, leases.Active);
-            Assert.Null(Assert.Single(backdrop.Children.OfType<Image>()).Source);
+            Assert.All(backdrop.GetVisualDescendants().OfType<Image>(), image => Assert.Null(image.Source));
         }
         finally { window.Close(); }
     }

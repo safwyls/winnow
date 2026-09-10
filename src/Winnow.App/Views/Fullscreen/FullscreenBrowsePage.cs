@@ -39,6 +39,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     private ContentControl _hero = new();
     private TextBlock? _homeHeading;
     private Border? _homeIndicatorHost;
+    private Grid? _homeShelf;
     private readonly ContentControl _art = new() { IsHitTestVisible = false,
         HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch };
     public override Control? Backdrop => _art;
@@ -228,10 +229,10 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     {
         _visibleCards.Clear();
         _hero = new ContentControl { MinHeight = 300 };
-        _art.Content = null;
         _art.Opacity = 1;
         if (Context.Feed.Shelves.Count == 0)
         {
+            _art.Content = null;
             _selected = null;
             var retry = FullscreenUi.Button("Refresh recommendations", () => Context.Feed.LoadCommand.Execute(null));
             var history = FullscreenUi.Button("What you've told the feed", () => Context.Push(new FullscreenBrowseHistoryPage(Context)));
@@ -243,17 +244,18 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         _shelf = Math.Clamp(_shelf, 0, Context.Feed.Shelves.Count - 1);
         var shelf = Context.Feed.Shelves[_shelf];
         _card = Math.Clamp(_shelfPositions.GetValueOrDefault(shelf.Id), 0, Math.Max(0, shelf.Cards.Count - 1));
-        var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*"),
+        var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,*") };
+        var shelfLayout = new Grid { RowDefinitions = new RowDefinitions("Auto,*"),
             ColumnDefinitions = new ColumnDefinitions("*,64"), ColumnSpacing = 12 };
+        _homeShelf = shelfLayout;
         var heading = FullscreenUi.Text(shelf.Title, 32);
         _homeHeading = heading;
         heading.Margin = new Thickness(0, 12, 0, 12);
-        Grid.SetRow(heading, 1);
         var shelfGrid = new Grid { ColumnDefinitions = new ColumnDefinitions(string.Join(",", Enumerable.Repeat("*", _shelfCapacity))), Width = _wallWidth,
             HorizontalAlignment = HorizontalAlignment.Left };
         _wall = shelfGrid;
         shelfGrid.SizeChanged += (_, _) => SizeWall();
-        Grid.SetRow(shelfGrid, 2);
+        Grid.SetRow(shelfGrid, 1);
         // Only real recommendations are shown; a short shelf stays left aligned.
         var offset = _card / _shelfCapacity * _shelfCapacity;
         foreach (var (card, index) in shelf.Cards.Skip(offset).Take(_shelfCapacity).Select((c, i) => (c, i)))
@@ -269,10 +271,9 @@ public sealed class FullscreenBrowsePage : FullscreenPage
             _visibleCards.Add(button, card);
         }
         _hero.Margin = new Thickness(0, 0, 600, 0);
-        Grid.SetColumnSpan(_hero, 2);
         grid.Children.Add(_hero);
-        grid.Children.Add(heading);
-        grid.Children.Add(shelfGrid);
+        shelfLayout.Children.Add(heading);
+        shelfLayout.Children.Add(shelfGrid);
         var indicator = new FullscreenShelfIndicator(Context.Feed.Shelves.Select(s => s.Title).ToArray(), _shelf, index =>
         {
             _shelf = index; Rebuild(); FocusInitial();
@@ -280,11 +281,19 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         _homeIndicatorHost = new Border { VerticalAlignment = VerticalAlignment.Bottom,
             Child = new Viewbox { Child = indicator, Stretch = Stretch.Uniform,
                 StretchDirection = StretchDirection.DownOnly, VerticalAlignment = VerticalAlignment.Center } };
-        Grid.SetColumn(_homeIndicatorHost, 1); Grid.SetRow(_homeIndicatorHost, 2);
-        grid.Children.Add(_homeIndicatorHost);
+        Grid.SetColumn(_homeIndicatorHost, 1); Grid.SetRow(_homeIndicatorHost, 1);
+        shelfLayout.Children.Add(_homeIndicatorHost);
+        Grid.SetRow(shelfLayout, 1); grid.Children.Add(shelfLayout);
         Content = grid;
         if (shelf.Cards.Count > 0) SetHero(shelf.Cards[_card], shelf);
+        else { _selected = null; _art.Content = null; }
         SetFocusRows(_tiles.Cast<Control>().ToArray());
+    }
+
+    private void SelectBackdrop(GameTileViewModel tile)
+    {
+        if (_art.Content is FullscreenBackdrop backdrop) backdrop.Select(tile);
+        else _art.Content = new FullscreenBackdrop(Context, tile);
     }
 
     private void SetHero(FeedCardViewModel card, FeedShelfViewModel shelf)
@@ -310,7 +319,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         _hero.Content = FullscreenUi.Stack(FullscreenUi.Text(shelf.Title.ToUpperInvariant(), 24, "TextDim"),
             title, reason,
             FullscreenUi.Text($"{card.Tile.PlaytimeText} played · {card.Tile.LastPlayedText} · {(card.Tile.IsOnDisk ? "Installed" : "Not installed")} · {card.Tile.StoreNames}", 24, "TextDim"));
-        _art.Content = new FullscreenBackdrop(Context, card.Tile);
+        SelectBackdrop(card.Tile);
         Changed();
     }
 
@@ -324,7 +333,6 @@ public sealed class FullscreenBrowsePage : FullscreenPage
             _state = state;
         }
         _state.Resize(_columns * 2, library.VisibleTiles.Select(t => t.ReleaseId).ToArray());
-        _art.Content = null;
         _art.Opacity = .45;
         var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*") };
         var heading = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
@@ -384,12 +392,13 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         SetFocusRows(_collectionButtons.Cast<Control>().ToArray(), _tiles.Take(_columns).Cast<Control>().ToArray(), _tiles.Skip(_columns).Cast<Control>().ToArray());
         _selected = library.VisibleTiles.FirstOrDefault(t => t.ReleaseId == _state.SelectedReleaseId);
         if (_selected is { } selected) SetLibraryArt(selected);
+        else _art.Content = null;
         SizeWall();
     }
 
     private void SetLibraryArt(GameTileViewModel tile)
     {
-        _art.Content = new FullscreenBackdrop(Context, tile);
+        SelectBackdrop(tile);
     }
 
     private void SizeWall()
@@ -425,6 +434,11 @@ public sealed class FullscreenBrowsePage : FullscreenPage
             _wall.VerticalAlignment = VerticalAlignment.Bottom;
             _wall.Height = Math.Min(availableHeight, (cellWidth - 24) * 3 / 2 + outsideArt);
             if (_homeIndicatorHost is not null) _homeIndicatorHost.Height = _wall.Height;
+            if (_homeShelf is not null)
+            {
+                _homeShelf.Height = _wall.Height + _homeHeading.DesiredSize.Height;
+                _homeShelf.VerticalAlignment = VerticalAlignment.Bottom;
+            }
         }
         else
         {

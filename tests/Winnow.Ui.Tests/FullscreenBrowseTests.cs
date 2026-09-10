@@ -364,7 +364,7 @@ public sealed class FullscreenBrowseTests
     }
 
     [AvaloniaFact]
-    public async Task Library_selection_replaces_its_dimmed_backdrop()
+    public async Task Library_selection_reuses_its_dimmed_backdrop_for_art_transitions()
     {
         var library = CreateLibrary();
         await library.LoadCommand.ExecuteAsync(null);
@@ -381,8 +381,8 @@ public sealed class FullscreenBrowseTests
             page.Handle(GamepadButtons.Right);
             Dispatcher.UIThread.RunJobs();
             var current = Assert.Single(page.Backdrop!.GetVisualDescendants().OfType<FullscreenBackdrop>());
-            Assert.NotSame(previous, current);
-            Assert.Null(previous.GetVisualParent());
+            Assert.Same(previous, current);
+            Assert.NotNull(current.GetVisualParent());
             Assert.Equal(.45, Assert.IsType<ContentControl>(current.Parent).Opacity);
         }
         finally { window.Close(); }
@@ -646,7 +646,7 @@ public sealed class FullscreenBrowseTests
         {
             Dispatcher.UIThread.RunJobs();
             Assert.Contains(CoverKey.IgdbBackdrop("tv_screenshot"), leases.Keys);
-            var image = Assert.Single(backdrop.Children.OfType<Image>());
+            var image = backdrop.GetVisualDescendants().OfType<Image>().Last();
             Assert.Same(pixels, image.Source);
             Assert.True(leases.Active > 0);
             window.Content = null;

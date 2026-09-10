@@ -40,6 +40,10 @@ public sealed class FullscreenHomeLayoutTests
             var wall = Assert.IsType<Grid>(tile.GetVisualParent());
             var bottom = wall.TranslatePoint(new Point(0, wall.Bounds.Height), page)!.Value.Y;
             Assert.Equal(page.Bounds.Height, bottom, 3);
+            var heading = page.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == "Shelf 1" || t.Text == "Shelf 2");
+            var headingBottom = heading.TranslatePoint(new Point(0, heading.Bounds.Height), page)!.Value.Y;
+            var wallTop = wall.TranslatePoint(default, page)!.Value.Y;
+            Assert.InRange(wallTop - headingBottom, 11, 13);
             var indicator = page.GetVisualDescendants().OfType<FullscreenShelfIndicator>().Single();
             var railCenter = indicator.TranslatePoint(new Point(0, indicator.Bounds.Height / 2), page)!.Value.Y;
             var wallCenter = wall.TranslatePoint(new Point(0, wall.Bounds.Height / 2), page)!.Value.Y;

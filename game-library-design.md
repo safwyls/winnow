@@ -616,7 +616,9 @@ The fullscreen host reuses the input-source/filter code and dispatches to explic
 owned by each page. It creates independent library, feed, list and motion state over the
 shared repositories and action services. It never scales or navigates the desktop tree.
 Fullscreen pages may supply a backdrop for the shell to mount behind its safe area and
-header. Detaching that layer releases its artwork lease; the detail page still owns its
+header. Browsing reuses that layer across selections, retaining the displayed artwork lease
+while a replacement loads and through its short crossfade. Generation checks discard stale
+loads. Detaching releases displayed, outgoing and pending leases; the detail page still owns its
 content and focus rows. Browse page capacity is presentation state and reflows around the
 selected release identity when the available columns change.
 Adaptive cover capacity is recalculated once queued text scaling and layout have settled;

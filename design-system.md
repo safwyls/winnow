@@ -573,8 +573,8 @@ in TextDim. Endpoint arrows dim when unavailable. Mouse users can click arrows o
 controller up/down and LT/RT keep selecting shelves without extra focus stops.
 The cover row anchors to the bottom of the Home content area above the footer. The shelf
 rail shares its vertical center and follows that bottom anchor; it scales down to fit when
-space is tight. Spare height stays above the covers, showing the backdrop between the
-stationary shelf heading and the games rather than opening a gap below them.
+space is tight. The shelf heading stays directly above the covers with a 12px gap. Spare
+height shows backdrop between the hero information and the entire bottom-anchored shelf group.
 Text actions have transparent backgrounds and a mint underline on focus. Hover leaves
 no underline; current sections and collections use bold text and a neutral underline.
 The focused cover retains its outline. No desktop
@@ -626,6 +626,10 @@ composition for each task. The mock images are design references, not evidence o
 Home, Library, Activity, Settings and setup place decorative backdrops on the full fullscreen canvas,
 outside the display margins and behind the header and footer. Safe margins constrain text
 and controls, not artwork. Game selection updates the background without moving the content.
+When changing games, retain the displayed landscape while the next landscape loads, then
+crossfade over 180ms. Reduced motion swaps the loaded art immediately. A cover fallback
+appears only after landscape metadata or loading fails, never as an intermediate image
+between two landscapes. Ignore results from superseded selections.
 Game artwork fades in further to the right to keep the left content area quiet: browsing
 backdrops reveal between 30% and 85% of the canvas width, and the details veil stays dense
 through 58% before opening toward the right edge.

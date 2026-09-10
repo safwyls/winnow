@@ -3685,3 +3685,16 @@ with mouse targets alongside existing controller shelf navigation.
 The visual specification previously said:
 
 > Adaptive shelves reflow within the changed layout space, so final cover dimensions are not an exact percentage of their previous size.
+
+### 2026-09-10 — Shelf heading belongs to the anchored cover group
+
+The Home shelf heading now moves with the cover row, maintaining a 12px gap above it.
+The visual specification previously said:
+
+> Spare height stays above the covers, showing the backdrop between the stationary shelf heading and the games rather than opening a gap below them.
+
+Backdrop selection retains the previous landscape until the next landscape is ready, then
+crossfades over 180ms (instant with reduced motion). Intermediate portrait fallback was the
+confirmed flash mechanism. The architecture previously said:
+
+> Detaching that layer releases its artwork lease; the detail page still owns its content and focus rows.
