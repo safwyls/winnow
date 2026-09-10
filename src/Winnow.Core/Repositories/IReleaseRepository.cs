@@ -23,6 +23,9 @@ public interface IReleaseRepository
 
     Task<IReadOnlyList<ExternalId>> GetExternalIdsAsync(long releaseId, CancellationToken ct = default);
 
+    /// <summary>All store identity keys in one read, including fully enriched releases.</summary>
+    Task<IReadOnlyList<ExternalId>> GetAllExternalIdsAsync(CancellationToken ct = default);
+
     /// <summary>The hard-join lookup (§5.3 step 1): find a release by provider id.</summary>
     Task<Release?> FindByExternalIdAsync(string provider, string providerId, CancellationToken ct = default);
 

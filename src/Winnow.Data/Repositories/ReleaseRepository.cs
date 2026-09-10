@@ -76,6 +76,16 @@ public sealed class ReleaseRepository : IReleaseRepository
         return rows.AsList();
     }
 
+    public async Task<IReadOnlyList<ExternalId>> GetAllExternalIdsAsync(CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        var rows = await lease.Connection.QueryAsync<ExternalId>(new CommandDefinition("""
+            SELECT release_id AS ReleaseId, provider AS Provider, provider_id AS ProviderId
+            FROM external_ids ORDER BY release_id, provider, provider_id;
+            """, transaction: lease.Transaction, cancellationToken: ct));
+        return rows.AsList();
+    }
+
     public async Task<Release?> FindByExternalIdAsync(string provider, string providerId, CancellationToken ct = default)
     {
         using var lease = _factory.Lease();

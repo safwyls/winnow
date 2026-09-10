@@ -84,6 +84,12 @@ public sealed record IdentityLink
 /// </summary>
 public sealed record IdentityLinkRequest
 {
+    /// <summary>
+    /// For background hard-ID joins, the evidence works and their expected
+    /// same-game roots. Checked in the write transaction to reject stale plans.
+    /// </summary>
+    public IReadOnlyDictionary<long, long>? ExpectedSameGameRoots { get; init; }
+
     /// <summary>The work that will represent the identity or group.</summary>
     public required long ParentWorkId { get; init; }
 

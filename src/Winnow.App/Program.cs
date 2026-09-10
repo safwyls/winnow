@@ -727,6 +727,7 @@ public static class Program
         // match. Everything it answers is cached for 90 days.
         services.AddGamesDbIdentityGraph();
         services.AddSingleton<EnrichmentLookupPlanner>();
+        services.AddSingleton<GamesDbIdentitySyncService>();
 
         // §4.2. A second INGEST source, not a name fallback: localconfig.vdf
         // only records games that have been played, so the never-launched
