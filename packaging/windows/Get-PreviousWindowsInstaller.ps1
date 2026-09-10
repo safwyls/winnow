@@ -10,7 +10,7 @@ $headers = @{ 'User-Agent' = 'Winnow-upgrade-smoke'; Accept = 'application/vnd.g
 if ($env:GITHUB_TOKEN) { $headers.Authorization = "Bearer $env:GITHUB_TOKEN" }
 $candidates = @()
 for ($page = 1; $page -le 10; $page++) {
-    $releases = @(Invoke-RestMethod -Uri "https://api.github.com/repos/safwyls/winnow/releases?per_page=100&page=$page" -Headers $headers)
+    $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/safwyls/winnow/releases?per_page=100&page=$page" -Headers $headers
     foreach ($release in $releases) {
         if ($release.draft) { continue }
         try { $candidate = [System.Management.Automation.SemanticVersion]::Parse($release.tag_name.TrimStart('v')) }

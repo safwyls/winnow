@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-08 04:59'
-updated_date: '2026-09-10 00:13'
+updated_date: '2026-09-10 00:19'
 labels:
   - app-updates
 dependencies:
@@ -46,4 +46,6 @@ Stage and verify the official Inno installer. Explicit restart uses normal shutd
 
 <!-- SECTION:NOTES:BEGIN -->
 Implemented installed-Windows Inno handoff with registered-path detection, repeated SHA-256 verification, locked payload, readiness handshake, process-exit wait, non-forcing Setup, explicit restart/data-dir preservation and manual recovery logs. Local tests pass; actual older-to-newer installer and failure smoke is wired into release CI and not executed against this machine. Portable and Linux remain safe manual paths under TASK-159.
+
+First remote Windows smoke run caught nested JSON-array handling in the baseline-fetch script before any installer ran. Fixed Invoke-RestMethod enumeration and added an offline fixture regression check to the release preflight; local preflight passes. Linux release packaging/startup and native/Proton CI passed. Windows upgrade smoke rerun pending.
 <!-- SECTION:NOTES:END -->

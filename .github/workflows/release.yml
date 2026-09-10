@@ -55,6 +55,7 @@ jobs:
           INPUT_VERSION: ${{ inputs.version }}
         run: |
           ./packaging/Test-Version.ps1
+          ./packaging/windows/Test-PreviousWindowsInstaller.ps1
           [xml]$versionProps = Get-Content Version.props
           $versionPrefix = $versionProps.Project.PropertyGroup.VersionPrefix
           $version = if ($env:GITHUB_REF.StartsWith('refs/tags/')) {
