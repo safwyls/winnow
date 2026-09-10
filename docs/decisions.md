@@ -3643,3 +3643,20 @@ the user still confirms each grouping or uses the existing bulk commands.
 The visual specification previously said:
 
 > Three bands: a 56px header (`Merges`, the pending count in Data, `Sort ·`, `Accept N exact matches`, and the one filled button, `Merge N selected`); a 40px cut bar on `ChromeSurface` with a six-segment kind filter, a cut chip while filtered, and the count at the right, `14 → 6` while filtered, the only arrow in the interface; and the queue, one scroll of five outlined sections, ACROSS STORES · EDITIONS · EXPANSIONS · PARTS · TEST BUILDS, each with the count of its pending cards and a one-sentence blurb.
+
+## 2026-09-10 — Share dormant-cover dimming across both surfaces
+
+Dim dormant covers now uses the existing display preference throughout the application.
+Fullscreen ignores its former separate value, and its appearance reset preserves the shared
+choice. Motion remains specific to each presentation.
+
+The visual specification previously said:
+
+> Fullscreen owns its text scale (70–140% in ten-point steps), screen margins (0–10% in one-point steps), motion and dormancy preferences.
+> Fullscreen reset preserves that shared theme.
+> Fullscreen sizing, margins, motion and dormancy do not change desktop appearance, library facts or recommendations.
+
+The architecture previously said:
+
+> It creates independent library, feed, list and dormancy state over the shared repositories and action services.
+> Fullscreen keeps separate `fullscreen.*` sizing, margins, motion and dormancy preferences and renders the shared theme with opaque local resource overrides.

@@ -33,7 +33,7 @@ public sealed class FullscreenContextTests
         var original = PreviewData.Shell;
         var appearance = new AppearanceViewModel(new ThemeService(settings));
         var shell = new MainWindowViewModel(original.Library, original.MergeQueue, original.Stores, appearance,
-            original.Feed, original.AccountStats, original.LibrarySettings);
+            original.Feed, original.AccountStats, original.LibrarySettings, settings: settings);
         var context = FullscreenContext.Create(services, shell);
         Assert.NotSame(PreviewData.Library, context.Library);
         Assert.NotSame(PreviewData.Library.Lists, context.Library.Lists);
@@ -50,7 +50,23 @@ public sealed class FullscreenContextTests
         var desktopDimming = PreviewData.Library.Ramp.DimsDormantCovers;
         context.DimCovers = !desktopDimming;
         Assert.Equal(!desktopDimming, context.Library.Ramp.DimsDormantCovers);
-        Assert.Equal(desktopDimming, PreviewData.Library.Ramp.DimsDormantCovers);
+        Assert.Equal(!desktopDimming, PreviewData.Library.Ramp.DimsDormantCovers);
+        await shell.Display.PendingSave;
+        Assert.Equal((!desktopDimming).ToString().ToLowerInvariant(), settings.Values[DormancyRamp.DimCoversSettingKey]);
+        settings.Values["fullscreen.dim-covers"] = desktopDimming.ToString();
+        context.ReducedMotion = true;
+        await context.LoadAsync();
+        Assert.Equal(!desktopDimming, context.DimCovers);
+        Assert.True(context.Library.Ramp.ReducedMotion);
+        var reloadedRamp = new DormancyRamp();
+        var reloadedDisplay = new DisplaySettingsViewModel(reloadedRamp, settings);
+        await reloadedDisplay.LoadAsync();
+        Assert.Equal(!desktopDimming, reloadedRamp.DimsDormantCovers);
+        context.SetActive(false);
+        shell.Display.DimDormantCovers = desktopDimming;
+        context.SetActive(true);
+        Assert.Equal(desktopDimming, context.Library.Ramp.DimsDormantCovers);
+        Assert.True(context.Library.Ramp.ReducedMotion);
         settings.Values["fullscreen.theme"] = context.Themes.Last().Id;
         await context.LoadAsync();
         Assert.Equal(appearance.Service.Theme.Id, context.ThemeId);

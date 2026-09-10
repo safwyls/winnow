@@ -275,8 +275,8 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         }
         if (_section == "Appearance" && (buttons & GamepadButtons.Keyboard) != 0)
         {
-            Context.ShowActions("Reset fullscreen text size, margins, display fit, motion and cover dimming?", [new("Reset fullscreen appearance", () =>
-            { Context.TextScale = 1; Context.SafeMarginPercent = 5; Context.SetFitUltrawide(false); Context.ReducedMotion = false; Context.DimCovers = true; Render(); FocusInitial(); }), new("Cancel", () => { })]);
+            Context.ShowActions("Reset fullscreen text size, margins, display fit and motion?", [new("Reset fullscreen appearance", () =>
+            { Context.TextScale = 1; Context.SafeMarginPercent = 5; Context.SetFitUltrawide(false); Context.ReducedMotion = false; Render(); FocusInitial(); }), new("Cancel", () => { })]);
             return true;
         }
         return base.Handle(buttons);

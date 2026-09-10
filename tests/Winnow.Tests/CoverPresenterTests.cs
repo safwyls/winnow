@@ -27,6 +27,39 @@ public sealed class CoverPresenterTests
     private static CoverArt Art() => new(null!, null);
 
     [Fact]
+    public void Enabling_dimming_during_the_initial_decode_requests_the_floor_too()
+    {
+        var cache = new FakeCoverCache();
+        var pool = new CoverLeasePool(cache);
+        var ramp = new DormancyRamp { DimsDormantCovers = false };
+        using var side = new MergeSideViewModel(1, "Fixture", coverKey: Half, covers: pool, ramp: ramp);
+        side.RequestCover(MergeQueueViewModel.CoverWidth);
+        ramp.DimsDormantCovers = true;
+        Assert.Equal([CoverLayers.Vivid, CoverLayers.VividAndFloor], cache.Asked);
+        side.Dispose();
+        Assert.Equal(0, pool.LiveSlots);
+    }
+
+    [Fact]
+    public void Merge_thumbnails_request_the_floor_only_when_dimming_is_enabled()
+    {
+        var cache = new FakeCoverCache();
+        var pool = new CoverLeasePool(cache);
+        var ramp = new DormancyRamp { DimsDormantCovers = false };
+        var width = CoverImaging.SnapWidth(MergeQueueViewModel.CoverWidth);
+        cache.Memory[new FakeCoverCache.Slot(Half, width, CoverLayers.Vivid)] = Art();
+        using var side = new MergeSideViewModel(1, "Fixture", coverKey: Half, covers: pool, ramp: ramp);
+        side.RequestCover(MergeQueueViewModel.CoverWidth);
+        Assert.Empty(cache.Asked);
+        Assert.Equal(1, pool.LiveSlots);
+
+        ramp.DimsDormantCovers = true;
+        Assert.Equal([CoverLayers.VividAndFloor], cache.Asked);
+        side.Dispose();
+        Assert.Equal(0, pool.LiveSlots);
+    }
+
+    [Fact]
     public void Recycling_the_wall_tile_leaves_the_feed_cards_art_alone()
     {
         var cache = new FakeCoverCache();

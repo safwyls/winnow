@@ -16,21 +16,20 @@ namespace Winnow.App.ViewModels;
 /// <para>Cover art follows the grid exactly: <see cref="ICoverCache"/> if the
 /// host registered one, and the procedural placeholder underneath as the
 /// fallback, so a game with no capsule shows its title in Bricolage on a
-/// Surface field rather than a hole or a spinner (§7). There is no dormancy
-/// ramp here; the question on this screen is "are these the same game", and
-/// fading one side by how long ago it was played would be a second visual
-/// language answering a question nobody asked.</para>
+/// Surface field rather than a hole or a spinner (§7). The row resolves
+/// dormancy through the same live preference as the library.</para>
 /// </summary>
 public partial class MergeSideViewModel : ObservableObject, IMergeMemberFacts, IDisposable
 {
     private readonly ICoverLeases? _leases;
 
     /// <summary>
-    /// The row's thumbnail, leased. Both layers: a merge row fades on the same
-    /// rule its tile does (<see cref="MergeRowViewModel.DormancyAlpha"/>), so
-    /// the floor variant is drawn here.
+    /// The row's thumbnail follows the shared ramp's required layers and
+    /// requests the floor variant only while dimming is enabled.
     /// </summary>
-    private LeasedCover? _art;
+    private CoverPresenter? _art;
+
+    internal DormancyRamp Ramp { get; }
 
     public MergeSideViewModel(
         long releaseId,
@@ -39,7 +38,8 @@ public partial class MergeSideViewModel : ObservableObject, IMergeMemberFacts, I
         string? publisher = null,
         CoverKey? coverKey = null,
         ICoverLeases? covers = null,
-        IReadOnlyList<string>? stores = null)
+        IReadOnlyList<string>? stores = null,
+        DormancyRamp? ramp = null)
     {
         ReleaseId = releaseId;
         Title = string.IsNullOrWhiteSpace(title) ? $"Release {releaseId}" : title;
@@ -47,6 +47,7 @@ public partial class MergeSideViewModel : ObservableObject, IMergeMemberFacts, I
         Publisher = string.IsNullOrWhiteSpace(publisher) ? null : publisher;
         CoverKey = coverKey;
         _leases = covers;
+        Ramp = ramp ?? new DormancyRamp();
 
         var ordered = stores is null
             ? []
@@ -124,13 +125,21 @@ public partial class MergeSideViewModel : ObservableObject, IMergeMemberFacts, I
     /// <summary>Asks the cache for the art at the width it will be drawn at, off-thread.</summary>
     public void RequestCover(double displayWidthPixels)
     {
-        _art ??= new LeasedCover(_leases, CoverKey, CoverLayers.VividAndFloor, art =>
+        if (_art is null)
         {
-            CoverFloor = art?.Floor;
-            Cover = art?.Vivid;
-        });
+            _art = new CoverPresenter();
+            _art.PropertyChanged += OnArtChanged;
+            _art.Target(CoverKey, _leases, Ramp);
+        }
 
         _art.Request(displayWidthPixels);
+    }
+
+    private void OnArtChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(CoverPresenter.Art)) return;
+        CoverFloor = _art?.Floor;
+        Cover = _art?.Vivid;
     }
 
     /// <summary>
@@ -140,6 +149,7 @@ public partial class MergeSideViewModel : ObservableObject, IMergeMemberFacts, I
     public void Dispose()
     {
         _art?.Dispose();
+        if (_art is not null) _art.PropertyChanged -= OnArtChanged;
         _art = null;
     }
 }

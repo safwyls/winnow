@@ -613,7 +613,7 @@ surface. Share domain records, repositories, application services, validation an
 semantics for launch, install, lists, journal, settings and recommendation explanations.
 Share palette and font identities; keep layout, spacing and type scales surface-specific.
 The fullscreen host reuses the input-source/filter code and dispatches to explicit focus rows
-owned by each page. It creates independent library, feed, list and dormancy state over the
+owned by each page. It creates independent library, feed, list and motion state over the
 shared repositories and action services. It never scales or navigates the desktop tree.
 Fullscreen pages may supply a backdrop for the shell to mount behind its safe area and
 header. Detaching that layer releases its artwork lease; the detail page still owns its
@@ -646,8 +646,14 @@ with independent presentation state. Manual-game and identity tools construct th
 `LibrarySettingsViewModel` and `MergeQueueViewModel` from DI; editor state and focus do not
 leak into desktop tools. Shared settings remain common application state. Both surfaces use
 the shared `ThemeService` and `appearance.theme`; the former `fullscreen.theme` preference is
-ignored. Fullscreen keeps separate `fullscreen.*` sizing, margins, motion and dormancy
+ignored. Fullscreen keeps separate `fullscreen.*` sizing, margins and motion
 preferences and renders the shared theme with opaque local resource overrides.
+
+Dim dormant covers is shared through `DisplaySettingsViewModel` and the persisted
+`display.dim_dormant_covers` preference. The former `fullscreen.dim-covers` preference is
+ignored. Desktop library and merge covers use the shared ramp; fullscreen mirrors its dimming
+choice onto its own ramp so reduced motion remains surface-specific. Changes propagate even
+while fullscreen is inactive and while the saved display settings load.
 
 The Merges platform preference is shared through `ISettingsRepository` at
 `merges.preferred_platform` (`steam`, `epic`, `gog`, or empty for none). Each merge view model

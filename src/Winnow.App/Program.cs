@@ -1052,6 +1052,7 @@ public static class Program
         // nothing else.
         services.AddSingleton<IIgdbAssignmentService, IgdbAssignmentService>();
 
+        services.AddSingleton<DormancyRamp>();
         services.AddSingleton<LibraryViewModel>();
 
         // M8 — the Feed, and the screen the window opens on.

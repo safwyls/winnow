@@ -27,14 +27,14 @@ public sealed class FullscreenContext : IDisposable
     public Func<string, string, Task<string?>>? SaveFilePicker { get; set; }
     private readonly SemaphoreSlim _writes = new(1);
     private double _textScale = 1, _safeMargin = 5;
-    private bool _reducedMotion, _fitUltrawide, _dimCovers = true;
+    private bool _reducedMotion, _fitUltrawide;
     private bool _openingGame;
     private bool _disposed, _refreshPending, _active;
     private Task? _refreshTask;
     public double TextScale { get => _textScale; set { _textScale = Math.Clamp(value, .7, 1.4); Preference("text-scale", _textScale.ToString(CultureInfo.InvariantCulture)); } }
     public double SafeMarginPercent { get => _safeMargin; set { _safeMargin = Math.Clamp(value, 0, 10); Preference("safe-margin", _safeMargin.ToString(CultureInfo.InvariantCulture)); } }
     public bool ReducedMotion { get => _reducedMotion; set { _reducedMotion = value; Library.Ramp.ReducedMotion = value; Preference("reduced-motion", value.ToString()); } }
-    public bool DimCovers { get => _dimCovers; set { _dimCovers = value; Library.Ramp.DimsDormantCovers = value; Preference("dim-covers", value.ToString()); } }
+    public bool DimCovers { get => Shared.Display.DimDormantCovers; set => Shared.Display.DimDormantCovers = value; }
     public bool FitUltrawide => _fitUltrawide;
     public void SetFitUltrawide(bool value) { _fitUltrawide = value; Preference("fit-ultrawide", value.ToString()); }
     public string ThemeId
@@ -50,6 +50,8 @@ public sealed class FullscreenContext : IDisposable
         library.PropertyChanged += LibraryChanged;
         feed.PropertyChanged += FeedChanged;
         shared.Appearance.Service.Applied += ThemeChanged;
+        shared.Display.PropertyChanged += DisplayChanged;
+        Library.Ramp.DimsDormantCovers = DimCovers;
         if (!ReferenceEquals(shared.Library, library)) shared.Library.TilesChanged += SharedTilesChanged;
     }
     public static FullscreenContext Create(IServiceProvider services, MainWindowViewModel shared)
@@ -68,7 +70,6 @@ public sealed class FullscreenContext : IDisposable
             if (double.TryParse(await settings.GetAsync("fullscreen.text-scale"), CultureInfo.InvariantCulture, out var scale)) _textScale = Math.Clamp(scale, .7, 1.4);
             if (double.TryParse(await settings.GetAsync("fullscreen.safe-margin"), CultureInfo.InvariantCulture, out var margin)) _safeMargin = Math.Clamp(margin, 0, 10);
             if (bool.TryParse(await settings.GetAsync("fullscreen.reduced-motion"), out var motion)) _reducedMotion = motion;
-            if (bool.TryParse(await settings.GetAsync("fullscreen.dim-covers"), out var dim)) _dimCovers = dim;
             if (bool.TryParse(await settings.GetAsync("fullscreen.fit-ultrawide"), out var fit)) _fitUltrawide = fit;
         }
         if (_disposed) return;
@@ -78,7 +79,7 @@ public sealed class FullscreenContext : IDisposable
         Library.GroupExpansions = Shared.Library.GroupExpansions;
         Library.MaturityCap = Shared.Library.MaturityCap;
         Library.Ramp.ReducedMotion = _reducedMotion;
-        Library.Ramp.DimsDormantCovers = _dimCovers;
+        Library.Ramp.DimsDormantCovers = DimCovers;
         await RefreshAsync();
     }
     private void LibraryChanged(object? sender, PropertyChangedEventArgs e)
@@ -87,6 +88,12 @@ public sealed class FullscreenContext : IDisposable
         if (e.PropertyName == nameof(LibraryViewModel.Details) && !_openingGame) DetailsChanged?.Invoke(Library.Details);
     }
     private void ThemeChanged(object? sender, EventArgs e) => PreferencesChanged?.Invoke(this, EventArgs.Empty);
+    private void DisplayChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(DisplaySettingsViewModel.DimDormantCovers)) return;
+        Library.Ramp.DimsDormantCovers = DimCovers;
+        PreferencesChanged?.Invoke(this, EventArgs.Empty);
+    }
     private void FeedChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(FeedViewModel.ListPrompt) && Feed.ListPrompt is { } prompt) OpenPrompt(prompt);
@@ -138,6 +145,7 @@ public sealed class FullscreenContext : IDisposable
         Library.PropertyChanged -= LibraryChanged;
         Feed.PropertyChanged -= FeedChanged;
         Shared.Appearance.Service.Applied -= ThemeChanged;
+        Shared.Display.PropertyChanged -= DisplayChanged;
         Shared.Library.TilesChanged -= SharedTilesChanged;
         if (!ReferenceEquals(Library, Shared.Library))
         {

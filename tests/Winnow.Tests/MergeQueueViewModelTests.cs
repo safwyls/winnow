@@ -43,6 +43,37 @@ public sealed class MergeQueueViewModelTests
         new("Sid Meier's Civilization IV: Beyond the Sword", 2007, "2K");
 
     [Fact]
+    public async Task Merge_covers_follow_the_saved_display_preference_and_live_changes()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueueCrossStoreTripleAsync();
+        var settings = new SettingsRepository(fixture.Factory);
+        await settings.SetAsync(DormancyRamp.DimCoversSettingKey, "false");
+        var ramp = new DormancyRamp();
+        var display = new DisplaySettingsViewModel(ramp, settings);
+        await display.LoadAsync();
+        using var queue = fixture.CreateViewModel(ramp: ramp);
+        await queue.EnsureLoadedAsync();
+        var rows = queue.Sections.SelectMany(section => section.Cards).SelectMany(card => card.Rows).ToArray();
+        Assert.NotEmpty(rows);
+        Assert.All(rows, row => Assert.Equal(1, row.DormancyAlpha));
+        var changed = new HashSet<MergeRowViewModel>();
+        foreach (var row in rows)
+            row.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(MergeRowViewModel.DormancyAlpha)) changed.Add(row); };
+
+        display.DimDormantCovers = true;
+        await display.PendingSave;
+        Assert.All(rows, row => Assert.Equal(0, row.DormancyAlpha));
+        Assert.Equal(rows.Length, changed.Count);
+        display.DimDormantCovers = false;
+        await display.PendingSave;
+        Assert.All(rows, row => Assert.Equal(1, row.DormancyAlpha));
+        await queue.LoadCommand.ExecuteAsync(null);
+        Assert.All(queue.Sections.SelectMany(section => section.Cards).SelectMany(card => card.Rows),
+            row => Assert.Equal(1, row.DormancyAlpha));
+    }
+
+    [Fact]
     public async Task Preferred_platform_updates_hidden_cards_and_accept_uses_the_chosen_parent()
     {
         using var fixture = new MergeQueueFixture();
@@ -2334,7 +2365,8 @@ public sealed class MergeQueueViewModelTests
             bool withResolveState = true,
             IMergeCandidateRepository? candidates = null,
             IReadOnlyList<long>? pinnedWorkIds = null,
-            ICoverLeases? covers = null)
+            ICoverLeases? covers = null,
+            DormancyRamp? ramp = null)
             => new(
                 candidates ?? Candidates,
                 Releases,
@@ -2349,7 +2381,8 @@ public sealed class MergeQueueViewModelTests
                 igdb: pinnedWorkIds is null ? null : new PinnedWorksOnly(pinnedWorkIds),
                 clock: Clock,
                 post: action => action(),
-                settings: new SettingsRepository(_db.Factory));
+                settings: new SettingsRepository(_db.Factory),
+                ramp: ramp);
 
         /// <summary>
         /// Sets one work's stored art reference through the real enrichment

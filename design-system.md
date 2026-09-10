@@ -659,14 +659,15 @@ retains the shared rules for mixed currencies and wallet credit.
 rows expose a label and current value; left/right changes bounded values, A opens pickers
 or activates toggles, and B returns. Appearance has a readable live sample. Fullscreen owns
 its text scale (70–140% in ten-point steps), screen margins (0–10% in one-point steps),
-motion and dormancy preferences. Text size has separate mouse decrease/increase buttons
+and motion preferences. Text size has separate mouse decrease/increase buttons
 and controller left/right adjustment. Theme selection is shared with desktop and updates
-both surfaces immediately, including artwork veils. Fullscreen reset preserves that shared
-theme. Defaults are 100%, 5%, motion and cover dimming enabled; Fit ultrawide defaults off.
+both surfaces immediately, including artwork veils. Dim dormant covers is also shared and
+updates every dormancy-bearing cover immediately. Fullscreen reset preserves the shared
+theme and cover-dimming choice. Defaults are 100%, 5%, motion and cover dimming enabled; Fit ultrawide defaults off.
 Boolean settings use visible switch tracks
 and thumbs with an On/Off status. Controller help fits one 16:9 screen with five concise
 action mappings on either side of a proportional diagram and keyboard fallback below.
-Fullscreen sizing, margins, motion and dormancy do not change desktop appearance, library facts or
+Fullscreen sizing, margins and motion do not change desktop appearance, library facts or
 recommendations. Content visibility, platform credentials, journal opt-in and application
 startup settings use the same value and validation in both UIs. Reset requires a confirmation
 naming the affected appearance settings. Library tools has TV-owned forms for manual games,
@@ -794,7 +795,9 @@ sorting, measured text sizes, data provenance or supported device behavior.
   measures 4.13 / 3.69 / 3.58 / 4.12 across the four themes on the *opaque* ground, which is
   under AA before transparency exists. `TextFaint` is for disabled arrows and decoration.
 - A settings toggle disables the dormancy ramp entirely for users who prefer uniform art. The
-  badges and buckets carry the signal without it.
+  badges and buckets carry the signal without it. Dim dormant covers is one persisted choice
+  across desktop and fullscreen, including library grids and lists, Feed and Merges. Existing
+  detail art, identity search previews and decorative backdrops retain their own treatments.
 - The caption buttons are real buttons, reachable by Tab like anything else. `Danger` is never
   the only thing distinguishing close: it has its own glyph and its own tooltip.
 

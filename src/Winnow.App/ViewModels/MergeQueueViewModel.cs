@@ -43,6 +43,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     public const string PreferredPlatformSettingKey = "merges.preferred_platform";
 
     private readonly ISettingsRepository? _settings;
+    private readonly Services.DormancyRamp _ramp;
     private string? _preferredPlatform;
 
     private readonly IMergeCandidateRepository _candidates;
@@ -106,10 +107,13 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         Services.IIgdbAssignmentService? igdb = null,
         TimeProvider? clock = null,
         Action<Action>? post = null,
-        ISettingsRepository? settings = null)
+        ISettingsRepository? settings = null,
+        Services.DormancyRamp? ramp = null)
     {
         _candidates = candidates;
         _settings = settings;
+        _ramp = ramp ?? new Services.DormancyRamp();
+        _ramp.PropertyChanged += OnRampChanged;
         _releases = releases;
         _works = works;
         _links = links;
@@ -752,6 +756,12 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(MergeSelectedLabel));
             OnPropertyChanged(nameof(CanMergeSelected));
         }
+    }
+
+    private void OnRampChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not (nameof(Services.DormancyRamp.DimsDormantCovers) or null)) return;
+        foreach (var row in _cardOfRow.Keys) row.RefreshDormancy();
     }
 
     private void RefreshCounts()
@@ -1910,7 +1920,8 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             work?.Publisher,
             coverKey,
             _covers,
-            stores));
+            stores,
+            _ramp));
     }
 
     /// <summary>What one load read about the releases the queue names.</summary>
@@ -2109,6 +2120,8 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         }
 
         _disposed = true;
+        _ramp.PropertyChanged -= OnRampChanged;
+        foreach (var card in _sectionOfCard.Keys) card.ReleaseCovers();
         _dockTimer?.Dispose();
         _dockTimer = null;
     }
