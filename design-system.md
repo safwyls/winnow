@@ -554,8 +554,10 @@ reference. These are design starting points, not measured distance guarantees.
 fullscreen preference: it expands the reference canvas horizontally to the display aspect
 ratio at the default 1080px reference height. Overall UI scale adjusts both reference dimensions
 inversely, uniformly scaling text, controls and artwork while retaining percentage safe margins.
-Adaptive shelves reflow within the changed layout space, so final cover dimensions are not
-an exact percentage of their previous size. The default retains the
+Library grids reflow within the changed layout space. Home uses cover dimensions from its
+100% layout as a stable target: reducing interface scale shrinks covers and admits more
+games, rather than enlarging art to fill the extra height. Available height still limits
+covers when increasing scale or using large margins. The default retains the
 16:9 composition. Validate readability from the actual seating position before accepting the scale.
 
 **For you** opens on a focused recommendation in a horizontal cover shelf. A large title,
@@ -565,6 +567,10 @@ length does not resize the cover shelf. Titles keep one line at the reference ti
 ellipsize overflow; opening game details reveals the full title. Title length never consumes
 a second row or reduces the preferred cover size. Up/down changes
 shelves; left/right moves among their games. The selected cover has the only focus ring.
+The shelf title has no numeric fraction. A vertical rail at the right shows previous/next
+chevrons and one dot per shelf: the current dot is filled with Volt, the others are outlined
+in TextDim. Endpoint arrows dim when unavailable. Mouse users can click arrows or dots;
+controller up/down and LT/RT keep selecting shelves without extra focus stops.
 Text actions have transparent backgrounds and a mint underline on focus. Hover leaves
 no underline; current sections and collections use bold text and a neutral underline.
 The focused cover retains its outline. No desktop

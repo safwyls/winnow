@@ -37,6 +37,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     private bool _pending;
     private bool _sizePending;
     private ContentControl _hero = new();
+    private TextBlock? _homeHeading;
     private readonly ContentControl _art = new() { IsHitTestVisible = false,
         HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch };
     public override Control? Backdrop => _art;
@@ -241,11 +242,14 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         _shelf = Math.Clamp(_shelf, 0, Context.Feed.Shelves.Count - 1);
         var shelf = Context.Feed.Shelves[_shelf];
         _card = Math.Clamp(_shelfPositions.GetValueOrDefault(shelf.Id), 0, Math.Max(0, shelf.Cards.Count - 1));
-        var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*") };
-        var heading = FullscreenUi.Text($"{shelf.Title}     {_shelf + 1} / {Context.Feed.Shelves.Count}", 32);
+        var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*"),
+            ColumnDefinitions = new ColumnDefinitions("*,64"), ColumnSpacing = 12 };
+        var heading = FullscreenUi.Text(shelf.Title, 32);
+        _homeHeading = heading;
         heading.Margin = new Thickness(0, 12, 0, 12);
         Grid.SetRow(heading, 1);
-        var shelfGrid = new Grid { ColumnDefinitions = new ColumnDefinitions(string.Join(",", Enumerable.Repeat("*", _shelfCapacity))), Width = _wallWidth, HorizontalAlignment = HorizontalAlignment.Left };
+        var shelfGrid = new Grid { ColumnDefinitions = new ColumnDefinitions(string.Join(",", Enumerable.Repeat("*", _shelfCapacity))), Width = _wallWidth,
+            HorizontalAlignment = HorizontalAlignment.Left };
         _wall = shelfGrid;
         shelfGrid.SizeChanged += (_, _) => SizeWall();
         Grid.SetRow(shelfGrid, 2);
@@ -264,9 +268,16 @@ public sealed class FullscreenBrowsePage : FullscreenPage
             _visibleCards.Add(button, card);
         }
         _hero.Margin = new Thickness(0, 0, 600, 0);
+        Grid.SetColumnSpan(_hero, 2);
         grid.Children.Add(_hero);
         grid.Children.Add(heading);
         grid.Children.Add(shelfGrid);
+        var indicator = new FullscreenShelfIndicator(Context.Feed.Shelves.Select(s => s.Title).ToArray(), _shelf, index =>
+        {
+            _shelf = index; Rebuild(); FocusInitial();
+        });
+        Grid.SetColumn(indicator, 1); Grid.SetRow(indicator, 1); Grid.SetRowSpan(indicator, 2);
+        grid.Children.Add(indicator);
         Content = grid;
         if (shelf.Cards.Count > 0) SetHero(shelf.Cards[_card], shelf);
         SetFocusRows(_tiles.Cast<Control>().ToArray());
@@ -393,8 +404,28 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     private void ResizeWall()
     {
         if (_wall is null || _wall.Bounds.Height <= 0 || Bounds.Width <= 0) return;
-        var columns = FullscreenCoverLayout.Columns(Bounds.Width, _wall.Bounds.Height, _feed ? 1 : 2, Context.TextScale);
-        _wallWidth = Bounds.Width;
+        int columns;
+        if (_feed && _homeHeading is not null)
+        {
+            // Use the 100% canvas as the sizing reference. Extra space at smaller UI scales
+            // adds columns instead of increasing the cover height and undoing the user's zoom.
+            var availableHeight = Math.Max(1, Bounds.Height - _hero.DesiredSize.Height - _homeHeading.DesiredSize.Height);
+            var referenceHeight = Math.Max(1, availableHeight + (1080 - 1080 / Context.UiScale) * (1 - 2 * Context.SafeMarginPercent / 100));
+            var referenceWidth = Math.Max(1, Bounds.Width * Context.UiScale - 76);
+            var referenceColumns = FullscreenCoverLayout.Columns(referenceWidth, referenceHeight, 1, Context.TextScale);
+            var cellWidth = referenceWidth / referenceColumns;
+            var outsideArt = 36 * Context.TextScale + 28;
+            cellWidth = Math.Min(cellWidth, Math.Max(1, availableHeight - outsideArt) * 2 / 3 + 24);
+            columns = Math.Max(1, (int)Math.Floor((Bounds.Width - 76 + .01) / cellWidth));
+            _wallWidth = Math.Min(Bounds.Width - 76, columns * cellWidth);
+            _wall.VerticalAlignment = VerticalAlignment.Top;
+            _wall.Height = Math.Min(availableHeight, (cellWidth - 24) * 3 / 2 + outsideArt);
+        }
+        else
+        {
+            columns = FullscreenCoverLayout.Columns(Bounds.Width, _wall.Bounds.Height, 2, Context.TextScale);
+            _wallWidth = Bounds.Width;
+        }
         if (Math.Abs(_wall.Width - _wallWidth) > 1 || double.IsNaN(_wall.Width)) _wall.Width = _wallWidth;
         if (columns == (_feed ? _shelfCapacity : _columns)) return;
         if (_feed) _shelfCapacity = columns;

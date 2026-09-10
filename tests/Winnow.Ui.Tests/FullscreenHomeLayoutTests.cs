@@ -15,6 +15,40 @@ namespace Winnow.Ui.Tests;
 public sealed class FullscreenHomeLayoutTests
 {
     [AvaloniaTheory]
+    [InlineData(5, 1)]
+    [InlineData(10, 1.4)]
+    public void Reducing_interface_scale_reduces_rendered_home_covers(double margin, double textScale)
+    {
+        using var feed = new FeedViewModel(new PreviewFeedService(), PreviewData.Library);
+        for (var i = 0; i < 6; i++)
+            feed.Shelves.Add(new FeedShelfViewModel($"shelf-{i}", $"Shelf {i + 1}", "",
+                Enumerable.Range(0, 20).Select(_ => new FeedCardViewModel(PreviewData.Tile, "An update arrived."))));
+        using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell)
+            { SafeMarginPercent = margin, TextScale = textScale };
+        using var view = new FullscreenView(context);
+        var window = new Window { Width = 1920, Height = 1080, Content = view };
+        double CoverHeight()
+        {
+            var cover = view.CurrentPage.GetVisualDescendants().OfType<FullscreenCover>().First();
+            return cover.Bounds.Height * cover.TransformToVisual(window)!.Value.M22;
+        }
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            var original = CoverHeight();
+            Assert.True(original > 100);
+            context.UiScale = .8; Dispatcher.UIThread.RunJobs();
+            Assert.InRange(CoverHeight() / original, .78, .82);
+            view.Handle(GamepadButtons.Down); Dispatcher.UIThread.RunJobs();
+            Assert.Contains(view.CurrentPage.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Shelf 2");
+            Assert.InRange(CoverHeight() / original, .78, .82);
+            context.UiScale = 1; Dispatcher.UIThread.RunJobs();
+            Assert.InRange(CoverHeight() / original, .98, 1.02);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
     [InlineData(.7)]
     [InlineData(1)]
     [InlineData(1.4)]

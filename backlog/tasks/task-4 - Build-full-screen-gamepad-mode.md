@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - codex
 created_date: '2026-08-29 21:52'
-updated_date: '2026-09-10 21:49'
+updated_date: '2026-09-10 22:01'
 labels:
   - ui
   - accessibility
@@ -55,6 +55,8 @@ Shift non-cinematic backdrop reveal right, keep Home titles on one fixed-size li
 Right-align My lists, Filter & sort and More in the fullscreen Library toolbar while preserving left collection tabs and existing horizontal controller order. Verify browse navigation; desktop unaffected.
 
 Hide unavailable fullscreen updater actions in parity with desktop and preserve focus through availability changes. Differentiate Settings groups, navigation rows, external links, commands, toggles and adjustments using labelled sections and trailing semantic cues. Keep live theme/platform labels. Verify update lifecycle controller reachability and both settings surfaces with fake updater tests.
+
+Correct Home cover sizing so reducing interface scale cannot enlarge covers: use a scale-independent target tile height and width with adaptive capacity. Replace shelf fraction with themed vertical previous/next arrows and selected shelf dots, retaining controller shelf navigation and adding mouse access. Verify rendered cover sizes at80/100 percent and shelf indicator navigation. Desktop unchanged.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -99,4 +101,6 @@ Shifted artwork reveal right on browse and cinematic backdrops. Home titles now 
 Moved My lists, Filter & sort and More to the far-right group of the fullscreen Library toolbar, with collection tabs left and unchanged horizontal controller focus order. Desktop unaffected. All 22 fullscreen browse Release tests passed. Updated visual spec; preserved unrelated ApplicationSettingsView.axaml edits.
 
 Fullscreen update actions now appear only when available, matching desktop visibility; the screenshot showed disabled actions without a release to download. Controller focus is repaired after availability changes and available actions scroll fully into view. Main Settings groups now use subdued headings, Open chevrons for menus/pickers, Run with A glyph for commands, and Browser arrows for external links; toggle/value controls keep their distinct presentation. Live platform/theme labels retain cues. Desktop updater behavior is unchanged and cross-surface updater tests pass. Added lifecycle/navigation regressions with fake updater, including explicit restart only. Full UI run passed 262 of263; the remaining test used old string-content lookup and passed in the subsequent five-test platform run after switching to accessible names. Existing setup navigation test likewise uses accessible name. Preserved unrelated desktop ApplicationSettingsView.axaml changes.
+
+Home covers now use the equivalent100 percent layout as their target, so reducing interface scale shrinks rendered covers rather than expanding them into newly available height; extra width admits more real cards. Regression checks measure80 percent cover height within2 percent at normal and140 percent text/10 percent margins, including shelf changes and return to100 percent. Replaced shelf fraction with right-side themed chevrons and one dot per shelf, current Volt fill, other TextDim outlines, disabled endpoints, accessible44px mouse targets and unchanged controller shelf controls. All268 Release UI tests passed in38s. Desktop unchanged; preserved unrelated ApplicationSettingsView.axaml edit. Updated visual spec and decisions.
 <!-- SECTION:NOTES:END -->

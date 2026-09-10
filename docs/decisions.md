@@ -3674,3 +3674,14 @@ The visual specification previously said:
 > Fit ultrawide is an optional fullscreen preference: it expands the reference canvas horizontally to the display aspect ratio while keeping the 1080px reference height and uniform scaling.
 > Fullscreen owns its text scale (70–140% in ten-point steps), screen margins (0–10% in one-point steps), and motion preferences.
 > Text size has separate mouse decrease/increase buttons and controller left/right adjustment.
+
+### 2026-09-10 — Home covers follow interface scaling
+
+Home now derives its cover size from the equivalent 100% layout. Reducing interface scale
+shrinks that target and uses the extra width for more games; it no longer gives covers the
+extra height left by smaller text. A themed shelf rail replaces the numeric shelf fraction,
+with mouse targets alongside existing controller shelf navigation.
+
+The visual specification previously said:
+
+> Adaptive shelves reflow within the changed layout space, so final cover dimensions are not an exact percentage of their previous size.
