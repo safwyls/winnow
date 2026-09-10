@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - codex
 created_date: '2026-08-29 21:52'
-updated_date: '2026-09-10 21:33'
+updated_date: '2026-09-10 21:39'
 labels:
   - ui
   - accessibility
@@ -51,6 +51,8 @@ Add shared persisted Start in fullscreen option to Application settings on deskt
 Move Home, Library, Activity and Settings decorative backdrops to the existing full-canvas shell layer while keeping controls inside safe margins. Verify edge bounds and page transitions; desktop remains unchanged.
 
 Shift non-cinematic backdrop reveal right, keep Home titles on one fixed-size line with ellipsis to preserve the preferred shelf geometry, and add persisted fullscreen UI scale 80–120 percent in 5 percent steps with mouse/controller controls and reset. Verify full-shell scaling, ultrawide, persistence and title-selection stability; desktop presentation stays unchanged.
+
+Right-align My lists, Filter & sort and More in the fullscreen Library toolbar while preserving left collection tabs and existing horizontal controller order. Verify browse navigation; desktop unaffected.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -91,4 +93,6 @@ Added shared persisted Start in fullscreen in desktop and TV Application setting
 Fullscreen decorative art now uses the full-canvas shell layer for Home, Library, Activity, Settings and setup, retaining safe margins for text and controls. Details already used this layer. Desktop presentation and shared behavior are unchanged. All 255 Release UI tests pass, including 16:9/ultrawide edge bounds at 10 percent margins, selected-library art replacement, and details return restoring the Library backdrop. Preserved the pre-existing ApplicationSettingsView.axaml edit.
 
 Shifted artwork reveal right on browse and cinematic backdrops. Home titles now remain at64px on one line with ellipsis, retaining cover sizes and positions for long titles at70/100/140 percent text. Added fullscreen Appearance Interface scale80–120 percent in5-point steps, persisted and included in reset, with mouse +/- and dpad adjustment. The uniform canvas transform covers chrome, controls and artwork; responsive cover shelves also reflow with available space rather than guaranteeing exact percentage changes to final cover bounds. Desktop sizing is unchanged; existing ApplicationSettingsView.axaml edits are preserved. All261 Release UI tests passed in38s; solution Release build passed with zero warnings/errors. Scale tests cover persistence, nonfinite/clamped values, reset, rendered navigation scaling, safe margins, edge-to-edge backgrounds and keyboard fit at maximum scale on16:9/ultrawide.
+
+Moved My lists, Filter & sort and More to the far-right group of the fullscreen Library toolbar, with collection tabs left and unchanged horizontal controller focus order. Desktop unaffected. All 22 fullscreen browse Release tests passed. Updated visual spec; preserved unrelated ApplicationSettingsView.axaml edits.
 <!-- SECTION:NOTES:END -->

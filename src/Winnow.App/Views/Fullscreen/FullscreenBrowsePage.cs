@@ -323,7 +323,12 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         Grid.SetColumn(count, 1);
         heading.Children.Add(count);
         grid.Children.Add(heading);
-        var collections = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16, Margin = new Thickness(0, 4, 0, 8) };
+        var collections = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"),
+            Margin = new Thickness(0, 4, 0, 8) };
+        var shelves = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
+        var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
+        collections.Children.Add(shelves);
+        Grid.SetColumn(tools, 2); collections.Children.Add(tools);
         Grid.SetRow(collections, 1);
         var all = FullscreenUi.Button("All games", () => ChooseCollection("all"));
         var installed = FullscreenUi.Button("Installed", () => ChooseCollection("installed"));
@@ -344,7 +349,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         foreach (var (control, index) in _collectionButtons.Select((button, index) => (button, index)))
         {
             control.GotFocus += (_, _) => _headerFocus = index;
-            collections.Children.Add(control);
+            (index < 4 ? shelves : tools).Children.Add(control);
         }
         grid.Children.Add(collections);
         var wall = new Grid { RowDefinitions = new RowDefinitions("*,*"), ColumnDefinitions = new ColumnDefinitions(string.Join(",", Enumerable.Repeat("*", _columns))), Width = _wallWidth, HorizontalAlignment = HorizontalAlignment.Left };

@@ -629,6 +629,10 @@ the focused game. Unread dots and dormancy retain their shared meaning. A dimmed
 backdrop follows the selection. Home and search use the same uncropped art treatment; home
 only shows the recommendations actually returned by the feed.
 
+Library collection tabs align left; My lists, Filter & sort and More form a separate
+group at the far right of the same row, inside the safe margins. Controller focus follows
+their visual left-to-right order across both groups.
+
 Resizing recomputes page capacity while keeping the selected release anchored. Up from the
 first row on the first page reaches the collection choices. At grid edges, down advances a
 page and up returns to the previous page, preserving the column where possible. Triggers
