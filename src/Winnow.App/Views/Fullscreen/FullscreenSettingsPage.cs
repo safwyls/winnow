@@ -14,6 +14,7 @@ namespace Winnow.App.Views.Fullscreen;
 
 public sealed class FullscreenSettingsPage : FullscreenPage
 {
+    public override Control? Backdrop { get; } = new FullscreenAmbientBackdrop("settings");
     private static readonly string[] Sections = ["Appearance", "Controller", "Library", "Platforms", "Application"];
     private string _section = "Appearance";
     private readonly Dictionary<Control, Action<int>> _adjustments = [];
@@ -257,7 +258,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*"), RowSpacing = 24 };
         layout.Children.Add(FullscreenUi.Text("Make yourself comfortable", 64)); Grid.SetRow(nav, 1); layout.Children.Add(nav); Grid.SetRow(main, 2); layout.Children.Add(main);
         _initial ??= tabs[Array.IndexOf(Sections, _section)];
-        Content = FullscreenAmbientBackdrop.Behind(layout, "settings"); SetFocusRows(focus.ToArray()); Changed();
+        Content = layout; SetFocusRows(focus.ToArray()); Changed();
     }
 
     public override bool Handle(GamepadButtons buttons)

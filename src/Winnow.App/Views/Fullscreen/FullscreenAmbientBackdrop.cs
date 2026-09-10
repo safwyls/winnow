@@ -16,18 +16,12 @@ internal sealed class FullscreenAmbientBackdrop : Viewbox
     public FullscreenAmbientBackdrop(string asset)
     {
         IsHitTestVisible = false;
+        ClipToBounds = true;
         Stretch = Stretch.UniformToFill;
         Opacity = .38;
         Child = FullscreenVectorArt.Load(asset);
     }
 
-    public static Grid Behind(Control content, string asset)
-    {
-        var layers = new Grid { ClipToBounds = true };
-        layers.Children.Add(new FullscreenAmbientBackdrop(asset));
-        layers.Children.Add(content);
-        return layers;
-    }
 }
 
 internal static class FullscreenVectorArt

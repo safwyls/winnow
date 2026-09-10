@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
@@ -13,6 +14,40 @@ namespace Winnow.Ui.Tests;
 
 public sealed class FullscreenHomeLayoutTests
 {
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Root_backdrops_fill_canvas_outside_safe_margins(bool ultrawide)
+    {
+        using var feed = new FeedViewModel(new PreviewFeedService(), PreviewData.Library);
+        feed.Shelves.Add(new FeedShelfViewModel("art", "Ready to play", "",
+            new[] { new FeedCardViewModel(PreviewData.Tile, "An update arrived.") }));
+        using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell)
+            { SafeMarginPercent = 10 };
+        context.SetFitUltrawide(ultrawide);
+        using var television = new FullscreenView(context);
+        var window = new Window { Width = ultrawide ? 2560 : 1920, Height = 1080, Content = television };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            for (var i = 0; i < 4; i++)
+            {
+                var backdrop = television.CurrentPage.Backdrop!;
+                Assert.NotNull(backdrop);
+                var origin = backdrop.TranslatePoint(default, television)!.Value;
+                Assert.Equal(0, origin.X, 4);
+                Assert.Equal(0, origin.Y, 4);
+                Assert.Equal(television.Bounds.Width, backdrop.Bounds.Width, 4);
+                Assert.Equal(1080, backdrop.Bounds.Height, 4);
+                var pageOrigin = television.CurrentPage.TranslatePoint(default, television)!.Value;
+                Assert.True(pageOrigin.X > 0);
+                Assert.True(pageOrigin.Y > 0);
+                television.Handle(GamepadButtons.Next); Dispatcher.UIThread.RunJobs();
+            }
+        }
+        finally { window.Close(); }
+    }
+
     [AvaloniaTheory]
     [InlineData(.7)]
     [InlineData(1)]

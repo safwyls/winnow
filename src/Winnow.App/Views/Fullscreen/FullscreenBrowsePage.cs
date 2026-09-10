@@ -37,7 +37,9 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     private bool _pending;
     private bool _sizePending;
     private ContentControl _hero = new();
-    private ContentControl _art = new();
+    private readonly ContentControl _art = new() { IsHitTestVisible = false,
+        HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch };
+    public override Control? Backdrop => _art;
     private GameTileViewModel? _selected;
     private Grid? _wall;
     private Window? _window;
@@ -224,7 +226,8 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     {
         _visibleCards.Clear();
         _hero = new ContentControl { MinHeight = 300 };
-        _art = new ContentControl();
+        _art.Content = null;
+        _art.Opacity = 1;
         if (Context.Feed.Shelves.Count == 0)
         {
             _selected = null;
@@ -264,7 +267,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         grid.Children.Add(_hero);
         grid.Children.Add(heading);
         grid.Children.Add(shelfGrid);
-        Content = new Panel { Children = { _art, grid } };
+        Content = grid;
         if (shelf.Cards.Count > 0) SetHero(shelf.Cards[_card], shelf);
         SetFocusRows(_tiles.Cast<Control>().ToArray());
     }
@@ -290,7 +293,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         _hero.Content = FullscreenUi.Stack(FullscreenUi.Text(shelf.Title.ToUpperInvariant(), 24, "TextDim"),
             title, reason,
             FullscreenUi.Text($"{card.Tile.PlaytimeText} played · {card.Tile.LastPlayedText} · {(card.Tile.IsOnDisk ? "Installed" : "Not installed")} · {card.Tile.StoreNames}", 24, "TextDim"));
-        _art.Content = new FullscreenBackdrop(Context, card.Tile) { HorizontalAlignment = HorizontalAlignment.Right, Width = 1100 };
+        _art.Content = new FullscreenBackdrop(Context, card.Tile);
         Changed();
     }
 
@@ -304,7 +307,8 @@ public sealed class FullscreenBrowsePage : FullscreenPage
             _state = state;
         }
         _state.Resize(_columns * 2, library.VisibleTiles.Select(t => t.ReleaseId).ToArray());
-        _art = new ContentControl { Opacity = .45 };
+        _art.Content = null;
+        _art.Opacity = .45;
         var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*") };
         var heading = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         var title = FullscreenUi.Text(library.Lists.Open?.Name ?? library.SelectedBucket?.Name
@@ -354,7 +358,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         }
         if (_tiles.Count == 0) wall.Children.Add(FullscreenUi.Text(library.EmptyMessage ?? "No games match this collection. Change your filters or search."));
         grid.Children.Add(wall);
-        Content = new Panel { Children = { _art, grid } };
+        Content = grid;
         SetFocusRows(_collectionButtons.Cast<Control>().ToArray(), _tiles.Take(_columns).Cast<Control>().ToArray(), _tiles.Skip(_columns).Cast<Control>().ToArray());
         _selected = library.VisibleTiles.FirstOrDefault(t => t.ReleaseId == _state.SelectedReleaseId);
         if (_selected is { } selected) SetLibraryArt(selected);

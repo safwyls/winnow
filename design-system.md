@@ -608,6 +608,10 @@ falling back to a desktop dialog does not satisfy M10.
 The remaining screens use the same typography, safe area and focus treatment, with a separate
 composition for each task. The mock images are design references, not evidence of device testing.
 
+Home, Library, Activity, Settings and setup place decorative backdrops on the full fullscreen canvas,
+outside the display margins and behind the header and footer. Safe margins constrain text
+and controls, not artwork. Game selection updates the background without moving the content.
+
 **Library** uses two rows of complete portrait covers. The column count responds to available
 width, row height and text size; wider displays show more games instead of stretching or
 cropping artwork. Stable 2:3 frames use uniform fitting so user-supplied art keeps its whole

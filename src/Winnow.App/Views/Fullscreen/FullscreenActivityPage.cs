@@ -13,6 +13,7 @@ namespace Winnow.App.Views.Fullscreen;
 /// <summary>Personal history, with its own selection and week independent of the desktop.</summary>
 public sealed class FullscreenActivityPage : FullscreenPage
 {
+    public override Control? Backdrop { get; } = new FullscreenAmbientBackdrop("activity");
     private readonly List<ActivityEntry> _entries = [];
     private readonly StackPanel _preview = new() { Spacing = 24 };
     private ActivityEntry? _selected;
@@ -159,7 +160,7 @@ public sealed class FullscreenActivityPage : FullscreenPage
         Grid.SetColumn(previewScroll, 1); columns.Children.Add(previewScroll);
         var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*"), RowSpacing = 24 };
         layout.Children.Add(FullscreenUi.Text("Your activity", 64)); Grid.SetRow(tabBar, 1); layout.Children.Add(tabBar);
-        Grid.SetRow(columns, 2); layout.Children.Add(columns); Content = FullscreenAmbientBackdrop.Behind(layout, "activity");
+        Grid.SetRow(columns, 2); layout.Children.Add(columns); Content = layout;
         SetFocusRows(buttons.ToArray());
         Select(rows.FirstOrDefault(r => r == _selected) ?? rows.FirstOrDefault());
     }

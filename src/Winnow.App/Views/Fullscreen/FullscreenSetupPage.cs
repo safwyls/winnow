@@ -12,6 +12,7 @@ namespace Winnow.App.Views.Fullscreen;
 /// <summary>Setup retains its place while a TV-owned provider or settings page is open.</summary>
 public sealed class FullscreenSetupPage : FullscreenPage
 {
+    public override Control? Backdrop { get; } = new FullscreenAmbientBackdrop("settings");
     private readonly FirstRunSetupViewModel _setup;
     public override string Title => "Set up Winnow";
     public override string Hints => _setup.Step != FirstRunStep.Welcome ? "A  Select     B  Previous step" : "A  Select";
@@ -122,7 +123,7 @@ public sealed class FullscreenSetupPage : FullscreenPage
         layout.Children.Add(FullscreenUi.Scroll(body));
         Grid.SetRow(actions, 1);
         layout.Children.Add(actions);
-        Content = FullscreenAmbientBackdrop.Behind(layout, "settings");
+        Content = layout;
         SetFocusRows(focus.ToArray());
         Changed();
     }

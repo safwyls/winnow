@@ -370,16 +370,17 @@ public sealed class FullscreenBrowseTests
         await library.LoadCommand.ExecuteAsync(null);
         using var context = new FullscreenContext(library, new FeedViewModel(new PreviewFeedService(), library), PreviewData.Shell);
         var page = new FullscreenBrowsePage(context, false);
-        var window = new Window { Width = 1920, Height = 1080, Content = page };
+        var window = new Window { Width = 1920, Height = 1080,
+            Content = new Panel { Children = { page.Backdrop!, page } } };
         window.Show();
         try
         {
             Dispatcher.UIThread.RunJobs();
             page.FocusInitial();
-            var previous = Assert.Single(page.GetVisualDescendants().OfType<FullscreenBackdrop>());
+            var previous = Assert.Single(page.Backdrop!.GetVisualDescendants().OfType<FullscreenBackdrop>());
             page.Handle(GamepadButtons.Right);
             Dispatcher.UIThread.RunJobs();
-            var current = Assert.Single(page.GetVisualDescendants().OfType<FullscreenBackdrop>());
+            var current = Assert.Single(page.Backdrop!.GetVisualDescendants().OfType<FullscreenBackdrop>());
             Assert.NotSame(previous, current);
             Assert.Null(previous.GetVisualParent());
             Assert.Equal(.45, Assert.IsType<ContentControl>(current.Parent).Opacity);
