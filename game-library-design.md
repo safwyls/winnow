@@ -818,6 +818,31 @@ release workflow, and recovery instructions.
 
 ---
 
+### 5.6 First-run setup
+
+`FirstRunSetupService` stores one cursor under `setup.progress.v1` in the existing settings
+table. Before host construction can open the database, Program records whether its file
+already existed. After migrations and before ingestion starts, the service initializes a
+missing cursor to Welcome for a new library, or done for an existing library and sample-data
+runs. A stored cursor takes precedence, so restarting an interrupted new install resumes
+rather than treating the now-populated database as an established installation.
+
+`FirstRunSetupViewModel` shares navigation between the desktop overlay and fullscreen page.
+The shell loads saved app, appearance and library preferences before displaying setup. Hidden
+background launches retain their hidden window; setup is visible when the user opens it.
+Moving between steps persists the cursor; finishing or skipping all writes done. A failed
+cursor write keeps the wizard open with retry copy. Continue waits for pending preference
+writes; Back and Skip remain usable when a preference write failed. Reopening from Application
+settings resets only the cursor, preserving all saved preferences and credentials.
+
+The wizard composes existing App view models and commands; it does not introduce a second
+sign-in, credential store, ingest path or theme mechanism. Steam consent, Epic sign-in,
+protected IGDB saving and local GOG discovery retain their existing contracts. Navigating away
+clears credential drafts without saving them. IGDB changes retain the documented restart step;
+wizard completion does not automatically restart or launch another enrichment pass.
+
+---
+
 ## 6. Data model
 
 SQLite. Migrations are embedded resources, checked into the repository, applied on startup by

@@ -52,6 +52,7 @@ public partial class MainWindow
             shared.ApplicationSettings.Igdb.ClientSecret = "";
         DesktopHost.IsVisible = !fullscreen;
         TvHost.IsVisible = fullscreen;
+        UpdateSetupPresentation();
         if (fullscreen && !_presentingTv)
         {
             _presentingTv = true;

@@ -29,8 +29,9 @@ public sealed class FullscreenSettingsPage : FullscreenPage
     public override string Hints => _section == "Appearance" ? "← / →  Adjust     A  Select     Y  Reset page" : "A  Select     B  Back";
     public override string RightHints => "LT / RT  Section";
 
-    public FullscreenSettingsPage(FullscreenContext context) : base(context)
+    public FullscreenSettingsPage(FullscreenContext context, string initialSection = "Appearance") : base(context)
     {
+        _section = Sections.Contains(initialSection) ? initialSection : "Appearance";
         Render();
         context.PreferencesChanged += RefreshValues;
         context.Shared.ApplicationSettings.PropertyChanged += ApplicationSettingsChanged;
@@ -196,6 +197,8 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             if (app.IsStartupSupported) Toggle("Start with Windows", "Start Winnow when you sign in.", () => app.StartWithWindows, value => app.StartWithWindows = value);
             rows.Children.Add(FullscreenUi.Text($"Winnow {app.ApplicationVersion}", 28, "TextDim"));
             Action("IGDB metadata", () => Context.Push(new FullscreenIgdbSettingsPage(Context)));
+            if (!Context.Shared.Setup.IsOpen)
+                Action("Run setup again", () => app.OpenSetupCommand.Execute(null));
             if (app.HasUpdater)
             {
                 Toggle("Automatic background updates", app.AutomaticUpdatesNote, () => app.AutomaticUpdates, value => app.AutomaticUpdates = value);

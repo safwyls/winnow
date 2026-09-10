@@ -3599,3 +3599,15 @@ The visual specification previously said:
 > with a `Volt` edge — the same pattern the Stores panel's `Border.note.working` uses.
 > it lives in the rail's grid rather than on any screen.
 > Nothing else lives in the caption — no menu, no search, no status.
+
+## 2026-09-10 — Optional first-run setup
+
+The user requested a skippable wizard for IGDB, Steam, Epic, GOG, theme and application
+setup. One persisted cursor now serves separate desktop and fullscreen presentations,
+reusing existing settings and provider flows. Existing database files are treated as
+established installs unless an unfinished cursor already exists. Library discovery continues
+in the background; completing setup does not trigger an automatic restart.
+
+The visual specification previously said:
+
+> APPLICATION holds operating-system behavior, metadata credentials and application build information.

@@ -45,6 +45,9 @@ public partial class ApplicationSettingsViewModel : ObservableObject
 
     public string Title => "Application";
     public IgdbSettingsViewModel Igdb { get; }
+    public event Action? SetupRequested;
+    [RelayCommand]
+    private void OpenSetup() => SetupRequested?.Invoke();
     public string ApplicationVersion => ApplicationBuildInfo.Current.Version;
     public string BuildCommit => ApplicationBuildInfo.Current.Commit;
     public string IntroMessage =>

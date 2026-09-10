@@ -146,6 +146,7 @@ public static class Program
         // leaving the flag off.
         builder.Services.AddSingleton(new SteamPlaytimeBackfillOptions { Enabled = !writesSuppressed });
 
+        var databaseAlreadyExisted = File.Exists(DataLocation.DatabasePath);
         ConfigureServices(builder.Services, DataLocation);
 
         builder.Services.Configure<SnapshotSchedulerOptions>(o => o.Enabled = !writesSuppressed);
@@ -170,6 +171,9 @@ public static class Program
             // their tables" is a trap waiting for the first person who sets
             // RunOnStartup.
             host.Services.GetRequiredService<DatabaseInitializer>().Initialize();
+            host.Services.GetRequiredService<FirstRunSetupService>()
+                .InitializeAsync(databaseAlreadyExisted, args.Contains("--seed-sample"), Shutdown.Token)
+                .GetAwaiter().GetResult();
 
             // The one-time interactive Epic sign-in. Deliberately BEFORE
             // host.Start() and before Avalonia: it is a terminal flow that ends
@@ -898,6 +902,8 @@ public static class Program
         services.AddSingleton<IIgdbSettingsService, IgdbSettingsService>();
         services.AddSingleton<IgdbSettingsViewModel>();
         services.AddSingleton<ApplicationSettingsViewModel>();
+        services.AddSingleton<FirstRunSetupService>();
+        services.AddSingleton<FirstRunSetupViewModel>();
         services.AddHttpClient<GitHubReleaseClient>(client => client.Timeout = Timeout.InfiniteTimeSpan)
             .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
         services.AddSingleton<IUpdateInstaller, WindowsUpdateInstaller>();

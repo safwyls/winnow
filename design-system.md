@@ -2560,7 +2560,7 @@ A successful sign-in does not add a second confirmation block; actionable notice
 It is not under APPEARANCE, which changes material and layout and no data. It is not under
 PLATFORMS, which is about connecting to a store; this is about what to do with what arrived.
 
-APPLICATION holds operating-system behavior, metadata credentials and application build information.
+APPLICATION holds operating-system behavior, metadata credentials, setup replay and application build information.
 Its **NOTIFICATION AREA** card has separate, off-by-default toggles for hiding Winnow when it
 is minimized and keeping it running when its window is closed. The notification-area menu
 offers **Open Winnow** and **Exit**; Exit always closes the process even when close-to-tray is
@@ -2676,3 +2676,38 @@ own rule applied a second time. It removes the ownership, then the release only 
 other ownership hangs off it, then the work only when it has no releases left, so a store
 entry that later attached to the same release keeps its game. `Danger` is on its confirm
 button and on nothing else on the screen.
+
+### 16.4 First-run setup
+
+A new library opens a nine-step wizard: Welcome, IGDB, Steam, Epic, GOG, Theme, Application,
+Library and Ready. Every configuration step is optional. **Continue** advances, **Back**
+returns to the previous step, **Skip this step** advances without saving credential drafts,
+and **Skip setup** finishes the wizard from any step. Welcome uses **Get started**; Ready
+uses **Open my library**. Changes already saved remain in place when a step is skipped.
+The current step resumes after closing Winnow; finishing or skipping the whole wizard stops
+automatic display. Existing libraries are not interrupted on upgrade. **Run setup again**
+in Application settings reopens Welcome without resetting preferences.
+
+**Desktop.** The wizard sits over the client area, leaving the caption available. A compact
+header carries the step count, title and explanation; the body scrolls inside a bounded
+panel and navigation stays visible at the minimum window height. The normal shell cannot
+receive input underneath it. Keyboard Tab cycles inside setup. Embedded platform dialogs
+keep their own focus scope; Escape closes that layer first, then skips an optional setup
+step. Returning from fullscreen restores wizard focus. The controller keyboard appears above
+the wizard and preserves secret masking.
+
+**Fullscreen.** A separate setup page uses the TV typography and explicit controller focus
+rows. Each configuration step opens an existing provider or settings page; Back returns to
+the same wizard step. Root navigation and the quick menu stay out of the flow while setup
+is open. A selects, B goes back one layer or one wizard step, and the visible Skip controls
+remain available. Completing setup returns to Library. Changing presentation retains the
+shared cursor.
+
+**Existing controls retain their meaning.** IGDB has an explicit Save action, a masked secret
+and protected local storage; Save and its status remain visible outside the desktop field
+scroller. Continue is not a second Save button. Theme and preference controls save as they
+change. Copy explains that skipped items remain in Settings and that IGDB changes need a
+restart after setup. GOG describes local Galaxy discovery without inventing a sign-in flow.
+Steam's consent and disclosure text stays intact. Credential drafts clear when leaving a step
+or presentation. A failed preference save can be skipped; a failed progress write keeps the
+wizard open and explains how to retry.

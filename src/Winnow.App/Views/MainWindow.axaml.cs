@@ -333,6 +333,7 @@ public partial class MainWindow : Window
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
+        if (_shell is not null) _shell.Setup.PropertyChanged -= OnSetupChanged;
 
         if (_library is not null)
         {
@@ -346,6 +347,8 @@ public partial class MainWindow : Window
         }
 
         _shell = DataContext as MainWindowViewModel;
+        if (_shell is not null) _shell.Setup.PropertyChanged += OnSetupChanged;
+        UpdateSetupPresentation();
         _library = _shell?.Library;
         _detailsWereOpen = _library?.IsDetailsOpen == true;
         _detailsVisibleSource = null;
@@ -392,6 +395,7 @@ public partial class MainWindow : Window
         try
         {
             await LoadOnOpenAsync();
+            if (_shell is not null) await _shell.Setup.LoadAsync();
         }
         catch (OperationCanceledException)
         {
@@ -678,6 +682,8 @@ public partial class MainWindow : Window
         {
             return;
         }
+
+        if (_shell?.Setup.IsOpen == true) return;
 
         // Prompt keys must not also navigate the screen underneath.
         var prompt = _library?.Prompt ?? _shell?.Feed.ListPrompt;

@@ -153,7 +153,7 @@
     <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
 
         <!-- ══ Header ═══════════════════════════════════════════════════════ -->
-        <Border Grid.Row="0"
+        <Border Grid.Row="0" Name="AppearanceHeader"
                 Padding="24,20,24,18"
                 BorderBrush="{StaticResource Line}"
                 BorderThickness="0,0,0,1">

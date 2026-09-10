@@ -60,6 +60,17 @@ update signals fill in behind it.
 
 ### First run
 
+A new library opens a setup wizard for IGDB, Steam, Epic, GOG, theme, application preferences
+and library preferences. **Continue**, **Back**, **Skip this step** and **Skip setup** let you
+choose how much to configure. Closing Winnow partway through resumes that step next time;
+finishing or skipping setup keeps it closed. Existing libraries continue straight into Winnow.
+You can reopen it with **Settings → Application → Run setup again** on desktop or fullscreen.
+
+Preferences save as you change them. Credential forms have an explicit **Save** action;
+skipping a step discards unsaved secret fields and preserves saved choices. After saving
+IGDB credentials, restart Winnow when setup is finished. Steam and Epic offer their existing
+optional connections; GOG uses local Galaxy discovery without a sign-in step.
+
 The first run does the most work — scanning launcher files, creating a record per game, then
 fetching titles and covers. Give it a minute or two.
 

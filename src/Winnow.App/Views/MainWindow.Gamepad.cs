@@ -180,6 +180,13 @@ public partial class MainWindow
         var focused = FocusManager?.GetFocusedElement() as Control;
         if (focused is not null && TopLevel.GetTopLevel(focused) is { } popup && popup != this)
             return popup;
+        if (_shell?.Setup.IsOpen == true && SetupPanel.Pane is Control setup)
+        {
+            var modal = setup.GetVisualDescendants().OfType<StoresView>()
+                .SelectMany(view => view.GetVisualDescendants().OfType<Border>())
+                .FirstOrDefault(border => border.Classes.Contains("modal") && border.IsEffectivelyVisible);
+            return modal ?? setup;
+        }
         var prompt = this.GetVisualDescendants().OfType<FeedListPromptView>()
             .LastOrDefault(v => v.IsEffectivelyVisible);
         if (prompt is not null) return prompt;
@@ -250,10 +257,10 @@ public partial class MainWindow
 
     private void OpenGamepadKeyboard(TextBox target)
     {
-        var panel = ShellContent;
+        Panel panel = _shell?.Setup.IsOpen == true ? SetupInputHost : ShellContent;
         var keyboard = new GamepadKeyboardView(target);
         var layer = new Grid { Background = Brushes.Transparent, ZIndex = 1000 };
-        Grid.SetColumnSpan(layer, panel.ColumnDefinitions.Count);
+        if (panel is Grid grid) Grid.SetColumnSpan(layer, grid.ColumnDefinitions.Count);
         layer.Children.Add(keyboard);
         layer.PointerPressed += (_, e) =>
         {

@@ -69,6 +69,11 @@ and execution order. Read Backlog for current completion status.
 TASK-148 adds Winnow's own Windows/Linux installer and release workflow, separate from
 M9's management of installed games.
 
+TASK-176 adds optional first-run setup for metadata, platforms, appearance, application and
+library preferences on desktop and fullscreen. It resumes interrupted setup, preserves saved
+choices when steps are skipped, and can be reopened from Application settings. Provider
+capabilities retain their existing scope, including local-only GOG discovery.
+
 | Priority | Tasks in execution order | Reason |
 |---|---|---|
 | High | TASK-24, TASK-11, TASK-16, TASK-17, TASK-28, TASK-31, TASK-26, TASK-141, TASK-3, TASK-52, TASK-25 | Credential protection, atomic writes, ingest and cover safety, migration and CI gates, working install/uninstall, recoverable backfill, redacted diagnostics |

@@ -23,7 +23,7 @@
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
-        <Border Grid.Row="0" Padding="24,20,24,18"
+        <Border Grid.Row="0" Name="ApplicationHeader" Padding="24,20,24,18"
                 BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
             <StackPanel Spacing="7">
                 <TextBlock AutomationProperties.HeadingLevel="1"
@@ -160,8 +160,8 @@
                 </Border>
 
                 <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
-                           AutomationProperties.HeadingLevel="2" Text="IGDB METADATA"/>
-                <Border Classes="card" AutomationProperties.Name="IGDB metadata"
+                           Name="IgdbHeading" AutomationProperties.HeadingLevel="2" Text="IGDB METADATA"/>
+                <Border Name="IgdbCard" Classes="card" AutomationProperties.Name="IGDB metadata"
                         AutomationProperties.AccessibilityView="Control">
                     <StackPanel Spacing="12">
                         <TextBlock Classes="para" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
@@ -191,10 +191,21 @@
                 <TextBlock Classes="problem" IsVisible="{Binding HasProblem}"
                            Text="{Binding Problem}" AutomationProperties.LiveSetting="Polite"/>
 
+                <Border Name="SetupCard" Classes="card" AutomationProperties.Name="Setup wizard"
+                        AutomationProperties.AccessibilityView="Control">
+                    <StackPanel Spacing="12">
+                        <TextBlock Classes="body-l" Text="Setup wizard"/>
+                        <TextBlock Classes="body" TextWrapping="Wrap"
+                                   Text="Walk through metadata, platforms, appearance and preferences again."/>
+                        <Button Name="OpenSetupButton" Classes="act" Content="Run setup again"
+                                HorizontalAlignment="Left" Command="{Binding OpenSetupCommand}"/>
+                    </StackPanel>
+                </Border>
+
                 <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
                            Margin="0,6,0,0" AutomationProperties.HeadingLevel="2"
-                           Text="ABOUT WINNOW"/>
-                <Border Classes="card" AutomationProperties.Name="About Winnow"
+                           Name="AboutHeading" Text="ABOUT WINNOW"/>
+                <Border Name="AboutCard" Classes="card" AutomationProperties.Name="About Winnow"
                         AutomationProperties.AccessibilityView="Control">
                     <StackPanel Spacing="12">
                         <StackPanel Spacing="5">

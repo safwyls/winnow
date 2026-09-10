@@ -2279,6 +2279,14 @@
     </Grid>
     </Grid>
     <ContentControl Name="TvHost" IsVisible="False" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+    <views:LazyPane Name="SetupPanel" Margin="0,36,0,0" IsVisible="False">
+        <views:LazyPane.PaneTemplate>
+            <DataTemplate DataType="vm:MainWindowViewModel">
+                <views:FirstRunSetupView DataContext="{Binding Setup}"/>
+            </DataTemplate>
+        </views:LazyPane.PaneTemplate>
+    </views:LazyPane>
+    <Panel Name="SetupInputHost" Margin="0,36,0,0" IsVisible="False"/>
     </Panel>
 
 </Window>

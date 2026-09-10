@@ -37,7 +37,8 @@ public partial class MainWindowViewModel : ObservableObject
         ISettingsRepository? settings = null,
         Services.SessionJournalService? journal = null,
         ILibraryQueryRepository? libraryQueries = null,
-        ApplicationSettingsViewModel? applicationSettings = null)
+        ApplicationSettingsViewModel? applicationSettings = null,
+        FirstRunSetupViewModel? setup = null)
     {
         Fetch = fetch ?? new FetchStatusViewModel();
         Library = library;
@@ -48,6 +49,7 @@ public partial class MainWindowViewModel : ObservableObject
         AccountStats = accountStats;
         LibrarySettings = librarySettings;
         ApplicationSettings = applicationSettings ?? new ApplicationSettingsViewModel();
+        Setup = setup ?? new FirstRunSetupViewModel(Stores, Appearance, ApplicationSettings, LibrarySettings);
 
         // Hiding a game, unhiding one, adding one by hand and turning the
         // explicit filter on all change which rows the bucket query returns, so
@@ -158,6 +160,7 @@ public partial class MainWindowViewModel : ObservableObject
 
     /// <summary>SETTINGS › APPLICATION — window lifetime and Windows sign-in.</summary>
     public ApplicationSettingsViewModel ApplicationSettings { get; }
+    public FirstRunSetupViewModel Setup { get; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
