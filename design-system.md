@@ -2560,7 +2560,7 @@ A successful sign-in does not add a second confirmation block; actionable notice
 It is not under APPEARANCE, which changes material and layout and no data. It is not under
 PLATFORMS, which is about connecting to a store; this is about what to do with what arrived.
 
-APPLICATION holds operating-system behavior and application build information.
+APPLICATION holds operating-system behavior, metadata credentials and application build information.
 Its **NOTIFICATION AREA** card has separate, off-by-default toggles for hiding Winnow when it
 is minimized and keeping it running when its window is closed. The notification-area menu
 offers **Open Winnow** and **Exit**; Exit always closes the process even when close-to-tray is
@@ -2573,6 +2573,16 @@ off by default. It opens the TV interface on the next normal launch; changing it
 switch the current view. Windows sign-in and explicit background launches retain tray-first
 behavior. Exiting fullscreen restores the desktop, and reopening a hidden window does not
 reapply the startup preference.
+
+The **IGDB METADATA** card offers **Get IGDB credentials**, labelled **Client ID** and
+**Client secret** fields, **Save credentials** and **Remove saved credentials**. The secret
+is masked, is cleared after saving or leaving the form, and is never loaded back into the
+field. A polite status line reports saved configuration and failures without claiming that
+Twitch has validated the credentials. Copy explains secure local storage and the restart
+step. Removing saved credentials preserves any environment or local configuration fallback.
+Fullscreen Application opens a dedicated **IGDB metadata** page with the same model and
+actions, large fields and explicit controller focus rows. A opens the existing on-screen
+keyboard for either field; secret entry retains its masking.
 
 Its **ABOUT WINNOW** card shows **Version** and **Source commit** as selectable Data-font
 text. The version retains prerelease labels; builds without source metadata say `Unavailable`

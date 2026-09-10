@@ -3573,6 +3573,22 @@ The release instructions previously said:
 
 > Close Winnow before upgrading.
 
+## 2026-09-10 — IGDB setup in Application settings
+
+Desktop and fullscreen now expose the existing protected IGDB credential storage. Save and
+Remove explain the restart step; saving does not claim network validation. Development
+configuration remains a fallback.
+
+The visual specification previously said:
+
+> APPLICATION holds operating-system behavior and application build information.
+
+The README previously said:
+
+> Winnow works without it; a keyless Steam endpoint covers most titles. IGDB adds years,
+> publishers and genres. Get a client ID and secret from
+> [dev.twitch.tv](https://dev.twitch.tv/console/apps):
+
 ## 2026-09-10 — Metadata progress in the titlebar
 
 The user requested moving metadata progress from the rail into the desktop titlebar.

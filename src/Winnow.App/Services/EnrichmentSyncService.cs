@@ -274,7 +274,7 @@ public sealed class EnrichmentSyncService
             run.IgdbUnconfiguredLogged = true;
             _logger.LogInformation(
                 "IGDB is not configured; falling back to the Steam store for titles. "
-                + "Set Igdb__ClientId / Igdb__ClientSecret to enable the metadata backbone.");
+                + "Add credentials in Settings > Application > IGDB metadata to enable it.");
         }
 
         var titles = new Dictionary<TargetKey, string>();

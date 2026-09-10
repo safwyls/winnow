@@ -159,6 +159,35 @@
                     </StackPanel>
                 </Border>
 
+                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                           AutomationProperties.HeadingLevel="2" Text="IGDB METADATA"/>
+                <Border Classes="card" AutomationProperties.Name="IGDB metadata"
+                        AutomationProperties.AccessibilityView="Control">
+                    <StackPanel Spacing="12">
+                        <TextBlock Classes="para" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                                   Text="IGDB adds game details and artwork. Enter the client ID and secret from your Twitch developer application."/>
+                        <Button Classes="act" HorizontalAlignment="Left" Content="Get IGDB credentials"
+                                Command="{Binding Igdb.OpenSetupCommand}"/>
+                        <TextBlock Classes="body" Text="Client ID"/>
+                        <TextBox Name="IgdbClientId" Text="{Binding Igdb.ClientId, Mode=TwoWay}"
+                                 IsEnabled="{Binding !Igdb.IsBusy}" AutomationProperties.Name="IGDB client ID"/>
+                        <TextBlock Classes="body" Text="Client secret"/>
+                        <TextBox Name="IgdbClientSecret" Text="{Binding Igdb.ClientSecret, Mode=TwoWay}"
+                                 PasswordChar="●" IsEnabled="{Binding !Igdb.IsBusy}"
+                                 AutomationProperties.Name="IGDB client secret" Watermark="Enter a secret to save or replace credentials"/>
+                        <TextBlock Classes="para" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                                   Text="The secret is stored securely on this device. Restart Winnow after saving or removing credentials."/>
+                        <WrapPanel>
+                            <Button Classes="act" Content="Save credentials" Margin="0,0,8,0"
+                                    Command="{Binding Igdb.SaveCommand}"/>
+                            <Button Classes="act" Content="Remove saved credentials"
+                                    Command="{Binding Igdb.RemoveCommand}"/>
+                        </WrapPanel>
+                        <TextBlock Classes="para" TextWrapping="Wrap" Text="{Binding Igdb.Status}"
+                                   AutomationProperties.LiveSetting="Polite"/>
+                    </StackPanel>
+                </Border>
+
                 <TextBlock Classes="problem" IsVisible="{Binding HasProblem}"
                            Text="{Binding Problem}" AutomationProperties.LiveSetting="Polite"/>
 

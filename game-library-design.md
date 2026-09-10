@@ -209,6 +209,13 @@ stored locally.
 
 ### 4.4 IGDB
 
+- Desktop and fullscreen Application settings accept the user's Twitch client ID and secret.
+  An App service writes through the existing IGDB settings store and secret
+  protector, atomically replaces the pair and clears persisted token caches. It refuses
+  plaintext storage, never reloads the secret into the editor, and tells the user to restart
+  after changes so cached runtime credentials and the startup enrichment pass are refreshed.
+  Settings credentials take precedence over environment/local configuration credentials;
+  removing the saved pair preserves that fallback. Saving does not perform network validation.
 - Auth is Twitch client-credentials:
   `POST https://id.twitch.tv/oauth2/token?client_id=…&client_secret=…&grant_type=client_credentials`.
   Send `Client-ID` and `Authorization: Bearer <token>` on every request. Tokens are long-lived

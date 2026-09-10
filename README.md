@@ -151,8 +151,19 @@ remain readable.
 ### Optional: IGDB
 
 Winnow works without it; a keyless Steam endpoint covers most titles. IGDB adds years,
-publishers and genres. Get a client ID and secret from
-[dev.twitch.tv](https://dev.twitch.tv/console/apps):
+publishers and genres. Open **Settings → Application → IGDB metadata** on desktop or
+fullscreen. **Get IGDB credentials** opens the [Twitch developer console](https://dev.twitch.tv/console/apps).
+Register a Confidential application and generate a client secret; see
+[IGDB's setup instructions](https://api-docs.igdb.com/#account-creation) for the registration steps.
+Enter the client ID and secret, choose **Save credentials**, then restart Winnow. Saving
+stores the secret through the platform secret protector; it does not validate it with Twitch.
+The secret stays masked, and the field is cleared after saving.
+
+**Remove saved credentials** removes only the pair stored by Winnow. Environment or local
+configuration credentials remain available as a fallback. Restart after removing credentials.
+If secure storage is unavailable, Winnow refuses to save the secret and explains the failure.
+
+For development, environment variables remain supported:
 
 ```powershell
 setx Igdb__ClientId     "your-client-id"

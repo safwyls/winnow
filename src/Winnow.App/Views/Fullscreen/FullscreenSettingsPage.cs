@@ -195,6 +195,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             Toggle("Close to tray", "Keep Winnow running when its window is closed.", () => app.CloseToTray, value => app.CloseToTray = value);
             if (app.IsStartupSupported) Toggle("Start with Windows", "Start Winnow when you sign in.", () => app.StartWithWindows, value => app.StartWithWindows = value);
             rows.Children.Add(FullscreenUi.Text($"Winnow {app.ApplicationVersion}", 28, "TextDim"));
+            Action("IGDB metadata", () => Context.Push(new FullscreenIgdbSettingsPage(Context)));
             if (app.HasUpdater)
             {
                 Toggle("Automatic background updates", app.AutomaticUpdatesNote, () => app.AutomaticUpdates, value => app.AutomaticUpdates = value);

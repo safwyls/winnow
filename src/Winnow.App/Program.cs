@@ -895,6 +895,8 @@ public static class Program
         // observes the saved preference; the OS operation stays behind a seam
         // so view-model and headless tests never touch the real Run key.
         services.AddSingleton<IStartupRegistration, WindowsStartupRegistration>();
+        services.AddSingleton<IIgdbSettingsService, IgdbSettingsService>();
+        services.AddSingleton<IgdbSettingsViewModel>();
         services.AddSingleton<ApplicationSettingsViewModel>();
         services.AddHttpClient<GitHubReleaseClient>(client => client.Timeout = Timeout.InfiniteTimeSpan)
             .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
