@@ -449,9 +449,10 @@ the library. The radio and the checkbox are Tab stops of their own.
 cover at 60×90 on the left. Title, duration in Data, one text field, 5-dot rating in `Volt`.
 Appears at most once per session, never steals focus.
 
-**Fetch status field.** In the rail's pinned bottom, above the settings gear, a `Well` field
-with a `Volt` edge — the same pattern the Stores panel's `Border.note.working` uses. It names
-what the enrichment pass has left to do as a real count that falls a slice at a time: the pass
+**Fetch status field.** In the desktop titlebar, before the window controls, a compact
+single line shows the label, a separator and the remaining-title count. It uses the existing
+label, data and body typography without a box or animation and remains part of the drag strip.
+It names what the enrichment pass has left to do as a real count that falls a slice at a time: the pass
 reads the whole backlog before the first slice and commits in slices of 40, so every value the
 field shows was true when it was written. Words only — no spinner, no animation, no
 `Transitions` anywhere in it. That is the conforming answer to §8, not a shortcut: §8 says
@@ -465,7 +466,8 @@ Cancel where there is one", and this pass is not something the user started; not
 restart it before the next launch, so a Cancel here would be a one-way stop dressed up as a
 choice. It is cleared in a `finally`, so a run cut short by shutdown takes the field away
 rather than leaving a stale count on screen. Exactly one of it for the whole window, because
-it lives in the rail's grid rather than on any screen.
+it lives in the desktop caption rather than on any screen. Fullscreen continues to hide the
+desktop chrome, including this status; returning to desktop shows the current shared count.
 
 ---
 
@@ -812,7 +814,8 @@ the point: the scrollbar track, the detail modal's scrim, and the window ground 
 layout.
 
 The mark at the left is two 2:3 capsules, one behind the other: the app's own atom, and what a
-hoard of them looks like. Nothing else lives in the caption — no menu, no search, no status.
+hoard of them looks like. While metadata is being fetched, a passive status line sits before
+the window controls.
 **It is a lip, not a toolbar.**
 
 **Behaviour the system used to provide is now ours, and all of it is load-bearing.** Drag uses

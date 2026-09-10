@@ -3572,3 +3572,14 @@ The build specification previously said:
 The release instructions previously said:
 
 > Close Winnow before upgrading.
+
+## 2026-09-10 — Metadata progress in the titlebar
+
+The user requested moving metadata progress from the rail into the desktop titlebar.
+Fullscreen retains its existing hidden desktop chrome.
+The visual specification previously said:
+
+> **Fetch status field.** In the rail's pinned bottom, above the settings gear, a `Well` field
+> with a `Volt` edge — the same pattern the Stores panel's `Border.note.working` uses.
+> it lives in the rail's grid rather than on any screen.
+> Nothing else lives in the caption — no menu, no search, no status.

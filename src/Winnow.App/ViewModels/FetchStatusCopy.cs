@@ -1,12 +1,12 @@
 namespace Winnow.App.ViewModels;
 
 /// <summary>
-/// User-facing copy for the metadata-fetch status field on the left rail.
+/// User-facing copy for the metadata-fetch status field in the desktop titlebar.
 /// Winnow fills in titles, release years, publishers, summaries and cover
 /// URLs from IGDB, the Steam store, steamcmd.net and Epic's catalog after
 /// the local library scan. The pass runs once per launch, in the background,
-/// only when there is a backlog. While it runs, a Volt-edged inset note
-/// sits at the bottom of the rail, above the settings gear, stating what is
+/// only when there is a backlog. While it runs, a compact status line
+/// sits before the desktop window controls, stating what is
 /// happening and how many titles have not been reached yet. It disappears
 /// when the pass finishes. Words only — no spinner, no animation (§8).
 /// </summary>
