@@ -56,6 +56,7 @@ public partial class MergeSideViewModel : ObservableObject, IMergeMemberFacts, I
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
 
+        Stores = ordered;
         StoreChips = [.. ordered.Select(StoreNaming.Badge)];
         StoreNames = string.Join(", ", ordered.Select(StoreNaming.Label));
 
@@ -68,6 +69,9 @@ public partial class MergeSideViewModel : ObservableObject, IMergeMemberFacts, I
     /// Ordered as the ownership rows arrived; duplicates and blanks removed.
     /// </summary>
     public IReadOnlyList<string> StoreChips { get; }
+
+    /// <summary>Store identifiers, independent of the displayed badge text.</summary>
+    public IReadOnlyList<string> Stores { get; }
 
     /// <summary>
     /// The same stores spelled out as display names, comma-joined. Used for

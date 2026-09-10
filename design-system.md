@@ -402,10 +402,23 @@ without dominating the default experience.
 confirm each proposal and pick which entry becomes the header. The reference is
 `docs/merge_queue_design/README.md`. Three bands: a 56px header (`Merges`, the pending count in
 Data, `Sort ·`, `Accept N exact matches`, and the one filled button, `Merge N selected`); a 40px
-cut bar on `ChromeSurface` with a six-segment kind filter, a cut chip while filtered, and the
-count at the right, `14 → 6` while filtered, the only arrow in the interface; and the queue,
+cut bar on `ChromeSurface` with a six-segment kind filter, a cut chip while filtered, a
+`Prefer · None` platform picker, and the count at the right, `14 → 6` while filtered, the
+only arrow in the interface; and the queue,
 one scroll of five outlined sections, ACROSS STORES · EDITIONS · EXPANSIONS · PARTS · TEST
 BUILDS, each with the count of its pending cards and a one-sentence blurb.
+
+The platform picker uses the sort menu's `ctl` trigger, chevron, `sortmenu` presenter and
+6px `Volt` dot for the selected option. Its choices are `None`, `Steam`, `Epic` and `GOG`;
+the trigger names the current choice, such as `Prefer · Steam`. Choosing a platform switches
+every eligible pending card's header to an entry on that platform, including cards hidden by
+the kind filter. Cards without that platform retain their header. Expansion bases and
+completed links retain theirs. The preference is remembered for later loads; `None` stops
+applying it without resetting the current headers. Users can still choose a header on an
+individual card before confirming the merge.
+The desktop tooltip reads: “Choose headers from this platform where
+available, across all pending proposals. You can still change individual headers. None keeps
+the current choices.” The fullscreen sheet is titled `Preferred platform for pending headers`.
 
 A proposal card is a composition on `Surface` with a 1px `Line` edge that turns
 `VoltEdgeSoft` while checked: a header grid (checkbox, the header title in Bricolage at 15, the
@@ -688,6 +701,8 @@ count, skipped item and warning. Acquisition CSV export uses the TV directory an
 chooser with overwrite confirmation. Manual game forms offer executable inspection and
 metadata candidates through the shared commands. Identity tools include kind and sort,
 selection and confirmed bulk grouping, with exact matching limited by the shared rules.
+The identity page also carries the shared `Prefer ·` platform choice in a controller action
+sheet, with the same options and pending-header behavior as desktop Merges (§6).
 The Steam API key registration link opens the system browser; obtaining that credential is
 an external website workflow, while entering and saving it stays inside the TV interface.
 

@@ -3633,3 +3633,13 @@ The README previously said:
 > After saving IGDB credentials, restart Winnow when setup is finished.
 > Enter the client ID and secret, choose **Save credentials**, then restart Winnow.
 > Restart after removing credentials.
+
+## 2026-09-10 — Prefer a platform for pending merge headers
+
+Merges now offers a remembered platform choice in the desktop cut bar and the fullscreen
+identity action sheet. Applying it changes eligible pending headers across every kind;
+the user still confirms each grouping or uses the existing bulk commands.
+
+The visual specification previously said:
+
+> Three bands: a 56px header (`Merges`, the pending count in Data, `Sort ·`, `Accept N exact matches`, and the one filled button, `Merge N selected`); a 40px cut bar on `ChromeSurface` with a six-segment kind filter, a cut chip while filtered, and the count at the right, `14 → 6` while filtered, the only arrow in the interface; and the queue, one scroll of five outlined sections, ACROSS STORES · EDITIONS · EXPANSIONS · PARTS · TEST BUILDS, each with the count of its pending cards and a one-sentence blurb.

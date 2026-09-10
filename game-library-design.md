@@ -648,6 +648,15 @@ leak into desktop tools. Shared settings remain common application state. Both s
 the shared `ThemeService` and `appearance.theme`; the former `fullscreen.theme` preference is
 ignored. Fullscreen keeps separate `fullscreen.*` sizing, margins, motion and dormancy
 preferences and renders the shared theme with opaque local resource overrides.
+
+The Merges platform preference is shared through `ISettingsRepository` at
+`merges.preferred_platform` (`steam`, `epic`, `gog`, or empty for none). Each merge view model
+reads it on load and when revisiting an already loaded queue. A changed preference promotes
+matching pending work rows through the existing header-selection path, including filtered
+cards; absent platforms leave the current header intact. It does not write identity links
+until the user confirms a proposal, and it does not change completed links or expansion
+bases. Individual header choices remain local to that queue until confirmed.
+
 The optional ultrawide setting expands the TV reference canvas width to the viewport aspect
 ratio while retaining its reference height and uniform scaling. Controller prompts use a
 bundled CC0 vector subset; ambient page art uses bundled original SVG path geometry.

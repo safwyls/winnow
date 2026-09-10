@@ -40,6 +40,10 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     public static readonly TimeSpan DockFor = TimeSpan.FromSeconds(7);
 
     private const double ExactTitleFloor = 0.999;
+    public const string PreferredPlatformSettingKey = "merges.preferred_platform";
+
+    private readonly ISettingsRepository? _settings;
+    private string? _preferredPlatform;
 
     private readonly IMergeCandidateRepository _candidates;
     private readonly IReleaseRepository _releases;
@@ -101,9 +105,11 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         IResolveStateRepository? resolveState = null,
         Services.IIgdbAssignmentService? igdb = null,
         TimeProvider? clock = null,
-        Action<Action>? post = null)
+        Action<Action>? post = null,
+        ISettingsRepository? settings = null)
     {
         _candidates = candidates;
+        _settings = settings;
         _releases = releases;
         _works = works;
         _links = links;
@@ -151,6 +157,64 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
 
     /// <summary>The sort menu's rows.</summary>
     public IReadOnlyList<MergeSortOptionViewModel> SortOptions { get; }
+
+    public IReadOnlyList<MergePlatformOptionViewModel> PlatformOptions { get; } =
+    [
+        new(null, "None") { IsSelected = true },
+        new("steam", "Steam"),
+        new("epic", "Epic"),
+        new("gog", "GOG"),
+    ];
+
+    public string PreferredPlatformLabel => string.Format(CultureInfo.CurrentCulture,
+        MergeCopy.PreferredPlatformFormat, PlatformOptions.First(option => option.IsSelected).Label);
+
+    public string PreferredPlatformTooltip => MergeCopy.PreferredPlatformTooltip;
+
+    [RelayCommand]
+    private async Task SelectPlatformAsync(MergePlatformOptionViewModel? option, CancellationToken ct)
+    {
+        if (option is null || !PlatformOptions.Contains(option)) return;
+
+        if (_settings is not null)
+            await _settings.SetAsync(PreferredPlatformSettingKey, option.Store ?? string.Empty, ct);
+
+        SetPlatform(option);
+        ApplyPreferredPlatform(_sectionOfCard.Keys.ToArray());
+        foreach (var section in Sections) section.Resort(Sort);
+    }
+
+    private void SetPlatform(MergePlatformOptionViewModel option)
+    {
+        _preferredPlatform = option.Store;
+        foreach (var candidate in PlatformOptions) candidate.IsSelected = ReferenceEquals(candidate, option);
+        OnPropertyChanged(nameof(PreferredPlatformLabel));
+    }
+
+    private async Task<bool> ReadPreferredPlatformAsync(CancellationToken ct)
+    {
+        if (_settings is null) return false;
+        var stored = await _settings.GetAsync(PreferredPlatformSettingKey, ct);
+        var option = PlatformOptions.FirstOrDefault(candidate =>
+            string.Equals(candidate.Store, stored, StringComparison.OrdinalIgnoreCase)) ?? PlatformOptions[0];
+        if (_preferredPlatform == option.Store) return false;
+        SetPlatform(option);
+        return true;
+    }
+
+    private void ApplyPreferredPlatform(IEnumerable<MergeCardViewModel> cards)
+    {
+        if (_preferredPlatform is null) return;
+        foreach (var card in cards)
+        {
+            if (!card.IsPending || card.IsDecided) continue;
+            bool Matches(MergeRowViewModel row) => row.CanPromote
+                && row.Side.Stores.Contains(_preferredPlatform, StringComparer.OrdinalIgnoreCase);
+            // Keep the existing choice when more than one member carries this platform.
+            var preferred = Matches(card.Header) ? card.Header : card.Rows.FirstOrDefault(Matches);
+            if (preferred is not null) card.Promote(preferred);
+        }
+    }
 
     /// <summary>The cut bar's segments.</summary>
     public IReadOnlyList<MergeKindOptionViewModel> KindOptions { get; }
@@ -475,11 +539,17 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     }
 
     private void ShowRefusalDock()
+        => ShowNotice(MergeCopy.DockLinkRefusedTitle, MergeCopy.DockLinkRefusedNote);
+
+    public void ShowPlatformSaveFailure()
+        => ShowNotice(MergeCopy.PlatformSaveFailedTitle, MergeCopy.PlatformSaveFailedNote);
+
+    private void ShowNotice(string title, string note)
     {
         _run = null;
         CanUndoDock = false;
-        DockTitle = MergeCopy.DockLinkRefusedTitle;
-        DockNote = MergeCopy.DockLinkRefusedNote;
+        DockTitle = title;
+        DockNote = note;
         IsDockOpen = true;
 
         _dockTimer?.Dispose();
@@ -517,6 +587,11 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     {
         if (_loaded && !_stale)
         {
+            if (await ReadPreferredPlatformAsync(ct))
+            {
+                ApplyPreferredPlatform(_sectionOfCard.Keys.ToArray());
+                foreach (var section in Sections) section.Resort(Sort);
+            }
             return;
         }
 
@@ -607,10 +682,12 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             return (hasCompletedSweep, cards, pendingCount: pending.Count);
         }, ct);
 
+        await ReadPreferredPlatformAsync(ct);
         HasCompletedSweep = loaded.hasCompletedSweep;
         _pendingAtLoad = loaded.pendingCount;
         _stale = false;
         _loaded = true;
+        ApplyPreferredPlatform(loaded.cards);
         Place(loaded.cards);
 
         Focus(VisibleRows().FirstOrDefault());

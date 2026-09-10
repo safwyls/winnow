@@ -9,6 +9,12 @@ namespace Winnow.App.ViewModels;
 /// </summary>
 public static class MergeCopy
 {
+    public const string PreferredPlatformFormat = "Prefer · {0}";
+    public const string PreferredPlatformTooltip =
+        "Choose headers from this platform where available, across all pending proposals. You can still change individual headers. None keeps the current choices.";
+    public const string PlatformSaveFailedTitle = "Couldn't save the preferred platform.";
+    public const string PlatformSaveFailedNote = "Try choosing the platform again.";
+
     // ══ The app's one separator ═══════════════════════════════════════════
 
     /// <summary>The one character the screen separates metadata with (§7).</summary>
