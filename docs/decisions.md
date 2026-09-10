@@ -3550,3 +3550,25 @@ including empty descriptions, so switching recommendations cannot resize the she
 of description length. The visual specification previously said:
 
 > A large title, one-sentence reason and game artwork above the shelf follow the selection.
+
+### 2026-09-09 — Keep the existing Windows installation boundary for updates
+
+Installed Windows updates use the existing Inno AppId and directory, verified GitHub release
+assets, and an explicit restart. This preserves existing installations without migrating
+packaging frameworks. Portable and Linux replacement remains TASK-159; their update checks
+link to the existing distribution packages. No automatic binary rollback crosses a possible
+database migration.
+
+The build specification previously said:
+
+> on them; do not treat them as established. Three remain, all in §9.
+> | Packaging / updates | Velopack **[VERIFY]** | §9 |
+> Three remain. Resolve them empirically; do not proceed on assumptions from training data or
+> blog posts, because several constraints above exist specifically because the widely-circulated
+> answers are out of date.
+> **The current recommended auto-update mechanism for cross-platform desktop .NET** (§3).
+> Velopack is the provisional choice.
+
+The release instructions previously said:
+
+> Close Winnow before upgrading.

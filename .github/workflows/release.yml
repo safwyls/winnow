@@ -109,7 +109,11 @@ jobs:
       - name: Verify Windows install, upgrade and uninstall
         if: runner.os == 'Windows'
         shell: pwsh
-        run: ./packaging/windows/Test-WindowsInstaller.ps1 -InstallerPath "artifacts/packages/Winnow-$env:RELEASE_VERSION-win-x64-setup.exe"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          ./packaging/windows/Get-PreviousWindowsInstaller.ps1 -Version $env:RELEASE_VERSION -OutputPath artifacts/previous/Winnow-setup.exe
+          ./packaging/windows/Test-WindowsInstaller.ps1 -InstallerPath "artifacts/packages/Winnow-$env:RELEASE_VERSION-win-x64-setup.exe" -PreviousInstallerPath artifacts/previous/Winnow-setup.exe
       - name: Package Linux installer and archive
         if: runner.os == 'Linux'
         shell: bash

@@ -18,7 +18,7 @@ constraints contradict what you will find in older blog posts and Stack Overflow
 Read section 4 before writing any ingest code.
 
 Items marked **[VERIFY]** have not been confirmed. Confirm them empirically before building
-on them; do not treat them as established. Three remain, all in §9.
+on them; do not treat them as established. Two remain, both in §9.
 
 ---
 
@@ -80,7 +80,7 @@ reasoning and its accepted costs are in `docs/decisions.md`.
 | Logging | Serilog, rolling file sink | Ingest failures must be diagnosable |
 | Scheduling | In-process `PeriodicTimer` | No external queue |
 | Metadata | IGDB v4 API | Twitch client-credentials auth |
-| Packaging / updates | Velopack **[VERIFY]** | §9 |
+| Packaging / updates | Inno Setup on Windows; Debian and portable archives on Linux | Installed Windows updates use the existing installer; §5.5 |
 
 **Deliberately excluded:** Postgres, any vector store, any server framework, any LLM
 dependency. Do not add them speculatively.
@@ -781,6 +781,36 @@ is a no-op.
 
 ---
 
+### 5.5 Application updates
+
+`ApplicationUpdater` is a hosted App service shared by desktop and fullscreen through
+`IApplicationUpdater`. It owns persisted automatic-check and beta preferences, serialized
+checks/downloads, cancellation, and the staged-install state. View models observe snapshots
+and raise commands; they do not call GitHub or launch installers themselves.
+
+Checks use the public GitHub Releases API for `safwyls/winnow`, with bounded pagination,
+timeouts, semantic version ordering, and exclusion of drafts, development builds and CI
+builds. Stable is the default channel. Beta opt-in includes prereleases; changing channels
+invalidates staging and never downgrades. Automatic checks begin after startup and repeat
+every six hours. Manual checks distinguish network or verification failures from no upgrade.
+
+The downloader accepts the exact platform asset name and official repository URL, bounds
+the size, restricts redirects to GitHub release-storage HTTPS hosts, and verifies the API's
+SHA-256 digest. A verified installer is staged separately from the running application.
+GitHub's HTTPS API is the trust source; packages are not publisher-signed.
+
+Installed Windows uses `WindowsUpdateInstaller`: the registered Inno installation must match
+the running executable. On explicit restart, an external helper verifies and locks the
+payload, waits for process exit after normal host shutdown, checks for locked binaries,
+then runs Setup without force-closing apps or rebooting Windows. It relaunches with the
+selected data directory. Failure logs describe manual recovery; there is no automatic
+rollback to a binary that may predate database migrations. Portable and Linux distributions
+use the release-check and browser-download path pending TASK-159; package-manager-owned
+files are never overwritten by the updater. `docs/releases.md` owns the support matrix,
+release workflow, and recovery instructions.
+
+---
+
 ## 6. Data model
 
 SQLite. Migrations are embedded resources, checked into the repository, applied on startup by
@@ -1143,7 +1173,7 @@ than silently dropping the rest.
 
 ## 9. Open questions
 
-Three remain. Resolve them empirically; do not proceed on assumptions from training data or
+Two remain. Resolve them empirically; do not proceed on assumptions from training data or
 blog posts, because several constraints above exist specifically because the widely-circulated
 answers are out of date.
 
@@ -1152,8 +1182,6 @@ answers are out of date.
 - **A licensable HowLongToBeat data source** (§6.1). If one exists, normalise `retired_floor`
   against main-story time. If not, make the thresholds per-genre-configurable and default
   conservatively.
-- **The current recommended auto-update mechanism for cross-platform desktop .NET** (§3).
-  Velopack is the provisional choice.
 
 ---
 

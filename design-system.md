@@ -2575,6 +2575,18 @@ Its **ABOUT WINNOW** card shows **Version** and **Source commit** as selectable 
 text. The version retains prerelease labels; builds without source metadata say `Unavailable`
 for the commit.
 
+The **UPDATES** card offers **Automatic background updates**, on by default, and **Include
+beta releases**, off by default. The descriptions read “Check GitHub Releases and download
+updates in the background. Restart when you are ready.” and “Include preview releases. Turn
+off to receive stable releases only.” Both preferences are shared with fullscreen Application
+settings. A polite status line explains checking, download progress, readiness or failure;
+available versions use Data typography. **Check for updates**, **Download update**, **Cancel
+download** and **Restart to update** expose the current operation. Restart is always explicit.
+**Release notes** and **Download in browser** open the official release destinations in the
+system browser; unsupported installations use the browser download path. Fullscreen presents
+the same controls as large ordered rows with its switch tracks, On/Off state and explicit
+directional navigation. Status changes preserve the current row and never switch screens.
+
 The acquisition export card offers **Export acquisition CSV**, followed by a polite status
 line for completion, cancellation or failure. Its explanation states that missing facts stay
 blank and prices are stored cents without a recorded currency. It uses the same card and

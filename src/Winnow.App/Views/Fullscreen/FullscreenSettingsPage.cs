@@ -33,6 +33,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
     {
         Render();
         context.PreferencesChanged += RefreshValues;
+        context.Shared.ApplicationSettings.PropertyChanged += ApplicationSettingsChanged;
         AttachedToVisualTree += RefreshValues;
         AttachedToVisualTree += (_, _) => { if (_section == "Platforms") PendingPlatformRefresh = RefreshPlatformsAsync(); };
     }
@@ -42,7 +43,12 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         foreach (var refresh in _valueRefreshers) refresh();
     }
 
-    public override void Dispose() { _disposed = true; Context.PreferencesChanged -= RefreshValues; base.Dispose(); }
+    private void ApplicationSettingsChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (_section == "Application") RefreshValues(sender, EventArgs.Empty);
+    }
+
+    public override void Dispose() { _disposed = true; Context.PreferencesChanged -= RefreshValues; Context.Shared.ApplicationSettings.PropertyChanged -= ApplicationSettingsChanged; base.Dispose(); }
 
     private async Task RefreshPlatformsAsync()
     {
@@ -189,6 +195,34 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             Toggle("Close to tray", "Keep Winnow running when its window is closed.", () => app.CloseToTray, value => app.CloseToTray = value);
             if (app.IsStartupSupported) Toggle("Start with Windows", "Start Winnow when you sign in.", () => app.StartWithWindows, value => app.StartWithWindows = value);
             rows.Children.Add(FullscreenUi.Text($"Winnow {app.ApplicationVersion}", 28, "TextDim"));
+            if (app.HasUpdater)
+            {
+                Toggle("Automatic background updates", app.AutomaticUpdatesNote, () => app.AutomaticUpdates, value => app.AutomaticUpdates = value);
+                Toggle("Include beta releases", app.BetaUpdatesNote, () => app.IncludeBetaReleases, value => app.IncludeBetaReleases = value);
+                var status = FullscreenUi.Text(app.UpdateStatus, 28);
+                status.Bind(TextBlock.TextProperty, new Binding(nameof(app.UpdateStatus)) { Source = app });
+                AutomationProperties.SetLiveSetting(status, AutomationLiveSetting.Polite);
+                rows.Children.Add(status);
+                var progress = FullscreenHistoryTypography.Data("", 28);
+                progress.Bind(TextBlock.TextProperty, new Binding(nameof(app.UpdateProgress)) { Source = app, StringFormat = "Downloaded: {0:0}%" });
+                progress.Bind(IsVisibleProperty, new Binding(nameof(app.CanCancelUpdate)) { Source = app });
+                rows.Children.Add(progress);
+                var version = FullscreenHistoryTypography.Data("", 28);
+                version.Bind(TextBlock.TextProperty, new Binding(nameof(app.AvailableVersion)) { Source = app, StringFormat = "Available version: {0}" });
+                version.Bind(IsVisibleProperty, new Binding(nameof(app.HasReleaseNotes)) { Source = app });
+                rows.Children.Add(version);
+                void UpdateAction(string label, System.Windows.Input.ICommand command, string enabled)
+                {
+                    var button = Action(label, () => { if (command.CanExecute(null)) command.Execute(null); });
+                    button.Bind(IsEnabledProperty, new Binding(enabled) { Source = app });
+                }
+                UpdateAction("Check for updates", app.CheckUpdateCommand, nameof(app.CanCheckUpdate));
+                UpdateAction("Download update", app.DownloadUpdateCommand, nameof(app.CanDownloadUpdate));
+                UpdateAction("Cancel download", app.CancelUpdateCommand, nameof(app.CanCancelUpdate));
+                UpdateAction("Restart to update", app.RestartUpdateCommand, nameof(app.CanRestartUpdate));
+                UpdateAction("Release notes", app.OpenReleaseNotesCommand, nameof(app.HasReleaseNotes));
+                UpdateAction("Download in browser", app.OpenManualDownloadCommand, nameof(app.HasManualDownload));
+            }
         }
         var main = new Grid { ColumnDefinitions = new ColumnDefinitions("2*,*"), ColumnSpacing = 56 };
         if (_section == "Controller")

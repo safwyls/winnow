@@ -1,4 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Avalonia.Threading;
 using Winnow.App.Services;
 using Winnow.Core.Repositories;
 
@@ -13,14 +15,30 @@ public partial class ApplicationSettingsViewModel : ObservableObject
 
     private readonly ISettingsRepository? _settings;
     private readonly IStartupRegistration? _startup;
+    private readonly IApplicationUpdater? _updater;
+    private readonly IUriDispatcher? _uris;
+    private bool _refreshingUpdate;
     private bool _loading;
 
     public ApplicationSettingsViewModel(
         ISettingsRepository? settings = null,
-        IStartupRegistration? startup = null)
+        IStartupRegistration? startup = null,
+        IApplicationUpdater? updater = null,
+        IUriDispatcher? uris = null)
     {
         _settings = settings;
         _startup = startup;
+        _updater = updater;
+        _uris = uris;
+        if (_updater is not null)
+        {
+            _updater.Changed += (_, _) =>
+            {
+                if (Dispatcher.UIThread.CheckAccess()) RefreshUpdate();
+                else Dispatcher.UIThread.Post(RefreshUpdate);
+            };
+            RefreshUpdate();
+        }
     }
 
     public string Title => "Application";
@@ -30,6 +48,72 @@ public partial class ApplicationSettingsViewModel : ObservableObject
         "Choose where Winnow waits when you are not browsing your library.";
     public string SegmentLabel => "APPLICATION";
     public string SegmentTooltip => "Window and startup behavior";
+
+    public bool HasUpdater => _updater is not null;
+    public string AutomaticUpdatesNote => "Check GitHub Releases and download updates in the background. Restart when you are ready.";
+    public string BetaUpdatesNote => "Include preview releases. Turn off to receive stable releases only.";
+    [ObservableProperty] public partial bool AutomaticUpdates { get; set; }
+    [ObservableProperty] public partial bool IncludeBetaReleases { get; set; }
+    [ObservableProperty] public partial string UpdateStatus { get; private set; } = "Updates are unavailable in this build.";
+    [ObservableProperty] public partial string? AvailableVersion { get; private set; }
+    [ObservableProperty] public partial double UpdateProgress { get; private set; }
+    [ObservableProperty] public partial bool UpdateBusy { get; private set; }
+    [ObservableProperty] public partial bool CanCancelUpdate { get; private set; }
+    [ObservableProperty] public partial bool CanCheckUpdate { get; private set; }
+    [ObservableProperty] public partial bool CanDownloadUpdate { get; private set; }
+    [ObservableProperty] public partial bool CanRestartUpdate { get; private set; }
+    [ObservableProperty] public partial bool HasReleaseNotes { get; private set; }
+    [ObservableProperty] public partial bool HasManualDownload { get; private set; }
+
+    private void RefreshUpdate()
+    {
+        if (_updater is null) return;
+        var snapshot = _updater.Snapshot;
+        _refreshingUpdate = true;
+        try { AutomaticUpdates = snapshot.Automatic; IncludeBetaReleases = snapshot.IncludeBeta; }
+        finally { _refreshingUpdate = false; }
+        UpdateStatus = snapshot.Status;
+        AvailableVersion = snapshot.AvailableVersion;
+        UpdateProgress = snapshot.Progress;
+        UpdateBusy = snapshot.Busy;
+        CanCancelUpdate = snapshot.CanCancel;
+        CanCheckUpdate = !snapshot.Busy;
+        CanDownloadUpdate = snapshot.CanDownload && !snapshot.Busy;
+        CanRestartUpdate = snapshot.CanRestart && !snapshot.Busy;
+        HasReleaseNotes = snapshot.ReleaseUrl is not null;
+        HasManualDownload = snapshot.DownloadUrl is not null;
+    }
+
+    partial void OnAutomaticUpdatesChanged(bool value)
+    {
+        if (!_refreshingUpdate && _updater is not null)
+            PendingSave = RunUpdateAsync(() => _updater.SetAutomaticAsync(value));
+    }
+    partial void OnIncludeBetaReleasesChanged(bool value)
+    {
+        if (!_refreshingUpdate && _updater is not null)
+            PendingSave = RunUpdateAsync(() => _updater.SetIncludeBetaAsync(value));
+    }
+
+    [RelayCommand] private Task CheckUpdateAsync() => RunUpdateAsync(() => _updater?.CheckAsync() ?? Task.CompletedTask);
+    [RelayCommand] private Task DownloadUpdateAsync() => RunUpdateAsync(() => _updater?.DownloadAsync() ?? Task.CompletedTask);
+    [RelayCommand] private Task RestartUpdateAsync() => RunUpdateAsync(() => _updater?.RestartAsync() ?? Task.CompletedTask);
+    [RelayCommand] private void CancelUpdate() => _updater?.CancelDownload();
+    [RelayCommand] private Task OpenReleaseNotesAsync() => OpenUpdateLinkAsync(_updater?.Snapshot.ReleaseUrl);
+    [RelayCommand] private Task OpenManualDownloadAsync() => OpenUpdateLinkAsync(_updater?.Snapshot.DownloadUrl);
+
+    private async Task RunUpdateAsync(Func<Task> action)
+    {
+        try { await action(); }
+        catch { UpdateStatus = "Couldn't complete the update action. Try again."; }
+    }
+
+    private Task OpenUpdateLinkAsync(string? url) => RunUpdateAsync(async () =>
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps
+            || _uris is null || !await _uris.OpenAsync(uri))
+            UpdateStatus = "Couldn't open your browser. Try again.";
+    });
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TrayIconWanted))]

@@ -896,6 +896,20 @@ public static class Program
         // so view-model and headless tests never touch the real Run key.
         services.AddSingleton<IStartupRegistration, WindowsStartupRegistration>();
         services.AddSingleton<ApplicationSettingsViewModel>();
+        services.AddHttpClient<GitHubReleaseClient>(client => client.Timeout = Timeout.InfiniteTimeSpan)
+            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+        services.AddSingleton<IUpdateInstaller, WindowsUpdateInstaller>();
+        services.AddSingleton(sp => new ApplicationUpdater(
+            sp.GetRequiredService<GitHubReleaseClient>(), sp.GetRequiredService<ISettingsRepository>(),
+            sp.GetRequiredService<IUpdateInstaller>(), Path.Combine(data.Root, "updates", "downloads"),
+            ApplicationBuildInfo.Current.Version,
+            System.Runtime.InteropServices.RuntimeInformation.OSArchitecture != System.Runtime.InteropServices.Architecture.X64 ? ""
+                : OperatingSystem.IsWindows() ? sp.GetRequiredService<IUpdateInstaller>().IsSupported ? "win-x64-setup.exe" : "win-x64.zip"
+                : OperatingSystem.IsLinux() ? AppContext.BaseDirectory.StartsWith("/opt/", StringComparison.Ordinal) ? "linux-x64.deb" : "linux-x64.tar.gz" : "",
+            () => Dispatcher.UIThread.Post(() => (Application.Current as App)?.ExitForUpdate()),
+            sp.GetRequiredService<ILogger<ApplicationUpdater>>()));
+        services.AddSingleton<IApplicationUpdater>(sp => sp.GetRequiredService<ApplicationUpdater>());
+        services.AddHostedService(sp => sp.GetRequiredService<ApplicationUpdater>());
 
         // The settings surface's third section, SETTINGS › LIBRARY. What is in
         // the library: the explicit-content filter, the games the user hid and
