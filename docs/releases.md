@@ -34,8 +34,63 @@ Source archives built without Git metadata show `Unavailable` for the commit.
 Each application directory includes `release-info.json` with its version, runtime identifier,
 and source commit. A portable build still uses the normal user data location; pass
 `--data-dir <path>` to select another location. Installers preserve user data on removal.
-Close Winnow before upgrading. Windows uses a stable Inno Setup AppId and prior install
+For a manual upgrade, close Winnow first. Windows uses a stable Inno Setup AppId and prior install
 directory; Debian prereleases use `~` so they sort before the corresponding stable version.
+
+## In-app updates
+
+Desktop **Settings → Application → Updates** and fullscreen **Settings → Application**
+share the same preferences and update state. Automatic background checks and downloads are
+on by default. **Include beta releases** is off by default; turn it on to include published
+prereleases as well as stable releases. Turning it off discards any staged beta update and
+waits for a newer stable release; it never downgrades an installed beta. Development and CI
+builds do not offer release upgrades.
+
+Winnow checks the public `safwyls/winnow` GitHub Releases API after startup and every six
+hours while running. Publishing a draft makes it eligible for the next check; merely pushing
+a tag or creating a draft does not. **Check for updates** runs a manual check. Disabling
+automatic updates leaves manual checks and downloads available. Offline or failed checks
+show an error in settings and leave the library usable. There are no repeated popup notices.
+
+| Installation | Update route |
+|---|---|
+| Installed Windows x64, including a custom installation directory | Download in the background, then **Restart to update** |
+| Portable Windows x64 | Release check and browser link to the portable ZIP; close and replace manually |
+| Linux x64 Debian package | Release check and browser link to the `.deb`; close and install with the package manager |
+| Portable Linux x64 | Release check and browser link to the archive; close and replace manually |
+
+The Windows updater requires the registered per-user Inno installation to match the running
+executable. Downloading never closes Winnow. It accepts only the exact platform asset from
+the official repository over HTTPS, with a matching size and GitHub API SHA-256 digest.
+Missing or invalid verification data prevents automatic installation. The digest authenticates
+the download against GitHub's HTTPS API response; this is not an Authenticode publisher
+signature. Windows packages remain unsigned. See GitHub's [release asset API](https://docs.github.com/en/rest/releases/assets).
+
+On explicit restart, a separate helper verifies and locks the installer, waits up to two
+minutes for the app process to exit, refuses locked application binaries, and runs Inno
+without forced process closure or Windows reboot. Normal shutdown cancels workers and
+disposes the host before process exit. Setup retains the registered installation directory;
+the helper relaunches Winnow with the selected data directory and preserves `--no-sync`.
+Fullscreen startup follows the saved preference. One-time seeding and sign-in flags are not
+replayed. Library data, credentials, covers, themes and preferences remain in the data directory.
+
+Cancellation or checksum failure deletes the partial download and permits retry. Abandoned
+download files older than two days are cleaned on startup. A stopped app does not resume a
+partial download; the next check downloads again. A helper that fails before Setup leaves
+the existing installation unchanged. A new app launched during Setup can still cause a late
+file-lock failure; close other Winnow windows before retrying. Installation errors, required Windows restart, or failed
+relaunch leave `failure.txt` and, if Setup ran, `installer.log` under
+`<data directory>/updates/handoff-*`. Run the latest official installer manually into the same
+installation directory to recover, then start Winnow normally. Keep the data directory.
+There is no automatic binary or database rollback: an older binary must not be reopened
+against a database a newer build may have migrated.
+
+Release CI fetches a digest-verified earlier published Windows installer and exercises an
+upgrade in a disposable custom directory. It also checks bad checksums, cancellation,
+shutdown timeout and locked binaries, relaunch arguments, and preservation of user files.
+These installation checks run only on disposable GitHub runners; local unit and headless UI
+tests do not install software. Portable replacement and Linux in-place updating remain
+tracked in TASK-159.
 
 ## Build without publishing
 

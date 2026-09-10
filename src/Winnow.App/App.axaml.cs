@@ -87,6 +87,12 @@ public partial class App : Application
         _mainWindow?.ExitFromTray();
     }
 
+    internal void ExitForUpdate()
+    {
+        if (_trayIcon is not null) _trayIcon.IsVisible = false;
+        _mainWindow?.ExitFromTray();
+    }
+
     private void RestoreMainWindow()
     {
         _backgroundStart = false;

@@ -109,6 +109,56 @@
                     </Grid>
                 </Border>
 
+                <TextBlock Classes="label" AutomationProperties.HeadingLevel="2"
+                           IsVisible="{Binding HasUpdater}" Text="UPDATES"/>
+                <Border Classes="card" IsVisible="{Binding HasUpdater}"
+                        AutomationProperties.Name="Winnow updates" AutomationProperties.AccessibilityView="Control">
+                    <StackPanel Spacing="16">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
+                            <StackPanel Spacing="5">
+                                <TextBlock Classes="body-l" Text="Automatic background updates"/>
+                                <TextBlock Classes="para" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                                           Text="{Binding AutomaticUpdatesNote}"/>
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="1" VerticalAlignment="Center"
+                                          IsChecked="{Binding AutomaticUpdates, Mode=TwoWay}"
+                                          AutomationProperties.Name="Automatic background updates"
+                                          OnContent="Automatic background updates" OffContent="Automatic background updates"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
+                            <StackPanel Spacing="5">
+                                <TextBlock Classes="body-l" Text="Include beta releases"/>
+                                <TextBlock Classes="para" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                                           Text="{Binding BetaUpdatesNote}"/>
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="1" VerticalAlignment="Center"
+                                          IsChecked="{Binding IncludeBetaReleases, Mode=TwoWay}"
+                                          AutomationProperties.Name="Include beta releases"
+                                          OnContent="Include beta releases" OffContent="Include beta releases"/>
+                        </Grid>
+                        <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding UpdateStatus}"
+                                   AutomationProperties.LiveSetting="Polite"/>
+                        <TextBlock Classes="data" IsVisible="{Binding CanCancelUpdate}"
+                                   Text="{Binding UpdateProgress, StringFormat='Downloaded: {0:0}%'}"/>
+                        <TextBlock Classes="data" IsVisible="{Binding HasReleaseNotes}"
+                                   Text="{Binding AvailableVersion, StringFormat='Available version: {0}'}"/>
+                        <WrapPanel>
+                            <Button Classes="act" Content="Check for updates" Margin="0,0,8,8"
+                                    Command="{Binding CheckUpdateCommand}" IsEnabled="{Binding CanCheckUpdate}"/>
+                            <Button Classes="act" Content="Download update" Margin="0,0,8,8"
+                                    Command="{Binding DownloadUpdateCommand}" IsVisible="{Binding CanDownloadUpdate}"/>
+                            <Button Classes="act" Content="Cancel download" Margin="0,0,8,8"
+                                    Command="{Binding CancelUpdateCommand}" IsVisible="{Binding CanCancelUpdate}"/>
+                            <Button Classes="act" Content="Restart to update" Margin="0,0,8,8"
+                                    Command="{Binding RestartUpdateCommand}" IsVisible="{Binding CanRestartUpdate}"/>
+                            <Button Classes="act" Content="Release notes" Margin="0,0,8,8"
+                                    Command="{Binding OpenReleaseNotesCommand}" IsVisible="{Binding HasReleaseNotes}"/>
+                            <Button Classes="act" Content="Download in browser" Margin="0,0,8,8"
+                                    Command="{Binding OpenManualDownloadCommand}" IsVisible="{Binding HasManualDownload}"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
                 <TextBlock Classes="problem" IsVisible="{Binding HasProblem}"
                            Text="{Binding Problem}" AutomationProperties.LiveSetting="Polite"/>
 

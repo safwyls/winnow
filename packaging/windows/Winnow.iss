@@ -22,6 +22,9 @@ VersionInfoVersion={#NumericVersion}
 VersionInfoTextVersion={#AppVersion}
 Compression=lzma2
 SolidCompression=yes
+; The updater waits for Winnow to exit. Setup must never terminate another copy.
+CloseApplications=no
+RestartApplications=no
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
