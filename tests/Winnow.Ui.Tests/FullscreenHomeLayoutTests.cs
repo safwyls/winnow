@@ -32,18 +32,35 @@ public sealed class FullscreenHomeLayoutTests
             var cover = view.CurrentPage.GetVisualDescendants().OfType<FullscreenCover>().First();
             return cover.Bounds.Height * cover.TransformToVisual(window)!.Value.M22;
         }
+        void AssertBottomAlignment()
+        {
+            var page = view.CurrentPage;
+            var cover = page.GetVisualDescendants().OfType<FullscreenCover>().First();
+            var tile = cover.GetVisualAncestors().OfType<Button>().First();
+            var wall = Assert.IsType<Grid>(tile.GetVisualParent());
+            var bottom = wall.TranslatePoint(new Point(0, wall.Bounds.Height), page)!.Value.Y;
+            Assert.Equal(page.Bounds.Height, bottom, 3);
+            var indicator = page.GetVisualDescendants().OfType<FullscreenShelfIndicator>().Single();
+            var railCenter = indicator.TranslatePoint(new Point(0, indicator.Bounds.Height / 2), page)!.Value.Y;
+            var wallCenter = wall.TranslatePoint(new Point(0, wall.Bounds.Height / 2), page)!.Value.Y;
+            Assert.InRange(Math.Abs(railCenter - wallCenter), 0, 1);
+        }
         try
         {
             window.Show(); Dispatcher.UIThread.RunJobs();
             var original = CoverHeight();
             Assert.True(original > 100);
+            AssertBottomAlignment();
             context.UiScale = .8; Dispatcher.UIThread.RunJobs();
+            AssertBottomAlignment();
             Assert.InRange(CoverHeight() / original, .78, .82);
             view.Handle(GamepadButtons.Down); Dispatcher.UIThread.RunJobs();
             Assert.Contains(view.CurrentPage.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Shelf 2");
             Assert.InRange(CoverHeight() / original, .78, .82);
             context.UiScale = 1; Dispatcher.UIThread.RunJobs();
             Assert.InRange(CoverHeight() / original, .98, 1.02);
+            context.UiScale = 1.2; Dispatcher.UIThread.RunJobs();
+            AssertBottomAlignment();
         }
         finally { window.Close(); }
     }

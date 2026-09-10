@@ -571,6 +571,10 @@ The shelf title has no numeric fraction. A vertical rail at the right shows prev
 chevrons and one dot per shelf: the current dot is filled with Volt, the others are outlined
 in TextDim. Endpoint arrows dim when unavailable. Mouse users can click arrows or dots;
 controller up/down and LT/RT keep selecting shelves without extra focus stops.
+The cover row anchors to the bottom of the Home content area above the footer. The shelf
+rail shares its vertical center and follows that bottom anchor; it scales down to fit when
+space is tight. Spare height stays above the covers, showing the backdrop between the
+stationary shelf heading and the games rather than opening a gap below them.
 Text actions have transparent backgrounds and a mint underline on focus. Hover leaves
 no underline; current sections and collections use bold text and a neutral underline.
 The focused cover retains its outline. No desktop

@@ -38,6 +38,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     private bool _sizePending;
     private ContentControl _hero = new();
     private TextBlock? _homeHeading;
+    private Border? _homeIndicatorHost;
     private readonly ContentControl _art = new() { IsHitTestVisible = false,
         HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch };
     public override Control? Backdrop => _art;
@@ -276,8 +277,11 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         {
             _shelf = index; Rebuild(); FocusInitial();
         });
-        Grid.SetColumn(indicator, 1); Grid.SetRow(indicator, 1); Grid.SetRowSpan(indicator, 2);
-        grid.Children.Add(indicator);
+        _homeIndicatorHost = new Border { VerticalAlignment = VerticalAlignment.Bottom,
+            Child = new Viewbox { Child = indicator, Stretch = Stretch.Uniform,
+                StretchDirection = StretchDirection.DownOnly, VerticalAlignment = VerticalAlignment.Center } };
+        Grid.SetColumn(_homeIndicatorHost, 1); Grid.SetRow(_homeIndicatorHost, 2);
+        grid.Children.Add(_homeIndicatorHost);
         Content = grid;
         if (shelf.Cards.Count > 0) SetHero(shelf.Cards[_card], shelf);
         SetFocusRows(_tiles.Cast<Control>().ToArray());
@@ -418,8 +422,9 @@ public sealed class FullscreenBrowsePage : FullscreenPage
             cellWidth = Math.Min(cellWidth, Math.Max(1, availableHeight - outsideArt) * 2 / 3 + 24);
             columns = Math.Max(1, (int)Math.Floor((Bounds.Width - 76 + .01) / cellWidth));
             _wallWidth = Math.Min(Bounds.Width - 76, columns * cellWidth);
-            _wall.VerticalAlignment = VerticalAlignment.Top;
+            _wall.VerticalAlignment = VerticalAlignment.Bottom;
             _wall.Height = Math.Min(availableHeight, (cellWidth - 24) * 3 / 2 + outsideArt);
+            if (_homeIndicatorHost is not null) _homeIndicatorHost.Height = _wall.Height;
         }
         else
         {
