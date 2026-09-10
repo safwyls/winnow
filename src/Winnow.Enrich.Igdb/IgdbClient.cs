@@ -82,9 +82,10 @@ public sealed class IgdbClient : IIgdbClient
     /// (<c>rating</c>, <c>rating_count</c>, <c>aggregated_rating</c>,
     /// <c>aggregated_rating_count</c>). Measured cost of the 3 → 4 bump:
     /// 967 games refetch in 3 requests (400 ids per batch), and the cached
-    /// payload grows from 628 to 658 bytes per game — about 4.8%.
+    /// payload grows from 628 to 658 bytes per game — about 4.8%. Version 5
+    /// adds source dimensions, transparency, animation and artwork image type.
     /// </summary>
-    public const int GamePayloadVersion = 4;
+    public const int GamePayloadVersion = 5;
 
     /// <summary>
     /// Versioned envelope a game is cached in. An unversioned payload

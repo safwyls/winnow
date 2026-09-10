@@ -239,7 +239,7 @@ stored locally.
   400 costs the search alone. The term is user-typed free text, sanitized into the quoted
   clause rather than rejected. Copyright, registered-trademark, trademark and service-mark
   decoration is removed before the query and cache key are built; the stored title is unchanged.
-- The IGDB response cache carries a payload version per namespace: game payloads at **4**
+- The IGDB response cache carries a payload version per namespace: game payloads at **5**
   (name, summary, first release date, cover, genres, themes, game modes, player perspectives,
   platforms, publisher, `game_type`, `parent_game`, `version_parent`, `version_title`,
   `screenshots`, `artworks`, `rating`, `rating_count`, `aggregated_rating`,
@@ -251,10 +251,13 @@ stored locally.
   field silently empty for the rest of the 30-day TTL. A payload whose version does not match
   is refetched. Compatible older game and external-id mapping payloads remain available
   when credentials are absent or refetch fails; they never become current merely by being read.
-- The shared `games` query now carries `screenshots` and `artworks` as separate image arrays,
-  each row carrying an `image_id`. Only `image_id` is requested: it is the durable handle, and
-  the size token in the CDN path decides the rendition, so a stored URL would carry a size that
-  has to be rewritten on read. `rating`/`rating_count` are IGDB's own users;
+- The shared `games` query carries `screenshots` and `artworks` as separate image arrays.
+  Each row retains `image_id`, `width`, `height`, `alpha_channel` and `animated`; artworks also
+  retain `image_type.name`. Dimensions and suitability metadata inform backdrop selection;
+  the image ID remains the durable handle and the CDN size token decides the rendition.
+  The library-wide reception pass refreshes older cached payloads even for fully enriched
+  works. Compatible offline payloads retain their image IDs with unknown dimensions.
+  `rating`/`rating_count` are IGDB's own users;
   `aggregated_rating`/`aggregated_rating_count` are its aggregation of external critics.
   `total_rating`/`total_rating_count` exist and are deliberately not requested — a blended
   figure cannot be attributed to anyone, and the rule is that a score is shown with its source
@@ -628,11 +631,21 @@ Adaptive cover capacity is recalculated once queued text scaling and layout have
 reading transient unscaled geometry can make a long Home hero alternate capacities and
 continuously rebuild.
 
-Fullscreen IGDB landscapes use an `igdb-backdrop` cache key and the documented
-`t_1080p_2x` rendition, separate from desktop screenshot assets. Decode buckets extend to
+Desktop detail backdrops and fullscreen IGDB landscapes use an `igdb-backdrop` cache key
+and the documented `t_1080p_2x` rendition, separate from screenshot gallery assets. Decode buckets extend to
 1920, 2560 and 3840 pixels, bounded by source dimensions and the shared memory budget.
-Resizing requests the appropriate display-sized lease. Desktop covers and screenshot
-renditions remain unchanged; both presentations share lease and eviction behavior.
+Resizing requests the appropriate display-sized lease. Compact desktop covers and screenshot
+gallery renditions remain unchanged; both presentations share lease and eviction behavior.
+
+Backdrop selection is shared application behavior. A saved user background leads the
+candidate list. Automatic candidates exclude known portrait or square images, transparent
+or animated assets, images explicitly typed as logo or cover, and invalid image IDs.
+Rank each source image by the pixel area remaining
+after a centered crop to the target aspect ratio. Candidates retaining at least 1280×720
+pixels take precedence, with artwork before screenshots within that tier. Unknown dimensions
+remain a compatible fallback, followed by smaller landscapes; ties retain source order.
+Failed downloads advance through the remaining candidates before using the game's cover.
+No automatic selection overwrites the user's saved background or reorders the screenshot gallery.
 
 Controller input lives in `Winnow.App.Services`, independent of ingest and process monitoring.
 The window polls a read-only source at 33 ms while open. Windows loads XInput from the system
@@ -935,9 +948,11 @@ lifecycle_observations(id, release_id FK releases ON DELETE CASCADE, source, sou
   -- dated source answers; nullable signals mean unknown; classification is never stored
 
 -- Reception and media
-work_images(work_id FK works ON DELETE CASCADE, source, kind, image_ids, observed_at,
+work_images(work_id FK works ON DELETE CASCADE, source, kind, image_ids, images_json, observed_at,
             PRIMARY KEY(work_id, source, kind))
   -- kind ∈ {screenshot, artwork}; image_ids is IGDB image_id values, comma-joined, in IGDB's order
+  -- images_json retains optional source dimensions, transparency, animation and image type by image_id;
+  -- existing rows default to [] and keep their image_ids for offline fallback
 work_ratings(work_id FK works ON DELETE CASCADE, source, score, rating_count, label, observed_at,
              PRIMARY KEY(work_id, source))
   -- source ∈ {igdb_users, igdb_critics, steam}

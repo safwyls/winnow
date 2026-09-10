@@ -69,6 +69,10 @@ public sealed class IdentityReadInventoryTests
             + "reads; the user is shown the primary's name and art, so both store entries of one "
             + "game read as one tile per resolved work."),
 
+        new("src/Winnow.App/ViewModels/LibraryViewModel.cs", "OpenDetailsAsync", Policy.Resolve,
+            "The detail backdrop reads the saved background from GameWorkIdFor, which resolves "
+            + "the selected ownership's work through the live same-game links."),
+
         new("src/Winnow.Recommend/RecommendationEngine.cs", "AssemblePoolAsync", Policy.Resolve,
             "Feed suppression. Verdicts are stored per release and widened to the RESOLVED work, "
             + "so dismissing the Steam entry of a linked game suppresses its Epic entry instead of "

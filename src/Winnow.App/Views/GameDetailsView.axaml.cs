@@ -23,6 +23,7 @@ public partial class GameDetailsView : UserControl
     public GameDetailsView()
     {
         InitializeComponent();
+        LayoutUpdated += (_, _) => RequestBackdrop();
         ScreenshotScroll.AddHandler(PointerWheelChangedEvent, OnScreenshotWheel, RoutingStrategies.Tunnel);
         WireMenuRows();
         MetadataEditorView.CloseRequested += OnSectionClosed;
@@ -174,6 +175,13 @@ public partial class GameDetailsView : UserControl
         RequestCover();
     }
 
+    private void RequestBackdrop()
+    {
+        if (DataContext is not GameDetailsViewModel details) return;
+        var scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
+        details.RequestBackdrop(Card.Bounds.Width * scaling, Card.Bounds.Height * scaling);
+    }
+
     private void RequestCover()
     {
         if (DataContext is not GameDetailsViewModel details)
@@ -185,6 +193,7 @@ public partial class GameDetailsView : UserControl
         // this to a bucket, so this is one decode shared with nothing else.
         var scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
         details.RequestCover(GameDetailsViewModel.CoverWidth * scaling);
+        RequestBackdrop();
 
         // Candidate thumbnails decode at the width they are drawn at, and
         // the scaling is a fact of the window rather than of the view model.

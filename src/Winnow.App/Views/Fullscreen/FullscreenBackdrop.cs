@@ -5,10 +5,10 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Winnow.App.ViewModels;
-using Winnow.Core.Queries;
+using Winnow.App.Services;
+using Winnow.Core.Domain;
 using Winnow.Core.Repositories;
 using Winnow.Covers;
-using Winnow.Covers.Igdb;
 
 namespace Winnow.App.Views.Fullscreen;
 
@@ -26,6 +26,11 @@ public sealed class FullscreenBackdrop : Panel
     private readonly Image _image;
     private readonly ContentControl _fallback = new();
     private CoverKey? _key;
+    private IReadOnlyList<CoverKey> _candidates = [];
+    private int _candidateIndex;
+    private IReadOnlyList<WorkImages> _rows = [];
+    private string? _backgroundUrl;
+    private double _selectionRatio;
     private int _requestedWidth;
     private bool _attached;
     private int _generation;
@@ -117,33 +122,39 @@ public sealed class FullscreenBackdrop : Panel
         var generation = ++_generation;
         _pending?.Dispose(); _pending = null;
         _key = null;
+        _rows = [];
+        _backgroundUrl = null;
+        _selectionRatio = 0;
         _requestedWidth = 0;
         _ = ResolveAsync(_tile, generation);
     }
 
     private async Task ResolveAsync(GameTileViewModel tile, int generation)
     {
-        CoverKey? key = null;
+        string? backgroundUrl = null;
+        IReadOnlyList<WorkImages> rows = [];
         try
         {
             if (_context.Services?.GetService<IWorkRepository>() is { } works)
-            {
-                var work = await works.GetAsync(tile.Primary.WorkId);
-                if (UserArtRef.Token(work?.BackgroundUrl) is { } token) key = CoverKey.User(token);
-                else if (IgdbImageUrl.ImageId(work?.BackgroundUrl) is { } id) key = CoverKey.IgdbBackdrop(id);
-            }
-            if (key is null && _context.Services?.GetService<IWorkImageRepository>() is { } images)
-            {
-                var rows = await images.GetForWorkAsync(tile.Primary.WorkId);
-                var id = rows.Where(row => row.Source == ImageSources.Igdb && row.Kind == ImageKinds.Screenshot)
-                    .SelectMany(row => row.Ids).FirstOrDefault();
-                if (id is not null) key = CoverKey.IgdbBackdrop(id);
-            }
+                backgroundUrl = (await works.GetAsync(tile.Primary.WorkId))?.BackgroundUrl;
+            if (_context.Services?.GetService<IWorkImageRepository>() is { } images)
+                rows = await images.GetForWorkAsync(tile.Primary.WorkId);
         }
-        catch (Exception) { /* Missing metadata uses the selected game's cover. */ }
+        catch (Exception) { /* Missing metadata uses available art, then the selected game's cover. */ }
         if (!_attached || generation != _generation) return;
-        _key = key;
-        if (key is null || _context.Services?.GetService<ICoverLeases>() is null) ShowFallback();
+        _rows = rows;
+        _backgroundUrl = backgroundUrl;
+        _selectionRatio = Bounds.Height > 0 ? Bounds.Width / Bounds.Height : 16d / 9;
+        _candidates = BackdropSelection.Candidates(backgroundUrl, rows, _selectionRatio);
+        _candidateIndex = 0;
+        NextCandidate();
+    }
+
+    private void NextCandidate()
+    {
+        _requestedWidth = 0;
+        _key = _candidateIndex < _candidates.Count ? _candidates[_candidateIndex++] : null;
+        if (_key is null || _context.Services?.GetService<ICoverLeases>() is null) ShowFallback();
         else RequestDisplaySize();
     }
 
@@ -172,7 +183,7 @@ public sealed class FullscreenBackdrop : Panel
             var key = lease.Key;
             lease.Dispose();
             // A failed resolution upgrade should not discard usable artwork.
-            if (_held?.Key != key) ShowFallback();
+            if (_held?.Key != key) NextCandidate();
             return;
         }
         FinishFade();
@@ -205,9 +216,24 @@ public sealed class FullscreenBackdrop : Panel
     {
         var top = TopLevel.GetTopLevel(this);
         if (top is null || Bounds.Width <= 0) return;
+        var ratio = Bounds.Height > 0 ? Bounds.Width / Bounds.Height : 16d / 9;
+        if (_selectionRatio > 0 && Math.Abs(ratio - _selectionRatio) > .0001)
+        {
+            _selectionRatio = ratio;
+            var candidates = BackdropSelection.Candidates(_backgroundUrl, _rows, ratio);
+            if (!_candidates.SequenceEqual(candidates))
+            {
+                _candidates = candidates;
+                _candidateIndex = 0;
+                _requestedWidth = 0;
+                _pending?.Dispose(); _pending = null;
+                _key = _candidateIndex < _candidates.Count ? _candidates[_candidateIndex++] : null;
+            }
+        }
         var scale = Math.Abs(this.TransformToVisual(top)?.M11 ?? 1) * top.RenderScaling;
         if (_key is not { } key || _context.Services?.GetService<ICoverLeases>() is not { } leases) return;
-        var width = CoverImaging.SnapWidth(Math.Max(Bounds.Width, Bounds.Height * 16 / 9) * scale);
+        var width = CoverImaging.SnapWidth(BackdropSelection.DecodeWidth(key, _rows,
+            Bounds.Width * scale, Bounds.Height * scale));
         if (width <= _requestedWidth) return;
         _requestedWidth = width;
         _pending?.Dispose();

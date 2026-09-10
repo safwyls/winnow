@@ -30,6 +30,9 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     /// second decode of every cover a user opens and nothing would draw it.
     /// </summary>
     private readonly LeasedCover _cover;
+    private readonly LeasedBackdrop _backdrop;
+    private readonly IReadOnlyList<WorkImages>? _images;
+    private readonly string? _backgroundUrl;
 
     /// <summary>Update flag service. Null hides the mark-as-read control.</summary>
     private readonly IUpdateFlagService? _flags;
@@ -78,7 +81,8 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         ScreenshotLightboxViewModel? lightbox = null,
         GameJournalViewModel? journal = null,
         System.Windows.Input.ICommand? addToList = null,
-        IReadOnlyList<Session>? sessions = null)
+        IReadOnlyList<Session>? sessions = null,
+        string? backgroundUrl = null)
     {
         Reception = GameReceptionViewModel.From(ratings);
         Screenshots = GameScreenshotsViewModel.From(images, covers, lightbox);
@@ -95,6 +99,9 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         Expansions = expansions;
         Tile = tile;
         _cover = new LeasedCover(covers, tile.CoverKey, CoverLayers.Vivid, art => Cover = art?.Vivid);
+        _images = images;
+        _backgroundUrl = backgroundUrl;
+        _backdrop = new LeasedBackdrop(covers, art => Backdrop = art?.Vivid);
         BucketLabel = bucketLabel;
         Updates = updates;
         _nowUtc = nowUtc;
@@ -797,6 +804,17 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     /// <summary>Procedural art is the fallback here too — never a hole, never a spinner (§7).</summary>
     public bool ShowPlaceholder => Cover is null;
 
+    [ObservableProperty]
+    public partial Bitmap? Backdrop { get; set; }
+
+    public void RequestBackdrop(double widthPixels, double heightPixels)
+    {
+        if (widthPixels <= 0 || heightPixels <= 0) return;
+        var keys = BackdropSelection.Candidates(_backgroundUrl, _images, widthPixels / heightPixels).ToList();
+        if (Tile.CoverKey is { } coverKey && !keys.Contains(coverKey)) keys.Add(coverKey);
+        _backdrop.Request(keys, key => BackdropSelection.DecodeWidth(key, _images, widthPixels, heightPixels));
+    }
+
     /// <summary>The tile's own placeholder gradient, so the modal looks like the tile it came from.</summary>
     public IBrush PlaceholderBrush => Tile.VividBrush;
 
@@ -813,6 +831,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     {
         if (IgdbMatch is not null) IgdbMatch.PropertyChanged -= OnToolPropertyChanged;
         if (MetadataEditor is not null) MetadataEditor.PropertyChanged -= OnToolPropertyChanged;
+        _backdrop.Dispose();
         _cover.Dispose();
         Screenshots?.Dispose();
         IgdbMatch?.Dispose();

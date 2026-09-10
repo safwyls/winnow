@@ -593,7 +593,7 @@ public static class Program
         // IGDB's users, IGDB's critics and Steam's reviewers each keep their
         // own reading and no figure is ever blended with another. The
         // enrichment pass and the per-game refetch are the writers; the
-        // details modal is the only reader.
+        // detail modal and fullscreen backdrops read the stored images.
         services.AddSingleton<IWorkImageRepository, WorkImageRepository>();
         services.AddSingleton<IWorkRatingRepository, WorkRatingRepository>();
 

@@ -39,13 +39,13 @@ public sealed class WorkReceptionWriter
         var changed = 0;
 
         if (await SetImagesAsync(
-                workId, ImageKinds.Screenshot, game.ScreenshotImageIds, stored, observedAt, ct))
+                workId, ImageKinds.Screenshot, game.ScreenshotImageIds, game.ScreenshotImages, stored, observedAt, ct))
         {
             changed++;
         }
 
         if (await SetImagesAsync(
-                workId, ImageKinds.Artwork, game.ArtworkImageIds, stored, observedAt, ct))
+                workId, ImageKinds.Artwork, game.ArtworkImageIds, game.ArtworkImages, stored, observedAt, ct))
         {
             changed++;
         }
@@ -94,6 +94,7 @@ public sealed class WorkReceptionWriter
         long workId,
         string kind,
         IReadOnlyList<string> imageIds,
+        IReadOnlyList<GameImage> images,
         IReadOnlyList<WorkImages> stored,
         DateTime observedAt,
         CancellationToken ct)
@@ -108,7 +109,16 @@ public sealed class WorkReceptionWriter
                    && await _images.DeleteAsync(workId, ImageSources.Igdb, kind, ct);
         }
 
-        if (existing is not null && string.Equals(existing.ImageIds, joined, StringComparison.Ordinal))
+        // Older cached payloads contain IDs alone. Keep any already-known
+        // metadata for those IDs when an offline fallback is replayed.
+        var metadata = ImageIdList.Split(joined)
+            .Select(id => images.FirstOrDefault(image => image.ImageId == id)
+                ?? existing?.Images.FirstOrDefault(image => image.ImageId == id))
+            .OfType<GameImage>()
+            .ToArray();
+
+        if (existing is not null && string.Equals(existing.ImageIds, joined, StringComparison.Ordinal)
+            && existing.Images.SequenceEqual(metadata))
         {
             return false;
         }
@@ -120,6 +130,7 @@ public sealed class WorkReceptionWriter
                 Source = ImageSources.Igdb,
                 Kind = kind,
                 ImageIds = joined,
+                Images = metadata,
                 ObservedAt = observedAt,
             },
             ct);

@@ -3698,3 +3698,51 @@ crossfades over 180ms (instant with reduced motion). Intermediate portrait fallb
 confirmed flash mechanism. The architecture previously said:
 
 > Detaching that layer releases its artwork lease; the detail page still owns its content and focus rows.
+
+### 2026-09-10 — Select landscape artwork using source dimensions
+
+Desktop and fullscreen backdrops now share artwork selection and request a display-sized
+landscape independently of the compact cover. IGDB image observations retain dimensions
+and suitability metadata, with a versioned cache refresh and compatible offline ID fallback.
+The architecture previously said:
+
+> The IGDB response cache carries a payload version per namespace: game payloads at **4**
+> (name, summary, first release date, cover, genres, themes, game modes, player perspectives,
+> platforms, publisher, `game_type`, `parent_game`, `version_parent`, `version_title`,
+> `screenshots`, `artworks`, `rating`, `rating_count`, `aggregated_rating`,
+> `aggregated_rating_count`), age-rating payloads at **1**, search payloads at **1**, and
+> external-id mapping payloads at **1**.
+
+> The shared `games` query now carries `screenshots` and `artworks` as separate image arrays,
+> each row carrying an `image_id`. Only `image_id` is requested: it is the durable handle, and
+> the size token in the CDN path decides the rendition, so a stored URL would carry a size that
+> has to be rewritten on read.
+
+> Fullscreen IGDB landscapes use an `igdb-backdrop` cache key and the documented
+> `t_1080p_2x` rendition, separate from desktop screenshot assets.
+
+> Desktop covers and screenshot renditions remain unchanged; both presentations share lease and eviction behavior.
+
+The schema previously listed:
+
+```text
+work_images(work_id FK works ON DELETE CASCADE, source, kind, image_ids, observed_at,
+            PRIMARY KEY(work_id, source, kind))
+```
+
+The visual specification previously said:
+
+> **The modal reuses its existing image path.** It binds `GameDetailsViewModel.Cover`, the 200px
+> bitmap it already asks the cover cache for at full saturation — §10's rule, that the ramp is a
+> scanning aid and the user has finished scanning. That bitmap is upscaled to a card up to
+> 1582px wide, and the upscale is what softens it; Avalonia's effect pipeline is closed (§5.4)
+> and nothing here needs it to be open.
+
+> Prefer the saved game background, then an available landscape screenshot, then a quiet cover fallback.
+
+> Its existing 200px decode also supplies the subdued backdrop (§5.5).
+
+The selection lifetime wording now avoids a term reserved by the documentation consistency
+check for historical amendments. Its behavior is unchanged. The visual specification said:
+
+> Ignore results from superseded selections.

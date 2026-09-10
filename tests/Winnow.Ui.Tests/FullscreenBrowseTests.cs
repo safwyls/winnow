@@ -645,7 +645,7 @@ public sealed class FullscreenBrowseTests
         try
         {
             Dispatcher.UIThread.RunJobs();
-            Assert.Contains(CoverKey.IgdbBackdrop("tv_screenshot"), leases.Keys);
+            Assert.Contains(CoverKey.IgdbBackdrop("tvscreenshot"), leases.Keys);
             var image = backdrop.GetVisualDescendants().OfType<Image>().Last();
             Assert.Same(pixels, image.Source);
             Assert.True(leases.Active > 0);
@@ -662,7 +662,7 @@ public sealed class FullscreenBrowseTests
         public Task<bool> DeleteAsync(long workId, string source, string kind, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<WorkImages>> GetForWorkAsync(long workId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<WorkImages>>([new() { WorkId = workId, Source = ImageSources.Igdb,
-                Kind = ImageKinds.Screenshot, ImageIds = "tv_screenshot", ObservedAt = DateTime.UtcNow }]);
+                Kind = ImageKinds.Screenshot, ImageIds = "tvscreenshot", ObservedAt = DateTime.UtcNow }]);
     }
 
     private sealed class TestLeases(CoverArt art) : ICoverLeases

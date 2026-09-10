@@ -128,7 +128,7 @@ public sealed class FullscreenDetailsTests
             Assert.Equal(1080, backdrop.Bounds.Height);
             Assert.Same(pixels, Assert.Single(backdrop.GetVisualDescendants().OfType<Image>(), image => image.Source is not null).Source);
             Assert.Contains(userBackground ? CoverKey.User("landscape") : CoverKey.IgdbBackdrop("detailshot"), leases.Keys);
-            Assert.Equal(userBackground ? 0 : 1, images.Reads);
+            Assert.Equal(1, images.Reads);
             var hero = Assert.IsType<Grid>(Assert.IsType<Grid>(view.CurrentPage.Content).Children[0]);
             Assert.Empty(hero.GetVisualDescendants().OfType<Image>());
             if (userBackground && Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)

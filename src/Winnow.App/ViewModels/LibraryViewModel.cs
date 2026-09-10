@@ -1408,7 +1408,10 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             lightbox: Lightbox,
             journal: await BuildJournalAsync(target),
             addToList: new RelayCommand(() => BeginAddToListFor([target])),
-            sessions: sessions);
+            sessions: sessions,
+            backgroundUrl: workId is { } backgroundWorkId
+                ? (await _works.GetAsync(backgroundWorkId))?.BackgroundUrl
+                : null);
     }
 
     /// <summary>

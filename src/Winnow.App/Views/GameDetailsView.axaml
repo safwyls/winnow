@@ -345,7 +345,7 @@
             <Panel>
                 <Border CornerRadius="{StaticResource RadiusTile}" ClipToBounds="True" IsHitTestVisible="False">
                     <Panel>
-                        <Image Source="{Binding Cover}" Stretch="UniformToFill"/>
+                        <Image Source="{Binding Backdrop}" Stretch="UniformToFill"/>
                         <Border Background="{StaticResource ArtVeil}"/>
                     </Panel>
                 </Border>

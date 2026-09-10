@@ -361,11 +361,12 @@ The walk runs at every whole percent of the transparency slider; `Surface` never
 so the veil never walks with it, and `TextDim` brightening under the ink ramp only improves the
 figure. Slider zero is the worst case.
 
-**The modal reuses its existing image path.** It binds `GameDetailsViewModel.Cover`, the 200px
-bitmap it already asks the cover cache for at full saturation — §10's rule, that the ramp is a
-scanning aid and the user has finished
-scanning. That bitmap is upscaled to a card up to 1582px wide, and the upscale is what softens
-it; Avalonia's effect pipeline is closed (§5.4) and nothing here needs it to be open.
+**The modal requests art at its displayed size.** The decorative backdrop has its own image
+lease, separate from the compact portrait cover. It shares fullscreen's selection policy:
+the saved background first, suitable landscape artwork next, then a landscape screenshot,
+and the cover when no usable landscape remains. Source dimensions after cropping to the
+surface's proportions determine image quality; the veil provides the subdued treatment.
+The screenshot gallery continues to show screenshots in their source order.
 
 **A user theme can break this.** `ThemeAudit` warns when `Colorimetry.WorstArtBackedContrast`
 falls under AA, against `seeds.surface`, because it is the theme's own `Surface` that decides
@@ -634,7 +635,7 @@ and controls, not artwork. Game selection updates the background without moving 
 When changing games, retain the displayed landscape while the next landscape loads, then
 crossfade over 180ms. Reduced motion swaps the loaded art immediately. A cover fallback
 appears only after landscape metadata or loading fails, never as an intermediate image
-between two landscapes. Ignore results from superseded selections.
+between two landscapes. Ignore results from earlier selections.
 Game artwork fades in further to the right to keep the left content area quiet: browsing
 backdrops reveal between 30% and 85% of the canvas width, and the details veil stays dense
 through 58% before opening toward the right edge.
@@ -661,8 +662,9 @@ and returning restores the collection and selected game.
 
 **Game details** uses a landscape backdrop across the full canvas, including the header.
 A dark left and top veil protects the title and status text; a vertical fade settles into
-Ground before the overview content. Prefer the saved game background, then an available
-landscape screenshot, then a quiet cover fallback. Artwork has its own display-sized lease
+Ground before the overview content. Prefer the saved game background, then suitable landscape
+artwork, then a landscape screenshot, then a quiet cover fallback. Desktop and fullscreen
+share this selection policy. Artwork has its own display-sized lease
 and high-resolution cache entry; its source quality remains the upper limit on sharpness.
 The header shows B and the previous page name plus controller status and the clock. The
 root navigation and wordmark return when leaving details.
@@ -950,8 +952,8 @@ then the modal; the close button and a click on the scrim dismiss the modal dire
 
 The modal has a compact persistent header and five tabs. The header carries an 82x123
 cover, title, year and publisher, store and install state, and the Play/Install, Add to list
-and More controls. The cover keeps its 2:3 geometry and full saturation. Its existing 200px
-decode also supplies the subdued backdrop (§5.5).
+and More controls. The cover keeps its 2:3 geometry and full saturation. The subdued backdrop
+uses a separate display-sized image lease (§5.5).
 
 Play and Install keep their text and carry the matching 16px play or download glyph. Add to
 list carries the 16px list-plus glyph. The icons reinforce the verbs; the text and automation

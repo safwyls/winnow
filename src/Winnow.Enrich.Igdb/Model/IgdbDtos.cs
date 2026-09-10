@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Winnow.Core.Domain;
 
 namespace Winnow.Enrich.Igdb.Model;
 
@@ -83,6 +84,20 @@ internal static class IgdbJson
             .Distinct(StringComparer.Ordinal)
             .ToArray() ?? IgdbGame.NoStrings;
 
+    internal static IReadOnlyList<GameImage> Images(IReadOnlyList<IgdbImageDto>? images)
+        => images?
+            .Where(i => !string.IsNullOrWhiteSpace(i.ImageId) && IsImageId(i.ImageId.Trim()))
+            .DistinctBy(i => i.ImageId!.Trim(), StringComparer.Ordinal)
+            .Select(i => new GameImage
+            {
+                ImageId = i.ImageId!.Trim(),
+                Width = i.Width is > 0 ? i.Width : null,
+                Height = i.Height is > 0 ? i.Height : null,
+                AlphaChannel = i.AlphaChannel,
+                Animated = i.Animated,
+                ImageType = string.IsNullOrWhiteSpace(i.ImageType?.Name) ? null : i.ImageType.Name.Trim(),
+            }).ToArray() ?? [];
+
     /// <summary>
     /// ASCII alphanumeric, 1–64 characters. Strict for the same reason
     /// <c>IgdbImageUrl.ImageId</c> is strict: an id that fails this check
@@ -146,15 +161,21 @@ internal sealed class IgdbNamedDto
 
 /// <summary>
 /// The shared wire shape of a <c>screenshots</c> or <c>artworks</c> row.
-/// Both are the same shape in IGDB's protobuf schema (<c>message Screenshot</c>
-/// and <c>message Artwork</c> carry identical fields); only <c>image_id</c>
-/// is consumed because the size token in the CDN path decides the rendition.
+/// Artwork also carries an expanded <c>image_type</c> name.
 /// </summary>
 internal sealed class IgdbImageDto
 {
     public long Id { get; init; }
 
     public string? ImageId { get; init; }
+
+    public int? Width { get; init; }
+    public int? Height { get; init; }
+    public bool? AlphaChannel { get; init; }
+    public bool? Animated { get; init; }
+
+    [JsonConverter(typeof(ExpandableNamedConverter))]
+    public IgdbNamedDto? ImageType { get; init; }
 }
 
 internal sealed class IgdbInvolvedCompanyDto
@@ -474,6 +495,8 @@ internal sealed class IgdbGameDto
         VersionTitle = string.IsNullOrWhiteSpace(this.VersionTitle) ? null : this.VersionTitle,
         ScreenshotImageIds = IgdbJson.ImageIds(this.Screenshots),
         ArtworkImageIds = IgdbJson.ImageIds(this.Artworks),
+        ScreenshotImages = IgdbJson.Images(this.Screenshots),
+        ArtworkImages = IgdbJson.Images(this.Artworks),
         UserRating = IgdbJson.Score(this.Rating),
         UserRatingCount = IgdbJson.Count(this.RatingCount),
         CriticRating = IgdbJson.Score(this.AggregatedRating),

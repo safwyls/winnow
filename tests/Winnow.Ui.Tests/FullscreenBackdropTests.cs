@@ -115,6 +115,118 @@ public sealed class FullscreenBackdropTests
         finally { window.Close(); }
     }
 
+    [AvaloniaFact]
+    public async Task Desktop_backdrop_tries_ranked_art_then_screenshot_and_keeps_portrait_separate()
+    {
+        using var pixels = new RenderTargetBitmap(new PixelSize(16, 9));
+        var leases = new DelayedLeases();
+        using var details = new GameDetailsViewModel(TileFixture.Tile(DateTime.UtcNow, coverKey: CoverKey.Igdb("portrait")), "All", [], DateTime.UtcNow,
+            covers: leases, images: RankedImages(), backgroundUrl: UserArtRef.Format("override"));
+        details.RequestCover(200);
+        var portrait = leases.Last;
+        details.RequestBackdrop(1920, 1080);
+        Assert.Equal(CoverKey.User("override"), leases.Last.Key);
+        leases.Last.Complete(null);
+        await Flush();
+        Assert.Equal(CoverKey.IgdbBackdrop("art"), leases.Last.Key);
+        Assert.Equal(1920, leases.Last.Width);
+        leases.Last.Complete(null);
+        await Flush();
+        Assert.Equal(CoverKey.IgdbBackdrop("shot"), leases.Last.Key);
+        leases.Last.Complete(new CoverArt(pixels, pixels));
+        await Flush();
+        Assert.Same(pixels, details.Backdrop);
+        Assert.Null(details.Cover);
+        details.RequestBackdrop(3840, 2160);
+        var upgrade = leases.Last;
+        details.Dispose();
+        Assert.True(upgrade.Disposed);
+        Assert.True(portrait.Disposed);
+        upgrade.Complete(new CoverArt(pixels, pixels));
+        await Flush();
+        Assert.Null(details.Backdrop);
+        Assert.All(leases.All, lease => Assert.True(lease.Disposed));
+    }
+
+    [AvaloniaFact]
+    public async Task Fullscreen_tries_artwork_then_screenshot_before_cover()
+    {
+        var leases = new DelayedLeases();
+        using var services = new ServiceCollection().AddSingleton<ICoverLeases>(leases)
+            .AddSingleton<IWorkImageRepository>(new RankedRepository()).BuildServiceProvider();
+        using var feed = new FeedViewModel(new PreviewFeedService(), PreviewData.Library);
+        using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell, services);
+        var backdrop = new FullscreenBackdrop(context, TileFixture.Tile(DateTime.UtcNow));
+        var window = new Window { Width = 1920, Height = 1080, Content = backdrop };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            Assert.Equal(CoverKey.IgdbBackdrop("art"), leases.Last.Key);
+            leases.Last.Complete(null);
+            await Flush();
+            Assert.Equal(CoverKey.IgdbBackdrop("shot"), leases.Last.Key);
+            Assert.Null(Assert.Single(backdrop.Children.OfType<ContentControl>()).Content);
+            leases.Last.Complete(null);
+            await Flush();
+            Assert.IsType<FullscreenCover>(Assert.Single(backdrop.Children.OfType<ContentControl>()).Content);
+        }
+        finally { window.Close(); }
+        Assert.All(leases.All, lease => Assert.True(lease.Disposed));
+    }
+
+    [AvaloniaTheory]
+    [InlineData(6000, 1000, 3840)]
+    [InlineData(1920, 1080, 1920)]
+    public async Task Both_backdrops_size_each_candidate_for_its_source_proportions(int width, int height, int expectedBucket)
+    {
+        var rows = RankedImages().ToArray();
+        rows[0] = rows[0] with { Images = [new() { ImageId = "art", Width = width, Height = height }] };
+        var leases = new DelayedLeases();
+        using var details = new GameDetailsViewModel(TileFixture.Tile(DateTime.UtcNow), "All", [], DateTime.UtcNow,
+            covers: leases, images: rows);
+        details.RequestBackdrop(1920, 1080);
+        Assert.Equal(CoverKey.IgdbBackdrop("art"), leases.Last.Key);
+        Assert.Equal(expectedBucket, leases.Last.Width);
+        leases.Last.Complete(null);
+        await Flush();
+        Assert.Equal(CoverKey.IgdbBackdrop("shot"), leases.Last.Key);
+        Assert.Equal(1920, leases.Last.Width);
+        details.Dispose();
+
+        using var services = new ServiceCollection().AddSingleton<ICoverLeases>(leases)
+            .AddSingleton<IWorkImageRepository>(new RankedRepository(rows)).BuildServiceProvider();
+        using var feed = new FeedViewModel(new PreviewFeedService(), PreviewData.Library);
+        using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell, services);
+        var window = new Window { Width = 1920, Height = 1080,
+            Content = new FullscreenBackdrop(context, TileFixture.Tile(DateTime.UtcNow)) };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            Assert.Equal(CoverKey.IgdbBackdrop("art"), leases.Last.Key);
+            Assert.Equal(expectedBucket, leases.Last.Width);
+            leases.Last.Complete(null);
+            await Flush();
+            Assert.Equal(CoverKey.IgdbBackdrop("shot"), leases.Last.Key);
+            Assert.Equal(1920, leases.Last.Width);
+        }
+        finally { window.Close(); }
+        Assert.All(leases.All, lease => Assert.True(lease.Disposed));
+    }
+
+    private static IReadOnlyList<WorkImages> RankedImages() =>
+    [
+        new() { WorkId = 1, Source = ImageSources.Igdb, Kind = ImageKinds.Artwork,
+            ImageIds = "art", Images = [new() { ImageId = "art", Width = 1920, Height = 1080 }], ObservedAt = DateTime.UtcNow },
+        new() { WorkId = 1, Source = ImageSources.Igdb, Kind = ImageKinds.Screenshot,
+            ImageIds = "shot", Images = [new() { ImageId = "shot", Width = 3840, Height = 2160 }], ObservedAt = DateTime.UtcNow }
+    ];
+
+    private sealed class RankedRepository(IReadOnlyList<WorkImages>? rows = null) : IWorkImageRepository
+    {
+        public Task UpsertAsync(WorkImages images, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<bool> DeleteAsync(long workId, string source, string kind, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<WorkImages>> GetForWorkAsync(long workId, CancellationToken ct = default) => Task.FromResult(rows ?? RankedImages());
+    }
     private static async Task Flush()
     {
         await Task.Delay(20);

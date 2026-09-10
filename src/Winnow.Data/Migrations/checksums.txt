@@ -36,3 +36,4 @@
 0027_work_field_sources.sql              abb68ab465b9f348722eb110f35936e3b651272e851f3ca9053854bcbec82320
 0028_reception_and_screenshots.sql        e959c6a2327a227ed4b4fa13c4e5dcbad93c7e754b91102f749448e07bb12b6c
 0029_lifecycle_observations.sql          7dd4f20b90d7404899ab5368bb65dd9becf4f61a7ff5e7ba1db0348b2bc47f9b
+0030_work_image_metadata.sql             3db4695f0ac8f01cae2138ae2f38b9ec5232fe01e65993e4402535b6bcfc27f9
