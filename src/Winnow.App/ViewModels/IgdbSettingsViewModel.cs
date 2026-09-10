@@ -74,7 +74,7 @@ public partial class IgdbSettingsViewModel(
             ClientId = id;
             ClientSecret = string.Empty;
             HasSavedCredentials = true;
-            Status = "Credentials saved. Restart Winnow to apply changes. IGDB will check them when fetching details.";
+            Status = "Credentials saved. Metadata refresh queued. IGDB will check them when fetching details.";
         }
         catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
         {
@@ -99,7 +99,7 @@ public partial class IgdbSettingsViewModel(
             ClientId = string.Empty;
             ClientSecret = string.Empty;
             HasSavedCredentials = false;
-            Status = "Saved credentials removed. Restart Winnow to apply changes."
+            Status = "Saved credentials removed. The change is active now."
                 + (hasConfiguration ? FallbackNote : string.Empty);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)

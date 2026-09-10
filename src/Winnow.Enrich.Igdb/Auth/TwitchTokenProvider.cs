@@ -31,7 +31,7 @@ namespace Winnow.Enrich.Igdb.Auth;
 /// emptied even on a host that cannot encrypt, unlike the user-typed client
 /// secret.</para>
 /// </summary>
-public sealed class TwitchTokenProvider : IIgdbTokenProvider
+public sealed class TwitchTokenProvider : IIgdbTokenProvider, IIgdbCredentialUpdater
 {
     /// <summary>Named <see cref="HttpClient"/> used for token minting.</summary>
     public const string HttpClientName = "igdb-token";
@@ -90,23 +90,12 @@ public sealed class TwitchTokenProvider : IIgdbTokenProvider
 
     public async Task<IgdbAccessToken?> GetAsync(CancellationToken ct = default)
     {
-        var credentials = await _credentials.GetAsync(ct);
-        if (credentials is null)
-        {
-            return null;
-        }
-
-        // Fast path outside the lock: a valid cached token is the overwhelmingly
-        // common case and must not serialise callers.
-        var cached = _cached;
-        if (IsUsable(cached, credentials))
-        {
-            return cached;
-        }
-
         await _gate.WaitAsync(ct);
         try
         {
+            var credentials = await _credentials.GetAsync(ct);
+            if (credentials is null) return null;
+
             if (IsUsable(_cached, credentials))
             {
                 return _cached;
@@ -134,15 +123,12 @@ public sealed class TwitchTokenProvider : IIgdbTokenProvider
 
     public async Task<IgdbAccessToken?> RefreshAsync(IgdbAccessToken? staleToken, CancellationToken ct = default)
     {
-        var credentials = await _credentials.GetAsync(ct);
-        if (credentials is null)
-        {
-            return null;
-        }
-
         await _gate.WaitAsync(ct);
         try
         {
+            var credentials = await _credentials.GetAsync(ct);
+            if (credentials is null) return null;
+
             // Someone else already replaced the token this caller was holding —
             // theirs is fresh, so hand it back instead of minting again.
             if (staleToken is not null
@@ -160,6 +146,20 @@ public sealed class TwitchTokenProvider : IIgdbTokenProvider
         {
             _gate.Release();
         }
+    }
+
+    public async Task UpdateCredentialsAsync(Func<Task> update, CancellationToken ct = default)
+    {
+        // Keep persistence within the mint/load gate: an older in-flight token
+        // must finish before the transaction removes it, not restore it later.
+        await _gate.WaitAsync(ct);
+        try
+        {
+            await _credentials.UpdateAsync(update, ct);
+            _cached = null;
+            _loadedFromStore = false;
+        }
+        finally { _gate.Release(); }
     }
 
     private bool IsUsable(IgdbAccessToken? token, IgdbCredentials credentials)

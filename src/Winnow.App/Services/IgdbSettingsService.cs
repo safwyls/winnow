@@ -23,21 +23,30 @@ public sealed class IgdbSettingsService(
     ISettingsStore settings,
     IIgdbSecretProtector protector,
     IUnitOfWorkFactory unitOfWork,
-    IConfiguration? configuration = null) : IIgdbSettingsService
+    IConfiguration? configuration = null,
+    IIgdbCredentialUpdater? credentialUpdater = null) : IIgdbSettingsService
 {
+    private readonly SemaphoreSlim _gate = new(1, 1);
+    public event Action? CredentialsChanged;
+
     private bool HasConfigurationCredentials => IgdbCredentials.TryCreate(
         configuration?["Igdb:ClientId"], configuration?["Igdb:ClientSecret"], "configuration") is not null;
 
     public Task<IgdbSettingsSnapshot> LoadAsync(CancellationToken ct = default) => Task.Run(async () =>
     {
-        // Keep automatic legacy migration identical to the runtime credential source.
-        var credentials = await new SettingsTableCredentialSource(settings, protector).TryGetAsync(ct);
-        var id = await settings.GetAsync(SettingsTableCredentialSource.ClientIdKey, ct);
-        var secret = await settings.GetAsync(SettingsTableCredentialSource.ClientSecretProtectedKey, ct);
-        var legacy = await settings.GetAsync(SettingsTableCredentialSource.ClientSecretKey, ct);
-        return new IgdbSettingsSnapshot(id ?? string.Empty,
-            !string.IsNullOrWhiteSpace(id) || !string.IsNullOrWhiteSpace(secret) || !string.IsNullOrWhiteSpace(legacy),
-            credentials is not null, HasConfigurationCredentials);
+        await _gate.WaitAsync(ct);
+        try
+        {
+            // Keep automatic legacy migration identical to the runtime credential source.
+            var credentials = await new SettingsTableCredentialSource(settings, protector).TryGetAsync(ct);
+            var id = await settings.GetAsync(SettingsTableCredentialSource.ClientIdKey, ct);
+            var secret = await settings.GetAsync(SettingsTableCredentialSource.ClientSecretProtectedKey, ct);
+            var legacy = await settings.GetAsync(SettingsTableCredentialSource.ClientSecretKey, ct);
+            return new IgdbSettingsSnapshot(id ?? string.Empty,
+                !string.IsNullOrWhiteSpace(id) || !string.IsNullOrWhiteSpace(secret) || !string.IsNullOrWhiteSpace(legacy),
+                credentials is not null, HasConfigurationCredentials);
+        }
+        finally { _gate.Release(); }
     }, ct);
 
     public Task<IgdbSettingsSaveResult> SaveAsync(string clientId, string clientSecret) => Task.Run(async () =>
@@ -47,12 +56,15 @@ public sealed class IgdbSettingsService(
         if (id.Length == 0 || secret.Length == 0) return IgdbSettingsSaveResult.MissingFields;
         var protectedSecret = protector.Protect(secret);
         if (string.IsNullOrWhiteSpace(protectedSecret)) return IgdbSettingsSaveResult.ProtectionUnavailable;
-        using var transaction = unitOfWork.Begin();
-        await settings.SetAsync(SettingsTableCredentialSource.ClientIdKey, id);
-        await settings.SetAsync(SettingsTableCredentialSource.ClientSecretProtectedKey, protectedSecret);
-        await settings.RemoveAsync(SettingsTableCredentialSource.ClientSecretKey);
-        await ClearTokenAsync();
-        transaction.Commit();
+        await MutateAsync(async () =>
+        {
+            using var transaction = unitOfWork.Begin();
+            await settings.SetAsync(SettingsTableCredentialSource.ClientIdKey, id);
+            await settings.SetAsync(SettingsTableCredentialSource.ClientSecretProtectedKey, protectedSecret);
+            await settings.RemoveAsync(SettingsTableCredentialSource.ClientSecretKey);
+            await ClearTokenAsync();
+            transaction.Commit();
+        });
         return IgdbSettingsSaveResult.Saved;
     });
 
@@ -60,14 +72,29 @@ public sealed class IgdbSettingsService(
     public Task<bool> RemoveAsync() => Task.Run(async () =>
     {
         var hasConfiguration = HasConfigurationCredentials;
-        using var transaction = unitOfWork.Begin();
-        await settings.RemoveAsync(SettingsTableCredentialSource.ClientIdKey);
-        await settings.RemoveAsync(SettingsTableCredentialSource.ClientSecretProtectedKey);
-        await settings.RemoveAsync(SettingsTableCredentialSource.ClientSecretKey);
-        await ClearTokenAsync();
-        transaction.Commit();
+        await MutateAsync(async () =>
+        {
+            using var transaction = unitOfWork.Begin();
+            await settings.RemoveAsync(SettingsTableCredentialSource.ClientIdKey);
+            await settings.RemoveAsync(SettingsTableCredentialSource.ClientSecretProtectedKey);
+            await settings.RemoveAsync(SettingsTableCredentialSource.ClientSecretKey);
+            await ClearTokenAsync();
+            transaction.Commit();
+        });
         return hasConfiguration;
     });
+
+    private async Task MutateAsync(Func<Task> update)
+    {
+        await _gate.WaitAsync();
+        try
+        {
+            if (credentialUpdater is null) await update();
+            else await credentialUpdater.UpdateCredentialsAsync(update);
+        }
+        finally { _gate.Release(); }
+        CredentialsChanged?.Invoke();
+    }
 
     private async Task ClearTokenAsync()
     {

@@ -162,6 +162,7 @@ public static class Program
         // the SQLite connection factory with it — and closing the window two
         // seconds into the first run is a normal thing to do.
         Task startup = Task.CompletedTask;
+        CredentialMetadataRefresh? credentialRefresh = null;
         try
         {
             // Migrations run before ANY reader or writer touches the db —
@@ -393,6 +394,16 @@ public static class Program
                 }, Shutdown.Token);
             }
 
+            if (!writesSuppressed)
+            {
+                credentialRefresh = new CredentialMetadataRefresh(startup,
+                    ct => RefreshIgdbMetadataAsync(host.Services, ct),
+                    _ => host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(Program))
+                        .LogWarning("Metadata refresh after an IGDB credential change failed; saved credentials remain available."),
+                    Shutdown.Token);
+                host.Services.GetRequiredService<IgdbSettingsService>().CredentialsChanged += credentialRefresh.Request;
+            }
+
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }
         catch (Exception fault)
@@ -423,7 +434,8 @@ public static class Program
             Shutdown.Cancel();
             try
             {
-                startup.Wait(TimeSpan.FromSeconds(5));
+                Task.WhenAll(startup, credentialRefresh?.Completion ?? Task.CompletedTask)
+                    .Wait(TimeSpan.FromSeconds(5));
             }
             catch (AggregateException)
             {
@@ -471,6 +483,23 @@ public static class Program
     private static async Task RefreshLibraryAsync(IServiceProvider services)
         => await Dispatcher.UIThread.InvokeAsync(() =>
             services.GetRequiredService<LibraryViewModel>().LoadCommand.ExecuteAsync(null));
+
+    private static async Task RefreshIgdbMetadataAsync(IServiceProvider services, CancellationToken ct)
+    {
+        try
+        {
+            await services.GetRequiredService<EnrichmentSyncService>().EnrichAsync(ct);
+            await services.GetRequiredService<FacetSyncService>().SyncAsync(ct);
+            await services.GetRequiredService<IgdbMaturitySync>().SyncAsync(ct);
+            await services.GetRequiredService<ReceptionSyncService>().SyncAsync(ct);
+            await services.GetRequiredService<LifecycleSyncService>().SyncAsync(ct);
+        }
+        finally
+        {
+            // Earlier slices may have committed even when a later request failed.
+            if (!ct.IsCancellationRequested) await RefreshLibraryAsync(services);
+        }
+    }
 
     // Avalonia configuration; also used by the previewer. Do not remove.
     public static AppBuilder BuildAvaloniaApp()
@@ -899,7 +928,8 @@ public static class Program
         // observes the saved preference; the OS operation stays behind a seam
         // so view-model and headless tests never touch the real Run key.
         services.AddSingleton<IStartupRegistration, WindowsStartupRegistration>();
-        services.AddSingleton<IIgdbSettingsService, IgdbSettingsService>();
+        services.AddSingleton<IgdbSettingsService>();
+        services.AddSingleton<IIgdbSettingsService>(sp => sp.GetRequiredService<IgdbSettingsService>());
         services.AddSingleton<IgdbSettingsViewModel>();
         services.AddSingleton<ApplicationSettingsViewModel>();
         services.AddSingleton<FirstRunSetupService>();

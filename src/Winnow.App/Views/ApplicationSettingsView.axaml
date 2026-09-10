@@ -176,7 +176,7 @@
                                  PasswordChar="●" IsEnabled="{Binding !Igdb.IsBusy}"
                                  AutomationProperties.Name="IGDB client secret" Watermark="Enter a secret to save or replace credentials"/>
                         <TextBlock Classes="para" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
-                                   Text="The secret is stored securely on this device. Restart Winnow after saving or removing credentials."/>
+                                   Text="The secret is stored securely on this device. Changes take effect immediately."/>
                         <WrapPanel>
                             <Button Classes="act" Content="Save credentials" Margin="0,0,8,0"
                                     Command="{Binding Igdb.SaveCommand}"/>

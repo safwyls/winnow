@@ -3611,3 +3611,25 @@ in the background; completing setup does not trigger an automatic restart.
 The visual specification previously said:
 
 > APPLICATION holds operating-system behavior, metadata credentials and application build information.
+
+## 2026-09-10 — Apply IGDB credentials during the session
+
+The user requested applying IGDB credentials without restarting. Credential changes now
+serialize with authentication, clear runtime caches after successful storage, and queue
+a background metadata refresh behind startup and any current refresh.
+
+The architecture previously said:
+
+> It refuses plaintext storage, never reloads the secret into the editor, and tells the user to restart after changes so cached runtime credentials and the startup enrichment pass are refreshed.
+> IGDB changes retain the documented restart step; wizard completion does not automatically restart or launch another enrichment pass.
+
+The visual specification previously said:
+
+> Copy explains secure local storage and the restart step.
+> Copy explains that skipped items remain in Settings and that IGDB changes need a restart after setup.
+
+The README previously said:
+
+> After saving IGDB credentials, restart Winnow when setup is finished.
+> Enter the client ID and secret, choose **Save credentials**, then restart Winnow.
+> Restart after removing credentials.

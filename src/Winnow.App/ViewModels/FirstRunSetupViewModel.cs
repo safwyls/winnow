@@ -46,7 +46,7 @@ public partial class FirstRunSetupViewModel : ObservableObject
     public bool CanGoBack => IsOpen && !IsBusy && Step != FirstRunStep.Welcome;
     public bool CanSkipStep => IsOpen && !IsBusy && Step is not (FirstRunStep.Welcome or FirstRunStep.Ready);
     public string NextLabel => Step switch { FirstRunStep.Welcome => "Get started", FirstRunStep.Ready => "Open my library", _ => "Continue" };
-    public string RestartNote => "If you saved IGDB credentials, restart Winnow after setup to fetch metadata with them.";
+    public string MetadataNote => "Saved IGDB credentials take effect immediately. Metadata fills in in the background.";
     public string Title => Step switch
     {
         FirstRunStep.Welcome => "Welcome to Winnow",

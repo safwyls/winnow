@@ -212,8 +212,12 @@ stored locally.
 - Desktop and fullscreen Application settings accept the user's Twitch client ID and secret.
   An App service writes through the existing IGDB settings store and secret
   protector, atomically replaces the pair and clears persisted token caches. It refuses
-  plaintext storage, never reloads the secret into the editor, and tells the user to restart
-  after changes so cached runtime credentials and the startup enrichment pass are refreshed.
+  plaintext storage and never reloads the secret into the editor. Credential changes are
+  serialized with token minting and credential resolution, and invalidate runtime caches
+  after a successful write. Changes queue a background metadata pass after startup sync;
+  repeated changes coalesce and passes run one at a time. The pass updates facets, maturity,
+  reception and lifecycle metadata using their existing cache and scheduling rules, then
+  reloads the shared library on the UI thread.
   Settings credentials take precedence over environment/local configuration credentials;
   removing the saved pair preserves that fallback. Saving does not perform network validation.
 - Auth is Twitch client-credentials:
@@ -838,8 +842,8 @@ settings resets only the cursor, preserving all saved preferences and credential
 The wizard composes existing App view models and commands; it does not introduce a second
 sign-in, credential store, ingest path or theme mechanism. Steam consent, Epic sign-in,
 protected IGDB saving and local GOG discovery retain their existing contracts. Navigating away
-clears credential drafts without saving them. IGDB changes retain the documented restart step;
-wizard completion does not automatically restart or launch another enrichment pass.
+clears credential drafts without saving them. Saving or removing IGDB credentials applies
+immediately and queues a metadata refresh; wizard completion itself does not launch another pass.
 
 ---
 

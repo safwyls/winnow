@@ -40,16 +40,20 @@ public sealed class IgdbSettingsInteractionTests
             view.IsVisible = true;
             Assert.Empty(secret.Text!);
             secret.Text = "another-test-secret";
+            model.Igdb.ClientId = "test-client";
+            await model.Igdb.SaveCommand.ExecuteAsync(null);
+            Assert.Contains("Metadata refresh queued", model.Igdb.Status);
+            Assert.Empty(model.Igdb.ClientSecret);
         }
         finally { window.Close(); }
         Assert.Empty(model.Igdb.ClientSecret);
     }
 
     [AvaloniaFact]
-    public void Fullscreen_controller_opens_masked_editor_and_keeps_shared_values()
+    public async Task Fullscreen_controller_opens_masked_editor_and_keeps_shared_values()
     {
         var preview = PreviewData.Shell;
-        var app = new ApplicationSettingsViewModel();
+        var app = new ApplicationSettingsViewModel(igdb: new IgdbSettingsViewModel(new SettingsService()));
         var shell = new MainWindowViewModel(preview.Library, preview.MergeQueue, preview.Stores,
             preview.Appearance, preview.Feed, preview.AccountStats, preview.LibrarySettings,
             applicationSettings: app);
@@ -74,6 +78,11 @@ public sealed class IgdbSettingsInteractionTests
             Assert.Equal("test-client", app.Igdb.ClientId);
             var save = page.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Content, "Save credentials"));
             Assert.Same(app.Igdb.SaveCommand, save.Command);
+            await app.Igdb.SaveCommand.ExecuteAsync(null);
+            Assert.Contains("Metadata refresh queued", app.Igdb.Status);
+            Assert.Empty(app.Igdb.ClientSecret);
+            await app.Igdb.RemoveCommand.ExecuteAsync(null);
+            Assert.Contains("active now", app.Igdb.Status);
             window.Content = null;
             Assert.Empty(app.Igdb.ClientSecret);
             window.Content = page;

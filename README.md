@@ -67,8 +67,8 @@ finishing or skipping setup keeps it closed. Existing libraries continue straigh
 You can reopen it with **Settings → Application → Run setup again** on desktop or fullscreen.
 
 Preferences save as you change them. Credential forms have an explicit **Save** action;
-skipping a step discards unsaved secret fields and preserves saved choices. After saving
-IGDB credentials, restart Winnow when setup is finished. Steam and Epic offer their existing
+skipping a step discards unsaved secret fields and preserves saved choices. Saving
+IGDB credentials applies them immediately and queues a background metadata refresh. Steam and Epic offer their existing
 optional connections; GOG uses local Galaxy discovery without a sign-in step.
 
 The first run does the most work — scanning launcher files, creating a record per game, then
@@ -166,12 +166,13 @@ publishers and genres. Open **Settings → Application → IGDB metadata** on de
 fullscreen. **Get IGDB credentials** opens the [Twitch developer console](https://dev.twitch.tv/console/apps).
 Register a Confidential application and generate a client secret; see
 [IGDB's setup instructions](https://api-docs.igdb.com/#account-creation) for the registration steps.
-Enter the client ID and secret, choose **Save credentials**, then restart Winnow. Saving
+Enter the client ID and secret, then choose **Save credentials**. Changes take effect immediately. Saving
 stores the secret through the platform secret protector; it does not validate it with Twitch.
-The secret stays masked, and the field is cleared after saving.
+The secret stays masked, and the field is cleared after saving. A background metadata refresh
+runs after any startup sync or current credential refresh finishes, with progress in the titlebar.
 
 **Remove saved credentials** removes only the pair stored by Winnow. Environment or local
-configuration credentials remain available as a fallback. Restart after removing credentials.
+configuration credentials remain available as a fallback, taking effect immediately.
 If secure storage is unavailable, Winnow refuses to save the secret and explains the failure.
 
 For development, environment variables remain supported:

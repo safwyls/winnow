@@ -32,7 +32,8 @@ public sealed class IgdbSettingsTests : IDisposable
         Assert.True(vm.HasSavedCredentials);
         Assert.False(vm.IsBusy);
         Assert.Empty(vm.ClientSecret);
-        Assert.Contains("Restart Winnow", vm.Status);
+        Assert.Contains("Metadata refresh queued", vm.Status);
+        Assert.DoesNotContain("Restart", vm.Status);
         Assert.Null(await Store.GetAsync(SettingsTableCredentialSource.ClientSecretKey));
         Assert.Equal("protected-value", await Store.GetAsync(SettingsTableCredentialSource.ClientSecretProtectedKey));
         foreach (var key in TokenKeys) Assert.Null(await Store.GetAsync(key));
@@ -90,7 +91,8 @@ public sealed class IgdbSettingsTests : IDisposable
         Assert.False(vm.HasSavedCredentials);
         Assert.Empty(vm.ClientId);
         Assert.Empty(vm.ClientSecret);
-        Assert.Contains("Restart Winnow", vm.Status);
+        Assert.Contains("active now", vm.Status);
+        Assert.DoesNotContain("Restart", vm.Status);
         Assert.Equal(configured, vm.Status.Contains("environment variables"));
         Assert.Null(await Store.GetAsync(SettingsTableCredentialSource.ClientIdKey));
         Assert.Null(await Store.GetAsync(SettingsTableCredentialSource.ClientSecretProtectedKey));

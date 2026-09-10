@@ -26,4 +26,12 @@ public interface IIgdbCredentialProvider
 
     /// <summary>Drops any memoised lookup so the next call re-reads its sources.</summary>
     void Invalidate();
+
+    /// <summary>Commits a settings change before discarding the resolved pair.</summary>
+    async Task UpdateAsync(Func<Task> update, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        await update();
+        Invalidate();
+    }
 }

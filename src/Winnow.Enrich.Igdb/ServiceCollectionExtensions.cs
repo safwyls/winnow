@@ -74,7 +74,9 @@ public static class ServiceCollectionExtensions
         // pass needs an IWorkMaturityRepository.
         services.TryAddSingleton<IgdbManualAssignment>();
 
-        services.TryAddSingleton<IIgdbTokenProvider, TwitchTokenProvider>();
+        services.TryAddSingleton<TwitchTokenProvider>();
+        services.TryAddSingleton<IIgdbTokenProvider>(sp => sp.GetRequiredService<TwitchTokenProvider>());
+        services.TryAddSingleton<IIgdbCredentialUpdater>(sp => sp.GetRequiredService<TwitchTokenProvider>());
         services.TryAddSingleton<IgdbRateLimiter>();
         services.TryAddTransient<IgdbAuthenticationHandler>();
         services.TryAddTransient<IgdbResilienceHandler>();

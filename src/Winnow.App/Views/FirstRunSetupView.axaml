@@ -58,7 +58,7 @@
                     <Border Padding="24" Background="{StaticResource Surface}"
                             BorderBrush="{StaticResource Line}" BorderThickness="1"
                             CornerRadius="{StaticResource RadiusControl}">
-                        <TextBlock Classes="body prose" Text="{Binding RestartNote}"/>
+                        <TextBlock Classes="body prose" Text="{Binding MetadataNote}"/>
                     </Border>
                 </StackPanel>
             </ScrollViewer>

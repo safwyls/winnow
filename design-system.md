@@ -2578,8 +2578,9 @@ The **IGDB METADATA** card offers **Get IGDB credentials**, labelled **Client ID
 **Client secret** fields, **Save credentials** and **Remove saved credentials**. The secret
 is masked, is cleared after saving or leaving the form, and is never loaded back into the
 field. A polite status line reports saved configuration and failures without claiming that
-Twitch has validated the credentials. Copy explains secure local storage and the restart
-step. Removing saved credentials preserves any environment or local configuration fallback.
+Twitch has validated the credentials. Copy explains secure local storage and immediate
+activation, with a metadata refresh queued in the background. Removing saved credentials
+preserves any environment or local configuration fallback.
 Fullscreen Application opens a dedicated **IGDB metadata** page with the same model and
 actions, large fields and explicit controller focus rows. A opens the existing on-screen
 keyboard for either field; secret entry retains its masking.
@@ -2706,8 +2707,8 @@ shared cursor.
 **Existing controls retain their meaning.** IGDB has an explicit Save action, a masked secret
 and protected local storage; Save and its status remain visible outside the desktop field
 scroller. Continue is not a second Save button. Theme and preference controls save as they
-change. Copy explains that skipped items remain in Settings and that IGDB changes need a
-restart after setup. GOG describes local Galaxy discovery without inventing a sign-in flow.
+change. Copy explains that skipped items remain in Settings and that saved IGDB credentials
+take effect immediately with metadata fetching in the background. GOG describes local Galaxy discovery without inventing a sign-in flow.
 Steam's consent and disclosure text stays intact. Credential drafts clear when leaving a step
 or presentation. A failed preference save can be skipped; a failed progress write keeps the
 wizard open and explains how to retry.

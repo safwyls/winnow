@@ -33,7 +33,7 @@ public sealed class FullscreenIgdbSettingsPage : FullscreenPage
             FullscreenUi.Text("IGDB adds game details and artwork. Enter the client ID and secret from your Twitch developer application.", 28, "TextDim"),
             setup, FullscreenUi.Text("Client ID", 28), id,
             FullscreenUi.Text("Client secret", 28), secret,
-            FullscreenUi.Text("The secret is stored securely on this device. Restart Winnow after saving or removing credentials.", 28, "TextDim"),
+            FullscreenUi.Text("The secret is stored securely on this device. Changes take effect immediately.", 28, "TextDim"),
             save, remove, status, back));
         SetFocusRows([setup], [id], [secret], [save], [remove], [back]);
     }

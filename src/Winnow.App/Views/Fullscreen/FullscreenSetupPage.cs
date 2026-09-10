@@ -102,7 +102,7 @@ public sealed class FullscreenSetupPage : FullscreenPage
         body.Children.Add(problem);
         var note = FullscreenUi.Text("", 28, "TextDim");
         note.IsVisible = _setup.Step is FirstRunStep.Igdb or FirstRunStep.Ready;
-        note.Bind(TextBlock.TextProperty, new Binding(nameof(_setup.RestartNote)) { Source = _setup });
+        note.Bind(TextBlock.TextProperty, new Binding(nameof(_setup.MetadataNote)) { Source = _setup });
         body.Children.Add(note);
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24 };
         var buttons = new List<Control>();
