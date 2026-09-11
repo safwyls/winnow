@@ -1002,6 +1002,8 @@ public static class Program
         // host that skipped them still loads a library and still launches games;
         // registered here because the shell renders them.
         services.AddSingleton<LaunchStatusViewModel>();
+        services.AddSingleton<WindowsJournalNotification>();
+        services.AddSingleton<IJournalNotification>(sp => sp.GetRequiredService<WindowsJournalNotification>());
         services.AddSingleton<JournalPromptViewModel>();
 
         // The §5.1 seam in front of migration 0012, and the only App type that

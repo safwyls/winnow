@@ -5,8 +5,8 @@ using Winnow.App.Services;
 namespace Winnow.App.ViewModels;
 
 /// <summary>
-/// Post-session journal prompt (§5.2): an in-window card offering a free-text note
-/// and optional rating after a game exits. Opt-in only (§9 pitfall 7). Self-dismisses
+/// Post-session journal prompt (§5.2): a notification opens the current surface's
+/// note and rating editor, with an in-window fallback. Opt-in only (§9 pitfall 7). Self-dismisses
 /// after <see cref="Patience"/> if untouched; a second session replaces the card only
 /// when nothing has been typed or rated.
 /// </summary>
@@ -22,6 +22,12 @@ public partial class JournalPromptViewModel : ObservableObject, IDisposable
     private readonly SessionJournalService? _journal;
     private readonly TimeProvider _clock;
     private readonly Action<Action> _post;
+    private readonly IJournalNotification? _notifications;
+    private readonly HashSet<long> _offered = [];
+    private long _offerVersion;
+
+    public event Action? ActivationRequested;
+    public JournalNotificationDelivery LastNotificationDelivery { get; private set; } = JournalNotificationDelivery.Unavailable;
 
     private ITimer? _timer;
     private long _sessionId;
@@ -31,12 +37,14 @@ public partial class JournalPromptViewModel : ObservableObject, IDisposable
         SessionJournalService? journal = null,
         Func<long, string?>? titleFor = null,
         TimeProvider? clock = null,
-        Action<Action>? post = null)
+        Action<Action>? post = null,
+        IJournalNotification? notifications = null)
     {
         _journal = journal;
         TitleFor = titleFor;
         _clock = clock ?? TimeProvider.System;
         _post = post ?? (action => Avalonia.Threading.Dispatcher.UIThread.Post(action));
+        _notifications = notifications;
 
         if (_journal is not null)
         {
@@ -253,10 +261,13 @@ public partial class JournalPromptViewModel : ObservableObject, IDisposable
 
         _timer?.Dispose();
         _timer = null;
+        _notifications?.Dismiss();
     }
 
     private void Close()
     {
+        _offerVersion++;
+        _notifications?.Dismiss();
         IsOpen = false;
         Note = string.Empty;
         Rating = 0;
@@ -291,7 +302,7 @@ public partial class JournalPromptViewModel : ObservableObject, IDisposable
 
     /// <summary>
     /// The service already filtered for "completed, and the preference is on", so
-    /// arriving here means the card should open. Raised on the watcher's tick
+    /// arriving here means a prompt can be offered. Raised on the watcher's tick
     /// thread; everything below the marshal is UI state.
     /// </summary>
     private void OnSessionEnded(object? sender, EndedSession ended)
@@ -307,8 +318,27 @@ public partial class JournalPromptViewModel : ObservableObject, IDisposable
                 return;
             }
 
-            Open(ended, title);
+            Offer(ended, title);
         });
+
+    internal void Offer(EndedSession ended, string title)
+    {
+        if (_disposed || IsSaving || (IsOpen && HasContent) || !_offered.Add(ended.SessionId)) return;
+        if (IsOpen) Close();
+        var version = ++_offerVersion;
+        var handled = false;
+        void ShowPrompt(bool activate)
+        {
+            if (handled || _disposed || version != _offerVersion || IsSaving || (IsOpen && HasContent)) return;
+            handled = true;
+            Open(ended, title);
+            if (activate) ActivationRequested?.Invoke();
+        }
+        LastNotificationDelivery = _notifications?.Show(title,
+            () => _post(() => ShowPrompt(true)), () => _post(() => ShowPrompt(false)))
+            ?? JournalNotificationDelivery.Unavailable;
+        if (LastNotificationDelivery != JournalNotificationDelivery.Submitted) ShowPrompt(false);
+    }
 
     /// <summary>
     /// Same vocabulary the tiles use, so "47m" means the same thing in the card

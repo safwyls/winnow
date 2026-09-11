@@ -514,9 +514,19 @@ Keyboard: Up and Down walk the candidate rows across every pending card, Space m
 the header, `S`/`Enter` answers Same game, `D` answers Different games, and `Escape` returns to
 the library. The radio, Details button and checkbox are Tab stops of their own.
 
-**Session journal prompt.** 400×220 frameless, bottom-right, `SurfaceRaised`, with the game's
-cover at 60×90 on the left. Title, duration in Data, one text field, 5-dot rating in `Volt`.
-Appears at most once per session, never steals focus.
+**Session journal prompt.** Off by default through `journal.prompt_after_play`. After a
+qualifying finished session, Windows offers a silent notification naming the game and
+inviting a note or rating. Activating it restores Winnow and opens that session's existing
+desktop dock or fullscreen journal editor. Save records the note and optional one-to-five
+rating; dismissing or ignoring the notification records nothing.
+
+Unavailable or suppressed notifications use the in-window prompt. Windows accepting a
+request is not proof it appeared: if no display callback arrives within five seconds, the
+prompt falls back in the current surface. Desktop keeps its dock with title, duration in
+Data, note field and rating dots in `Volt`; fullscreen uses its TV editor. Automatic offers
+do not activate a hidden window. A session is offered once, stale notification callbacks
+cannot replace a newer session, and a draft or pending save is preserved. Notifications
+belong to the running process and do not launch a second Winnow instance after exit.
 
 **Fetch status field.** In the desktop titlebar, before the window controls, a compact
 single line shows the label, a separator and the remaining-title count. It uses the existing
