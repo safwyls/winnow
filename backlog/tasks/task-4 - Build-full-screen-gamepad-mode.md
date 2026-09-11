@@ -5,13 +5,15 @@ status: In Progress
 assignee:
   - codex
 created_date: '2026-08-29 21:52'
-updated_date: '2026-09-10 22:29'
+updated_date: '2026-09-11 05:07'
 labels:
   - ui
   - accessibility
 milestone: m-3
 dependencies:
   - TASK-3
+references:
+  - docs/architecture-review-2026-09-10.md
 priority: low
 ordinal: 60000
 ---
@@ -117,4 +119,6 @@ Bottom-anchored the fullscreen Home cover row above the footer and centered the 
 Pinned the Home shelf heading12px above the bottom-anchored covers; alignment tests pass at80/100/120 percent interface scale. Browse pages retain a backdrop instance across selection/rebuild and wait for replacement landscape before swapping. Added180ms crossfade over previous art, reduced-motion instant swap, delayed fallback only on missing/failed landscape, stale-result rejection and lease cleanup on fade completion/detach. Fake delayed-lease tests cover rapid selection, failure, motion settings and closing midfade. Full UI run passed268 of271; three cinematic tests expected the old direct-child Image and passed after updating lookup for the crossfade panel (including all sources cleared ondetach). Solution Release build passed without warnings/errors. Desktop artwork unchanged; preserved unrelated ApplicationSettingsView.axaml edits. Updated visual/architecture specs and decisions.
 
 Confirmed shared feed computes six primary cards plus four reserves, up to ten per shelf. Fullscreen now includes those reserves as cards at initial load, preserving score order and unique spent tracking; adaptive layout renders more than six when space permits and retains overflow navigation. Desktop default remains six cards with four held replacements. Loading cards does not record impressions; only viewport entry does. Verified106 feed tests and36 fullscreen Home/browse/context tests, including ten simultaneously visible/reachable cards on ultrawide and separate desktop/fullscreen presentation counts. Updated visual/architecture docs and contract comments. Preserved unrelated ApplicationSettingsView.axaml edit.
+
+Architecture review 2026-09-10: physical-controller and ten-foot validation remain unverified by this audit. Concrete fullscreen prompt, year-filter and session-note defects are isolated in TASK-219, TASK-220 and TASK-221; runtime coverage of code-built accessibility is TASK-226. Shared data/feed/list fixes record both surfaces in their acceptance criteria. The full Windows suite passed 288 UI tests, which does not satisfy the remaining hardware acceptance criteria.
 <!-- SECTION:NOTES:END -->

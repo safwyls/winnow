@@ -6,12 +6,14 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-09-06 16:19'
-updated_date: '2026-09-06 16:21'
+updated_date: '2026-09-11 05:07'
 labels:
   - recommend
   - test
 dependencies:
   - TASK-10
+references:
+  - docs/architecture-review-2026-09-10.md
 priority: high
 ordinal: 162000
 ---
@@ -38,3 +40,9 @@ Depends on TASK-10 for label quality. Impressions are currently recorded at feed
 - [ ] #6 The harness ships outside the app and adds no new dependency to Winnow.Recommend
 - [ ] #7 The weak-negative class is derived only from impressions that record actual visibility, or is excluded from reported metrics until TASK-10 lands
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Architecture review 2026-09-10: temporal leakage remains in LibraryQueryRepository.cs:630 and :921 (wall-clock lifecycle window/classification), RecommendationEngine.cs:690 (history reads), and FeedFeedbackRepository.cs:131 (endorsement window without an as-of instant). Existing acceptance criteria #1 and #5 own these corrections; no duplicate replay task was created. See the report for evidence and shared desktop/fullscreen feed implications.
+<!-- SECTION:NOTES:END -->
