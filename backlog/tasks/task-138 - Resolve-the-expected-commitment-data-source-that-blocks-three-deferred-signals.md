@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@recommendation-engine'
 created_date: '2026-09-06 16:20'
-updated_date: '2026-09-11 18:45'
+updated_date: '2026-09-11 19:33'
 labels:
   - recommend
   - spike
@@ -43,4 +43,6 @@ Evaluate legally usable expected-completion data and identify which deferred rec
 Audit evidence: docs/recommendation-engine.md section 7 still lists expected-commitment questions and no completion-time provider exists. The task remains useful research, but a source would not automatically establish short-enough-for-tonight or session-fit accuracy.
 
 Recorded dated primary-source findings in docs/spikes/expected-completion-2026-09-11.md and corrected recommendation-engine section 7. IGDB documents game_time_to_beats; RAWG average playtime is not completion; HLTB was inaccessible in this run. No authenticated provider queries or copied-library coverage measurements were performed. Full library capture was rejected by automatic approval review due private account/settings payload; rejection not bypassed. Steam/Epic/GOG denominators, exact edition matches, unmatched/inaccessible record counts remain unmeasured. Current English Twitch agreement content did not render, so complete terms validation remains outstanding. Task stays In Progress with AC1/2/5 unchecked; no provider is yet validated and no implementation follow-up created. Research changes no desktop/fullscreen behavior.
+
+2026-09-11 additional public-source check: current IGDB Business FAQ explicitly permits local caching and retention of retrieved data after partnership termination. Added this precise retention evidence to the study. Direct current Twitch agreement URLs still render navigation only; indexed older alternate-locale text is not substituted for validated current terms. Copied-library per-store and exact-edition completion coverage remains unmeasured; no acceptance criterion newly checked and no private data accessed.
 <!-- SECTION:NOTES:END -->

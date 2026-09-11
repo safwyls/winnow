@@ -24,6 +24,11 @@ cannot calibrate uncertainty. An update timestamp is not a promised contribution
 These are schema observations and resulting limits, not live measurements.
 [IGDB documentation](https://api-docs.igdb.com/)
 
+The [IGDB business FAQ](https://api-docs.igdb.com/#business-related-faq), checked again on
+2026-09-11, expressly permits local storage/caching and says retrieved data may be retained
+after partnership termination. That is more specific retention evidence than the general
+Twitch API agreement; it does not establish completion-record availability or edition coverage.
+
 The current English [Twitch agreement](https://legal.twitch.com/en/legal/developer-agreement/)
 returned navigation without its substantive terms in this browser. Its full current storage,
 termination and redistribution requirements therefore remain unverified here. The IGDB FAQ
