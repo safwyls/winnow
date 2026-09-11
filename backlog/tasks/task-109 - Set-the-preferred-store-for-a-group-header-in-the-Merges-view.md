@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-05 02:49'
-updated_date: '2026-09-11 19:25'
+updated_date: '2026-09-11 19:41'
 labels:
   - ui
 dependencies: []
@@ -46,6 +46,10 @@ Audit evidence: MergeQueueViewModel skips resolved cards when changing the queue
 Migration 0041 stores a preferred store on the group root independently from identity acts. Current same-game resolution carries anchored choices through further links; the latest explicit revision wins, including an Automatic reset. Library title, cover and primary store entry use the chosen available member. Canonical root metadata, metadata editing, list membership and identity/undo retain their existing authority. Desktop resolved strips have a named Header store selector; fullscreen group actions expose the same choices and current value. Missing ownership falls back automatically while retaining an unavailable saved choice. Validation: clean App build; 289 targeted data/identity/grouping/queue tests passed; 33 desktop/fullscreen UI tests passed including rendered selector/actions, save/reset, details and year-filter parity; Verify-Migrations verified 41 hashes. New tests cover reload, re-ingest, further links, combined-group precedence, store removal/return, automatic reset, unsupported relationships, unchanged link history and independent pending queue defaults.
 
 Full-suite copy enforcement found the new header tooltip outside MergeCopy. Moved the group-header tooltip, accessible-name format, Automatic/unavailable option labels and save-failure text into the shared copy definitions without changing wording or behavior. The tooltip now uses an explicit static binding; a separate TASK110 Details literal exposed by the same check is corrected in its own follow-up.
+
+Full Release verification found a fullscreen fixture cleanup race after all assertions passed: the visible library title changed during SetGroupHeaderAsync, before the action callback completed its additional Context.RefreshAsync and render. Follow-up plan: expose the fullscreen action completion task, await it after selecting and resetting a header store, and retain the persistence/identity assertions. Do not infer completion from an intermediate title change.
+
+Follow-up implemented: FullscreenIdentityPage.PendingAction now represents the whole save, refresh and render callback. The fullscreen fixture awaits that task for the store choice and Automatic reset before checking persistence and disposing its database. Both desktop/fullscreen GroupHeaderPreferenceUiTests passed in Release after the change.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

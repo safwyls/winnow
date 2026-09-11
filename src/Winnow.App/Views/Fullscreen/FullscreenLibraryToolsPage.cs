@@ -112,6 +112,7 @@ public sealed class FullscreenIdentityPage : FullscreenPage
     private bool _disposed;
     private string _status = "Reading possible matches…";
     public override string Title => "Possible identity matches";
+    public Task PendingAction { get; private set; } = Task.CompletedTask;
     public FullscreenIdentityPage(FullscreenContext context) : base(context)
     {
         _model = context.Services is { } services ? ActivatorUtilities.CreateInstance<MergeQueueViewModel>(services) : null;
@@ -154,7 +155,9 @@ public sealed class FullscreenIdentityPage : FullscreenPage
     private void Confirm(string description, Func<Task> action) => Context.ShowActions(description,
         [new("Continue", async () => await Apply(action)), new("Cancel", () => { })]);
 
-    private async Task Apply(Func<Task> action)
+    private Task Apply(Func<Task> action) => PendingAction = ApplyCoreAsync(action);
+
+    private async Task ApplyCoreAsync(Func<Task> action)
     {
         try { await action(); await Context.RefreshAsync(); Render(); FocusInitial(); }
         catch (Exception) { Context.Notify("Couldn't update these matches. Try again."); }

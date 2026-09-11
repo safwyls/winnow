@@ -82,13 +82,15 @@ public sealed class GroupHeaderPreferenceUiTests
             Click(Find("entries ·"));
             Click(Find("Header store · Automatic"));
             Click(Find("GOG"));
-            await WaitUntil(() => library.VisibleTiles.Single().Title == "GOG title");
+            await page.PendingAction;
+            Assert.Equal("GOG title", library.VisibleTiles.Single().Title);
             Assert.Equal("gog", (await fixture.Preferences.GetAllAsync())[fixture.Steam.Work]);
             window.Content = page; Dispatcher.UIThread.RunJobs();
             Click(Find("entries ·"));
             Click(Find("Header store · GOG"));
             Click(Find("Automatic"));
-            await WaitUntil(() => library.VisibleTiles.Single().Title == "Steam title");
+            await page.PendingAction;
+            Assert.Equal("Steam title", library.VisibleTiles.Single().Title);
             Assert.Null((await fixture.Preferences.GetAllAsync())[fixture.Steam.Work]);
             Assert.Single(await fixture.Links.GetActsAsync());
         }
