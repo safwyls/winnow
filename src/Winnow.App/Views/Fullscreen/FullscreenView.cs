@@ -36,7 +36,7 @@ public sealed class FullscreenView : UserControl, IDisposable
     private readonly Grid _safe = new() { RowDefinitions = new RowDefinitions("80,*,64") };
     private readonly Grid _canvas = new() { Width = 1920, Height = 1080 };
     private readonly TextBlock _clock = FullscreenUi.Text("", 24);
-    private readonly TextBlock _status = FullscreenUi.Text("Controller disconnected", 24, "TextDim");
+    private readonly TextBlock _status = FullscreenUi.Text("Controller disconnected", 24, "Text");
     private readonly ContentControl _hints = new();
     private readonly ContentControl _rightHints = new() { HorizontalAlignment = HorizontalAlignment.Right };
     private readonly TextBlock _launch = FullscreenUi.Text("", 28);

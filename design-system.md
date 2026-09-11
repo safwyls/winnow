@@ -619,6 +619,8 @@ zoom while retaining immediate selection feedback.
 The main view list stays centered on the canvas independently of controller status and clock
 width. Equal side regions hold the wordmark and status; long status text truncates within
 its region instead of moving the view list.
+Controller status uses the primary `Text` color, matching the clock so it remains legible
+over hero artwork.
 
 Search, staged filtering, text entry, journal editing and a paged file browser use their own
 fullscreen pages. Native and third-party windows need separate controller validation;
