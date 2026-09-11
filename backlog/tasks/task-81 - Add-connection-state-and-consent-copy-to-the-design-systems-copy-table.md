@@ -1,11 +1,14 @@
 ---
 id: TASK-81
-title: Add connection-state and consent copy to the design system's copy table
+title: Standardize provider connection-state and credential-consent copy
 status: To Do
 assignee: []
 created_date: '2026-09-03 00:58'
+updated_date: '2026-09-11 14:04'
 labels: []
 dependencies: []
+documentation:
+  - design-system.md
 priority: low
 ordinal: 108000
 ---
@@ -13,17 +16,18 @@ ordinal: 108000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-The Stores panel is almost entirely copy, and all of it was written from the two auth spikes' posture reasoning rather than from design-system.md section 7. That table should own these decisions:
-
-- 'Not signed in' against 'Disconnected'
-- 'Session expired' against 'Error'
-- 'there is nothing to sign into' against a greyed-out button
-
-Right now the next screen with a connection state re-decides them.
+Add concrete connection-state and credential-consent entries to the visual copy table so screens do not choose wording independently. Cover no stored connection, session renewal/expiry, local-only discovery and optional consent while preserving provider-specific capabilities and failure meanings.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 design-system.md section 7's copy table carries rows for connection state and for credential consent
-- [ ] #2 The Stores panel's strings match the table
+- [ ] #1 The design-system copy table includes concrete wording and usage conditions for no stored connection, renewal/expiry, local-only providers and credential consent.
+- [ ] #2 Desktop platform strings match the approved wording while retaining factual provider-specific differences.
+- [ ] #3 Fullscreen platform and consent flows use the same meanings and appropriately concise wording, including actionable error and optional-state distinctions.
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Audit evidence: SteamConnectionCopy, StoresViewModel and FullscreenPlatformTools hold current provider text. design-system.md section 7 has general guidance but lacks the concrete state/consent rows requested here. The task remains useful documentation and copy alignment.
+<!-- SECTION:NOTES:END -->

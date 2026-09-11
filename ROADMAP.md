@@ -55,7 +55,7 @@ library matching, mobile, and a 3D shelf view. Fullscreen is a separate TV inter
 | Area | Scope and tracking |
 |---|---|
 | Portable data | Full JSON export/import and broader CSV views (TASK-2). Confirm the export and importer acceptance scope before implementation; acquisition CSV already exists. |
-| Recommendation research | Acquisition-price signals (TASK-136), achievement progress (TASK-137), expected-commitment data (TASK-138), and achievement ingestion (TASK-15). New weights need evidence. |
+| Recommendation research | Acquisition-evidence evaluation (TASK-136), achievement progress (TASK-137), expected-commitment data (TASK-138), and achievement ingestion (TASK-15). New weights need evidence. |
 | Catalogue and identity | Per-edition years (TASK-13), broader GamesDB cross-store automation (TASK-37), and group-header/row actions (TASK-109–110). |
 | Steam collections | Static/dynamic collection import, including account ownership, repeat imports and preservation of Winnow list edits (DRAFT-1). |
 | GOG sign-in | Local Galaxy discovery supplies owned games and available local play facts. Investigate sign-in only if the unverified sessions endpoint adds useful session history (TASK-49). |
@@ -73,12 +73,14 @@ an online marketplace and automatic plugin updates.
 
 | Limitation or refinement | Tracking |
 |---|---|
-| Zero-price purchase rows are skipped; recording them as zero needs a product choice | TASK-40 |
-| Saved licence-page import accepts one page per file; multi-file merging is deferred | TASK-41 |
-| Identical transactions on the same day cannot be distinguished | TASK-44 |
-| Single-entry rail sections and account-stat presentation need refinement | TASK-42–43 |
-| Optional-connection colour, connection copy and prose reading measure need specification | TASK-80–82 |
-| Backup-test rewind setup needs less manual migration maintenance | TASK-65 |
+| Zero-total transactions are retained; attributing a known zero to an ownership price needs a product choice | TASK-40 |
+| Saved-page import accepts only one file of each page kind; combining multiple licence pages is deferred | TASK-41 |
+| The single-entry ACCOUNT rail section and account-stat presentation need refinement | TASK-42–43 |
+| Optional-connection treatment and connection copy need a shared contract; the established prose measure needs wider application | TASK-80–82 |
+
+Identical captured transaction facts within one source/account deduplicate to keep repeated
+imports idempotent. Genuine same-day repeats with identical fields remain indistinguishable;
+this is an accepted input limitation. Receipts from different known accounts remain separate.
 
 ## 6. Validation and release readiness
 
@@ -89,8 +91,9 @@ publication checks.
 
 - **Fullscreen:** automated interaction and layout checks cover the implemented TV surface.
   TASK-4 still needs a real controller and intended display at normal seating distance to
-  establish that every operation is reachable, focus is visible and no mouse or keyboard is
-  required. Record the controller, OS, display and any failing operation.
+  establish that every Winnow-owned operation is reachable, focus is visible and no mouse or
+  keyboard is required. Record the controller, OS, display, failing operations and external
+  provider or launcher input requirements.
 - **Linux:** real-process tests cover native session discovery and synthetic Proton-environment
   attribution. They do not establish compatibility across actual Wine/Proton games. Local
   Epic/GOG discovery and embedded sign-in retain Windows-specific integration limits.

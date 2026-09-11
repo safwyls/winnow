@@ -1966,8 +1966,11 @@ or live list."* The footer keeps **New list** on the left and the settings cog o
 New list pairs its label with a vector list-plus icon and offers **Static list** (choose games yourself) and **Live list** (save the current
 library filters, with membership updating automatically), with a tooltip explaining each.
 
-**The rail's grammar, which any rearrangement must preserve:** everything above the divider is
-a subset of ALL GAMES; below it, content precedes work queue precedes configuration.
+**The desktop rail distinguishes screens from library subsets.** FEED and MERGES open screens;
+ALL GAMES opens the whole library above the divider. Buckets below it narrow the library.
+ACCOUNT contains the statistics destination, followed by LISTS and LIVE LISTS. Creation and
+configuration actions sit in the footer. Keep these roles clear when changing the grouping;
+fullscreen uses its own navigation hierarchy.
 
 ### 12.2 A list composes, a live list restores
 

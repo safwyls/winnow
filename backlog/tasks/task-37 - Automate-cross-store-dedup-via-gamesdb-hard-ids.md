@@ -1,14 +1,16 @@
 ---
 id: TASK-37
-title: Automate cross-store dedup via gamesdb hard ids
+title: Evaluate GamesDB references for reversible cross-store identity links
 status: To Do
 assignee: []
 created_date: '2026-08-29 21:54'
+updated_date: '2026-09-11 14:01'
 labels:
   - resolve
   - enrich
-dependencies:
-  - TASK-5
+dependencies: []
+documentation:
+  - game-library-design.md
 priority: medium
 ordinal: 87000
 ---
@@ -16,11 +18,21 @@ ordinal: 87000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-`Winnow.Enrich.GamesDb` routes Epic titles to a Steam appid for enrichment (62 of 67 resolved), but deliberately writes no `external_ids` and no merge candidates because `external_ids` is keyed `(provider, provider_id)` globally and would collide with the Steam release that already owns the id. A different keying or a dedicated cross-reference would collapse most of the merge queue automatically via hard ids rather than fuzzy title, which is what the design doc section 5.3 wants. Source: ROADMAP.md section 6.
+Evaluate GamesDB cross-store references as evidence for reversible same-game links. The current enrichment planner uses those references for metadata lookup and writes no identity links. Preserve source releases and globally unique external identifiers; automate only where evidence establishes compatible game and edition identity, with ambiguous mappings left reviewable.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Cross-store identity links from gamesdb produce confirmed merge candidates without colliding with existing external_ids
-- [ ] #2 The merge queue shrinks by the number of titles that resolve via hard id
+- [ ] #1 Record validated cross-store reference evidence without assigning another release's globally unique external ID.
+- [ ] #2 Define and test the evidence sufficient for automatic linking; ambiguous or conflicting edition mappings cannot auto-link.
+- [ ] #3 Qualified links use existing reversible identity operations and admission rules.
+- [ ] #4 Repeated observations are idempotent and preserve explicit user decisions.
+- [ ] #5 Verify library, queue, details and undo behavior on desktop and fullscreen.
+- [ ] #6 Report eligible, conflicting and unresolved coverage; no arbitrary queue-size reduction is required.
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Audit evidence: EnrichmentLookupPlanner routes Epic metadata through Steam/GOG references without writing external IDs. IdentityLinkRepository supplies reversible links. Completed TASK-70, TASK-83 and TASK-189 are the integration context; retired destructive TASK-5 is not a prerequisite. GamesDB game-level references do not by themselves prove edition equivalence.
+<!-- SECTION:NOTES:END -->

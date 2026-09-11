@@ -1,12 +1,17 @@
 ---
 id: TASK-136
-title: Give the recommender the acquisition price signal it is currently blind to
+title: Evaluate acquisition evidence for owned-game recommendations
 status: To Do
 assignee: []
 created_date: '2026-09-06 16:19'
+updated_date: '2026-09-11 14:01'
 labels:
   - recommend
-dependencies: []
+dependencies:
+  - TASK-135
+documentation:
+  - docs/recommendation-engine.md
+  - docs/spikes/feed-replay.md
 priority: high
 ordinal: 163000
 ---
@@ -14,22 +19,22 @@ ordinal: 163000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-The columns `price_paid_cents`, `list_price_cents`, `price_source` and `acquired_at` are stored (migration 0014), populated by the M5 account-page importer, and reach the domain on `Ownership`. `CandidateFacts` carries none of them, so the scoring model cannot see any of it.
-
-This matters more than its size suggests. The measured candidate pool is roughly 1,018 rows and 754 of them are `never_played`. Across that pile the bucket, commitment shape and dormancy signals are all constant, patch-after-dormancy never fires, and the effective ranking reduces to taste affinity (0.10), installed (0.05) and deterministic jitter (0.03). Section 3 itself calls taste affinity a tiebreaker and genre similarity the commodity that loses to incumbents, so three quarters of the library is currently ordered by a commodity signal plus noise — and that pile is exactly what the product exists to surface.
-
-Price paid is intent measured in money, it is retroactive, and unlike every other signal it varies across never-opened games. A full-price purchase never opened is a different fact from a bundle leftover, which is different again from an Epic giveaway that was never chosen — and there are 99 Epic rows, mostly giveaways, sitting undifferentiated in that pile today. `list_price_cents` additionally makes discount depth available.
-
-TASK-38 covers the same columns for the UI and export and states explicitly that `price_paid_cents` is never read into the details modal, so the recommender consumer is untracked.
+Evaluate whether attributable acquisition evidence improves owned-game recommendations. Price paid, acquisition date and price provenance exist, but the recommender does not consume them. List price is transaction-level data and may cover bundles; ownership prices have no currency. Define safe treatment of account scope, missing/conflicting facts and unsupported comparisons before introducing a bounded signal.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 CandidateFacts carries the acquisition facts the scorer needs, with null meaning absent evidence rather than a zero match
-- [ ] #2 RecommendationScorer derives an acquisition-intent value from a pure function, unit-tested to the decimal
-- [ ] #3 A missing price contributes zero and is absent from the breakdown, per the section 4 degradation rule
-- [ ] #4 Free acquisitions are not penalised as if they were evidence against a game; they carry no intent either way
-- [ ] #5 The signal has at least one phrasing in ReasonPhrasebook and passes the one-sentence explanation contract test
-- [ ] #6 The signal is recorded in the docs/recommendation-engine.md section 3 inventory with its weight and tier
-- [ ] #7 Measured against the real library, the never-played pile is ranked by something other than taste affinity plus jitter
+- [ ] #1 Specify usable acquisition evidence and unsupported comparisons; do not infer per-game discount depth from an unmatched or multi-item transaction, or compare raw prices across unknown currencies.
+- [ ] #2 Respect account scope and resolved-game grouping without double-counting linked copies.
+- [ ] #3 Missing, conflicting and free acquisitions introduce no negative judgement and leave unsupported comparisons out of the breakdown.
+- [ ] #4 If evidence supports a signal, implement a bounded pure contribution with truthful one-sentence explanations and unchanged behavior when evidence is absent.
+- [ ] #5 Compare against the baseline using captured-state replay and report cohort coverage and limitations; a changed ranking alone is not proof of improvement.
+- [ ] #6 Document the supported signal, weight and tier, or the evidence-based conclusion that a signal is not yet justified.
+- [ ] #7 Verify explanations and visible recommendation behavior on desktop and fullscreen.
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Audit evidence: Ownership carries paid price/source/date but not list_price_cents. AccountFacts holds transaction-level list price; OwnershipAcquisitionObservation and AccountAcquisitionReader preserve account scope and suppress conflicting prices. TASK-38 already delivered acquisition display/export. CandidateFacts has no acquisition signal; TASK-135 provides completed replay tooling. Prior library counts are dated measurements, not current eligibility.
+<!-- SECTION:NOTES:END -->

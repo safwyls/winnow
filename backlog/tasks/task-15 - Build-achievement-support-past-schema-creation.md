@@ -1,15 +1,18 @@
 ---
 id: TASK-15
-title: Build achievement support past schema creation
+title: Populate account-aware achievement evidence from a supported provider
 status: To Do
 assignee: []
 created_date: '2026-08-29 21:52'
-updated_date: '2026-09-06 16:21'
+updated_date: '2026-09-11 14:01'
 labels:
   - data
   - ingest
   - ui
 dependencies: []
+documentation:
+  - game-library-design.md
+  - docs/recommendation-engine.md
 priority: medium
 ordinal: 68000
 ---
@@ -17,16 +20,21 @@ ordinal: 68000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Achievement tables exist in the schema but nothing populates or reads them. Finding F24. Source: stabilization-2026-08-28.md Group 2. Trigger: when achievements become scope.
-
-Achievements became scope on 2026-09-06. They are not only a display feature: achievement progress is a stronger and fully retroactive commitment-shape signal for the recommender than playtime minutes, and it bears on the retired hard exclusion, so it affects feed correctness and not just the details modal. Steam global unlock percentages additionally give a cross-game normalised progress reading. TASK-137 is the scoring consumer and depends on this task; it needs the per-release schema, the user unlock state, and the global unlock percentage.
-
-Confirmed 2026-09-06: `achievements` and `achievement_unlocks` exist in migration 0001 and `AchievementQueryRepository` reads them, but there is no write path anywhere in src/ and no Steam fetch (no GetPlayerAchievements, GetSchemaForGame or GetGlobalAchievementPercentagesForApp call exists). The tables are empty.
+Populate the existing per-release achievement query and detail-display pipeline from a supported store provider. Reads and desktop/fullscreen summaries already exist, but no production fetch/write path supplies them. Add account provenance, freshness and availability semantics so summaries and TASK-137 can consume trustworthy evidence.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Achievement data is ingested from at least one store source
-- [ ] #2 The achievement data is surfaced in the UI
-- [ ] #3 Global achievement unlock percentages are stored alongside the per-release schema, not only the user unlock state
+- [ ] #1 Ingest achievement schema, user unlocks and global unlock percentages from at least one supported store.
+- [ ] #2 Persist user-unlock account provenance; switching accounts cannot reuse another account's completion.
+- [ ] #3 Distinguish not fetched or unavailable, confirmed no achievement schema, and a known schema with zero user unlocks.
+- [ ] #4 Refresh idempotently and retain valid prior evidence on provider failures without presenting it as fresh.
+- [ ] #5 Desktop and fullscreen display ingested per-release data without blending distinct platform percentages.
+- [ ] #6 Sanitized fixtures cover private or unavailable data, zero progress, no schema, repeated refresh and account switching.
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Audit evidence: AchievementQueryRepository, GameCoverageViewModel, LibraryViewModel and FullscreenDetailsPage already read and display summaries. IdentityReadModelTests and FullscreenDetailsTests cover those reads. No achievement provider fetch/write implementation was found. Current unlock schema lacks an account key and summary availability needs a richer contract; recommendation value remains a hypothesis.
+<!-- SECTION:NOTES:END -->
