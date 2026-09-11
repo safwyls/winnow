@@ -291,7 +291,7 @@ public sealed class FullscreenDetailsPage : FullscreenPage
             {
                 content.Children.Add(FullscreenUi.Text($"{row.Title} · {row.StoreBadge}\n{row.PlaytimeText} · {row.LastPlayedText}"));
                 if (row.Achievements is { } achievements)
-                    content.Children.Add(FullscreenUi.Text($"Achievements: {achievements.CountText} · {achievements.PercentText}", 24, "TextDim"));
+                    content.Children.Add(FullscreenUi.Text($"Achievements: {achievements.SummaryText}", 24, "TextDim"));
                 if (row.IsCovered)
                     content.Children.Add(Action(row.SeparateAutomationName, () => Context.ShowActions($"Separate {row.Title}?",
                         [new("Cancel", () => { }), new(row.SeparateLabel, async () =>

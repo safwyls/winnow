@@ -1262,6 +1262,10 @@ manual_entry_identifiers(id, ownership_id FK manual_entries ON DELETE CASCADE,
 -- Achievements: per-release, never merged across platforms
 achievements(release_id FK, provider_key, name, description, hidden, global_pct)
 achievement_unlocks(release_id FK, provider_key, unlocked_at)
+  -- legacy unknown-account facts, never assigned to the currently selected account
+account_achievement_unlocks(release_id FK, provider_key, account_ref, unlocked_at)
+achievement_observations(release_id FK, account_ref, availability, attempted_at,
+                         schema_at, progress_at, global_at)
 
 -- Update tracking
 update_events(id, release_id FK, kind, build_id, occurred_at, title, url, raw_json)
@@ -1390,6 +1394,36 @@ boundary threshold, and update-after-last-played windows.
 Never compute a blended cross-platform completion percentage. 100% on one platform and 30% on
 another are **two facts, not one average**. Render per-release rows nested under the Work. The
 unified view is a query, not a stored merge.
+
+Steam's achievement producer uses the documented `GetSchemaForGame/v2`,
+`GetPlayerAchievements/v1` and `GetGlobalAchievementPercentagesForApp/v2` endpoints.
+It requires a user API key whose fingerprint matches the confirmed Steam account, positive
+ownership membership for that account and an unambiguous Steam app ID. Session sign-in alone
+does not enable these user-key endpoints. Requests use the shared bounded transport, retry
+policy and one-request-per-second limiter; this client disables request logging so account
+IDs and API keys cannot enter logs. [Steam endpoint contracts](https://partner.steamgames.com/doc/webapi/isteamuserstats)
+
+The startup/manual refresh pipeline and a 15-minute background timer process at most 20 due
+games per pass. A 24-hour attempt interval bounds requests for both successes and failures,
+and the display uses the same day-long freshness window. These parameters spread roughly
+1,900 games across a day at up to 60 requests per pass; this is a capacity bound, not measured
+library coverage. `--no-sync` and sample mode disable the background timer with remote sync.
+
+An explicit empty schema means no achievements. Missing or malformed fields, private
+responses, conflicting keys, wrong-account replies and incomplete unlock lists remain
+unanswered. Known zero progress requires a complete schema-aligned answer. Account-keyed
+unlocks are replaced transactionally only after a valid response; failures retain the prior
+facts and their observation dates. Schema, progress and global percentages have separate
+success timestamps. Global-percentage failure does not erase valid progress or restamp old
+global values. Legacy unlock rows have unknown account provenance and never fill a named
+account's progress.
+
+Desktop and fullscreen detail rows distinguish Not fetched, Unavailable, No achievements,
+and known unlocked/total progress. A retained progress percentage says "last known" after a
+failed refresh or freshness expiry. Unsupported stores show Not supported. The desktop
+Library tab also displays a single copy's achievement row without requiring an identity
+link. The selected account controls each read; neither account nor platform percentages are
+blended. These are achievement percentages, not game-completion verdicts.
 
 ---
 

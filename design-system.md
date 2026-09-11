@@ -1037,6 +1037,12 @@ back by taking away edge-resize down the whole right side of the window.
 
 ## 10. The detail view
 
+Achievement rows describe one store release and the selected account. Both surfaces show
+Not fetched, Unavailable or No achievements when a percentage would invent progress; known
+progress shows unlocked/total and its percentage. Retained progress adds "last known" after
+a failed refresh or freshness expiry. Unsupported stores say Not supported. The desktop
+Library tab also shows these rows for a single copy, without requiring a linked game.
+
 §5.3 caps the tile's hover overlay at four facts. Details expands that view in a **modal
 over the library**, opened from a tile's Details control or the library's details command.
 Closing it returns to the same library position. Escape closes a focused metadata tool first,

@@ -490,6 +490,8 @@ public static class Program
         // release and never a blended percentage, and this repository offers no
         // way to produce one.
         services.AddSingleton<IAchievementQueryRepository, AchievementQueryRepository>();
+        services.AddSingleton<IAchievementRepository, AchievementRepository>();
+        services.AddSingleton<SteamAchievementSyncService>();
 
         // Hiding is per work, not per ownership. The exclusion is one NOT EXISTS
         // inside LibraryQueryRepository's bucket query, so the grid, the list
@@ -631,6 +633,7 @@ public static class Program
         services.AddSingleton(sp => new LibraryRefreshPipeline(
         [
             new("Steam playtime history", async ct => { await sp.GetRequiredService<ISteamPlaytimeBackfill>().BackfillAsync(ct); }, PublishAfter: true),
+            new("Steam achievements", async ct => { await sp.GetRequiredService<SteamAchievementSyncService>().SyncAsync(ct); }, PublishAfter: true),
             new("GamesDB identity links", async ct => { await sp.GetRequiredService<GamesDbIdentitySyncService>().SyncAsync(ct); }, PublishAfter: true),
             new("Titles and metadata", async ct => { await sp.GetRequiredService<EnrichmentSyncService>().EnrichAsync(ct); }, IgdbRelevant: true),
             new("Filter facets", async ct => { await sp.GetRequiredService<FacetSyncService>().SyncAsync(ct); }, IgdbRelevant: true),
@@ -654,6 +657,7 @@ public static class Program
             sp.GetRequiredService<TimeProvider>(),
             refresh: ct => RefreshLibraryAsync(sp, ct)));
         services.AddHostedService<RemoteOwnershipSchedulerService>();
+        services.AddHostedService<SteamAchievementSchedulerService>();
         services.AddHostedService(sp => new LifecycleSchedulerService(
             sp.GetRequiredService<LifecycleSyncService>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<RemoteOwnershipSchedulerOptions>>(),

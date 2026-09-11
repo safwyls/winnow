@@ -219,6 +219,8 @@ public sealed class SteamWebTestHost : IDisposable
         // countable as one stream of traffic to one host.
         services.AddHttpClient<ISteamHistoryClient, SteamHistoryClient>()
             .ConfigurePrimaryHttpMessageHandler(() => Handler);
+        services.AddHttpClient<ISteamAchievementClient, SteamAchievementClient>()
+            .ConfigurePrimaryHttpMessageHandler(() => Handler);
 
         // S6's renewal client, on its own fake transport: it talks to two
         // different hosts and must be countable separately from the API traffic.

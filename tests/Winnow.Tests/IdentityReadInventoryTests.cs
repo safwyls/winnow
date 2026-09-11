@@ -90,6 +90,8 @@ public sealed class IdentityReadInventoryTests
             "Sessions and notes retain their exact ownership. The caller supplies visible ownership ids from its resolved tile snapshot and renders each result through that same tile map; updates are deduplicated per release."),
         new("src/Winnow.App/Services/EnrichmentSyncService.cs", "EnrichSliceAsync", Policy.DoNotResolve,
             "Rejects delayed metadata when the exact target work mapping changed; linked games keep independent provider identities."),
+        new("src/Winnow.Data/Repositories/AchievementRepository.cs", "GetDueSteamAsync", Policy.DoNotResolve,
+            "Fetches each Steam release for an explicitly confirmed owning account; linked games cannot share provider schemas or account unlocks."),
         new("src/Winnow.Data/Repositories/AccountAcquisitionRepository.cs", "GetSteamOwnershipIdsAsync", Policy.DoNotResolve,
             "Acquisition observations belong to the captured account's exact store ownership; links do not combine receipts or account membership."),
         new("src/Winnow.App/Services/PluginSyncService.cs", "SyncAsync", Policy.DoNotResolve,

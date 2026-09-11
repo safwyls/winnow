@@ -1,3 +1,5 @@
+using Winnow.Core.Domain;
+
 namespace Winnow.Core.Queries;
 
 /// <summary>
@@ -20,10 +22,21 @@ public sealed record ReleaseAchievementSummary
     /// <summary>How many of them are unlocked on this release.</summary>
     public required int Unlocked { get; init; }
 
+    public string? AccountRef { get; init; }
+    public AchievementAvailability Availability { get; init; } = AchievementAvailability.Available;
+    public DateTime? ObservedAt { get; init; }
+    public DateTime? LastAttemptAt { get; init; }
+    public DateTime? SchemaObservedAt { get; init; }
+    public DateTime? GlobalObservedAt { get; init; }
+    public bool HasKnownProgress { get; init; } = true;
+    public bool IsStale { get; init; }
+
+    /// <summary>One day bounds a progress display's freshness; it does not expire stored evidence.</summary>
+    public static readonly TimeSpan Freshness = TimeSpan.FromDays(1);
+
     /// <summary>
-    /// True when this release defines any achievements at all. Absence is
-    /// common — nothing ingests achievements yet — and a release with no row
-    /// renders as no row rather than as zero of zero.
+    /// True when the stored schema defines achievements. Availability and
+    /// HasKnownProgress distinguish no schema from an unanswered progress query.
     /// </summary>
     public bool HasAny => Total > 0;
 
@@ -32,5 +45,5 @@ public sealed record ReleaseAchievementSummary
     /// none, so a caller cannot divide by zero and cannot print "0%" about
     /// a game that has no achievements to unlock.
     /// </summary>
-    public double? PercentComplete => Total == 0 ? null : Unlocked * 100.0 / Total;
+    public double? PercentComplete => !HasKnownProgress || Total == 0 ? null : Unlocked * 100.0 / Total;
 }

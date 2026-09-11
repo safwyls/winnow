@@ -746,6 +746,14 @@ Capture commands, fixtures and measured results live in `docs/spikes/feed-replay
 
 ## 7. Deliberately deferred (and where each would plug in)
 
+Steam achievement ingestion supplies per-release, account-keyed availability and observation
+dates through the shared Core repository contract. Unknown, unavailable, no-schema and known
+zero progress are distinct. A failed refresh retains dated prior progress; legacy unlocks
+without an account never fill a named account's history. Achievement completion is not game
+completion, and global unlock percentages are not a general progress scale. TASK-137 must
+evaluate this evidence before it can change a contribution or retirement rule; the current
+scorer consumes no achievement signal. Provider details are in build specification §6.2.
+
 - **Session-length fit:** needs evidence about playable sittings and the user's cadence
   (Tier 2). Whole-game completion averages cannot determine where a player can stop.
   Local session history or explicit session preferences remain possible future inputs,

@@ -1152,6 +1152,21 @@
                                                                Text="{Binding Problem}"/>
                                                 </StackPanel>
                                             </StackPanel>
+                                            <StackPanel Spacing="12" IsVisible="{Binding ShowStandaloneAchievements}">
+                                                <TextBlock Classes="label section" Text="Achievements"
+                                                           AutomationProperties.HeadingLevel="2"/>
+                                                <ItemsControl ItemsSource="{Binding Coverage.Rows}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate DataType="vm:CoverageRowViewModel">
+                                                            <StackPanel Spacing="4" IsVisible="{Binding HasAchievements}">
+                                                                <TextBlock Classes="body" Text="{Binding StoreBadge}"/>
+                                                                <TextBlock Classes="data-s" Text="{Binding Achievements.SummaryText}"
+                                                                           TextWrapping="Wrap"/>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
                                             <StackPanel Spacing="12" IsVisible="{Binding ShowOwnCopies}">
                                                 <TextBlock Classes="label section"
                                                            Text="{x:Static vm:GameDetailsCopy.YourCopies}"

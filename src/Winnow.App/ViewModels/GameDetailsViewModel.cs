@@ -290,6 +290,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     /// that covers nothing shows what it always showed.
     /// </summary>
     public bool ShowCoverage => Coverage is { HasCoverage: true };
+    public bool ShowStandaloneAchievements => !ShowCoverage && Coverage?.Rows.Any(row => row.HasAchievements) == true;
 
     /// <summary>
     /// The expansions grouped under this game, and the base

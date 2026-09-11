@@ -37,5 +37,6 @@
   "0034_account_inventory_evidence.sql": "86058b67c63ac38c06f11061575f449c34f6c0903307c7a9276af0246052c4a5",
   "0037_minimal_lifecycle_review_cache.sql": "a281dfc290a75de45946a85ebd082ba1523b82f1a4f5b6ae58aae5d000868bd0",
   "0038_monitored_session_identity.sql": "21ac5d6ebddc875142b78cd62f8d76a3df458079a990899280de4df510dbc5c4",
-  "0039_release_year_evidence.sql": "d3b76cea74197a9c96f0826bb99fa1d51cf57e6ad46c1f8279eb934339b562b1"
+  "0039_release_year_evidence.sql": "d3b76cea74197a9c96f0826bb99fa1d51cf57e6ad46c1f8279eb934339b562b1",
+  "0040_achievement_accounts.sql": "e0ed48c84eff0158f6197728b0ea9d85a5eae4cb48a4b45009a74a1e4cf668a7"
 }

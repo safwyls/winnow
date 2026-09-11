@@ -163,7 +163,7 @@ public sealed class CoverageRowViewModel
 
         // §6.2 literally: this release's own achievements, on this release's own
         // row, never averaged with the other release's.
-        Achievements = achievements is { HasAny: true }
+        Achievements = achievements is not null
             ? new ReleaseAchievementRowViewModel(achievements, StoreBadge)
             : null;
     }
@@ -231,9 +231,13 @@ public sealed class ReleaseAchievementRowViewModel
         StoreBadge = storeBadge;
         Unlocked = summary.Unlocked;
         Total = summary.Total;
-        CountText = $"{summary.Unlocked:N0}/{summary.Total:N0}";
+        CountText = summary.Availability == Winnow.Core.Domain.AchievementAvailability.NoSchema
+            ? "No achievements"
+            : summary.HasKnownProgress ? $"{summary.Unlocked:N0}/{summary.Total:N0}"
+            : summary.Availability == Winnow.Core.Domain.AchievementAvailability.Unavailable ? "Unavailable"
+            : storeBadge == "STEAM" ? "Not fetched" : "Not supported";
         PercentText = summary.PercentComplete is { } pct
-            ? $"{pct:0.#}%"
+            ? $"{pct:0.#}%" + (summary.IsStale ? " · last known" : string.Empty)
             : string.Empty;
     }
 
@@ -250,6 +254,8 @@ public sealed class ReleaseAchievementRowViewModel
 
     /// <summary>This release's own completion. Never a group figure.</summary>
     public string PercentText { get; }
+
+    public string SummaryText => string.IsNullOrEmpty(PercentText) ? CountText : $"{CountText} · {PercentText}";
 
     /// <summary>Row label.</summary>
     public string Label => "ACHIEVEMENTS";
