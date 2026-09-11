@@ -10,7 +10,8 @@ For an explanation of the design with a SteamGridDB trace and a buildable exampl
 ## Install and configure
 
 1. Open **Settings → Metadata & artwork → Open plugins folder**. The folder is `plugins`
-   inside Winnow's data directory, including when using `--data-dir`.
+   inside Winnow's data directory, including when using `--data-dir`. Winnow creates it
+   during startup if it is missing.
 2. Copy the extracted package into its own subdirectory. That directory must contain
    `plugin.json`, the entry DLL and any private dependencies. Restart Winnow to discover it.
 3. Enable the plugin in the same settings tab, then restart to activate it. Third-party

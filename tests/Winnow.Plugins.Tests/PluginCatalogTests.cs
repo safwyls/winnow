@@ -9,6 +9,34 @@ namespace Winnow.Plugins.Tests;
 public sealed class PluginCatalogTests
 {
     [Fact]
+    public async Task Discovery_creates_the_missing_user_directory_without_creating_the_builtin_directory()
+    {
+        using var files = new Packages();
+        await using var catalog = new PluginCatalog(new State(), new Context());
+
+        await catalog.DiscoverAsync(files.Builtin, files.User);
+
+        Assert.True(Directory.Exists(files.User));
+        Assert.False(Directory.Exists(files.Builtin));
+        Assert.Empty(catalog.Issues);
+    }
+
+    [Fact]
+    public async Task An_uncreatable_user_directory_reports_an_issue_and_keeps_builtin_plugins_available()
+    {
+        using var files = new Packages();
+        files.Add(files.Builtin, "fixture");
+        File.WriteAllText(files.User, "existing file");
+        await using var catalog = new PluginCatalog(new State(), new Context());
+
+        await catalog.DiscoverAsync(files.Builtin, files.User);
+
+        Assert.True(Assert.Single(catalog.Plugins).Loaded);
+        Assert.Equal("existing file", File.ReadAllText(files.User));
+        Assert.Equal("The plugin directory could not be created or read.", Assert.Single(catalog.Issues).Message);
+    }
+
+    [Fact]
     public async Task Background_discovery_does_not_mutate_a_collection_already_being_read_by_the_ui()
     {
         using var files = new Packages();

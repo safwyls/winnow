@@ -39,12 +39,16 @@ public sealed class PluginCatalog(IPluginStateStore state, IPluginContextFactory
 
     private async Task DiscoverRootAsync(string root, bool builtin, HashSet<string> ids, CancellationToken cancellationToken)
     {
-        if (!Directory.Exists(root)) return;
         string[] directories;
-        try { directories = Directory.GetDirectories(root).Order(StringComparer.Ordinal).ToArray(); }
+        try
+        {
+            if (!builtin) Directory.CreateDirectory(root);
+            else if (!Directory.Exists(root)) return;
+            directories = Directory.GetDirectories(root).Order(StringComparer.Ordinal).ToArray();
+        }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            AddIssue(root, "The plugin directory could not be read.");
+            AddIssue(root, "The plugin directory could not be created or read.");
             return;
         }
         foreach (var directory in directories)
