@@ -84,6 +84,18 @@ public sealed record IdentityLink
 /// </summary>
 public sealed record IdentityLinkRequest
 {
+    /// <summary>
+    /// For background hard-ID joins, the evidence works and their expected
+    /// same-game roots. Checked in the write transaction to reject stale plans.
+    /// </summary>
+    public IReadOnlyDictionary<long, long>? ExpectedSameGameRoots { get; init; }
+
+    /// <summary>
+    /// Release identity evidence captured by a background hard-ID join.
+    /// Rechecked in the write transaction before applying the link.
+    /// </summary>
+    public IReadOnlyList<ExpectedIdentityRelease>? ExpectedReleaseIdentities { get; init; }
+
     /// <summary>The work that will represent the identity or group.</summary>
     public required long ParentWorkId { get; init; }
 
@@ -112,3 +124,7 @@ public sealed record IdentityLinkRequest
     /// <summary>Optional free-text note stored on the act.</summary>
     public string? Note { get; init; }
 }
+
+/// <summary>The work, edition and optional store identifier used as background linking evidence.</summary>
+public sealed record ExpectedIdentityRelease(
+    long ReleaseId, long WorkId, long IgdbVersionId, string? Provider = null, string? ProviderId = null);

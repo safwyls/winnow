@@ -14,21 +14,15 @@ public sealed class GamesDbOptions
     public Uri BaseAddress { get; set; } = new("https://gamesdb.gog.com/");
 
     /// <summary>
-    /// Requests per second. Four, against the ~8 req/s the spike measured
-    /// comfortably: this runs behind a library the user is already browsing and
-    /// has nothing to gain from finishing sooner, and halving the rate of an
-    /// unpublished endpoint costs 8 seconds on a 67-title library.
+    /// Requests per second. Background graph lookups use a conservative rate
+    /// because this endpoint has no published capacity guarantee.
     /// </summary>
     public int RequestsPerSecond { get; set; } = 4;
 
     /// <summary>
-    /// How long a resolved (or unresolvable) id stays authoritative.
-    ///
-    /// <para>90 days, longer than IGDB's 30. This answers "which stores sell
-    /// this same game", which changes on the order of a store adding a back
-    /// catalogue title — and unlike IGDB's metadata, a stale answer here cannot
-    /// be wrong in a way the user sees. Long TTL is also the main courtesy this
-    /// module owes a volunteer-shaped service.</para>
+    /// How long a validated graph answer or confirmed miss is reused.
+    /// Cached graph references alone do not establish edition equivalence;
+    /// automatic identity links also require current matching release evidence.
     /// </summary>
     public TimeSpan CacheTtl { get; set; } = TimeSpan.FromDays(90);
 

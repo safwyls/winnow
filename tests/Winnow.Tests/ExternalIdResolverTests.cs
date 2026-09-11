@@ -971,6 +971,9 @@ public sealed class ExternalIdResolverTests : IDisposable
         public Task<IReadOnlyList<Release>> GetByWorkAsync(long workId, CancellationToken ct = default)
             => _inner.GetByWorkAsync(workId, ct);
 
+        public Task<IReadOnlyList<ExternalId>> GetAllExternalIdsAsync(CancellationToken ct = default)
+            => _inner.GetAllExternalIdsAsync(ct);
+
         public Task<IReadOnlyList<ExternalId>> GetExternalIdsAsync(long releaseId, CancellationToken ct = default)
             => _inner.GetExternalIdsAsync(releaseId, ct);
 

@@ -33,6 +33,10 @@ public sealed record EnrichmentLookupPlan(
     IReadOnlyDictionary<TargetKey, IgdbLookup> Lookups,
     IReadOnlyDictionary<string, int> RouteCounts)
 {
+    /// <summary>Exact gamesdb answers, retained separately from metadata routing.</summary>
+    public IReadOnlyDictionary<TargetKey, GamesDbGame> IdentityMatches { get; init; }
+        = new Dictionary<TargetKey, GamesDbGame>();
+
     public static readonly EnrichmentLookupPlan Empty = new(
         new Dictionary<TargetKey, IgdbLookup>(),
         new Dictionary<string, int>(StringComparer.Ordinal));
@@ -80,6 +84,7 @@ public sealed class EnrichmentLookupPlanner
 
         var lookups = new Dictionary<TargetKey, IgdbLookup>();
         var routes = new Dictionary<string, int>(StringComparer.Ordinal);
+        var identities = new Dictionary<TargetKey, GamesDbGame>();
 
         // Direct routes first. They cost nothing but a dictionary write, and
         // they are the only ones that work with no network at all beyond IGDB
@@ -106,10 +111,10 @@ public sealed class EnrichmentLookupPlanner
 
         if (epic.Count > 0)
         {
-            await PlanEpicAsync(epic, lookups, routes, ct).ConfigureAwait(false);
+            await PlanEpicAsync(epic, lookups, routes, identities, ct).ConfigureAwait(false);
         }
 
-        return new EnrichmentLookupPlan(lookups, routes);
+        return new EnrichmentLookupPlan(lookups, routes) { IdentityMatches = identities };
     }
 
     /// <summary>Plans the two-hop Epic route (Epic alias -> gamesdb -> Steam/GOG appid). Both hops fail soft.</summary>
@@ -117,6 +122,7 @@ public sealed class EnrichmentLookupPlanner
         List<EnrichmentTarget> targets,
         Dictionary<TargetKey, IgdbLookup> lookups,
         Dictionary<string, int> routes,
+        Dictionary<TargetKey, GamesDbGame> identities,
         CancellationToken ct)
     {
         if (_identity is null)
@@ -173,6 +179,12 @@ public sealed class EnrichmentLookupPlanner
             {
                 noTwin++;
                 continue;
+            }
+
+            if (game.Platform == GamesDbPlatforms.Epic
+                && game.ExternalId == appName && !string.IsNullOrWhiteSpace(game.GameId))
+            {
+                identities[new TargetKey(target.Provider, target.ProviderId)] = game;
             }
 
             // Steam first because that is the route with 946 titles of evidence

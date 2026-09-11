@@ -114,6 +114,11 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
             }
         }
 
+        if (request.Source == IdentityLinkSources.HardId)
+        {
+            await AssertAutomaticLinkAllowedAsync(lease, request, everyWork, resolution, ct);
+        }
+
         var actId = await InsertActAsync(lease, IdentityActKinds.Link, request.Note, ct);
 
         // Depth one, half two: a child may not be a parent. Any work hanging off
@@ -154,6 +159,25 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
         {
             await RetractLiveLinkAsync(lease, childWorkId, actId, ct);
             await InsertLinkAsync(lease, actId, request, childWorkId, kind, label, ct);
+        }
+
+        if (request.Source == IdentityLinkSources.HardId && request.Kind == IdentityLinkKinds.SameGame)
+        {
+            // Retire answered proposals in the same transaction as the identity
+            // decision, so a later separation cannot race a stale queue cleanup.
+            await lease.Connection.ExecuteAsync(new CommandDefinition("""
+                WITH members(work_id) AS (
+                    SELECT @ParentWorkId
+                    UNION
+                    SELECT child_work_id FROM identity_links
+                    WHERE parent_work_id = @ParentWorkId
+                      AND kind = 'same_game' AND retracted_at IS NULL
+                )
+                DELETE FROM merge_candidates
+                WHERE status = 'pending'
+                  AND left_release_id IN (SELECT id FROM releases WHERE work_id IN (SELECT work_id FROM members))
+                  AND right_release_id IN (SELECT id FROM releases WHERE work_id IN (SELECT work_id FROM members));
+                """, new { request.ParentWorkId }, lease.Transaction, cancellationToken: ct));
         }
 
         scope.Commit();
@@ -294,6 +318,78 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
     }
 
     // ── Validation ───────────────────────────────────────────────────────────
+
+    private static async Task AssertAutomaticLinkAllowedAsync(
+        DbLease lease, IdentityLinkRequest request, List<long> everyWork,
+        IdentityResolution resolution, CancellationToken ct)
+    {
+        if (request.ExpectedReleaseIdentities is { } releases)
+        {
+            foreach (var release in releases)
+            {
+                var matches = await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition("""
+                    SELECT COUNT(*) FROM releases
+                    WHERE id = @ReleaseId AND work_id = @WorkId
+                      AND igdb_version_id = @IgdbVersionId AND igdb_version_id > 0
+                      AND ((@Provider IS NULL AND @ProviderId IS NULL)
+                           OR EXISTS (
+                               SELECT 1 FROM external_ids
+                               WHERE release_id = @ReleaseId
+                                 AND provider = @Provider AND provider_id = @ProviderId));
+                    """, release, lease.Transaction, cancellationToken: ct));
+                if (matches == 0)
+                {
+                    throw new IdentityLinkRefusedException("The hard-ID release evidence changed.");
+                }
+            }
+        }
+
+        if (request.ExpectedSameGameRoots is { } expected)
+        {
+            await AssertWorksExistAsync(lease, expected.Keys.ToList(), ct);
+            foreach (var (workId, root) in expected)
+            {
+                if (resolution.SameGame.Resolve(workId) != root)
+                {
+                    throw new IdentityLinkRefusedException("The hard-ID evidence work changed identity groups.");
+                }
+            }
+        }
+
+        // Background evidence can predate a separation, rejection or metadata pin.
+        // Inspect the whole current same-game groups under the write transaction
+        // before replacing any membership or recording an act.
+        var blocked = await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition("""
+            WITH members(work_id) AS (
+                SELECT id FROM works WHERE id IN @everyWork
+                UNION
+                SELECT child_work_id FROM identity_links
+                WHERE parent_work_id IN @everyWork
+                  AND kind = 'same_game' AND retracted_at IS NULL
+            )
+            SELECT
+                EXISTS (SELECT 1 FROM identity_links
+                        WHERE child_work_id IN @everyWork AND retracted_at IS NULL)
+                OR EXISTS (SELECT 1 FROM work_igdb_pins
+                           WHERE work_id IN (SELECT work_id FROM members) AND cleared_at IS NULL)
+                OR EXISTS (SELECT 1 FROM identity_links l
+                           JOIN identity_acts a ON a.id = l.retracted_by_act_id
+                           WHERE a.kind = 'unlink'
+                             AND (l.child_work_id IN (SELECT work_id FROM members)
+                                  OR l.parent_work_id IN (SELECT work_id FROM members)))
+                OR EXISTS (SELECT 1 FROM merge_candidates c
+                           JOIN releases l ON l.id = c.left_release_id
+                           JOIN releases r ON r.id = c.right_release_id
+                           WHERE c.status = 'rejected'
+                             AND l.work_id IN (SELECT work_id FROM members)
+                             AND r.work_id IN (SELECT work_id FROM members));
+            """, new { everyWork }, lease.Transaction, cancellationToken: ct));
+        if (blocked != 0)
+        {
+            throw new IdentityLinkRefusedException(
+                "Automatic identity linking cannot replace a user decision or a changed identity group.");
+        }
+    }
 
     private static List<long> Validate(IdentityLinkRequest request)
     {

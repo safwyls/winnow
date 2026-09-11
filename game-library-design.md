@@ -1032,12 +1032,34 @@ collision — `works.igdb_id` is UNIQUE — is confirmed in place on the modal w
 named and shown, and the link is written without entering the `merge_candidates` queue. The
 queue is where soft matches are cleared; a hard external-id join is not a soft match.
 
-**`Winnow.Enrich.GamesDb` is metadata-only and writes no identity.** It routes Epic titles to
-a Steam appid so they can be enriched, and deliberately writes no `external_ids` row and no
-merge candidate. `external_ids` is keyed `(provider, provider_id)` globally, so putting a Steam
-appid on an Epic release would collide with the Steam release that already owns it. gamesdb
-also resolves *games*, not editions, so an Epic "Gold Edition" can land on the base game's
-record: right for the Work columns enrichment writes, wrong for a Release.
+**Gamesdb references require edition evidence before automatic linking.** The App's
+`GamesDbIdentitySyncService` scans Epic external IDs, including fully enriched works, through
+the shared ownership-refresh pipeline used at startup, on scheduled passes and after account
+changes. The lookup planner retains a graph answer only when it matches the requested Epic
+artifact and has a game ID. A numeric Steam or GOG counterpart already in the library can
+join through a reversible `same_game` link only when both referenced releases have the same
+positive `IgdbVersionId`. Unknown or conflicting versions remain reviewable; a game-level
+reference or similar title alone cannot establish edition equivalence.
+
+The link records the graph game ID, store IDs, release IDs and version evidence. Existing
+groups keep their representative when a singleton joins them. Ordinary launcher ingestion
+does not currently populate `IgdbVersionId`, so most imported pairs remain unresolved rather
+than being automatically linked. Logs distinguish observed counterparts, unresolved edition
+evidence, refused links and created links. Broader edition-evidence acquisition remains TASK-37.
+
+`external_ids` remains globally keyed by `(provider, provider_id)`. No key is copied onto
+another release, and no work, release, ownership or history row is collapsed. A live identity
+link is the affirmative answer; migration 0019 retired the `confirmed` candidate status.
+Pending pairs answered by the resulting group are withdrawn inside the link transaction.
+No fuzzy title evidence enters this automatic path.
+
+Rejected pairs, active metadata pins, expansion/variant membership and explicit separation
+history prevent automatic linking. A separated group's members remain available for manual
+linking. Repository checks revalidate release IDs, version evidence, external IDs and expected
+same-game roots inside the link transaction, so a changed mapping or user decision made while
+the background lookup is running cannot be overwritten. Ordinary group reparenting is not
+a separation. Repeated passes create no extra links. Desktop and fullscreen share this
+pipeline and the identity-aware library refresh.
 
 Its 90-day cache accepts validated version 1 projections and the equivalent legacy shape.
 Malformed or incompatible projections are unknown and trigger a refetch; only an HTTP 404
@@ -1135,6 +1157,16 @@ against this binary's embedded scripts through a read-only connection. Unknown h
 refused before changing journal mode, renaming legacy entries or running migrations. Known
 legacy migration names are compared as their Winnow equivalents; missing known scripts remain eligible
 for the normal backed-up upgrade, including an interrupted upgrade.
+
+Before migration 0019 retires destructive merge history, startup restores journalled rows
+and carries the standing decisions into reversible identity links. Enrichment may have
+replaced a survivor's facets since the merge. A missing work-facet assignment can be
+restored to the absorbed work only when the journal identifies both original works and an
+existing facet exactly. Release-facet recovery additionally requires the two merge release
+IDs and a matching deleted-release journal entry. Its rank remains unknown because repoint
+entries did not record ranking. The survivor's current facet set is preserved. Other missing rows
+and identity conflicts still refuse the replay transaction. This upgrade runs before either
+desktop or fullscreen opens.
 
 Timestamp parameters use `DateTime` with an explicit kind. Winnow.Data rejects
 `DateTimeKind.Unspecified` before executing a write, converts Local values to UTC, and stores

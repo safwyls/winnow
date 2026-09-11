@@ -630,6 +630,7 @@ public static class Program
         services.AddSingleton(sp => new LibraryRefreshPipeline(
         [
             new("Steam playtime history", async ct => { await sp.GetRequiredService<ISteamPlaytimeBackfill>().BackfillAsync(ct); }, PublishAfter: true),
+            new("GamesDB identity links", async ct => { await sp.GetRequiredService<GamesDbIdentitySyncService>().SyncAsync(ct); }, PublishAfter: true),
             new("Titles and metadata", async ct => { await sp.GetRequiredService<EnrichmentSyncService>().EnrichAsync(ct); }, IgdbRelevant: true),
             new("Filter facets", async ct => { await sp.GetRequiredService<FacetSyncService>().SyncAsync(ct); }, IgdbRelevant: true),
             new("Steam maturity", async ct => { await sp.GetRequiredService<SteamStoreMaturitySync>().SyncAsync(ct); }),
@@ -727,6 +728,7 @@ public static class Program
         // match. Everything it answers is cached for 90 days.
         services.AddGamesDbIdentityGraph();
         services.AddSingleton<EnrichmentLookupPlanner>();
+        services.AddSingleton<GamesDbIdentitySyncService>();
 
         // §4.2. A second INGEST source, not a name fallback: localconfig.vdf
         // only records games that have been played, so the never-launched

@@ -82,6 +82,9 @@ internal sealed class PreviewReleaseRepository : IReleaseRepository
     public Task AddExternalIdAsync(ExternalId externalId, CancellationToken ct = default)
         => Task.CompletedTask;
 
+    public Task<IReadOnlyList<ExternalId>> GetAllExternalIdsAsync(CancellationToken ct = default)
+        => Task.FromResult<IReadOnlyList<ExternalId>>([]);
+
     public Task<IReadOnlyList<ExternalId>> GetExternalIdsAsync(long releaseId, CancellationToken ct = default)
         => Task.FromResult<IReadOnlyList<ExternalId>>(
             [.. PreviewLibrary.ExternalIds.Where(id => id.ReleaseId == releaseId)]);

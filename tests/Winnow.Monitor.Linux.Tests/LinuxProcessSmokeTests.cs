@@ -155,6 +155,9 @@ public sealed class LinuxProcessSmokeTests
         public Task<Release?> GetAsync(long id, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<Release>> GetByWorkAsync(long id, CancellationToken ct = default) => throw new NotSupportedException();
         public Task AddExternalIdAsync(ExternalId value, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<ExternalId>> GetAllExternalIdsAsync(CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<ExternalId>>([]);
+
         public Task<IReadOnlyList<ExternalId>> GetExternalIdsAsync(long id, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<Release?> FindByExternalIdAsync(string provider, string id, CancellationToken ct = default) => throw new NotSupportedException();
     }
