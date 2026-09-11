@@ -9,7 +9,8 @@
     <Project Path="src/Winnow.Enrich.GamesDb/Winnow.Enrich.GamesDb.csproj" />
     <Project Path="src/Winnow.Enrich.Igdb/Winnow.Enrich.Igdb.csproj" />
     <Project Path="src/Winnow.Enrich.Steam/Winnow.Enrich.Steam.csproj" />
-    <Project Path="src/Winnow.Enrich.SteamGridDb/Winnow.Enrich.SteamGridDb.csproj" />
+    <Project Path="src/Winnow.PluginSdk/Winnow.PluginSdk.csproj" />
+    <Project Path="src/Winnow.Plugins/Winnow.Plugins.csproj" />
     <Project Path="src/Winnow.Enrich.Stores/Winnow.Enrich.Stores.csproj" />
     <Project Path="src/Winnow.Enrich.SteamWeb/Winnow.Enrich.SteamWeb.csproj" />
     <Project Path="src/Winnow.Enrich.Updates/Winnow.Enrich.Updates.csproj" />
@@ -21,10 +22,16 @@
     <Project Path="src/Winnow.Resolve/Winnow.Resolve.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Winnow.PluginFixture/Winnow.PluginFixture.csproj" />
+    <Project Path="tests/Winnow.Plugins.Tests/Winnow.Plugins.Tests.csproj" />
+    <Project Path="tests/Winnow.Plugin.SteamGridDb.Tests/Winnow.Plugin.SteamGridDb.Tests.csproj" />
     <Project Path="tests/Winnow.Covers.Tests/Winnow.Covers.Tests.csproj" />
     <Project Path="tests/Winnow.Monitor.Linux.Tests/Winnow.Monitor.Linux.Tests.csproj" />
     <Project Path="tests/Winnow.Recommend.Tests/Winnow.Recommend.Tests.csproj" />
     <Project Path="tests/Winnow.Tests/Winnow.Tests.csproj" />
     <Project Path="tests/Winnow.Ui.Tests/Winnow.Ui.Tests.csproj" />
+  </Folder>
+  <Folder Name="/plugins/">
+    <Project Path="plugins/Winnow.Plugin.SteamGridDb/Winnow.Plugin.SteamGridDb.csproj" />
   </Folder>
 </Solution>

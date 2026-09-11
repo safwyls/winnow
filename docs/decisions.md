@@ -3797,3 +3797,40 @@ README previously said:
 > Winnow encrypts stored credentials with Windows DPAPI (`CurrentUser` scope): Epic and Steam sign-in sessions, the Steam Web API key, the optional Epic OAuth client secret, and the IGDB client secret and cached access token.
 > Open **Settings → Application → IGDB metadata** on desktop or fullscreen.
 > Winnow.Enrich.*       IGDB, Steam store, steamcmd, GamesDB.
+
+### 2026-09-10 — Generated plugin settings on both presentations
+
+Metadata & artwork now renders plugin settings from manifest fields, keeping protected secret
+editing and command semantics shared while desktop and fullscreen retain their own controls.
+SteamGridDB proves the generated form. Enablement takes effect at the next launch; settings
+changes can queue a refresh for an already loaded plugin.
+
+The visual specification previously said:
+
+> **Settings** has Appearance, Controller, Library, Platforms and Application sections.
+> APPLICATION holds operating-system behavior, metadata credentials, setup replay and application build information.
+> The **STEAMGRIDDB ARTWORK** card accepts a masked API key and offers the provider's key page, save and remove actions.
+> Saving clears the field and queues background artwork enrichment; leaving the editor also clears it.
+> Status distinguishes saved credentials, configuration fallback and unavailable secure storage, without claiming that the provider has validated a key.
+> Fullscreen provides the same actions with controller text entry.
+> The backdrop preference list orders **High-resolution Steam heroes**, **SteamGridDB** and **IGDB** with accessible move-up and move-down actions.
+
+### 2026-09-10 — Provider SDK and SteamGridDB extraction (TASK-186)
+
+SteamGridDB now ships as a separate SDK-only plugin. API 1 supports library observations,
+metadata, artwork and independent recommendation shelves through host-owned adapters and
+generated settings. Loaded assemblies are trusted in-process code; dependency isolation is
+not a security sandbox. The existing release script already published untrimmed binaries;
+the architecture text now states that behavior and its relevance to dynamic plugins.
+
+The governing documents previously said:
+
+> Publish trimmed self-contained. Treat NativeAOT as an optimisation to attempt later, not a day-one constraint; Avalonia supports it but requires discipline around XAML compilation and reflection.
+> `Winnow.Enrich.SteamGridDb` retrieves static landscape heroes through `GET https://www.steamgriddb.com/api/v2/heroes/steam/{appid}` with a user-supplied Bearer API key.
+> Saved keys take precedence over `SteamGridDb:ApiKey` configuration or `SteamGridDb__ApiKey`; removing one preserves that fallback.
+> Hero observations use `work_images` source `steamgriddb`, kind `artwork`, with the asset ID, dimensions and optional `GameImage.Url` in `images_json`.
+> Their `steamgriddb-hero` image keys contain a validated asset filename; downloads are restricted to `https://cdn2.steamgriddb.com/hero/` and the shared bounded image pipeline.
+> Nothing leaves the machine except read-only requests to IGDB, SteamGridDB, Steam's public endpoints, `gamesdb.gog.com` and `api.steamcmd.net`.
+> Winnow encrypts stored credentials with Windows DPAPI (`CurrentUser` scope): Epic and Steam sign-in sessions, the Steam Web API key, the optional Epic OAuth client secret, and the IGDB client secret and cached access token, plus the SteamGridDB API key.
+> The same settings tab lets you reorder **High-resolution Steam heroes**, **SteamGridDB** and **IGDB** for backdrops.
+> A reader unions the two onto the release it is drawing a tile for (`FacetRepository.GetSnapshotAsync`).

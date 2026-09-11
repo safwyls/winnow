@@ -19,8 +19,11 @@ public sealed partial class GameScreenshotViewModel : ObservableObject, IDisposa
     private LeasedCover? _thumbnail;
 
     public GameScreenshotViewModel(string imageId, int position, int total)
+        : this(CoverKey.IgdbScreenshot(imageId), position, total) { }
+
+    public GameScreenshotViewModel(CoverKey key, int position, int total)
     {
-        Key = CoverKey.IgdbScreenshot(imageId);
+        Key = key;
         AutomationName = GameScreenshotsCopy.ThumbnailAutomationName(position, total);
         Tooltip = GameScreenshotsCopy.ThumbnailTooltip(position, total);
     }
@@ -129,9 +132,11 @@ public sealed partial class GameScreenshotsViewModel : ObservableObject, IDispos
         ScreenshotLightboxViewModel? lightbox = null)
     {
         var ids = images
-            ?.Where(row => row.Source == ImageSources.Igdb && row.Kind == ImageKinds.Screenshot)
-            .SelectMany(row => row.Ids)
-            .Distinct(StringComparer.Ordinal)
+            ?.Where(row => row.Kind == ImageKinds.Screenshot)
+            .SelectMany(row => row.Source == ImageSources.Igdb ? row.Ids.Select(CoverKey.IgdbScreenshot)
+                : row.Source.StartsWith(PluginArtRef.SourcePrefix, StringComparison.Ordinal)
+                    ? row.Images.Select(image => PluginArtRef.Key(row.Source[PluginArtRef.SourcePrefix.Length..], image.Url)).OfType<CoverKey>() : [])
+            .Distinct()
             .ToArray() ?? [];
 
         if (ids.Length == 0)

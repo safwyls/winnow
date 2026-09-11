@@ -79,12 +79,19 @@ public sealed class IdentityReadInventoryTests
             + "offering the same game twice under two badges. The bought-twice signal is keyed the "
             + "same way, which is what the destructive merge used to give it."),
 
+        new("src/Winnow.App/Services/PluginFeedService.cs", "GetShelvesAsync", Policy.Resolve,
+            "Plugin feeds receive one eligible visible ownership per resolved game. Snapshot "
+            + "bucket groups supply aggregate play facts and widen release verdicts to the "
+            + "confirmed group before any candidates reach plugin code."),
+
         new("src/Winnow.App/ViewModels/MergeQueueViewModel.cs", "LoadAsync", Policy.Resolve,
             "Renders the members MergeGrouping produced, and a member IS a resolved work: the "
             + "grouping resolves both ends of every proposal and drops the ones that resolve to "
             + "one work before a card exists."),
 
         // ── DO NOT RESOLVE ─────────────────────────────────────────────────
+        new("src/Winnow.App/Services/PluginSyncService.cs", "SyncAsync", Policy.DoNotResolve,
+            "Provider observations belong to original owned works; current confirmed groups share artwork on presentation reads."),
         new("src/Winnow.Data/Repositories/LibraryQueryRepository.cs", "GetSnapshotAsync", Policy.DoNotResolve,
             "The additional work and ownership result sets preserve each row's own metadata and "
             + "purchase facts. The bucket result uses the separately inventoried, resolving "

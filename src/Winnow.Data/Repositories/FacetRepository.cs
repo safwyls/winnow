@@ -45,6 +45,12 @@ public sealed class FacetRepository : IFacetRepository
 
                 UNION
 
+                SELECT r.id AS ReleaseId, pf.facet_id AS FacetId, NULL AS Rank
+                FROM releases r
+                JOIN plugin_work_facets pf ON pf.work_id = r.work_id
+
+                UNION
+
                 SELECT rf.release_id AS ReleaseId,
                        rf.facet_id   AS FacetId,
                        rf.rank       AS Rank

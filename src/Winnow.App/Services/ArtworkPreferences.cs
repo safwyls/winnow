@@ -12,6 +12,16 @@ public sealed class ArtworkPreferences(ISettingsStore settings)
     private static readonly string[] Defaults = [Steam, SteamGridDb, Igdb];
     private readonly SemaphoreSlim _gate = new(1, 1);
     private IReadOnlyList<string> _sourceOrder = Normalize(null);
+    public IReadOnlyList<ArtworkSourceOption> AvailableSources { get; private set; } =
+        [new(Steam, "High-resolution Steam heroes"), new(SteamGridDb, "SteamGridDB"), new(Igdb, "IGDB")];
+
+    public void ConfigureSources(IEnumerable<ArtworkSourceOption> plugins)
+    {
+        AvailableSources = new[] { new ArtworkSourceOption(Steam, "High-resolution Steam heroes") }
+            .Concat(plugins).Append(new(Igdb, "IGDB")).DistinctBy(s => s.Id).ToArray();
+        Publish(NormalizeAvailable(SourceOrder));
+        Changed?.Invoke();
+    }
 
     public IReadOnlyList<string> SourceOrder => Volatile.Read(ref _sourceOrder);
     public event Action? Changed;
@@ -23,7 +33,7 @@ public sealed class ArtworkPreferences(ISettingsStore settings)
         try
         {
             var stored = await settings.GetAsync(SettingKey, ct).ConfigureAwait(false);
-            changed = Publish(Normalize(stored?.Split(',')));
+            changed = Publish(NormalizeAvailable(stored?.Split(',')));
         }
         finally { _gate.Release(); }
         if (changed) Changed?.Invoke();
@@ -32,7 +42,7 @@ public sealed class ArtworkPreferences(ISettingsStore settings)
     public Task SaveAsync(IReadOnlyList<string> sourceOrder, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(sourceOrder);
-        var normalized = Normalize(sourceOrder);
+        var normalized = NormalizeAvailable(sourceOrder);
         return Task.Run(async () =>
         {
             bool changed;
@@ -53,9 +63,17 @@ public sealed class ArtworkPreferences(ISettingsStore settings)
         foreach (var item in (sourceOrder ?? []).Concat(Defaults))
         {
             var source = item?.Trim().ToLowerInvariant();
-            if (source is not null && Defaults.Contains(source) && !result.Contains(source)) result.Add(source);
+            if (source is not null && (Defaults.Contains(source) || source.StartsWith("plugin:", StringComparison.Ordinal)) && !result.Contains(source)) result.Add(source);
         }
         return result.AsReadOnly();
+    }
+
+    private IReadOnlyList<string> NormalizeAvailable(IEnumerable<string>? order)
+    {
+        var available = AvailableSources.Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
+        return (order ?? []).Select(s => s.Trim().ToLowerInvariant())
+            .Select(s => s == SteamGridDb && available.Contains("plugin:steamgriddb") ? "plugin:steamgriddb" : s)
+            .Concat(AvailableSources.Select(s => s.Id)).Where(available.Contains).Distinct().ToArray();
     }
 
     private bool Publish(IReadOnlyList<string> next)
@@ -65,3 +83,5 @@ public sealed class ArtworkPreferences(ISettingsStore settings)
         return true;
     }
 }
+
+public sealed record ArtworkSourceOption(string Id, string Label);

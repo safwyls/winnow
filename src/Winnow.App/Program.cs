@@ -11,7 +11,8 @@ using Winnow.Data;
 using Winnow.Data.Repositories;
 using Winnow.Enrich.GamesDb;
 using Winnow.Enrich.Igdb;
-using Winnow.Enrich.SteamGridDb;
+using Winnow.Plugins;
+using Winnow.PluginSdk;
 using Winnow.Enrich.Steam;
 using Winnow.Enrich.Stores;
 using Winnow.Enrich.SteamWeb;
@@ -164,7 +165,7 @@ public static class Program
         // seconds into the first run is a normal thing to do.
         Task startup = Task.CompletedTask;
         CredentialMetadataRefresh? credentialRefresh = null;
-        CredentialMetadataRefresh? steamGridDbRefresh = null;
+        CredentialMetadataRefresh? pluginRefresh = null;
         try
         {
             // Migrations run before ANY reader or writer touches the db —
@@ -404,17 +405,28 @@ public static class Program
                         .LogWarning("Metadata refresh after an IGDB credential change failed; saved credentials remain available."),
                     Shutdown.Token);
                 host.Services.GetRequiredService<IgdbSettingsService>().CredentialsChanged += credentialRefresh.Request;
-                steamGridDbRefresh = new CredentialMetadataRefresh(startup,
+                var pluginStartup = Task.Run(async () =>
+                {
+                    await host.Services.GetRequiredService<LegacySteamGridDbPluginMigration>().RunAsync(Shutdown.Token);
+                    var catalog = host.Services.GetRequiredService<PluginCatalog>();
+                    await catalog.DiscoverAsync(Path.Combine(AppContext.BaseDirectory, "plugins"),
+                        Path.Combine(DataLocation.Root, "plugins"), Shutdown.Token);
+                    var preferences = host.Services.GetRequiredService<ArtworkPreferences>();
+                    preferences.ConfigureSources(catalog.GetActive<IArtworkProviderPlugin>()
+                        .Select(p => new ArtworkSourceOption("plugin:" + p.Manifest.Id, p.Manifest.Name)));
+                    await preferences.LoadAsync(Shutdown.Token);
+                }, Shutdown.Token);
+                pluginRefresh = new CredentialMetadataRefresh(Task.WhenAll(startup, pluginStartup),
                     async ct =>
                     {
-                        await host.Services.GetRequiredService<SteamGridDbSyncService>().SyncAsync(ct);
+                        await host.Services.GetRequiredService<PluginSyncService>().SyncAsync(ct);
                         if (!ct.IsCancellationRequested) await RefreshLibraryAsync(host.Services);
                     },
                     _ => host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(Program))
-                        .LogWarning("SteamGridDB artwork refresh failed; stored artwork remains available."),
+                        .LogWarning("Plugin refresh failed; stored library data remains available."),
                     Shutdown.Token);
-                host.Services.GetRequiredService<SteamGridDbSettingsService>().CredentialsChanged += steamGridDbRefresh.Request;
-                steamGridDbRefresh.Request();
+                host.Services.GetRequiredService<PluginSettingsBackend>().RefreshRequested += pluginRefresh.Request;
+                pluginRefresh.Request();
             }
 
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
@@ -448,7 +460,7 @@ public static class Program
             try
             {
                 Task.WhenAll(startup, credentialRefresh?.Completion ?? Task.CompletedTask,
-                        steamGridDbRefresh?.Completion ?? Task.CompletedTask)
+                        pluginRefresh?.Completion ?? Task.CompletedTask)
                     .Wait(TimeSpan.FromSeconds(5));
             }
             catch (AggregateException)
@@ -777,7 +789,17 @@ public static class Program
         // resolving with no credentials set. Both soft-fail to "no data", and
         // neither may block a user-facing path (§5.1, pitfall 3).
         services.AddIgdbEnrichment();
-        services.AddSteamGridDb();
+        services.AddPluginHttp();
+        services.AddSingleton<PluginStorage>();
+        services.AddSingleton<IPluginStateStore>(sp => sp.GetRequiredService<PluginStorage>());
+        services.AddSingleton<IPluginContextFactory, PluginContextFactory>();
+        services.AddSingleton<PluginCatalog>();
+        services.AddSingleton<LegacySteamGridDbPluginMigration>();
+        services.AddSingleton<PluginSettingsBackend>(sp => new(sp.GetRequiredService<PluginCatalog>(),
+            sp.GetRequiredService<PluginStorage>(), Path.Combine(data.Root, "plugins")));
+        services.AddSingleton<IPluginSettingsBackend>(sp => sp.GetRequiredService<PluginSettingsBackend>());
+        services.AddSingleton<IPluginFacetRepository, PluginFacetRepository>();
+        services.AddSingleton<Winnow.Covers.ICoverSource, PluginArtworkSource>();
         services.AddSteamStoreEnrichment();
 
         // The cross-store identity graph (ROADMAP §6). Keyless and unauthenticated,
@@ -946,9 +968,7 @@ public static class Program
         services.AddSingleton<IgdbSettingsService>();
         services.AddSingleton<IIgdbSettingsService>(sp => sp.GetRequiredService<IgdbSettingsService>());
         services.AddSingleton<IgdbSettingsViewModel>();
-        services.AddSingleton<SteamGridDbSettingsService>();
-        services.AddSingleton<ISteamGridDbSettingsService>(sp => sp.GetRequiredService<SteamGridDbSettingsService>());
-        services.AddSingleton<SteamGridDbSettingsViewModel>();
+        services.AddSingleton<PluginSettingsViewModel>();
         services.AddSingleton<ArtworkPreferences>();
         services.AddSingleton<ArtworkOrderViewModel>();
         services.AddSingleton<EnrichmentSettingsViewModel>();
@@ -1014,7 +1034,8 @@ public static class Program
         // clients' own rate limiters.
         services.AddSingleton<WorkReceptionWriter>();
         services.AddSingleton<ReceptionSyncService>();
-        services.AddSingleton<SteamGridDbSyncService>();
+        services.AddSingleton<PluginSyncService>();
+        services.AddSingleton<PluginFeedService>();
         services.AddSingleton<LifecycleSyncService>();
         services.AddSingleton<GameRefetchService>();
         services.AddSingleton<IGameRefetch>(sp => sp.GetRequiredService<GameRefetchService>());

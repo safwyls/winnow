@@ -145,13 +145,14 @@ available as an alternative.
 | Cover cache | `%LOCALAPPDATA%\Winnow\covers\` |
 | Your themes | `%LOCALAPPDATA%\Winnow\themes\` |
 
-Nothing leaves the machine except read-only requests to IGDB, SteamGridDB, Steam's public endpoints,
-`gamesdb.gog.com` and `api.steamcmd.net`. **Winnow reads launcher files and does not write to
-them.**
+Built-in integrations make read-only requests to IGDB, Steam's public endpoints,
+`gamesdb.gog.com` and `api.steamcmd.net`; the bundled SteamGridDB plugin requests its API and CDN.
+Enabled third-party plugins may contact additional services. **Winnow reads launcher files
+and does not write to them.**
 
 Winnow encrypts stored credentials with Windows DPAPI (`CurrentUser` scope): Epic and Steam
 sign-in sessions, the Steam Web API key, the optional Epic OAuth client secret, and the IGDB
-client secret and cached access token, plus the SteamGridDB API key. Legacy plaintext credentials migrate on first read;
+client secret and cached access token, plus plugin credentials. Legacy plaintext credentials migrate on first read;
 cleanup retries if an earlier migration was interrupted. A system that cannot encrypt refuses
 to persist new credentials. It leaves legacy user-entered secrets untouched but unused, and
 clears legacy machine-minted tokens. This migration updates settings rows; it does not scrub
@@ -189,6 +190,9 @@ setx Igdb__ClientSecret "your-client-secret"
 
 ### Optional: SteamGridDB
 
+SteamGridDB ships as an enabled provider plugin. Existing credentials and cached artwork migrate
+automatically from the earlier built-in integration.
+
 Open **Settings → Metadata & artwork** to add your own
 [SteamGridDB API key](https://www.steamgriddb.com/profile/preferences/api).
 Saving protects the key on supported devices and queues background hero-artwork enrichment.
@@ -197,8 +201,17 @@ Games without that ID continue using the existing artwork sources. Cached artwor
 available offline; Winnow also accepts `SteamGridDb__ApiKey` as an environment variable.
 
 The same settings tab lets you reorder **High-resolution Steam heroes**, **SteamGridDB**
-and **IGDB** for backdrops. Saved per-game backgrounds always take priority. The order takes
+and **IGDB**, plus additional active artwork plugins, for backdrops. Saved per-game backgrounds always take priority. The order takes
 effect on desktop and fullscreen without restarting; it does not change metadata field sources.
+
+### Provider plugins
+
+Plugins can import game libraries, add metadata and artwork, and supply recommendation shelves.
+Open **Settings → Metadata & artwork → Open plugins folder**, copy a package into its own
+directory, restart, enable it and restart again. Third-party plugins run trusted code with
+Winnow's permissions; install packages from authors you trust. Settings are available on
+desktop and fullscreen. See [plugin authoring and installation](docs/plugins.md) for the SDK,
+supported data contracts, compatibility and current limits.
 
 ### Writing a theme
 
@@ -238,7 +251,10 @@ Winnow.Core           Domain records, repository interfaces, ingest contracts.
 Winnow.Data           SQLite, Dapper, DbUp migrations, and the bucket queries.
 Winnow.Ingest.*       Steam / Epic / GOG readers over local launcher files.
 Winnow.Resolve        Candidates to Work and Release, with a confirmation queue.
-Winnow.Enrich.*       IGDB, SteamGridDB, Steam store, steamcmd, GamesDB.
+Winnow.Enrich.*       IGDB, Steam store, steamcmd, GamesDB.
+Winnow.PluginSdk      Public library, metadata, artwork and feed contracts.
+Winnow.Plugins        Plugin discovery, activation, dependency loading and HTTP.
+plugins/             Separately packaged providers, including SteamGridDB.
 Winnow.Covers[.Igdb]  Cover art pipeline and disk cache.
 Winnow.Monitor        Process watching and session recording.
 Winnow.Recommend      The scoring model and the shelves.

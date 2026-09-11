@@ -7,16 +7,16 @@ using Winnow.App.Services;
 namespace Winnow.App.ViewModels;
 
 public sealed class EnrichmentSettingsViewModel(
-    IgdbSettingsViewModel igdb, SteamGridDbSettingsViewModel steamGridDb, ArtworkOrderViewModel? artworkOrder = null)
+    IgdbSettingsViewModel igdb, PluginSettingsViewModel? plugins = null, ArtworkOrderViewModel? artworkOrder = null)
 {
     public string Title => "Metadata & artwork";
     public string SegmentLabel => "METADATA & ARTWORK";
     public string SegmentTooltip => "Metadata credentials and background artwork sources";
-    public string IntroMessage => "Connect metadata and artwork sources, and choose which background artwork to try first.";
+    public string IntroMessage => "Connect metadata sources, manage plugins, and choose which background artwork to try first.";
     public IgdbSettingsViewModel Igdb { get; } = igdb;
-    public SteamGridDbSettingsViewModel SteamGridDb { get; } = steamGridDb;
+    public PluginSettingsViewModel Plugins { get; } = plugins ?? new();
     public ArtworkOrderViewModel ArtworkOrder { get; } = artworkOrder ?? new();
-    public void ClearSecrets() { Igdb.ClientSecret = string.Empty; SteamGridDb.ApiKey = string.Empty; }
+    public void ClearSecrets() { Igdb.ClientSecret = string.Empty; Plugins.ClearSecrets(); }
 }
 
 public partial class ArtworkOrderViewModel : ObservableObject
@@ -45,7 +45,7 @@ public partial class ArtworkOrderViewModel : ObservableObject
     }
 
     private bool CanMoveUp(string? source) => !IsBusy && IndexOf(source) > 0;
-    private bool CanMoveDown(string? source) => !IsBusy && IndexOf(source) is >= 0 and < 2;
+    private bool CanMoveDown(string? source) => !IsBusy && IndexOf(source) is var index && index >= 0 && index < Sources.Count - 1;
     private int IndexOf(string? source) => Sources.ToList().FindIndex(row => row.SourceId == source);
     [RelayCommand(CanExecute = nameof(CanMoveUp))] private Task MoveUpAsync(string? source) => MoveAsync(source, -1);
     [RelayCommand(CanExecute = nameof(CanMoveDown))] private Task MoveDownAsync(string? source) => MoveAsync(source, 1);
@@ -74,21 +74,25 @@ public partial class ArtworkOrderViewModel : ObservableObject
     private void Refresh(IReadOnlyList<string> order)
     {
         Sources.Clear();
-        foreach (var source in order) Sources.Add(new(source, this));
+        foreach (var source in order) Sources.Add(new(source, SourceLabel(source), this));
         NotifyCommands();
     }
     private void NotifyCommands() { MoveUpCommand.NotifyCanExecuteChanged(); MoveDownCommand.NotifyCanExecuteChanged(); }
+
+    private string SourceLabel(string source) => _preferences?.AvailableSources.FirstOrDefault(option => option.Id == source)?.Label
+        ?? source switch
+        {
+            ArtworkPreferences.Steam => "High-resolution Steam heroes",
+            ArtworkPreferences.SteamGridDb => "SteamGridDB",
+            ArtworkPreferences.Igdb => "IGDB",
+            _ => source
+        };
 }
 
-public sealed class ArtworkSourcePreference(string sourceId, ArtworkOrderViewModel owner)
+public sealed class ArtworkSourcePreference(string sourceId, string label, ArtworkOrderViewModel owner)
 {
     public string SourceId { get; } = sourceId;
-    public string Label => SourceId switch
-    {
-        ArtworkPreferences.Steam => "High-resolution Steam heroes",
-        ArtworkPreferences.SteamGridDb => "SteamGridDB",
-        _ => "IGDB"
-    };
+    public string Label { get; } = label;
     public string MoveUpLabel => $"Move {Label} up";
     public string MoveDownLabel => $"Move {Label} down";
     public IAsyncRelayCommand<string?> MoveUpCommand => owner.MoveUpCommand;

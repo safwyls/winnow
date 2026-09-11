@@ -715,7 +715,7 @@ Updater actions appear only when available, matching desktop behavior. When an u
 transition removes the focused action, focus moves to another available update action,
 with the settings controls as a fallback; it never activates restart automatically.
 
-**Settings** has Appearance, Controller, Library, Platforms and Application sections. Large
+**Settings** has Appearance, Controller, Library, Platforms, Metadata & artwork and Application sections. Large
 rows expose a label and current value; left/right changes bounded values, A opens pickers
 or activates toggles, and B returns. Appearance has a readable live sample. Fullscreen owns
 its UI scale (80–120% in five-point steps), text scale (70–140% in ten-point steps),
@@ -2639,7 +2639,7 @@ A successful sign-in does not add a second confirmation block; actionable notice
 It is not under APPEARANCE, which changes material and layout and no data. It is not under
 PLATFORMS, which is about connecting to a store; this is about what to do with what arrived.
 
-APPLICATION holds operating-system behavior, metadata credentials, setup replay and application build information.
+APPLICATION holds operating-system behavior, setup replay and application build information.
 Its **NOTIFICATION AREA** card has separate, off-by-default toggles for hiding Winnow when it
 is minimized and keeping it running when its window is closed. The notification-area menu
 offers **Open Winnow** and **Exit**; Exit always closes the process even when close-to-tray is
@@ -2665,14 +2665,29 @@ Fullscreen Metadata & artwork opens a dedicated **IGDB metadata** page with the 
 actions, large fields and explicit controller focus rows. A opens the existing on-screen
 keyboard for either field; secret entry retains its masking.
 
-The **STEAMGRIDDB ARTWORK** card accepts a masked API key and offers the provider's key page,
-save and remove actions. Saving clears the field and queues background artwork enrichment;
-leaving the editor also clears it. Status distinguishes saved credentials, configuration
-fallback and unavailable secure storage, without claiming that the provider has validated a key.
-Fullscreen provides the same actions with controller text entry.
+The **PLUGINS** section shows one card per discovered plugin, with its name, version,
+description, supported features and status. **Open plugins folder** opens the installation
+directory. Explain that installing and changing enablement requires a restart and that plugins
+run with Winnow's access to the device. A malformed or incompatible package states its failure;
+only a package with a valid manifest offers configuration controls.
 
-The backdrop preference list orders **High-resolution Steam heroes**, **SteamGridDB** and
-**IGDB** with accessible move-up and move-down actions. Changes save immediately and apply to
+Winnow generates labelled text fields and masked secret fields from each plugin's manifest.
+Optional **Get** links open the provider's HTTPS setup page. **Save settings** persists the
+fields and clears secret drafts; a blank secret keeps the saved value. Each secret has a
+**Remove saved secret** action, available only when a secret is stored. A polite status line
+reports failures without exposing credentials or claiming that the provider validated them.
+Secrets also clear when leaving the settings surface. **Enable plugin** / **Disable plugin**
+states the next launch's choice and keeps a visible restart notice while it differs from the
+running state. **Refresh now** is available for enabled, loaded plugins. SteamGridDB uses this
+same generated form for its API key.
+
+Fullscreen lists discovered plugins under Metadata & artwork and opens a dedicated page for
+each one. The page uses the same settings model with large generated fields, explicit focus
+rows, masked controller text entry and the same commands. Saving keeps the controls in place
+so controller focus can return to the same action. Plugins do not supply arbitrary UI trees.
+
+The backdrop preference list includes **High-resolution Steam heroes**, discovered artwork
+plugins by name, and **IGDB**, with accessible move-up and move-down actions. Changes save immediately and apply to
 both presentations. Explain that saved backgrounds always come first and standard Steam
 heroes and covers remain fallbacks. This order governs artwork, not unrelated metadata fields.
 

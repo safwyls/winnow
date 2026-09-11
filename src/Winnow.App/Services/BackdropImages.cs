@@ -13,7 +13,8 @@ public static class BackdropImages
         var rows = (await repository.GetForWorkAsync(primaryWorkId, ct)).ToList();
         foreach (var member in memberWorkIds.Where(id => id != primaryWorkId).Distinct())
             rows.AddRange((await repository.GetForWorkAsync(member, ct))
-                .Where(row => row.Source == ImageSources.SteamGridDb && row.Kind == ImageKinds.Artwork));
+                .Where(row => (row.Source == ImageSources.SteamGridDb || row.Source.StartsWith("plugin:", StringComparison.Ordinal))
+                    && row.Kind == ImageKinds.Artwork));
         return rows;
     }
 }

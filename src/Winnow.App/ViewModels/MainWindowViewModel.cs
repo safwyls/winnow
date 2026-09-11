@@ -50,7 +50,7 @@ public partial class MainWindowViewModel : ObservableObject
         AccountStats = accountStats;
         LibrarySettings = librarySettings;
         ApplicationSettings = applicationSettings ?? new ApplicationSettingsViewModel();
-        EnrichmentSettings = enrichmentSettings ?? new(ApplicationSettings.Igdb, ApplicationSettings.SteamGridDb);
+        EnrichmentSettings = enrichmentSettings ?? new(ApplicationSettings.Igdb);
         Setup = setup ?? new FirstRunSetupViewModel(Stores, Appearance, ApplicationSettings, LibrarySettings);
 
         // Hiding a game, unhiding one, adding one by hand and turning the

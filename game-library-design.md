@@ -85,9 +85,8 @@ reasoning and its accepted costs are in `docs/decisions.md`.
 **Deliberately excluded:** Postgres, any vector store, any server framework, any LLM
 dependency. Do not add them speculatively.
 
-Publish trimmed self-contained. Treat NativeAOT as an optimisation to attempt later, not a
-day-one constraint; Avalonia supports it but requires discipline around XAML compilation and
-reflection.
+Publish untrimmed self-contained, as configured by `packaging/Publish.ps1`. The provider plugin
+host loads managed assemblies at runtime; NativeAOT and trimming are not supported by this path.
 
 ---
 
@@ -265,7 +264,7 @@ stored locally.
 
 #### SteamGridDB artwork
 
-`Winnow.Enrich.SteamGridDb` retrieves static landscape heroes through
+The SDK-only `Winnow.Plugin.SteamGridDb` package retrieves static landscape heroes through
 `GET https://www.steamgriddb.com/api/v2/heroes/steam/{appid}` with a user-supplied Bearer
 API key. This slice uses exact Steam app IDs only; it does not search names or change identity.
 Requests exclude NSFW, humor and epilepsy-tagged assets. Returned dimensions, type flags,
@@ -280,11 +279,12 @@ unauthorized requests do not write misses; older successful payloads remain usab
 
 Metadata & artwork settings saves the key with current-user DPAPI and refuses plaintext
 persistence on unsupported hosts. The editor never reloads the key. Saved keys take precedence
-over `SteamGridDb:ApiKey` configuration or `SteamGridDb__ApiKey`; removing one preserves that
-fallback. Saving queues a background pass after startup. The same coalesced worker also runs
+over `Plugins:steamgriddb:apikey` configuration; the legacy `SteamGridDb__ApiKey` remains a
+fallback. Removing a saved key preserves configuration. Saving queues a background pass after
+startup. The same coalesced worker also runs
 once per launch and reloads the library after its pass; it does not hold up other startup sync.
 
-Hero observations use `work_images` source `steamgriddb`, kind `artwork`, with the asset ID,
+Hero observations use `work_images` source `plugin:steamgriddb`, kind `artwork`, with the URL hash,
 dimensions and optional `GameImage.Url` in `images_json`. They stay on the original work.
 Presentation reads share these rows through the current tile's confirmed members, so unlinking
 stops sharing without copying or deleting another game's observation. Existing IGDB galleries
@@ -621,6 +621,8 @@ bulk reads. This does not change the pre-window appearance bootstrap or unrelate
 | `Winnow.Ingest.*` | Read one source, emit normalised `CandidateOwnership` | Write to `works` or `releases`; write to any store-owned file |
 | `Winnow.Resolve` | Map candidates to Work and Release, enqueue ambiguous merges | Auto-merge on anything but a hard external-id join |
 | `Winnow.Enrich.*` | Fetch and cache external metadata | Block any user-facing path |
+| `Winnow.PluginSdk` | Versioned BCL-only provider contracts and settings declarations | Reference UI, persistence or application internals |
+| `Winnow.Plugins` | Validate/load trusted plugin assemblies, manage activation and bound SDK HTTP calls | Claim an in-process security sandbox |
 | `Winnow.Covers[.Igdb]` | Fetch and cache cover art; first source that answers wins | Block first paint |
 | `Winnow.Monitor` | Detect game start and stop, emit sessions | Assume any specific launcher is present |
 | `Winnow.Recommend` | Score and explain | Perform IO beyond repositories; reference anything but `Winnow.Core`; make identity decisions |
@@ -633,6 +635,40 @@ IRemoteOwnershipSync` handles entitlement backfill on a 6-hour timer. Both live 
 `Winnow.App.Services` rather than `Winnow.Core.Ingest`, because `LibrarySyncReport` carries a
 `ResolveResult` and Core cannot reference Resolve. **No enrichment or remote client may be
 reachable from the first-paint path.**
+
+#### Provider plugins
+
+`Winnow.PluginSdk` API 1 exposes library sources, metadata, artwork and recommendation feeds.
+`Winnow.Plugins` discovers manifest-bearing directories under the installation's bundled
+`plugins` folder and the data directory's user `plugins` folder. Third-party packages start
+disabled; activation changes require restart. Settings declarations generate separate desktop
+and fullscreen editors. Custom screens and UI replacement are not part of the contract.
+
+Plugin code runs in-process with the application's permissions. Assembly load contexts isolate
+dependencies, not filesystem/network access. Initializers and provider calls run on worker
+threads with 30-second and 120-second deadlines. Exceptions use fixed diagnostics; timeouts
+disable the provider for the session. SDK HTTP uses exact HTTPS hosts, no redirects, bounded
+responses and per-provider Polly rate/retry policies. Scoped settings keys use length-delimited
+plugin/key segments; secrets use DPAPI with equally scoped entropy. No plugin receives a host
+service provider, database connection or UI object through the SDK.
+
+Application adapters own persistence. Library imports enter the existing resolver under
+`plugin:<id>` ownership sources; existing Steam/Epic/GOG external IDs join only when known
+matches agree. Migration 0032 widens the external-ID provider constraint to accept this namespace
+while preserving existing hard joins. Missing inventory never deletes ownerships. Metadata observations retain their
+source in `metadata_cache`; summary/year fill automatic missing fields through the existing
+provenance-aware repository. Migration 0031's `plugin_work_facets` holds genre/tag assignments
+per work and source, unioned into facet reads without sharing another provider's write scope.
+Artwork observations remain on original works, use declared hosts and URL-hashed image keys,
+and share through current confirmed groups on presentation reads. User artwork stays first.
+Every release's external IDs are queried for artwork; an unavailable member preserves the
+previous combined observation. Plugin feeds receive eligible owned groups and explanatory
+scores produce existing shelves on both surfaces, preserving dismissal and snooze behavior.
+
+`docs/plugins.md` describes authoring, local package layout, compatibility and operational
+limits. SteamGridDB is shipped as a separate SDK-only package, copied during build and publish.
+Its former credentials, metadata cache, observations and downloaded source images migrate
+through an explicit compatibility adapter. No authenticated live call is required for migration.
 
 #### Controller input
 
@@ -679,8 +715,8 @@ remain a compatible fallback, followed by smaller landscapes; ties retain source
 Failed downloads advance through the remaining candidates before using the game's cover.
 No automatic selection overwrites the user's saved background or reorders the screenshot gallery.
 SteamGridDB candidates within their source group rank by detail remaining after the display crop.
-Their `steamgriddb-hero` image keys contain a validated asset filename; downloads are restricted
-to `https://cdn2.steamgriddb.com/hero/` and the shared bounded image pipeline.
+Their `plugin-steamgriddb` image keys contain a SHA-256 URL hash. The plugin restricts candidates
+to `https://cdn2.steamgriddb.com/hero/`; the host validates declared HTTPS hosts and bounds downloads.
 
 Steam heroes use separate `steam-hero` and `steam-hero-standard` cache keys for
 `library_hero_2x.jpg` and `library_hero.jpg`. Each rendition is requested independently through

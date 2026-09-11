@@ -97,7 +97,8 @@
     <ProjectReference Include="..\Winnow.Enrich.GamesDb\Winnow.Enrich.GamesDb.csproj" />
     <ProjectReference Include="..\Winnow.Enrich.Igdb\Winnow.Enrich.Igdb.csproj" />
     <ProjectReference Include="..\Winnow.Enrich.Steam\Winnow.Enrich.Steam.csproj" />
-    <ProjectReference Include="..\Winnow.Enrich.SteamGridDb\Winnow.Enrich.SteamGridDb.csproj" />
+    <ProjectReference Include="..\Winnow.Plugins\Winnow.Plugins.csproj" />
+    <ProjectReference Include="..\..\plugins\Winnow.Plugin.SteamGridDb\Winnow.Plugin.SteamGridDb.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\Winnow.Enrich.Stores\Winnow.Enrich.Stores.csproj" />
     <ProjectReference Include="..\Winnow.Enrich.SteamWeb\Winnow.Enrich.SteamWeb.csproj" />
     <ProjectReference Include="..\Winnow.Enrich.Updates\Winnow.Enrich.Updates.csproj" />
@@ -113,6 +114,17 @@
     <ProjectReference Include="..\Winnow.Resolve\Winnow.Resolve.csproj" />
   </ItemGroup>
 
+  <Target Name="CopyBundledPlugins" AfterTargets="Build">
+    <MSBuild Projects="..\..\plugins\Winnow.Plugin.SteamGridDb\Winnow.Plugin.SteamGridDb.csproj" Targets="GetTargetPath" BuildInParallel="false">
+      <Output TaskParameter="TargetOutputs" ItemName="BundledPluginAssembly" />
+    </MSBuild>
+    <Copy SourceFiles="@(BundledPluginAssembly)" DestinationFolder="$(OutDir)plugins\steamgriddb" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="..\..\plugins\Winnow.Plugin.SteamGridDb\plugin.json" DestinationFolder="$(OutDir)plugins\steamgriddb" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="PublishBundledPlugins" AfterTargets="Publish" DependsOnTargets="CopyBundledPlugins">
+    <Copy SourceFiles="@(BundledPluginAssembly)" DestinationFolder="$(PublishDir)plugins\steamgriddb" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="..\..\plugins\Winnow.Plugin.SteamGridDb\plugin.json" DestinationFolder="$(PublishDir)plugins\steamgriddb" SkipUnchangedFiles="true" />
+  </Target>
 </Project>
 
 

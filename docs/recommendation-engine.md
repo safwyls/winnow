@@ -15,6 +15,14 @@ this is the file to argue with — and every number here is a parameter on
 
 ## 1. What the module does, and does not
 
+Provider plugins can add independent recommendation shelves through the App-layer
+`PluginFeedService`. They do not modify this scoring model. The host supplies eligible owned
+game groups, validates their returned handles, scores and explanations, and uses the same
+feedback commands on both presentations. Dismissal and snooze suppression apply before data
+reaches a plugin and before returned cards can appear. Plugin scores are not compared with
+built-in scores; each provider owns its named shelf. The plugin contract and lifecycle live in
+`docs/plugins.md` and `game-library-design.md` §5.1.
+
 `RecommendationEngine.GetFeedAsync(request)` reads the library through `Winnow.Core`
 repository interfaces and returns a ranked list of **owned** games worth surfacing, each
 carrying a one-sentence human-readable reason and a full per-signal breakdown. It writes

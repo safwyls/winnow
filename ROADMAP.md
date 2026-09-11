@@ -102,6 +102,11 @@ PCGamingWiki and Wikidata enrichment remain optional follow-up work.
 
 ## 4. Excluded, and deferred
 
+TASK-186 adds a local provider plugin SDK for library imports, metadata, artwork and owned-game
+recommendation shelves, with SteamGridDB as the first separately packaged provider. Generated
+settings cover desktop and fullscreen. Custom screens, UI replacement, new launcher actions,
+an online plugin marketplace and automatic plugin updates remain outside this first contract.
+
 **Excluded outright.** PlayStation and Xbox. Any hosted service, user accounts or multi-user
 features. Co-op and friend library matching. A 3D "games on a shelf" view. Mobile. The
 grounds for each are in `game-library-design.md` §1 and §4.6.

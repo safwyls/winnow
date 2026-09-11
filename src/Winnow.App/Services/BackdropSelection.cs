@@ -45,6 +45,17 @@ public static class BackdropSelection
             .ThenByDescending(item => item.Pixels);
         foreach (var source in ArtworkPreferences.Normalize(sourceOrder))
         {
+            if (source.StartsWith(PluginArtRef.SourcePrefix, StringComparison.Ordinal))
+            {
+                var pluginId = source[PluginArtRef.SourcePrefix.Length..];
+                result.AddRange((rows ?? []).Where(row => row.Source == source && row.Kind == ImageKinds.Artwork)
+                    .SelectMany(row => row.Images)
+                    .Where(image => image.Animated != true && image.AlphaChannel != true
+                        && image.Width is > 0 && image.Height is > 0 && image.Width > image.Height)
+                    .OrderByDescending(image => CroppedPixels(image, aspectRatio))
+                    .Select(image => PluginArtRef.Key(pluginId, image.Url)).OfType<CoverKey>());
+                continue;
+            }
             result.AddRange(source switch
             {
                 ArtworkPreferences.Steam => steamIds.Select(CoverKey.SteamHero),
@@ -66,7 +77,8 @@ public static class BackdropSelection
         var image = (rows ?? []).SelectMany(row => row.Images)
             .FirstOrDefault(image => image.Width is > 0 && image.Height is > 0
                 && (key.Provider == CoverProviders.IgdbBackdrop && image.ImageId == key.Id
-                    || key.Provider == CoverProviders.SteamGridDbHero && SteamGridDbHeroUrl.Key(image.Url) == key));
+                    || key.Provider == CoverProviders.SteamGridDbHero && SteamGridDbHeroUrl.Key(image.Url) == key
+                    || PluginArtRef.PluginId(key) is { } pluginId && PluginArtRef.Key(pluginId, image.Url) == key));
         return IsSteamHero(key) ? SteamHeroRatio
             : image is { Width: { } width, Height: { } height } ? (double)width / height : 16d / 9;
     }
@@ -76,7 +88,8 @@ public static class BackdropSelection
     public static bool IsSteamHero(CoverKey key) =>
         key.Provider is CoverProviders.SteamHero or CoverProviders.SteamHeroStandard;
 
-    public static bool IsHero(CoverKey key) => IsSteamHero(key) || key.Provider == CoverProviders.SteamGridDbHero;
+    public static bool IsHero(CoverKey key) => IsSteamHero(key) || key.Provider == CoverProviders.SteamGridDbHero
+        || PluginArtRef.PluginId(key) is not null;
 
     private static double CroppedPixels(GameImage image, double ratio)
     {

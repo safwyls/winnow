@@ -21,12 +21,22 @@ Validated end-to-end against the author's 946-release library on 2026-08-25 — 
 `work_facets` holds facts about the GAME (`works`). `release_facets` holds facts
 about ONE STOREFRONT LISTING (`releases`, i.e. one Steam appid). IGDB describes
 the game, so IGDB descriptors land on the work; Steam user tags are voted on per
-appid, so they land on the release. A reader unions the two onto the release it
-is drawing a tile for (`FacetRepository.GetSnapshotAsync`).
+appid, so they land on the release. A reader unions both layers and source-scoped plugin
+assignments onto the release it is drawing a tile for (`FacetRepository.GetSnapshotAsync`).
 
 `game_mode` is the one kind written at BOTH layers, because both providers answer
 it. It is also the only kind whose vocabulary Winnow owns rather than passes
 through.
+
+## Plugin observations
+
+Enabled metadata plugins also supply `genre` and `tag` names through `PluginMetadata`.
+`PluginSyncService` stores the source response under `metadata_cache` provider `plugin:<id>`,
+key `metadata:<workId>`, and writes up to 100 names per kind (each at most 100 characters).
+Migration 0031's `plugin_work_facets` retains assignments per original work and plugin source.
+The read snapshot unions them with built-in assignments. A provider refresh replaces only its
+own assignments, so IGDB and other plugins cannot erase one another's observations. Refreshes
+run after startup and when requested through plugin settings; provider caches control network TTL.
 
 ## Common transformation: the slug
 

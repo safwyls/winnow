@@ -5,6 +5,7 @@ using Avalonia.Data;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,8 +28,10 @@ public sealed class FullscreenSettingsPage : FullscreenPage
     private readonly SemaphoreSlim _libraryRefresh = new(1);
     private int _refreshVersion;
     private bool _disposed;
+    private bool _pluginsRefreshing;
     public Task PendingLibraryRefresh { get; private set; } = Task.CompletedTask;
     public Task PendingPlatformRefresh { get; private set; } = Task.CompletedTask;
+    public Task PendingPluginRefresh { get; private set; } = Task.CompletedTask;
     public override string Title => "Settings";
     public override string Hints => _section == "Appearance" ? "← / →  Adjust     A  Select     Y  Reset page" : "A  Select     B  Back";
     public override string RightHints => "LT / RT  Section";
@@ -235,9 +238,18 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         {
             Group("Sources");
             Action("IGDB metadata", () => Context.Push(new FullscreenIgdbSettingsPage(Context)));
-            Action("SteamGridDB artwork", () => Context.Push(new FullscreenSteamGridDbSettingsPage(Context)));
             Action("Artwork source order", () => Context.Push(new FullscreenArtworkOrderPage(Context)));
             rows.Children.Add(FullscreenUi.Text(ArtworkOrderViewModel.Explanation, 28, "TextDim"));
+            Group("Plugins");
+            foreach (var plugin in Context.Shared.EnrichmentSettings.Plugins.Plugins)
+                Action(plugin.Name, () => Context.Push(new FullscreenPluginSettingsPage(Context, plugin)));
+            Action("Open plugins folder", async () => await OpenPluginsFolderAsync(), "Run");
+            rows.Children.Add(FullscreenUi.Text(PluginSettingsViewModel.InstallationNote, 28));
+            var pluginStatus = FullscreenUi.Text("", 28, "TextDim");
+            pluginStatus.Bind(TextBlock.TextProperty, new Binding(nameof(PluginSettingsViewModel.Status)) { Source = Context.Shared.EnrichmentSettings.Plugins });
+            AutomationProperties.SetLiveSetting(pluginStatus, AutomationLiveSetting.Polite);
+            rows.Children.Add(pluginStatus);
+            if (!_pluginsRefreshing) PendingPluginRefresh = RefreshPluginsAsync();
         }
         else
         {
@@ -405,5 +417,35 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         }
         catch (Exception) { Context.Notify("Couldn't refresh your fullscreen library. Try again."); }
         finally { _libraryRefresh.Release(); }
+    }
+
+    private async Task RefreshPluginsAsync()
+    {
+        _pluginsRefreshing = true;
+        try
+        {
+            // Let the current composition finish before replacing rows from the discovered catalog.
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+            var plugins = Context.Shared.EnrichmentSettings.Plugins;
+            var before = plugins.Plugins.Select(plugin => plugin.Id).ToArray();
+            await plugins.LoadAsync();
+            if (!_disposed && _section == "Metadata & artwork"
+                && !before.SequenceEqual(plugins.Plugins.Select(plugin => plugin.Id)))
+            { Render(); FocusInitial(); }
+        }
+        finally { _pluginsRefreshing = false; }
+    }
+
+    private async Task OpenPluginsFolderAsync()
+    {
+        var model = Context.Shared.EnrichmentSettings.Plugins;
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(model.UserPluginDirectory)
+                && TopLevel.GetTopLevel(this)?.Launcher is { } launcher
+                && await launcher.LaunchDirectoryInfoAsync(new DirectoryInfo(model.UserPluginDirectory))) return;
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) { }
+        model.FolderOpenFailed();
     }
 }

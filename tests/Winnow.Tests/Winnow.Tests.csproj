@@ -80,4 +80,7 @@
     <Content Include="..\fixtures\storefront\**" LinkBase="fixtures\storefront" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Winnow.PluginFixture\Winnow.PluginFixture.csproj" />
+  </ItemGroup>
 </Project>

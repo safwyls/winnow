@@ -38,7 +38,6 @@ public partial class ApplicationSettingsView : UserControl
         if (DataContext is ViewModels.ApplicationSettingsViewModel model)
         {
             model.Igdb.ClientSecret = "";
-            model.SteamGridDb.ApiKey = "";
         }
     }
 }

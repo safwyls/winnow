@@ -1,5 +1,3 @@
-using System.Net;
-
 namespace Winnow.Covers;
 
 /// <summary>Accepts only SteamGridDB's public hero files; the API's numeric image ID is not a CDN key.</summary>
@@ -24,25 +22,5 @@ public static class SteamGridDbHeroUrl
         foreach (var character in file.AsSpan(0, 32))
             if (character is not (>= '0' and <= '9') and not (>= 'a' and <= 'f')) return false;
         return true;
-    }
-}
-
-/// <summary>Bounded public CDN downloads, isolated from Steam heroes and portrait covers.</summary>
-public sealed class SteamGridDbHeroSource(IHttpClientFactory clients) : ICoverSource
-{
-    public string Name => "steamgriddb-hero";
-
-    public bool CanHandle(CoverKey key) => SteamGridDbHeroUrl.Url(key) is not null;
-
-    public async Task<byte[]?> TryFetchAsync(CoverKey key, CancellationToken ct = default)
-    {
-        if (SteamGridDbHeroUrl.Url(key) is not { } url) return null;
-        using var http = clients.CreateClient(SteamCapsuleSource.HttpClientName);
-        using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
-        if (response.StatusCode == HttpStatusCode.NotFound) return null;
-        // Transport failures must not be cached as an absent asset.
-        response.EnsureSuccessStatusCode();
-        var bytes = await CoverDownload.ReadAsync(response.Content, ct).ConfigureAwait(false);
-        return bytes.Length > 0 ? bytes : null;
     }
 }

@@ -958,6 +958,11 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                 {
                     coverKeyByRelease[release.Id] = CoverKey.Igdb(imageId);
                 }
+                else if (PluginArtRef.Parse(work.CoverUrl) is { } pluginCover
+                    && _artworkPreferences?.AvailableSources.Any(s => s.Id == "plugin:" + PluginArtRef.PluginId(pluginCover)) == true)
+                {
+                    coverKeyByRelease[release.Id] = pluginCover;
+                }
             }
         }
 

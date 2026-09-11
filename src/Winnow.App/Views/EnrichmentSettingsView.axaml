@@ -75,32 +75,69 @@
                     </StackPanel>
                 </Border>
 
-                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
-                           Name="SteamGridDbHeading" AutomationProperties.HeadingLevel="2" Text="STEAMGRIDDB ARTWORK"/>
-                <Border Name="SteamGridDbCard" Classes="card" AutomationProperties.Name="SteamGridDB artwork"
-                        AutomationProperties.AccessibilityView="Control">
+                <TextBlock Classes="label section" AutomationProperties.HeadingLevel="2" Text="PLUGINS"/>
+                <Border Classes="card">
                     <StackPanel Spacing="12">
-                        <TextBlock Classes="para" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
-                                   Text="{x:Static vm:SteamGridDbSettingsViewModel.Intro}"/>
-                        <Button Classes="act" HorizontalAlignment="Left" Content="Get SteamGridDB API key"
-                                Command="{Binding SteamGridDb.OpenSetupCommand}"/>
-                        <TextBlock Classes="body" Text="API key"/>
-                        <TextBox Name="SteamGridDbApiKey" Text="{Binding SteamGridDb.ApiKey, Mode=TwoWay}"
-                                 PasswordChar="●" IsEnabled="{Binding !SteamGridDb.IsBusy}"
-                                 AutomationProperties.Name="SteamGridDB API key" Watermark="Enter a key to save or replace it"/>
-                        <TextBlock Classes="para" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
-                                   Text="{x:Static vm:SteamGridDbSettingsViewModel.StorageNote}"/>
-                        <WrapPanel>
-                            <Button Classes="act" Content="Save API key" Margin="0,0,8,0"
-                                    Command="{Binding SteamGridDb.SaveCommand}"/>
-                            <Button Classes="act" Content="Remove saved API key"
-                                    Command="{Binding SteamGridDb.RemoveCommand}"/>
-                        </WrapPanel>
-                        <TextBlock Classes="para" TextWrapping="Wrap" Text="{Binding SteamGridDb.Status}"
+                        <TextBlock Classes="body prose" Text="{x:Static vm:PluginSettingsViewModel.InstallationNote}"/>
+                        <Button Classes="act" HorizontalAlignment="Left" Content="Open plugins folder" Click="OnOpenPluginsFolder"/>
+                        <SelectableTextBlock Classes="data-s" Text="{Binding Plugins.UserPluginDirectory}" TextWrapping="Wrap" Focusable="False"/>
+                        <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Plugins.Status}"
                                    AutomationProperties.LiveSetting="Polite"/>
                     </StackPanel>
                 </Border>
-
+                <ItemsControl ItemsSource="{Binding Plugins.Plugins}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:PluginCardViewModel">
+                            <Border Classes="card" Margin="0,0,0,16" AutomationProperties.Name="{Binding Name}"
+                                    AutomationProperties.AccessibilityView="Control">
+                                <StackPanel Spacing="12">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                                        <TextBlock Classes="display-l" Text="{Binding Name}" TextWrapping="Wrap" AutomationProperties.HeadingLevel="2"/>
+                                        <TextBlock Grid.Column="1" Classes="data" Text="{Binding Version}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <TextBlock Classes="body prose" Text="{Binding Description}"/>
+                                    <TextBlock Classes="body" Foreground="{StaticResource TextDim}" TextWrapping="Wrap" Text="{Binding Capabilities}"/>
+                                    <WrapPanel>
+                                        <Button Classes="act" Margin="0,0,8,0" Content="{Binding EnabledLabel}" IsVisible="{Binding CanConfigure}"
+                                                Command="{Binding ToggleEnabledCommand}" AutomationProperties.Name="{Binding ToggleAccessibleName}"
+                                                AutomationProperties.ItemStatus="{Binding EnabledStatus}"/>
+                                        <Button Classes="act" Content="Provider website" IsVisible="{Binding HasWebsite}"
+                                                Command="{Binding OpenWebsiteCommand}" AutomationProperties.Name="{Binding WebsiteAccessibleName}"/>
+                                    </WrapPanel>
+                                    <TextBlock Classes="body" Foreground="{StaticResource Amber}" IsVisible="{Binding RestartRequired}"
+                                               Text="Restart Winnow to apply the enable or disable change."/>
+                                    <ItemsControl ItemsSource="{Binding Fields}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="vm:PluginSettingFieldViewModel">
+                                                <StackPanel Spacing="8" Margin="0,0,0,12">
+                                                    <TextBlock Classes="body" Text="{Binding Label}"/>
+                                                    <TextBlock Classes="body prose" Text="{Binding Description}" IsVisible="{Binding HasDescription}"/>
+                                                    <TextBox Text="{Binding Value, Mode=TwoWay}" PasswordChar="{Binding PasswordChar}"
+                                                             IsEnabled="{Binding IsEnabled}" Watermark="{Binding Watermark}"
+                                                             AutomationProperties.Name="{Binding AccessibleName}"/>
+                                                    <WrapPanel>
+                                                        <Button Classes="act" Margin="0,0,8,0" Content="{Binding SetupLabel}" IsVisible="{Binding HasSetup}"
+                                                                Command="{Binding OpenSetupCommand}" AutomationProperties.Name="{Binding SetupAccessibleName}"/>
+                                                        <Button Classes="act" Content="Remove saved secret" IsVisible="{Binding IsSecret}"
+                                                                Command="{Binding RemoveSecretCommand}" AutomationProperties.Name="{Binding RemoveAccessibleName}"/>
+                                                    </WrapPanel>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Classes="body prose" IsVisible="{Binding HasSecrets}" Text="{x:Static vm:PluginSettingsViewModel.SecretNote}"/>
+                                    <WrapPanel>
+                                        <Button Classes="act" Margin="0,0,8,0" Content="Save settings" IsVisible="{Binding HasSettings}"
+                                                Command="{Binding SaveCommand}" AutomationProperties.Name="{Binding SaveAccessibleName}"/>
+                                        <Button Classes="act" Content="Refresh now" Command="{Binding RefreshCommand}" IsVisible="{Binding CanConfigure}"
+                                                AutomationProperties.Name="{Binding RefreshAccessibleName}"/>
+                                    </WrapPanel>
+                                    <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Status}" AutomationProperties.LiveSetting="Polite"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </StackPanel>
         </ScrollViewer>
     </Grid>
