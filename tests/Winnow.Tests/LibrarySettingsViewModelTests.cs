@@ -361,6 +361,29 @@ public sealed class LibrarySettingsViewModelTests : IDisposable
 
     // ══ Fixture ═══════════════════════════════════════════════════════════
 
+    [Theory]
+    [InlineData("year", "1899")]
+    [InlineData("year", "2201")]
+    [InlineData("igdb", "0")]
+    [InlineData("igdb", "-1")]
+    [InlineData("steam", "0")]
+    [InlineData("steam", "4294967296")]
+    public async Task Manual_form_uses_the_same_year_and_identifier_bounds_as_the_repository(string field, string value)
+    {
+        var screen = CreateSettings(CreateLibrary());
+        screen.BeginAddCommand.Execute(null);
+        screen.DraftTitle = "Valid title";
+        if (field == "year") screen.DraftYear = value;
+        else if (field == "igdb") screen.DraftIgdbId = value;
+        else screen.DraftSteamAppId = value;
+
+        await screen.SaveFormCommand.ExecuteAsync(null);
+
+        Assert.True(screen.IsFormOpen);
+        Assert.NotNull(field == "year" ? screen.YearError : field == "igdb" ? screen.IgdbIdError : screen.SteamAppIdError);
+        Assert.Empty(await _manual.GetAllAsync());
+    }
+
     private LibraryViewModel CreateLibrary()
         => new(
             _queries, _ownerships, _releases, _works, _updates,

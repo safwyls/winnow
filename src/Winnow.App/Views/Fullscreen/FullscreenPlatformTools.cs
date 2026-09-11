@@ -156,6 +156,7 @@ public sealed class FullscreenSteamApiKeyPage : FullscreenPage
         _model = context.Services is { } services ? ActivatorUtilities.CreateInstance<StoresViewModel>(services) : null;
         var copy = context.Shared.Stores;
         _field = new TextBox { FontSize = 28, MinHeight = 72, PasswordChar = '●', Watermark = copy.SteamApiKeyWatermark };
+        Avalonia.Automation.AutomationProperties.SetName(_field, copy.SteamApiKeyFieldLabel);
         var state = FullscreenUi.Text(copy.SteamApiKeyStatusMessage);
         state.Bind(TextBlock.TextProperty, new Binding(nameof(copy.SteamApiKeyStatusMessage)) { Source = copy });
         var edit = FullscreenUi.Button(copy.SteamApiKeyFieldLabel, () => context.EditText(_field));

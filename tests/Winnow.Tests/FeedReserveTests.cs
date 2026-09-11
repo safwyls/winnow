@@ -541,6 +541,33 @@ public sealed class FeedReserveTests
     }
 
     [Fact]
+    public async Task A_failed_optional_backfill_does_not_drop_the_next_queued_builtin_read()
+    {
+        var tiles = new FakeTileSource();
+        var service = new FakeFeedService(Snapshot(tiles, cards: 3, reserve: 3));
+        using var feed = new FeedViewModel(service, tiles);
+        await feed.LoadCommand.ExecuteAsync(null);
+        var shelf = feed.Shelves[0];
+        var before = service.Calls;
+        var optional = new TaskCompletionSource<FeedSupplement>();
+        service.Next = Snapshot(tiles, cards: 3, reserve: 3, firstShown: 200, firstHeld: 300)
+            with { AdditionalShelves = optional.Task };
+
+        await shelf.Cards[0].NotInterestedCommand.ExecuteAsync(null);
+        feed.Tick(FeedCardViewModel.Countdown);
+        Assert.False(feed.Backfilling.IsCompleted);
+
+        service.Next = Snapshot(tiles, cards: 3, reserve: 3, firstShown: 400, firstHeld: 500);
+        await shelf.Cards[1].NotInterestedCommand.ExecuteAsync(null);
+        feed.Tick(FeedCardViewModel.Countdown);
+        optional.SetException(new IOException("Optional provider stopped."));
+        await feed.Backfilling;
+
+        Assert.Equal(2, service.Calls - before);
+        Assert.Contains(shelf.Reserve, item => item.ReleaseId == 500);
+    }
+
+    [Fact]
     public async Task A_backfill_from_a_pass_the_feed_has_replaced_is_discarded()
     {
         var tiles = new FakeTileSource();

@@ -1,0 +1,92 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Winnow.App.ViewModels"
+             x:Class="Winnow.App.Views.PluginSettingsView"
+             x:DataType="vm:PluginSettingsViewModel"
+             AutomationProperties.Name="Plugin settings">
+    <UserControl.Styles>
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="20"/>
+        </Style>
+    </UserControl.Styles>
+    <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
+        <Border Padding="24,20,24,18" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
+            <StackPanel Spacing="7">
+                <TextBlock Classes="display-l" Text="{Binding Title}" AutomationProperties.HeadingLevel="1"/>
+                <TextBlock Classes="body" MaxWidth="640" HorizontalAlignment="Left" TextWrapping="Wrap"
+                           Foreground="{StaticResource TextDim}" Text="{Binding IntroMessage}"/>
+            </StackPanel>
+        </Border>
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="24,16,24,28" MaxWidth="920" HorizontalAlignment="Left" Spacing="14">
+                <TextBlock Classes="label section" AutomationProperties.HeadingLevel="2" Text="PLUGINS"/>
+                <Border Classes="card">
+                    <StackPanel Spacing="12">
+                        <TextBlock Classes="body prose" Text="{x:Static vm:PluginSettingsViewModel.InstallationNote}"/>
+                        <Button Classes="act" HorizontalAlignment="Left" Content="Open plugins folder" Click="OnOpenPluginsFolder"/>
+                        <SelectableTextBlock Classes="data-s" Text="{Binding UserPluginDirectory}" TextWrapping="Wrap" Focusable="False"/>
+                        <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Status}"
+                                   AutomationProperties.LiveSetting="Polite"/>
+                    </StackPanel>
+                </Border>
+                <ItemsControl ItemsSource="{Binding Plugins}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:PluginCardViewModel">
+                            <Border Classes="card" Margin="0,0,0,16" AutomationProperties.Name="{Binding Name}"
+                                    AutomationProperties.AccessibilityView="Control">
+                                <StackPanel Spacing="12">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                                        <TextBlock Classes="display-l" Text="{Binding Name}" TextWrapping="Wrap" AutomationProperties.HeadingLevel="2"/>
+                                        <TextBlock Grid.Column="1" Classes="data" Text="{Binding Version}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <TextBlock Classes="body prose" Text="{Binding Description}"/>
+                                    <TextBlock Classes="body" Foreground="{StaticResource TextDim}" TextWrapping="Wrap" Text="{Binding Capabilities}"/>
+                                    <WrapPanel>
+                                        <Button Classes="act" Margin="0,0,8,0" Content="{Binding EnabledLabel}" IsVisible="{Binding CanConfigure}"
+                                                Command="{Binding ToggleEnabledCommand}" AutomationProperties.Name="{Binding ToggleAccessibleName}"
+                                                AutomationProperties.ItemStatus="{Binding EnabledStatus}"/>
+                                        <Button Classes="act" Content="Provider website" IsVisible="{Binding HasWebsite}"
+                                                Command="{Binding OpenWebsiteCommand}" AutomationProperties.Name="{Binding WebsiteAccessibleName}"/>
+                                    </WrapPanel>
+                                    <TextBlock Classes="body" Foreground="{StaticResource Amber}" IsVisible="{Binding RestartRequired}"
+                                               Text="Restart Winnow to apply the enable or disable change."/>
+                                    <ItemsControl ItemsSource="{Binding Fields}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="vm:PluginSettingFieldViewModel">
+                                                <StackPanel Spacing="8" Margin="0,0,0,12">
+                                                    <TextBlock Classes="body" Text="{Binding Label}"/>
+                                                    <TextBlock Classes="body prose" Text="{Binding Description}" IsVisible="{Binding HasDescription}"/>
+                                                    <TextBox Text="{Binding Value, Mode=TwoWay}" PasswordChar="{Binding PasswordChar}"
+                                                             IsEnabled="{Binding IsEnabled}" Watermark="{Binding Watermark}"
+                                                             AutomationProperties.Name="{Binding AccessibleName}"/>
+                                                    <WrapPanel>
+                                                        <Button Classes="act" Margin="0,0,8,0" Content="{Binding SetupLabel}" IsVisible="{Binding HasSetup}"
+                                                                Command="{Binding OpenSetupCommand}" AutomationProperties.Name="{Binding SetupAccessibleName}"/>
+                                                        <Button Classes="act" Content="Remove saved secret" IsVisible="{Binding IsSecret}"
+                                                                Command="{Binding RemoveSecretCommand}" AutomationProperties.Name="{Binding RemoveAccessibleName}"/>
+                                                    </WrapPanel>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Classes="body prose" IsVisible="{Binding HasSecrets}" Text="{x:Static vm:PluginSettingsViewModel.SecretNote}"/>
+                                    <WrapPanel>
+                                        <Button Classes="act" Margin="0,0,8,0" Content="Save settings" IsVisible="{Binding HasSettings}"
+                                                Command="{Binding SaveCommand}" AutomationProperties.Name="{Binding SaveAccessibleName}"/>
+                                        <Button Classes="act" Content="Refresh now" Command="{Binding RefreshCommand}" IsVisible="{Binding CanConfigure}"
+                                                AutomationProperties.Name="{Binding RefreshAccessibleName}"/>
+                                    </WrapPanel>
+                                    <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Status}" AutomationProperties.LiveSetting="Polite"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

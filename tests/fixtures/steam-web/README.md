@@ -53,7 +53,7 @@ fixture and the assertions break, Valve changed the contract, and the client's
 soft-fail path — which already degrades to "unanswered" rather than throwing —
 has started silently returning nothing.
 
-### §4.2's `skip_unvetted_apps` trap is real, and was measured
+### `skip_unvetted_apps=false` preserves additional owned titles
 
 The same account was queried twice on 2026-08-24, identically except for the
 flag:
@@ -65,15 +65,14 @@ flag:
 
 Seven owned titles vanish with no error, no warning, and nothing in the response
 to indicate an omission — including both Enderal releases, which are in this
-fixture for that reason. §4.2 says apps flagged "Profile Features Limited" are
-silently omitted without the flag; this is that, quantified.
+fixture for that reason. Apps flagged "Profile Features Limited" can be silently
+omitted without the flag.
 
 ### `rtime_last_played` is populated
 
-§4.2: returned **only when the API key belongs to the queried account**. It does
+Returned **only when the API key belongs to the queried account**. It does
 here, and 508 of the 841 entries carried a non-zero timestamp. With a third
-party's key the field would be absent, which is why §4.1 makes local files the
-primary playtime source rather than this endpoint.
+party's key the field would be absent; local files provide another source of playtime.
 
 ## Quirks deliberately preserved
 
@@ -109,19 +108,19 @@ Set `Steam__ApiKey` first, and **never paste the key into a file or a commit**
 (Git Bash):
 
 ```
-curl -sS -A "Winnow/0.1 (+https://github.com/winnow-app; local game library manager)" \
+curl -sS -A "Winnow/0.1 (+https://github.com/safwyls/winnow; local game library manager)" \
   -o getownedgames-v1.json \
   "https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?steamid=$STEAMID64&include_appinfo=1&include_played_free_games=1&skip_unvetted_apps=false&format=json&key=$Steam__ApiKey"
 ```
 
 ```
-curl -sS -A "Winnow/0.1 (+https://github.com/winnow-app; local game library manager)" \
+curl -sS -A "Winnow/0.1 (+https://github.com/safwyls/winnow; local game library manager)" \
   -o clientgetlastplayedtimes-v1.json \
   "https://api.steampowered.com/IPlayerService/ClientGetLastPlayedTimes/v1/?format=json&key=$Steam__ApiKey"
 ```
 
 ```
-curl -sS -A "Winnow/0.1 (+https://github.com/winnow-app; local game library manager)" \
+curl -sS -A "Winnow/0.1 (+https://github.com/safwyls/winnow; local game library manager)" \
   -o getuseryearinreview-2024-v1.json \
   "https://api.steampowered.com/ISaleFeatureService/GetUserYearInReview/v1/?steamid=$STEAMID64&year=2024&format=json&key=$Steam__ApiKey"
 ```

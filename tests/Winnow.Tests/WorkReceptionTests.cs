@@ -27,7 +27,7 @@ public sealed class WorkReceptionTests : IDisposable
         _works = new WorkRepository(_db.Factory);
         _images = new WorkImageRepository(_db.Factory);
         _ratings = new WorkRatingRepository(_db.Factory);
-        _writer = new WorkReceptionWriter(_images, _ratings);
+        _writer = new WorkReceptionWriter(_images, _ratings, new IgdbObservationWriter(_db.Factory));
     }
 
     public void Dispose() => _db.Dispose();
@@ -37,7 +37,7 @@ public sealed class WorkReceptionTests : IDisposable
     {
         var workId = await SeedAsync();
 
-        await _writer.ApplyIgdbAsync(workId, Game(screenshots: ["sc1", "sc2", "sc3"], artworks: ["ar1"]));
+        await _writer.ApplyIgdbAsync(new IgdbMappingVersion(workId, 1, 0), Game(screenshots: ["sc1", "sc2", "sc3"], artworks: ["ar1"]));
 
         var rows = await _images.GetForWorkAsync(workId);
 
@@ -54,7 +54,7 @@ public sealed class WorkReceptionTests : IDisposable
     {
         var workId = await SeedAsync();
 
-        await _writer.ApplyIgdbAsync(workId, Game());
+        await _writer.ApplyIgdbAsync(new IgdbMappingVersion(workId, 1, 0), Game());
 
         Assert.Empty(await _images.GetForWorkAsync(workId));
     }
@@ -64,10 +64,10 @@ public sealed class WorkReceptionTests : IDisposable
     {
         var workId = await SeedAsync();
 
-        await _writer.ApplyIgdbAsync(workId, Game(screenshots: ["sc1", "sc2"]));
+        await _writer.ApplyIgdbAsync(new IgdbMappingVersion(workId, 1, 0), Game(screenshots: ["sc1", "sc2"]));
         Assert.NotEmpty(await _images.GetForWorkAsync(workId));
 
-        var changed = await _writer.ApplyIgdbAsync(workId, Game());
+        var changed = await _writer.ApplyIgdbAsync(new IgdbMappingVersion(workId, 1, 0), Game());
 
         Assert.Equal(1, changed);
         Assert.Empty(await _images.GetForWorkAsync(workId));
@@ -79,7 +79,7 @@ public sealed class WorkReceptionTests : IDisposable
         var workId = await SeedAsync();
 
         await _writer.ApplyIgdbAsync(
-            workId, Game(userRating: 78.5, userCount: 1204, criticRating: 84, criticCount: 37));
+            new IgdbMappingVersion(workId, 1, 0), Game(userRating: 78.5, userCount: 1204, criticRating: 84, criticCount: 37));
 
         var rows = await _ratings.GetForWorkAsync(workId);
 
@@ -115,7 +115,7 @@ public sealed class WorkReceptionTests : IDisposable
     {
         var workId = await SeedAsync();
 
-        await _writer.ApplyIgdbAsync(workId, Game(userRating: 90, userCount: 0));
+        await _writer.ApplyIgdbAsync(new IgdbMappingVersion(workId, 1, 0), Game(userRating: 90, userCount: 0));
         await _writer.ApplySteamAsync(workId, SteamStoreReviewSummary.None);
 
         Assert.Empty(await _ratings.GetForWorkAsync(workId));
@@ -126,7 +126,7 @@ public sealed class WorkReceptionTests : IDisposable
     {
         var workId = await SeedAsync();
 
-        await _writer.ApplyIgdbAsync(workId, Game(userRating: 78.5, userCount: 1204));
+        await _writer.ApplyIgdbAsync(new IgdbMappingVersion(workId, 1, 0), Game(userRating: 78.5, userCount: 1204));
         await _writer.ApplySteamAsync(
             workId, new SteamStoreReviewSummary(41_203, 91) { Label = "Very Positive" });
 
@@ -143,8 +143,8 @@ public sealed class WorkReceptionTests : IDisposable
         var workId = await SeedAsync();
         var game = Game(screenshots: ["sc1"], userRating: 78.5, userCount: 1204);
 
-        Assert.Equal(2, await _writer.ApplyIgdbAsync(workId, game));
-        Assert.Equal(0, await _writer.ApplyIgdbAsync(workId, game));
+        Assert.Equal(2, await _writer.ApplyIgdbAsync(new IgdbMappingVersion(workId, 1, 0), game));
+        Assert.Equal(0, await _writer.ApplyIgdbAsync(new IgdbMappingVersion(workId, 1, 0), game));
     }
 
     [Fact]
@@ -152,9 +152,9 @@ public sealed class WorkReceptionTests : IDisposable
     {
         var workId = await SeedAsync();
 
-        await _writer.ApplyIgdbAsync(workId, Game(userRating: 78.5, userCount: 1204));
+        await _writer.ApplyIgdbAsync(new IgdbMappingVersion(workId, 1, 0), Game(userRating: 78.5, userCount: 1204));
 
-        Assert.Equal(1, await _writer.ApplyIgdbAsync(workId, Game(userRating: 78.5, userCount: 1205)));
+        Assert.Equal(1, await _writer.ApplyIgdbAsync(new IgdbMappingVersion(workId, 1, 0), Game(userRating: 78.5, userCount: 1205)));
     }
 
     [Fact]
@@ -162,7 +162,7 @@ public sealed class WorkReceptionTests : IDisposable
     {
         var workId = await SeedAsync();
 
-        await _writer.ApplyIgdbAsync(workId, Game(screenshots: ["sc1"], userRating: 78.5, userCount: 9));
+        await _writer.ApplyIgdbAsync(new IgdbMappingVersion(workId, 1, 0), Game(screenshots: ["sc1"], userRating: 78.5, userCount: 9));
 
         using (var lease = _db.Factory.Lease())
         {
@@ -194,5 +194,5 @@ public sealed class WorkReceptionTests : IDisposable
         };
 
     private async Task<long> SeedAsync()
-        => await _works.InsertAsync(new Work { Name = "A Game" });
+        => await _works.InsertAsync(new Work { Name = "A Game", IgdbId = 1 });
 }

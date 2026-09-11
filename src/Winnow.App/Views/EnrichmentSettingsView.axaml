@@ -1,0 +1,81 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Winnow.App.ViewModels"
+             x:Class="Winnow.App.Views.EnrichmentSettingsView"
+             x:DataType="vm:EnrichmentSettingsViewModel"
+             AutomationProperties.Name="Metadata and artwork settings">
+    <UserControl.Styles>
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="20"/>
+        </Style>
+    </UserControl.Styles>
+    <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
+        <Border Padding="24,20,24,18" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
+            <StackPanel Spacing="7">
+                <TextBlock Classes="display-l" Text="{Binding Title}" AutomationProperties.HeadingLevel="1"/>
+                <TextBlock Classes="body" MaxWidth="640" HorizontalAlignment="Left" TextWrapping="Wrap"
+                           Foreground="{StaticResource TextDim}" Text="{Binding IntroMessage}"/>
+            </StackPanel>
+        </Border>
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="24,16,24,28" MaxWidth="920" HorizontalAlignment="Left" Spacing="14">
+                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4" Text="ARTWORK SOURCE ORDER"
+                           AutomationProperties.HeadingLevel="2"/>
+                <Border Classes="card">
+                    <StackPanel Spacing="12">
+                        <TextBlock Classes="para" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                                   Text="{x:Static vm:ArtworkOrderViewModel.Explanation}"/>
+                        <ItemsControl ItemsSource="{Binding ArtworkOrder.Sources}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:ArtworkSourcePreference">
+                                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" Margin="0,4">
+                                        <TextBlock Classes="body" Text="{Binding Label}" VerticalAlignment="Center"/>
+                                        <Button Grid.Column="1" Classes="act" Content="Move up" Command="{Binding MoveUpCommand}"
+                                                CommandParameter="{Binding SourceId}" AutomationProperties.Name="{Binding MoveUpLabel}"/>
+                                        <Button Grid.Column="2" Classes="act" Content="Move down" Command="{Binding MoveDownCommand}"
+                                                CommandParameter="{Binding SourceId}" AutomationProperties.Name="{Binding MoveDownLabel}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding ArtworkOrder.Status}"
+                                   AutomationProperties.LiveSetting="Polite"/>
+                    </StackPanel>
+                </Border>
+                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                           Name="IgdbHeading" AutomationProperties.HeadingLevel="2" Text="IGDB METADATA"/>
+                <Border Name="IgdbCard" Classes="card" AutomationProperties.Name="IGDB metadata"
+                        AutomationProperties.AccessibilityView="Control">
+                    <StackPanel Spacing="12">
+                        <TextBlock Classes="para" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                                   Text="IGDB adds game details and artwork. Enter the client ID and secret from your Twitch developer application."/>
+                        <Button Classes="act" HorizontalAlignment="Left" Content="Get IGDB credentials"
+                                Command="{Binding Igdb.OpenSetupCommand}"/>
+                        <TextBlock Classes="body" Text="Client ID"/>
+                        <TextBox Name="IgdbClientId" Text="{Binding Igdb.ClientId, Mode=TwoWay}"
+                                 IsEnabled="{Binding !Igdb.IsBusy}" AutomationProperties.Name="IGDB client ID"/>
+                        <TextBlock Classes="body" Text="Client secret"/>
+                        <TextBox Name="IgdbClientSecret" Text="{Binding Igdb.ClientSecret, Mode=TwoWay}"
+                                 PasswordChar="●" IsEnabled="{Binding !Igdb.IsBusy}"
+                                 AutomationProperties.Name="IGDB client secret" Watermark="Enter a secret to save or replace credentials"/>
+                        <TextBlock Classes="para" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                                   Text="The secret is stored securely on this device. Changes take effect immediately."/>
+                        <WrapPanel>
+                            <Button Classes="act" Content="Save credentials" Margin="0,0,8,0"
+                                    Command="{Binding Igdb.SaveCommand}"/>
+                            <Button Classes="act" Content="Remove saved credentials"
+                                    Command="{Binding Igdb.RemoveCommand}"/>
+                        </WrapPanel>
+                        <TextBlock Classes="para" TextWrapping="Wrap" Text="{Binding Igdb.Status}"
+                                   AutomationProperties.LiveSetting="Polite"/>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

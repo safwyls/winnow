@@ -900,6 +900,26 @@
                                VerticalAlignment="Center"/>
                 </StackPanel>
 
+                <!-- Passive status stays in the drag strip. Control view and ItemStatus
+                     preserve the named accessibility group and count-change events. -->
+                <Border Grid.Column="1" Name="TitleBarFetchStatus"
+                        HorizontalAlignment="Right" VerticalAlignment="Center"
+                        Margin="20,0" IsHitTestVisible="False"
+                        IsVisible="{Binding Fetch.IsActive}"
+                        AutomationProperties.Name="{Binding Fetch.AutomationName}"
+                        AutomationProperties.ItemStatus="{Binding Fetch.AutomationName}"
+                        AutomationProperties.AccessibilityView="Control">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                   VerticalAlignment="Center" Text="{Binding Fetch.Label}"/>
+                        <TextBlock Text="·" Foreground="{StaticResource TextDim}"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock Classes="data-s" Foreground="{StaticResource Text}"
+                                   VerticalAlignment="Center" Text="{Binding Fetch.RemainingText}"/>
+                        <TextBlock Classes="body" FontSize="11" Foreground="{StaticResource TextDim}"
+                                   VerticalAlignment="Center" Text="{Binding Fetch.RemainingNote}"/>
+                    </StackPanel>
+                </Border>
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
                     <Button AutomationProperties.Name="Minimise" Classes="wincontrol"
                             Click="OnMinimisePressed"
@@ -941,15 +961,8 @@
                 Width="{StaticResource RailWidth}"
                 Background="{StaticResource ChromeSurface}"
                 BorderBrush="{StaticResource Line}">
-            <!-- Rows scroll; the fetch status field and the gear do not.
-                 Grid RowDefinitions="*,Auto,Auto" pins both below the
-                 ScrollViewer so they stay visible however far the rail
-                 is scrolled. Grid rather than DockPanel because DockPanel
-                 requires the docked child to be declared first, and this
-                 file's rule is that element order equals reading order
-                 equals Tab walk order; the gear must be the last Tab stop
-                 in the rail. -->
-            <Grid RowDefinitions="*,Auto,Auto">
+            <!-- Lists scroll; creation and settings stay pinned below them. -->
+            <Grid RowDefinitions="*,Auto">
 
             <!-- Interior: the rail's own right edge is a divider, not the
                  window's, so this scrollbar keeps its flush position. -->
@@ -1246,62 +1259,8 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- The fetch status field (§8). Words only — no spinner, no
-                 animation, no Transitions anywhere in it. The count is
-                 real, falls a slice at a time, and never appears on a
-                 warm library. A Well field with a Volt edge, the same
-                 pattern the Stores panel's working note uses. There is
-                 deliberately no Cancel: this pass is not something the
-                 user started, and nothing can restart it before the next
-                 launch (§8 says "offers Cancel where there is one").
-                 Pinned in the Grid's Auto row above the gear so there
-                 is exactly one of it for the whole window and no screen
-                 can ever draw a second.
-
-                 The field is a Border, and a Border gets a NoneAutomationPeer,
-                 which answers false for IsControlElement; UIA's control view —
-                 the tree a screen reader walks — filters on exactly that, so
-                 the name would never arrive. There is no peer-bearing control
-                 inside the field to move it to, only TextBlocks, which answer
-                 with their own Text and discard a name. AccessibilityView is
-                 consulted by ControlAutomationPeer before the peer's own
-                 answer, so "Control" puts the field back in the tree with its
-                 name intact, reported as a named group.
-
-                 The same sentence is also ItemStatus because the count falls a
-                 slice at a time and a Name change raises no UIA event: Avalonia
-                 raises one for IsVisible, Bounds, RenderTransform, VisualParent
-                 and ItemStatus, and for nothing else. -->
-            <Border Grid.Row="1"
-                    Padding="14,12,14,0"
-                    IsVisible="{Binding Fetch.IsActive}">
-                <Border Background="{StaticResource Well}"
-                        BorderBrush="{StaticResource Volt}"
-                        BorderThickness="1"
-                        CornerRadius="{StaticResource RadiusControl}"
-                        Padding="10,8"
-                        AutomationProperties.Name="{Binding Fetch.AutomationName}"
-                        AutomationProperties.ItemStatus="{Binding Fetch.AutomationName}"
-                        AutomationProperties.AccessibilityView="Control">
-                    <StackPanel Spacing="4">
-                        <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                   Text="{Binding Fetch.Label}"/>
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <TextBlock Classes="data-s"
-                                       VerticalAlignment="Center"
-                                       Foreground="{StaticResource Text}"
-                                       Text="{Binding Fetch.RemainingText}"/>
-                            <TextBlock Classes="body" FontSize="11"
-                                       VerticalAlignment="Center"
-                                       Foreground="{StaticResource TextDim}"
-                                       Text="{Binding Fetch.RemainingNote}"/>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-            </Border>
-
             <!-- Creation and settings stay reachable while the lists scroll. -->
-            <Border Grid.Row="2"
+            <Border Grid.Row="1"
                     Padding="14,10"
                     BorderBrush="{StaticResource Line}"
                     BorderThickness="0,1,0,0">
@@ -2064,6 +2023,16 @@
                                         ToolTip.Tip="Theme and transparency">
                                     <TextBlock Classes="display-s" Text="APPEARANCE"/>
                                 </Button>
+                                <Button AutomationProperties.Name="{Binding EnrichmentSettings.SegmentLabel}" Classes="seg tab"
+                                        Classes.on="{Binding IsEnrichmentSettingsVisible}" Command="{Binding ShowEnrichmentSettingsCommand}"
+                                        ToolTip.Tip="{Binding EnrichmentSettings.SegmentTooltip}">
+                                    <TextBlock Classes="display-s" Text="{Binding EnrichmentSettings.SegmentLabel}"/>
+                                </Button>
+                                <Button AutomationProperties.Name="{Binding PluginSettings.SegmentLabel}" Classes="seg tab"
+                                        Classes.on="{Binding IsPluginSettingsVisible}" Command="{Binding ShowPluginSettingsCommand}"
+                                        ToolTip.Tip="{Binding PluginSettings.SegmentTooltip}">
+                                    <TextBlock Classes="display-s" Text="{Binding PluginSettings.SegmentLabel}"/>
+                                </Button>
                                 <Button AutomationProperties.Name="{Binding ApplicationSettings.SegmentLabel}"
                                         Classes="seg tab"
                                         Classes.on="{Binding IsApplicationSettingsVisible}"
@@ -2103,6 +2072,20 @@
                         <views:LazyPane.PaneTemplate>
                             <DataTemplate DataType="vm:MainWindowViewModel">
                                 <views:AppearanceView DataContext="{Binding Appearance}"/>
+                            </DataTemplate>
+                        </views:LazyPane.PaneTemplate>
+                    </views:LazyPane>
+                    <views:LazyPane IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsEnrichmentSettingsVisible}">
+                        <views:LazyPane.PaneTemplate>
+                            <DataTemplate DataType="vm:MainWindowViewModel">
+                                <views:EnrichmentSettingsView DataContext="{Binding EnrichmentSettings}"/>
+                            </DataTemplate>
+                        </views:LazyPane.PaneTemplate>
+                    </views:LazyPane>
+                    <views:LazyPane IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsPluginSettingsVisible}">
+                        <views:LazyPane.PaneTemplate>
+                            <DataTemplate DataType="vm:MainWindowViewModel">
+                                <views:PluginSettingsView DataContext="{Binding PluginSettings}"/>
                             </DataTemplate>
                         </views:LazyPane.PaneTemplate>
                     </views:LazyPane>
@@ -2320,6 +2303,14 @@
     </Grid>
     </Grid>
     <ContentControl Name="TvHost" IsVisible="False" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+    <views:LazyPane Name="SetupPanel" Margin="0,36,0,0" IsVisible="False">
+        <views:LazyPane.PaneTemplate>
+            <DataTemplate DataType="vm:MainWindowViewModel">
+                <views:FirstRunSetupView DataContext="{Binding Setup}"/>
+            </DataTemplate>
+        </views:LazyPane.PaneTemplate>
+    </views:LazyPane>
+    <Panel Name="SetupInputHost" Margin="0,36,0,0" IsVisible="False"/>
     </Panel>
 
 </Window>

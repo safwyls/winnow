@@ -1,4 +1,5 @@
 using System.Globalization;
+using Winnow.Enrich.SteamWeb.Credentials;
 
 namespace Winnow.Enrich.SteamWeb.Model;
 
@@ -100,6 +101,9 @@ public sealed record SteamYearInReview(
     DateTime ObservedAt,
     bool FromCache)
 {
+    /// <summary>Credential that fetched these bytes, including on a cache hit.</summary>
+    public SteamCredentialIdentity? CredentialIdentity { get; init; }
+
     /// <summary>The unanswered result: retry later, and record no completion marker.</summary>
     public static SteamYearInReview Unanswered(SteamId steamId, int year, DateTime observedAt)
         => new(steamId, year, Answered: false, AccountId: null, Games: [], observedAt, FromCache: false);
@@ -159,6 +163,9 @@ public sealed record SteamLastPlayedTimes(
     DateTime ObservedAt,
     bool FromCache)
 {
+    /// <summary>Credential that fetched these bytes; join it to an account disclosure before importing.</summary>
+    public SteamCredentialIdentity? CredentialIdentity { get; init; }
+
     /// <summary>The unanswered result: no anchors, and explicitly not "everything is zero".</summary>
     public static SteamLastPlayedTimes Unanswered(DateTime observedAt)
         => new(Answered: false, Games: [], observedAt, FromCache: false);

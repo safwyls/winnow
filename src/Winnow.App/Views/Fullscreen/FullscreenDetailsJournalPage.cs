@@ -14,6 +14,7 @@ public sealed class FullscreenDetailsJournalPage : FullscreenPage
 {
     private readonly JournalEntryViewModel _entry;
     private readonly TextBox _note;
+    private bool _disposed;
 
     public FullscreenDetailsJournalPage(FullscreenContext context, JournalEntryViewModel entry) : base(context)
     {
@@ -22,6 +23,7 @@ public sealed class FullscreenDetailsJournalPage : FullscreenPage
         _note = new TextBox { FontSize = 28, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap,
             MinHeight = 240, MaxHeight = 420, Watermark = "What were you doing?" };
         _note.Bind(TextBox.TextProperty, new Binding(nameof(JournalEntryViewModel.DraftNote)) { Source = entry, Mode = BindingMode.TwoWay });
+        _note.Bind(IsEnabledProperty, new Binding(nameof(JournalEntryViewModel.CanEdit)) { Source = entry });
         AutomationProperties.SetName(_note, "Journal note");
         var edit = FullscreenUi.Button("Edit note", () => Context.EditText(_note));
         var stars = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
@@ -32,17 +34,18 @@ public sealed class FullscreenDetailsJournalPage : FullscreenPage
             var button = FullscreenUi.Button($"{i} / 5", () => entry.RateCommand.Execute(rating));
             var property = $"IsDraftRated{i}";
             button.Bind(Button.TagProperty, new Binding(property) { Source = entry });
+            button.Bind(IsEnabledProperty, new Binding(nameof(JournalEntryViewModel.CanEdit)) { Source = entry });
             stars.Children.Add(button);
             choices.Add(button);
         }
         var currentRating = FullscreenUi.Text("", 28, "TextDim");
-        currentRating.Bind(TextBlock.TextProperty, new Binding(nameof(JournalEntryViewModel.DraftRating)) { Source = entry, StringFormat = "Rating: {0} / 5 (0 clears the rating)" });
+        currentRating.Bind(TextBlock.TextProperty, new Binding(nameof(JournalEntryViewModel.DraftRatingText)) { Source = entry });
         var problem = FullscreenUi.Text("", 28, "Amber");
         problem.Bind(TextBlock.TextProperty, new Binding(nameof(JournalEntryViewModel.Problem)) { Source = entry });
         var save = FullscreenUi.Button("Save", async () =>
         {
             await entry.SaveCommand.ExecuteAsync(null);
-            if (!entry.IsEditing) { Context.Back(); Context.Notify("Journal entry saved."); }
+            if (!_disposed && !entry.IsEditing) { Context.Back(); Context.Notify("Journal entry saved."); }
         });
         save.Bind(IsEnabledProperty, new Binding(nameof(JournalEntryViewModel.CanEdit)) { Source = entry });
         var cancel = FullscreenUi.Button("Cancel", Cancel);
@@ -51,8 +54,10 @@ public sealed class FullscreenDetailsJournalPage : FullscreenPage
             {
                 entry.RequestDeleteCommand.Execute(null);
                 await entry.DeleteCommand.ExecuteAsync(null);
-                if (entry.Problem is null) { Context.Back(); Context.Notify("Journal entry deleted."); }
+                if (!_disposed && entry.Problem is null) { Context.Back(); Context.Notify("Journal entry deleted."); }
             })]));
+        foreach (var button in new[] { edit, cancel, delete })
+            button.Bind(IsEnabledProperty, new Binding(nameof(JournalEntryViewModel.CanEdit)) { Source = entry });
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24 };
         actions.Children.Add(save);
         actions.Children.Add(cancel);
@@ -67,7 +72,7 @@ public sealed class FullscreenDetailsJournalPage : FullscreenPage
 
     public override bool Handle(GamepadButtons buttons)
     {
-        if (buttons.HasFlag(GamepadButtons.Keyboard)) { Context.EditText(_note); return true; }
+        if (buttons.HasFlag(GamepadButtons.Keyboard)) { if (_entry.CanEdit) Context.EditText(_note); return true; }
         if (buttons.HasFlag(GamepadButtons.Back)) { Cancel(); return true; }
         return base.Handle(buttons);
     }
@@ -78,4 +83,6 @@ public sealed class FullscreenDetailsJournalPage : FullscreenPage
         _entry.CancelEditCommand.Execute(null);
         Context.Back();
     }
+
+    public override void Dispose() { _disposed = true; base.Dispose(); }
 }

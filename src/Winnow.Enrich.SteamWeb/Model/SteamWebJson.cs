@@ -17,6 +17,38 @@ namespace Winnow.Enrich.SteamWeb.Model;
 public static class SteamWebJson
 {
     /// <summary>
+    /// Completeness is stronger than a usable positive response. Missing counts,
+    /// invalid or duplicate entries, and partial arrays cannot establish absence.
+    /// </summary>
+    public static bool IsCompleteOwnedGames(string? body, IReadOnlyList<SteamOwnedGame> parsed)
+    {
+        if (string.IsNullOrWhiteSpace(body)) return false;
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+            if (document.RootElement.ValueKind != JsonValueKind.Object
+                || !document.RootElement.TryGetProperty("response", out var response)
+                || response.ValueKind != JsonValueKind.Object
+                || !response.TryGetProperty("game_count", out var count)) return false;
+            var declared = count.ValueKind switch
+            {
+                JsonValueKind.Number when count.TryGetInt64(out var numeric) => numeric,
+                JsonValueKind.String when long.TryParse(count.GetString(), NumberStyles.None, CultureInfo.InvariantCulture, out var text) => text,
+                _ => -1,
+            };
+            if (declared < 0 || declared != parsed.Count
+                || parsed.Select(game => game.AppId).Distinct(StringComparer.Ordinal).Count() != parsed.Count) return false;
+            if (!response.TryGetProperty("games", out var games)) return declared == 0;
+            return games.ValueKind == JsonValueKind.Array && games.GetArrayLength() == declared
+                && games.EnumerateArray().All(game => game.ValueKind == JsonValueKind.Object
+                    && game.TryGetProperty("appid", out var id)
+                    && (id.ValueKind == JsonValueKind.Number ? id.TryGetInt64(out var numeric) && numeric > 0
+                        : id.ValueKind == JsonValueKind.String && long.TryParse(id.GetString(), NumberStyles.None, CultureInfo.InvariantCulture, out var text) && text > 0));
+        }
+        catch (JsonException) { return false; }
+    }
+
+    /// <summary>
     /// The games in an owned-games response, or <b>null when the body was not an
     /// answer</b> — unparseable, the wrong shape, or the bare
     /// <c>{"response":{}}</c> envelope.

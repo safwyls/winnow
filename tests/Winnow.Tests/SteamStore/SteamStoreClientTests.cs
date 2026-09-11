@@ -14,6 +14,70 @@ namespace Winnow.Tests.SteamStore;
 /// </summary>
 public class SteamStoreClientTests
 {
+    [Fact]
+    public async Task Unrelated_items_cannot_hide_an_omitted_requested_id_or_cache_its_absence()
+    {
+        var partial = true;
+        using var host = new SteamStoreTestHost((request, _) => FakeStoreHandler.Json(HttpStatusCode.OK,
+            partial ? StoreFixtures.Envelope(new { store_items = new[]
+            {
+                new { id = 440, success = 1, name = "Team Fortress 2" },
+                new { id = 730, success = 1, name = "Unrequested one" },
+                new { id = 750, success = 1, name = "Unrequested two" },
+            } }) : StoreFixtures.GetItemsFor(request)));
+        Assert.Equal(["440"], (await host.Client.GetItemsAsync(["440", "570"])).Keys);
+        Assert.Null(await host.Cache.GetAsync(SteamStoreClient.CacheProvider, SteamStoreClient.AppCacheKey("570")));
+        partial = false;
+        Assert.Equal(2, (await host.Client.GetItemsAsync(["440", "570"])).Count);
+        Assert.Equal(["570"], host.Handler.Requests[1].RequestedAppIds);
+    }
+
+    [Theory]
+    [InlineData("{\"id\":440,\"success\":2,\"name\":\"Transient result\"}")]
+    [InlineData("{\"id\":440,\"success\":1,\"name\":null}")]
+    [InlineData("{\"id\":440,\"success\":9999999999999,\"name\":\"Overflow\"}")]
+    [InlineData("{\"id\":440,\"name\":\"No result code\"}")]
+    public async Task Unrecognised_present_item_does_not_become_a_negative_cache_entry(string item)
+    {
+        using var host = new SteamStoreTestHost((_, _) => FakeStoreHandler.Json(HttpStatusCode.OK,
+            "{\"response\":{\"store_items\":[" + item + "]}}"));
+        Assert.Empty(await host.Client.GetItemsAsync(["440"]));
+        Assert.Null(await host.Cache.GetAsync(SteamStoreClient.CacheProvider, SteamStoreClient.AppCacheKey("440")));
+        await host.Client.GetItemsAsync(["440"]);
+        Assert.Equal(2, host.Handler.Requests.Count);
+    }
+
+    [Fact]
+    public async Task Duplicate_conflicting_ids_have_no_absence_authority()
+    {
+        using var host = new SteamStoreTestHost((_, _) => FakeStoreHandler.Json(HttpStatusCode.OK,
+            """{"response":{"store_items":[{"id":440,"success":1,"name":"Present"},{"id":440,"success":15}]}}"""));
+        Assert.Empty(await host.Client.GetItemsAsync(["440"]));
+        Assert.Null(await host.Cache.GetAsync(SteamStoreClient.CacheProvider, SteamStoreClient.AppCacheKey("440")));
+    }
+
+    [Fact]
+    public async Task Mis_keyed_warm_item_is_refetched_instead_of_renaming_another_game()
+    {
+        using var host = new SteamStoreTestHost(SteamStoreTestHost.DefaultResponder());
+        await host.Cache.SetAsync(SteamStoreClient.CacheProvider, SteamStoreClient.AppCacheKey("440"),
+            """{"id":570,"success":1,"name":"Wrong game"}""", host.Clock.GetUtcNow().UtcDateTime);
+        Assert.Equal(StoreFixtures.ExpectedName("440"), (await host.Client.GetItemsAsync(["440"]))["440"].Name);
+        Assert.Single(host.Handler.Requests);
+    }
+
+    [Fact]
+    public async Task Legacy_null_miss_is_rechecked_because_it_cannot_prove_the_requested_item_was_answered()
+    {
+        using var host = new SteamStoreTestHost(SteamStoreTestHost.DefaultResponder());
+        await host.Cache.SetAsync(SteamStoreClient.CacheProvider, SteamStoreClient.AppCacheKey("440"),
+            null, host.Clock.GetUtcNow().UtcDateTime);
+        Assert.NotEmpty(await host.Client.GetItemsAsync(["440"]));
+        Assert.Single(host.Handler.Requests);
+        await host.Client.GetItemsAsync(["440"]);
+        Assert.Single(host.Handler.Requests);
+    }
+
     /// <summary>The library size §4.4 and the IGDB client both size their batching against.</summary>
     private const int LibrarySize = 616;
 
@@ -166,7 +230,10 @@ public class SteamStoreClientTests
         var entry = await host.Cache.GetAsync(
             SteamStoreClient.CacheProvider, SteamStoreClient.AppCacheKey(StoreFixtures.NonStoreAppId));
         Assert.NotNull(entry);
-        Assert.Null(entry!.Value.PayloadJson);
+        Assert.NotNull(entry!.Value.PayloadJson);
+        using var evidence = System.Text.Json.JsonDocument.Parse(entry.Value.PayloadJson!);
+        Assert.Equal(15, evidence.RootElement.GetProperty("success").GetInt32());
+        Assert.Equal(StoreFixtures.NonStoreAppId, evidence.RootElement.GetProperty("id").ToString());
 
         await host.Client.GetItemsAsync([StoreFixtures.NonStoreAppId]);
         Assert.Single(host.Handler.Requests);
@@ -508,7 +575,7 @@ public class SteamStoreClientTests
     }
 
     [Fact]
-    public async Task An_item_with_no_usable_name_is_a_miss()
+    public async Task An_item_with_no_usable_name_is_unknown_and_remains_retryable()
     {
         using var host = new SteamStoreTestHost((_, _) => FakeStoreHandler.Json(
             HttpStatusCode.OK,
@@ -522,6 +589,9 @@ public class SteamStoreClientTests
 
         // A blank name would overwrite "App 440" with something worse.
         Assert.Empty(await host.Client.GetItemsAsync(["440"]));
+        Assert.Null(await host.Cache.GetAsync(SteamStoreClient.CacheProvider, SteamStoreClient.AppCacheKey("440")));
+        await host.Client.GetItemsAsync(["440"]);
+        Assert.Equal(2, host.Handler.Requests.Count);
     }
 
     // ── Tag vocabulary ───────────────────────────────────────────────────────

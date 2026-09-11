@@ -1,0 +1,28 @@
+{
+  "id": "steamgriddb",
+  "name": "SteamGridDB",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "entryAssembly": "Winnow.Plugin.SteamGridDb.dll",
+  "entryType": "Winnow.Plugin.SteamGridDb.SteamGridDbPlugin",
+  "description": "Static community artwork for games with a known Steam app ID.",
+  "website": "https://www.steamgriddb.com/",
+  "capabilities": ["artwork"],
+  "settings": [
+    {
+      "key": "apikey",
+      "label": "API key",
+      "secret": true,
+      "required": true,
+      "help": "Create a personal API key in your SteamGridDB account. Previously cached artwork remains available without a key.",
+      "setupUrl": "https://www.steamgriddb.com/profile/preferences/api"
+    }
+  ],
+  "network": {
+    "allowedHosts": ["www.steamgriddb.com", "cdn2.steamgriddb.com"],
+    "requestsPerSecond": 1,
+    "maxRetries": 2,
+    "maxResponseBytes": 2097152,
+    "timeoutSeconds": 90
+  }
+}

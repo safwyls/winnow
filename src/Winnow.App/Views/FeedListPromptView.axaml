@@ -78,10 +78,13 @@
                 </ScrollViewer>
                 <Border Height="1" Background="{StaticResource Line}" IsVisible="{Binding HasChoices}"/>
                 <TextBox Name="PromptInput" IsVisible="{Binding HasInput}" MinHeight="40"
+                         IsEnabled="{Binding CanInteract}"
                          AutomationProperties.Name="{Binding InputWatermark}"
                          Watermark="{Binding InputWatermark}" Text="{Binding Text, Mode=TwoWay}"/>
                 <TextBlock Classes="body" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
                            IsVisible="{Binding HasNote}" Text="{Binding Note}"/>
+                <TextBlock Classes="body" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                           IsVisible="{Binding HasProblem}" Text="{Binding Problem}"/>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
                     <Button Name="CancelButton" Classes="act quiet" Content="Cancel" Command="{Binding CancelCommand}"/>
                     <Button Classes="act" Classes.primary="{Binding !IsDestructive}" Classes.danger="{Binding IsDestructive}"

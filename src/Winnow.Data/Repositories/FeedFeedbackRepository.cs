@@ -63,7 +63,8 @@ public sealed class FeedFeedbackRepository : IFeedFeedbackRepository
         var rows = await lease.Connection.QueryAsync<FeedVerdict>(new CommandDefinition($"""
             SELECT {VerdictColumns}
             FROM feed_verdicts
-            WHERE revoked_at IS NULL
+            WHERE created_at <= @asOfUtc
+              AND (revoked_at IS NULL OR revoked_at > @asOfUtc)
               AND (expires_at IS NULL OR expires_at > @asOfUtc)
             ORDER BY created_at, id;
             """, new { asOfUtc }, transaction: lease.Transaction, cancellationToken: ct));
@@ -128,8 +129,12 @@ public sealed class FeedFeedbackRepository : IFeedFeedbackRepository
         return rows.Select(r => r.ToDomain()).ToList();
     }
 
-    public async Task<IReadOnlyList<FeedEndorsement>> GetEndorsementsAsync(
+    public Task<IReadOnlyList<FeedEndorsement>> GetEndorsementsAsync(
         int windowDays, CancellationToken ct = default)
+        => GetEndorsementsAsync(windowDays, DateTime.UtcNow, ct);
+
+    public async Task<IReadOnlyList<FeedEndorsement>> GetEndorsementsAsync(
+        int windowDays, DateTime asOfUtc, CancellationToken ct = default)
     {
         using var lease = _factory.Lease();
 
@@ -153,11 +158,12 @@ public sealed class FeedFeedbackRepository : IFeedFeedbackRepository
             JOIN ownerships o       ON o.id = s.ownership_id
             JOIN feed_surfacings fs ON fs.release_id = o.release_id
             WHERE s.attributed_by = 'launch'
+              AND s.started_at <= @asOfUtc
               AND julianday(date(s.started_at)) - julianday(fs.surfaced_on)
                   BETWEEN 0 AND @windowDays
             GROUP BY s.id
             ORDER BY s.started_at, s.id;
-            """, new { windowDays }, transaction: lease.Transaction, cancellationToken: ct));
+            """, new { windowDays, asOfUtc }, transaction: lease.Transaction, cancellationToken: ct));
         return rows.Select(r => r.ToDomain()).ToList();
     }
 

@@ -26,11 +26,11 @@ public sealed class AcquisitionExportTests
         var result = await new AcquisitionExport(owned, new ReleaseRepository(db.Factory)).ReadAsync();
 
         Assert.Equal(3, result.OwnershipCount);
-        Assert.StartsWith("schema_version,ownership_id,release_id,title,store,acquired_at,license_type,price_paid_cents,price_source\r\n", result.Content);
+        Assert.StartsWith("schema_version,ownership_id,release_id,title,store,acquired_at,license_type,price_paid_cents,price_source,account_ref\r\n", result.Content);
         Assert.Contains("\"A, \"\"game\"\"\r\npart two\"", result.Content);
-        Assert.Contains("\"steam\",\"2024-02-03T00:00:00.0000000Z\",\"purchase\",\"1299\",\"steam_purchase_history\"\r\n", result.Content);
-        Assert.Contains("\"gog\",,,\"0\",\r\n", result.Content);
-        Assert.Contains("\"epic\",,,,\r\n", result.Content);
+        Assert.Contains("\"steam\",\"2024-02-03T00:00:00.0000000Z\",\"purchase\",\"1299\",\"steam_purchase_history\",\r\n", result.Content);
+        Assert.Contains("\"gog\",,,\"0\",,\r\n", result.Content);
+        Assert.Contains("\"epic\",,,,,\r\n", result.Content);
     }
 
     [Theory]

@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.ComponentModel;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Data;
 using Microsoft.Extensions.DependencyInjection;
 using Winnow.App.Services;
 using Winnow.App.Themes;
@@ -26,15 +28,17 @@ public sealed class FullscreenContext : IDisposable
     public Func<string, IReadOnlyList<string>?, Task<string?>>? FilePicker { get; set; }
     public Func<string, string, Task<string?>>? SaveFilePicker { get; set; }
     private readonly SemaphoreSlim _writes = new(1);
-    private double _textScale = 1, _safeMargin = 5;
-    private bool _reducedMotion, _fitUltrawide, _dimCovers = true;
+    private double _textScale = 1, _uiScale = 1, _safeMargin = 5;
+    private bool _reducedMotion, _fitUltrawide;
     private bool _openingGame;
     private bool _disposed, _refreshPending, _active;
     private Task? _refreshTask;
     public double TextScale { get => _textScale; set { _textScale = Math.Clamp(value, .7, 1.4); Preference("text-scale", _textScale.ToString(CultureInfo.InvariantCulture)); } }
+    public double UiScale { get => _uiScale; set { _uiScale = NormalizeUiScale(value); Preference("ui-scale", _uiScale.ToString(CultureInfo.InvariantCulture)); } }
+    private static double NormalizeUiScale(double value) => double.IsFinite(value) ? Math.Clamp(value, .8, 1.2) : 1;
     public double SafeMarginPercent { get => _safeMargin; set { _safeMargin = Math.Clamp(value, 0, 10); Preference("safe-margin", _safeMargin.ToString(CultureInfo.InvariantCulture)); } }
     public bool ReducedMotion { get => _reducedMotion; set { _reducedMotion = value; Library.Ramp.ReducedMotion = value; Preference("reduced-motion", value.ToString()); } }
-    public bool DimCovers { get => _dimCovers; set { _dimCovers = value; Library.Ramp.DimsDormantCovers = value; Preference("dim-covers", value.ToString()); } }
+    public bool DimCovers { get => Shared.Display.DimDormantCovers; set => Shared.Display.DimDormantCovers = value; }
     public bool FitUltrawide => _fitUltrawide;
     public void SetFitUltrawide(bool value) { _fitUltrawide = value; Preference("fit-ultrawide", value.ToString()); }
     public string ThemeId
@@ -50,6 +54,8 @@ public sealed class FullscreenContext : IDisposable
         library.PropertyChanged += LibraryChanged;
         feed.PropertyChanged += FeedChanged;
         shared.Appearance.Service.Applied += ThemeChanged;
+        shared.Display.PropertyChanged += DisplayChanged;
+        Library.Ramp.DimsDormantCovers = DimCovers;
         if (!ReferenceEquals(shared.Library, library)) shared.Library.TilesChanged += SharedTilesChanged;
     }
     public static FullscreenContext Create(IServiceProvider services, MainWindowViewModel shared)
@@ -57,7 +63,7 @@ public sealed class FullscreenContext : IDisposable
         var journal = new JournalPromptViewModel();
         var launch = ActivatorUtilities.CreateInstance<LaunchStatusViewModel>(services);
         var library = ActivatorUtilities.CreateInstance<LibraryViewModel>(services, new DormancyRamp(), journal, launch);
-        var feed = ActivatorUtilities.CreateInstance<FeedViewModel>(services, library, library.Lists);
+        var feed = ActivatorUtilities.CreateInstance<FeedViewModel>(services, library, library.Lists, true);
         return new(library, feed, shared, services);
     }
     public async Task LoadAsync()
@@ -66,9 +72,9 @@ public sealed class FullscreenContext : IDisposable
         if (Services?.GetService<ISettingsRepository>() is { } settings)
         {
             if (double.TryParse(await settings.GetAsync("fullscreen.text-scale"), CultureInfo.InvariantCulture, out var scale)) _textScale = Math.Clamp(scale, .7, 1.4);
+            if (double.TryParse(await settings.GetAsync("fullscreen.ui-scale"), CultureInfo.InvariantCulture, out var uiScale)) _uiScale = NormalizeUiScale(uiScale);
             if (double.TryParse(await settings.GetAsync("fullscreen.safe-margin"), CultureInfo.InvariantCulture, out var margin)) _safeMargin = Math.Clamp(margin, 0, 10);
             if (bool.TryParse(await settings.GetAsync("fullscreen.reduced-motion"), out var motion)) _reducedMotion = motion;
-            if (bool.TryParse(await settings.GetAsync("fullscreen.dim-covers"), out var dim)) _dimCovers = dim;
             if (bool.TryParse(await settings.GetAsync("fullscreen.fit-ultrawide"), out var fit)) _fitUltrawide = fit;
         }
         if (_disposed) return;
@@ -78,7 +84,7 @@ public sealed class FullscreenContext : IDisposable
         Library.GroupExpansions = Shared.Library.GroupExpansions;
         Library.MaturityCap = Shared.Library.MaturityCap;
         Library.Ramp.ReducedMotion = _reducedMotion;
-        Library.Ramp.DimsDormantCovers = _dimCovers;
+        Library.Ramp.DimsDormantCovers = DimCovers;
         await RefreshAsync();
     }
     private void LibraryChanged(object? sender, PropertyChangedEventArgs e)
@@ -87,6 +93,12 @@ public sealed class FullscreenContext : IDisposable
         if (e.PropertyName == nameof(LibraryViewModel.Details) && !_openingGame) DetailsChanged?.Invoke(Library.Details);
     }
     private void ThemeChanged(object? sender, EventArgs e) => PreferencesChanged?.Invoke(this, EventArgs.Empty);
+    private void DisplayChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(DisplaySettingsViewModel.DimDormantCovers)) return;
+        Library.Ramp.DimsDormantCovers = DimCovers;
+        PreferencesChanged?.Invoke(this, EventArgs.Empty);
+    }
     private void FeedChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(FeedViewModel.ListPrompt) && Feed.ListPrompt is { } prompt) OpenPrompt(prompt);
@@ -138,11 +150,12 @@ public sealed class FullscreenContext : IDisposable
         Library.PropertyChanged -= LibraryChanged;
         Feed.PropertyChanged -= FeedChanged;
         Shared.Appearance.Service.Applied -= ThemeChanged;
+        Shared.Display.PropertyChanged -= DisplayChanged;
         Shared.Library.TilesChanged -= SharedTilesChanged;
+        if (!ReferenceEquals(Feed, Shared.Feed)) Feed.Dispose();
         if (!ReferenceEquals(Library, Shared.Library))
         {
-            Feed.Dispose();
-            Library.CloseDetailsCommand.Execute(null);
+            Library.Dispose();
             Library.Journal.Dispose();
             if (!ReferenceEquals(Library.LaunchStatus, Shared.Library.LaunchStatus)) Library.LaunchStatus.Dispose();
         }
@@ -230,6 +243,7 @@ internal sealed class FullscreenActionsPage : FullscreenPage
 internal sealed class FullscreenPromptPage : FullscreenPage
 {
     private readonly ActionPromptViewModel _prompt;
+    private bool _disposed;
     public FullscreenPromptPage(FullscreenContext context, ActionPromptViewModel prompt) : base(context)
     {
         _prompt = prompt;
@@ -239,26 +253,50 @@ internal sealed class FullscreenPromptPage : FullscreenPage
         if (prompt.HasInput)
         {
             var text = new TextBox { Text = prompt.Text, Watermark = prompt.InputWatermark, FontSize = 32 };
+            Avalonia.Automation.AutomationProperties.SetName(text, prompt.InputWatermark);
+            text.Bind(IsEnabledProperty, new Binding(nameof(prompt.CanInteract)) { Source = prompt });
             text.TextChanged += (_, _) => prompt.Text = text.Text ?? string.Empty;
             panel.Children.Add(text); rows.Add([text]);
         }
         foreach (var choice in prompt.Choices)
         {
-            var button = FullscreenUi.Button(choice.Name, async () => { await prompt.ChooseCommand.ExecuteAsync(choice); Context.Back(); });
+            var button = FullscreenUi.Button(choice.Name, async () => await RunAsync(() => prompt.ChooseCommand.ExecuteAsync(choice)));
+            button.Bind(IsEnabledProperty, new Binding(nameof(prompt.CanInteract)) { Source = prompt });
             panel.Children.Add(button); rows.Add([button]);
         }
-        if (!prompt.HasChoices)
+        var problem = FullscreenUi.Text("", 24, "TextDim");
+        problem.Bind(TextBlock.TextProperty, new Binding(nameof(prompt.Problem)) { Source = prompt });
+        problem.Bind(IsVisibleProperty, new Binding(nameof(prompt.HasProblem)) { Source = prompt });
+        panel.Children.Add(problem);
+        var confirm = FullscreenUi.Button(prompt.ConfirmLabel, async () => await RunAsync(() => prompt.ConfirmCommand.ExecuteAsync(null)));
+        confirm.Bind(IsEnabledProperty, new Binding(nameof(prompt.CanConfirm)) { Source = prompt });
+        panel.Children.Add(confirm); rows.Add([confirm]);
+        var cancel = FullscreenUi.Button("Cancel", () =>
         {
-            var confirm = FullscreenUi.Button(prompt.ConfirmLabel, async () => { if (!prompt.CanConfirm) return; await prompt.ConfirmCommand.ExecuteAsync(null); Context.Back(); });
-            panel.Children.Add(confirm); rows.Add([confirm]);
-        }
-        var cancel = FullscreenUi.Button("Cancel", () => { prompt.CancelCommand.Execute(null); Context.Back(); });
+            if (!prompt.CanInteract) return;
+            prompt.CancelCommand.Execute(null);
+            Context.Back();
+        });
+        cancel.Bind(IsEnabledProperty, new Binding(nameof(prompt.CanInteract)) { Source = prompt });
         panel.Children.Add(cancel); rows.Add([cancel]);
         Content = FullscreenUi.Scroll(panel); SetFocusRows(rows.ToArray());
     }
     public override bool Handle(GamepadButtons buttons)
     {
-        if (buttons.HasFlag(GamepadButtons.Back)) _prompt.CancelCommand.Execute(null);
+        if (buttons.HasFlag(GamepadButtons.Back))
+        {
+            if (!_prompt.CanInteract) return true;
+            _prompt.CancelCommand.Execute(null);
+        }
         return base.Handle(buttons);
     }
+
+    private async Task RunAsync(Func<Task> command)
+    {
+        if (_disposed || !_prompt.CanInteract) return;
+        await command();
+        if (!_disposed && _prompt.IsCompleted) Context.Back();
+    }
+
+    public override void Dispose() { _disposed = true; base.Dispose(); }
 }

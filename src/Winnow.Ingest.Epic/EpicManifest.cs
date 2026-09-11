@@ -73,6 +73,9 @@ public sealed record EpicManifest(
     string InstallationGuid,
     string ManifestPath)
 {
+    /// <summary>Whether a boolean completion flag was present. Missing or malformed is unknown.</summary>
+    public bool HasInstallState { get; init; } = true;
+
     /// <summary>True when <see cref="EpicGameFilter.IsGame"/> admits this manifest's categories.</summary>
     public bool IsGame => EpicGameFilter.IsGame(AppCategories);
 
@@ -83,7 +86,7 @@ public sealed record EpicManifest(
     /// Whether the game is actually on disk and runnable. False while a download
     /// is in flight, even though the manifest already exists.
     /// </summary>
-    public bool IsFullyInstalled => !IsIncompleteInstall;
+    public bool IsFullyInstalled => HasInstallState && !IsIncompleteInstall;
 
     /// <summary>
     /// Absolute path of the launch executable, or null when the manifest names

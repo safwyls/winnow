@@ -5,6 +5,7 @@ using Winnow.Core.Ingest;
 using Winnow.Core.Matching;
 using Winnow.Core.Repositories;
 using Winnow.Ingest.Steam.AccountPages;
+using Winnow.Enrich.SteamWeb;
 
 namespace Winnow.App.Services;
 
@@ -12,8 +13,8 @@ namespace Winnow.App.Services;
 /// ROADMAP M5 item 3: does two things per pass. First, it records every parsed
 /// row from both account pages as a fact in the <c>account_transactions</c> /
 /// <c>account_licenses</c> tables (migration 0014), regardless of whether the
-/// row matches an owned release. Second, it fills acquisition facts (date,
-/// licence type, price) into matching ownership rows exactly as before.
+/// row matches an owned release. Second, it records acquisition observations
+/// against matching ownerships with the captured account's provenance.
 ///
 /// <para>This service writes ONLY to existing ownerships. It never creates works,
 /// releases or ownerships; that is the resolver's job (§5.1). An unmatched title
@@ -185,6 +186,7 @@ public sealed class SteamAccountPageImportService : ISteamAccountPageImport
     private readonly IOwnershipRepository _ownerships;
     private readonly IReleaseRepository _releases;
     private readonly IAccountFactRepository _facts;
+    private readonly IAccountAcquisitionRepository _acquisitions;
     private readonly IUnitOfWorkFactory _unitOfWork;
     private readonly LibrarySyncGate _gate;
     private readonly ILogger<SteamAccountPageImportService> _logger;
@@ -193,6 +195,7 @@ public sealed class SteamAccountPageImportService : ISteamAccountPageImport
         IOwnershipRepository ownerships,
         IReleaseRepository releases,
         IAccountFactRepository facts,
+        IAccountAcquisitionRepository acquisitions,
         IUnitOfWorkFactory unitOfWork,
         LibrarySyncGate gate,
         ILogger<SteamAccountPageImportService> logger)
@@ -200,6 +203,7 @@ public sealed class SteamAccountPageImportService : ISteamAccountPageImport
         _ownerships = ownerships;
         _releases = releases;
         _facts = facts;
+        _acquisitions = acquisitions;
         _unitOfWork = unitOfWork;
         _gate = gate;
         _logger = logger;
@@ -223,19 +227,23 @@ public sealed class SteamAccountPageImportService : ISteamAccountPageImport
         }
 
         var parsed = SteamAccountPageReader.Read(pages);
-        var index = await BuildIndexAsync(ct).ConfigureAwait(false);
+        string? accountRef = null;
+        if (parsed.SteamId is not null)
+        {
+            if (!SteamId.TryParse(parsed.SteamId, out var account))
+                throw new ArgumentException("The captured Steam account identity is invalid.", nameof(pages));
+            accountRef = account.AccountRef;
+        }
 
         var pending = new Dictionary<long, PendingFill>();
         var counters = new Counters();
-
-        ApplyLicenses(parsed.Licenses, index, pending, counters);
-        ApplyHistory(parsed.History, index, pending, counters);
+        TitleIndex index;
 
         // ── Write phase. One transaction for the whole pass, under the same
         // gate the resolver and the playtime backfill take, so a user clicking
         // Import and the startup pipeline's resolver pass never open concurrent
-        // write transactions on SQLite's single writer. Everything above this
-        // line is parsing and reading and holds no lock.
+        // write transactions on SQLite's single writer. Parsing holds no lock;
+        // matching membership is read inside the transaction.
         var filled = 0;
         var alreadyComplete = 0;
         var facts = new FactCounters();
@@ -243,8 +251,13 @@ public sealed class SteamAccountPageImportService : ISteamAccountPageImport
         using (await _gate.EnterAsync(ct).ConfigureAwait(false))
         {
             using var scope = _unitOfWork.Begin();
+            // Identity/membership can change while an import waits for the gate.
+            // Resolve and write against one transaction's current account view.
+            index = await BuildIndexAsync(accountRef, ct).ConfigureAwait(false);
+            ApplyLicenses(parsed.Licenses, index, pending, counters);
+            ApplyHistory(parsed.History, index, pending, counters);
 
-            await RecordFactsAsync(parsed, pages.CapturedAt.UtcDateTime, facts, ct).ConfigureAwait(false);
+            await RecordFactsAsync(parsed, accountRef, pages.CapturedAt.UtcDateTime, facts, ct).ConfigureAwait(false);
 
             foreach (var (ownershipId, fill) in pending)
             {
@@ -268,7 +281,19 @@ public sealed class SteamAccountPageImportService : ISteamAccountPageImport
                     continue;
                 }
 
-                if (await _ownerships.FillAcquisitionFactsAsync(write, ct).ConfigureAwait(false))
+                var recorded = await _acquisitions.TryAppendAsync(new OwnershipAcquisitionObservation
+                {
+                    OwnershipId = ownershipId, AccountRef = accountRef, AcquiredAt = fill.AcquiredAt,
+                    LicenseType = fill.LicenseType, PricePaidCents = fill.PricePaidCents,
+                    PriceSource = write.PriceSource, Source = AccountFactSources.Steam,
+                    CapturedAt = pages.CapturedAt.UtcDateTime,
+                }, ct).ConfigureAwait(false);
+                // Unknown saved files preserve their historical aggregate fill
+                // behavior. Named captures stay in account-scoped observations.
+                var changed = accountRef is null
+                    ? await _ownerships.FillAcquisitionFactsAsync(write, ct).ConfigureAwait(false)
+                    : recorded;
+                if (changed)
                 {
                     filled++;
                 }
@@ -424,7 +449,7 @@ public sealed class SteamAccountPageImportService : ISteamAccountPageImport
     // work as the fills, so a capture is stored atomically or not at all.
     // Re-running is free: identity is the whole fact (migration 0014).
     private async Task RecordFactsAsync(
-        SteamAccountPageParseResult parsed, DateTime capturedAt, FactCounters facts, CancellationToken ct)
+        SteamAccountPageParseResult parsed, string? accountRef, DateTime capturedAt, FactCounters facts, CancellationToken ct)
     {
         if (parsed.History.Outcome == SteamAccountPageParseOutcome.Parsed)
         {
@@ -432,7 +457,7 @@ public sealed class SteamAccountPageImportService : ISteamAccountPageImport
             {
                 ct.ThrowIfCancellationRequested();
 
-                if (await _facts.TryAppendAsync(TransactionFact(row, capturedAt), ct).ConfigureAwait(false) is not null)
+                if (await _facts.TryAppendAsync(TransactionFact(row, accountRef, capturedAt), ct).ConfigureAwait(false) is not null)
                 {
                     facts.TransactionsRecorded++;
                 }
@@ -452,7 +477,7 @@ public sealed class SteamAccountPageImportService : ISteamAccountPageImport
         {
             ct.ThrowIfCancellationRequested();
 
-            if (await _facts.TryAppendAsync(LicenseFact(row, capturedAt), ct).ConfigureAwait(false) is not null)
+            if (await _facts.TryAppendAsync(LicenseFact(row, accountRef, capturedAt), ct).ConfigureAwait(false) is not null)
             {
                 facts.LicensesRecorded++;
             }
@@ -463,13 +488,14 @@ public sealed class SteamAccountPageImportService : ISteamAccountPageImport
         }
     }
 
-    private static AccountTransactionFact TransactionFact(SteamPurchaseRow row, DateTime capturedAt)
+    private static AccountTransactionFact TransactionFact(SteamPurchaseRow row, string? accountRef, DateTime capturedAt)
     {
         var kind = ClassifyKind(row);
 
         return new AccountTransactionFact
         {
             Source = AccountFactSources.Steam,
+            AccountRef = accountRef,
             Kind = kind,
             TransactionTypeRaw = row.TransactionType,
             OccurredAt = row.PurchasedAtUtc,
@@ -494,9 +520,10 @@ public sealed class SteamAccountPageImportService : ISteamAccountPageImport
         };
     }
 
-    private static AccountLicenseFact LicenseFact(SteamLicenseRow row, DateTime capturedAt) => new()
+    private static AccountLicenseFact LicenseFact(SteamLicenseRow row, string? accountRef, DateTime capturedAt) => new()
     {
         Source = AccountFactSources.Steam,
+        AccountRef = accountRef,
         ItemName = row.ItemName,
         AcquiredAt = row.AcquiredAtUtc,
         AcquisitionKind = row.LicenseType,
@@ -556,12 +583,14 @@ public sealed class SteamAccountPageImportService : ISteamAccountPageImport
         return fill;
     }
 
-    private async Task<TitleIndex> BuildIndexAsync(CancellationToken ct)
+    private async Task<TitleIndex> BuildIndexAsync(string? accountRef, CancellationToken ct)
     {
         var identities = await _releases.GetIdentitiesAsync(ct).ConfigureAwait(false);
         var byRelease = identities.ToDictionary(i => i.ReleaseId);
 
         var ownerships = await _ownerships.GetAllAsync(ct).ConfigureAwait(false);
+        var eligible = accountRef is null ? null
+            : (await _acquisitions.GetSteamOwnershipIdsAsync(accountRef, ct).ConfigureAwait(false)).ToHashSet();
 
         var byKey = new Dictionary<string, long>(StringComparer.Ordinal);
         var ambiguous = new HashSet<string>(StringComparer.Ordinal);
@@ -569,6 +598,7 @@ public sealed class SteamAccountPageImportService : ISteamAccountPageImport
 
         foreach (var ownership in ownerships)
         {
+            if (eligible is not null && !eligible.Contains(ownership.Id)) continue;
             if (!string.Equals(ownership.Store, ExternalIdProviders.Steam, StringComparison.Ordinal))
             {
                 continue;

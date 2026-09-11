@@ -1,3 +1,5 @@
+using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
@@ -6,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Winnow.App.Services;
 using Winnow.App.ViewModels;
 using Winnow.Core.Domain;
+using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
 
 namespace Winnow.App.Views.Fullscreen;
@@ -13,6 +16,7 @@ namespace Winnow.App.Views.Fullscreen;
 /// <summary>Personal history, with its own selection and week independent of the desktop.</summary>
 public sealed class FullscreenActivityPage : FullscreenPage
 {
+    public override Control? Backdrop { get; } = new FullscreenAmbientBackdrop("activity");
     private readonly List<ActivityEntry> _entries = [];
     private readonly StackPanel _preview = new() { Spacing = 24 };
     private ActivityEntry? _selected;
@@ -24,6 +28,13 @@ public sealed class FullscreenActivityPage : FullscreenPage
     private bool _dirty = true;
     private bool _loading;
     private int _revision;
+    private CancellationTokenSource? _readCancellation;
+    private ActivityCursor? _next;
+    private bool _append;
+    private bool _reading;
+    private bool _readingAppend;
+    private bool _retryAppend;
+    private string? _problem;
     public Task PendingRefresh { get; private set; } = Task.CompletedTask;
     internal long? SelectedSessionId => _selected?.Session?.Id;
     private Control? _initial;
@@ -39,12 +50,20 @@ public sealed class FullscreenActivityPage : FullscreenPage
         Render();
         Context.Library.TilesChanged += LibraryChanged;
         AttachedToVisualTree += async (_, _) => { _attached = true; _dirty |= !_loaded; await EnsureRefreshAsync(); };
-        DetachedFromVisualTree += (_, _) => _attached = false;
+        DetachedFromVisualTree += (_, _) =>
+        {
+            _attached = false; _revision++;
+            // A completed page remains valid while its note editor is open.
+            // A cancelled read, or a committed library change, still needs another read.
+            if (_reading) { _dirty = true; _append = _readingAppend; }
+            _readCancellation?.Cancel();
+        };
     }
 
     private void LibraryChanged(object? sender, EventArgs e)
     {
-        _revision++; _dirty = true; _loaded = false;
+        _revision++; _dirty = true; _loaded = false; _append = false; _next = null; _problem = null;
+        _readCancellation?.Cancel();
         _entries.RemoveAll(entry => entry.Session is { } session
             ? Context.Library.TileForOwnership(session.OwnershipId) is null
             : entry.Update is { } update && Context.Library.TileForRelease(update.ReleaseId) is null);
@@ -74,50 +93,74 @@ public sealed class FullscreenActivityPage : FullscreenPage
 
     private async Task LoadAsync(int revision)
     {
+        using var cancellation = new CancellationTokenSource();
+        _readCancellation = cancellation;
+        var ct = cancellation.Token;
+        var append = _append; _append = false;
+        _reading = true; _readingAppend = append; _problem = null;
+        _status = "Reading your activity…";
+        Render();
+        var preserveFocus = _entries.Count > 0 || _tabsFocused;
         try
         {
-            var owners = Context.Services?.GetService<IOwnershipRepository>();
-            var sessions = Context.Services?.GetService<ISessionRepository>();
-            var updates = Context.Services?.GetService<IUpdateEventRepository>();
-            if (owners is null || sessions is null) { _status = "Activity is unavailable. Reopen Winnow to try again."; Render(); return; }
-            var ownerships = await Task.Run(() => owners.GetAllAsync());
-            var visible = ownerships.Select(o => (Owner: o, Tile: Context.Library.TileForOwnership(o.Id)))
-                .Where(x => x.Tile is not null).ToArray();
-            var rows = await Task.Run(async () =>
-            {
-                var result = new List<ActivityEntry>();
-                var releases = new HashSet<long>();
-                foreach (var (owner, tile) in visible)
-                {
-                    foreach (var session in await sessions.GetByOwnershipAsync(owner.Id))
-                    {
-                        var note = await sessions.GetNoteAsync(session.Id);
-                        result.Add(new(tile!, session.StartedAt, session, note, null, owner.Store));
-                    }
-                    if (updates is not null && releases.Add(owner.ReleaseId))
-                        foreach (var update in await updates.GetByReleaseAsync(owner.ReleaseId))
-                            result.Add(new(tile!, update.OccurredAt, null, null, update, owner.Store));
-                }
-                return result.OrderByDescending(r => r.At).ToArray();
-            });
-            if (_disposed || revision != _revision) return;
+            var repository = Context.Services?.GetService<IActivityRepository>();
+            if (repository is null) { _status = "Activity is unavailable. Reopen Winnow to try again."; return; }
+            var tiles = Context.Library.AllTiles.SelectMany(tile => tile.OwnershipIds.Select(id => (id, tile)))
+                .ToDictionary(pair => pair.id, pair => pair.tile);
+            var start = WeekStart;
+            var section = _section switch { "Updates" => ActivitySection.Updates, "Journal" => ActivitySection.Journal, _ => ActivitySection.Sessions };
+            var cursor = append ? _next : null;
+            var page = await Task.Run(() => repository.GetPageAsync(tiles.Keys.ToArray(), start.ToUniversalTime(),
+                start.AddDays(7).ToUniversalTime(), section, cursor, ct: ct), ct);
+            if (_disposed || ct.IsCancellationRequested || revision != _revision) return;
+            var rows = page.Rows.Where(row => tiles.ContainsKey(row.OwnershipId))
+                .Select(row => new ActivityEntry(tiles[row.OwnershipId], row.AtUtc, row.Session, row.Note, row.Update, row.Store)).ToArray();
             var selected = rows.FirstOrDefault(row => row.Session is { } session && session.Id == _selected?.Session?.Id
                 || row.Update is { } update && update.Id == _selected?.Update?.Id);
-            _entries.Clear(); _entries.AddRange(rows); _selected = selected; _loaded = true;
+            if (!append) { _entries.Clear(); _selected = selected; }
+            _entries.AddRange(rows); _next = page.Next; _loaded = true;
             _status = "No activity this week. Play a game or choose an earlier week.";
         }
-        catch (Exception) { _status = "Couldn't read your activity. Reopen Activity to try again."; _loaded = false; }
-        if (_attached) { Render(); FocusInitial(); }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { return; }
+        catch (Exception)
+        {
+            if (_disposed || ct.IsCancellationRequested || revision != _revision) return;
+            _problem = "Couldn't read your activity. Try again.";
+            _retryAppend = append;
+        }
+        finally
+        {
+            _reading = false;
+            if (ReferenceEquals(_readCancellation, cancellation)) _readCancellation = null;
+            if (_attached && !_disposed && !ct.IsCancellationRequested && revision == _revision)
+            {
+                // The user may have moved to a section tab while this read was pending.
+                preserveFocus |= _tabsFocused;
+                Render(preserveFocus);
+                if (!preserveFocus) FocusInitial();
+            }
+        }
     }
 
-    private void Render()
+    private DateTime WeekStart => DateTime.Today.AddDays(-(((int)DateTime.Today.DayOfWeek + 6) % 7) - _week * 7);
+
+    private void ChangePeriod()
+    {
+        _revision++; _dirty = true; _loaded = false; _append = false; _next = null; _problem = null;
+        _entries.Clear(); _selected = null; _readCancellation?.Cancel();
+        _status = "Reading your activity…";
+        Render(preserveFocus: false); FocusInitial(); _ = EnsureRefreshAsync();
+    }
+
+    private void Render(bool preserveFocus = true)
     {
         if (_disposed) return;
+        var restoreFocus = preserveFocus ? PreserveFocus() : null;
         var tabs = new[] { "Sessions", "Updates", "Journal" }.Select(label =>
-            FullscreenUi.Button(label, () => { _section = label; Render(); FocusInitial(); })).ToArray();
+            FullscreenUi.Button(label, () => { _section = label; ChangePeriod(); })).ToArray();
         var tabBar = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24 };
         foreach (var tab in tabs) { tab.Classes.Set("current", Equals(tab.Content, _section)); tab.GotFocus += (_, _) => _tabsFocused = true; tabBar.Children.Add(tab); }
-        var start = DateTime.Today.AddDays(-(((int)DateTime.Today.DayOfWeek + 6) % 7) - _week * 7);
+        var start = WeekStart;
         var list = new StackPanel { Spacing = 16 };
         list.Children.Add(FullscreenUi.Text(_week == 0 ? "THIS WEEK" : $"{start:d MMM} – {start.AddDays(6):d MMM yyyy}", 24, "TextDim"));
         var rows = _entries.Where(e => e.At.ToLocalTime() >= start && e.At.ToLocalTime() < start.AddDays(7))
@@ -127,6 +170,7 @@ public sealed class FullscreenActivityPage : FullscreenPage
         foreach (var row in rows)
         {
             var button = FullscreenUi.Button($"{row.Tile.Title}\n{row.At.ToLocalTime():ddd d MMM} · {row.At.ToLocalTime():t}   {row.Description}", () => Open(row));
+            AutomationProperties.SetAutomationId(button, row.Session is { } session ? $"activity-session-{session.Id}" : $"activity-update-{row.Update!.Id}");
             button.MinHeight = 116;
             var content = new Grid { ColumnDefinitions = new ColumnDefinitions("144,*"), ColumnSpacing = 24 };
             content.Children.Add(new FullscreenCover(row.Tile) { Height = 112, Width = 144 });
@@ -137,7 +181,18 @@ public sealed class FullscreenActivityPage : FullscreenPage
             if (_initial is null || row == _selected) _initial = button;
             list.Children.Add(button); buttons.Add([button]);
         }
-        if (rows.Length == 0)
+        if (_problem is { } problem)
+        {
+            list.Children.Add(FullscreenUi.Text(problem, 28, "Amber"));
+            var retry = FullscreenUi.Button("Try again", () =>
+            {
+                if (_loading) return;
+                _append = _retryAppend; _dirty = true; _ = EnsureRefreshAsync();
+            });
+            list.Children.Add(retry); buttons.Add([retry]);
+            _initial ??= retry;
+        }
+        else if (rows.Length == 0)
         {
             var empty = _section switch
             {
@@ -148,8 +203,20 @@ public sealed class FullscreenActivityPage : FullscreenPage
             list.Children.Add(FullscreenUi.Text(_loaded ? empty.Item1 : _status, 32));
             if (_loaded) list.Children.Add(FullscreenUi.Text(empty.Item2, 28, "TextDim"));
         }
+        if (_reading && rows.Length > 0) list.Children.Add(FullscreenUi.Text(_status, 24, "TextDim"));
+        if (_next is not null && _problem is null)
+        {
+            var more = FullscreenUi.Button("Load more", () =>
+            {
+                if (_loading) return;
+                _append = true; _dirty = true; _ = EnsureRefreshAsync();
+            });
+            more.IsEnabled = !_reading;
+            more.GotFocus += (_, _) => { _tabsFocused = false; _initial = more; };
+            list.Children.Add(more); buttons.Add([more]);
+        }
         var summary = FullscreenUi.Button("Library summary", () => Context.Push(new FullscreenLibrarySummaryPage(Context)));
-        summary.GotFocus += (_, _) => _tabsFocused = false;
+        summary.GotFocus += (_, _) => { _tabsFocused = false; _initial = summary; };
         _initial ??= summary;
         list.Children.Add(summary); buttons.Add([summary]);
         var columns = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*"), ColumnSpacing = 48 };
@@ -159,9 +226,10 @@ public sealed class FullscreenActivityPage : FullscreenPage
         Grid.SetColumn(previewScroll, 1); columns.Children.Add(previewScroll);
         var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*"), RowSpacing = 24 };
         layout.Children.Add(FullscreenUi.Text("Your activity", 64)); Grid.SetRow(tabBar, 1); layout.Children.Add(tabBar);
-        Grid.SetRow(columns, 2); layout.Children.Add(columns); Content = FullscreenAmbientBackdrop.Behind(layout, "activity");
+        Grid.SetRow(columns, 2); layout.Children.Add(columns); Content = layout;
         SetFocusRows(buttons.ToArray());
         Select(rows.FirstOrDefault(r => r == _selected) ?? rows.FirstOrDefault());
+        restoreFocus?.Invoke();
     }
 
     public override void FocusInitial()
@@ -169,7 +237,7 @@ public sealed class FullscreenActivityPage : FullscreenPage
         if (_initial is not null) FocusControl(_initial); else base.FocusInitial();
     }
 
-    public override void Dispose() { _disposed = true; _revision++; Context.Library.TilesChanged -= LibraryChanged; base.Dispose(); }
+    public override void Dispose() { _disposed = true; _revision++; _readCancellation?.Cancel(); Context.Library.TilesChanged -= LibraryChanged; base.Dispose(); }
 
     private void Select(ActivityEntry? row)
     {
@@ -189,7 +257,14 @@ public sealed class FullscreenActivityPage : FullscreenPage
     {
         if (row.Session is null) { Context.OpenGame(row.Tile); return; }
         Context.ShowActions(row.Tile.Title, [new("Open game", () => Context.OpenGame(row.Tile)),
-            new("Edit note", () => Context.Push(new FullscreenSessionNotePage(Context, row.Session.Id, row.Tile.Title, row.Note, note => { row.Note = note; Select(row); })))]);
+            new("Edit note", () => Context.Push(new FullscreenSessionNotePage(Context, row.Session.Id, row.Tile.Title, row.Note, note => ApplyNote(row, note))))]);
+    }
+
+    private void ApplyNote(ActivityEntry row, SessionNote note)
+    {
+        if (_disposed || !_entries.Contains(row)) return;
+        row.Note = note; _selected = row;
+        Render();
     }
 
     public override bool Handle(GamepadButtons buttons)
@@ -204,14 +279,14 @@ public sealed class FullscreenActivityPage : FullscreenPage
             string[] sections = ["Sessions", "Updates", "Journal"];
             var direction = buttons.HasFlag(GamepadButtons.PageNext) ? 1 : -1;
             _section = sections[(Array.IndexOf(sections, _section) + direction + sections.Length) % sections.Length];
-            Render(); FocusInitial(); return true;
+            ChangePeriod(); return true;
         }
-        if (!_tabsFocused && buttons.HasFlag(GamepadButtons.Left)) { _week++; Render(); FocusInitial(); return true; }
-        if (!_tabsFocused && buttons.HasFlag(GamepadButtons.Right)) { _week = Math.Max(0, _week - 1); Render(); FocusInitial(); return true; }
+        if (!_tabsFocused && buttons.HasFlag(GamepadButtons.Left)) { _week++; ChangePeriod(); return true; }
+        if (!_tabsFocused && buttons.HasFlag(GamepadButtons.Right)) { _week = Math.Max(0, _week - 1); ChangePeriod(); return true; }
         if ((buttons & GamepadButtons.Play) != 0 && _selected?.Session is { } session)
         {
             var row = _selected;
-            Context.Push(new FullscreenSessionNotePage(Context, session.Id, row.Tile.Title, row.Note, note => { row.Note = note; Select(row); }));
+            Context.Push(new FullscreenSessionNotePage(Context, session.Id, row.Tile.Title, row.Note, note => ApplyNote(row, note)));
             return true;
         }
         return base.Handle(buttons);
@@ -244,52 +319,124 @@ internal static class FullscreenHistoryTypography
 
 public sealed class FullscreenSessionNotePage : FullscreenPage
 {
+    private readonly JournalEntryViewModel? _entry;
+    private bool _disposed;
     public override string Title => "Your note";
     public FullscreenSessionNotePage(FullscreenContext context, long sessionId, string title, SessionNote? original, Action<SessionNote> saved) : base(context)
     {
-        var field = new TextBox { Text = original?.Note ?? "", AcceptsReturn = true, FontSize = 28, MinHeight = 180, TextWrapping = Avalonia.Media.TextWrapping.Wrap };
-        var rating = original?.Rating;
+        if (context.Services?.GetService<ISessionRepository>() is not { } repository)
+        {
+            var back = FullscreenUi.Button("Back", context.Back);
+            Content = FullscreenUi.Stack(FullscreenUi.Text("Journal is unavailable."), back);
+            SetFocusRows([back]);
+            return;
+        }
+        _entry = new JournalEntryViewModel(sessionId, original, repository);
+        _entry.EditCommand.Execute(null);
+        DataContext = _entry;
+        var field = new TextBox { AcceptsReturn = true, FontSize = 28, MinHeight = 180, TextWrapping = Avalonia.Media.TextWrapping.Wrap };
+        field.Bind(TextBox.TextProperty, new Avalonia.Data.Binding(nameof(JournalEntryViewModel.DraftNote)) { Source = _entry, Mode = Avalonia.Data.BindingMode.TwoWay });
+        field.Bind(IsEnabledProperty, new Avalonia.Data.Binding(nameof(JournalEntryViewModel.CanEdit)) { Source = _entry });
+        AutomationProperties.SetName(field, "Journal note");
         var edit = FullscreenUi.Button("Edit note", () => context.EditText(field));
-        var rate = FullscreenUi.Button("How was that?", () => context.ShowActions("How was that?", Enumerable.Range(1, 5).Select(n => new FullscreenAction($"{n} / 5", () => rating = n)).Append(new("No rating", () => rating = null)).ToArray()));
+        var rate = FullscreenUi.Button("How was that?", () => context.ShowActions("How was that?", Enumerable.Range(1, 5)
+            .Select(n => new FullscreenAction($"{n} / 5", () => _entry.RateCommand.Execute(n.ToString(System.Globalization.CultureInfo.InvariantCulture))))
+            .Append(new("No rating", () => _entry.ClearRatingCommand.Execute(null))).ToArray()));
+        var rating = FullscreenUi.Text("", 28, "TextDim");
+        rating.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding(nameof(JournalEntryViewModel.DraftRatingText)) { Source = _entry });
         var status = FullscreenUi.Text("", 24, "TextDim");
+        status.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding(nameof(JournalEntryViewModel.Problem)) { Source = _entry });
         var save = FullscreenUi.Button("Save", async () =>
         {
-            var repository = context.Services?.GetService<ISessionRepository>();
-            if (repository is null) { status.Text = "Journal is unavailable."; return; }
-            try
+            await _entry.SaveCommand.ExecuteAsync(null);
+            if (!_disposed && !_entry.IsEditing)
             {
-                var note = new SessionNote { SessionId = sessionId, Note = field.Text, Rating = rating };
-                await repository.SetNoteAsync(note); saved(note); context.Back();
+                saved(new SessionNote { SessionId = sessionId, Note = _entry.Note, Rating = _entry.Rating });
+                context.Back();
             }
-            catch (Exception) { status.Text = "Couldn't save your note. Try again."; }
         });
-        var cancel = FullscreenUi.Button("Cancel", context.Back);
-        Content = FullscreenUi.Scroll(FullscreenUi.Stack(FullscreenUi.Text(title, 64), field, edit, rate, status, save, cancel));
+        var cancel = FullscreenUi.Button("Cancel", Cancel);
+        foreach (var button in new[] { edit, rate, save, cancel })
+            button.Bind(IsEnabledProperty, new Avalonia.Data.Binding(nameof(JournalEntryViewModel.CanEdit)) { Source = _entry });
+        Content = FullscreenUi.Scroll(FullscreenUi.Stack(FullscreenUi.Text(title, 64), field, edit, rate, rating, status, save, cancel));
         SetFocusRows([edit], [rate], [save, cancel]);
     }
+
+    public override bool Handle(GamepadButtons buttons)
+    {
+        if (buttons.HasFlag(GamepadButtons.Back)) { Cancel(); return true; }
+        return base.Handle(buttons);
+    }
+
+    private void Cancel()
+    {
+        if (_entry?.IsSaving == true) return;
+        _entry?.CancelEditCommand.Execute(null);
+        Context.Back();
+    }
+
+    public override void Dispose() { _disposed = true; base.Dispose(); }
 }
 
 public sealed class FullscreenLibrarySummaryPage : FullscreenPage
 {
     private readonly AccountStatsViewModel? _model;
+    private bool _disposed;
+    private bool _loading;
+    private bool _loaded;
+    private string? _problem;
+    public Task PendingRefresh { get; private set; } = Task.CompletedTask;
     public override string Title => "Library summary";
     public FullscreenLibrarySummaryPage(FullscreenContext context) : base(context)
     {
         _model = context.Services?.GetService<IAccountStatsRepository>() is { } repository ? new AccountStatsViewModel(repository) : null;
         Render();
-        AttachedToVisualTree += async (_, _) =>
+        AttachedToVisualTree += (_, _) => _ = RefreshAsync();
+    }
+
+    private Task RefreshAsync()
+    {
+        if (_disposed || _loading || _model is null) return PendingRefresh;
+        _loading = true; _problem = null;
+        var recoverFocus = IsKeyboardFocusWithin;
+        Render();
+        return PendingRefresh = RefreshCoreAsync(recoverFocus);
+    }
+
+    private async Task RefreshCoreAsync(bool recoverFocus)
+    {
+        try { await _model!.RefreshCommand.ExecuteAsync(null); _loaded = true; }
+        catch (OperationCanceledException) when (_disposed) { }
+        catch (Exception) { _problem = "Couldn't read account statistics. Try again."; }
+        finally
         {
-            try { if (_model is not null) await _model.RefreshCommand.ExecuteAsync(null); Render(); }
-            catch (Exception) { context.Notify("Couldn't read account statistics. Try again."); }
-        };
+            _loading = false;
+            if (!_disposed)
+            {
+                var hadCurrentFocus = IsKeyboardFocusWithin;
+                Render();
+                // A fast retry can replace its temporary focus target before the
+                // queued layout restoration runs. The completed page still needs a target.
+                if (recoverFocus && !hadCurrentFocus) FocusInitial();
+            }
+        }
     }
 
     private void Render()
     {
+        var restoreFocus = PreserveFocus();
         var context = Context;
         var back = FullscreenUi.Button("Back", context.Back);
         var body = FullscreenUi.Stack(FullscreenUi.Text("Library summary", 64), FullscreenUi.Text($"{context.Library.AllGames.Count:N0} games in your library", 32));
         var focus = new List<Control[]>();
+        if (_problem is { } problem)
+        {
+            body.Children.Add(FullscreenUi.Text(problem, 28, "Amber"));
+            var retry = FullscreenUi.Button("Try again", () => _ = RefreshAsync());
+            body.Children.Add(retry); focus.Add([retry]);
+        }
+        else if (_model is not null && (_loading || !_loaded))
+            body.Children.Add(FullscreenUi.Text("Reading your account statistics…", 28, "TextDim"));
         if (_model is { HasFacts: true } stats)
         {
             body.Children.Add(FullscreenUi.Text(stats.IntroMessage, 28, "TextDim"));
@@ -311,7 +458,11 @@ public sealed class FullscreenLibrarySummaryPage : FullscreenPage
             Group(stats.CurrencyHeading, stats.CurrencyRows, stats.CurrencyNote);
             Group(stats.CaptureHeading, stats.CaptureRows, stats.CaptureNote);
         }
-        else body.Children.Add(FullscreenUi.Text(_model?.EmptyMessage ?? "Import Steam account pages to see purchase statistics.", 28, "TextDim"));
+        else if (_problem is null && !_loading && (_loaded || _model is null))
+            body.Children.Add(FullscreenUi.Text(_model?.EmptyMessage ?? "Account statistics are unavailable.", 28, "TextDim"));
         body.Children.Add(back); focus.Add([back]); Content = FullscreenUi.Scroll(body); SetFocusRows(focus.ToArray());
+        restoreFocus();
     }
+
+    public override void Dispose() { _disposed = true; _model?.RefreshCommand.Cancel(); base.Dispose(); }
 }

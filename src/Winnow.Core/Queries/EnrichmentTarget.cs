@@ -25,6 +25,12 @@ public sealed record EnrichmentTarget
     /// <summary>Whether <c>works.igdb_id</c> is already set.</summary>
     public bool HasIgdbId { get; init; }
 
+    public long? IgdbId { get; init; }
+
+    public long IgdbMappingRevision { get; init; }
+
+    public IgdbMappingVersion IgdbMapping => new(WorkId, IgdbId, IgdbMappingRevision);
+
     /// <summary>Whether <c>works.first_release_year</c> is already set.</summary>
     public bool HasFirstReleaseYear { get; init; }
 

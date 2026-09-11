@@ -49,6 +49,17 @@ public static class SteamHarvestScripts
         })();
         """;
 
+    /// <summary>The account field already used by sign-in, without reading any token.</summary>
+    public const string AccountIdentity = """
+        (function () {
+            try {
+                var config = document.getElementById('application_config');
+                var info = config && JSON.parse(config.getAttribute('data-userinfo') || '{}');
+                return info && info.steamid ? String(info.steamid) : null;
+            } catch (e) { return null; }
+        })();
+        """;
+
     /// <summary>
     /// The state of the purchase-history load-more control, and how much is
     /// currently rendered.

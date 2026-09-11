@@ -19,6 +19,7 @@ public sealed class FacetSyncService
 {
     private readonly ILibraryQueryRepository _libraryQueries;
     private readonly IFacetRepository _facets;
+    private readonly IIgdbObservationWriter _observations;
     private readonly IIgdbClient _igdb;
     private readonly ISteamStoreClient _steamStore;
     private readonly ILogger<FacetSyncService> _logger;
@@ -26,12 +27,14 @@ public sealed class FacetSyncService
     public FacetSyncService(
         ILibraryQueryRepository libraryQueries,
         IFacetRepository facets,
+        IIgdbObservationWriter observations,
         IIgdbClient igdb,
         ISteamStoreClient steamStore,
         ILogger<FacetSyncService> logger)
     {
         _libraryQueries = libraryQueries;
         _facets = facets;
+        _observations = observations;
         _igdb = igdb;
         _steamStore = steamStore;
         _logger = logger;
@@ -67,8 +70,9 @@ public sealed class FacetSyncService
                 && igdbGames.TryGetValue(igdbId, out var game)
                 && workDone.Add(target.WorkId))
             {
-                var written = await _facets.SetWorkFacetsAsync(
-                    target.WorkId, WorkFacets(game), ct);
+                var written = 0;
+                await _observations.TryWriteAsync(target.IgdbMapping, async token =>
+                    written = await _facets.SetWorkFacetsAsync(target.WorkId, WorkFacets(game), token), ct);
                 if (written > 0)
                 {
                     worksWritten++;

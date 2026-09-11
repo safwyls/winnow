@@ -17,8 +17,8 @@ API and filesystem behaviour that has been verified against live systems, and se
 constraints contradict what you will find in older blog posts and Stack Overflow answers.
 Read section 4 before writing any ingest code.
 
-Items marked **[VERIFY]** have not been confirmed. Confirm them empirically before building
-on them; do not treat them as established. Two remain, both in §9.
+The two open questions in §9 are unconfirmed. Verify them empirically before implementing
+features that depend on their answers.
 
 ---
 
@@ -57,8 +57,8 @@ exposed by storefront APIs or not retained by anyone.
 
 This application is a **background daemon with a UI attached**. It sits in the tray
 enumerating processes every few seconds, all day, and the user interacts with it briefly and
-occasionally. Avalonia was chosen over Electron on that profile. Do not reopen the choice; the
-reasoning and its accepted costs are in `docs/decisions.md`.
+occasionally. Avalonia provides the native .NET desktop UI for that long-running, local-first
+process; the host and background services remain separate from its views.
 
 ---
 
@@ -85,9 +85,8 @@ reasoning and its accepted costs are in `docs/decisions.md`.
 **Deliberately excluded:** Postgres, any vector store, any server framework, any LLM
 dependency. Do not add them speculatively.
 
-Publish trimmed self-contained. Treat NativeAOT as an optimisation to attempt later, not a
-day-one constraint; Avalonia supports it but requires discipline around XAML compilation and
-reflection.
+Publish untrimmed self-contained, as configured by `packaging/Publish.ps1`. The provider plugin
+host loads managed assemblies at runtime; NativeAOT and trimming are not supported by this path.
 
 ---
 
@@ -103,7 +102,10 @@ Reading local files is the **primary** playtime source, not the Web API. This el
 | Library root list | `<steam>/steamapps/libraryfolders.vdf` |
 | Per-app install metadata | `<steam>/steamapps/appmanifest_<appid>.acf` |
 | Playtime and last-played | `<steam>/userdata/<steam3id>/config/localconfig.vdf` |
-| Collections | `<steam>/userdata/<steam3id>/config/cloudstorage/cloud-storage-namespace-1.json` |
+
+Steam collections are not imported. The cloud-storage collection file is a possible future
+source, not part of the current reader contract. Winnow's own lists work independently on
+desktop and fullscreen; the import decision is deferred in `ROADMAP.md` §4 (DRAFT-1).
 
 Steam install roots:
 
@@ -133,12 +135,6 @@ Reading these correctly requires four further behaviours:
 
 **Multiple accounts.** `userdata/` may hold several `steam3id` directories. Enumerate all of
 them and attribute playtime per account; `CandidateOwnership` carries the `steam3id`.
-
-**Collections JSON.** The path changed in 2025; older guides pointing at `sharedconfig.vdf` or
-a Chromium LevelDB store in `htmlcache` are dead. The top level is an **array of
-`[key, entry]` pairs**, not an object map. Entries carry tombstones (`is_deleted`) that must
-be honoured, and the id alphabet includes `+`, `/` and `*`. Ingest static membership (`added`
-minus `removed`); record `filterSpec` without evaluating it.
 
 **Steam is an eventually-consistent writer.** The client does not flush config changes to disk
 immediately, and reads may be stale by an unbounded amount.
@@ -190,6 +186,16 @@ stored locally.
   exponential backoff and 429 handling from the first commit. Polly policies applied at the
   `HttpClient` level, never per call site.
 - Nominal budget is 100,000 calls/day. Cache aggressively.
+- History caches carry the fetching credential's nonsecret identity. Last-played entries
+  are scoped to the key fingerprint or session account; Replay entries additionally name
+  the requested account and year. Legacy entries with unknown credential provenance are
+  ignored. Fresh and stale cache reads remain within that scope and retain their original
+  observation time. A credential change during a fetch invalidates its returned result.
+  Backfill joins Replay and cumulative anchors only when their credential identities agree
+  and an account disclosure or matching existing confirmation identifies the anchor's owner.
+  Cached disclosure can support history but cannot create a new account confirmation.
+  Confirmation records the captured identity, validates that it is still present, and writes
+  its account and fingerprint together. A session confirmation cannot attest another API key.
 
 ### 4.3 Steam store metadata
 
@@ -197,6 +203,10 @@ stored locally.
   has no tag method. `GetItems` is **keyless** and batches 100+ appids per call. Tag *names*
   need a second call, `IStoreService/GetTagList`.
 - Store `(tagid, weight, rank)`. Keep the rank: weight is only comparable within one app.
+- `GetItems` cache authority is per requested ID. Omitted, duplicate, malformed or unrelated
+  rows cannot establish absence. Only the observed explicit result 15 records a non-store
+  item, retaining its raw ID and result code. Legacy null app-cache rows are rechecked once
+  because they did not preserve that evidence. An invalid positive remains retryable.
 - **Store the Steam tag vocabulary and the IGDB genre/theme vocabulary separately.** Do not
   blend them.
 - **Store page HTML scraping is not recommended in any form.**
@@ -209,6 +219,17 @@ stored locally.
 
 ### 4.4 IGDB
 
+- Desktop and fullscreen Metadata & artwork settings accept the user's Twitch client ID and secret.
+  An App service writes through the existing IGDB settings store and secret
+  protector, atomically replaces the pair and clears persisted token caches. It refuses
+  plaintext storage and never reloads the secret into the editor. Credential changes are
+  serialized with token minting and credential resolution, and invalidate runtime caches
+  after a successful write. Changes queue a background metadata pass after startup sync;
+  repeated changes coalesce and passes run one at a time. The pass updates facets, maturity,
+  reception and lifecycle metadata using their existing cache and scheduling rules, then
+  reloads the shared library on the UI thread.
+  Settings credentials take precedence over environment/local configuration credentials;
+  removing the saved pair preserves that fallback. Saving does not perform network validation.
 - Auth is Twitch client-credentials:
   `POST https://id.twitch.tv/oauth2/token?client_id=…&client_secret=…&grant_type=client_credentials`.
   Send `Client-ID` and `Authorization: Bearer <token>` on every request. Tokens are long-lived
@@ -228,7 +249,7 @@ stored locally.
   400 costs the search alone. The term is user-typed free text, sanitized into the quoted
   clause rather than rejected. Copyright, registered-trademark, trademark and service-mark
   decoration is removed before the query and cache key are built; the stored title is unchanged.
-- The IGDB response cache carries a payload version per namespace: game payloads at **4**
+- The IGDB response cache carries a payload version per namespace: game payloads at **5**
   (name, summary, first release date, cover, genres, themes, game modes, player perspectives,
   platforms, publisher, `game_type`, `parent_game`, `version_parent`, `version_title`,
   `screenshots`, `artworks`, `rating`, `rating_count`, `aggregated_rating`,
@@ -238,16 +259,49 @@ stored locally.
   Change a
   cached shape and bump its version in the same commit, or the cache serves rows with the new
   field silently empty for the rest of the 30-day TTL. A payload whose version does not match
-  is refetched. Compatible older game and external-id mapping payloads remain available
-  when credentials are absent or refetch fails; they never become current merely by being read.
-- The shared `games` query now carries `screenshots` and `artworks` as separate image arrays,
-  each row carrying an `image_id`. Only `image_id` is requested: it is the durable handle, and
-  the size token in the CDN path decides the rendition, so a stored URL would carry a size that
-  has to be rewritten on read. `rating`/`rating_count` are IGDB's own users;
+  is refetched. Compatible positive game and external-id mapping payloads remain available
+  beyond their TTL when credentials are absent or refetch fails; reading them never refreshes
+  their timestamps. A stale miss has no such authority. Unsupported future versions and
+  game payloads carrying another ID are ignored; a successful fresh answer replaces the old one.
+- The shared `games` query carries `screenshots` and `artworks` as separate image arrays.
+  Each row retains `image_id`, `width`, `height`, `alpha_channel` and `animated`; artworks also
+  retain `image_type.name`. Dimensions and suitability metadata inform backdrop selection;
+  the image ID remains the durable handle and the CDN size token decides the rendition.
+  The library-wide reception pass refreshes older cached payloads even for fully enriched
+  works. Compatible offline payloads retain their image IDs with unknown dimensions.
+  `rating`/`rating_count` are IGDB's own users;
   `aggregated_rating`/`aggregated_rating_count` are its aggregation of external critics.
   `total_rating`/`total_rating_count` exist and are deliberately not requested — a blended
   figure cannot be attributed to anyone, and the rule is that a score is shown with its source
   and its count or not at all.
+
+#### SteamGridDB artwork
+
+The SDK-only `Winnow.Plugin.SteamGridDb` package retrieves static landscape heroes through
+`GET https://www.steamgriddb.com/api/v2/heroes/steam/{appid}` with a user-supplied Bearer
+API key. This slice uses exact Steam app IDs only; it does not search names or change identity.
+Requests exclude NSFW, humor and epilepsy-tagged assets. Returned dimensions, type flags,
+format and canonical CDN URL are checked before storing a candidate. Each response is bounded
+to 2 MiB and supplies the first page of candidates.
+
+A shared Polly pipeline limits requests to one per second and permits two retries for
+transport, timeout, rate-limit and server failures, with Retry-After delays capped at 30 seconds.
+Credential-specific failure pauses prevent a failed key from being retried for every game.
+Version-1 hero payloads and confirmed misses live in `metadata_cache` for 30 days. Failed or
+unauthorized requests do not write misses; older successful payloads remain usable offline.
+
+Plugins settings saves the key with current-user DPAPI and refuses plaintext
+persistence on unsupported hosts. The editor never reloads the key. Saved keys take precedence
+over `Plugins:steamgriddb:apikey` configuration; the legacy `SteamGridDb__ApiKey` remains a
+fallback. Removing a saved key preserves configuration. Saving queues a background pass after
+startup. The same coalesced worker also runs
+once per launch and reloads the library after its pass; it does not hold up other startup sync.
+
+Hero observations use `work_images` source `plugin:steamgriddb`, kind `artwork`, with the URL hash,
+dimensions and optional `GameImage.Url` in `images_json`. They stay on the original work.
+Presentation reads share these rows through the current tile's confirmed members, so unlinking
+stops sharing without copying or deleting another game's observation. Existing IGDB galleries
+and saved backgrounds are independent. A warm pass does not rewrite unchanged observations.
 
 ### 4.5 Update detection
 
@@ -266,8 +320,12 @@ Steam contributes keyless
 The lifecycle client shares the store client's rate limiter and retry handlers and caches
 successful responses for 24 hours. A cached response retains its original observation time.
 Failed requests do not become observations or refresh the evidence clock.
-Persisted review evidence keeps timestamps, window and completeness rather than review
-prose or author profiles. Store evidence records the app ID, presence and original fetch time.
+Persisted review evidence and its response cache keep only a version-2 timestamp projection,
+window, request scope and completeness; neither stores review prose or author profiles.
+The upgrade sanitizes all valid legacy review cache rows, including unvisited entries,
+without refreshing their original fetch times, and removes malformed entries. Fresh migrated
+entries remain usable offline under the existing 24-hour TTL. Store evidence records the
+app ID, presence and original fetch time.
 
 Reviews request `filter=recent`, all languages, purchase types and review types, with a
 100-review page. Count reviews created within 30 days only when the page reaches an older
@@ -280,7 +338,8 @@ absent feed. Store presence is positive evidence only: regional misses and faile
 never establish delisting.
 
 Each pass attempts at most 50 due releases, oldest attempts first, with a persisted daily
-schedule. Initial collection runs in the background enrichment pipeline; an hourly scheduler
+schedule keyed by release and IGDB mapping revision. A mapping correction is due immediately;
+an attempt for the previous identity cannot postpone it. Initial collection runs in the background enrichment pipeline; an hourly scheduler
 continues it. New observations refresh the library and feed. PCGamingWiki and Wikidata are
 not initial dependencies. No SteamDB scraping or exact build-upload history is used.
 
@@ -314,7 +373,8 @@ the news item's `url` on the event row; the badge is clickable.
 PSN and Xbox are **out of scope and must not be added**. Neither has a consumer API, PSN
 requires the user to extract an `npsso` cookie by hand every two months, and PSNAWP's own
 documentation warns that use may result in PSN account bans. Signing in to Epic is not a
-precedent for these; the reasoning is in `docs/decisions.md`.
+precedent for these: Winnow supports service linking only within each supported provider's
+authentication contract.
 
 ### 4.7 Steam account pages, sign-in, and what may be stored
 
@@ -373,6 +433,18 @@ Eight conditions bind, and all eight are binding:
    promptly, offers one-click re-sign-in, and explains that adding an API key makes scheduled
    syncs unconditionally reliable.
 
+Account-page captures retain the account identity observed during that capture. The embedded
+read checks identity before and after each page and refuses a changed or lost identity;
+pages from a sign-in must agree with that sign-in's account. The parser carries this identity
+without inferring it from saved HTML. Saved files, legacy rows and captures that could not
+identify an account remain explicitly unknown; current credentials never assign them an owner.
+Transaction and licence deduplication includes the captured account. Acquisition matching for
+a known account uses only that account's observed Steam memberships, and stores separate
+`ownership_acquisition_observations`. Unknown imports retain the legacy aggregate fill behavior.
+The shared acquisition reader uses only matching account observations in the filtered library;
+aggregate presentation uses the earliest acquisition date and withholds conflicting licence or
+price values. Legacy ownership acquisition columns cannot supply a known account's facts.
+
 The minted token lives about a day. The refresh token lasts roughly 207 days when the user
 chose remember-me, and is spent against `/jwt/finalizelogin`. A bad token returns a hard 401,
 where a bad API key returns a silent 200 with an empty envelope.
@@ -386,6 +458,11 @@ is exactly the population with large libraries and unplayed piles.
 
 Every figure on the account-stats screen is computed from the captured pages, never from the
 account's lifetime. The rules that follow govern what may be shown and what must be withheld.
+
+The shared desktop/fullscreen introduction reports how many identified accounts contributed.
+Unknown-account records remain a separate provenance group. When known and unknown groups
+coexist, they may describe the same transactions: money totals are withheld and counts describe
+captured records. Records are never reassigned or deleted by guessing which account supplied them.
 
 - When a capture holds more than one currency, or transactions with no currency symbol,
   money totals are withheld and only counts are shown. Amounts are stored exactly as the page
@@ -422,7 +499,14 @@ account's lifetime. The rules that follow govern what may be shown and what must
 The authenticated Epic library cache is stored in the selected data directory's
 `metadata_cache`, under a separate provider namespace and an account-specific key.
 A restart reuses a fresh answer for `EpicWebOptions.CacheTtl` (six hours by default);
-stale answers refetch through the existing authenticated client. The ingest module
+the currently signed-in account must match the versioned payload and cache key. Legacy
+unscoped entries are ignored. Stale answers refetch through the authenticated client and
+remain usable on transient failure only for the same account. Each operation captures its
+account, OAuth client and sign-in generation before looking in the cache. Authentication,
+pagination, playtime and result publication retain that context; sign-out or another sign-in
+discards the in-flight result, including a new sign-in to the same account. Routine token
+renewal preserves the generation and cannot change account. Emitted ownership candidates
+carry the captured account reference. The ingest module
 keeps its cache interface free of a Data reference; the App supplies SQLite storage.
 
 **Epic:**
@@ -441,13 +525,18 @@ resolver gate and a library reload, including actions in an already-open Details
 The reload retains the selected or flipped card when it is still visible and updates the
 Details action state in place, preserving unsaved editor drafts.
 Completion requires an explicit `bIsIncompleteInstall: false`; missing or malformed flags
-never imply installation, and `Pending` files are ignored. Locked or malformed manifests
-defer the refresh until a later stable read. Normal completion appears within two to four
+leave install state unknown, and `Pending` files are ignored. One manifest reader owns both
+the watcher fingerprint and scan completeness. Missing directories, failed enumeration,
+unreadable, malformed or oversized files withhold absence authority: readable positive facts
+may refresh, but an absent manifest clears stored install state only after a complete scan.
+The watcher defers incomplete reads until a later stable read; startup, scheduled and remote
+passes preserve existing install state through the same candidate contract. Normal completion appears within two to four
 seconds plus local scan time; this follows the launcher's written state, not download progress.
 The service is disabled with local sync for sample-data and `--no-sync` runs.
 Both local and remote ownership passes reread Steam and Epic candidates after acquiring that gate,
 so a queued pass or a slow network backfill cannot restore the install state from an older
-startup scan. Network requests and GOG scans remain outside the gate.
+startup scan. Network requests and Galaxy database scans remain outside the gate; a cheap
+GOG registry inventory is refreshed inside it before install facts are written.
 
 **GOG:**
 
@@ -456,9 +545,28 @@ state. Failures and cancellation do not trigger a reload. GOG installation chang
 visible on the existing 15-minute local scan interval; Steam and Epic use the faster manifest
 refresh described above.
 
+Registry install evidence records product identifiers separately from ownership. A complete
+current inventory clears install flags and paths only for products previously observed in
+that registry, preserving ownership, acquisition and play history. A readable missing key
+is an empty inventory; denied access, disappearing entries, changed key sets and unsupported
+platforms withhold absence authority while preserving readable positive facts. Legacy rows
+with unknown install provenance are not guessed to be registry installations. A fresh local
+Galaxy install remains positive evidence; remote backfill discards install facts from its old
+Galaxy snapshot and uses the current registry inventory. When Galaxy is unavailable, registry
+absence still reconciles known registry installations on the next successful local pass.
+
 - `galaxy-2.0.db` is a WAL database. `immutable=1` silently returns stale data, and `mode=ro`
   writes `-wal` and `-shm` files into the store's directory. **Copy the file first, then read
-  the copy.**
+  the copy.** On Windows, keep read-only handles that deny write and delete access to the
+  main database and existing WAL throughout the copy. Existing write-capable handles,
+  unreadable files or a rollback journal defer the database read; the next local scan retries,
+  and closing Galaxy may be necessary. The guards exclude checkpoints and WAL rollover;
+  `quick_check` only validates the resulting copy's structure. Never copy SHM: SQLite rebuilds
+  it in Winnow's private directory. Live Galaxy copying is unsupported on other platforms,
+  where file sharing does not exclude native SQLite writers. The separate `CopyImmutable`
+  entry point accepts only caller-owned database/WAL pairs that cannot change during copying.
+  Deferred reads preserve prior Galaxy observations; independent registry install facts may
+  still refresh through the normal ingest path.
 - Galaxy's library contains **other stores' releases marked owned**. Filter
   `substr(releaseKey,1,4)='gog_'` or the Steam library is double-counted.
 - GOG **does** carry playtime in minutes and last-played in UTC, including for uninstalled
@@ -466,9 +574,10 @@ refresh described above.
 - Local GOG titles carry the installer's locale, so a Polish install of GWENT reports a Polish
   title. `GamePieces.title` from Galaxy is canonical.
 
-**Built-in storefront client credentials.** Epic's launcher client id and secret ship with
-Winnow, at the lowest priority in the credential chain, so a user-supplied pair always wins.
-The reasoning is in `docs/decisions.md`.
+**Built-in storefront client credentials.** Epic authentication uses the first complete
+credential pair from saved settings, `Epic:ClientId` / `Epic:ClientSecret` configuration,
+then the bundled launcher client credentials. This lets ordinary installs link Epic while
+allowing users to supply their own client.
 
 **Anonymous storefront links and GOG changelogs** live in `Winnow.Enrich.Stores`.
 Epic's `GET https://store-content.ak.epicgames.com/api/content/productmapping` maps namespaces
@@ -531,7 +640,7 @@ graph TB
             UP[Update Signal Poller]
         end
 
-        subgraph Core["Core"]
+        subgraph ApplicationLogic["Resolution, monitoring and recommendations"]
             ER[Entity Resolver]
             PM[Process Monitor - 5s]
             SN[Snapshot Scheduler]
@@ -561,7 +670,7 @@ graph TB
     SCMD --> UP --> DB
     PM --> DB
     SN --> DB
-    DB --> RC --> DB
+    DB --> RC --> LV
 ```
 
 ### 5.1 Module boundaries
@@ -573,6 +682,22 @@ Library settings loads perform repository work on a worker thread, then publish 
 state on the UI thread. Facets, identity maps, pins and storefront caches remain fixed-count
 bulk reads. This does not change the pre-window appearance bootstrap or unrelated edit commands.
 
+Every library refresh trigger shares one publication generation. Each request captures its
+presentation preferences before reading, assembles tile and open-details projections locally,
+and publishes only if it remains current. A read replaced by a newer request, or cancelled,
+cannot replace caches,
+counts or visible context, even when a repository ignores cancellation. Disposing an independent
+fullscreen library retires its pending reads. Detail opens also retain their request identity:
+closing or selecting another game discards a late result, while a library refresh makes a
+pending open re-read against the newly published ownership and visibility context.
+
+Manual-list creation and its initial membership commit together. Bulk additions, removals
+and order changes use a repository transaction or an isolated savepoint inside the caller's
+transaction. The shared list model serializes writes and publishes names, rules, membership
+and order only after success. A library refresh waits for pending writes and discards a list
+snapshot if another write began during its read. Detail membership retains the final user
+choice while a save is pending, then reconciles with the committed result on either surface.
+
 | Module | Responsibility | Must not |
 |---|---|---|
 | `Winnow.Core` | Domain records, repository interfaces, the ingest contract | Perform IO, or reference anything outside the BCL |
@@ -580,18 +705,109 @@ bulk reads. This does not change the pre-window appearance bootstrap or unrelate
 | `Winnow.Ingest.*` | Read one source, emit normalised `CandidateOwnership` | Write to `works` or `releases`; write to any store-owned file |
 | `Winnow.Resolve` | Map candidates to Work and Release, enqueue ambiguous merges | Auto-merge on anything but a hard external-id join |
 | `Winnow.Enrich.*` | Fetch and cache external metadata | Block any user-facing path |
+| `Winnow.PluginSdk` | Versioned BCL-only provider contracts and settings declarations | Reference UI, persistence or application internals |
+| `Winnow.Plugins` | Validate/load trusted plugin assemblies, manage activation and bound SDK HTTP calls | Claim an in-process security sandbox |
 | `Winnow.Covers[.Igdb]` | Fetch and cache cover art; first source that answers wins | Block first paint |
 | `Winnow.Monitor` | Detect game start and stop, emit sessions | Assume any specific launcher is present |
 | `Winnow.Recommend` | Score and explain | Perform IO beyond repositories; reference anything but `Winnow.Core`; make identity decisions |
 | `Winnow.Auth.WebView` | Host the embedded sign-in | Reference anything but Avalonia and `Winnow.Core` |
 | `Winnow.App` | UI and composition root. Assembly name `Winnow` | Call an ingest reader or an enrichment client. Cover leases are how art reaches a tile and are not covered by this |
 
+Built-in provider HTTP clients share linked transport infrastructure in `src/Shared`; this
+creates no dependency between enrichment modules or IO dependency in Core. Requests buffer
+at most 1 MiB for replay, and responses buffer within each attempt before returning. The
+default response ceiling is 16 MiB of decoded content; anonymous storefront metadata retains
+its 2 MiB ceiling. Each attempt has a 30-second Polly timeout and the full request has a
+90-second budget including retries and rate-limit waiting. Provider options may lower or
+raise those operating bounds. Caller cancellation never retries; attempt timeouts retry only
+through the provider's existing policy. Over-limit responses are disposed and not retried.
+Every attempted send owns and disposes its cloned message, retaining headers, options and body;
+replaced responses are disposed before retry. Provider status rules, retry ceilings and budgets
+remain explicit in their modules, and each retried send acquires its required rate permit.
+
 **Library sync is split by network dependence.** `LocalLibrarySyncService : ILocalLibrarySync`
-runs the three local scans and reaches no network; `RemoteOwnershipSyncService :
-IRemoteOwnershipSync` handles entitlement backfill on a 6-hour timer. Both live in
-`Winnow.App.Services` rather than `Winnow.Core.Ingest`, because `LibrarySyncReport` carries a
-`ResolveResult` and Core cannot reference Resolve. **No enrichment or remote client may be
-reachable from the first-paint path.**
+runs the three local scans and reaches no network. The application registers
+`OwnershipRefreshCoordinator` as `IRemoteOwnershipSync` for startup, the six-hour timer and
+background refresh requested by successful Steam/Epic account actions. It serializes the whole
+operation: `RemoteOwnershipSyncService` acquires ownership facts, then `LibraryRefreshPipeline`
+runs the shared ordered history, metadata, identity-proposal, update and storefront operations.
+Independent phase failures leave other phases eligible. Committed ownerships are published
+before metadata, even after a later ownership operation fails; subsequent publication boundaries
+expose enriched facts. IGDB credential refresh selects the IGDB steps from this same pipeline.
+
+`LibraryChangePublisher` reloads desktop library and merge state on the UI dispatcher with a
+shutdown token. The library's existing committed-change event refreshes active fullscreen state;
+inactive fullscreen contexts refresh when entered. Account actions enqueue and coalesce work
+behind startup instead of holding their UI commands open. These application services live in
+`Winnow.App.Services` rather than Core because sync results refer to Resolve and publication
+belongs to the application. **No enrichment or remote client may be reachable from the
+first-paint path.**
+
+#### Provider plugins
+
+`Winnow.PluginSdk` API 1 exposes library sources, metadata, artwork and recommendation feeds.
+`Winnow.Plugins` discovers manifest-bearing directories under the installation's bundled
+`plugins` folder and the data directory's user `plugins` folder. Third-party packages start
+disabled; activation changes require restart. Settings declarations generate separate desktop
+and fullscreen editors. Custom screens and UI replacement are not part of the contract.
+
+After discovering existing directories, startup imports top-level user ZIP packages through
+`PluginArchiveInstaller`. It accepts a package at the archive root or in one enclosing folder,
+validates paths and the manifest, and bounds compressed/uncompressed bytes and entry count.
+Extraction uses a private staging directory and publishes with a directory move only after
+validation. Existing plugin IDs and destination paths cannot be replaced. Successful ZIPs
+move to `.archives`; failed inputs remain with a settings diagnostic. Discovery ignores
+`.archives` and `.unpack-*` staging directories, including leftovers from interrupted launches.
+
+Plugin code runs in-process with the application's permissions. Assembly load contexts isolate
+dependencies, not filesystem/network access. Initializers and provider calls run on worker
+threads with 30-second and 120-second deadlines. Exceptions use fixed diagnostics; timeouts
+disable the provider for the session. SDK HTTP uses exact HTTPS hosts, no redirects, bounded
+responses and per-provider Polly rate/retry policies. Scoped settings keys use length-delimited
+plugin/key segments; secrets use DPAPI with equally scoped entropy. No plugin receives a host
+service provider, database connection or UI object through the SDK.
+
+Application adapters own persistence. Library imports enter the existing resolver under
+`plugin:<id>` ownership sources; existing Steam/Epic/GOG external IDs join only when known
+matches agree. Migration 0032 widens the external-ID provider constraint to accept this namespace
+while preserving existing hard joins. Missing inventory never deletes ownerships. Metadata observations retain their
+source in `metadata_cache`; summary/year fill automatic missing fields through the existing
+provenance-aware repository. Migration 0031's `plugin_work_facets` holds genre/tag assignments
+per work and source, unioned into facet reads without sharing another provider's write scope.
+Artwork observations remain on original works, use declared hosts and URL-hashed image keys,
+and share through current confirmed groups on presentation reads. User artwork stays first.
+Every release's external IDs are queried for artwork; an unavailable member preserves the
+previous combined observation. Plugin feeds receive eligible owned groups and explanatory
+scores produce existing shelves on both surfaces, preserving dismissal and snooze behavior.
+
+`docs/plugins.md` describes authoring, local package layout, compatibility and operational
+limits. SteamGridDB is shipped as a separate SDK-only package, copied during build and publish.
+Its former credentials, metadata cache, observations and downloaded source images migrate
+through an explicit compatibility adapter. No authenticated live call is required for migration.
+
+#### Artwork selection and lifetime
+
+`CoverSelection` supplies portrait keys to library tiles, merge rows and work previews.
+It captures provider availability once per read. User art takes precedence, followed by
+a live IGDB pin on the same work, the release's Steam capsule, and its stored IGDB or
+enabled-plugin artwork reference. Desktop and fullscreen use those same application facts.
+
+Disk and memory negative markers share the original marker deadline and source-set identity.
+An expired marker or changed provider capability permits another fetch in the running app.
+A failed lease load remains retryable; a null result never permanently completes that slot.
+The cover cache admits at most 128 running or queued slots by default, with separate fetch
+and decode concurrency limits. Excess requests return retryable placeholders. One task is
+created per slot, and the final consumer releasing its lease cancels pending work for that
+slot. A different consumer's cancellation does not cancel art that still has a live lease.
+Shutdown refuses new admissions, cancels and drains work, then clears the LRU and disposes
+the pipeline. Outstanding leases keep their pixels valid until released; cancelled work
+cannot publish new decoded art after shutdown begins.
+The decode concurrency bound includes conversion into Avalonia bitmaps, so native and UI
+pixel allocations cannot outgrow it while waiting for publication. A failed second layer
+releases the first layer at either stage. Cancellation callbacks run outside the cache lock;
+their exceptions are logged and cannot interrupt cleanup or replace a caller's cancellation.
+A lease returns the exact art retained by its slot, including when another waiter replaces
+an evicted result before it resumes.
 
 #### Controller input
 
@@ -602,21 +818,51 @@ surface. Share domain records, repositories, application services, validation an
 semantics for launch, install, lists, journal, settings and recommendation explanations.
 Share palette and font identities; keep layout, spacing and type scales surface-specific.
 The fullscreen host reuses the input-source/filter code and dispatches to explicit focus rows
-owned by each page. It creates independent library, feed, list and dormancy state over the
+owned by each page. It creates independent library, feed, list and motion state over the
 shared repositories and action services. It never scales or navigates the desktop tree.
 Fullscreen pages may supply a backdrop for the shell to mount behind its safe area and
-header. Detaching that layer releases its artwork lease; the detail page still owns its
+header. Browsing reuses that layer across selections, retaining the displayed artwork lease
+while a replacement loads and through its short crossfade. Generation checks discard stale
+loads. Detaching releases displayed, outgoing and pending leases; the detail page still owns its
 content and focus rows. Browse page capacity is presentation state and reflows around the
 selected release identity when the available columns change.
+Its feed view-model exposes both the primary recommendations and the scored reserve as
+cards, while desktop retains the reserve for replacements. The shared scoring pass and its
+ordering remain unchanged. Both surfaces record surfacing only on actual viewport entry.
 Adaptive cover capacity is recalculated once queued text scaling and layout have settled;
 reading transient unscaled geometry can make a long Home hero alternate capacities and
 continuously rebuild.
 
-Fullscreen IGDB landscapes use an `igdb-backdrop` cache key and the documented
-`t_1080p_2x` rendition, separate from desktop screenshot assets. Decode buckets extend to
+Desktop detail backdrops and fullscreen IGDB landscapes use an `igdb-backdrop` cache key
+and the documented `t_1080p_2x` rendition, separate from screenshot gallery assets. Decode buckets extend to
 1920, 2560 and 3840 pixels, bounded by source dimensions and the shared memory budget.
-Resizing requests the appropriate display-sized lease. Desktop covers and screenshot
-renditions remain unchanged; both presentations share lease and eviction behavior.
+Resizing requests the appropriate display-sized lease. Compact desktop covers and screenshot
+gallery renditions remain unchanged; both presentations share lease and eviction behavior.
+
+Backdrop selection is shared application behavior. A saved user background leads the
+candidate list. The persisted `enrichment.artwork_source_order` orders automatic source groups:
+high-resolution Steam heroes, SteamGridDB and IGDB, in that default order. Standard Steam
+heroes and the game's cover remain final fallbacks. Changes apply to displayed backdrops on
+both surfaces without restarting. Steam candidates use known app IDs from every
+release in the displayed game group, independent of the playable copy or IGDB enrichment.
+Automatic IGDB candidates exclude known portrait or square images, transparent
+or animated assets, images explicitly typed as logo or cover, and invalid image IDs.
+Rank each IGDB image by the pixel area remaining
+after a centered crop to the target aspect ratio. Candidates retaining at least 1280×720
+pixels take precedence, with artwork before screenshots within that tier. Unknown dimensions
+remain a compatible fallback, followed by smaller landscapes; ties retain source order.
+Failed downloads advance through the remaining candidates before using the game's cover.
+No automatic selection overwrites the user's saved background or reorders the screenshot gallery.
+SteamGridDB candidates within their source group rank by detail remaining after the display crop.
+Their `plugin-steamgriddb` image keys contain a SHA-256 URL hash. The plugin restricts candidates
+to `https://cdn2.steamgriddb.com/hero/`; the host validates declared HTTPS hosts and bounds downloads.
+
+Steam heroes use separate `steam-hero` and `steam-hero-standard` cache keys for
+`library_hero_2x.jpg` and `library_hero.jpg`. Each rendition is requested independently through
+the existing unauthenticated Steam image client and bounded disk/lease pipeline. A missing
+high-resolution hero can therefore fall through to IGDB before the smaller Steam rendition.
+HTTP 404 records a missing asset; transport and service failures do not record a durable miss.
+Downloads happen on demand, without changing stored game metadata or requiring an API key.
 
 Controller input lives in `Winnow.App.Services`, independent of ingest and process monitoring.
 The window polls a read-only source at 33 ms while open. Windows loads XInput from the system
@@ -626,17 +872,37 @@ seconds on Windows; Linux joydev does not report battery state. The input filter
 held buttons on reconnect or activation and repeats navigation after 400 ms, then every 110 ms.
 Only the active, visible window dispatches actions. Closing disposes the native source.
 
-Fullscreen Activity reads ownerships, sessions, notes and update events from repositories,
-filtered through its own visible library tile source. The current repository contracts require
-per-ownership session/note reads and per-release update reads; those reads run off the UI thread.
-This is not a constant-query bulk history operation. Session-note edits write through
-`ISessionRepository`, and account summaries reuse the currency-safe `AccountStatsViewModel`
-with independent presentation state. Manual-game and identity tools construct their own
+Fullscreen Activity supplies its visible ownership IDs and local week's half-open UTC bounds
+to `IActivityRepository`. One background query joins notes, filters the selected section and
+returns 50 rows plus a stable timestamp/ID continuation cursor. Updates appear once per
+visible release. Changing week or section cancels obsolete reads; loading older rows preserves
+selection, and failed reads offer retry without dropping committed rows. Returning from a
+note editor retains loaded pages and refreshes the saved note through `ISessionRepository`.
+Desktop and fullscreen details capture identity context on the dispatcher, read their history
+snapshot on a worker, and publish only for the current uncancelled request. Account summaries
+reuse the currency-safe `AccountStatsViewModel` with independent presentation state and worker
+reads. The measured bounds and remaining layout costs are recorded in
+`docs/spikes/large-history-read-responsiveness.md`. Manual-game and identity tools construct their own
 `LibrarySettingsViewModel` and `MergeQueueViewModel` from DI; editor state and focus do not
 leak into desktop tools. Shared settings remain common application state. Both surfaces use
 the shared `ThemeService` and `appearance.theme`; the former `fullscreen.theme` preference is
-ignored. Fullscreen keeps separate `fullscreen.*` sizing, margins, motion and dormancy
+ignored. Fullscreen keeps separate `fullscreen.*` sizing, margins and motion
 preferences and renders the shared theme with opaque local resource overrides.
+
+Dim dormant covers is shared through `DisplaySettingsViewModel` and the persisted
+`display.dim_dormant_covers` preference. The former `fullscreen.dim-covers` preference is
+ignored. Desktop library and merge covers use the shared ramp; fullscreen mirrors its dimming
+choice onto its own ramp so reduced motion remains surface-specific. Changes propagate even
+while fullscreen is inactive and while the saved display settings load.
+
+The Merges platform preference is shared through `ISettingsRepository` at
+`merges.preferred_platform` (`steam`, `epic`, `gog`, or empty for none). Each merge view model
+reads it on load and when revisiting an already loaded queue. A changed preference promotes
+matching pending work rows through the existing header-selection path, including filtered
+cards; absent platforms leave the current header intact. It does not write identity links
+until the user confirms a proposal, and it does not change completed links or expansion
+bases. Individual header choices remain local to that queue until confirmed.
+
 The optional ultrawide setting expands the TV reference canvas width to the viewport aspect
 ratio while retaining its reference height and uniform scaling. Controller prompts use a
 bundled CC0 vector subset; ambient page art uses bundled original SVG path geometry.
@@ -695,6 +961,24 @@ Known noise sources, all of which must be handled:
 - Proton and Wine wrap everything in a process tree. Match on the tree, not a single PID
 - Debounce: ignore sessions under 60s by default, configurable
 
+**A monitored sitting survives Winnow restarting.** Once the minimum duration is observed,
+the watcher checkpoints an open session with a stable key and the exact ownership, PID,
+UTC OS creation time and executable name of every process that has joined it. A later
+process joining refreshes that ledger; unchanged polls do not write. On rediscovery,
+one exact open match restores the saved start and initial launch attribution before the
+duration check. Completion updates the same session ID, preserving its note and rating.
+Checkpoint, recovery aliases and process membership commit atomically; retries after a
+lost write response cannot append another sitting. Only confirmed completion raises the
+journal prompt event.
+
+An unmatched checkpoint keeps a null end and duration: Winnow cannot infer when a game
+exited while it was closed. A reused PID with a different creation time is another sitting.
+Legacy open rows and manual sessions have no monitor key and are never guessed into a
+match; multiple matching open sittings are refused. A crash before the minimum duration
+has been observed leaves no checkpoint. A replacement child not observed before a crash
+cannot prove continuity with the prior sitting. These boundaries preserve uncertainty
+instead of fabricating playtime.
+
 **Session indexing follows the platform.** Windows indexes `.exe` files; Linux and
 macOS index files with Unix execute permission. Linux discovery also recognises the
 kernel's 15-byte process-name alias. Native processes match their installed path.
@@ -728,9 +1012,10 @@ The hardest part of this project. Get it wrong and the dataset is untrustworthy.
 
 **Matching:**
 
-1. **Hard join, auto-merge.** IGDB `external_games` by Steam appid or GOG id. For Epic, use
-   GOG's own cross-store identity graph via `gamesdb.gog.com`, which resolves Epic titles to
-   the same `game_id` as their Steam counterparts. Merge without asking.
+1. **Exact source identity.** `ExternalIdResolver` matches `(provider, provider_id)` to an
+   existing release; a miss creates a work and release. IGDB `external_games` supplies exact
+   metadata lookups for Steam and GOG. Epic's GamesDB lookup supplies metadata only, as
+   described below; it does not join releases or confirm a merge.
 2. **Soft match, queue, never auto.** Normalised title plus release year within ±1, publisher
    match, cover perceptual hash. Produce a confidence score and write to `merge_candidates`
    with `status='pending'`.
@@ -753,6 +1038,10 @@ merge candidate. `external_ids` is keyed `(provider, provider_id)` globally, so 
 appid on an Epic release would collide with the Steam release that already owns it. gamesdb
 also resolves *games*, not editions, so an Epic "Gold Edition" can land on the base game's
 record: right for the Work columns enrichment writes, wrong for a Release.
+
+Its 90-day cache accepts validated version 1 projections and the equivalent legacy shape.
+Malformed or incompatible projections are unknown and trigger a refetch; only an HTTP 404
+records a miss. A failed refetch leaves the old payload and observation time untouched.
 
 ### 5.4 Historical backfill
 
@@ -811,10 +1100,41 @@ release workflow, and recovery instructions.
 
 ---
 
+### 5.6 First-run setup
+
+`FirstRunSetupService` stores one cursor under `setup.progress.v1` in the existing settings
+table. Before host construction can open the database, Program records whether its file
+already existed. After migrations and before ingestion starts, the service initializes a
+missing cursor to Welcome for a new library, or done for an existing library and sample-data
+runs. A stored cursor takes precedence, so restarting an interrupted new install resumes
+rather than treating the now-populated database as an established installation.
+
+`FirstRunSetupViewModel` shares navigation between the desktop overlay and fullscreen page.
+The shell loads saved app, appearance and library preferences before displaying setup. Hidden
+background launches retain their hidden window; setup is visible when the user opens it.
+Moving between steps persists the cursor; finishing or skipping all writes done. A failed
+cursor write keeps the wizard open with retry copy. Continue waits for pending preference
+writes; Back and Skip remain usable when a preference write failed. Reopening from Application
+settings resets only the cursor, preserving all saved preferences and credentials.
+
+The wizard composes existing App view models and commands; it does not introduce a second
+sign-in, credential store, ingest path or theme mechanism. Steam consent, Epic sign-in,
+protected IGDB saving and local GOG discovery retain their existing contracts. Navigating away
+clears credential drafts without saving them. Saving or removing IGDB credentials applies
+immediately and queues a metadata refresh; wizard completion itself does not launch another pass.
+
+---
+
 ## 6. Data model
 
 SQLite. Migrations are embedded resources, checked into the repository, applied on startup by
 DbUp, and **append-only: never edit a shipped migration.**
+
+Before opening an existing database for writes, startup checks its applied migration names
+against this binary's embedded scripts through a read-only connection. Unknown histories are
+refused before changing journal mode, renaming legacy entries or running migrations. Known
+legacy migration names are compared as their Winnow equivalents; missing known scripts remain eligible
+for the normal backed-up upgrade, including an interrupted upgrade.
 
 Timestamp parameters use `DateTime` with an explicit kind. Winnow.Data rejects
 `DateTimeKind.Unspecified` before executing a write, converts Local values to UTC, and stores
@@ -825,32 +1145,62 @@ timestamp text is read as UTC. `DateTimeOffset` resolve-state timestamps retain 
 UTC round-trip format.
 
 `Migrations/hashes.json` records SHA-256 for each SQL script, normalizing CRLF to LF.
-CI verifies file membership and content, and checks existing entries against the previous
-revision so changing a script and its hash together still fails. New migrations append entries.
+Both xUnit and CI verify file membership and content against this one manifest. CI also checks
+existing entries against the previous revision so changing a script and its hash together
+still fails. New migrations append entries.
 
-Facet replacement, list reordering and feed surfacing batches are atomic repository calls.
+Facet replacement, list reordering, feed surfacing, field set/reset, IGDB pinning and
+enrichment value/provenance batches are atomic repository calls.
 Each opens a local transaction when called alone, or a savepoint inside the caller's unit
 of work. A failed batch rolls back its own writes even when the caller catches the failure;
 a successful batch never commits the caller's transaction. Facet vocabulary creation and
 assignment replacement belong to the same batch.
 
+Identity links have depth one across `same_game`, `expansion_of` and `variant_of`: a live
+child cannot also hold children. A same-game command may move its child's existing links
+onto the chosen parent, preserving each link's kind; an expansion or variant command refuses
+a child that already holds links. Proposals use the same structural admission rules, and the
+repository checks again in its write transaction.
+
+Undo retracts only the selected act's still-standing links. It preserves later membership
+decisions and restores each prior link only if neither endpoint would violate depth one or
+replace a standing membership. Otherwise the affected child stays separate. Single-child
+separation follows the same rule without changing siblings. Retractions and restorations are
+one atomic repository batch, and history remains append-and-stamp; ambiguous legacy history
+is not repaired automatically.
+
 ```sql
 -- Canonical identity
-works(id, igdb_id UNIQUE, name, sort_name, first_release_year, summary, cover_url, background_url)
+works(id, igdb_id UNIQUE, igdb_mapping_revision, name, sort_name,
+      first_release_year, summary, cover_url, background_url)
 releases(id, work_id FK, igdb_version_id, name, platform, edition_note)
 external_ids(release_id FK, provider, provider_id, PRIMARY KEY(provider, provider_id))
-  -- provider ∈ {steam, gog, epic, igdb}
+  -- provider ∈ {steam, gog, epic, igdb} or plugin:<id>
 
 -- Ownership and play
 ownerships(id, release_id FK, store, account_ref, acquired_at,
            license_type, price_paid_cents, price_source, install_path, installed BOOL)
   -- store ∈ {steam, gog, epic, manual}
+account_inventory_observations(store, account_ref, source, revision, attempted_at,
+                               is_complete BOOL, observed_at, item_count)
+  -- current inventory attempt per store/account/source; positive memberships are independent
+ownership_acquisition_observations(id, ownership_id FK, account_ref NULL,
+             acquired_at, license_type, price_paid_cents, price_source, source, captured_at)
+  -- captured account + content identity; NULL account_ref means unknown, never current credentials
+gog_registry_installations(provider_id PK) -- positively observed registry install provenance
 play_records(ownership_id FK, playtime_minutes, last_played_at, source, observed_at)
 playtime_snapshots(id, ownership_id FK, playtime_minutes, observed_at)  -- longitudinal
-sessions(id, ownership_id FK, started_at, ended_at, duration_s, detection_method)
+sessions(id, ownership_id FK, started_at, ended_at, duration_s, detection_method,
+         attributed_by, monitor_key NULL UNIQUE)
+monitored_session_keys(monitor_key PK, session_id FK sessions ON DELETE CASCADE)
+monitored_session_processes(session_id FK sessions ON DELETE CASCADE,
+                           process_id, started_at, process_name)
+  -- exact process ledger retained while open; no migration guesses for legacy sessions
 session_notes(session_id FK, note TEXT, rating INT)
 manual_entries(ownership_id PK FK ownerships ON DELETE CASCADE,
               executable_path, platform_label, added_at, updated_at)
+manual_entry_identifiers(id, ownership_id FK manual_entries ON DELETE CASCADE,
+                         provider, provider_id, owns_mapping BOOL, asserted_at, retracted_at)
 
 -- Achievements: per-release, never merged across platforms
 achievements(release_id FK, provider_key, name, description, hidden, global_pct)
@@ -879,9 +1229,11 @@ lifecycle_observations(id, release_id FK releases ON DELETE CASCADE, source, sou
   -- dated source answers; nullable signals mean unknown; classification is never stored
 
 -- Reception and media
-work_images(work_id FK works ON DELETE CASCADE, source, kind, image_ids, observed_at,
+work_images(work_id FK works ON DELETE CASCADE, source, kind, image_ids, images_json, observed_at,
             PRIMARY KEY(work_id, source, kind))
   -- kind ∈ {screenshot, artwork}; image_ids is IGDB image_id values, comma-joined, in IGDB's order
+  -- images_json retains optional source dimensions, transparency, animation and image type by image_id;
+  -- existing rows default to [] and keep their image_ids for offline fallback
 work_ratings(work_id FK works ON DELETE CASCADE, source, score, rating_count, label, observed_at,
              PRIMARY KEY(work_id, source))
   -- source ∈ {igdb_users, igdb_critics, steam}
@@ -966,16 +1318,30 @@ unified view is a query, not a stored merge.
 ### 6.3 Account scoping
 
 A Steam library may be shared by several accounts on one machine, and the user can narrow the
-library to one of them. Two rules govern what that filter does.
+library to one of them. Individual membership rows establish presence, not a complete library.
 
-**Err visible.** The filter hides a game only when at least one non-seed `ownership_accounts`
-row exists and none of them names the selected account. A game with no per-account evidence
-stays visible. Hiding a game the user owns is worse than showing one they do not.
+**Err visible.** Hiding by account requires a complete `GetOwnedGames` inventory for the
+selected account, a non-seed membership on the game that was already known at the inventory's
+original response time, and no positive membership naming the selected account. Unknown
+games, including games first discovered after a cached inventory was fetched, stay visible.
+Selected-account positives remain valid even for Family Sharing, a later refund or an old
+seed. The filter never deletes ownerships or membership observations.
+
+**Completion is independent evidence.** `account_inventory_observations` (migration 0034)
+records the current attempt per store, account and source. Starting an attempt advances its
+revision and retires previous completeness. Only the same attempt can become complete, and
+only after all its candidates resolve successfully. Cancellation, resolver failure, partial
+results, unavailable responses and stale-cache fallback leave it incomplete. An explicit
+`game_count` must match all valid distinct returned app IDs; an explicit zero is complete.
+A fresh cache preserves the original response time and completeness. A local play row never
+establishes completeness, even when it names the selected account. Confirmed sign-in can
+identify an account without having enumerated its games, so remote inventory targets also
+include the confirmed account when no local game names it.
 
 **Seed rows are not evidence of absence.** Migration 0015's seed rows are stamped
-`source = 'ownerships.account_ref'` and excluded from absence evidence, because they inherit
-the single-winner ambiguity the table replaces. The first real sync supplies authoritative
-rows and the exclusion stops mattering.
+`source = 'ownerships.account_ref'` and excluded from the non-seed test because they inherit
+the single-winner ambiguity the table replaces. Migration 0034 does not backfill inventory
+proof from these or any other historical membership rows.
 
 The filter is Steam-scoped: Epic and GOG entries pass it, as do any Steam appids no reader has
 attributed. `playtime_snapshots` has no per-account form, so the recommender's episode signal
@@ -1008,55 +1374,82 @@ the bucket query returns. Explicit when any token reaches `AdultsOnly` on the `M
 (`Winnow.Core.Queries`): the rating codes `esrb:ao` and `acb:x18`, and the descriptor
 `adult_only_sexual_content`. The broad 18+ board ratings — `pegi:18`, `usk:18`, `cero:z`,
 `acb:r18`, `classind:18`, `grac:18` — sit at `Restricted18`, one tier below, and are not
-explicit: IGDB returns every board for a work, so a game rated PEGI 18 for violence was
-hidden under the old rule and is not now. The full scale is `Unrated`, `Everyone`,
+explicit. A PEGI 18 rating for violence alone does not hide a game. The full scale is `Unrated`, `Everyone`,
 `Preteen`, `Teen`, `Mature`, `Restricted18`, `AdultsOnly`, ascending, anchored on the
 minimum age each board states. `Unrated` is inside every cap and is never explicit.
 `MaturityRules.ExplicitTier` is `AdultsOnly`, pinned by
-`ExplicitContentTests.The_explicit_set_is_exactly_the_adults_only_signals`. The tier scale
-is the input TASK-103's rating-cap filter consumes, which is why the tiers are kept rather
-than reduced to a boolean. Retuning the vocabulary was a code change, not a migration —
-tokens are stored verbatim and the verdict is taken at read time, exactly the payoff
-0024's no-stored-verdict design was built for. Migration 0024's header comment still
-enumerates the old eight-code list; migrations are append-only, so `MaturityTiers` and
-`MaturityRules` in `Winnow.Core.Queries` are the authority on the current vocabulary.
+`ExplicitContentTests.The_explicit_set_is_exactly_the_adults_only_signals`. The tier scale is
+the input to the rating-cap filter. `MaturityTiers` and `MaturityRules` in
+`Winnow.Core.Queries` define this vocabulary; stored tokens allow classification to change
+without rewriting provider observations.
 **A work with no maturity row is never explicit.**
+An explicit successful IGDB answer with no rating tokens removes that source's old row.
+An unavailable answer retains existing evidence. Cached successful misses preserve this
+distinction, and neither case removes another provider's rating.
 Absence of data is not a rating; hiding a game because nobody has looked it up yet is the
 failure to avoid. **The same rule governs `NonGameEntries`: a row whose type no store has
-stated is not a non-game entry and stays visible either way.** There is no CHECK on
-`source` on purpose: migration 0021 had to rebuild
-`identity_links` to widen a CHECK, and a closed list in DDL pays that cost on every new
-source. The preference is `BucketThresholds.ShowExplicitContent`, settings key
+stated is not a non-game entry and stays visible either way.** `source` has no database
+CHECK constraint so another evidence provider does not require rebuilding the table.
+The preference is `BucketThresholds.ShowExplicitContent`, settings key
 `library.show_explicit_content`, default false. The filter drops the whole resolved game,
 not one entry, and takes the game's variants with it.
 
 **Hand-added entries.** A hand-added game is an ordinary work + release + ownership whose
 `ownerships.store` is `manual` and whose `manual_entries` row exists. That row's presence is
-the origin marker — one mechanism, not two, and a table no ingest path writes. The guarantee
-that an ingest pass never deletes or overwrites a hand-added entry rests on facts that were
-already true: `OwnershipRepository.UpsertAsync` conflicts on `(release_id, store)` and no
-reader emits the store `manual`; the work is created with `name_is_provisional = 0`, and the
-resolver's name promotion fires only while that flag is set while the enrichment patch is
-fill-only; and nothing in the runtime deletes a `works`, `releases` or `ownerships` row.
+the origin marker — one mechanism, not two, and a table no ingest path writes. Ingest does
+not delete or overwrite that manual ownership: ownership upsert conflicts on `(release_id,
+store)`, and no reader emits `manual`. Creation marks the name non-provisional and writes
+the title and any supplied year through the user field-ownership operation. An omitted year
+on creation is unknown; clearing a year during an edit is an explicit user-owned null.
 Session monitoring needs no change: `GameExecutableIndexBuilder` reads
 `ownerships.installed` and `install_path`, so naming an executable stores its directory and
 sets `installed = 1`. Deleting a hand-added entry removes the ownership, then the release
 only when no other ownership hangs off it, then the work only when it has no releases left.
+
+`manual_entry_identifiers` (migration 0033) records each manual Steam and IGDB assertion,
+including explicit absence, whether it created the hard external-ID mapping, and when it
+was retracted. Correcting a tracked ID retracts its old mapping within the same transaction
+as the new assertion, metadata and pin. An independent storefront ownership that relies on
+the mapping prevents retraction. A mapping reused from another origin also cannot be
+retracted as a manual assertion. Legacy identifiers receive no speculative origin backfill:
+the form explains that an ambiguous ID must stay to edit this entry, or the corrected game
+can be added separately. Keeping those IDs unchanged permits ordinary metadata edits, and
+editing a manual entry never rewrites an independently attached store release's title.
+
+The work's `igdb_mapping_revision` advances on initial automatic assignment and every user
+mapping transition, including re-pin and pin clear. Both forms read the current identifiers and revision together when opening;
+an intervening mapping change requires reopening before saving. A typed IGDB correction
+uses the same mapping transition as a full metadata pin: work, live pin and tracked manual
+IGDB assertion agree. Changing the ID retires IGDB facets, maturity, screenshots, artwork,
+reception, classification and scalar values explicitly sourced from the old mapping,
+including its background. User fields, unknown legacy scalar sources and independent store
+or plugin evidence remain. The title and year submitted in a typed correction become
+user-owned. The full metadata pin still replaces fields with the chosen record as described below.
+
+Every asynchronous IGDB writer captures the exact work, ID and revision before provider IO.
+The persistence boundary rechecks that tuple and holds one transaction through all related
+writes; stale responses become no-ops, including a change away from and back to the same ID.
+Repository callbacks inside `IIgdbObservationWriter` contain no network or other external IO.
+Scalar enrichment uses the same revision check inside its repository batch. Raw lifecycle
+history stays append-only; applicable reads include only IGDB rows whose source ID equals
+the current mapping. Legacy IGDB evidence without a source ID cannot establish current
+identity and is excluded. Other providers retain their independent applicability.
 
 **User-pinned IGDB mappings.** `work_igdb_pins` (migration 0026) records a user-chosen
 work-to-IGDB mapping in the same append-and-stamp shape: pinning inserts a row, clearing
 stamps `cleared_at`, and re-pinning stamps the old row before inserting a fresh one. A
 partial unique index allows at most one live pin per work. The pin removes the work from the
 enrichment target query rather than merely refusing the write, so the automatic pass never
-even asks IGDB about it. Clearing the pin returns the work to automatic resolution; the
-stamps stay, and the pass fills what is empty and not user-owned.
+even asks IGDB about it. Clearing the pin returns the work to automatic enrichment against
+its stored IGDB ID; the stamps stay, and the pass fills what is empty and not user-owned.
+An explicit refetch may fill the current pinned record's missing non-user fields after
+the same revision check. Its cooldown belongs to that revision, so a corrected mapping can
+be fetched immediately.
 
 The pin answers which game this is; per-field sources (below) answer where each value came
-from. Different questions, and they must not be conflated. Both of the pin's guards survive,
-and the reason is now sharper: the automatic pass resolves identity from the store id via
-IGDB's `external_games`, so on a pinned work everything it would write is metadata about a
-game the user has already said this is not. Per-field sources cannot replace that guard,
-because they do not answer that question. Pinning is also the "take it all from this record"
+from. Automatic enrichment resolves store IDs through IGDB's `external_games` only while
+the work has no IGDB mapping; a known mapping goes directly to that game's metadata.
+Per-field sources do not choose identity. Pinning is also the "take it all from this record"
 gesture: it stamps every field it rewrites as `igdb`, including fields the user previously
 owned, because the user in the same act is saying take it all from this record. The name is
 stamped only when the pin actually wrote one, since `works.name` is NOT NULL and the pin
@@ -1071,8 +1464,7 @@ tables, keeping old answers around would be a second answer to the same question
 Fields tracked: `name`, `first_release_year`, `summary`, `cover_url`, `publisher`,
 `background_url`. Sources: `user`, `igdb`, `steam`, `epic`, `gog`. Both vocabularies live
 in `Winnow.Core.Queries` (`WorkFields`, `FieldSources`), stored verbatim, with no CHECK on
-`source` or `field` — the same reason migration 0021's `identity_links` rebuild gave and
-the maturity paragraph above already records for `work_maturity`.
+`source` or `field`, allowing new fields and providers without rebuilding the table.
 
 There is no backfill. Nothing can retroactively know whether a value written before 0027
 came from IGDB or the Steam store. Absence of a row means no writer has claimed the field
@@ -1088,17 +1480,16 @@ NULL for each field the user owns, so the existing COALESCE leaves the stored va
 that COALESCE means "already answered, leave it", and the first service to answer keeps the
 field. The write stamps every field it actually filled with the source that supplied it.
 
-**Read-side precedence.** `work_field_sources` answers who last wrote a value; it is not a
-read-time precedence layer. There is nothing for it to outrank: each field has one value in
-one column, and the read is that column. A work's displayed name is `works.name` on every
+**Reading metadata.** Each field has one stored value. `work_field_sources` records its
+writer and protects user-owned fields during enrichment; reads use the value directly.
+A work's displayed name is `works.name` on every
 surface — the grid tile and the list row, the details modal headline, the feed card, search
 and the title sort, the Merges queue, the hidden-games list and the hand-added list. Two
 queries COALESCE `releases.name` over `works.name` into a `Title` column, and neither is a
 display read: the bucket query in `LibraryQueryRepository`, which never leaves `BucketRow`
 and feeds `DemoConsolidation`; and the enrichment target query in `WorkRepository`, which
 feeds the demo-like prefilter. Both want the storefront's own words so that a user rename
-cannot unfold a demo. Setting a field by hand therefore needs no read-side precedence rule
-and needed no migration.
+cannot unfold a demo.
 
 Only user-visible metadata is tracked. The classification columns — `steam_app_type`,
 `epic_categories`, `steam_store_type`, `steam_parent_app_id`, `igdb_game_type`,
@@ -1123,29 +1514,23 @@ dimensions above 8192 on either axis or 32 Mi pixels total. Negative cache entri
 the source-set identity; capability refresh runs before suppressing a miss so configuring
 IGDB can reopen it in the same session. Existing positive disk art remains reusable.
 
-**List membership resolution.** `lists` and `list_items` already existed. Membership stays
-stored per release — adding a game to a list is an explicit act on the entry the user
-picked — and is now resolved per read: a list contains a game when any release of any work
+**List membership resolution.** Membership in `list_items` is stored per release: adding
+a game to a list records the entry the user picked. A list contains a game when any release of any work
 in that game's live `same_game` group is a member. `kind` is `same_game` only, so an
 expansion's membership is its own. Membership survives a link because the link model never
 deletes or repoints a `list_items` row, and the read follows the resolved game.
 
 ## 7. Export
 
-A launch feature, not an afterthought. Every incumbent in this space is a roach motel.
-
-- JSON: full fidelity, versioned schema, round-trippable through an import path
-- CSV: flattened, one row per ownership, for spreadsheet users
-- No account and no network required
-- A schema version in every export; write the importer against the version field from day one
-
-The acquisition CSV in Settings → Library is the first implemented export. It writes one
-row per ownership, including hidden entries, with `schema_version` (1), `ownership_id`,
+Settings → Library exports acquisition data as CSV without an account or network access.
+Full-fidelity, versioned JSON export and import are deferred. The CSV writes one
+row per ownership and observed acquisition account, including hidden entries, with `schema_version` (2), `ownership_id`,
 `release_id`, `title`, `store`, `acquired_at`, `license_type`, `price_paid_cents` and
-`price_source`. Dates are UTC, missing facts are empty cells, and a known zero price stays
+`price_source`, plus `account_ref`. Legacy or unknown-account facts use a blank account field;
+accounts are kept separate even when their receipts are identical. The reported ownership count
+counts distinct ownerships, which may have several account rows. Dates are UTC, missing facts are empty cells, and a known zero price stays
 zero. Prices carry no currency because the source schema does not record one. CSV uses UTF-8,
-quoted values and CRLF records, preserving commas, quotes and newlines in titles. Full JSON
-export and import remain deferred.
+quoted values and CRLF records, preserving commas, quotes and newlines in titles.
 
 ---
 
@@ -1187,11 +1572,9 @@ answers are out of date.
 
 ## 10. The shelf view
 
-A 3D "games on a shelf" browsing view was specified and then cut. It was the sole argument for
-Electron over Avalonia. **If the shelf is ever reinstated, it does not on its own justify
-revisiting the framework choice**: Avalonia has no first-class 3D, so a reinstated shelf would
-mean Silk.NET/OpenTK by hand, SkiaSharp 2.5D, or an embedded WebView, all of which are worse
-than accepting that this is a data tool with a good list view.
+Winnow presents the library through covers, lists and recommendation shelves. A 3D
+"games on a shelf" browsing view is out of scope. Recommendation shelves are ordinary UI
+groups of cards and do not require a 3D renderer.
 
-Cover thumbnails in the library view remain in scope and come from IGDB covers and Steam's
-`library_600x900` portrait capsule.
+Automatic cover thumbnails come from IGDB covers and Steam's `library_600x900` portrait
+capsule. User artwork and provider plugins use the shared artwork pipeline in §5.1.

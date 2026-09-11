@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Winnow.Core.Domain;
+using Winnow.Core.Queries;
 
 namespace Winnow.App.ViewModels;
 
@@ -12,6 +13,7 @@ namespace Winnow.App.ViewModels;
 public sealed partial class UpdateEventViewModel : ObservableObject
 {
     private UpdateEventViewModel(
+        long releaseId,
         string headline,
         string dateText,
         DateTime occurredAtUtc,
@@ -19,6 +21,7 @@ public sealed partial class UpdateEventViewModel : ObservableObject
         bool isAnnouncement,
         bool isSinceYouPlayed)
     {
+        ReleaseId = releaseId;
         Headline = headline;
         DateText = dateText;
         OccurredAtUtc = occurredAtUtc;
@@ -29,6 +32,8 @@ public sealed partial class UpdateEventViewModel : ObservableObject
 
     /// <summary>The announcement's own title, or a plain description of a build push.</summary>
     public string Headline { get; }
+
+    public long ReleaseId { get; }
 
     /// <summary>Plex Mono, tabular — every date in the app (§3).</summary>
     public string DateText { get; }
@@ -80,7 +85,12 @@ public sealed partial class UpdateEventViewModel : ObservableObject
     /// job quietly becoming two — "unread" and "recent" — which is exactly how
     /// the badge stops meaning anything.</para>
     /// </summary>
-    public bool IsUnread => IsSinceYouPlayed && !IsAcknowledged;
+    public bool IsUnread => IsSinceYouPlayed && IsCorrelatedUpdate && !IsAcknowledged;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsUnread))]
+    [NotifyPropertyChangedFor(nameof(AutomationName))]
+    public partial bool IsCorrelatedUpdate { get; set; } = true;
 
     /// <summary>
     /// The row's accessible name. The <c>Flare</c> dot is a mark and §8's
@@ -89,7 +99,7 @@ public sealed partial class UpdateEventViewModel : ObservableObject
     /// </summary>
     public string AutomationName => UnreadCopy.UpdateRow(Headline, DateText, IsUnread);
 
-    public static UpdateEventViewModel Create(UpdateEvent updateEvent, DateTime? lastPlayedUtc = null)
+    public static UpdateEventViewModel Create(UpdateEvent updateEvent, DateTime? lastPlayedUtc = null, long playtimeMinutes = 0)
     {
         var isAnnouncement = updateEvent.Kind == UpdateEventKinds.Announcement;
 
@@ -104,6 +114,7 @@ public sealed partial class UpdateEventViewModel : ObservableObject
         var occurred = AsUtc(updateEvent.OccurredAt);
 
         return new UpdateEventViewModel(
+            updateEvent.ReleaseId,
             headline,
             LocalDateText(updateEvent.OccurredAt),
             occurred,
@@ -111,7 +122,7 @@ public sealed partial class UpdateEventViewModel : ObservableObject
             // of it. GameLink refuses anything that is not http(s).
             GameLink.Create("Patch notes", updateEvent.Url, updateEvent.Url),
             isAnnouncement,
-            lastPlayedUtc is { } played && occurred > AsUtc(played));
+            UpdateReading.SincePlay(occurred, lastPlayedUtc, playtimeMinutes));
     }
 
     /// <summary>

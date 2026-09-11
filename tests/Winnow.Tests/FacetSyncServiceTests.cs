@@ -52,7 +52,7 @@ public sealed class FacetSyncServiceTests : IDisposable
             }
             """);
 
-        var report = await host.Service(_libraryQueries, _facets).SyncAsync();
+        var report = await host.Service(_libraryQueries, _facets, new IgdbObservationWriter(_db.Factory)).SyncAsync();
 
         host.AssertNoRequestsMade();
         Assert.Equal(1, report.IgdbGamesRead);
@@ -87,7 +87,7 @@ public sealed class FacetSyncServiceTests : IDisposable
         using var host = new SyncHost(_db, Now);
         host.CacheIgdbPayload(1, """{"igdb_id": 1, "name": "Thief II", "genres": ["Adventure"]}""");
 
-        await host.Service(_libraryQueries, _facets).SyncAsync();
+        await host.Service(_libraryQueries, _facets, new IgdbObservationWriter(_db.Factory)).SyncAsync();
 
         var snapshot = await _facets.GetSnapshotAsync();
         Assert.Equal(["Adventure"], Names(snapshot, FacetKinds.Genre));
@@ -109,7 +109,7 @@ public sealed class FacetSyncServiceTests : IDisposable
             }
             """);
 
-        await host.Service(_libraryQueries, _facets).SyncAsync();
+        await host.Service(_libraryQueries, _facets, new IgdbObservationWriter(_db.Factory)).SyncAsync();
 
         var snapshot = await _facets.GetSnapshotAsync();
         Assert.Equal(
@@ -133,7 +133,7 @@ public sealed class FacetSyncServiceTests : IDisposable
         host.CacheStoreItem(StoreFixtures.EldenRingAppId);
         host.CacheStoreVocabularies();
 
-        var report = await host.Service(_libraryQueries, _facets).SyncAsync();
+        var report = await host.Service(_libraryQueries, _facets, new IgdbObservationWriter(_db.Factory)).SyncAsync();
 
         host.AssertNoRequestsMade();
         Assert.Equal(1, report.SteamItemsRead);
@@ -175,7 +175,7 @@ public sealed class FacetSyncServiceTests : IDisposable
         host.CacheStoreItem(StoreFixtures.EldenRingAppId);
         host.CacheStoreVocabularies();
 
-        await host.Service(_libraryQueries, _facets).SyncAsync();
+        await host.Service(_libraryQueries, _facets, new IgdbObservationWriter(_db.Factory)).SyncAsync();
 
         var snapshot = await _facets.GetSnapshotAsync();
         var facets = snapshot.ByRelease[releaseId].FacetIds.Select(id => snapshot.ById[id]).ToArray();
@@ -208,7 +208,7 @@ public sealed class FacetSyncServiceTests : IDisposable
         host.CacheStoreItem(StoreFixtures.EldenRingAppId);
         host.CacheStoreVocabularies();
 
-        var service = host.Service(_libraryQueries, _facets);
+        var service = host.Service(_libraryQueries, _facets, new IgdbObservationWriter(_db.Factory));
 
         var first = await service.SyncAsync();
         Assert.True(first.RowsWritten > 0);
@@ -238,7 +238,7 @@ public sealed class FacetSyncServiceTests : IDisposable
         host.CacheIgdbGame(1, """{"igdb_id": 1, "name": "Thief II", "genres": ["Adventure"]}""");
         host.CacheStoreVocabularies();
 
-        await host.Service(_libraryQueries, _facets).SyncAsync();
+        await host.Service(_libraryQueries, _facets, new IgdbObservationWriter(_db.Factory)).SyncAsync();
 
         var snapshot = await _facets.GetSnapshotAsync();
         Assert.Contains(described, snapshot.ByRelease.Keys);
@@ -272,7 +272,7 @@ public sealed class FacetSyncServiceTests : IDisposable
         using var warm = new SyncHost(_db, Now);
         warm.CacheStoreItem(StoreFixtures.EldenRingAppId);
         warm.CacheStoreVocabularies();
-        await warm.Service(_libraryQueries, _facets).SyncAsync();
+        await warm.Service(_libraryQueries, _facets, new IgdbObservationWriter(_db.Factory)).SyncAsync();
 
         var before = (await _facets.GetSnapshotAsync()).ByRelease[releaseId].FacetIds.Count;
         Assert.True(before > 0);
@@ -282,7 +282,7 @@ public sealed class FacetSyncServiceTests : IDisposable
         using var cold = new SyncHost(_db, Now);
         cold.CacheStoreItem(StoreFixtures.EldenRingAppId);
 
-        var report = await cold.Service(_libraryQueries, _facets).SyncAsync();
+        var report = await cold.Service(_libraryQueries, _facets, new IgdbObservationWriter(_db.Factory)).SyncAsync();
 
         Assert.Equal(0, report.ReleasesWritten);
         Assert.Equal(before, (await _facets.GetSnapshotAsync()).ByRelease[releaseId].FacetIds.Count);
@@ -293,7 +293,7 @@ public sealed class FacetSyncServiceTests : IDisposable
     {
         using var host = new SyncHost(_db, Now);
 
-        Assert.Equal(FacetSyncReport.Empty, await host.Service(_libraryQueries, _facets).SyncAsync());
+        Assert.Equal(FacetSyncReport.Empty, await host.Service(_libraryQueries, _facets, new IgdbObservationWriter(_db.Factory)).SyncAsync());
     }
 
     private static string[] Names(FacetSnapshot snapshot, string kind)
@@ -344,10 +344,11 @@ public sealed class FacetSyncServiceTests : IDisposable
         }
 
         public FacetSyncService Service(
-            LibraryQueryRepository libraryQueries, FacetRepository facets)
+            LibraryQueryRepository libraryQueries, FacetRepository facets, IgdbObservationWriter observations)
             => new(
                 libraryQueries,
                 facets,
+                observations,
                 _igdb.Client,
                 _steam.Client,
                 NullLogger<FacetSyncService>.Instance);

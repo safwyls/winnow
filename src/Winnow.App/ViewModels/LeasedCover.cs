@@ -156,6 +156,8 @@ internal sealed class LeasedCover : IDisposable
 
         if (art is null || _disposed || generation != _generation)
         {
+            if (art is null && !_disposed && generation == _generation)
+                _requestedWidth = _held?.Width ?? 0;
             lease.Dispose();
             return;
         }

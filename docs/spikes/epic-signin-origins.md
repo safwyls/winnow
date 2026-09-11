@@ -1,5 +1,10 @@
 # Epic sign-in origins — 2026-09-06
 
+> **Dated evidence.** Findings describe the builds and services observed on the dates below.
+> Current implementation choices are in [the build spec](../../game-library-design.md);
+> current interactions and layout are in [the visual spec](../../design-system.md).
+> This record is optional background.
+
 The live https://www.epicgames.com/id/login page displayed nine provider buttons:
 PlayStation Network, Xbox network, Nintendo Account, Google, Steam, Disney,
 Sign in with Apple, Facebook and LEGO Account. No previously listed provider

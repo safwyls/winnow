@@ -131,6 +131,12 @@ public static class GameIgdbMatchCopy
             "IGDB has no metadata for that entry. Nothing changed.",
         IgdbAssignmentOutcome.IgdbIdClaimedByAnotherWork =>
             "Another game in your library already uses that IGDB entry.",
+        IgdbAssignmentOutcome.MappingChanged =>
+            "This game's match changed while the metadata loaded. Reopen the match picker to choose again.",
+        IgdbAssignmentOutcome.IdentifierHistoryUnavailable =>
+            "The old ID has no recorded origin. Keep this entry, or add the corrected game separately in Library settings.",
+        IgdbAssignmentOutcome.StorefrontObservation =>
+            "A store entry uses the old ID. Keep this entry, or add the corrected game separately in Library settings.",
         _ => "Couldn't save that. Nothing changed.",
     };
 }

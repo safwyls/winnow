@@ -39,12 +39,62 @@ public sealed class GameListRepository : IGameListRepository
     public async Task<long> InsertAsync(GameList list, CancellationToken ct = default)
     {
         using var lease = _factory.Lease();
-        return await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition("""
+        return await InsertAsync(lease, list, ct);
+    }
+
+    private static Task<long> InsertAsync(DbLease lease, GameList list, CancellationToken ct)
+        => lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition("""
             INSERT INTO lists (name, description, is_smart, filter_json)
             VALUES (@Name, @Description, @IsSmart, @FilterJson)
             RETURNING id;
             """, list, transaction: lease.Transaction, cancellationToken: ct));
+
+    public async Task<long> CreateManualAsync(string name, IReadOnlyList<long> releaseIds, CancellationToken ct = default)
+    {
+        using var batch = new RepositoryWriteBatch(_factory);
+        var id = await InsertAsync(batch.Lease, GameList.Manual(name), ct);
+        foreach (var releaseId in releaseIds.Distinct()) await AppendItemAsync(batch.Lease, id, releaseId, ct);
+        ct.ThrowIfCancellationRequested();
+        batch.Commit();
+        return id;
     }
+
+    public async Task<IReadOnlyList<long>> AppendItemsAsync(long listId, IReadOnlyList<long> releaseIds, CancellationToken ct = default)
+    {
+        using var batch = new RepositoryWriteBatch(_factory);
+        await RequireManualAsync(batch.Lease, listId, ct);
+        foreach (var releaseId in releaseIds.Distinct()) await AppendItemAsync(batch.Lease, listId, releaseId, ct);
+        var order = await ReadOrderAsync(batch.Lease, listId, ct);
+        ct.ThrowIfCancellationRequested();
+        batch.Commit();
+        return order;
+    }
+
+    public async Task<IReadOnlyList<long>> RemoveItemsAsync(long listId, IReadOnlyList<long> releaseIds, CancellationToken ct = default)
+    {
+        using var batch = new RepositoryWriteBatch(_factory);
+        await RequireManualAsync(batch.Lease, listId, ct);
+        foreach (var releaseId in releaseIds.Distinct())
+            await batch.Lease.Connection.ExecuteAsync(new CommandDefinition(
+                "DELETE FROM list_items WHERE list_id=@listId AND release_id=@releaseId;",
+                new { listId, releaseId }, transaction: batch.Lease.Transaction, cancellationToken: ct));
+        var order = await ReadOrderAsync(batch.Lease, listId, ct);
+        ct.ThrowIfCancellationRequested();
+        batch.Commit();
+        return order;
+    }
+
+    private static async Task RequireManualAsync(DbLease lease, long listId, CancellationToken ct)
+    {
+        var kind = await lease.Connection.QuerySingleOrDefaultAsync<long?>(new CommandDefinition(
+            "SELECT is_smart FROM lists WHERE id=@listId;", new { listId }, transaction: lease.Transaction, cancellationToken: ct));
+        if (kind != 0) throw new InvalidOperationException("The manual list is no longer available.");
+    }
+
+    private static async Task<IReadOnlyList<long>> ReadOrderAsync(DbLease lease, long listId, CancellationToken ct)
+        => (await lease.Connection.QueryAsync<long>(new CommandDefinition(
+            "SELECT release_id FROM list_items WHERE list_id=@listId ORDER BY position, release_id;",
+            new { listId }, transaction: lease.Transaction, cancellationToken: ct))).AsList();
 
     public async Task<GameList?> GetAsync(long id, CancellationToken ct = default)
     {
@@ -127,6 +177,11 @@ public sealed class GameListRepository : IGameListRepository
     public async Task<int> AppendItemAsync(long listId, long releaseId, CancellationToken ct = default)
     {
         using var lease = _factory.Lease();
+        return await AppendItemAsync(lease, listId, releaseId, ct);
+    }
+
+    private static async Task<int> AppendItemAsync(DbLease lease, long listId, long releaseId, CancellationToken ct)
+    {
 
         // DO NOTHING, not DO UPDATE: re-adding a game the list already holds
         // leaves it where the user put it. The RETURNING clause fires only on a
@@ -239,7 +294,7 @@ public sealed class GameListRepository : IGameListRepository
         return rows.AsList();
     }
 
-    public async Task ReorderAsync(
+    public async Task<IReadOnlyList<long>> ReorderAsync(
         long listId, IReadOnlyList<long> releaseIdsInOrder, CancellationToken ct = default)
     {
         using var batch = new RepositoryWriteBatch(_factory);
@@ -252,7 +307,7 @@ public sealed class GameListRepository : IGameListRepository
         if (current.Count == 0)
         {
             batch.Commit();
-            return;
+            return [];
         }
 
         var member = current.ToHashSet();
@@ -294,5 +349,6 @@ public sealed class GameListRepository : IGameListRepository
         }
 
         batch.Commit();
+        return ordered;
     }
 }

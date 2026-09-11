@@ -1,12 +1,18 @@
 # Winnow — Design System
 
-**Applies to:** Avalonia 11+ desktop client, dark by default with optional light themes
-**Companion files:** `src/Winnow.App/Themes/tokens.axaml` (the token dictionary),
-`mock-library.html` (visual target)
+**Applies to:** Avalonia desktop and fullscreen interfaces, dark by default with optional light themes.
 
-This document owns the palette, the type, the layout, the dormancy encoding, the components,
-the copy, the accessibility floor, the themes, translucency and the two layouts. Why a value
-is the value it is, where the reasoning is longer than the rule, is in `docs/decisions.md`.
+This is the current visual and interaction specification. It owns palette, typography,
+layout, dormancy, components, copy, accessibility, themes and translucency. Numeric resources
+live in [tokens.axaml](src/Winnow.App/Themes/tokens.axaml).
+
+Desktop layout and components are described throughout; §8 describes fullscreen composition
+and controller navigation. Shared feature behavior applies to both surfaces. For a focused
+change, read its component section together with the palette, typography and accessibility
+rules. Shared application boundaries are in [game-library-design.md](game-library-design.md).
+
+HTML sketches, generated mockups and design exports are reference artifacts, not additional
+requirements. This document contains the current choices without requiring their history.
 
 ---
 
@@ -55,10 +61,8 @@ stage and stays out of the way.
 | `Azure` | `#57A8F0` | Informational, links, secondary counts |
 | `Danger` | `#E04B45` | Destructive affordance: the window close button's hover fill, and the confirm button on any destructive act (§12.3, §16) |
 
-The room is a hued neutral rather than grey on purpose: grey would make `Volt` a decoration
-sitting on top of the chrome instead of the chrome's own colour intensified. The default dark
-app purple was tried and rejected, which for a library about your own hoard is exactly the
-wrong register; `docs/decisions.md` records why.
+For a library about your own hoard, the hued neutral keeps `Volt` connected to the room:
+selection brightens the same colour family while cover art supplies the variety.
 
 ### Discipline
 
@@ -213,6 +217,13 @@ Map months-since-last-played to a saturation/brightness pair:
 choose, and the point is to make forgotten games *findable*, not invisible. **Saturation, not
 brightness, is what carries the dormancy signal**, which is why the floor is set high.
 
+The numeric transform endpoint is defined once in `Winnow.Covers.DormancyStyle`.
+`tokens.axaml` exposes those constants as double-valued resources; the disk renderer,
+desktop/fullscreen ramp and procedural art consume that same endpoint. The brightness floor
+is `0.68`, calibrated to keep dark Steam capsules identifiable. Cache options cannot
+change one surface independently. Changing this
+endpoint also requires changing the disk variant version so stored pixels are regenerated.
+
 A **−6° hue rotation is part of the floor.** The matrix is Rec.709 luma desaturation, then the
 hue rotation, then a uniform brightness scale; brightness is a scalar and commutes, so it is
 folded in last. `CoverImaging.FloorMatrix` is the implementation and
@@ -236,12 +247,22 @@ the alert clear of the top-right Details fold.
 Present only when a major update landed after the user's last session — both signals from
 `game-library-design.md` §4.5, build push *and* announcement.
 
-**Never on a game with zero recorded playtime; an unplayed game has nothing to be behind on.**
-The line is drawn on *playtime*, not on a bucket name. `game-library-design.md` §6.1's
-`Never played` bucket happens to be the same set today, because that bucket means never
-opened, but the two are separate claims and the badge must not start reading a bucket. The
-update poller's eligibility filter draws the same line, for the same reason, on the same
-field.
+**Never on a game with no recorded play: zero minutes and no last-played date.** A real
+last-played date remains evidence of play when a source did not measure minutes. Measured
+play without a date is unknown, old play; it is not a never-played game.
+
+An unread patch is a correlated build push strictly after the visible game's effective last
+play and strictly after that release's standing acknowledgement watermark. The count is the
+maximum across contributing releases, not their sum: copies can carry the same patch. A
+push and its announcement count as one patch, and unrelated announcements remain neutral.
+The Patched bucket also applies the shared dormancy and playtime eligibility rules. Details
+uses the same patch count and release watermarks on desktop and fullscreen.
+
+**Mark as read** acknowledges the latest qualifying push actually displayed for each
+contributing release. It never reads a newer push into the operation. **Show it again**
+revokes those releases' standing acknowledgements. Each event row retains its release's
+reading state; one copy's watermark cannot quiet another copy. If only part of a grouped
+operation saves, the successful changes remain visible and the remaining failure is reported.
 
 Clicking the badge opens the patch notes for the updates you missed, from the `url` stored on
 the event row. This is the feature that closes the loop: notice → context → launch.
@@ -320,8 +341,8 @@ column at every window width. `CoverWall`'s remarks carry the measurements.
 
 ### 5.5 Art-backed detail surface
 
-**The detail modal lays the game's own art behind its information.** It used to be flat
-`Surface`, so a game lost its identity the moment the user opened it.
+**The detail modal lays the game's own art behind its information**, preserving its identity
+while keeping text readable.
 
 **The construction is layered.** Opaque `Surface` at the bottom, then the game's art,
 then a veil — `ArtVeil`, the theme's own `Surface` at `ArtVeilAlpha` — then the text. The opaque
@@ -361,11 +382,12 @@ The walk runs at every whole percent of the transparency slider; `Surface` never
 so the veil never walks with it, and `TextDim` brightening under the ink ramp only improves the
 figure. Slider zero is the worst case.
 
-**The modal reuses its existing image path.** It binds `GameDetailsViewModel.Cover`, the 200px
-bitmap it already asks the cover cache for at full saturation — §10's rule, that the ramp is a
-scanning aid and the user has finished
-scanning. That bitmap is upscaled to a card up to 1582px wide, and the upscale is what softens
-it; Avalonia's effect pipeline is closed (§5.4) and nothing here needs it to be open.
+**The modal requests art at its displayed size.** The decorative backdrop has its own image
+lease, separate from the compact portrait cover. It shares fullscreen's selection policy:
+the saved background first, suitable landscape artwork next, then a landscape screenshot,
+and the cover when no usable landscape remains. Source dimensions after cropping to the
+surface's proportions determine image quality; the veil provides the subdued treatment.
+The screenshot gallery continues to show screenshots in their source order.
 
 **A user theme can break this.** `ThemeAudit` warns when `Colorimetry.WorstArtBackedContrast`
 falls under AA, against `seeds.surface`, because it is the theme's own `Surface` that decides
@@ -399,13 +421,25 @@ the grid cannot do densely lives here, which is how the analytics capability sta
 without dominating the default experience.
 
 **Merges.** The screen that proposes which library entries are one game and asks the user to
-confirm each proposal and pick which entry becomes the header. The reference is
-`docs/merge_queue_design/README.md`. Three bands: a 56px header (`Merges`, the pending count in
+confirm each proposal and pick which entry becomes the header. Three bands: a 56px header (`Merges`, the pending count in
 Data, `Sort ·`, `Accept N exact matches`, and the one filled button, `Merge N selected`); a 40px
-cut bar on `ChromeSurface` with a six-segment kind filter, a cut chip while filtered, and the
-count at the right, `14 → 6` while filtered, the only arrow in the interface; and the queue,
+cut bar on `ChromeSurface` with a six-segment kind filter, a cut chip while filtered, a
+`Prefer · None` platform picker, and the count at the right, `14 → 6` while filtered, the
+only arrow in the interface; and the queue,
 one scroll of five outlined sections, ACROSS STORES · EDITIONS · EXPANSIONS · PARTS · TEST
 BUILDS, each with the count of its pending cards and a one-sentence blurb.
+
+The platform picker uses the sort menu's `ctl` trigger, chevron, `sortmenu` presenter and
+6px `Volt` dot for the selected option. Its choices are `None`, `Steam`, `Epic` and `GOG`;
+the trigger names the current choice, such as `Prefer · Steam`. Choosing a platform switches
+every eligible pending card's header to an entry on that platform, including cards hidden by
+the kind filter. Cards without that platform retain their header. Expansion bases and
+completed links retain theirs. The preference is remembered for later loads; `None` stops
+applying it without resetting the current headers. Users can still choose a header on an
+individual card before confirming the merge.
+The desktop tooltip reads: “Choose headers from this platform where
+available, across all pending proposals. You can still change individual headers. None keeps
+the current choices.” The fullscreen sheet is titled `Preferred platform for pending headers`.
 
 A proposal card is a composition on `Surface` with a 1px `Line` edge that turns
 `VoltEdgeSoft` while checked: a header grid (checkbox, the header title in Bricolage at 15, the
@@ -449,9 +483,10 @@ the library. The radio and the checkbox are Tab stops of their own.
 cover at 60×90 on the left. Title, duration in Data, one text field, 5-dot rating in `Volt`.
 Appears at most once per session, never steals focus.
 
-**Fetch status field.** In the rail's pinned bottom, above the settings gear, a `Well` field
-with a `Volt` edge — the same pattern the Stores panel's `Border.note.working` uses. It names
-what the enrichment pass has left to do as a real count that falls a slice at a time: the pass
+**Fetch status field.** In the desktop titlebar, before the window controls, a compact
+single line shows the label, a separator and the remaining-title count. It uses the existing
+label, data and body typography without a box or animation and remains part of the drag strip.
+It names what the enrichment pass has left to do as a real count that falls a slice at a time: the pass
 reads the whole backlog before the first slice and commits in slices of 40, so every value the
 field shows was true when it was written. Words only — no spinner, no animation, no
 `Transitions` anywhere in it. That is the conforming answer to §8, not a shortcut: §8 says
@@ -465,7 +500,8 @@ Cancel where there is one", and this pass is not something the user started; not
 restart it before the next launch, so a Cancel here would be a one-way stop dressed up as a
 choice. It is cleared in a `finally`, so a run cut short by shutdown takes the field away
 rather than leaving a stale count on screen. Exactly one of it for the whole window, because
-it lives in the rail's grid rather than on any screen.
+it lives in the desktop caption rather than on any screen. Fullscreen continues to hide the
+desktop chrome, including this status; returning to desktop shows the current shared count.
 
 ---
 
@@ -516,19 +552,27 @@ The last one matters: store metadata backfill takes hours, so the interface prom
 browsable library immediately and art later. **Render placeholder tiles with the title set in
 Bricolage on a `Surface` field — never a spinner, never an empty grid.**
 
-The table does not yet carry rows for connection state or credential consent; the Stores
-panel's strings were written from the auth spikes instead. TASK-81.
+Connection and credential consent copy names the provider, the information Winnow reads,
+where credentials are stored and the action that grants access. Preserve that disclosure
+when changing a sign-in surface.
 
 ---
 
 ## 8. Accessibility floor
 
+Automated checks cover both presentation paths. Desktop AXAML checks enforce named controls
+and reachable automation names. Headless fullscreen checks inspect the rendered automation
+tree, including pages built in C#, and exercise directional focus paths, disabled and error
+states, journal editors, settings, modal return and controller keyboard return. These checks
+verify the exposed controls and application navigation; they do not establish platform
+screen-reader behavior. TASK-4 retains physical-controller and seating-distance readability
+verification.
+
 ### Fullscreen and controller navigation
 
 Fullscreen is a separate TV-distance interface with its own composition, components,
-navigation and focus model. The reviewed mock set in `docs/mockups/fullscreen-v2/` guides
-this implementation. The desktop specifications elsewhere in this document continue to
-govern the desktop path; features must be maintained and verified in both presentations.
+navigation and focus model. This section specifies its current composition and interactions;
+features must be maintained and verified in both presentations.
 
 The shared identity is the teal palette, three font families, cover art, dormancy and unread
 markers. Fullscreen gets its own type and spacing scale. Start with a 1920×1080 reference
@@ -537,14 +581,34 @@ labels start at 24px at 100% text size. The user's text scale adjusts body label
 reference. These are design starting points, not measured distance guarantees.
 4K increases rendering resolution rather than content density. Fit ultrawide is an optional
 fullscreen preference: it expands the reference canvas horizontally to the display aspect
-ratio while keeping the 1080px reference height and uniform scaling. The default retains the
+ratio at the default 1080px reference height. Overall UI scale adjusts both reference dimensions
+inversely, uniformly scaling text, controls and artwork while retaining percentage safe margins.
+Library grids reflow within the changed layout space. Home uses cover dimensions from its
+100% layout as a stable target: reducing interface scale shrinks covers and admits more
+games, rather than enlarging art to fill the extra height. Available height still limits
+covers when increasing scale or using large margins. The default retains the
 16:9 composition. Validate readability from the actual seating position before accepting the scale.
 
-**For you** opens on a focused recommendation in a horizontal cover shelf. A large title,
-one-sentence reason and game artwork above the shelf follow the selection. The reason reserves
+**For you** opens on a focused recommendation in a horizontal cover shelf.
+Fullscreen makes the complete scored shelf available: up to six primary recommendations
+plus four reserve items. Show as many as fit at the chosen scale, with left/right navigation
+to overflow games; do not enlarge covers just to fill a short shelf. Desktop retains six
+cards with a hidden replacement reserve. Only actual viewport entry records an impression.
+
+A large title, one-sentence reason and game artwork above the shelf follow the selection. The reason reserves
 two lines at the chosen text size and truncates overflow with an ellipsis, so description
-length does not resize the cover shelf. Up/down changes
+length does not resize the cover shelf. Titles keep one line at the reference title size and
+ellipsize overflow; opening game details reveals the full title. Title length never consumes
+a second row or reduces the preferred cover size. Up/down changes
 shelves; left/right moves among their games. The selected cover has the only focus ring.
+The shelf title has no numeric fraction. A vertical rail at the right shows previous/next
+chevrons and one dot per shelf: the current dot is filled with Volt, the others are outlined
+in TextDim. Endpoint arrows dim when unavailable. Mouse users can click arrows or dots;
+controller up/down and LT/RT keep selecting shelves without extra focus stops.
+The cover row anchors to the bottom of the Home content area above the footer. The shelf
+rail shares its vertical center and follows that bottom anchor; it scales down to fit when
+space is tight. The shelf heading stays directly above the covers with a 12px gap. Spare
+height shows backdrop between the hero information and the entire bottom-anchored shelf group.
 Text actions have transparent backgrounds and a mint underline on focus. Hover leaves
 no underline; current sections and collections use bold text and a neutral underline.
 The focused cover retains its outline. No desktop
@@ -583,6 +647,8 @@ zoom while retaining immediate selection feedback.
 The main view list stays centered on the canvas independently of controller status and clock
 width. Equal side regions hold the wordmark and status; long status text truncates within
 its region instead of moving the view list.
+Controller status uses the primary `Text` color, matching the clock so it remains legible
+over hero artwork.
 
 Search, staged filtering, text entry, journal editing and a paged file browser use their own
 fullscreen pages. Native and third-party windows need separate controller validation;
@@ -593,6 +659,26 @@ falling back to a desktop dialog does not satisfy M10.
 The remaining screens use the same typography, safe area and focus treatment, with a separate
 composition for each task. The mock images are design references, not evidence of device testing.
 
+Home, Library, Activity, Settings and setup place decorative backdrops on the full fullscreen canvas,
+outside the display margins and behind the header and footer. Safe margins constrain text
+and controls, not artwork. Game selection updates the background without moving the content.
+When changing games, retain the displayed landscape while the next landscape loads, then
+crossfade over 180ms. Reduced motion swaps the loaded art immediately. A cover fallback
+appears only after landscape metadata or loading fails, never as an intermediate image
+between two landscapes. Ignore results from earlier selections.
+Game artwork fades in further to the right to keep the left content area quiet: browsing
+backdrops reveal between 30% and 85% of the canvas width, and the details veil stays dense
+through 58% before opening toward the right edge.
+
+Below 21:9, fullscreen Steam and SteamGridDB heroes fill the canvas with a centered crop and the
+canvas-wide vertical fade. Request enough source pixels to fill the crop's height.
+At 21:9 and wider, these heroes retain their whole composition. Fit them across the
+canvas width, preserve their aspect ratio and align them at the top; exceptionally wide
+canvases fit the whole image within the height and center it horizontally. Fade the final
+15% of the image height into Ground, with Ground filling the canvas below. Each crossfade
+layer keeps its own image geometry. Desktop detail backdrops continue to fill their card
+with a crop and request enough source pixels for that crop.
+
 **Library** uses two rows of complete portrait covers. The column count responds to available
 width, row height and text size; wider displays show more games instead of stretching or
 cropping artwork. Stable 2:3 frames use uniform fitting so user-supplied art keeps its whole
@@ -601,6 +687,10 @@ artwork edge, with separate vivid and dormant colors. Titles sit below the cover
 the focused game. Unread dots and dormancy retain their shared meaning. A dimmed landscape
 backdrop follows the selection. Home and search use the same uncropped art treatment; home
 only shows the recommendations actually returned by the feed.
+
+Library collection tabs align left; My lists, Filter & sort and More form a separate
+group at the far right of the same row, inside the safe margins. Controller focus follows
+their visual left-to-right order across both groups.
 
 Resizing recomputes page capacity while keeping the selected release anchored. Up from the
 first row on the first page reaches the collection choices. At grid edges, down advances a
@@ -611,8 +701,11 @@ and returning restores the collection and selected game.
 
 **Game details** uses a landscape backdrop across the full canvas, including the header.
 A dark left and top veil protects the title and status text; a vertical fade settles into
-Ground before the overview content. Prefer the saved game background, then an available
-landscape screenshot, then a quiet cover fallback. Artwork has its own display-sized lease
+Ground before the overview content. Prefer the saved game background, then the automatic
+source order from Metadata & artwork settings. The default is high-resolution Steam heroes,
+SteamGridDB, then suitable IGDB landscape artwork or screenshots. Standard Steam heroes and
+a quiet cover remain final fallbacks. Desktop and fullscreen
+share this selection policy. Artwork has its own display-sized lease
 and high-resolution cache entry; its source quality remains the upper limit on sharpness.
 The header shows B and the previous page name plus controller status and the clock. The
 root navigation and wordmark return when leaving details.
@@ -640,18 +733,41 @@ Cancel actions and an optional one-to-five rating. Library summary provides the 
 visible game count and separate reading pages for captured Steam account statistics; it
 retains the shared rules for mixed currencies and wallet credit.
 
-**Settings** has Appearance, Controller, Library, Platforms and Application sections. Large
+Activity initially reads up to 50 events for the selected week. **Load more** appends older
+events while preserving selection. A failed read says “Couldn't read your activity. Try again.”
+and offers **Try again** beside any retained events. Returning from a note editor keeps loaded
+pages and selection, and updates the saved note's badge and preview. Completing a delayed read
+preserves focus on the section controls or reading actions.
+
+Account summary says “Reading your account statistics…” while its background read is pending.
+A failed read says “Couldn't read account statistics. Try again.” and offers **Try again**;
+an unavailable repository says “Account statistics are unavailable.” Existing results remain
+available during a retry. These states do not present an empty account as a completed read.
+
+Settings content uses subdued uppercase group headings, separate from focusable rows.
+Navigation and picker rows end in **Open ›**; immediate commands end in **Run** with an
+A-button glyph, and external links end in **Browser ↗**. Toggles retain switches and
+adjustments retain their value and left/right cues. These cues remain visible without an
+underline; only focus and selected tabs use the existing underline treatment. Live theme
+and platform labels update inside their rows without replacing the navigation cues.
+Updater actions appear only when available, matching desktop behavior. When an update
+transition removes the focused action, focus moves to another available update action,
+with the settings controls as a fallback; it never activates restart automatically.
+
+**Settings** has Appearance, Controller, Library, Platforms, Metadata & artwork, Plugins and Application sections. Large
 rows expose a label and current value; left/right changes bounded values, A opens pickers
 or activates toggles, and B returns. Appearance has a readable live sample. Fullscreen owns
-its text scale (70–140% in ten-point steps), screen margins (0–10% in one-point steps),
-motion and dormancy preferences. Text size has separate mouse decrease/increase buttons
+its UI scale (80–120% in five-point steps), text scale (70–140% in ten-point steps),
+screen margins (0–10% in one-point steps), and motion preferences. UI scale defaults to 100%
+and scales the entire presentation, independently of text size. Both scale controls have separate mouse decrease/increase buttons
 and controller left/right adjustment. Theme selection is shared with desktop and updates
-both surfaces immediately, including artwork veils. Fullscreen reset preserves that shared
-theme. Defaults are 100%, 5%, motion and cover dimming enabled; Fit ultrawide defaults off.
+both surfaces immediately, including artwork veils. Dim dormant covers is also shared and
+updates every dormancy-bearing cover immediately. Fullscreen reset preserves the shared
+theme and cover-dimming choice. Defaults are 100%, 5%, motion and cover dimming enabled; Fit ultrawide defaults off.
 Boolean settings use visible switch tracks
 and thumbs with an On/Off status. Controller help fits one 16:9 screen with five concise
 action mappings on either side of a proportional diagram and keyboard fallback below.
-Fullscreen sizing, margins, motion and dormancy do not change desktop appearance, library facts or
+Fullscreen sizing, margins and motion do not change desktop appearance, library facts or
 recommendations. Content visibility, platform credentials, journal opt-in and application
 startup settings use the same value and validation in both UIs. Reset requires a confirmation
 naming the affected appearance settings. Library tools has TV-owned forms for manual games,
@@ -686,6 +802,8 @@ count, skipped item and warning. Acquisition CSV export uses the TV directory an
 chooser with overwrite confirmation. Manual game forms offer executable inspection and
 metadata candidates through the shared commands. Identity tools include kind and sort,
 selection and confirmed bulk grouping, with exact matching limited by the shared rules.
+The identity page also carries the shared `Prefer ·` platform choice in a controller action
+sheet, with the same options and pending-header behavior as desktop Merges (§6).
 The Steam API key registration link opens the system browser; obtaining that credential is
 an external website workflow, while entering and saving it stays inside the TV interface.
 
@@ -777,7 +895,9 @@ sorting, measured text sizes, data provenance or supported device behavior.
   measures 4.13 / 3.69 / 3.58 / 4.12 across the four themes on the *opaque* ground, which is
   under AA before transparency exists. `TextFaint` is for disabled arrows and decoration.
 - A settings toggle disables the dormancy ramp entirely for users who prefer uniform art. The
-  badges and buckets carry the signal without it.
+  badges and buckets carry the signal without it. Dim dormant covers is one persisted choice
+  across desktop and fullscreen, including library grids and lists, Feed and Merges. Existing
+  detail art, identity search previews and decorative backdrops retain their own treatments.
 - The caption buttons are real buttons, reachable by Tab like anything else. `Danger` is never
   the only thing distinguishing close: it has its own glyph and its own tooltip.
 
@@ -811,11 +931,12 @@ regression hiding inside it, and it is why the caption sets the AA mark in that 
 the point: the scrollbar track, the detail modal's scrim, and the window ground in the floating
 layout.
 
-The mark at the left is two 2:3 capsules, one behind the other: the app's own atom, and what a
-hoard of them looks like. Nothing else lives in the caption — no menu, no search, no status.
+The mark at the left is Winnow's dragon head, drawn as theme-coloured vector geometry.
+The cover wall is where the library shows what a hoard of them looks like. While metadata is being fetched, a passive status line sits before
+the window controls.
 **It is a lip, not a toolbar.**
 
-**Behaviour the system used to provide is now ours, and all of it is load-bearing.** Drag uses
+**The custom caption implements window movement and maximization.** Drag uses
 `BeginMoveDrag`, which hands the press to Windows' own move loop; that is what buys Aero Snap,
 the edge previews and Win+Arrow rather than a hand-rolled imitation. The cost is that the loop
 is modal and owns the pointer until release, so the second press of a double click may or may
@@ -859,8 +980,7 @@ divider of ours rather than the window's.
 Two consequences of stating it that way:
 
 - **The filter panel takes the inset**, because its right edge is the window's (§11.1). Its
-  column went 264 → 276 to pay for the gutter that buys, so the option rows keep the 234px they
-  were drawn at.
+  column is 276px wide, including the gutter, with 234px option rows.
 - **The rule is dropped entirely under the floating layout** (§15.4), because floating moves
   every one of these scrollbars off the window's edge and onto a pane's. Eight pixels of gap
   plus the pane's own border is already outside the band, so the inset would be a second,
@@ -883,8 +1003,8 @@ then the modal; the close button and a click on the scrim dismiss the modal dire
 
 The modal has a compact persistent header and five tabs. The header carries an 82x123
 cover, title, year and publisher, store and install state, and the Play/Install, Add to list
-and More controls. The cover keeps its 2:3 geometry and full saturation. Its existing 200px
-decode also supplies the subdued backdrop (§5.5).
+and More controls. The cover keeps its 2:3 geometry and full saturation. The subdued backdrop
+uses a separate display-sized image lease (§5.5).
 
 Play and Install keep their text and carry the matching 16px play or download glyph. Add to
 list carries the 16px list-plus glyph. The icons reinforce the verbs; the text and automation
@@ -960,6 +1080,12 @@ newest first with session date, optional rating out of five and note. Editing st
 including the existing five-dot rating control. Deletion asks “Delete this note?” and uses
 Danger only on confirmation. Switching tabs preserves an unfinished journal edit. With no
 notes, the prompt-enabled and prompt-disabled sentences remain distinct.
+Desktop Details, fullscreen Details and fullscreen Activity share the same note draft:
+Save trims surrounding whitespace and requires a note or a rating from one to five.
+Fullscreen editors show the current rating beside the rating action. While saving, note,
+rating, delete and cancel actions are unavailable. A failed save keeps the draft and displays
+the shared retry message; only a successful save leaves the editor. Finishing a save after
+the fullscreen page has closed cannot navigate or announce success on another page.
 
 **Library keeps each copy's facts together.** The copy rows retain per-entry hours and
 last-played dates. Linked-title rows keep their Separate action; any composite total is
@@ -1035,7 +1161,7 @@ do not imply uninterrupted monitoring. A zero month has no positive-height bar; 
 strip and Recorded hours distinguish it from missing history. An earlier cumulative reading
 is stated as an amount recorded by its date, outside the plot, rather than drawn across an
 unknown span. Sparse history retains the same controls, states the missing facts, and draws
-no plot when there is no temporal evidence. It never falls back to the old normalised gap rail.
+no plot when there is no temporal evidence. The tracker always retains calendar geometry.
 
 **Update marks retain their reading state.** Dated updates sit on the baseline; unread marks
 use `Flare`, other recorded updates use neutral ink. Nearby marks group into a count instead
@@ -1045,7 +1171,7 @@ Updates tab remains the route to patch notes and read controls. Acknowledgement 
 the marks without switching the selected range.
 
 **The chart has one ownership scope.** Cumulative counters for linked copies cannot be joined
-as one series. Like the prior history reader, this tracker uses the primary ownership's
+as one series. The tracker uses the primary ownership's
 snapshots; its sessions, acquisition, total and last-played summary use that same copy. Linked
 games label this scope beside the total. The Library tab retains the other copies' figures.
 Updates continue to include the linked game's release records.
@@ -1269,9 +1395,8 @@ the export and the account stats screen. `platform` and `edition_note` are empty
 Steam's local files produce and are not bound. `account_ref` is populated and still absent,
 because showing a user their own Steam account id is noise.
 
-**Achievements are not here.** No data exists yet, and `game-library-design.md` §6.2's rule
-stands regardless: never a blended cross-platform completion figure. When they land they are
-per-release rows, not an average.
+**Achievements stay per release in the Library tab**, when supplied. Never show a blended
+cross-platform completion figure.
 
 ### 10.6 Text is selectable
 
@@ -1310,18 +1435,11 @@ Everything else stays in the modal's own tree — the IGDB search and its candid
 (§10.9), the per-field editor (§10.10), the list ticks — because those are surfaces to read
 and type in, where a hand-drawn ring per control would be the whole cost of the surface.
 
-**The screenshot lightbox is an overlay, not a popup.** §10.7's ban is on popups: a popup is
-its own root with no adorner layer, so `FocusAdorner` draws nothing inside one and every ring
-would have to be hand-drawn per control. The detail modal is not a popup either —
-`MainWindow.axaml` hosts `GameDetailsView` as a child spanning all columns of the window's own
-`Grid`, and that is exactly why its focus rings work. The lightbox is the same pattern one
-layer up: an ordinary child of that same Grid, declared after the modal so it draws over it, in
-the window's visual tree. The rings draw there for the same reason they draw in the modal, and
-nothing is hand-drawn. The lightbox is therefore not a second exception alongside the More
-menu. The menu is an exception because it is a popup that draws its own mark; the
-lightbox needs no exception at all. A `Popup` or a `Flyout` here would be the mistake, and it
-is held by a test (`tests/Winnow.Tests/Enforcement/ScreenshotLightboxStructureTests.cs`) rather
-than by review, because the failure is silent — the rings would simply stop drawing.
+**The screenshot lightbox is an overlay in the main window's visual tree.**
+`MainWindow.axaml` hosts it after the details modal, spanning the window's root Grid.
+Its controls retain the window's focus infrastructure. Do not use `Popup` or `Flyout`:
+those have separate roots without an adorner layer.
+`ScreenshotLightboxStructureTests` enforces this structure.
 
 **The ground.** The `ModalScrim` token, the same one the modal's own scrim takes, lying over
 that scrim rather than replacing it. Two stacked passes of the theme's Well at 84% compose to
@@ -1344,12 +1462,9 @@ Each button is 36px square, with a centered vector X or a 24px chevron icon.
 The image and position caption are centered together, with the count 8px below the image.
 The overlay keeps at least 24px of outer space.
 
-**The decode.** `CoverImaging.WidthBuckets` used to top out at 640 pixels, so the in-modal hero
-was already a 640-wide decode upscaled — at 3840x2160 it was drawn 1148px wide from a 640px
-bitmap. A 1280 bucket was added so the lightbox draws the shot at its native size rather than
-at a two-times upscale. 1280 is the native width of `t_screenshot_huge`, the only asset the
-application draws larger than a cover, and nothing else reaches it; decoding never upscales
-past the source, so a 1200x1800 Steam capsule asked for at 1280 still decodes at 1200.
+**The decode matches the displayed size.** `CoverImaging.WidthBuckets` includes 1280 for
+IGDB's `t_screenshot_huge` rendition and larger buckets through 3840 for other artwork.
+Decoding never upscales past the source dimensions.
 
 **Controls and keyboard.** A close control, and back/forward navigation across that game's
 shots. Navigation wraps in both directions, the answer §10.3 already gives for Up and Down in
@@ -1390,8 +1505,7 @@ identifiers are inside the Library tab's collapsed disclosure.
 
 A patched game's `Patch notes` button on an Activity update row, and the `All patch notes`
 row in More, open the notes in an embedded browser window rather than in the system browser.
-Reading an update no longer leaves the app. The host is the same WebView2 browser Winnow
-already ships for the Epic consent and Steam sign-in windows, differently constrained.
+The host uses Winnow's WebView2 browser with a policy limited to reading patch notes.
 
 **It is a separate top-level window, not an overlay.** The reason is the airspace problem the
 sign-in window already records: a hosted native browser HWND paints over Avalonia content
@@ -1443,9 +1557,9 @@ The whole decision is `PatchNotesPolicy`, built on the same `AuthFlowPolicy` the
 and the Steam account-page harvest run on, so there is one origin mechanism in the application
 rather than two.
 
-**§10.3's rule is unchanged and still first.** Every outbound target is built by
-`GameLink.Create`, and a target that fails validation renders no button. The panel's gate is a
-second gate after that one, not a replacement for it.
+**Validate links before rendering and navigation.** `GameLink.Create` rejects unsafe outbound
+targets before a button is shown. `PatchNotesPolicy` then restricts which validated web pages
+may render inside the browser.
 
 **Nothing is injected into the page.** No host objects, no web-message channel, no developer
 tools, no context menu, no downloads, and every permission request is denied. The browser
@@ -1457,8 +1571,7 @@ there is nothing in the panel for it to talk to.
 stating only that there is no page to read — not that nothing shipped, which is the same
 distinction §10.4 draws for its own empty state.
 
-**Where the panel is unavailable** — no WebView2 runtime on the machine — the buttons keep
-their prior behaviour and open the system browser. Nothing is greyed out and nothing announces
+**Where the panel is unavailable** — no WebView2 runtime on the machine — the buttons open the system browser. Nothing is greyed out and nothing announces
 itself.
 
 ### 10.9 IGDB override
@@ -1525,28 +1638,19 @@ per §2: attention, not a destructive act.
 written, the control says so in words in a status field. No spinner and no `Transitions`, so
 reduced motion has nothing to disable and the surface is identical in both motion settings.
 
-**A live IGDB pin outranks the store capsule for that work.** The cover-key precedence is:
-(0) user-set art, when `works.cover_url` holds a `winnow://user-art/<token>` reference
-(migration 0027, §10.10); (1) a live IGDB pin on this work, when the work's `cover_url`
-yields an IGDB image id; (2) the Steam portrait capsule for this release's appid; (3) the
-image id in the work's stored `cover_url`. Rung 0 outranks the pin because under the
-field-source model the value in `cover_url` *is* the user's — there is nothing for it to
-outrank — and a later metadata fetch replaces that value rather than layering over it. A user
-reaching for the wrong-game control is not only saying the metadata is wrong, they are saying
-the storefront art is wrong, so the pin wins. The ladder is not the grid's alone: both
-surfaces that derive a game's art from a release use it — the library load and the Merges
-queue. The queue previously had its own store-first ladder with neither rung 0 nor rung 1, so
-an imported cover drew on the grid and in the details modal but not in the queue — the same
-failure this paragraph already settled for the store capsule. The queue reads the pin set once
-per load, and reads the pin off the release's own work row, never the resolved work: the pin
-and the `cover_url` it rewrote are columns of the same row, and resolving through the
-same-game map would pair one work's pin with another work's URL. The assignment service is
-optional on the queue: without it rungs 0, 2 and 3 stand and only rung 1 is lost. A pinned
-entry that IGDB gave no cover keeps the store capsule — the user is no worse off than before
-the pin, and a placeholder tells them less than the wrong art. Nothing is evicted from the
-cover cache: a `CoverKey.Igdb` names the artwork asset itself, so pinning moves the tile to a
-key that has never been fetched, and clearing returns it to the Steam key whose cached bytes
-are still the right bytes.
+**One shared cover policy serves desktop, fullscreen, merge rows and work previews.**
+It chooses the first available source in this order:
+
+1. User-set art: a `winnow://user-art/<token>` reference in the work's `cover_url`.
+2. A live IGDB pin on that work, when its `cover_url` yields an IGDB image id.
+3. The Steam portrait capsule for the release's appid.
+4. The stored IGDB image or enabled-plugin artwork reference in `cover_url`.
+
+The pin and URL must come from the same work row, including in the merge queue. A pin
+without a cover falls through to the store capsule. Without an assignment service, the pin
+step is unavailable. Provider availability is part of the shared policy. Image keys identify
+the artwork itself, so changing a pin selects a different cache key without evicting valid
+images.
 
 **Clear is drawn only while a pin stands**, read when details opens. It lives in Library's
 Installation & identifiers disclosure. Clearing stops the pin without rewriting metadata,
@@ -1572,23 +1676,17 @@ two are the same game. The idiom is reused rather than invented because it is th
 judgement: comparing one game against another by its art, title and year. The border is `Line`,
 not `Amber`, per §2: the collision refusal is a failure, but the offer is a question.
 
-Accepting writes the same `same_game` identity link the Merges queue writes —
-`IIdentityLinkRepository.LinkAsync`, kind `same_game`, source `user` — with the holder as
-the parent. It is the parent because it carries the `igdb_id`, which is the first rung of
-the Merges queue's own precedence ladder, and its metadata is the entry the user was reaching
-for. Nothing is pinned: pinning the child to an id another row holds is what the UNIQUE
-constraint refused, so the link is the whole answer. The user confirms in place and is never
-sent to the queue. `game-library-design.md` §5.3 permits a hard external-id join to auto-merge;
-naming an exact IGDB id is a hard join, and the in-place confirmation — which names and shows
-the other game — supplies the review a queue would otherwise provide.
+Accepting writes `IIdentityLinkRepository.LinkAsync` with kind `same_game` and source `user`.
+The existing IGDB holder becomes the parent because it carries the metadata the user selected.
+The user confirms in place; no second queue visit is needed. The operation creates a link
+without trying to assign the same unique IGDB id to two works.
 
 Declining writes nothing — no pin, no link — and restores the bare `Amber` refusal sentence, so
 the user still knows why the assignment did not land. The candidate list stays for another try.
 
 On success the library reloads and the modal reopens on the game the two now are, carrying a
 confirmation. The offer is additive and degrades cleanly: with no identity-link repository
-registered, no holder found, or a holder that resolves to this same work, the collision draws
-the refusal sentence it drew before the offer existed.
+registered, no holder found, or a holder that resolves to this same work, the collision shows the refusal sentence.
 
 ### 10.10 Editing a field by hand
 
@@ -1647,23 +1745,26 @@ motion settings (§8). Refusals are `Amber`, per §2: attention, not a destructi
 controls stay in place under the sentence, so the retry is where the failure was. One busy flag
 for the whole editor: a second write cannot start while one is in flight.
 
-**Saving art reloads the library and reopens the modal on the same ownership**, carrying its
-confirmation across — the same arrangement §10.9 already describes for an assignment, and for
-the same reason: the stored value becomes a user-art reference, the tile's cover key is
-computed when the library loads, and only a reload draws the new art on the wall. **A text save does not reload**, and does not need to: the save hands the library the field
-key and the value as stored, after the editor's own rows refresh. Only `name` is acted on; the
-other three text fields are drawn nowhere outside the modal, which has already refreshed
-itself. The library renames every live tile behind that work — several when a same-game link
-group sits behind one work — and with it the grid tile, the list-view row, the modal headline,
-the tile's filterable row (so search and every live list follow), and any feed card, which
-borrows the same tile instance. The provisional-name badge is cleared, because a name save
-clears `works.name_is_provisional`. The placeholder gradient is recomputed, because it is
-derived from the title. The current sort and filter are re-applied in the same pass, so a
-renamed game takes its new place in the order immediately. Every draft in the other five rows
-survives, the modal stays open on the same ownership, and the editor stays open — which
-is precisely what a reload would have cost. The seam is optional like every other seam on this
-modal: unwired, the save is exactly what it was. A carried confirmation appears in the modal's persistent footer while the tools are closed,
-so a successful art save is visible after the rebuilt details returns to its selected tab.
+**Every saved field refreshes its visible facts.** Text and art saves reload the library's
+read projections, including summary, publisher, release year, title and artwork. Sort order,
+filters, live-list counts and feed cards follow those committed values. The same open details
+and editor instances remain in place, with the selected section and every other field draft
+intact. Artwork refreshes its leases and leaves a confirmation available when the editor
+closes. Fullscreen field actions and source labels follow the same observable state as desktop.
+
+**Background refresh also reaches open details.** Updates, acknowledgement state, recorded
+play, reception, screenshots, acquisition and saved journal rows refresh together after the
+read completes. The tracker keeps its selected view, and an unfinished journal note keeps its
+draft and focus. Each surface retains the current section and restores an existing focused
+update or journal entry by identity when rows are rebuilt. A new patch cannot update only the
+badge while leaving its evidence absent from Updates. The editor and artwork seams remain
+optional; an unwired host still saves through its configured services.
+
+**The latest requested library wins.** A slower earlier refresh cannot restore games excluded
+by the current maturity, account or non-game settings. Tiles, rail counts and details use the
+same winning publication. Selection survives by ownership when still visible; details close
+when that ownership is excluded. Closing details also retires an unfinished open request, so a
+late read cannot reopen it. Desktop and fullscreen share this behavior.
 
 **Optional in the way every seam on this modal is.** With no edit service registered, or a tile
 that resolves to no work id, the link is not drawn at all and the modal is exactly what it was.
@@ -1734,6 +1835,14 @@ stop**, at the 40% opacity §6 already gives a zero-count bucket. **An option th
 stays live whatever its count says:** the way out of an empty result has to be the control that
 caused it.
 
+Selected rules survive when their matching games or metadata disappear. A missing store or
+facet remains checked with a zero count and can still be cleared; reopening a saved live list
+retains that restriction even if this view has never seen a matching game. Facet names come
+from the full stored vocabulary, with `Unavailable value (id)` when that name is no longer
+known. An active release-year rule keeps its fields available when no dated games remain.
+Desktop checkboxes and fullscreen option buttons use the same residual counts and availability.
+Opening or saving an unchanged list never drops a rule because its current count is zero.
+
 **Order freezes on the first counts.** A long group leads with its commonest options and then
 holds that order for the session. Re-sorting on every recount is the obvious reading of
 "commonest first" and it is wrong: every tick anywhere on the panel moves every count, so the
@@ -1783,10 +1892,8 @@ two edges:
 
 **The distinction is never carried by the edge alone:** each chip's tooltip says it in words.
 
-**The open list leads the bar, ahead of the bucket.** It is not a rule but the place the rules
-belong to, and "which live list am I in" is the question the strip previously could not answer.
-The kind label is on the chip rather than only in a tooltip for the same reason §12.1 puts it
-in a heading rather than a dot: a word survives being read badly.
+**The open list leads the bar, ahead of the bucket.** Its chip states the list name and kind
+visibly so the user can identify the current list without opening a tooltip.
 
 **The bar carries at most four actions at once**, and membership actions and list metadata are
 mutually exclusive: with rows selected you are editing what is *in* the list, with nothing
@@ -1797,11 +1904,9 @@ selected you are editing the list itself.
 `genre` · `theme` · `game mode` · `store tag` · `features` · `controller` · `store` ·
 `on disk` · `release year`.
 
-**Every group here is a group a live list can store.** That is the rule. `FacetKinds` also
-holds player perspective, which `LibraryFilter` has no field for, so it is not drawn: a rule
-that vanishes the moment you save it is worse than a rule you never had. `FeatureIds` and
-`ControllerIds` were *added* to the filter record rather than the groups dropped, which is the
-same rule pointing the other way.
+**Every visible group can be saved in a live list.** `LibraryFilter` stores features and
+controller support as well as the other groups above. Player perspective is absent because
+the filter record does not store it.
 
 Two absences are load-bearing:
 
@@ -1818,6 +1923,11 @@ exactly. A drawn year distribution would be a second visual language competing w
 columns away (§1). The watermarks are the real bounds of the library, so an empty field still
 says what there is. **A release with no year does not match a bounded range** — an absent fact
 is not evidence.
+
+Both surfaces accept four-digit years from 1000 through 9999, inclusive, and the lower bound
+must not exceed the upper bound. Empty fields remove their bounds. Invalid or incomplete
+text keeps the last valid range active on desktop and prevents fullscreen Apply; both show
+the same correction message. Correcting the text or clearing the fields resumes filtering.
 
 ---
 
@@ -1839,9 +1949,8 @@ bar is **`Save as live list`**.
    Unplayed adventures 342
 ```
 
-**The kinds are told apart by heading, not by a coloured mark.** A pip beside a count was the
-obvious move and the wrong one: the rail already has exactly one dot, the `Flare` pip on
-`Patched`, and a dot's meaning survives precisely as long as there is only one of them.
+**The kinds are identified by headings.** Reserve the rail's `Flare` pip for Patched;
+list kinds need no coloured mark.
 
 Rows take the bucket treatment — hover fill, 2px `Volt` selection edge — with one difference:
 **the name is body type, not Display S caps.** Bucket names are the application's own
@@ -1857,8 +1966,11 @@ or live list."* The footer keeps **New list** on the left and the settings cog o
 New list pairs its label with a vector list-plus icon and offers **Static list** (choose games yourself) and **Live list** (save the current
 library filters, with membership updating automatically), with a tooltip explaining each.
 
-**The rail's grammar, which any rearrangement must preserve:** everything above the divider is
-a subset of ALL GAMES; below it, content precedes work queue precedes configuration.
+**The desktop rail distinguishes screens from library subsets.** FEED and MERGES open screens;
+ALL GAMES opens the whole library above the divider. Buckets below it narrow the library.
+ACCOUNT contains the statistics destination, followed by LISTS and LIVE LISTS. Creation and
+configuration actions sit in the footer. Keep these roles clear when changing the grouping;
+fullscreen uses its own navigation hierarchy.
 
 ### 12.2 A list composes, a live list restores
 
@@ -1913,7 +2025,11 @@ creation. Long names truncate with their full name in a tooltip. Cancel / confir
 Focus stays within the modal and returns to its invoking control when it closes. Adding to
 an existing or new list preserves the current view, scroll position and selection.
 
-`Enter` confirms, `Escape` cancels, and focus follows the prompt into its field. The save
+`Enter` confirms, `Escape` cancels, and focus follows the prompt into its field. While a save
+is pending, input, choices, confirmation and cancellation pause together. An error retains
+the prompt and its draft with actionable feedback; successful completion closes it. Both
+desktop and fullscreen offer the new-list confirmation alongside existing-list choices.
+Leaving a fullscreen page prevents a late completion from navigating another page. The save
 prompt opens with the rules read out as a suggested name ("Started · RPG"), because a rail
 full of "Live list 3" is a rail nobody reads.
 
@@ -1930,6 +2046,14 @@ Feed cards and every game details view also offer **Add to list**, opening the s
 for that game independently of library selection. Existing static lists and a new-list name
 are available; live lists remain excluded. Adding a game from details refreshes its membership
 checkboxes and leaves details open. Escape dismisses only the list modal.
+
+List counts, names, rules and order change after the save succeeds. A failed change keeps
+the last saved state and its open context. Desktop membership checkboxes and fullscreen
+membership buttons show **Saving list changes…** while a write is pending; another toggle
+records the latest choice and saves it after the current write. If a write fails, the control
+returns to the saved membership and shows **Couldn't save list changes. Try again.** beside
+the control. List actions use the same error copy beside the library actions, while modal
+actions keep their prompt and draft. Refreshing the library preserves a pending choice.
 
 Feed feedback occupies a dedicated right-hand column: bookmark-plus **Add to list** in Azure,
 clock **Not now** in Amber, and circle-minus **Not interested** in TextDim. Each 32px icon
@@ -1959,7 +2083,7 @@ still labelled as the list.
 and two year fields, and typing "f" into "Find a tag" would otherwise close the panel being
 typed into.
 
-### 12.5 Motion, and the command bar that had to give way
+### 12.5 Motion and command-bar sizing
 
 Nothing here animates except the 120ms fill cross-fade the rail rows already had, and **every
 `Transitions` value is set through a style, never as a local value on an element.** A local
@@ -1970,17 +2094,13 @@ it buys nothing.
 
 The command bar's search box is a **star-sized column among Auto ones**, and the window's
 default width is 1280. A Grid satisfies its Auto columns before its star one, so the search box
-is the only thing that gives way when the panel takes 276px out of the row. At a fixed 360 it
-was the `Filters` button that got pushed off the right edge — the one control that must never
-be unreachable, because it is the way back.
+shrinks when the panel takes 276px out of the row, keeping the Filters button reachable.
 
 ---
 
 ## 13. Reserved
 
-This section number is retired. It held a register of open design gaps found while building the
-Stores panel; four of them are now TASK-79 through TASK-82, one is TASK-42, and two were closed
-in place — focus is §10.7's brush swap, and translucency is §14.
+Kept for stable section references. Delivery status and open work live in Backlog.
 
 ---
 
@@ -2131,20 +2251,12 @@ word, `SOLID`, and not an absence.
 Without saved preferences, Windows starts at 30% Acrylic and other platforms at solid.
 Authored theme defaults may override the quantity. Saved preferences take precedence.
 
-#### What fixes the ground
+#### Ground and pane limits
 
-The ground answers to one thing: the caption, which carries the wordmark and three window
-glyphs and is the only reading matter on it. Walked per theme against white:
-
-| Ground opens to | AA ceiling (Winnow / Nightshift / Tungsten / Box art) | |
-|---|---|---|
-| 0.12 | 29 / 30 / 30 / 30 | Nightshift loses a point |
-| 0.14 | 29 / 31 / 30 / 30 | the marginal value — two themes exactly at par |
-| **0.15** | **30 / 31 / 31 / 31** | **chosen** |
-| 0.20 | 32 / 33 / 33 / 33 | more range, less window |
-
-`0.15` is the round step past the boundary, it buys 1 to 5 points on top, and it fixes the
-two figures the rest of §14 derives from: **the ground admits 85%, a pane admits 35%.**
+`MinShellAlpha` is `0.15`: at maximum transparency the ground admits 85% of the backdrop.
+Panes admit 35%, with their own alpha derived from the ground's alpha so stacked surfaces
+produce that total. The caption is the only reading matter on the ground in floating layout;
+its measured AA ceiling is 30% for Winnow and 31% for Nightshift, Tungsten and Box art.
 
 #### The two ramps, and why they are not the same ramp
 
@@ -2243,8 +2355,7 @@ field or within 2px of a tile's antialiased edge. Not one pixel inside a tile ch
 compiler constant-folds the first into an `ImmutableSolidColorBrush`, whose colour cannot be
 written. A theme change works by writing `Color` on the brush objects the views already
 resolved — `StaticResource` looks up once and never again — so **a folded brush is a token the
-theme system silently cannot reach.** Measured, not assumed: the first build had thirty-five of
-them, and the symptom was a window that half repainted.
+theme system silently cannot reach.** Use the `Color` attribute for mutable theme brushes.
 
 ### 14.6 Which material, and how far it reaches
 
@@ -2291,23 +2402,13 @@ of an ordinary dark cover, after which a dimmed tile reads as a hole punched in 
 The wall does not have to hold across the whole slider — past the AA mark the user has already
 been told the labels stop clearing 4.5:1 — **it has to not fail first:**
 
-| Per theme (Winnow / Nightshift / Tungsten / Box art) | |
-|---|---|
-| The reported AA ceiling | 30 / 31 / 31 / 31 |
-| Field inverts the ramp, at `MinWallAlpha` `0.60` | 25 / 40 / 33 / 38 — **Winnow fails early** |
-| Field inverts the ramp, at `0.62` | 27 / 42 / 35 / 40 — the loosest floor that clears all four |
-| Field inverts the ramp, at `0.65` | **34 / 47 / 41 / 44** — chosen |
+`MinWallAlpha` is `0.65`. Against white, the field's polarity limit is 34% for Winnow,
+47% for Nightshift, 41% for Tungsten and 44% for Box art. Each is above the reported AA
+ceiling (30%, 31%, 31%, 31%), so text contrast sets the first warning.
 
-`0.65` is taken over the marginal `0.62` because it buys 4 to 16 points of margin on top.
-**Polarity clears the mark by that margin in every theme**, so `MinWallAlpha` survives
-untouched.
-
-**Measured on the running window, this is not only a white-wallpaper argument.** At 45% over a
-real photograph the acrylic composite behind the wall back-solves to `#8E6251` under the rock
-and `#9B827D` under the sky. At the pane tier the field lands at luminance **0.020–0.024**,
-under the dormant capsule's **0.031** and under the rail beside it at **0.036**. At the old
-chrome tier's reach the same field would land at **0.033–0.045**: above the dormant capsule,
-and level with or above the rail, losing both invariants at once on an ordinary desktop.
+The recorded 45% Acrylic capture over a photograph put the pane field at luminance
+0.020–0.024, below the dormant capsule's 0.031 and the adjacent rail's 0.036.
+These are measurements of that capture, not guarantees for every wallpaper or theme.
 
 **One slider, not two.** Two percentages on one screen that mean different things is a worse
 screen than one quantity with a stated relation, and the pane's share is forced by the ground's
@@ -2342,57 +2443,36 @@ is §10.7's brush swap on a border whose thickness never changes; thickening it 
 whole command bar every time the caret landed. The ring clears AA on the field to
 **89 / 94 / 91 / 100** per cent of the slider against white.
 
-**The pane's ink does not walk, and it must not.** A chrome ink ramp was a compensation for a
-tier that opened to 70% and paid for it with a darker ink. `TranslucentSurface` is *below*
-`Ground` in three of the four themes, so at the alpha the rail now shares with the art field a
-walked rail would sink under the field beside it: measured over white, the walked rail is at or
-below the wall at **87 to 89 of the 101 slider positions** in Winnow, Nightshift and Tungsten;
-the unwalked one at none of them, in any theme.
-
-§14.2's recess — the art hangs *below* the chrome — is therefore carried by the **ink**:
-`Surface` over `Ground`, both unwalked, at one shared alpha, in every theme at every position.
-`TranslucentSurface` stays on the record and in the theme format so that no user theme needs
-editing; nothing reads it.
+**Pane inks stay at their opaque palette values while alpha changes.** `Surface` over
+`Ground`, at the shared pane alpha, keeps the art field recessed below the chrome in every
+theme. `TranslucentSurface` remains accepted in the theme format for compatibility but does
+not affect rendering.
 
 **Three surfaces do not open at all.** `TileGround`, because §14.4 is construction. The
 popovers, because a flyout is its own popup root. And **polarity does not reach the panes**:
-the merge queue is the only pane that shows cover art, it shows it inside an opaque
-`Border.card`, and it applies no dormancy ramp, because the question there is identity and not
-recency.
+the desktop merge queue shows its cover art inside an opaque `Border.card`. Its thumbnails
+use the shared dormancy ramp on that opaque ground, as specified in §6. Fullscreen Merges
+uses text proposals and controller actions; opening a member uses the normal game details
+presentation. Pane translucency and cover dormancy remain separate controls.
 
 ### 14.8 The honest costs
 
-**Two panes at the same tier can still be in different states.** `appearance.wall` gates the
-art field and the screens beside it, while the rail and the filter panel follow the slider
-alone, so with the reach off you get a translucent rail beside a solid library pane. It is not
-fixed here because the alternative is worse: the flush layout has no visible ground, so gating
-the side panes on the reach setting too would leave a fresh install with transparency up
-showing nothing translucent but a 36px lip. The Appearance screen says what the setting does in
-words instead.
+**Transparency reach affects the library pane separately from the side panes.** With
+`appearance.wall` off, the library and its replacement screens stay solid while the rail and
+filter panel remain translucent. The Appearance labels describe this difference.
 
-**The typed text in the filter panel's fields runs out at 96% and 97%** on Winnow and Box art,
-four points short of holding AA across the whole slider, because the panel's field paints no
-fill at all and the ink under the caret sits on the panel's own `Surface` rather than on a
-`Ground` step cut into it. Four points at the very top of the track, on a pure white wallpaper,
-three times past the mark. The only fill that would buy it back is one that makes the field
-less open than the pane around it.
-
-**The caption gives up seven points of its own range in the floating layout** — 38% to 31% on
-Nightshift. That is the trade a ground and a caption that are one field buy, at the price of the
-caption being measured on the most open surface in the window.
+**At extreme transparency, some text falls below AA against white.** Filter-field text
+reaches its limit at 96% in Winnow and 97% in Box art, beyond the reported warning threshold.
+Floating caption text sits on the most open surface and sets the lower shared AA ceiling;
+§14.3 lists the current per-theme limits.
 
 ---
 
 ## 15. The floating layout
 
-**Floating is the default arrangement.** The panes may meet edge to edge as
-they always have, or the **content** regions may detach into rounded cards with a uniform gap
-around each, on a window ground that runs unbroken behind the caption and every gap.
-
-**It is structure, and the two settings it sits beside are not.** §14's theme is *material* and
-its slider is *quantity*. This is neither: it applies in every theme at every position on the
-slider including `SOLID`, and it changes no colour that either of those two was measured
-against.
+**Floating is the default arrangement.** Content panes sit in rounded cards with uniform
+gaps. Flush places panes edge to edge. Both layouts work with every theme and transparency
+setting, including solid. Layout changes geometry independently of colour and translucency.
 
 ### 15.1 What floats, and what stays flush
 
@@ -2418,7 +2498,7 @@ and on nothing else. Three things follow:
   immediately under the caption.
 - **The caption is a lip**, which is all §9 asks it to be. It is the only strip left on the
   window ground.
-- **A visibility rule became a fact of composition.** The merge queue, Stores, Library and
+- **The library controls belong inside the library pane.** The merge queue, Stores, Library and
   Appearance replace the library *specifically* so they do not sit under a command bar whose
   search and sort mean nothing to them. The bar is inside the library's own `Border`, so no
   arrangement of those panes can put a settings screen under the library's controls, and there
@@ -2449,10 +2529,8 @@ gap      the art    the chrome
          field      panes
 ```
 
-**§5.1's polarity is untouched.** The wall island is `WallGround` exactly as in the flush
-layout, and the capsules sit on exactly the field they were calibrated against. What is new is
-that the field now has something *below* it, which is a fact about the gaps and about nothing
-else.
+The wall island uses `WallGround` in both layouts, keeping the same field beneath the
+capsules. Floating adds the darker gap outside that island.
 
 ### 15.3 Geometry: 8 and 8, and why each
 
@@ -2461,26 +2539,22 @@ reads as a gap rather than as a badly-drawn rule at 100% scaling, and — the pa
 it — **it is exactly the width of the resize band §9.1 measures.** One number solves two
 problems: a pane inset by it is a pane none of whose controls the OS can eat.
 
-**One pane owns each gap.** Half the gutter from each of two neighbours is wrong for a reason
-that shows up in exactly one state: the filter panel is not always open, so a library pane
-carrying half a gutter on its right came out with four pixels between it and the window edge
-whenever the panel was closed. So the rail gives up its right margin, the library pane owns
-both of its own gutters, and the filter panel gives up its left one. **Every gap is 8 in every
-state, and no gap is the sum of two margins that can go out of step.**
+**One pane owns each gap.** The library pane carries both horizontal gutters; the rail
+has no right gutter and the filter panel has no left gutter. Every gap stays 8px whether
+the filter panel is open or closed.
 
 **The radius is 8px**, above the tile's 6 and the control's 4. Radius reads as a proportion of
 the corner it turns: 6px on a 750px-tall column is a chamfer, not a round.
 
-**The rail's column becomes `Auto` with the pane carrying its own 220.** Taking the margins out
+**The rail's column is `Auto`, with the pane carrying its own 220px width.** Taking the margins out
 of a fixed 220 column would take them out of the rail's content, so every label in the rail
 would move when the layout changed. The column widens; the rail does not narrow.
 
-### 15.4 §9.1 is retired here
+### 15.4 Scrollbar inset
 
-See §9.1: `ScrollBarEdgeInset` is about which edge a control is on, and floating moves every one
-of these scrollbars onto a pane's edge rather than the window's. **It is dropped under this
-layout and kept under the other**, which is the rule doing what it says rather than an exception
-to it.
+Floating panes already sit beyond the window's 8px resize band. Their scrollbars therefore
+use no additional `ScrollBarEdgeInset`. Flush layout keeps the 10px inset for scrollbars
+that touch the window edge; interior scrollbars need none.
 
 ### 15.5 Where the setting lives
 
@@ -2491,17 +2565,9 @@ why they are not drawn there at all. Layout is not a qualifier of anything, so a
 inside that card would say it depended on a quantity it does not depend on. Structure is also
 what you read first.
 
-**It is drawn the way THEME is drawn and not the way the qualifiers are.** A qualifier is a
-*consequence* and the honest way to show a consequence is to say it in a sentence; a layout is a
-*shape*, with no colour and no number in it, so **the miniature is not an illustration of the
-setting — it is the setting at 1/8 scale.** Two cards, one template, and exactly the four values
-the layout changes bound out of the view model: the ground, the margin, the radius, and where
-`Line` falls.
-
-**A layout card is repainted from whichever theme is up.** A theme card draws its own fixed
-palette, because the theme choices ask *which room*; two layout cards ask *what would
-this arrangement look like in the room I am already in*, and a card frozen in the default
-palette would answer a question nobody asked.
+Two miniature cards preview the layouts at 1/8 scale. They share one template and bind
+the layout's ground, margins, radius and border placement. Both repaint with the current
+theme so they preview the arrangement the user will receive.
 
 Floating appears first, to the left of Flush.
 Persisted under `appearance.layout` (`flush` / `floating`; unset reads as floating). The debug
@@ -2513,8 +2579,7 @@ capture flag is `--layout=flush|floating`, session-only and sealed against writi
 every other token is bit-for-bit identical between the two layouts, at every position on the
 slider, with the wall in and out.
 
-The two layouts no longer fail in the same place, so **`Colorimetry.AaCeiling` walks both and
-reports the worse** (§14.3). The polarity floor and the dormancy ramp are layout-free.
+**`Colorimetry.AaCeiling` measures both layouts and reports the lower ceiling** (§14.3). The polarity floor and the dormancy ramp are layout-free.
 
 ### 15.7 The honest costs
 
@@ -2539,8 +2604,8 @@ Two, and neither is fatal:
 
 ## 16. The settings surface
 
-The gear at the foot of the rail opens `SETTINGS`, which holds four screens in this order:
-**PLATFORMS**, **LIBRARY**, **APPEARANCE**, **APPLICATION**. Each is drawn the same way: a
+The gear at the foot of the rail opens `SETTINGS`, which holds six screens in this order:
+**PLATFORMS**, **LIBRARY**, **APPEARANCE**, **METADATA & ARTWORK**, **PLUGINS**, **APPLICATION**. Each is drawn the same way: a
 48px header lining up with the command bar and the filter panel's header, its own scroll,
 cards on `PaneGround`.
 
@@ -2557,7 +2622,7 @@ A successful sign-in does not add a second confirmation block; actionable notice
 It is not under APPEARANCE, which changes material and layout and no data. It is not under
 PLATFORMS, which is about connecting to a store; this is about what to do with what arrived.
 
-APPLICATION holds operating-system behavior and application build information.
+APPLICATION holds operating-system behavior, setup replay and application build information.
 Its **NOTIFICATION AREA** card has separate, off-by-default toggles for hiding Winnow when it
 is minimized and keeping it running when its window is closed. The notification-area menu
 offers **Open Winnow** and **Exit**; Exit always closes the process even when close-to-tray is
@@ -2571,7 +2636,47 @@ switch the current view. Windows sign-in and explicit background launches retain
 behavior. Exiting fullscreen restores the desktop, and reopening a hidden window does not
 reapply the startup preference.
 
-Its **ABOUT WINNOW** card shows **Version** and **Source commit** as selectable Data-font
+METADATA & ARTWORK groups credentials and automatic backdrop preferences. Its **IGDB METADATA**
+card offers **Get IGDB credentials**, labelled **Client ID** and
+**Client secret** fields, **Save credentials** and **Remove saved credentials**. The secret
+is masked, is cleared after saving or leaving the form, and is never loaded back into the
+field. A polite status line reports saved configuration and failures without claiming that
+Twitch has validated the credentials. Copy explains secure local storage and immediate
+activation, with a metadata refresh queued in the background. Removing saved credentials
+preserves any environment or local configuration fallback.
+Fullscreen Metadata & artwork opens a dedicated **IGDB metadata** page with the same model and
+actions, large fields and explicit controller focus rows. A opens the existing on-screen
+keyboard for either field; secret entry retains its masking.
+
+The separate **PLUGINS** tab shows one card per discovered plugin, with its name, version,
+description, supported features and status. **Open plugins folder** opens the installation
+directory. ZIP packages unpack automatically at startup; users may also place unpacked packages
+there. Failed ZIP imports appear alongside other package diagnostics. Explain that installing and changing enablement requires a restart and that plugins
+run with Winnow's access to the device. A malformed or incompatible package states its failure;
+only a package with a valid manifest offers configuration controls.
+
+Winnow generates labelled text fields and masked secret fields from each plugin's manifest.
+Optional **Get** links open the provider's HTTPS setup page. **Save settings** persists the
+fields and clears secret drafts; a blank secret keeps the saved value. Each secret has a
+**Remove saved secret** action, available only when a secret is stored. A polite status line
+reports failures without exposing credentials or claiming that the provider validated them.
+Secrets also clear when leaving the settings surface. **Enable plugin** / **Disable plugin**
+states the next launch's choice and keeps a visible restart notice while it differs from the
+running state. **Refresh now** is available for enabled, loaded plugins. SteamGridDB uses this
+same generated form for its API key.
+
+Fullscreen lists discovered plugins under Plugins and opens a dedicated page for
+each one. The page uses the same settings model with large generated fields, explicit focus
+rows, masked controller text entry and the same commands. Saving keeps the controls in place
+so controller focus can return to the same action. Plugins do not supply arbitrary UI trees.
+The fullscreen section strip scrolls horizontally when needed and brings the focused tab into view.
+
+The backdrop preference list includes **High-resolution Steam heroes**, discovered artwork
+plugins by name, and **IGDB**, with accessible move-up and move-down actions. Changes save immediately and apply to
+both presentations. Explain that saved backgrounds always come first and standard Steam
+heroes and covers remain fallbacks. This order governs artwork, not unrelated metadata fields.
+
+Application's **ABOUT WINNOW** card shows **Version** and **Source commit** as selectable Data-font
 text. The version retains prerelease labels; builds without source metadata say `Unavailable`
 for the commit.
 
@@ -2663,3 +2768,38 @@ own rule applied a second time. It removes the ownership, then the release only 
 other ownership hangs off it, then the work only when it has no releases left, so a store
 entry that later attached to the same release keeps its game. `Danger` is on its confirm
 button and on nothing else on the screen.
+
+### 16.4 First-run setup
+
+A new library opens a nine-step wizard: Welcome, IGDB, Steam, Epic, GOG, Theme, Application,
+Library and Ready. Every configuration step is optional. **Continue** advances, **Back**
+returns to the previous step, **Skip this step** advances without saving credential drafts,
+and **Skip setup** finishes the wizard from any step. Welcome uses **Get started**; Ready
+uses **Open my library**. Changes already saved remain in place when a step is skipped.
+The current step resumes after closing Winnow; finishing or skipping the whole wizard stops
+automatic display. Existing libraries are not interrupted on upgrade. **Run setup again**
+in Application settings reopens Welcome without resetting preferences.
+
+**Desktop.** The wizard sits over the client area, leaving the caption available. A compact
+header carries the step count, title and explanation; the body scrolls inside a bounded
+panel and navigation stays visible at the minimum window height. The normal shell cannot
+receive input underneath it. Keyboard Tab cycles inside setup. Embedded platform dialogs
+keep their own focus scope; Escape closes that layer first, then skips an optional setup
+step. Returning from fullscreen restores wizard focus. The controller keyboard appears above
+the wizard and preserves secret masking.
+
+**Fullscreen.** A separate setup page uses the TV typography and explicit controller focus
+rows. Each configuration step opens an existing provider or settings page; Back returns to
+the same wizard step. Root navigation and the quick menu stay out of the flow while setup
+is open. A selects, B goes back one layer or one wizard step, and the visible Skip controls
+remain available. Completing setup returns to Library. Changing presentation retains the
+shared cursor.
+
+**Existing controls retain their meaning.** IGDB has an explicit Save action, a masked secret
+and protected local storage; Save and its status remain visible outside the desktop field
+scroller. Continue is not a second Save button. Theme and preference controls save as they
+change. Copy explains that skipped items remain in Settings and that saved IGDB credentials
+take effect immediately with metadata fetching in the background. GOG describes local Galaxy discovery without inventing a sign-in flow.
+Steam's consent and disclosure text stays intact. Credential drafts clear when leaving a step
+or presentation. A failed preference save can be skipped; a failed progress write keeps the
+wizard open and explains how to retry.

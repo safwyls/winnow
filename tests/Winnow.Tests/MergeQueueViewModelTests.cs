@@ -42,6 +42,162 @@ public sealed class MergeQueueViewModelTests
     private static readonly SeedSide CivIvBeyond =
         new("Sid Meier's Civilization IV: Beyond the Sword", 2007, "2K");
 
+    [Fact]
+    public async Task Merge_covers_follow_the_saved_display_preference_and_live_changes()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueueCrossStoreTripleAsync();
+        var settings = new SettingsRepository(fixture.Factory);
+        await settings.SetAsync(DormancyRamp.DimCoversSettingKey, "false");
+        var ramp = new DormancyRamp();
+        var display = new DisplaySettingsViewModel(ramp, settings);
+        await display.LoadAsync();
+        using var queue = fixture.CreateViewModel(ramp: ramp);
+        await queue.EnsureLoadedAsync();
+        var rows = queue.Sections.SelectMany(section => section.Cards).SelectMany(card => card.Rows).ToArray();
+        Assert.NotEmpty(rows);
+        Assert.All(rows, row => Assert.Equal(1, row.DormancyAlpha));
+        var changed = new HashSet<MergeRowViewModel>();
+        foreach (var row in rows)
+            row.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(MergeRowViewModel.DormancyAlpha)) changed.Add(row); };
+
+        display.DimDormantCovers = true;
+        await display.PendingSave;
+        Assert.All(rows, row => Assert.Equal(0, row.DormancyAlpha));
+        Assert.Equal(rows.Length, changed.Count);
+        display.DimDormantCovers = false;
+        await display.PendingSave;
+        Assert.All(rows, row => Assert.Equal(1, row.DormancyAlpha));
+        await queue.LoadCommand.ExecuteAsync(null);
+        Assert.All(queue.Sections.SelectMany(section => section.Cards).SelectMany(card => card.Rows),
+            row => Assert.Equal(1, row.DormancyAlpha));
+    }
+
+    [Fact]
+    public async Task Preferred_platform_updates_hidden_cards_and_accept_uses_the_chosen_parent()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueueCrossStoreTripleAsync();
+        await fixture.QueuePairAsync(Witcher, WitcherGoty);
+        using var queue = fixture.CreateViewModel();
+        await queue.EnsureLoadedAsync();
+        var crossStore = Assert.Single(Section(queue, MergeSectionKind.Stores).Cards);
+        var unavailable = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards);
+        var original = unavailable.Header;
+        queue.SelectKindCommand.Execute(queue.KindOptions.Single(option => option.Kind == MergeSectionKind.Editions));
+
+        await queue.SelectPlatformCommand.ExecuteAsync(queue.PlatformOptions.Single(option => option.Store == "gog"));
+
+        Assert.Contains("gog", crossStore.Header.Side.Stores);
+        Assert.Same(original, unavailable.Header);
+        Assert.Empty(await fixture.LiveLinksAsync());
+        var parent = crossStore.ParentWorkId;
+        queue.ClearKindCommand.Execute(null);
+        await queue.AcceptExactCommand.ExecuteAsync(null);
+        Assert.All(await fixture.LiveLinksAsync(), link => Assert.Equal(parent, link.Parent));
+        Assert.Equal(2, (await fixture.LiveLinksAsync()).Count);
+    }
+
+    [Fact]
+    public async Task Preferred_platform_survives_reload_allows_override_and_can_be_cleared()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueueCrossStoreTripleAsync();
+        using var queue = fixture.CreateViewModel();
+        await queue.EnsureLoadedAsync();
+        await queue.SelectPlatformCommand.ExecuteAsync(queue.PlatformOptions.Single(option => option.Store == "epic"));
+        using var reopened = fixture.CreateViewModel();
+        await reopened.EnsureLoadedAsync();
+        var card = Assert.Single(Section(reopened, MergeSectionKind.Stores).Cards);
+        Assert.Contains("epic", card.Header.Side.Stores);
+        Assert.Equal("Prefer · Epic", reopened.PreferredPlatformLabel);
+
+        var steam = card.Rows.Single(row => row.Side.Stores.Contains("steam"));
+        card.Promote(steam);
+        await reopened.EnsureLoadedAsync();
+        Assert.Same(steam, card.Header);
+        await reopened.SelectPlatformCommand.ExecuteAsync(reopened.PlatformOptions[0]);
+        Assert.Same(steam, card.Header);
+        using var cleared = fixture.CreateViewModel();
+        await cleared.EnsureLoadedAsync();
+        Assert.True(cleared.PlatformOptions[0].IsSelected);
+        Assert.Equal(string.Empty, await new SettingsRepository(fixture.Factory).GetAsync(MergeQueueViewModel.PreferredPlatformSettingKey));
+    }
+
+    [Fact]
+    public async Task Preferred_platform_preserves_expansion_bases_and_completed_links()
+    {
+        using var fixture = new MergeQueueFixture();
+        var baseGame = await fixture.CreateReleaseAsync(CivIv, store: "steam");
+        await fixture.CreateReleaseAsync(CivIvWarlords, store: "epic");
+        var parent = await fixture.CreateReleaseAsync(Prey, store: "steam");
+        var child = await fixture.CreateReleaseAsync(Prey, store: "epic");
+        await fixture.LinkAsync(parent, child);
+        using var queue = fixture.CreateViewModel();
+        await queue.EnsureLoadedAsync();
+        var before = await fixture.LiveLinksAsync();
+
+        await queue.SelectPlatformCommand.ExecuteAsync(queue.PlatformOptions.Single(option => option.Store == "epic"));
+
+        Assert.Equal(baseGame.WorkId, Assert.Single(Section(queue, MergeSectionKind.Expansions).Cards).ParentWorkId);
+        Assert.Equal(parent.WorkId, Assert.Single(Section(queue, MergeSectionKind.Stores).Cards).ParentWorkId);
+        Assert.Equal(before, await fixture.LiveLinksAsync());
+    }
+
+    [Fact]
+    public async Task Preferred_platform_reincludes_matching_row_and_syncs_when_another_surface_reopens()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueueCrossStoreTripleAsync();
+        using var desktop = fixture.CreateViewModel();
+        using var fullscreen = fixture.CreateViewModel();
+        await desktop.EnsureLoadedAsync();
+        await fullscreen.EnsureLoadedAsync();
+        var card = Assert.Single(Section(desktop, MergeSectionKind.Stores).Cards);
+        var alternative = card.Rows.First(row => !row.IsHeader);
+        alternative.IsIncluded = false;
+        var platform = alternative.Side.Stores.Single();
+        await fullscreen.SelectPlatformCommand.ExecuteAsync(fullscreen.PlatformOptions.Single(option => option.Store == platform));
+        await desktop.EnsureLoadedAsync();
+        Assert.Same(alternative, card.Header);
+        Assert.True(alternative.IsIncluded);
+        Assert.Equal(fullscreen.PreferredPlatformLabel, desktop.PreferredPlatformLabel);
+    }
+
+    [Fact]
+    public async Task Preferred_platform_keeps_matching_header_when_multiple_rows_offer_it()
+    {
+        using var fixture = new MergeQueueFixture();
+        var (a, b) = await fixture.CreatePairAsync(Prey, PreyUnknown);
+        await fixture.AlsoOwnedOnAsync(a, "gog");
+        await fixture.AlsoOwnedOnAsync(b, "gog");
+        await fixture.QueueScoredPairAsync(a, b);
+        using var queue = fixture.CreateViewModel();
+        await queue.EnsureLoadedAsync();
+        var card = Assert.Single(Section(queue, MergeSectionKind.Stores).Cards);
+        card.Promote(card.Rows.Last());
+        var header = card.Header;
+        await queue.SelectPlatformCommand.ExecuteAsync(queue.PlatformOptions.Single(option => option.Store == "gog"));
+        Assert.Same(header, card.Header);
+    }
+
+    [Fact]
+    public async Task Saved_platform_without_a_matching_row_leaves_automatic_header_available()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
+        using var queue = fixture.CreateViewModel();
+        await queue.EnsureLoadedAsync();
+        var defaultParent = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards).ParentWorkId;
+        var settings = new SettingsRepository(fixture.Factory);
+        await settings.SetAsync(MergeQueueViewModel.PreferredPlatformSettingKey, "gog");
+        await queue.LoadCommand.ExecuteAsync(null);
+        Assert.Equal(defaultParent, Assert.Single(Section(queue, MergeSectionKind.Editions).Cards).ParentWorkId);
+        await settings.SetAsync(MergeQueueViewModel.PreferredPlatformSettingKey, "unknown-platform");
+        await queue.EnsureLoadedAsync();
+        Assert.True(queue.PlatformOptions[0].IsSelected);
+    }
+
     // ── When the screen is built ─────────────────────────────────────────────
     // TASK-152.5. Building it costs a full library snapshot with non-game
     // entries plus an expansion scan over every work, and the startup pipeline
@@ -2209,7 +2365,8 @@ public sealed class MergeQueueViewModelTests
             bool withResolveState = true,
             IMergeCandidateRepository? candidates = null,
             IReadOnlyList<long>? pinnedWorkIds = null,
-            ICoverLeases? covers = null)
+            ICoverLeases? covers = null,
+            DormancyRamp? ramp = null)
             => new(
                 candidates ?? Candidates,
                 Releases,
@@ -2223,7 +2380,9 @@ public sealed class MergeQueueViewModelTests
                 resolveState: withResolveState ? ResolveState : null,
                 igdb: pinnedWorkIds is null ? null : new PinnedWorksOnly(pinnedWorkIds),
                 clock: Clock,
-                post: action => action());
+                post: action => action(),
+                settings: new SettingsRepository(_db.Factory),
+                ramp: ramp);
 
         /// <summary>
         /// Sets one work's stored art reference through the real enrichment

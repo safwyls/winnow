@@ -1,7 +1,9 @@
 # Spike: Store actions per launcher
 
-> **Evidence, not a rule.** This document records how something was measured and is
-> never the place to look up what to do. The current rule is in `design-system.md` §10.3.
+> **Dated evidence.** Findings describe the builds and services observed on the dates below.
+> Current implementation choices are in [the build spec](../../game-library-design.md);
+> current interactions and layout are in [the visual spec](../../design-system.md).
+> This record is optional background.
 
 **Settles:** what Epic and GOG actually support for launch, install, store page and patch
 notes, and which Winnow-stored fields each route needs. Measured 2026-09-05.

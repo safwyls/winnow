@@ -1,7 +1,9 @@
 # Spike: WinExe console-flow regression procedure
 
-> **Evidence, not a rule.** This records the TASK-57 probe and the manual
-> regression procedure. `ConsoleAuthPrompt` owns the shipped behavior.
+> **Dated evidence.** Findings describe the builds and services observed on the dates below.
+> Current implementation choices are in [the build spec](../../game-library-design.md);
+> current interactions and layout are in [the visual spec](../../design-system.md).
+> This record is optional background.
 
 Date: 2026-09-06
 

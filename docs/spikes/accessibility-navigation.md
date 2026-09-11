@@ -1,5 +1,10 @@
 # Windows accessibility navigation
 
+> **Dated evidence.** Findings describe the builds and services observed on the dates below.
+> Current implementation choices are in [the build spec](../../game-library-design.md);
+> current interactions and layout are in [the visual spec](../../design-system.md).
+> This record is optional background.
+
 Measured on 6 September 2026, using Winnow's Avalonia 11.3.20 build and the Windows
 UI Automation client. The audit launches an isolated sample library with `--seed-sample`,
 `--no-sync` and a unique `--data-dir`, and closes only the process it started.

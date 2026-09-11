@@ -26,6 +26,8 @@ public sealed class EpicTokenProvider : IEpicTokenProvider
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     private EpicOAuthToken? _cached;
+    private EpicSessionIdentity? _identity;
+    private long _generation;
     private bool _loadedFromStore;
 
     /// <summary>Latched when the refresh token is rejected or expired, preventing futile retries.</summary>
@@ -115,7 +117,7 @@ public sealed class EpicTokenProvider : IEpicTokenProvider
                 return EpicSignInResult.Failed(outcome.Failure);
             }
 
-            _cached = token;
+            SetSessionLocked(token);
             _loadedFromStore = true;
             _sessionLapsed = false;
             await _store.SaveAsync(token, ct);
@@ -171,7 +173,7 @@ public sealed class EpicTokenProvider : IEpicTokenProvider
             if (!_loadedFromStore)
             {
                 _loadedFromStore = true;
-                _cached = await _store.LoadAsync(ct);
+                SetSessionLocked(await _store.LoadAsync(ct));
                 if (IsUsable(_cached, credentials))
                 {
                     _log.LogDebug("Reused stored Epic session; access token expires {ExpiresAt:O}.", _cached!.ExpiresAt);
@@ -222,7 +224,7 @@ public sealed class EpicTokenProvider : IEpicTokenProvider
         await _gate.WaitAsync(ct);
         try
         {
-            _cached = null;
+            SetSessionLocked(null);
             _loadedFromStore = true;
             _sessionLapsed = false;
             await _store.ClearAsync(ct);
@@ -252,7 +254,7 @@ public sealed class EpicTokenProvider : IEpicTokenProvider
             if (!_loadedFromStore)
             {
                 _loadedFromStore = true;
-                _cached = await _store.LoadAsync(ct);
+                SetSessionLocked(await _store.LoadAsync(ct));
             }
 
             return _cached;
@@ -261,6 +263,20 @@ public sealed class EpicTokenProvider : IEpicTokenProvider
         {
             _gate.Release();
         }
+    }
+
+    public async ValueTask<EpicSessionIdentity?> GetIdentityAsync(CancellationToken ct = default)
+    {
+        if (await _credentials.GetAsync(ct) is not { } credentials) return null;
+        await PeekAsync(ct);
+        var identity = _identity;
+        return identity?.ClientId == credentials.ClientId ? identity : null;
+    }
+
+    private void SetSessionLocked(EpicOAuthToken? token)
+    {
+        _identity = token is null ? null : new EpicSessionIdentity(token.AccountId, token.ClientId, ++_generation);
+        _cached = token;
     }
 
     /// <summary>Refreshes the session. Caller must hold <see cref="_gate"/>. Returns null to degrade gracefully.</summary>
@@ -306,6 +322,11 @@ public sealed class EpicTokenProvider : IEpicTokenProvider
 
         if (outcome.Token is { } refreshed)
         {
+            if (refreshed.AccountId != current.AccountId || refreshed.ClientId != current.ClientId)
+            {
+                _log.LogWarning("Epic renewal returned a different account; the response was discarded.");
+                return null;
+            }
             _cached = refreshed;
             await _store.SaveAsync(refreshed, ct);
             _log.LogDebug("Refreshed the Epic session; access token expires {ExpiresAt:O}.", refreshed.ExpiresAt);
@@ -349,7 +370,7 @@ public sealed class EpicTokenProvider : IEpicTokenProvider
     /// <summary>Latches the session off for this process and forgets the stored one.</summary>
     private async Task LapseAsync(CancellationToken ct)
     {
-        _cached = null;
+        SetSessionLocked(null);
         _sessionLapsed = true;
         await _store.ClearAsync(ct);
     }

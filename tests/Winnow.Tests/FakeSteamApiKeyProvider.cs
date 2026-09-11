@@ -23,6 +23,8 @@ internal sealed class FakeSteamApiKeyProvider : ISteamApiKeyProvider
     /// <summary>Whether a key is present at all. Null models an unconfigured install.</summary>
     internal bool HasKey => _key is not null;
 
+    internal SteamCredentialIdentity? Identity => SteamCredentialIdentity.From(SteamCredential.FromApiKey(_key));
+
     /// <summary>
     /// The digest the service stores beside the confirmed account, so a test can
     /// seed the "key never changed" state without reaching into the service.

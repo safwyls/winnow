@@ -1,3 +1,5 @@
+using Winnow.Core.Domain;
+
 namespace Winnow.Enrich.Igdb.Model;
 
 /// <summary>
@@ -81,6 +83,12 @@ public sealed record IgdbGame(
     /// <see cref="ScreenshotImageIds"/>.
     /// </summary>
     public IReadOnlyList<string> ArtworkImageIds { get; init; } = NoStrings;
+
+    /// <summary>Source dimensions and suitability flags, absent in older cached payloads.</summary>
+    public IReadOnlyList<GameImage> ScreenshotImages { get; init; } = [];
+
+    /// <summary>Promotional image metadata, kept separate from the screenshot gallery.</summary>
+    public IReadOnlyList<GameImage> ArtworkImages { get; init; } = [];
 
     /// <summary>
     /// IGDB's own user-body rating, 0–100 scale. Null when IGDB has no user

@@ -11,6 +11,8 @@ using Winnow.Data;
 using Winnow.Data.Repositories;
 using Winnow.Enrich.GamesDb;
 using Winnow.Enrich.Igdb;
+using Winnow.Plugins;
+using Winnow.PluginSdk;
 using Winnow.Enrich.Steam;
 using Winnow.Enrich.Stores;
 using Winnow.Enrich.SteamWeb;
@@ -63,6 +65,26 @@ public static class Program
 
     [STAThread]
     public static void Main(string[] args)
+    {
+        try
+        {
+            Run(args);
+        }
+        catch (Exception fault)
+        {
+            Environment.ExitCode = StartupFailure.Report(
+                fault, DataLocation.Root, AppHost is { } host ? LoggerFactoryOrNull(host) : null);
+        }
+        finally
+        {
+            AppHost = null;
+            SingleInstance?.Dispose();
+            SingleInstance = null;
+            Shutdown.Dispose();
+        }
+    }
+
+    private static void Run(string[] args)
     {
         var builder = Host.CreateApplicationBuilder(args);
 
@@ -146,6 +168,7 @@ public static class Program
         // leaving the flag off.
         builder.Services.AddSingleton(new SteamPlaytimeBackfillOptions { Enabled = !writesSuppressed });
 
+        var databaseAlreadyExisted = File.Exists(DataLocation.DatabasePath);
         ConfigureServices(builder.Services, DataLocation);
 
         builder.Services.Configure<SnapshotSchedulerOptions>(o => o.Enabled = !writesSuppressed);
@@ -161,6 +184,9 @@ public static class Program
         // the SQLite connection factory with it — and closing the window two
         // seconds into the first run is a normal thing to do.
         Task startup = Task.CompletedTask;
+        CredentialMetadataRefresh? credentialRefresh = null;
+        CredentialMetadataRefresh? pluginRefresh = null;
+        CredentialMetadataRefresh? ownershipRefresh = null;
         try
         {
             // Migrations run before ANY reader or writer touches the db —
@@ -170,6 +196,9 @@ public static class Program
             // their tables" is a trap waiting for the first person who sets
             // RunOnStartup.
             host.Services.GetRequiredService<DatabaseInitializer>().Initialize();
+            host.Services.GetRequiredService<FirstRunSetupService>()
+                .InitializeAsync(databaseAlreadyExisted, args.Contains("--seed-sample"), Shutdown.Token)
+                .GetAwaiter().GetResult();
 
             // The one-time interactive Epic sign-in. Deliberately BEFORE
             // host.Start() and before Avalonia: it is a terminal flow that ends
@@ -255,125 +284,9 @@ public static class Program
                             await RefreshLibraryAsync(services);
                         }
 
-                        // The half that needs a network, handed the scan the
-                        // local pass just paid for so a configured machine walks
-                        // every appmanifest once per launch rather than twice.
-                        // Failure here is a logged warning inside the service,
-                        // never a lost local scan; the scheduler retries on its
-                        // own interval.
                         var backfill = services.GetRequiredService<IRemoteOwnershipSync>();
-                        var remote = local.Scan is { } scanned
-                            ? await backfill.SyncAsync(scanned, Shutdown.Token)
-                            : await backfill.SyncAsync(Shutdown.Token);
-                        if (remote.Result?.CreatedReleases > 0 || remote.Result?.NamesPromoted > 0)
-                        {
-                            await RefreshLibraryAsync(services);
-                        }
-
-                        // M5. After the remote sync and not before it: the
-                        // backfill attaches historical points to ownerships it
-                        // never creates, so the pass that creates them has to
-                        // have run. Completed years are recorded in the settings
-                        // table and never refetched, so on every launch after
-                        // the first this costs one request for the current year
-                        // and one for the cumulative anchor, both cached for
-                        // six hours, so a relaunch costs none at all.
-                        var history = await services.GetRequiredService<ISteamPlaytimeBackfill>()
-                            .BackfillAsync(Shutdown.Token);
-
-                        // Four years of series appearing under a library the UI
-                        // has already loaded moves dormancy and every signal the
-                        // recommender derives from it. Without this the feed
-                        // reads the cold-start library until the next launch,
-                        // which is the exact state M5 exists to end.
-                        if (history.WroteAnything)
-                        {
-                            await RefreshLibraryAsync(services);
-                        }
-
-                        // Names for the games the local files could only
-                        // identify by appid. §7 promises a browsable library
-                        // immediately with metadata filling in behind it.
-                        var report = await services.GetRequiredService<EnrichmentSyncService>()
-                            .EnrichAsync(Shutdown.Token);
-
-                        // §5.3 step 2, after enrichment so it compares real
-                        // titles rather than the "App 620" placeholders it
-                        // skips. Unconditional: a pass that promoted nothing can
-                        // still be the first sweep this library has ever had.
-                        // Genres, themes, game modes, store tags and Steam
-                        // categories, for the filter panel. After enrichment
-                        // because it reads the caches enrichment warms — on a
-                        // warm library this is a pure database pass and touches
-                        // the network not at all.
-                        var facets = await services.GetRequiredService<FacetSyncService>()
-                            .SyncAsync(Shutdown.Token);
-
-                        // Two passes, one per Enrich.* module, independent: the
-                        // Steam pass re-parses bytes already in metadata_cache
-                        // and costs zero requests; the IGDB pass needs credentials.
-                        // Neither module references the other, so the keyless
-                        // Steam module stays usable with no IGDB credentials.
-                        await services.GetRequiredService<SteamStoreMaturitySync>()
-                            .SyncAsync(Shutdown.Token);
-                        await services.GetRequiredService<IgdbMaturitySync>()
-                            .SyncAsync(Shutdown.Token);
-
-                        // Screenshots, artworks and the three reception
-                        // figures. Deliberately not riding EnrichmentSyncService:
-                        // its target query returns only works still missing a
-                        // metadata column, so a fully enriched work would never
-                        // be revisited and would never get screenshots. Both
-                        // halves are cache-first, so a warm library costs no
-                        // requests at all.
-                        await services.GetRequiredService<ReceptionSyncService>()
-                            .SyncAsync(Shutdown.Token);
-                        var lifecycleRows = await services.GetRequiredService<LifecycleSyncService>()
-                            .SyncAsync(Shutdown.Token);
-
-                        await services.GetRequiredService<LibrarySoftMatchSweep>()
-                            .SweepAsync(Shutdown.Token);
-
-                        // §4.5's two signals. Staggered so a day costs tens of
-                        // requests rather than the naive 1,232, and background
-                        // only — never an onboarding path (§5.1, pitfall 3).
-                        var poll = await services.GetRequiredService<UpdateSignalPoller>()
-                            .PollDueBatchAsync(Shutdown.Token);
-
-                        // Titles were rewritten underneath a library the UI has
-                        // already loaded; without this they only appear on the
-                        // next launch, which is not what §7's copy promises.
-                        // New update events move bucket membership, so they need
-                        // the same refresh — that is the unread badge appearing.
-                        // MetadataFilled, not just Promoted: after the first run
-                        // every title is already real, so a pass that back-fills
-                        // years, publishers and summaries for hundreds of works
-                        // promotes nothing — and the detail view would keep
-                        // showing the gaps until the next launch.
-                        if (report.Promoted > 0
-                            || lifecycleRows > 0
-                            || report.MetadataFilled > 0
-                            || facets.RowsWritten > 0
-                            || poll.AnnouncementsRecorded > 0
-                            || poll.BuildPushesRecorded > 0)
-                        {
-                            await RefreshLibraryAsync(services);
-                        }
-
-                        // The soft-match sweep above may have queued candidates,
-                        // and has certainly changed the empty sections' copy,
-                        // which says whether the matcher has run. A COUNT
-                        // settles both; the screen itself is rebuilt only if
-                        // its pane is showing, and otherwise the next time it
-                        // is shown (TASK-152.5).
-                        await Dispatcher.UIThread.InvokeAsync(() =>
-                            services.GetRequiredService<MergeQueueViewModel>()
-                                .NoteQueueMayHaveMovedAsync(Shutdown.Token));
-
-                        // Optional storefront links follow the existing metadata passes;
-                        // a slow storefront must not hold up titles, covers, or facets.
-                        await services.GetRequiredService<StorefrontSyncService>().SyncAsync(Shutdown.Token);
-                        await RefreshLibraryAsync(services);
+                        if (local.Scan is { } scanned) await backfill.SyncAsync(scanned, Shutdown.Token);
+                        else await backfill.SyncAsync(Shutdown.Token);
                     }
                     catch (OperationCanceledException)
                     {
@@ -387,6 +300,44 @@ public static class Program
                             .LogWarning(ex, "Startup sync failed; the library stays as the last run left it.");
                     }
                 }, Shutdown.Token);
+            }
+
+            if (!writesSuppressed)
+            {
+                ownershipRefresh = new CredentialMetadataRefresh(startup,
+                    async ct => { await host.Services.GetRequiredService<IRemoteOwnershipSync>().SyncAsync(ct); },
+                    _ => host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(Program))
+                        .LogWarning("Ownership refresh after an account change failed; the next scheduled pass will retry."),
+                    Shutdown.Token);
+                host.Services.GetRequiredService<OwnershipRefreshRequests>().Requested += ownershipRefresh.Request;
+                credentialRefresh = new CredentialMetadataRefresh(startup,
+                    ct => RefreshIgdbMetadataAsync(host.Services, ct),
+                    _ => host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(Program))
+                        .LogWarning("Metadata refresh after an IGDB credential change failed; saved credentials remain available."),
+                    Shutdown.Token);
+                host.Services.GetRequiredService<IgdbSettingsService>().CredentialsChanged += credentialRefresh.Request;
+                var pluginStartup = Task.Run(async () =>
+                {
+                    await host.Services.GetRequiredService<LegacySteamGridDbPluginMigration>().RunAsync(Shutdown.Token);
+                    var catalog = host.Services.GetRequiredService<PluginCatalog>();
+                    await catalog.DiscoverAsync(Path.Combine(AppContext.BaseDirectory, "plugins"),
+                        Path.Combine(DataLocation.Root, "plugins"), Shutdown.Token);
+                    var preferences = host.Services.GetRequiredService<ArtworkPreferences>();
+                    preferences.ConfigureSources(catalog.GetActive<IArtworkProviderPlugin>()
+                        .Select(p => new ArtworkSourceOption("plugin:" + p.Manifest.Id, p.Manifest.Name)));
+                    await preferences.LoadAsync(Shutdown.Token);
+                }, Shutdown.Token);
+                pluginRefresh = new CredentialMetadataRefresh(Task.WhenAll(startup, pluginStartup),
+                    async ct =>
+                    {
+                        await host.Services.GetRequiredService<PluginSyncService>().SyncAsync(ct);
+                        if (!ct.IsCancellationRequested) await RefreshLibraryAsync(host.Services);
+                    },
+                    _ => host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(Program))
+                        .LogWarning("Plugin refresh failed; stored library data remains available."),
+                    Shutdown.Token);
+                host.Services.GetRequiredService<PluginSettingsBackend>().RefreshRequested += pluginRefresh.Request;
+                pluginRefresh.Request();
             }
 
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
@@ -419,7 +370,9 @@ public static class Program
             Shutdown.Cancel();
             try
             {
-                startup.Wait(TimeSpan.FromSeconds(5));
+                Task.WhenAll(startup, credentialRefresh?.Completion ?? Task.CompletedTask,
+                        pluginRefresh?.Completion ?? Task.CompletedTask, ownershipRefresh?.Completion ?? Task.CompletedTask)
+                    .Wait(TimeSpan.FromSeconds(5));
             }
             catch (AggregateException)
             {
@@ -427,8 +380,6 @@ public static class Program
             }
 
             host.StopAsync().GetAwaiter().GetResult();
-            Shutdown.Dispose();
-            AppHost = null;
         }
     }
 
@@ -464,9 +415,14 @@ public static class Program
     /// consumes. Marshalled to the UI thread, and queued rather than lost when
     /// the window has not opened yet.
     /// </summary>
-    private static async Task RefreshLibraryAsync(IServiceProvider services)
-        => await Dispatcher.UIThread.InvokeAsync(() =>
-            services.GetRequiredService<LibraryViewModel>().LoadCommand.ExecuteAsync(null));
+    private static async Task RefreshLibraryAsync(IServiceProvider services, CancellationToken ct = default)
+    {
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(ct, Shutdown.Token);
+        await services.GetRequiredService<LibraryChangePublisher>().PublishAsync(cancellation.Token);
+    }
+
+    private static Task RefreshIgdbMetadataAsync(IServiceProvider services, CancellationToken ct)
+        => services.GetRequiredService<LibraryRefreshPipeline>().RunAsync(ct, igdbOnly: true);
 
     // Avalonia configuration; also used by the previewer. Do not remove.
     public static AppBuilder BuildAvaloniaApp()
@@ -497,18 +453,22 @@ public static class Program
         services.AddSingleton<DatabaseInitializer>();
 
         services.AddSingleton<IWorkRepository, WorkRepository>();
+        services.AddSingleton<IIgdbObservationWriter, IgdbObservationWriter>();
         services.AddSingleton<IReleaseRepository, ReleaseRepository>();
         services.AddSingleton<IOwnershipRepository, OwnershipRepository>();
         services.AddSingleton<ISteamInstallStateRepository, SteamInstallStateRepository>();
+        services.AddSingleton<IGogInstallStateRepository, GogInstallStateRepository>();
 
         // The per-account membership rows behind the account visibility filter
         // (migration 0015). Written by the resolver in the same unit of work as
         // the ownership they describe; read by the bucket query, which is the
         // only place the filter is applied.
         services.AddSingleton<IOwnershipAccountRepository, OwnershipAccountRepository>();
+        services.AddSingleton<IOwnershipInventoryRepository, OwnershipInventoryRepository>();
         services.AddSingleton<IPlayRecordRepository, PlayRecordRepository>();
         services.AddSingleton<IPlaytimeSnapshotRepository, PlaytimeSnapshotRepository>();
         services.AddSingleton<ISessionRepository, SessionRepository>();
+        services.AddSingleton<IActivityRepository, ActivityRepository>();
         services.AddSingleton<IUpdateEventRepository, UpdateEventRepository>();
         services.AddSingleton<ILifecycleRepository, LifecycleRepository>();
         services.AddSingleton<IGameListRepository, GameListRepository>();
@@ -560,7 +520,7 @@ public static class Program
         // IGDB's users, IGDB's critics and Steam's reviewers each keep their
         // own reading and no figure is ever blended with another. The
         // enrichment pass and the per-game refetch are the writers; the
-        // details modal is the only reader.
+        // detail modal and fullscreen backdrops read the stored images.
         services.AddSingleton<IWorkImageRepository, WorkImageRepository>();
         services.AddSingleton<IWorkRatingRepository, WorkRatingRepository>();
 
@@ -665,14 +625,32 @@ public static class Program
         // point per launch. Same instance under both contracts — a separately
         // constructed service would be a second scanner.
         services.AddSingleton<ILocalLibrarySync>(sp => sp.GetRequiredService<LocalLibrarySyncService>());
-        services.AddSingleton<IRemoteOwnershipSync>(sp => sp.GetRequiredService<RemoteOwnershipSyncService>());
+        services.AddSingleton<OwnershipRefreshRequests>();
+        services.AddSingleton<LibraryChangePublisher>();
+        services.AddSingleton(sp => new LibraryRefreshPipeline(
+        [
+            new("Steam playtime history", async ct => { await sp.GetRequiredService<ISteamPlaytimeBackfill>().BackfillAsync(ct); }, PublishAfter: true),
+            new("Titles and metadata", async ct => { await sp.GetRequiredService<EnrichmentSyncService>().EnrichAsync(ct); }, IgdbRelevant: true),
+            new("Filter facets", async ct => { await sp.GetRequiredService<FacetSyncService>().SyncAsync(ct); }, IgdbRelevant: true),
+            new("Steam maturity", async ct => { await sp.GetRequiredService<SteamStoreMaturitySync>().SyncAsync(ct); }),
+            new("IGDB maturity", async ct => { await sp.GetRequiredService<IgdbMaturitySync>().SyncAsync(ct); }, IgdbRelevant: true),
+            new("Reception and images", async ct => { await sp.GetRequiredService<ReceptionSyncService>().SyncAsync(ct); }, IgdbRelevant: true),
+            new("Lifecycle evidence", async ct => { await sp.GetRequiredService<LifecycleSyncService>().SyncAsync(ct); }, IgdbRelevant: true),
+            new("Identity proposals", async ct => { await sp.GetRequiredService<LibrarySoftMatchSweep>().SweepAsync(ct); }),
+            new("Update signals", async ct => { await sp.GetRequiredService<UpdateSignalPoller>().PollDueBatchAsync(ct); }, PublishAfter: true),
+            new("Storefront links", ct => sp.GetRequiredService<StorefrontSyncService>().SyncAsync(ct), PublishAfter: true),
+        ], ct => RefreshLibraryAsync(sp, ct), sp.GetRequiredService<ILogger<LibraryRefreshPipeline>>()));
+        services.AddSingleton(sp => new OwnershipRefreshCoordinator(
+            sp.GetRequiredService<RemoteOwnershipSyncService>(), sp.GetRequiredService<LibraryRefreshPipeline>(),
+            sp.GetRequiredService<ILogger<OwnershipRefreshCoordinator>>()));
+        services.AddSingleton<IRemoteOwnershipSync>(sp => sp.GetRequiredService<OwnershipRefreshCoordinator>());
         services.AddSingleton(TimeProvider.System);
         services.AddHostedService(sp => new SnapshotSchedulerService(
             sp.GetRequiredService<ILocalLibrarySync>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<SnapshotSchedulerOptions>>(),
             sp.GetRequiredService<ILogger<SnapshotSchedulerService>>(),
             sp.GetRequiredService<TimeProvider>(),
-            refresh: _ => RefreshLibraryAsync(sp)));
+            refresh: ct => RefreshLibraryAsync(sp, ct)));
         services.AddHostedService<RemoteOwnershipSchedulerService>();
         services.AddHostedService(sp => new LifecycleSchedulerService(
             sp.GetRequiredService<LifecycleSyncService>(),
@@ -683,7 +661,7 @@ public static class Program
         services.AddHostedService(sp => new SteamInstallRefreshService(
             sp.GetRequiredService<SteamLibrarySource>().ReadInstallFingerprint,
             ct => sp.GetRequiredService<LocalLibrarySyncService>().SyncAsync(ct),
-            _ => RefreshLibraryAsync(sp),
+            ct => RefreshLibraryAsync(sp, ct),
             sp.GetRequiredService<ILogger<SteamInstallRefreshService>>(),
             sp.GetRequiredService<TimeProvider>(),
             enabled: sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<SnapshotSchedulerOptions>>().Value.Enabled,
@@ -691,7 +669,7 @@ public static class Program
         services.AddHostedService(sp => new EpicInstallRefreshService(
             sp.GetRequiredService<EpicManifestStateReader>().ReadFingerprint,
             ct => sp.GetRequiredService<LocalLibrarySyncService>().SyncEpicAsync(ct),
-            _ => RefreshLibraryAsync(sp),
+            ct => RefreshLibraryAsync(sp, ct),
             sp.GetRequiredService<ILogger<EpicInstallRefreshService>>(),
             sp.GetRequiredService<TimeProvider>(),
             enabled: sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<SnapshotSchedulerOptions>>().Value.Enabled,
@@ -730,6 +708,17 @@ public static class Program
         // resolving with no credentials set. Both soft-fail to "no data", and
         // neither may block a user-facing path (§5.1, pitfall 3).
         services.AddIgdbEnrichment();
+        services.AddPluginHttp();
+        services.AddSingleton<PluginStorage>();
+        services.AddSingleton<IPluginStateStore>(sp => sp.GetRequiredService<PluginStorage>());
+        services.AddSingleton<IPluginContextFactory, PluginContextFactory>();
+        services.AddSingleton<PluginCatalog>();
+        services.AddSingleton<LegacySteamGridDbPluginMigration>();
+        services.AddSingleton<PluginSettingsBackend>(sp => new(sp.GetRequiredService<PluginCatalog>(),
+            sp.GetRequiredService<PluginStorage>(), Path.Combine(data.Root, "plugins")));
+        services.AddSingleton<IPluginSettingsBackend>(sp => sp.GetRequiredService<PluginSettingsBackend>());
+        services.AddSingleton<IPluginFacetRepository, PluginFacetRepository>();
+        services.AddSingleton<Winnow.Covers.ICoverSource, PluginArtworkSource>();
         services.AddSteamStoreEnrichment();
 
         // The cross-store identity graph (ROADMAP §6). Keyless and unauthenticated,
@@ -895,7 +884,16 @@ public static class Program
         // observes the saved preference; the OS operation stays behind a seam
         // so view-model and headless tests never touch the real Run key.
         services.AddSingleton<IStartupRegistration, WindowsStartupRegistration>();
+        services.AddSingleton<IgdbSettingsService>();
+        services.AddSingleton<IIgdbSettingsService>(sp => sp.GetRequiredService<IgdbSettingsService>());
+        services.AddSingleton<IgdbSettingsViewModel>();
+        services.AddSingleton<PluginSettingsViewModel>();
+        services.AddSingleton<ArtworkPreferences>();
+        services.AddSingleton<ArtworkOrderViewModel>();
+        services.AddSingleton<EnrichmentSettingsViewModel>();
         services.AddSingleton<ApplicationSettingsViewModel>();
+        services.AddSingleton<FirstRunSetupService>();
+        services.AddSingleton<FirstRunSetupViewModel>();
         services.AddHttpClient<GitHubReleaseClient>(client => client.Timeout = Timeout.InfiniteTimeSpan)
             .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
         services.AddSingleton<IUpdateInstaller, WindowsUpdateInstaller>();
@@ -955,6 +953,8 @@ public static class Program
         // clients' own rate limiters.
         services.AddSingleton<WorkReceptionWriter>();
         services.AddSingleton<ReceptionSyncService>();
+        services.AddSingleton<PluginSyncService>();
+        services.AddSingleton<PluginFeedService>();
         services.AddSingleton<LifecycleSyncService>();
         services.AddSingleton<GameRefetchService>();
         services.AddSingleton<IGameRefetch>(sp => sp.GetRequiredService<GameRefetchService>());
@@ -1014,6 +1014,7 @@ public static class Program
         // nothing else.
         services.AddSingleton<IIgdbAssignmentService, IgdbAssignmentService>();
 
+        services.AddSingleton<DormancyRamp>();
         services.AddSingleton<LibraryViewModel>();
 
         // M8 — the Feed, and the screen the window opens on.

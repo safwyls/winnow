@@ -36,11 +36,6 @@ public sealed class ChainedIgdbCredentialProvider : IIgdbCredentialProvider
 
     public async ValueTask<IgdbCredentials?> GetAsync(CancellationToken ct = default)
     {
-        if (_resolved)
-        {
-            return _cached;
-        }
-
         await _gate.WaitAsync(ct);
         try
         {
@@ -78,7 +73,26 @@ public sealed class ChainedIgdbCredentialProvider : IIgdbCredentialProvider
 
     public void Invalidate()
     {
-        _resolved = false;
-        _cached = null;
+        _gate.Wait();
+        try
+        {
+            _resolved = false;
+            _cached = null;
+        }
+        finally { _gate.Release(); }
+    }
+
+    public async Task UpdateAsync(Func<Task> update, CancellationToken ct = default)
+    {
+        // A source can migrate legacy rows while reading them. Hold the same
+        // gate so that read cannot restore credentials after their removal.
+        await _gate.WaitAsync(ct);
+        try
+        {
+            await update();
+            _resolved = false;
+            _cached = null;
+        }
+        finally { _gate.Release(); }
     }
 }

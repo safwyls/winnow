@@ -46,14 +46,17 @@ public static class AccountTransactionKinds
 
 /// <summary>
 /// One row of the purchase-history page as reported. This is a page-capture
-/// fact, not an entity: identity is the whole reported content, and a later
-/// capture re-reporting the same fact is a no-op (migration 0014).
+/// fact, not an entity: identity is the captured account and reported content.
+/// A later capture re-reporting the same fact for that account is a no-op.
 /// </summary>
 public sealed record AccountTransactionFact
 {
     public long Id { get; init; }
 
     public required string Source { get; init; }
+
+    /// <summary>Captured source account; null identifies unknown legacy or saved-file provenance.</summary>
+    public string? AccountRef { get; init; }
 
     public required string Kind { get; init; }
 
@@ -114,6 +117,9 @@ public sealed record AccountLicenseFact
     public long Id { get; init; }
 
     public required string Source { get; init; }
+
+    /// <summary>Captured source account; null identifies unknown legacy or saved-file provenance.</summary>
+    public string? AccountRef { get; init; }
 
     public required string ItemName { get; init; }
 

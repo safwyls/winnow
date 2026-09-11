@@ -151,7 +151,7 @@ public sealed class IgdbIdLookupTests
     }
 
     private static IgdbManualAssignment NewAssignment(IIgdbClient client)
-        => new(client, new NoPinRepository(), NullLogger<IgdbManualAssignment>.Instance);
+        => new(client, new NoPinRepository(), new UnusedIgdbObservationWriter(), NullLogger<IgdbManualAssignment>.Instance);
 
     private static IgdbGame Game(long igdbId, string name, int year)
         => new(

@@ -154,6 +154,9 @@ public sealed class IgdbMatchViewModelTests
     [InlineData(IgdbAssignmentOutcome.WorkNotFound)]
     [InlineData(IgdbAssignmentOutcome.MetadataUnavailable)]
     [InlineData(IgdbAssignmentOutcome.IgdbIdClaimedByAnotherWork)]
+    [InlineData(IgdbAssignmentOutcome.MappingChanged)]
+    [InlineData(IgdbAssignmentOutcome.StorefrontObservation)]
+    [InlineData(IgdbAssignmentOutcome.IdentifierHistoryUnavailable)]
     [InlineData(IgdbAssignmentOutcome.Failed)]
     public async Task A_refusal_is_stated_and_nothing_is_pinned(IgdbAssignmentOutcome status)
     {

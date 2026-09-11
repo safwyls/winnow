@@ -1,6 +1,7 @@
 using System.Globalization;
 using Winnow.Core.Domain;
 using Winnow.Core.Ingest;
+using Winnow.Ingest.Epic.Web.Auth;
 
 namespace Winnow.Ingest.Epic.Web.Model;
 
@@ -66,15 +67,14 @@ public sealed record EpicLibraryItem(
                 : total / 60;
 
     /// <summary>
-    /// Projects onto the ingest contract. Installed, LastPlayedAt, and AccountRef
-    /// are null because this source cannot know them.
+    /// Projects onto the ingest contract, retaining the account captured by the library fetch.
     /// </summary>
-    public CandidateOwnership ToCandidate(string source, EpicPlaytimeUnit unit, DateTime observedAt)
+    public CandidateOwnership ToCandidate(string source, EpicPlaytimeUnit unit, DateTime observedAt, string? accountId = null)
         => new(
             Provider: ExternalIdProviders.Epic,
             ProviderId: CatalogItemId,
             Title: Title,
-            AccountRef: null,
+            AccountRef: accountId,
             InstallPath: null,
             Installed: null, // "cannot know", never "not installed".
             PlaytimeMinutes: PlaytimeMinutes(unit),
@@ -104,6 +104,11 @@ public sealed record EpicOwnedLibrary(
     bool FromCache,
     bool PlaytimeAnswered)
 {
+    /// <summary>The account whose session fetched this library, including when served from cache.</summary>
+    public string? AccountId { get; init; }
+
+    internal EpicSessionIdentity? SessionIdentity { get; init; }
+
     /// <summary>The unanswered result: no data, and explicitly not a claim that the library is empty.</summary>
     public static EpicOwnedLibrary Unanswered(DateTime observedAt)
         => new(Succeeded: false, Items: [], ObservedAt: observedAt, FromCache: false, PlaytimeAnswered: false);
@@ -121,9 +126,9 @@ public sealed record EpicOwnedLibrary(
     /// </summary>
     public IReadOnlyList<CandidateOwnership> ToCandidates(
         string source, EpicPlaytimeUnit unit, DateTime? observedAt = null)
-        => Items.Count == 0
+        => Items.Count == 0 || string.IsNullOrWhiteSpace(AccountId)
             ? []
-            : Items.Select(i => i.ToCandidate(source, unit, observedAt ?? ObservedAt)).ToArray();
+            : Items.Select(i => i.ToCandidate(source, unit, observedAt ?? ObservedAt, AccountId)).ToArray();
 
     /// <summary>Diagnostics. Carries counts, never the account they belong to.</summary>
     public override string ToString()

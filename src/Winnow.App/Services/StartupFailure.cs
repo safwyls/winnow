@@ -43,25 +43,23 @@ internal static class StartupFailure
     }
 
     /// <summary>
-    /// What the user is told. The exception's own message is included rather
-    /// than summarised: this is the only place the failure is ever stated, and
-    /// "an error occurred" would leave nothing to search for or report. The data
-    /// directory is named because the overwhelmingly likely cause is the files
-    /// in it, and because <c>--data-dir</c> means the failing library may not be
-    /// the one the user assumes.
+    /// What the user is told. Diagnostic redaction also applies before logging
+    /// is configured: configuration and provider exceptions can contain secrets.
+    /// The selected data directory is shown separately so the user can find the
+    /// affected library without assuming how far startup progressed.
     /// </summary>
     internal static string SentenceFor(Exception exception, string dataDirectory)
     {
         ArgumentNullException.ThrowIfNull(exception);
         ArgumentNullException.ThrowIfNull(dataDirectory);
 
-        var where = string.IsNullOrWhiteSpace(dataDirectory)
-            ? "its data directory"
-            : dataDirectory;
+        var location = string.IsNullOrWhiteSpace(dataDirectory)
+            ? "Winnow did not finish selecting its data directory. Check the application configuration and try again."
+            : $"Your library is at {dataDirectory}. Check the diagnostic log in its logs folder for details.";
 
         return $"Winnow could not start.{Environment.NewLine}{Environment.NewLine}"
-            + $"{exception.GetType().Name}: {exception.Message}{Environment.NewLine}{Environment.NewLine}"
-            + $"Your library is at {where} and has not been changed by this run.";
+            + $"{exception.GetType().Name}: {DiagnosticFormatter.Scrub(exception.Message)}{Environment.NewLine}{Environment.NewLine}"
+            + location;
     }
 
     /// <summary>
@@ -104,11 +102,11 @@ internal static class StartupFailure
         try
         {
             logs?.CreateLogger(typeof(Program).FullName!)
-                .LogCritical(exception, "Startup failed; the library at {DataDirectory} was not opened.", dataDirectory);
+                .LogCritical(exception, "Application lifecycle failed for data directory {DataDirectory}.", dataDirectory);
         }
-        catch (ObjectDisposedException)
+        catch (Exception)
         {
-            // The host was disposed underneath us. The channel below still works.
+            // Reporting still has to work when constructing or writing a logger fails.
         }
 
         try

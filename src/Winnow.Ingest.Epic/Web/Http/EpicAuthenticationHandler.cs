@@ -10,6 +10,7 @@ namespace Winnow.Ingest.Epic.Web.Http;
 /// </summary>
 public sealed class EpicAuthenticationHandler : DelegatingHandler
 {
+    internal static readonly HttpRequestOptionsKey<EpicSessionIdentity> ExpectedSession = new("Winnow.Epic.ExpectedSession");
     private readonly IEpicTokenProvider _tokens;
     private readonly ILogger<EpicAuthenticationHandler> _log;
 
@@ -23,7 +24,8 @@ public sealed class EpicAuthenticationHandler : DelegatingHandler
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var token = await _tokens.GetAsync(cancellationToken);
-        if (token is null)
+        request.Options.TryGetValue(ExpectedSession, out var expected);
+        if (token is null || !await MatchesAsync(token, expected, cancellationToken))
         {
             // Synthetic, and never sent. The provider has already logged why at
             // the appropriate level; adding a line here would repeat it once per
@@ -33,7 +35,7 @@ public sealed class EpicAuthenticationHandler : DelegatingHandler
 
         var body = await EpicRequestReplay.BufferAsync(request, cancellationToken);
 
-        var first = EpicRequestReplay.Clone(request, body);
+        using var first = EpicRequestReplay.Clone(request, body);
         EpicRequestReplay.SetBearer(first, token.AccessToken);
         var response = await base.SendAsync(first, cancellationToken);
 
@@ -46,7 +48,7 @@ public sealed class EpicAuthenticationHandler : DelegatingHandler
         response.Dispose();
 
         var refreshed = await _tokens.RefreshAsync(token, cancellationToken);
-        if (refreshed is null)
+        if (refreshed is null || !await MatchesAsync(refreshed, expected, cancellationToken))
         {
             // The session is gone and the provider has already dealt with the
             // stored copy. Surface the 401 rather than an exception: the client
@@ -54,8 +56,12 @@ public sealed class EpicAuthenticationHandler : DelegatingHandler
             return new HttpResponseMessage(HttpStatusCode.Unauthorized) { RequestMessage = request };
         }
 
-        var second = EpicRequestReplay.Clone(request, body);
+        using var second = EpicRequestReplay.Clone(request, body);
         EpicRequestReplay.SetBearer(second, refreshed.AccessToken);
         return await base.SendAsync(second, cancellationToken);
     }
+
+    private async ValueTask<bool> MatchesAsync(EpicOAuthToken token, EpicSessionIdentity? expected, CancellationToken ct)
+        => expected is null || token.AccountId == expected.AccountId && token.ClientId == expected.ClientId
+            && await _tokens.GetIdentityAsync(ct) == expected;
 }

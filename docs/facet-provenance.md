@@ -5,11 +5,8 @@ endpoint and field path the value is read from, the transformation applied, wher
 it is cached, and how often it refreshes. Field paths, not prose, so a wrong
 checkbox can be traced to a specific byte on disk.
 
-Governing documents: `game-library-design.md` §4.3 (store metadata), §4.4 (IGDB),
-§5.1 (enrichment must never block a user-facing path);
-`docs/spikes/steam-store-tags.md` (which store endpoint is actually viable);
-`src/Winnow.Data/Migrations/0007_facets.sql` (why the vocabulary is keyed on the
-name and not the provider's id).
+This is the field-mapping reference for built-in metadata and plugin facets. Background
+refresh, source separation and cache rules are stated here alongside their mappings.
 
 Validated end-to-end against the author's 946-release library on 2026-08-25 — see
 **Validation record** at the foot.
@@ -21,12 +18,22 @@ Validated end-to-end against the author's 946-release library on 2026-08-25 — 
 `work_facets` holds facts about the GAME (`works`). `release_facets` holds facts
 about ONE STOREFRONT LISTING (`releases`, i.e. one Steam appid). IGDB describes
 the game, so IGDB descriptors land on the work; Steam user tags are voted on per
-appid, so they land on the release. A reader unions the two onto the release it
-is drawing a tile for (`FacetRepository.GetSnapshotAsync`).
+appid, so they land on the release. A reader unions both layers and source-scoped plugin
+assignments onto the release it is drawing a tile for (`FacetRepository.GetSnapshotAsync`).
 
 `game_mode` is the one kind written at BOTH layers, because both providers answer
 it. It is also the only kind whose vocabulary Winnow owns rather than passes
 through.
+
+## Plugin observations
+
+Enabled metadata plugins also supply `genre` and `tag` names through `PluginMetadata`.
+`PluginSyncService` stores the source response under `metadata_cache` provider `plugin:<id>`,
+key `metadata:<workId>`, and writes up to 100 names per kind (each at most 100 characters).
+Migration 0031's `plugin_work_facets` retains assignments per original work and plugin source.
+The read snapshot unions them with built-in assignments. A provider refresh replaces only its
+own assignments, so IGDB and other plugins cannot erase one another's observations. Refreshes
+run after startup and when requested through plugin settings; provider caches control network TTL.
 
 ## Common transformation: the slug
 
@@ -63,7 +70,7 @@ knowing before filing a bug:
 | Auth | Twitch client-credentials; token cached ~60 days, refreshed on 401 (§4.4) |
 | Rate limit | 4 req/s, shared Polly limiter on the typed client |
 | Batch | 400 ids per request (`IgdbOptions.BatchSize`); 865 games = 3 requests |
-| Cache | `metadata_cache` provider `igdb`, key `game:{igdbId}` |
+| Cache | `metadata_cache` provider `igdb`, key `game:{igdbId}`, game payload version 5 |
 | TTL | 30 days (`IgdbOptions.CacheTtl`) |
 
 **Field paths** (response → `IgdbGameDto` → `IgdbGame` → `FacetSyncService.WorkFacets`):
@@ -76,19 +83,18 @@ knowing before filing a bug:
 | `game_mode` | `game_modes[].name` | **normalised** via `GameModes.FromIgdbName` |
 
 **The IGDB cache stores the PROJECTION, not the raw response.** `metadata_cache`
-holds a serialised `IgdbGame` (snake_case JSON: `igdb_id`, `genres`, `themes`,
-`game_modes`, `player_perspectives`, and so on), not IGDB's body. This is why the
+holds a versioned envelope around a serialised `IgdbGame` (snake_case JSON:
+`igdb_id`, `genres`, `themes`, `game_modes`, `player_perspectives`, and so on), not
+IGDB's body. This is why the
 vocabulary is keyed on names: the ids were dropped at projection time and are not
 recoverable without a refetch.
 
-It is also the single most likely cause of an empty IGDB-derived filter group.
-A payload written before a field was added to `Apicalypse.Games()` simply has no
-property for it; the deserializer supplies the default, and the field reads empty
-forever until that cache entry expires. `IgdbGame.GameModes` and
-`PlayerPerspectives` are init properties rather than positional parameters
-specifically so that old payloads still deserialize and keep their genres — the
-cost is that they carry no modes or perspectives. **A new field on `IgdbGame`
-does not backfill; it waits out the 30-day TTL.**
+`IgdbClient.GamePayloadVersion` is 5. Adding projected fields requires a version bump;
+an older shape or expired entry requests a refetch on its next read instead of waiting
+out a fresh TTL. A compatible older positive envelope or bare legacy game remains an
+offline fallback, with its original fetch time, when credentials or a successful response
+are unavailable. Future versions, mismatched game IDs and stale negative entries are not
+fallback evidence. A fallback can still lack a newly added field until a refetch succeeds.
 
 `game_mode` normalisation (`GameModes.FromIgdb`, matched on the slugged name so
 casing drift cannot silently drop a mode):
@@ -209,7 +215,7 @@ the projection is stored the same way facets are.
 | Auth | Twitch client-credentials; token cached ~60 days, refreshed on 401 (§4.4) |
 | Rate limit | 4 req/s, shared Polly limiter on the typed client |
 | Batch | 400 ids per request (`IgdbOptions.BatchSize`) |
-| Cache | `metadata_cache` provider `igdb`, key `game:{igdbId}`, payload version **4**, TTL 30 days |
+| Cache | `metadata_cache` provider `igdb`, key `game:{igdbId}`, payload version **5**, TTL 30 days |
 
 **Field paths** (response → `IgdbGameDto` → `IgdbGame` → `ReceptionSyncService`):
 
@@ -236,10 +242,8 @@ label of its own for either figure (Steam has one and IGDB does not, which is
 why `work_ratings.label` is null on both IGDB rows).
 `total_rating`/`total_rating_count` exist and are deliberately not used.
 
-**A new field on the cached payload does not backfill.** Entries written under
-version 3 carry no property for it. Here the version bump makes the whole
-library refetch instead, and the measured cost is 3 requests for 967 games —
-the cached payload grows from 628 to 658 bytes per game, about 4.8%.
+Payload version 5 includes image IDs, dimensions, transparency, animation and artwork
+image type. Compatible older positive payloads follow the refetch-and-fallback rule above.
 
 ### Steam reception
 
@@ -264,31 +268,14 @@ Source token: `steam`.
 rather than re-derived from the percentage — the design shows Steam's own label
 with the percentage and count.
 
-**This source is NOT free the way `categories` was.** The `feature` and
-`controller` section above records that no `data_request` flag turns `categories`
-on and that every cached body already carries it. `reviews` is the opposite: it
-needs the `include_reviews: true` flag in `data_request`, so every body cached
-before this change has no `reviews` block. The figure fills in as the 7-day TTL
-turns those bodies over.
+`reviews` requires `include_reviews: true` in `data_request`. Cached bodies without that
+block gain review data when refreshed through the normal 7-day TTL.
 
-**How the field names were established, and the honest gap.** Valve's
-`webui/common.proto` from the SteamDatabase/Protobufs mirror — the same
-published file this repo already cites for `StoreItem_RelatedItems` — read
-2026-09-05. `StoreBrowseItemDataRequest.include_reviews` is a bool at field 9;
-`StoreItem.reviews` is a `StoreItem_Reviews` at field 23;
-`StoreItem_Reviews` carries `summary_filtered = 1`,
-`summary_unfiltered = 2`, `summary_language_specific = 3`;
-`StoreItem_Reviews_StoreReviewSummary` carries `uint32 review_count = 1`,
-`int32 percent_positive = 2`, `int32 review_score = 3` (an enum),
-`string review_score_label = 4`. **Unlike every other Steam field in this
-document, this one is not yet backed by a pinned fixture:**
-`tests/fixtures/steam-store/getitems-v1.json` was captured on 2026-08-23,
-before `include_reviews` was ever sent, and carries no `reviews` block. The
-reader is written from the proto and returns "no figure" for any shape it does
-not recognise, so the cost of being wrong is a missing number rather than a
-wrong one — but recapturing the fixture with `include_reviews: true` is
-outstanding work. The recapture command in `tests/fixtures/steam-store/README.md`
-does not yet carry the flag.
+The pinned fixture `tests/fixtures/steam-store/getitems-v1.json` was captured anonymously
+on 2026-09-06 with that flag. Its three successful items carry filtered and language-specific
+summaries; the failed item has no reviews. `SteamStoreContractTests` verifies that the
+production reader returns the captured count, percentage, enum and label. The fixture README
+contains the capture command. These tests use saved responses and make no live requests.
 
 **What Steam does not provide here:** no numeric score out of 100 (only a
 percent positive and a 1-9 `review_score` enum), no review text, and nothing at
@@ -303,16 +290,15 @@ and is not used.
 
 ## Refresh cadence
 
-`FacetSyncService.SyncAsync` runs **once per app launch**, on a background task
-after `EnrichmentSyncService`, never gating the window (`Program.cs`; §5.1, §7).
-`ReceptionSyncService` follows the same pattern — cache-first, once per launch,
-zero requests on a warm library — and writes `work_images` and `work_ratings`
-from the same two caches.
+`FacetSyncService.SyncAsync` and `ReceptionSyncService` run in the background
+`LibraryRefreshPipeline` after metadata enrichment. Startup, scheduled ownership refresh
+and successful account changes share this pipeline; IGDB credential refresh also invokes
+its IGDB-relevant steps. The window does not wait for these operations. Reception writes
+`work_images` and `work_ratings` from the same caches used by facets.
 
-Both are a **re-read, not a re-fetch**: both clients consult `metadata_cache`
-before the network, so on a warm library each pass costs zero requests, and
-each compares before it writes, so a warm re-run reports zero rows written.
-What a value actually tracks is therefore its cache entry's TTL:
+Both clients consult `metadata_cache` before the network. A complete, compatible, fresh
+cache can answer without requests, and unchanged projections do not rewrite assignment
+rows. Expiry or incompatible shape requests a refetch. The ordinary freshness intervals are:
 
 | Source | Effective refresh |
 |---|---|
@@ -356,15 +342,14 @@ extra, zero rank mismatches.
 | `game_mode` | 1,705 | 1,747 | 0 | precision 100%, recall 49% |
 | `player_perspective` | 0 | 972 | 0 | 0% |
 
-The two shortfalls have one cause and it is not a transformation bug: **no cached
-IGDB payload carries `game_modes` or `player_perspectives`** (0 of 865), because
-every entry predates those fields being added to `Apicalypse.Games()`. Nothing
-stored is wrong; the IGDB half is simply absent. Every `game_mode` in the database
-today came from Steam's player categories.
+In the 2026-08-25 database copy, **no cached IGDB payload carried `game_modes` or
+`player_perspectives`** (0 of 865): every entry predated those query fields. The
+IGDB half was absent, and every stored `game_mode` came from Steam's player categories.
+This describes that measurement, not current cache coverage.
 
 Coverage, and what an IGDB cache refresh would change:
 
-| Kind | Now | After refresh |
+| Kind | Measured 2026-08-25 | Projected after refresh |
 |---|---|---|
 | `tag` | 93.6% | 93.6% |
 | `game_mode` | 92.5% | 95.1% |
@@ -382,8 +367,6 @@ facets — all 3 Valve-typed tools carry none. The table is therefore a floor.
 `controller` at 66% is the one group that mostly hides things, and it is honest:
 a third of the library genuinely declares no gamepad support.
 
-**To populate `player_perspective` now**, delete the `game:%` rows for provider
-`igdb` from `metadata_cache` and relaunch. Cost: 3 requests (865 ids / 400 per
-batch) at 4 req/s. Otherwise it fills in on its own as the 30-day TTL expires
-(entries written 2026-08-24/25, so from ~2026-09-23). Live IGDB currently reports
-`player_perspectives` for 802/865 games and `game_modes` for 863/865.
+The live response in that measurement reported `player_perspectives` for 802/865
+games and `game_modes` for 863/865. Current installations use the versioned refetch
+rule above; manual cache deletion is not required to adopt newly projected fields.

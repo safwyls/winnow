@@ -20,19 +20,20 @@ public sealed class AccountFactRepository : IAccountFactRepository
     public async Task<long?> TryAppendAsync(AccountTransactionFact fact, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(fact);
+        ValidateAccountRef(fact.AccountRef);
 
         var row = TransactionRow.From(fact);
 
         using var lease = _factory.Lease();
         return await lease.Connection.ExecuteScalarAsync<long?>(new CommandDefinition("""
             INSERT INTO account_transactions (
-                source, kind, transaction_type_raw, occurred_at,
+                source, account_ref, kind, transaction_type_raw, occurred_at,
                 item_names_json, item_count, note,
                 total_cents, list_price_cents, discount_percent, wallet_change_cents,
                 currency_symbol, payment_kind, refunded, gift_recipient_present,
                 app_id, captured_at)
             VALUES (
-                @Source, @Kind, @TransactionTypeRaw, @OccurredAt,
+                @Source, @AccountRef, @Kind, @TransactionTypeRaw, @OccurredAt,
                 @ItemNamesJson, @ItemCount, @Note,
                 @TotalCents, @ListPriceCents, @DiscountPercent, @WalletChangeCents,
                 @CurrencySymbol, @PaymentKind, @Refunded, @GiftRecipientPresent,
@@ -45,14 +46,15 @@ public sealed class AccountFactRepository : IAccountFactRepository
     public async Task<long?> TryAppendAsync(AccountLicenseFact fact, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(fact);
+        ValidateAccountRef(fact.AccountRef);
 
         using var lease = _factory.Lease();
         return await lease.Connection.ExecuteScalarAsync<long?>(new CommandDefinition("""
             INSERT INTO account_licenses (
-                source, item_name, acquired_at, acquisition_kind,
+                source, account_ref, item_name, acquired_at, acquisition_kind,
                 acquisition_method_raw, package_id, captured_at)
             VALUES (
-                @Source, @ItemName, @AcquiredAt, @AcquisitionKind,
+                @Source, @AccountRef, @ItemName, @AcquiredAt, @AcquisitionKind,
                 @AcquisitionMethodRaw, @PackageId, @CapturedAt)
             ON CONFLICT DO NOTHING
             RETURNING id;
@@ -66,6 +68,7 @@ public sealed class AccountFactRepository : IAccountFactRepository
         var rows = await lease.Connection.QueryAsync<TransactionRow>(new CommandDefinition("""
             SELECT id                     AS Id,
                    source                 AS Source,
+                   account_ref            AS AccountRef,
                    kind                   AS Kind,
                    transaction_type_raw   AS TransactionTypeRaw,
                    occurred_at            AS OccurredAt,
@@ -98,6 +101,7 @@ public sealed class AccountFactRepository : IAccountFactRepository
         var rows = await lease.Connection.QueryAsync<AccountLicenseFact>(new CommandDefinition("""
             SELECT id                     AS Id,
                    source                 AS Source,
+                   account_ref            AS AccountRef,
                    item_name              AS ItemName,
                    acquired_at            AS AcquiredAt,
                    acquisition_kind       AS AcquisitionKind,
@@ -113,11 +117,18 @@ public sealed class AccountFactRepository : IAccountFactRepository
         return rows.AsList();
     }
 
+    private static void ValidateAccountRef(string? accountRef)
+    {
+        if (accountRef is not null && (string.IsNullOrWhiteSpace(accountRef) || accountRef != accountRef.Trim()))
+            throw new ArgumentException("An account reference must be nonblank or null when unknown.", nameof(accountRef));
+    }
+
     private sealed class TransactionRow
     {
         public long Id { get; init; }
 
         public string Source { get; init; } = string.Empty;
+        public string? AccountRef { get; init; }
 
         public string Kind { get; init; } = string.Empty;
 
@@ -155,6 +166,7 @@ public sealed class AccountFactRepository : IAccountFactRepository
         {
             Id = fact.Id,
             Source = fact.Source,
+            AccountRef = fact.AccountRef,
             Kind = fact.Kind,
             TransactionTypeRaw = fact.TransactionTypeRaw,
             OccurredAt = fact.OccurredAt,
@@ -177,6 +189,7 @@ public sealed class AccountFactRepository : IAccountFactRepository
         {
             Id = Id,
             Source = Source,
+            AccountRef = AccountRef,
             Kind = Kind,
             TransactionTypeRaw = TransactionTypeRaw,
             OccurredAt = OccurredAt,

@@ -37,7 +37,12 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     private bool _pending;
     private bool _sizePending;
     private ContentControl _hero = new();
-    private ContentControl _art = new();
+    private TextBlock? _homeHeading;
+    private Border? _homeIndicatorHost;
+    private Grid? _homeShelf;
+    private readonly ContentControl _art = new() { IsHitTestVisible = false,
+        HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch };
+    public override Control? Backdrop => _art;
     private GameTileViewModel? _selected;
     private Grid? _wall;
     private Window? _window;
@@ -224,9 +229,10 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     {
         _visibleCards.Clear();
         _hero = new ContentControl { MinHeight = 300 };
-        _art = new ContentControl();
+        _art.Opacity = 1;
         if (Context.Feed.Shelves.Count == 0)
         {
+            _art.Content = null;
             _selected = null;
             var retry = FullscreenUi.Button("Refresh recommendations", () => Context.Feed.LoadCommand.Execute(null));
             var history = FullscreenUi.Button("What you've told the feed", () => Context.Push(new FullscreenBrowseHistoryPage(Context)));
@@ -238,14 +244,18 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         _shelf = Math.Clamp(_shelf, 0, Context.Feed.Shelves.Count - 1);
         var shelf = Context.Feed.Shelves[_shelf];
         _card = Math.Clamp(_shelfPositions.GetValueOrDefault(shelf.Id), 0, Math.Max(0, shelf.Cards.Count - 1));
-        var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*") };
-        var heading = FullscreenUi.Text($"{shelf.Title}     {_shelf + 1} / {Context.Feed.Shelves.Count}", 32);
+        var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,*") };
+        var shelfLayout = new Grid { RowDefinitions = new RowDefinitions("Auto,*"),
+            ColumnDefinitions = new ColumnDefinitions("*,64"), ColumnSpacing = 12 };
+        _homeShelf = shelfLayout;
+        var heading = FullscreenUi.Text(shelf.Title, 32);
+        _homeHeading = heading;
         heading.Margin = new Thickness(0, 12, 0, 12);
-        Grid.SetRow(heading, 1);
-        var shelfGrid = new Grid { ColumnDefinitions = new ColumnDefinitions(string.Join(",", Enumerable.Repeat("*", _shelfCapacity))), Width = _wallWidth, HorizontalAlignment = HorizontalAlignment.Left };
+        var shelfGrid = new Grid { ColumnDefinitions = new ColumnDefinitions(string.Join(",", Enumerable.Repeat("*", _shelfCapacity))), Width = _wallWidth,
+            HorizontalAlignment = HorizontalAlignment.Left };
         _wall = shelfGrid;
         shelfGrid.SizeChanged += (_, _) => SizeWall();
-        Grid.SetRow(shelfGrid, 2);
+        Grid.SetRow(shelfGrid, 1);
         // Only real recommendations are shown; a short shelf stays left aligned.
         var offset = _card / _shelfCapacity * _shelfCapacity;
         foreach (var (card, index) in shelf.Cards.Skip(offset).Take(_shelfCapacity).Select((c, i) => (c, i)))
@@ -262,11 +272,28 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         }
         _hero.Margin = new Thickness(0, 0, 600, 0);
         grid.Children.Add(_hero);
-        grid.Children.Add(heading);
-        grid.Children.Add(shelfGrid);
-        Content = new Panel { Children = { _art, grid } };
+        shelfLayout.Children.Add(heading);
+        shelfLayout.Children.Add(shelfGrid);
+        var indicator = new FullscreenShelfIndicator(Context.Feed.Shelves.Select(s => s.Title).ToArray(), _shelf, index =>
+        {
+            _shelf = index; Rebuild(); FocusInitial();
+        });
+        _homeIndicatorHost = new Border { VerticalAlignment = VerticalAlignment.Bottom,
+            Child = new Viewbox { Child = indicator, Stretch = Stretch.Uniform,
+                StretchDirection = StretchDirection.DownOnly, VerticalAlignment = VerticalAlignment.Center } };
+        Grid.SetColumn(_homeIndicatorHost, 1); Grid.SetRow(_homeIndicatorHost, 1);
+        shelfLayout.Children.Add(_homeIndicatorHost);
+        Grid.SetRow(shelfLayout, 1); grid.Children.Add(shelfLayout);
+        Content = grid;
         if (shelf.Cards.Count > 0) SetHero(shelf.Cards[_card], shelf);
+        else { _selected = null; _art.Content = null; }
         SetFocusRows(_tiles.Cast<Control>().ToArray());
+    }
+
+    private void SelectBackdrop(GameTileViewModel tile)
+    {
+        if (_art.Content is FullscreenBackdrop backdrop) backdrop.Select(tile);
+        else _art.Content = new FullscreenBackdrop(Context, tile);
     }
 
     private void SetHero(FeedCardViewModel card, FeedShelfViewModel shelf)
@@ -285,12 +312,14 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         reason.PropertyChanged += (_, e) => { if (e.Property == TextBlock.FontSizeProperty) SizeReason(); };
         SizeReason();
         var title = FullscreenUi.Text(card.Tile.Title, 64);
-        title.MaxLines = 2;
+        title.Name = "FullscreenHomeTitle";
+        title.MaxLines = 1;
+        title.TextWrapping = TextWrapping.NoWrap;
         title.TextTrimming = TextTrimming.WordEllipsis;
         _hero.Content = FullscreenUi.Stack(FullscreenUi.Text(shelf.Title.ToUpperInvariant(), 24, "TextDim"),
             title, reason,
             FullscreenUi.Text($"{card.Tile.PlaytimeText} played · {card.Tile.LastPlayedText} · {(card.Tile.IsOnDisk ? "Installed" : "Not installed")} · {card.Tile.StoreNames}", 24, "TextDim"));
-        _art.Content = new FullscreenBackdrop(Context, card.Tile) { HorizontalAlignment = HorizontalAlignment.Right, Width = 1100 };
+        SelectBackdrop(card.Tile);
         Changed();
     }
 
@@ -304,7 +333,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
             _state = state;
         }
         _state.Resize(_columns * 2, library.VisibleTiles.Select(t => t.ReleaseId).ToArray());
-        _art = new ContentControl { Opacity = .45 };
+        _art.Opacity = .45;
         var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*") };
         var heading = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         var title = FullscreenUi.Text(library.Lists.Open?.Name ?? library.SelectedBucket?.Name
@@ -316,8 +345,19 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         count.VerticalAlignment = VerticalAlignment.Center;
         Grid.SetColumn(count, 1);
         heading.Children.Add(count);
-        grid.Children.Add(heading);
-        var collections = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16, Margin = new Thickness(0, 4, 0, 8) };
+        var headingStack = new StackPanel { Spacing = 4 };
+        headingStack.Children.Add(heading);
+        var problem = FullscreenUi.Text("", 24, "Amber");
+        problem.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding(nameof(ListsViewModel.Problem)) { Source = library.Lists });
+        problem.Bind(IsVisibleProperty, new Avalonia.Data.Binding(nameof(ListsViewModel.HasProblem)) { Source = library.Lists });
+        headingStack.Children.Add(problem);
+        grid.Children.Add(headingStack);
+        var collections = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"),
+            Margin = new Thickness(0, 4, 0, 8) };
+        var shelves = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
+        var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
+        collections.Children.Add(shelves);
+        Grid.SetColumn(tools, 2); collections.Children.Add(tools);
         Grid.SetRow(collections, 1);
         var all = FullscreenUi.Button("All games", () => ChooseCollection("all"));
         var installed = FullscreenUi.Button("Installed", () => ChooseCollection("installed"));
@@ -338,7 +378,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         foreach (var (control, index) in _collectionButtons.Select((button, index) => (button, index)))
         {
             control.GotFocus += (_, _) => _headerFocus = index;
-            collections.Children.Add(control);
+            (index < 4 ? shelves : tools).Children.Add(control);
         }
         grid.Children.Add(collections);
         var wall = new Grid { RowDefinitions = new RowDefinitions("*,*"), ColumnDefinitions = new ColumnDefinitions(string.Join(",", Enumerable.Repeat("*", _columns))), Width = _wallWidth, HorizontalAlignment = HorizontalAlignment.Left };
@@ -354,16 +394,17 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         }
         if (_tiles.Count == 0) wall.Children.Add(FullscreenUi.Text(library.EmptyMessage ?? "No games match this collection. Change your filters or search."));
         grid.Children.Add(wall);
-        Content = new Panel { Children = { _art, grid } };
+        Content = grid;
         SetFocusRows(_collectionButtons.Cast<Control>().ToArray(), _tiles.Take(_columns).Cast<Control>().ToArray(), _tiles.Skip(_columns).Cast<Control>().ToArray());
         _selected = library.VisibleTiles.FirstOrDefault(t => t.ReleaseId == _state.SelectedReleaseId);
         if (_selected is { } selected) SetLibraryArt(selected);
+        else _art.Content = null;
         SizeWall();
     }
 
     private void SetLibraryArt(GameTileViewModel tile)
     {
-        _art.Content = new FullscreenBackdrop(Context, tile);
+        SelectBackdrop(tile);
     }
 
     private void SizeWall()
@@ -382,8 +423,34 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     private void ResizeWall()
     {
         if (_wall is null || _wall.Bounds.Height <= 0 || Bounds.Width <= 0) return;
-        var columns = FullscreenCoverLayout.Columns(Bounds.Width, _wall.Bounds.Height, _feed ? 1 : 2, Context.TextScale);
-        _wallWidth = Bounds.Width;
+        int columns;
+        if (_feed && _homeHeading is not null)
+        {
+            // Use the 100% canvas as the sizing reference. Extra space at smaller UI scales
+            // adds columns instead of increasing the cover height and undoing the user's zoom.
+            var availableHeight = Math.Max(1, Bounds.Height - _hero.DesiredSize.Height - _homeHeading.DesiredSize.Height);
+            var referenceHeight = Math.Max(1, availableHeight + (1080 - 1080 / Context.UiScale) * (1 - 2 * Context.SafeMarginPercent / 100));
+            var referenceWidth = Math.Max(1, Bounds.Width * Context.UiScale - 76);
+            var referenceColumns = FullscreenCoverLayout.Columns(referenceWidth, referenceHeight, 1, Context.TextScale);
+            var cellWidth = referenceWidth / referenceColumns;
+            var outsideArt = 36 * Context.TextScale + 28;
+            cellWidth = Math.Min(cellWidth, Math.Max(1, availableHeight - outsideArt) * 2 / 3 + 24);
+            columns = Math.Max(1, (int)Math.Floor((Bounds.Width - 76 + .01) / cellWidth));
+            _wallWidth = Math.Min(Bounds.Width - 76, columns * cellWidth);
+            _wall.VerticalAlignment = VerticalAlignment.Bottom;
+            _wall.Height = Math.Min(availableHeight, (cellWidth - 24) * 3 / 2 + outsideArt);
+            if (_homeIndicatorHost is not null) _homeIndicatorHost.Height = _wall.Height;
+            if (_homeShelf is not null)
+            {
+                _homeShelf.Height = _wall.Height + _homeHeading.DesiredSize.Height;
+                _homeShelf.VerticalAlignment = VerticalAlignment.Bottom;
+            }
+        }
+        else
+        {
+            columns = FullscreenCoverLayout.Columns(Bounds.Width, _wall.Bounds.Height, 2, Context.TextScale);
+            _wallWidth = Bounds.Width;
+        }
         if (Math.Abs(_wall.Width - _wallWidth) > 1 || double.IsNaN(_wall.Width)) _wall.Width = _wallWidth;
         if (columns == (_feed ? _shelfCapacity : _columns)) return;
         if (_feed) _shelfCapacity = columns;
@@ -654,6 +721,7 @@ public sealed class FullscreenBrowseSearchPage : FullscreenPage
 
     public FullscreenBrowseSearchPage(FullscreenContext context) : base(context)
     {
+        AutomationProperties.SetName(_query, "Search games");
         _edit = FullscreenUi.Button("Enter search", () => Context.EditText(_query));
         _edit.GotFocus += (_, _) => _inResults = false;
         _query.GotFocus += (_, _) => _inResults = false;
@@ -823,7 +891,7 @@ public sealed class FullscreenBrowseFiltersPage : FullscreenPage
         Add(browse, FullscreenUi.Button($"Sort · {Context.Library.SortOptions.First(s => s.Sort == _draft.Sort).Label}", () =>
             Context.ShowActions("Sort", Context.Library.SortOptions.Select(option => new FullscreenAction(option.Label,
                 () => { _draft.Sort = option.Sort; Build(); FocusInitial(); })).ToArray())));
-        if (Context.Library.Filters.HasYearData)
+        if (Context.Library.Filters.ShowYearRange)
         {
             browse.Children.Add(SectionHeading("Release year", "M 3,5 H 21 V 21 H 3 Z M 3,10 H 21 M 7,2 V 7 M 17,2 V 7"));
             _from.Text = _draft.Filters.YearFromText;
@@ -898,6 +966,7 @@ public sealed class FullscreenBrowseFiltersPage : FullscreenPage
     {
         _draft.Filters.YearFromText = _from.Text ?? string.Empty;
         _draft.Filters.YearToText = _to.Text ?? string.Empty;
+        _problem.Text = _draft.Filters.YearProblem ?? string.Empty;
         if (_fromButton is not null)
         {
             var label = $"Release year from · {(_from.Text is { Length: > 0 } ? _from.Text : "Any")}";
@@ -915,6 +984,7 @@ public sealed class FullscreenBrowseFiltersPage : FullscreenPage
 
     private void Recount()
     {
+        _draft.Recount();
         var filter = _draft.Filters.ToFilter() with
         {
             Search = Context.Library.SearchText,
@@ -926,10 +996,8 @@ public sealed class FullscreenBrowseFiltersPage : FullscreenPage
     private void Add(StackPanel panel, Button button) { panel.Children.Add(button); _rows.Add([button]); }
     private void Apply()
     {
-        bool Valid(string? value) => string.IsNullOrWhiteSpace(value) || int.TryParse(value, out var year) && year is >= 1 and <= 9999;
-        if (!Valid(_from.Text) || !Valid(_to.Text) || _draft.Filters.YearFrom > _draft.Filters.YearTo)
-        { _problem.Text = "Enter years from 1 to 9999, with the earlier year first."; return; }
-        _draft.Apply(Context.Library);
+        if (!_draft.Apply(Context.Library))
+        { _problem.Text = _draft.Filters.YearProblem; return; }
         Context.Back();
     }
 }
@@ -954,12 +1022,14 @@ internal sealed class FullscreenBrowseFilterGroupPage : FullscreenPage
         var rows = new List<Control[]>();
         foreach (var option in _group.AllOptions)
         {
-            var button = FullscreenUi.Button($"{(option.IsChecked ? "✓ " : string.Empty)}{option.Label}", () => { });
+            var button = FullscreenUi.Button(option.CountedLabel, () => { });
+            button.Bind(ContentControl.ContentProperty, new Avalonia.Data.Binding(nameof(option.CountedLabel)) { Source = option });
+            button.Bind(AutomationProperties.NameProperty, new Avalonia.Data.Binding(nameof(option.AutomationName)) { Source = option });
+            button.Bind(AutomationProperties.ItemStatusProperty, new Avalonia.Data.Binding(nameof(option.SelectionState)) { Source = option });
+            button.Bind(IsEnabledProperty, new Avalonia.Data.Binding(nameof(option.IsAvailable)) { Source = option });
             button.Click += (_, _) =>
             {
                 option.IsChecked = !option.IsChecked;
-                button.Content = FullscreenUi.Text($"{(option.IsChecked ? "✓ " : string.Empty)}{option.Label}");
-                AutomationProperties.SetName(button, $"{option.Label}, {(option.IsChecked ? "selected" : "not selected")}");
                 _changed();
             };
             panel.Children.Add(button);

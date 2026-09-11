@@ -38,11 +38,9 @@ public sealed class SteamHistoryClient : ISteamHistoryClient
     private const string LastPlayedTimesPath = "IPlayerService/ClientGetLastPlayedTimes/v1/";
 
     /// <summary>
-    /// Cache key for <see cref="LastPlayedTimesPath"/>. Deliberately carries no
-    /// account: the endpoint is scoped to the key, so keying the entry by a
-    /// steamid would fetch the same bytes once per enumerated local account.
+    /// Versioned scope excludes legacy entries whose fetching credential is unknown.
     /// </summary>
-    private const string LastPlayedCacheKey = "lastplayed";
+    private const string CacheScope = "history-v2";
 
     private readonly HttpClient _http;
     private readonly ISteamWebMetadataCache _cache;
@@ -74,11 +72,18 @@ public sealed class SteamHistoryClient : ISteamHistoryClient
     }
 
     /// <summary>Cache key for one account's Year in Review of one year.</summary>
-    public static string YearInReviewCacheKey(SteamId steamId, int year)
-        => string.Create(CultureInfo.InvariantCulture, $"yir:{steamId.Value}:{year}");
+    public static string YearInReviewCacheKey(SteamCredentialIdentity identity, SteamId steamId, int year)
+        => string.Create(CultureInfo.InvariantCulture, $"{CacheScope}:{identity.Fingerprint}:yir:{steamId.Value}:{year}");
+
+    public static string LastPlayedCacheKey(SteamCredentialIdentity identity)
+        => $"{CacheScope}:{identity.Fingerprint}:lastplayed";
 
     public async ValueTask<bool> IsConfiguredAsync(CancellationToken ct = default)
         => (await _credentials.GetInventoryAsync(ct)).HasUsableCredential;
+
+    public async ValueTask<bool> IsCurrentAsync(SteamCredentialIdentity identity,
+        SteamCredentialPurpose purpose = SteamCredentialPurpose.Unattended, CancellationToken ct = default)
+        => identity == SteamCredentialIdentity.From(await _credentials.GetCurrentAsync(purpose, ct));
 
     public async Task<SteamLastPlayedTimes> GetLastPlayedTimesAsync(
         SteamCredentialPurpose purpose = SteamCredentialPurpose.Unattended,
@@ -88,24 +93,29 @@ public sealed class SteamHistoryClient : ISteamHistoryClient
         var now = _clock.GetUtcNow().UtcDateTime;
         var cutoff = Cutoff(cacheTtl ?? _options.CacheTtl, now);
 
-        var entry = await _cache.GetAsync(SteamWebApiClient.CacheProvider, LastPlayedCacheKey, ct);
-        if (entry is { } cached && cached.FetchedAt >= cutoff
-            && SteamHistoryJson.TryReadLastPlayedTimes(cached.PayloadJson) is { } fresh)
+        var credential = await _credentials.GetAsync(purpose, ct);
+        if (SteamCredentialIdentity.From(credential) is not { } identity)
         {
-            return new SteamLastPlayedTimes(Answered: true, fresh, cached.FetchedAt, FromCache: true);
-        }
-
-        if (await _credentials.GetAsync(purpose, ct) is not { } credential)
-        {
-            _log.LogDebug("Steam Web API not configured; last-played lookup skipped.");
             return SteamLastPlayedTimes.Unanswered(now);
         }
 
+        var cacheKey = LastPlayedCacheKey(identity);
+
+        var entry = await _cache.GetAsync(SteamWebApiClient.CacheProvider, cacheKey, ct);
+        if (!await IsCurrentAsync(identity, purpose, ct)) return SteamLastPlayedTimes.Unanswered(now);
+        if (entry is { } cached && cached.FetchedAt >= cutoff
+            && SteamHistoryJson.TryReadLastPlayedTimes(cached.PayloadJson) is { } fresh)
+        {
+            return new SteamLastPlayedTimes(Answered: true, fresh, cached.FetchedAt, FromCache: true)
+                { CredentialIdentity = identity };
+        }
+
         var body = await GetBodyAsync(
-            credential,
+            credential!,
             sending => sending.AppendTo(LastPlayedTimesPath + "?format=json"),
             LastPlayedTimesPath,
             ct);
+        if (!await IsCurrentAsync(identity, purpose, ct)) return SteamLastPlayedTimes.Unanswered(now);
         var games = SteamHistoryJson.TryReadLastPlayedTimes(body);
         if (games is null)
         {
@@ -117,14 +127,16 @@ public sealed class SteamHistoryClient : ISteamHistoryClient
                     LastPlayedTimesPath);
             }
 
-            return ServeStaleLastPlayed(entry, now);
+            return ServeStaleLastPlayed(entry, now) with { CredentialIdentity = identity };
         }
 
         // Stored verbatim, so the per-platform splits and the fields this client
         // does not project stay recoverable without a refetch.
-        await _cache.SetAsync(SteamWebApiClient.CacheProvider, LastPlayedCacheKey, body, now, ct);
+        await _cache.SetAsync(SteamWebApiClient.CacheProvider, cacheKey, body, now, ct);
+        if (!await IsCurrentAsync(identity, purpose, ct)) return SteamLastPlayedTimes.Unanswered(now);
 
-        var result = new SteamLastPlayedTimes(Answered: true, games, now, FromCache: false);
+        var result = new SteamLastPlayedTimes(Answered: true, games, now, FromCache: false)
+            { CredentialIdentity = identity };
         _log.LogInformation(
             "Steam last-played times: {Count} apps, {WithFirstPlayed} carrying a first-played date.",
             result.Games.Count, result.WithFirstPlayed);
@@ -140,24 +152,26 @@ public sealed class SteamHistoryClient : ISteamHistoryClient
         CancellationToken ct = default)
     {
         var now = _clock.GetUtcNow().UtcDateTime;
-        var cacheKey = YearInReviewCacheKey(steamId, year);
         var cutoff = Cutoff(cacheTtl ?? _options.CacheTtl, now);
 
-        var entry = await _cache.GetAsync(SteamWebApiClient.CacheProvider, cacheKey, ct);
-        if (entry is { } cached && cached.FetchedAt >= cutoff
-            && SteamHistoryJson.TryReadYearInReview(cached.PayloadJson) is { } fresh)
+        var credential = await _credentials.GetAsync(purpose, ct);
+        if (SteamCredentialIdentity.From(credential) is not { } identity)
         {
-            return Build(steamId, year, fresh, cached.FetchedAt, fromCache: true);
-        }
-
-        if (await _credentials.GetAsync(purpose, ct) is not { } credential)
-        {
-            _log.LogDebug("Steam Web API not configured; Year in Review lookup skipped.");
             return SteamYearInReview.Unanswered(steamId, year, now);
         }
 
+        var cacheKey = YearInReviewCacheKey(identity, steamId, year);
+
+        var entry = await _cache.GetAsync(SteamWebApiClient.CacheProvider, cacheKey, ct);
+        if (!await IsCurrentAsync(identity, purpose, ct)) return SteamYearInReview.Unanswered(steamId, year, now);
+        if (entry is { } cached && cached.FetchedAt >= cutoff
+            && SteamHistoryJson.TryReadYearInReview(cached.PayloadJson) is { } fresh)
+        {
+            return Build(steamId, year, fresh, cached.FetchedAt, fromCache: true) with { CredentialIdentity = identity };
+        }
+
         var body = await GetBodyAsync(
-            credential,
+            credential!,
             sending => sending.AppendTo(
                 YearInReviewPath
                 + "?steamid=" + steamId.Value.ToString(CultureInfo.InvariantCulture)
@@ -165,6 +179,7 @@ public sealed class SteamHistoryClient : ISteamHistoryClient
                 + "&format=json"),
             YearInReviewPath,
             ct);
+        if (!await IsCurrentAsync(identity, purpose, ct)) return SteamYearInReview.Unanswered(steamId, year, now);
         var payload = SteamHistoryJson.TryReadYearInReview(body);
         if (payload is not { } parsed)
         {
@@ -182,16 +197,19 @@ public sealed class SteamHistoryClient : ISteamHistoryClient
                     YearInReviewPath, year);
 
                 await _cache.SetAsync(SteamWebApiClient.CacheProvider, cacheKey, body, now, ct);
+                if (!await IsCurrentAsync(identity, purpose, ct)) return SteamYearInReview.Unanswered(steamId, year, now);
                 return new SteamYearInReview(
-                    steamId, year, Answered: true, AccountId: null, Games: [], now, FromCache: false);
+                    steamId, year, Answered: true, AccountId: null, Games: [], now, FromCache: false)
+                    { CredentialIdentity = identity };
             }
 
-            return ServeStaleYearInReview(steamId, year, entry, now);
+            return ServeStaleYearInReview(steamId, year, entry, now) with { CredentialIdentity = identity };
         }
 
         await _cache.SetAsync(SteamWebApiClient.CacheProvider, cacheKey, body, now, ct);
+        if (!await IsCurrentAsync(identity, purpose, ct)) return SteamYearInReview.Unanswered(steamId, year, now);
 
-        var result = Build(steamId, year, parsed, now, fromCache: false);
+        var result = Build(steamId, year, parsed, now, fromCache: false) with { CredentialIdentity = identity };
         if (result.AccountMismatch)
         {
             // The key belongs to a different account than the one being
@@ -249,6 +267,10 @@ public sealed class SteamHistoryClient : ISteamHistoryClient
         // the credential travels in the query string. SteamAuthorizedRequest
         // owns the one retry that follows.
         var outcome = await SteamAuthorizedRequest.SendAsync(_http, _credentials, credential, buildUri, ct);
+
+        // A reactive renewal must not hand an operation a different account.
+        if (outcome.Body is not null && outcome.CredentialIdentity != SteamCredentialIdentity.From(credential))
+            return null;
 
         if (outcome.Renewed)
         {

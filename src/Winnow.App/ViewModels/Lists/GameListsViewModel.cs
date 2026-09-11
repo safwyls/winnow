@@ -16,7 +16,20 @@ public partial class GameListsViewModel : ObservableObject
 {
     public GameListsViewModel(IReadOnlyList<GameListEntryViewModel> rows) => Rows = rows;
 
-    public IReadOnlyList<GameListEntryViewModel> Rows { get; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasLists), nameof(IsEmpty))]
+    public partial IReadOnlyList<GameListEntryViewModel> Rows { get; private set; }
+
+    internal void ApplySnapshot(IReadOnlyList<GameListEntryViewModel> rows)
+    {
+        var existing = Rows.ToDictionary(row => row.List.Id);
+        Rows = rows.Select(row =>
+        {
+            if (!existing.TryGetValue(row.List.Id, out var current)) return row;
+            current.ApplySnapshot(row);
+            return current;
+        }).ToArray();
+    }
 
     public string Heading => GameListsCopy.Heading;
 
@@ -35,14 +48,15 @@ public partial class GameListsViewModel : ObservableObject
 /// </summary>
 public partial class GameListEntryViewModel : ObservableObject
 {
-    private readonly Func<GameListEntryViewModel, bool, Task> _toggle;
+    private Func<GameListEntryViewModel, bool, Task> _toggle;
 
     /// <summary>
     /// Guards against re-entrant toggles: the constructor sets
     /// <see cref="IsMember"/> to seed the checkbox, and the write-back to
     /// the repository must not fire for that initial assignment.
     /// </summary>
-    private bool _writing;
+    private bool _applying;
+    private bool _committed;
 
     public GameListEntryViewModel(
         GameListViewModel list,
@@ -53,9 +67,9 @@ public partial class GameListEntryViewModel : ObservableObject
         MemberReleaseIds = memberReleaseIds;
         _toggle = toggle;
 
-        _writing = true;
-        IsMember = memberReleaseIds.Count > 0;
-        _writing = false;
+        _applying = true;
+        _committed = IsMember = memberReleaseIds.Count > 0;
+        _applying = false;
     }
 
     public GameListViewModel List { get; }
@@ -65,8 +79,20 @@ public partial class GameListEntryViewModel : ObservableObject
     public IReadOnlyList<long> MemberReleaseIds { get; private set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(AutomationName))]
+    [NotifyPropertyChangedFor(nameof(AutomationName), nameof(SelectionLabel))]
     public partial bool IsMember { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusText), nameof(HasStatus))]
+    public partial bool IsBusy { get; private set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusText), nameof(HasStatus))]
+    public partial string? Problem { get; private set; }
+
+    public string SelectionLabel => $"{(IsMember ? "✓ " : "")}{Name}";
+    public string? StatusText => IsBusy ? GameListsCopy.Saving : Problem;
+    public bool HasStatus => StatusText is { Length: > 0 };
 
     public string AutomationName => IsMember
         ? GameListsCopy.RemoveAutomationName(Name)
@@ -77,26 +103,52 @@ public partial class GameListEntryViewModel : ObservableObject
     public void RecordMembership(IReadOnlyList<long> memberReleaseIds)
         => MemberReleaseIds = memberReleaseIds;
 
+    internal void ApplySnapshot(GameListEntryViewModel row)
+    {
+        if (IsBusy) return;
+        _toggle = row._toggle;
+        MemberReleaseIds = row.MemberReleaseIds;
+        _applying = true;
+        try { _committed = IsMember = row.IsMember; }
+        finally { _applying = false; }
+        OnPropertyChanged(nameof(Name));
+        OnPropertyChanged(nameof(SelectionLabel));
+        OnPropertyChanged(nameof(AutomationName));
+    }
+
     partial void OnIsMemberChanged(bool value)
     {
-        if (_writing)
+        if (_applying || IsBusy)
         {
             return;
         }
 
-        Pending = ToggleAsync(value);
+        Pending = ToggleAsync();
     }
 
-    private async Task ToggleAsync(bool wanted)
+    private async Task ToggleAsync()
     {
-        _writing = true;
+        IsBusy = true;
+        Problem = null;
         try
         {
-            await _toggle(this, wanted);
+            while (IsMember != _committed)
+            {
+                var wanted = IsMember;
+                await _toggle(this, wanted);
+                _committed = wanted;
+            }
+        }
+        catch (Exception)
+        {
+            _applying = true;
+            try { IsMember = _committed; }
+            finally { _applying = false; }
+            Problem = GameListsCopy.SaveFailed;
         }
         finally
         {
-            _writing = false;
+            IsBusy = false;
         }
     }
 }

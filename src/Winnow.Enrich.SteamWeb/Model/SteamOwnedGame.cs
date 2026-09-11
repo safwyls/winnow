@@ -87,8 +87,8 @@ public sealed record SteamOwnedGame(
 /// <param name="SteamId">The account queried.</param>
 /// <param name="Succeeded">Whether Steam returned a library, however small.</param>
 /// <param name="Games">The games, ordered by appid. Empty on an unanswered result.</param>
-/// <param name="ObservedAt">When the response was observed, or served from cache (UTC).</param>
-/// <param name="FromCache">True when no request was made because a fresh cache entry answered.</param>
+/// <param name="ObservedAt">Original response time, retained on every cache hit (UTC).</param>
+/// <param name="FromCache">True for either a fresh cache hit or a stale fallback after an unavailable answer.</param>
 public sealed record SteamOwnedLibrary(
     SteamId SteamId,
     bool Succeeded,
@@ -96,6 +96,12 @@ public sealed record SteamOwnedLibrary(
     DateTime ObservedAt,
     bool FromCache)
 {
+    /// <summary>
+    /// An explicit inventory count matches all valid, distinct returned app IDs.
+    /// False for partial responses and stale fallback, even when positive games remain usable.
+    /// </summary>
+    public bool IsComplete { get; init; }
+
     /// <summary>The unanswered result: no data, and explicitly not a claim that the library is empty.</summary>
     public static SteamOwnedLibrary Unanswered(SteamId steamId, DateTime observedAt)
         => new(steamId, Succeeded: false, Games: [], ObservedAt: observedAt, FromCache: false);

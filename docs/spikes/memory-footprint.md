@@ -1,8 +1,9 @@
 # Spike: where Winnow's memory goes
 
-> **Evidence, not a rule.** This document records how something was measured and is
-> never the place to look up what to do. The work it motivates is TASK-152 and its
-> subtasks; any rule that comes out of that work belongs in the document that owns it.
+> **Dated evidence.** Findings describe the builds and services observed on the dates below.
+> Current implementation choices are in [the build spec](../../game-library-design.md);
+> current interactions and layout are in [the visual spec](../../design-system.md).
+> This record is optional background.
 
 **Question:** Winnow reports around 500 MB in Task Manager on the author's library while
 Playnite sits near 175 MB. What is the memory, and which parts are ours to reduce?

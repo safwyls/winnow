@@ -1,6 +1,10 @@
 using System.Diagnostics;
+using Winnow.Core.Domain;
 using Winnow.Core.Ingest;
+using Winnow.Core.Queries;
+using Winnow.Core.Repositories;
 using Winnow.Enrich.SteamWeb;
+using Winnow.Enrich.SteamWeb.Model;
 using Winnow.Ingest.Epic;
 using Winnow.Ingest.Epic.Web;
 using Winnow.Ingest.Gog;
@@ -83,6 +87,9 @@ public readonly record struct LocalLibraryScan(
     /// </summary>
     public IReadOnlyList<EpicLaunchTriple> EpicLaunchTriples { get; init; } = [];
 
+    /// <summary>Provenance from the outside-gate GOG read; null on Epic-only refreshes.</summary>
+    public GogLibraryScan? GogEvidence { get; init; }
+
     /// <summary>
     /// The launcher install state this scan read, so a later pass handed the
     /// same scan can tell whether the files have moved since. Null when no
@@ -113,6 +120,7 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
     private readonly IEpicLaunchKeyStore? _epicLaunchKeys;
     private readonly Winnow.Core.Repositories.ISteamInstallStateRepository? _steamInstallState;
     private readonly LibraryScanBaseline? _baseline;
+    private readonly Winnow.Core.Repositories.IGogInstallStateRepository? _gogInstallState;
 
     public LocalLibrarySyncService(
         SteamLibrarySource steam,
@@ -123,7 +131,8 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
         ILogger<LocalLibrarySyncService> logger,
         IEpicLaunchKeyStore? epicLaunchKeys = null,
         Winnow.Core.Repositories.ISteamInstallStateRepository? steamInstallState = null,
-        LibraryScanBaseline? baseline = null)
+        LibraryScanBaseline? baseline = null,
+        Winnow.Core.Repositories.IGogInstallStateRepository? gogInstallState = null)
     {
         _steam = steam;
         _epic = epic;
@@ -134,6 +143,7 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
         _epicLaunchKeys = epicLaunchKeys;
         _steamInstallState = steamInstallState;
         _baseline = baseline;
+        _gogInstallState = gogInstallState;
     }
 
     /// <summary>
@@ -145,9 +155,11 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
     public LocalLibraryScan Scan()
     {
         var epic = _epic.ScanLibrary();
-        return new LocalLibraryScan(_steam.Scan(), epic.Candidates, _gog.Scan())
+        var gog = _gog.ScanLibrary();
+        return new LocalLibraryScan(_steam.Scan(), epic.Candidates, gog.Candidates)
         {
             EpicLaunchTriples = epic.LaunchTriples,
+            GogEvidence = gog,
         };
     }
 
@@ -162,7 +174,8 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
         var stopwatch = Stopwatch.StartNew();
 
         // Steam and Epic are read under the gate, after any earlier sync completes.
-        var scan = new LocalLibraryScan([], [], _gog.Scan());
+        var gog = _gog.ScanLibrary();
+        var scan = new LocalLibraryScan([], [], gog.Candidates) { GogEvidence = gog };
 
         return await ResolveScanAsync(scan, stopwatch, ct).ConfigureAwait(false);
     }
@@ -190,7 +203,8 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
     /// answer. The fingerprints are read before the scan, so a rewrite during
     /// the pass reads as moved rather than as covered.
     /// </summary>
-    internal async Task<LocalLibraryScan> RefreshInstallStateAsync(LocalLibraryScan scan, CancellationToken ct)
+    internal async Task<LocalLibraryScan> RefreshInstallStateAsync(
+        LocalLibraryScan scan, CancellationToken ct, bool retainGalaxyInstallState = true)
     {
         var now = _baseline?.Read() ?? default;
         var covered = scan.Covered;
@@ -210,12 +224,41 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
             scan = RefreshEpic(scan);
         }
 
+        scan = await RefreshGogInstallStateAsync(scan, retainGalaxyInstallState, ct).ConfigureAwait(false);
         return scan with { Covered = now };
 
         // A reader answering null cannot say the state is unchanged: null means
         // "no complete inventory to compare", so it always re-reads.
         static bool Moved(string? covered, string? current)
             => current is null || !string.Equals(covered, current, StringComparison.Ordinal);
+    }
+
+    private async Task<LocalLibraryScan> RefreshGogInstallStateAsync(
+        LocalLibraryScan scan, bool retainGalaxyInstallState, CancellationToken ct)
+    {
+        if (scan.GogEvidence is not { } evidence) return scan;
+        var current = _gog.ScanRegistry();
+        var games = current.Games.DistinctBy(game => game.GameId)
+            .ToDictionary(game => game.GameId, StringComparer.Ordinal);
+        var galaxyInstalled = retainGalaxyInstallState ? evidence.GalaxyInstalledProductIds : [];
+        var absent = _gogInstallState is null ? [] : await _gogInstallState.ReconcileAsync(
+            evidence.RegistryProductIds,
+            games.Values.Select(game => new Winnow.Core.Repositories.GogRegistryInstallation(game.GameId, game.InstallPath)).ToArray(),
+            current.IsComplete, galaxyInstalled, ct).ConfigureAwait(false);
+        var missing = absent.ToHashSet(StringComparer.Ordinal);
+        var galaxyPositive = galaxyInstalled.ToHashSet(StringComparer.Ordinal);
+        return scan with { Gog = scan.Gog.Select(candidate =>
+        {
+            if (games.TryGetValue(candidate.ProviderId, out var game))
+                return candidate with { Installed = true, InstallPath = game.InstallPath ?? candidate.InstallPath };
+            if (missing.Contains(candidate.ProviderId))
+                return candidate with { Installed = false, InstallPath = null };
+            if (retainGalaxyInstallState && (galaxyPositive.Contains(candidate.ProviderId)
+                || (current.IsComplete && candidate.Installed == false))) return candidate;
+            // A delayed remote snapshot or an incomplete registry supplies no
+            // current install fact. Keep its independent ownership/history facts.
+            return candidate with { Installed = null, InstallPath = null };
+        }).ToArray() };
     }
 
     /// <summary>
@@ -306,6 +349,9 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
 /// </summary>
 public sealed class RemoteOwnershipSyncService : IRemoteOwnershipSync
 {
+    private readonly IOwnershipInventoryRepository _inventories;
+    private readonly ISettingsRepository? _settings;
+    private readonly TimeProvider _clock;
     private readonly LocalLibrarySyncService _local;
     private readonly ExternalIdResolver _resolver;
     private readonly LibrarySyncGate _gate;
@@ -318,9 +364,15 @@ public sealed class RemoteOwnershipSyncService : IRemoteOwnershipSync
         ExternalIdResolver resolver,
         LibrarySyncGate gate,
         ILogger<RemoteOwnershipSyncService> logger,
+        IOwnershipInventoryRepository inventories,
         ISteamWebApiClient? steamWeb = null,
-        IEpicAccountClient? epicApi = null)
+        IEpicAccountClient? epicApi = null,
+        ISettingsRepository? settings = null,
+        TimeProvider? clock = null)
     {
+        _inventories = inventories;
+        _settings = settings;
+        _clock = clock ?? TimeProvider.System;
         _local = local;
         _resolver = resolver;
         _gate = gate;
@@ -362,7 +414,8 @@ public sealed class RemoteOwnershipSyncService : IRemoteOwnershipSync
         }
 
         var scan = reusable ?? _local.Scan();
-        var owned = await OwnedCandidatesAsync(scan.Steam, ct);
+        var inventoryBatch = await OwnedCandidatesAsync(scan.Steam, ct);
+        var owned = inventoryBatch.Candidates;
 
         // Union, never a reconciliation. Neither source is authoritative for the
         // SET: localconfig.vdf only records games that have been PLAYED, so it
@@ -402,7 +455,7 @@ public sealed class RemoteOwnershipSyncService : IRemoteOwnershipSync
         // HTTP and GOG stay outside the gate. Steam/Epic completion can change
         // while backfill is waiting, including a reusable startup scan.
         using var lease = await _gate.EnterAsync(ct).ConfigureAwait(false);
-        scan = await _local.RefreshInstallStateAsync(scan, ct).ConfigureAwait(false);
+        scan = await _local.RefreshInstallStateAsync(scan, ct, retainGalaxyInstallState: false).ConfigureAwait(false);
 
         var candidates = scan.Steam
             .Concat(owned)
@@ -413,6 +466,7 @@ public sealed class RemoteOwnershipSyncService : IRemoteOwnershipSync
 
         if (candidates.Count == 0)
         {
+            await CompleteInventoriesAsync(inventoryBatch, ct);
             _local.PublishScanBaseline(scan);
             _logger.LogInformation("Remote ownership sync found no candidates; nothing to resolve.");
             return new LibrarySyncReport(0, null, stopwatch.Elapsed, scan);
@@ -424,6 +478,7 @@ public sealed class RemoteOwnershipSyncService : IRemoteOwnershipSync
         // no-op on the normal path and keeps the series monotonic on the
         // abnormal one.
         var result = await _resolver.ResolveAsync(candidates, ct, PlaytimeView.LowerBound);
+        await CompleteInventoriesAsync(inventoryBatch, ct);
         _local.PublishScanBaseline(scan);
         stopwatch.Stop();
 
@@ -459,16 +514,16 @@ public sealed class RemoteOwnershipSyncService : IRemoteOwnershipSync
 
     /// <summary>
     /// The owned-library half of the union (§4.2). Needs a user-supplied Web API
-    /// key and the account's SteamID64, which is derived from the steam3 folder
-    /// name the local scan already enumerated — so this runs only when the local
-    /// scan found an account and the key is configured.
+    /// credential and the account's SteamID64. Targets include accounts named by
+    /// the local scan and the confirmed signed-in account, including one whose
+    /// empty or never-played library has no local game records.
     /// </summary>
-    private async Task<IReadOnlyList<CandidateOwnership>> OwnedCandidatesAsync(
+    private async Task<OwnedLibraryBatch> OwnedCandidatesAsync(
         IReadOnlyList<CandidateOwnership> local, CancellationToken ct)
     {
         if (_steamWeb is null || !await _steamWeb.IsConfiguredAsync(ct))
         {
-            return [];
+            return new([], []);
         }
 
         // The union of every account the scan named, not just the ones that won
@@ -493,8 +548,11 @@ public sealed class RemoteOwnershipSyncService : IRemoteOwnershipSync
             .Where(a => !string.IsNullOrWhiteSpace(a))
             .Distinct(StringComparer.Ordinal)
             .ToList();
+        if (_settings is not null && SteamOwnedAccount.Clean(await _settings.GetAsync(SteamOwnedAccount.RefSettingKey, ct)) is { } confirmed
+            && !accounts.Contains(confirmed, StringComparer.Ordinal)) accounts.Add(confirmed);
 
         var owned = new List<CandidateOwnership>();
+        var completions = new List<(OwnershipInventoryAttempt Attempt, SteamOwnedLibrary Library)>();
         foreach (var account in accounts)
         {
             if (!SteamId.TryParse(account!, out var steamId))
@@ -502,9 +560,14 @@ public sealed class RemoteOwnershipSyncService : IRemoteOwnershipSync
                 continue;
             }
 
+            var attempt = await _inventories.BeginAttemptAsync(ExternalIdProviders.Steam, steamId.AccountRef,
+                OwnershipInventorySources.SteamOwnedGames, ct);
             try
             {
-                owned.AddRange(await _steamWeb.GetOwnershipCandidatesAsync(steamId, ct: ct));
+                var library = await _steamWeb.GetOwnedGamesAsync(steamId, ct: ct);
+                if (!library.Succeeded || library.SteamId != steamId) continue;
+                owned.AddRange(library.ToCandidates(SteamWebApiClient.SourceName, _clock.GetUtcNow().UtcDateTime));
+                if (library.IsComplete) completions.Add((attempt, library));
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -515,8 +578,17 @@ public sealed class RemoteOwnershipSyncService : IRemoteOwnershipSync
             }
         }
 
-        return owned;
+        return new(owned, completions);
     }
+
+    private async Task CompleteInventoriesAsync(OwnedLibraryBatch batch, CancellationToken ct)
+    {
+        foreach (var (attempt, library) in batch.Completions)
+            await _inventories.CompleteAsync(attempt, library.ObservedAt, library.Games.Count, ct);
+    }
+
+    private sealed record OwnedLibraryBatch(IReadOnlyList<CandidateOwnership> Candidates,
+        IReadOnlyList<(OwnershipInventoryAttempt Attempt, SteamOwnedLibrary Library)> Completions);
 
     /// <summary>
     /// The authenticated Epic half of the union. Returns empty on any failure,

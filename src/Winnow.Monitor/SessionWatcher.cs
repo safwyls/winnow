@@ -12,7 +12,7 @@ namespace Winnow.Monitor;
 /// </summary>
 /// <param name="Running">Processes being tracked when the tick finished.</param>
 /// <param name="Started">Game processes newly attached this tick.</param>
-/// <param name="Recorded">Sessions written to the database this tick.</param>
+/// <param name="Recorded">Finalised sessions accepted by the database this tick; open checkpoints are excluded.</param>
 /// <param name="Debounced">Sessions dropped for falling under the debounce floor.</param>
 /// <param name="Queued">
 /// Sessions finalised but not yet accepted by the database, still waiting to be
@@ -53,9 +53,9 @@ public sealed class SessionWatcher : IDisposable
     /// <summary>Exited processes whose handles are released on the next tick (not inside the callback).</summary>
     private readonly List<ITrackedProcess> _closing = [];
 
-    // Sessions stay queued until the DB accepts them, so a failed insert does
+    // Sessions stay queued until the DB accepts them, so a failed save does
     // not lose the session -- the next tick or FlushAsync retries.
-    private readonly List<Session> _pending = [];
+    private readonly List<PendingSession> _pending = [];
 
     /// <summary>M3b attribution: launches Winnow fired itself. Consulted only after inference fails.</summary>
     private readonly LaunchIntents _intents;
@@ -90,7 +90,7 @@ public sealed class SessionWatcher : IDisposable
         _intents = intents ?? new LaunchIntents(options);
     }
 
-    /// <summary>Raised after a session is written. Handlers are invoked defensively (a throw is logged and skipped).</summary>
+    /// <summary>Raised after confirmed completion is written. Open checkpoints do not prompt. Handlers are invoked defensively.</summary>
     public event EventHandler<Session>? SessionRecorded;
 
     /// <summary>The executable index as of the last rebuild. Exposed for diagnostics and tests.</summary>
@@ -104,7 +104,9 @@ public sealed class SessionWatcher : IDisposable
         await DescribeIntentsAsync(now, ct).ConfigureAwait(false);
 
         var started = Discover(now);
+        await RecoverLiveAsync(ct).ConfigureAwait(false);
         var debounced = Collect(now);
+        await CheckpointLiveAsync(now, ct).ConfigureAwait(false);
         _intents.Sweep(now);
         var recorded = await DrainPendingAsync(ct).ConfigureAwait(false);
 
@@ -125,7 +127,7 @@ public sealed class SessionWatcher : IDisposable
 
         while (true)
         {
-            Session session;
+            PendingSession pending;
             lock (_gate)
             {
                 if (_pending.Count == 0)
@@ -133,7 +135,7 @@ public sealed class SessionWatcher : IDisposable
                     break;
                 }
 
-                session = _pending[0];
+                pending = _pending[0];
             }
 
             if (ct.IsCancellationRequested)
@@ -141,10 +143,11 @@ public sealed class SessionWatcher : IDisposable
                 break;
             }
 
-            long id;
+            var session = pending.Session;
+            Session saved;
             try
             {
-                id = await _sessions.InsertAsync(session, ct).ConfigureAwait(false);
+                saved = await _sessions.SaveMonitoredAsync(session, pending.Processes, ct).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -164,7 +167,7 @@ public sealed class SessionWatcher : IDisposable
                 // Index 0 rather than Remove(session): Session is a record, so
                 // Remove matches by value and two identical sessions (a game run
                 // twice for the same duration) would collapse into one removal.
-                if (_pending.Count > 0 && ReferenceEquals(_pending[0], session))
+                if (_pending.Count > 0 && ReferenceEquals(_pending[0], pending))
                 {
                     _pending.RemoveAt(0);
                 }
@@ -174,16 +177,86 @@ public sealed class SessionWatcher : IDisposable
             _logger.LogInformation(
                 "Recorded a {Duration:n0}s {Attribution} session for ownership {OwnershipId} "
                 + "({Start:u} → {End:u}).",
-                session.DurationSeconds ?? 0,
-                session.AttributedBy ?? "unattributed",
-                session.OwnershipId,
-                session.StartedAt,
-                session.EndedAt);
+                saved.DurationSeconds ?? 0,
+                saved.AttributedBy ?? "unattributed",
+                saved.OwnershipId,
+                saved.StartedAt,
+                saved.EndedAt);
 
-            Announce(session with { Id = id });
+            if (saved.EndedAt is not null)
+            {
+                Announce(saved);
+            }
         }
 
         return recorded;
+    }
+
+    private async Task RecoverLiveAsync(CancellationToken ct)
+    {
+        List<LiveSession> candidates;
+        lock (_gate)
+        {
+            candidates = _live.Values.Where(live => !live.Recovered).ToList();
+        }
+
+        foreach (var live in candidates)
+        {
+            try
+            {
+                var prior = await _sessions.FindOpenMonitoredAsync(
+                    live.OwnershipId, live.Processes.ToList(), ct).ConfigureAwait(false);
+                lock (_gate)
+                {
+                    if (prior is not null)
+                    {
+                        live.Restore(prior);
+                    }
+
+                    live.Recovered = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Could not recover the sitting for ownership {OwnershipId}; recovery will retry before recording it.",
+                    live.OwnershipId);
+            }
+        }
+    }
+
+    private async Task CheckpointLiveAsync(DateTime now, CancellationToken ct)
+    {
+        List<(LiveSession Live, Session Session, List<MonitoredProcessIdentity> Processes, int Revision)> writes = [];
+        lock (_gate)
+        {
+            foreach (var live in _live.Values)
+            {
+                if (live.Recovered && live.LiveProcesses > 0 && live.SavedRevision != live.Revision
+                    && BuildOpenSession(live, now) is { } session)
+                {
+                    writes.Add((live, session, live.Processes.ToList(), live.Revision));
+                }
+            }
+        }
+
+        foreach (var write in writes)
+        {
+            try
+            {
+                var saved = await _sessions.SaveMonitoredAsync(write.Session, write.Processes, ct).ConfigureAwait(false);
+                lock (_gate)
+                {
+                    write.Live.Restore(saved);
+                    write.Live.SavedRevision = write.Revision;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not checkpoint the sitting for ownership {OwnershipId}; the next tick will retry.",
+                    write.Session.OwnershipId);
+            }
+        }
     }
 
     /// <summary>Raises <see cref="SessionRecorded"/>; a throwing handler is logged and skipped.</summary>
@@ -257,11 +330,19 @@ public sealed class SessionWatcher : IDisposable
     public async Task<int> FlushAsync(CancellationToken ct = default)
     {
         var now = _timeProvider.GetUtcNow().UtcDateTime;
+        await RecoverLiveAsync(ct).ConfigureAwait(false);
 
         lock (_gate)
         {
             foreach (var live in _live.Values)
             {
+                if (!live.Recovered)
+                {
+                    _logger.LogWarning("Shutdown could not recover ownership {OwnershipId}; its last durable checkpoint remains open.",
+                        live.OwnershipId);
+                    continue;
+                }
+
                 // A game that has already exited gets its real end time even
                 // here; only the still-running ones become open rows.
                 var session = live.LiveProcesses > 0
@@ -270,7 +351,7 @@ public sealed class SessionWatcher : IDisposable
 
                 if (session is not null)
                 {
-                    Enqueue(session);
+                    Enqueue(session, live.Processes);
                 }
             }
 
@@ -298,7 +379,7 @@ public sealed class SessionWatcher : IDisposable
         return written;
     }
 
-    /// <summary>Queued sessions awaiting a successful insert.</summary>
+    /// <summary>Queued sessions awaiting a successful save.</summary>
     public int PendingCount
     {
         get
@@ -311,18 +392,18 @@ public sealed class SessionWatcher : IDisposable
     }
 
     /// <summary>Adds a finished session to the write queue. Caller holds the lock. Bounded to <see cref="MaxPendingSessions"/>.</summary>
-    private void Enqueue(Session session)
+    private void Enqueue(Session session, IEnumerable<MonitoredProcessIdentity> processes)
     {
         if (_pending.Count >= MaxPendingSessions)
         {
             _logger.LogWarning(
                 "The session write queue is full at {Cap}; dropping the oldest queued session "
                 + "for ownership {OwnershipId}. The database has been rejecting writes.",
-                MaxPendingSessions, _pending[0].OwnershipId);
+                MaxPendingSessions, _pending[0].Session.OwnershipId);
             _pending.RemoveAt(0);
         }
 
-        _pending.Add(session);
+        _pending.Add(new PendingSession(session, processes.ToList()));
     }
 
     public void Dispose()
@@ -544,7 +625,8 @@ public sealed class SessionWatcher : IDisposable
                     ownershipId, process.ProcessName, process.Pid);
             }
 
-            live.Join(process.StartedAtUtc, discoveryPass, _options.RelaunchGrace);
+            live.Join(new MonitoredProcessIdentity(process.Pid, process.StartedAtUtc, process.ProcessName),
+                discoveryPass, _options.RelaunchGrace);
         }
 
         // Subscribe only after the process is in the tracking table, so a
@@ -645,7 +727,7 @@ public sealed class SessionWatcher : IDisposable
 
             foreach (var live in _live.Values.ToList())
             {
-                if (live.LiveProcesses > 0 || live.LastExitUtc is not { } endedAt)
+                if (!live.Recovered || live.LiveProcesses > 0 || live.LastExitUtc is not { } endedAt)
                 {
                     continue;
                 }
@@ -669,7 +751,7 @@ public sealed class SessionWatcher : IDisposable
                 {
                     // Queued, not written. Finalising and persisting are
                     // separate steps on purpose — see _pending.
-                    Enqueue(session);
+                    Enqueue(session, live.Processes);
                 }
             }
         }
@@ -711,6 +793,7 @@ public sealed class SessionWatcher : IDisposable
             DurationSeconds = (long)duration.TotalSeconds,
             DetectionMethod = DetectionMethods.ProcessWatch,
             AttributedBy = live.Attribution,
+            MonitorKey = live.MonitorKey,
         };
     }
 
@@ -731,6 +814,7 @@ public sealed class SessionWatcher : IDisposable
             DurationSeconds = null,
             DetectionMethod = DetectionMethods.ProcessWatch,
             AttributedBy = live.Attribution,
+            MonitorKey = live.MonitorKey,
         };
     }
 
@@ -756,14 +840,28 @@ public sealed class SessionWatcher : IDisposable
 
     private sealed record TrackedGame(ITrackedProcess Process, long OwnershipId);
 
+    private sealed record PendingSession(Session Session, IReadOnlyList<MonitoredProcessIdentity> Processes);
+
     /// <summary>One game's in-progress session, spanning all processes under its install directory.</summary>
     private sealed class LiveSession(
         long ownershipId, DateTime startedAtUtc, long openedInPass, string attribution)
     {
         public long OwnershipId { get; } = ownershipId;
+        public string MonitorKey { get; private set; } = Guid.NewGuid().ToString("N");
+        public HashSet<MonitoredProcessIdentity> Processes { get; } = [];
+        public bool Recovered { get; set; }
+        public int Revision { get; private set; }
+        public int SavedRevision { get; set; } = -1;
+
+        public void Restore(Session saved)
+        {
+            MonitorKey = saved.MonitorKey!;
+            StartedAtUtc = saved.StartedAt;
+            Attribution = saved.AttributedBy;
+        }
 
         /// <summary>Fixed when the session opens; later processes joining cannot change it.</summary>
-        public string Attribution { get; } = attribution;
+        public string? Attribution { get; private set; } = attribution;
 
         /// <summary>Session start time, narrowed by <see cref="Join"/>.</summary>
         public DateTime StartedAtUtc { get; private set; } = startedAtUtc;
@@ -783,9 +881,12 @@ public sealed class SessionWatcher : IDisposable
         /// <paramref name="maxPullBack"/> to prevent long-running tools from
         /// backdating the session.
         /// </summary>
-        public void Join(DateTime startedAtUtc, long discoveryPass, TimeSpan maxPullBack)
+        public void Join(MonitoredProcessIdentity process, long discoveryPass, TimeSpan maxPullBack)
         {
             LiveProcesses++;
+            Processes.Add(process);
+            Revision++;
+            var startedAtUtc = process.StartedAt;
 
             if (startedAtUtc >= StartedAtUtc)
             {

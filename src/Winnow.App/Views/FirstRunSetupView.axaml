@@ -1,0 +1,109 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Winnow.App.ViewModels"
+             x:Class="Winnow.App.Views.FirstRunSetupView"
+             x:DataType="vm:FirstRunSetupViewModel"
+             AutomationProperties.Name="Winnow setup dialog"
+             AutomationProperties.ControlTypeOverride="Window">
+    <UserControl.Resources>
+        <DataTemplate x:Key="WelcomeStep" x:DataType="vm:FirstRunSetupViewModel">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="32" Spacing="24">
+                    <TextBlock Classes="display-l" Text="Your library has unread mail."/>
+                    <Border Padding="24" Background="{StaticResource Surface}"
+                            BorderBrush="{StaticResource Line}" BorderThickness="1"
+                            CornerRadius="{StaticResource RadiusControl}">
+                        <StackPanel Spacing="16">
+                            <TextBlock Classes="label" Text="IN THIS SETUP"/>
+                            <TextBlock Classes="body-l" Text="Game details and artwork · IGDB"/>
+                            <Border Height="1" Background="{StaticResource Line}"/>
+                            <TextBlock Classes="body-l" Text="Your platforms · Steam, Epic and GOG"/>
+                            <Border Height="1" Background="{StaticResource Line}"/>
+                            <TextBlock Classes="body-l" Text="Your preferences · Theme, application and library"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </DataTemplate>
+        <DataTemplate x:Key="LibraryStep" x:DataType="vm:FirstRunSetupViewModel">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="24" Spacing="16">
+                    <TextBlock Classes="label" Text="{Binding LibrarySettings.ExplicitSectionLabel}"/>
+                    <Border Padding="24" Background="{StaticResource Surface}"
+                            BorderBrush="{StaticResource Line}" BorderThickness="1"
+                            CornerRadius="{StaticResource RadiusControl}">
+                        <StackPanel Spacing="16">
+                            <TextBlock Classes="body prose" Text="{Binding LibrarySettings.ExplicitDefaultNote}"/>
+                            <ToggleSwitch IsChecked="{Binding LibrarySettings.ShowExplicitContent, Mode=TwoWay}"
+                                          OnContent="{Binding LibrarySettings.ExplicitToggleLabel}"
+                                          OffContent="{Binding LibrarySettings.ExplicitToggleLabel}"
+                                          AutomationProperties.Name="{Binding LibrarySettings.ExplicitToggleLabel}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="6"
+                                        IsVisible="{Binding LibrarySettings.ShowExplicitHiddenCount}">
+                                <TextBlock Classes="data" Text="{Binding LibrarySettings.ExplicitHiddenCountText}"/>
+                                <TextBlock Classes="body" Text="{Binding LibrarySettings.ExplicitHiddenUnitLabel}"/>
+                            </StackPanel>
+                            <TextBlock Classes="body prose" Text="{Binding LibrarySettings.ExplicitPendingNote}"
+                                       IsVisible="{Binding LibrarySettings.ShowExplicitPendingNote}"/>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Classes="body prose" Text="Changes save immediately. You can manage hidden games and add games by hand in Settings → Library."/>
+                </StackPanel>
+            </ScrollViewer>
+        </DataTemplate>
+        <DataTemplate x:Key="ReadyStep" x:DataType="vm:FirstRunSetupViewModel">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="32" Spacing="24">
+                    <TextBlock Classes="display-l" Text="Make room for something forgotten."/>
+                    <Border Padding="24" Background="{StaticResource Surface}"
+                            BorderBrush="{StaticResource Line}" BorderThickness="1"
+                            CornerRadius="{StaticResource RadiusControl}">
+                        <TextBlock Classes="body prose" Text="{Binding MetadataNote}"/>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </DataTemplate>
+    </UserControl.Resources>
+    <Panel Background="{StaticResource ModalScrim}">
+        <Border Name="SetupFrame" Margin="24" MaxWidth="1008" MaxHeight="800"
+                Background="{StaticResource Ground}" BorderBrush="{StaticResource Line}"
+                BorderThickness="1" CornerRadius="{StaticResource RadiusPane}" ClipToBounds="True"
+                KeyboardNavigation.TabNavigation="Cycle">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <Border Padding="24" Background="{StaticResource Surface}"
+                        BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
+                    <StackPanel Spacing="12">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Classes="display-s" Text="WINNOW SETUP"/>
+                            <TextBlock Grid.Column="1" Classes="data" Text="{Binding ProgressText}"
+                                       Foreground="{StaticResource TextDim}"/>
+                        </Grid>
+                        <TextBlock Name="StepHeading" Classes="display-l" Text="{Binding Title}"
+                                   AutomationProperties.HeadingLevel="1"
+                                   AutomationProperties.LiveSetting="Polite"/>
+                        <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Description}"/>
+                    </StackPanel>
+                </Border>
+                <ContentControl Grid.Row="1" Name="StepContent"
+                                HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+                <Border Grid.Row="2" Padding="24,16" BorderBrush="{StaticResource Line}"
+                        BorderThickness="0,1,0,0" Background="{StaticResource Surface}">
+                    <StackPanel Spacing="12">
+                        <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Problem}" IsVisible="{Binding !!Problem}"
+                                   Foreground="{StaticResource Amber}" AutomationProperties.LiveSetting="Polite"/>
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="12">
+                            <Button Name="SkipSetupButton" Classes="act quiet" Content="Skip setup"
+                                    Command="{Binding SkipAllCommand}"/>
+                            <Button Grid.Column="2" Name="SkipStepButton" Classes="act quiet" Content="Skip this step"
+                                    IsVisible="{Binding CanSkipStep}" Command="{Binding SkipStepCommand}"/>
+                            <Button Grid.Column="3" Name="BackButton" Classes="act" Content="Back"
+                                    IsEnabled="{Binding CanGoBack}" Command="{Binding BackCommand}"/>
+                            <Button Grid.Column="4" Name="NextButton" Classes="act primary"
+                                    Content="{Binding NextLabel}" Command="{Binding NextCommand}"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Panel>
+</UserControl>

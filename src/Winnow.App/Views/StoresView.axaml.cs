@@ -1,5 +1,8 @@
+using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Winnow.App.ViewModels;
 
 namespace Winnow.App.Views;
@@ -20,15 +23,74 @@ namespace Winnow.App.Views;
 /// </summary>
 public partial class StoresView : UserControl
 {
+    private StoresViewModel? _embeddedModel;
+    private IInputElement? _modalOrigin;
+    public bool IsEmbedded
+    {
+        get => !PlatformHeader.IsVisible;
+        set
+        {
+            PlatformHeader.IsVisible = !value;
+            if (value) ObserveEmbeddedModel();
+        }
+    }
+
     public StoresView()
     {
         InitializeComponent();
+        AttachedToVisualTree += (_, _) => { if (IsEmbedded) ObserveEmbeddedModel(); };
+        DetachedFromVisualTree += (_, _) =>
+        {
+            if (_embeddedModel is not null) _embeddedModel.PropertyChanged -= OnEmbeddedModelChanged;
+            _embeddedModel = null;
+        };
+        SizeChanged += (_, _) => { if (IsEmbedded) FitEmbeddedModals(); };
 
         // The previewer gets the panel in its not-connected state; runtime
         // leaves the DataContext to the shell. See Design/PreviewData.cs.
         if (Avalonia.Controls.Design.IsDesignMode)
         {
             DataContext = Design.PreviewData.Stores;
+        }
+    }
+
+    private void ObserveEmbeddedModel()
+    {
+        if (ReferenceEquals(_embeddedModel, DataContext)) return;
+        if (_embeddedModel is not null) _embeddedModel.PropertyChanged -= OnEmbeddedModelChanged;
+        _embeddedModel = DataContext as StoresViewModel;
+        if (_embeddedModel is not null) _embeddedModel.PropertyChanged += OnEmbeddedModelChanged;
+    }
+
+    private void FitEmbeddedModals()
+    {
+        foreach (var modal in this.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("modal")))
+        {
+            KeyboardNavigation.SetTabNavigation(modal, KeyboardNavigationMode.Cycle);
+            foreach (var scroll in modal.GetVisualDescendants().OfType<ScrollViewer>())
+                scroll.MaxHeight = Math.Max(64, Bounds.Height - 180);
+        }
+    }
+
+    private void OnEmbeddedModelChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(StoresViewModel.IsAnyModalOpen)) return;
+        if (_embeddedModel?.IsAnyModalOpen == true)
+        {
+            _modalOrigin ??= TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement();
+            Dispatcher.UIThread.Post(() =>
+            {
+                FitEmbeddedModals();
+                var modal = this.GetVisualDescendants().OfType<Border>()
+                    .FirstOrDefault(b => b.Classes.Contains("modal") && b.IsEffectivelyVisible);
+                modal?.GetVisualDescendants().OfType<Button>()
+                    .FirstOrDefault(b => b.IsEffectivelyVisible && b.IsEffectivelyEnabled)?.Focus(NavigationMethod.Tab);
+            }, DispatcherPriority.Loaded);
+        }
+        else
+        {
+            _modalOrigin?.Focus(NavigationMethod.Tab);
+            _modalOrigin = null;
         }
     }
 

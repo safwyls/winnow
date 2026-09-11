@@ -1,0 +1,451 @@
+{
+  "info": {
+    "_postman_id": "c1a4b0d3-1f82-4b08-9ab8-5bf41cd07c4f",
+    "name": "IGDB exploration for Winnow",
+    "description": "An exploratory IGDB v4 collection for Yaak. Start with Authentication, then paste the returned access_token into the collection variable of the same name. All IGDB queries use APICalypse in a plain-text request body. Never commit a populated client_secret or access_token.\n\nIGDB is authenticated with Twitch application credentials. Create a confidential Twitch app, set its OAuth redirect URL to localhost, and use its Client ID and Client Secret here. IGDB limits clients to 4 requests per second and 8 concurrent requests.\n\nIGDB documentation: https://api-docs.igdb.com/",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "igdb_base_url",
+      "value": "https://api.igdb.com/v4",
+      "type": "string"
+    },
+    {
+      "key": "igdb_image_base_url",
+      "value": "https://images.igdb.com/igdb/image/upload",
+      "type": "string"
+    },
+    {
+      "key": "twitch_token_url",
+      "value": "https://id.twitch.tv/oauth2/token",
+      "type": "string"
+    },
+    {
+      "key": "client_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "client_secret",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "game_query",
+      "value": "Baldur's Gate 3",
+      "type": "string"
+    },
+    {
+      "key": "igdb_game_id",
+      "value": "119171",
+      "type": "string"
+    },
+    {
+      "key": "steam_app_id",
+      "value": "1086940",
+      "type": "string"
+    },
+    {
+      "key": "external_game_source_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "external_uid",
+      "value": "1086940",
+      "type": "string"
+    },
+    {
+      "key": "cover_image_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "screenshot_image_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "backdrop_image_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "offset",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "limit",
+      "value": "10",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Authentication",
+      "description": "Create a confidential application in the Twitch developer console. Enter client_id and client_secret in Yaak after import, then send this request. Copy access_token from the response into the access_token collection variable. The token's expires_in value is in seconds; request a fresh one after it expires.",
+      "item": [
+        {
+          "name": "Get Twitch application access token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "{{client_secret}}",
+                  "type": "text"
+                },
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{twitch_token_url}}",
+            "description": "Returns access_token, expires_in, and token_type. This is application authentication, not a Twitch user login."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "1. Winnow production requests",
+      "description": "Every distinct IGDB and IGDB-image-CDN request shape currently issued by Winnow. The API surface is /external_games and /games; artwork and screenshot data are expanded fields on /games, not separate /artworks or /screenshots calls. The image requests use Winnow's shipped rendition tokens.",
+      "item": [
+        {
+          "name": "Resolve storefront ID — POST /external_games",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Client-ID", "value": "{{client_id}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "text/plain; charset=utf-8" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "fields uid,game,game.name,game.summary,game.first_release_date,game.cover.image_id,game.cover.url;\nwhere external_game_source = {{external_game_source_id}} & uid = (\"{{external_uid}}\");\nlimit 500;\noffset {{offset}};"
+            },
+            "url": "{{igdb_base_url}}/external_games",
+            "description": "Exact Winnow external-ID lookup shape. Source 1 is Steam, 5 is GOG, and 26 is Epic. Production batches up to 400 UIDs inside the parenthesized list and pages in 500-row responses."
+          },
+          "response": []
+        },
+        {
+          "name": "Fetch full game metadata — POST /games",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Client-ID", "value": "{{client_id}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "text/plain; charset=utf-8" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "fields name,summary,first_release_date,cover.image_id,cover.url,genres.name,themes.name,game_modes.name,player_perspectives.name,platforms.name,involved_companies.publisher,involved_companies.company.name,game_type.type,parent_game,version_parent,version_title,screenshots.image_id,artworks.image_id,rating,rating_count,aggregated_rating,aggregated_rating_count;\nwhere id = ({{igdb_game_id}});\nlimit 500;\noffset {{offset}};"
+            },
+            "url": "{{igdb_base_url}}/games",
+            "description": "Exact main metadata query. This is where Winnow obtains cover IDs, screenshot IDs, artwork IDs, ratings, relations, facets, and publisher data. Production batches up to 400 game IDs."
+          },
+          "response": []
+        },
+        {
+          "name": "Fetch age ratings — POST /games",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Client-ID", "value": "{{client_id}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "text/plain; charset=utf-8" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "fields age_ratings.category,age_ratings.rating,age_ratings.organization.name,age_ratings.rating_category.rating;\nwhere id = ({{igdb_game_id}});\nlimit 500;\noffset {{offset}};"
+            },
+            "url": "{{igdb_base_url}}/games",
+            "description": "Exact primary maturity query. Winnow isolates it because category and rating are deprecated fields that may eventually make IGDB reject the request."
+          },
+          "response": []
+        },
+        {
+          "name": "Fetch age ratings fallback — POST /games",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Client-ID", "value": "{{client_id}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "text/plain; charset=utf-8" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "fields age_ratings.organization.name,age_ratings.rating_category.rating;\nwhere id = ({{igdb_game_id}});\nlimit 500;\noffset {{offset}};"
+            },
+            "url": "{{igdb_base_url}}/games",
+            "description": "Exact fallback sent only after the primary age-rating query fails. It avoids the deprecated enum fields."
+          },
+          "response": []
+        },
+        {
+          "name": "Search game candidates — POST /games",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Client-ID", "value": "{{client_id}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "text/plain; charset=utf-8" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "fields name,cover.image_id,cover.url,first_release_date,platforms.name;\nsearch \"{{game_query}}\";\nlimit {{limit}};"
+            },
+            "url": "{{igdb_base_url}}/games",
+            "description": "Exact title-search shape used by Winnow's wrong-game control. Production defaults to 20 results and does not page the relevance-ranked tail."
+          },
+          "response": []
+        },
+        {
+          "name": "Fetch lifecycle signals — POST /games",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Client-ID", "value": "{{client_id}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "text/plain; charset=utf-8" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "fields game_status.status,game_modes.name; where id = {{igdb_game_id}}; limit 1;"
+            },
+            "url": "{{igdb_base_url}}/games",
+            "description": "Exact lifecycle query used to derive unfinished, multiplayer, and single-player signals."
+          },
+          "response": []
+        },
+        {
+          "name": "Fetch production cover — GET image CDN",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{igdb_image_base_url}}/t_cover_big_2x/{{cover_image_id}}.jpg",
+            "description": "Exact portrait rendition used by Winnow's IGDB cover source: t_cover_big_2x (528x704 when the source asset supports it). No API credentials are required."
+          },
+          "response": []
+        },
+        {
+          "name": "Fetch production screenshot — GET image CDN",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{igdb_image_base_url}}/t_screenshot_huge/{{screenshot_image_id}}.jpg",
+            "description": "Exact landscape rendition used by Winnow's details screenshot strip and lightbox: t_screenshot_huge (1280x720 when available). Use an ID from screenshots.image_id in the full metadata response."
+          },
+          "response": []
+        },
+        {
+          "name": "Fetch production fullscreen backdrop — GET image CDN",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{igdb_image_base_url}}/t_1080p_2x/{{backdrop_image_id}}.jpg",
+            "description": "Exact fullscreen backdrop rendition used by Winnow: t_1080p_2x (up to 3840x2160). Set backdrop_image_id to the image ID stored in background_url, or to the first screenshots.image_id used by the fullscreen fallback. No API credentials are required."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Game discovery",
+      "item": [
+        {
+          "name": "Search games by name",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Client-ID", "value": "{{client_id}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "text/plain" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "search \"{{game_query}}\";\nfields id,name,slug,category,first_release_date,platforms.name,genres.name,cover.image_id,external_games.category,external_games.uid;\nlimit {{limit}};"
+            },
+            "url": "{{igdb_base_url}}/games",
+            "description": "Best first lookup for a title. Inspect the returned game IDs before assuming an exact match."
+          },
+          "response": []
+        },
+        {
+          "name": "Get one game by IGDB ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Client-ID", "value": "{{client_id}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "text/plain" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "fields id,name,slug,summary,storyline,category,status,version_parent,version_title,first_release_date,release_dates.date,release_dates.platform.name,platforms.name,genres.name,themes.name,game_modes.name,player_perspectives.name,involved_companies.company.name,involved_companies.developer,involved_companies.publisher,websites.type,websites.url,external_games.category,external_games.uid,cover.image_id,screenshots.image_id,videos.video_id,rating,rating_count,total_rating,total_rating_count,hypes,updated_at;\nwhere id = {{igdb_game_id}};"
+            },
+            "url": "{{igdb_base_url}}/games",
+            "description": "A broad record useful for testing the enrichment shape. Nested fields demonstrate IGDB's reference expansion."
+          },
+          "response": []
+        },
+        {
+          "name": "Find game through Steam app ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Client-ID", "value": "{{client_id}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "text/plain" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "fields id,uid,game.id,game.name,game.slug,game.category,game.version_parent,game.platforms.name;\nwhere category = 1 & uid = \"{{steam_app_id}}\";"
+            },
+            "url": "{{igdb_base_url}}/external_games",
+            "description": "External-game category 1 is Steam. This confirms whether a Steam app has an IGDB association."
+          },
+          "response": []
+        },
+        {
+          "name": "Search across IGDB entities",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Client-ID", "value": "{{client_id}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "text/plain" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "search \"{{game_query}}\";\nfields name,description,game,company,collection,platform,theme;\nlimit {{limit}};"
+            },
+            "url": "{{igdb_base_url}}/search",
+            "description": "Use when title search needs disambiguation against collections, companies, platforms, or themes."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Reference data",
+      "item": [
+        {
+          "name": "List platforms",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Client-ID", "value": "{{client_id}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "text/plain" }
+            ],
+            "body": { "mode": "raw", "raw": "fields id,name,abbreviation,slug,platform_family.name,platform_type.name;\nsort name asc;\nlimit 500;" },
+            "url": "{{igdb_base_url}}/platforms",
+            "description": "Maps IGDB platform IDs and labels."
+          },
+          "response": []
+        },
+        {
+          "name": "List genres, themes, modes, and perspectives (multiquery)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Client-ID", "value": "{{client_id}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "text/plain" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "query genres \"genres\" { fields id,name,slug; sort name asc; limit 500; };\nquery themes \"themes\" { fields id,name,slug; sort name asc; limit 500; };\nquery game_modes \"modes\" { fields id,name,slug; sort name asc; limit 500; };\nquery player_perspectives \"perspectives\" { fields id,name,slug; sort name asc; limit 500; };"
+            },
+            "url": "{{igdb_base_url}}/multiquery",
+            "description": "One request for the primary browse facets. Multiquery helps stay within IGDB's request-per-second limit."
+          },
+          "response": []
+        },
+        {
+          "name": "List external-game sources",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Client-ID", "value": "{{client_id}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "text/plain" }
+            ],
+            "body": { "mode": "raw", "raw": "fields id,name;\nsort id asc;\nlimit 500;" },
+            "url": "{{igdb_base_url}}/external_game_sources",
+            "description": "Shows which third-party catalogues IGDB identifies as external-game sources."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Media helpers",
+      "item": [
+        {
+          "name": "Get cover record by game ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Client-ID", "value": "{{client_id}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "text/plain" }
+            ],
+            "body": { "mode": "raw", "raw": "fields id,image_id,width,height,animated,alpha_channel,url;\nwhere game = {{igdb_game_id}};" },
+            "url": "{{igdb_base_url}}/covers",
+            "description": "Use image_id to construct an image URL. IGDB's default URL is a thumbnail, so choose a size deliberately."
+          },
+          "response": []
+        },
+        {
+          "name": "Open cover at 720p (replace image ID)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "https://images.igdb.com/igdb/image/upload/t_720p/{{cover_image_id}}.jpg",
+            "description": "Set cover_image_id after inspecting the cover response. Image CDN requests do not need IGDB API authentication."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

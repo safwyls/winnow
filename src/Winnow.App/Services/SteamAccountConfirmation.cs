@@ -55,6 +55,9 @@ public interface ISteamAccountConfirmation
     Task<bool> ConfirmAsync(
         SteamId steamId, SteamAccountConfirmationSource source, CancellationToken ct = default);
 
+    /// <summary>Records a disclosure using the credential captured when it was fetched.</summary>
+    Task<bool> ConfirmAsync(SteamId steamId, SteamCredentialIdentity identity, CancellationToken ct = default);
+
     /// <summary>
     /// Clears the recorded account when the credential that earned it is no
     /// longer present, or is no longer the same credential.
@@ -120,53 +123,73 @@ public sealed class SteamAccountConfirmation : ISteamAccountConfirmation
     private readonly ISteamApiKeyProvider? _keys;
     private readonly ISteamSessionProvider? _sessions;
     private readonly ILogger<SteamAccountConfirmation> _log;
+    private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly IUnitOfWorkFactory? _unitOfWork;
 
     public SteamAccountConfirmation(
         ISettingsRepository settings,
         ISteamApiKeyProvider? keys = null,
         ISteamSessionProvider? sessions = null,
-        ILogger<SteamAccountConfirmation>? log = null)
+        ILogger<SteamAccountConfirmation>? log = null,
+        IUnitOfWorkFactory? unitOfWork = null)
     {
         _settings = settings;
         _keys = keys;
         _sessions = sessions;
         _log = log ?? NullLogger<SteamAccountConfirmation>.Instance;
+        _unitOfWork = unitOfWork;
     }
 
     /// <inheritdoc/>
     public async Task<bool> ConfirmAsync(
         SteamId steamId, SteamAccountConfirmationSource source, CancellationToken ct = default)
     {
-        // The account reference in the same shape the local scan writes
-        // (SteamId.AccountRef — the steam3 account id, the userdata folder
-        // name), so the filter's comparison is a string equality against rows
-        // both sources produced and not a conversion nobody would notice failing.
-        await _settings.SetAsync(SteamOwnedAccount.RefSettingKey, steamId.AccountRef, ct);
-
         var fingerprint = source switch
         {
             SteamAccountConfirmationSource.Session => SteamCredentialFingerprint.OfSession(steamId),
             _ => await KeyFingerprintAsync(ct),
         };
 
-        if (fingerprint is null)
-        {
-            // No credential to stamp it with. The account is still recorded — the
-            // observation happened — but nothing says which credential earned it,
-            // and reconciliation reads that absence as "cannot be vouched for"
-            // and clears on the next pass. Deliberately left as the shipped
-            // behaviour rather than tightened here: the key path cannot reach
-            // this state (it is gated on a configured key) and changing it would
-            // be a behaviour change in a stage that promised none.
-            return false;
-        }
+        return fingerprint is not null && await ConfirmAsync(steamId,
+            new SteamCredentialIdentity(source == SteamAccountConfirmationSource.Session
+                ? SteamCredentialKind.SessionToken : SteamCredentialKind.ApiKey,
+                fingerprint, source == SteamAccountConfirmationSource.Session ? steamId : null), ct);
+    }
 
-        await _settings.SetAsync(SteamOwnedAccount.KeyFingerprintSettingKey, fingerprint, ct);
-        return true;
+    public async Task<bool> ConfirmAsync(SteamId steamId, SteamCredentialIdentity identity, CancellationToken ct = default)
+    {
+        if (identity.Account is { } account && account != steamId) return false;
+        await _gate.WaitAsync(ct);
+        try
+        {
+            if (!await IsInForceAsync(identity.Fingerprint, ct)) return false;
+            using var scope = _unitOfWork?.Begin();
+            await _settings.SetAsync(SteamOwnedAccount.KeyFingerprintSettingKey, identity.Fingerprint, ct);
+            await _settings.SetAsync(SteamOwnedAccount.RefSettingKey, steamId.AccountRef, ct);
+            if (!await IsInForceAsync(identity.Fingerprint, ct))
+            {
+                if (scope is null)
+                {
+                    await _settings.SetAsync(SteamOwnedAccount.RefSettingKey, string.Empty, ct);
+                    await _settings.SetAsync(SteamOwnedAccount.KeyFingerprintSettingKey, string.Empty, ct);
+                }
+                return false;
+            }
+            scope?.Commit();
+            return true;
+        }
+        finally { _gate.Release(); }
     }
 
     /// <inheritdoc/>
     public async Task<bool> ReconcileAsync(CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try { return await ReconcileLockedAsync(ct); }
+        finally { _gate.Release(); }
+    }
+
+    private async Task<bool> ReconcileLockedAsync(CancellationToken ct)
     {
         var stored = SteamOwnedAccount.Clean(
             await _settings.GetAsync(SteamOwnedAccount.RefSettingKey, ct));
@@ -189,8 +212,10 @@ public sealed class SteamAccountConfirmation : ISteamAccountConfirmation
         // ISettingsRepository has two methods and no remove — the same
         // convention the Epic token store already follows. Every reader treats
         // blank as never-written.
+        using var scope = _unitOfWork?.Begin();
         await _settings.SetAsync(SteamOwnedAccount.RefSettingKey, string.Empty, ct);
         await _settings.SetAsync(SteamOwnedAccount.KeyFingerprintSettingKey, string.Empty, ct);
+        scope?.Commit();
 
         // Neither the account nor the fingerprint is named: one identifies a real
         // person and the other is derived from a credential.

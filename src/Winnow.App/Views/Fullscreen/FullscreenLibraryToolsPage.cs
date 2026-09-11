@@ -134,6 +134,9 @@ public sealed class FullscreenIdentityPage : FullscreenPage
             void Add(string label, Action action) { var button = FullscreenUi.Button(label, action); body.Children.Add(button); focus.Add([button]); }
             Add("Sort · " + _model.SortOptions.First(option => option.IsSelected).Label, () => Context.ShowActions("Sort possible matches", _model.SortOptions.Select(option => new FullscreenAction(option.Label, () => { _model.SelectSortCommand.Execute(option); Render(); FocusInitial(); })).ToArray()));
             Add("Kind · " + _model.KindOptions.First(option => option.IsSelected).Label, () => Context.ShowActions("Match kind", _model.KindOptions.Select(option => new FullscreenAction(option.Label, () => { _model.SelectKindCommand.Execute(option); Render(); FocusInitial(); })).ToArray()));
+            Add(_model.PreferredPlatformLabel, () => Context.ShowActions("Preferred platform for pending headers",
+                _model.PlatformOptions.Select(option => new FullscreenAction(option.Label,
+                    async () => await Apply(() => _model.SelectPlatformCommand.ExecuteAsync(option)))).ToArray()));
             if (_model.CanAcceptExact) Add(_model.AcceptExactLabel, () => Confirm(_model.AcceptExactTooltip, () => _model.AcceptExactCommand.ExecuteAsync(null)));
             if (_model.CanMergeSelected) Add(_model.MergeSelectedLabel, () => Confirm(_model.MergeSelectedTooltip, () => _model.MergeSelectedCommand.ExecuteAsync(null)));
             foreach (var card in _model.Sections.Where(section => section.IsVisible).SelectMany(s => s.Cards))

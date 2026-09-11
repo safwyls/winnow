@@ -198,7 +198,7 @@ public sealed class EnrichmentSyncService
         //    reaches source 1 through GOG's cross-store graph instead. A target
         //    the planner has no route for is simply absent from the plan, and
         //    absent means "ask nothing, write nothing" — never "IGDB said no".
-        var plan = await _lookups.PlanAsync(slice, ct);
+        var plan = await _lookups.PlanAsync(slice.Where(target => target.IgdbId is null).ToArray(), ct);
         foreach (var (route, count) in plan.RouteCounts)
         {
             run.Routes[route] = run.Routes.GetValueOrDefault(route) + count;
@@ -249,6 +249,7 @@ public sealed class EnrichmentSyncService
                 //    one more request per slice and zero once warm.
                 var igdbIds = matches.Values
                     .Select(m => m.IgdbId)
+                    .Concat(slice.Select(target => target.IgdbId).OfType<long>())
                     .Where(id => id > 0)
                     .Distinct()
                     .ToArray();
@@ -274,7 +275,7 @@ public sealed class EnrichmentSyncService
             run.IgdbUnconfiguredLogged = true;
             _logger.LogInformation(
                 "IGDB is not configured; falling back to the Steam store for titles. "
-                + "Set Igdb__ClientId / Igdb__ClientSecret to enable the metadata backbone.");
+                + "Add credentials in Settings > Application > IGDB metadata to enable it.");
         }
 
         var titles = new Dictionary<TargetKey, string>();
@@ -291,6 +292,16 @@ public sealed class EnrichmentSyncService
             {
                 titles[key] = match.Name;
                 titleSources[key] = FieldSources.Igdb;
+            }
+        }
+
+        foreach (var target in slice)
+        {
+            if (target.IgdbId is { } id && games.TryGetValue(id, out var game)
+                && !string.IsNullOrWhiteSpace(game.Name))
+            {
+                titles[KeyOf(target)] = game.Name;
+                titleSources[KeyOf(target)] = FieldSources.Igdb;
             }
         }
 
@@ -398,6 +409,7 @@ public sealed class EnrichmentSyncService
             bool namePromoted;
             using (var scope = _unitOfWork.Begin())
             {
+                if ((await _works.GetAsync(target.WorkId, ct))?.IgdbMapping != target.IgdbMapping) continue;
                 namePromoted = await _works.ApplyEnrichmentAsync(patch, ct);
                 if (namePromoted)
                 {
@@ -720,7 +732,9 @@ public sealed class EnrichmentSyncService
         IReadOnlyDictionary<string, EpicCatalogItemInfo> epicCatalog)
     {
         var match = matches.GetValueOrDefault(key);
-        var game = match is not null ? games.GetValueOrDefault(match.IgdbId) : null;
+        if (target.IgdbId is { } mappedId && match?.IgdbId != mappedId) match = null;
+        var gameId = target.IgdbId ?? match?.IgdbId;
+        var game = gameId is { } id ? games.GetValueOrDefault(id) : null;
 
         // A title is only ever offered to a work still holding a placeholder.
         // A real title — from an earlier run, from the store, or edited by the
@@ -789,6 +803,7 @@ public sealed class EnrichmentSyncService
             // catalog, so it carries the source the step that supplied it
             // recorded.
             NameSource = name is null ? null : titleSources.GetValueOrDefault(key),
+            ExpectedIgdbMapping = target.IgdbMapping,
         };
     }
 

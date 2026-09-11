@@ -381,7 +381,7 @@
                 BorderBrush="{StaticResource Line}"
                 BorderThickness="0,1,0,1"
                 Padding="16,0">
-            <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
                 <Border Grid.Column="0" Classes="field" VerticalAlignment="Center">
                     <ItemsControl ItemsSource="{Binding KindOptions}">
                         <ItemsControl.ItemsPanel>
@@ -420,7 +420,41 @@
                     </StackPanel>
                 </Border>
 
-                <TextBlock Grid.Column="3" Classes="data"
+                <Button Grid.Column="3" Name="PreferredPlatformButton" Classes="ctl"
+                        Margin="12,0" VerticalAlignment="Center"
+                        ToolTip.Tip="{Binding PreferredPlatformTooltip}"
+                        AutomationProperties.Name="{Binding PreferredPlatformLabel}"
+                        AutomationProperties.ItemStatus="{Binding PreferredPlatformLabel}">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                        <TextBlock Classes="body" FontSize="12" Foreground="{StaticResource TextDim}"
+                                   Text="{Binding PreferredPlatformLabel}"/>
+                        <Path Data="M 0,0 L 8,0 L 4,5 Z" Fill="{StaticResource TextDim}"
+                              VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <Button.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedRight" FlyoutPresenterClasses="sortmenu">
+                            <ItemsControl ItemsSource="{Binding PlatformOptions}" MinWidth="176">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:MergePlatformOptionViewModel">
+                                        <Button AutomationProperties.Name="{Binding Label}" Classes="sortitem"
+                                                Click="OnPlatformItemClick">
+                                            <Grid ColumnDefinitions="14,*">
+                                                <Border Width="6" Height="6" CornerRadius="3"
+                                                        HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                        Background="{StaticResource Volt}"
+                                                        IsVisible="{Binding IsSelected}"/>
+                                                <TextBlock Grid.Column="1" Classes="body"
+                                                           VerticalAlignment="Center" Text="{Binding Label}"/>
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+
+                <TextBlock Grid.Column="4" Classes="data"
                            VerticalAlignment="Center"
                            Foreground="{StaticResource TextDim}"
                            Text="{Binding CutCountText}"/>

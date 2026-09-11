@@ -189,60 +189,9 @@ public sealed class UpdateFlagService : IUpdateFlagService
     /// </summary>
     internal static DateTime? FlaggingPushAt(
         long releaseId, IReadOnlyList<UpdateEvent> events, int correlationWindowDays)
-    {
-        DateTime? newest = null;
-
-        foreach (var push in events)
-        {
-            // Scoped to the one release, as the CTE's join is. The caller reads
-            // by release so this is normally a no-op; it is here because a
-            // watermark derived from another release's push is a silent,
-            // permanent error in the user's own data.
-            if (push.ReleaseId != releaseId || push.Kind != UpdateEventKinds.BuildPush)
-            {
-                continue;
-            }
-
-            var pushAt = AsUtc(push.OccurredAt);
-
-            if (newest is { } best && pushAt <= best)
-            {
-                continue;
-            }
-
-            if (HasCorrelatedAnnouncement(releaseId, events, pushAt, correlationWindowDays))
-            {
-                newest = pushAt;
-            }
-        }
-
-        return newest;
-    }
-
-    /// <summary>
-    /// The CTE's <c>EXISTS</c>, in C#. <c>julianday</c> differences are days
-    /// including the fractional part, so <see cref="TimeSpan.TotalDays"/> is the
-    /// same measure and the boundary is inclusive on both sides exactly as
-    /// <c>&lt;=</c> makes it there.
-    /// </summary>
-    private static bool HasCorrelatedAnnouncement(
-        long releaseId, IReadOnlyList<UpdateEvent> events, DateTime pushAt, int correlationWindowDays)
-    {
-        foreach (var news in events)
-        {
-            if (news.ReleaseId != releaseId || news.Kind != UpdateEventKinds.Announcement)
-            {
-                continue;
-            }
-
-            if (Math.Abs((AsUtc(news.OccurredAt) - pushAt).TotalDays) <= correlationWindowDays)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
+        => UpdateReading.CorrelatedPushes(events, correlationWindowDays)
+            .Where(push => push.ReleaseId == releaseId)
+            .Select(push => (DateTime?)AsUtc(push.OccurredAt)).Max();
 
     /// <summary>
     /// Timestamps come back from SQLite as TEXT and therefore as

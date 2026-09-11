@@ -80,4 +80,23 @@
     <Content Include="..\fixtures\storefront\**" LinkBase="fixtures\storefront" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Winnow.PluginFixture\Winnow.PluginFixture.csproj" />
+  </ItemGroup>
+
+  <Target Name="CopyBundledPluginTestPackage" AfterTargets="Build">
+    <!-- Exercise the application's packaged plugin even when project outputs are isolated. -->
+    <MSBuild Projects="..\..\src\Winnow.App\Winnow.App.csproj" Targets="GetTargetPath" BuildInParallel="false">
+      <Output TaskParameter="TargetOutputs" ItemName="PluginTestAppAssembly" />
+    </MSBuild>
+    <PropertyGroup>
+      <PluginTestPackageRoot>@(PluginTestAppAssembly->'%(RootDir)%(Directory)plugins\')</PluginTestPackageRoot>
+    </PropertyGroup>
+    <ItemGroup>
+      <PluginTestPackage Include="$(PluginTestPackageRoot)**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PluginTestPackage)"
+          DestinationFiles="@(PluginTestPackage->'$(OutDir)plugins\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
 </Project>

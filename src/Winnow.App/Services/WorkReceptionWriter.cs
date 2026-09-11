@@ -18,19 +18,33 @@ public sealed class WorkReceptionWriter
 {
     private readonly IWorkImageRepository _images;
     private readonly IWorkRatingRepository _ratings;
+    private readonly IIgdbObservationWriter _observations;
     private readonly TimeProvider _clock;
 
     public WorkReceptionWriter(
         IWorkImageRepository images,
         IWorkRatingRepository ratings,
+        IIgdbObservationWriter observations,
         TimeProvider? clock = null)
     {
         _images = images;
         _ratings = ratings;
+        _observations = observations;
         _clock = clock ?? TimeProvider.System;
     }
 
-    public async Task<int> ApplyIgdbAsync(long workId, IgdbGame game, CancellationToken ct = default)
+    public async Task<int> ApplyIgdbAsync(IgdbMappingVersion mapping, IgdbGame game, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(mapping);
+        ArgumentNullException.ThrowIfNull(game);
+        if (mapping.IgdbId != game.IgdbId) return 0;
+        var changed = 0;
+        await _observations.TryWriteAsync(mapping, async token =>
+            changed = await PersistIgdbAsync(mapping.WorkId, game, token), ct);
+        return changed;
+    }
+
+    private async Task<int> PersistIgdbAsync(long workId, IgdbGame game, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(game);
 
@@ -39,13 +53,13 @@ public sealed class WorkReceptionWriter
         var changed = 0;
 
         if (await SetImagesAsync(
-                workId, ImageKinds.Screenshot, game.ScreenshotImageIds, stored, observedAt, ct))
+                workId, ImageKinds.Screenshot, game.ScreenshotImageIds, game.ScreenshotImages, stored, observedAt, ct))
         {
             changed++;
         }
 
         if (await SetImagesAsync(
-                workId, ImageKinds.Artwork, game.ArtworkImageIds, stored, observedAt, ct))
+                workId, ImageKinds.Artwork, game.ArtworkImageIds, game.ArtworkImages, stored, observedAt, ct))
         {
             changed++;
         }
@@ -94,6 +108,7 @@ public sealed class WorkReceptionWriter
         long workId,
         string kind,
         IReadOnlyList<string> imageIds,
+        IReadOnlyList<GameImage> images,
         IReadOnlyList<WorkImages> stored,
         DateTime observedAt,
         CancellationToken ct)
@@ -108,7 +123,16 @@ public sealed class WorkReceptionWriter
                    && await _images.DeleteAsync(workId, ImageSources.Igdb, kind, ct);
         }
 
-        if (existing is not null && string.Equals(existing.ImageIds, joined, StringComparison.Ordinal))
+        // Older cached payloads contain IDs alone. Keep any already-known
+        // metadata for those IDs when an offline fallback is replayed.
+        var metadata = ImageIdList.Split(joined)
+            .Select(id => images.FirstOrDefault(image => image.ImageId == id)
+                ?? existing?.Images.FirstOrDefault(image => image.ImageId == id))
+            .OfType<GameImage>()
+            .ToArray();
+
+        if (existing is not null && string.Equals(existing.ImageIds, joined, StringComparison.Ordinal)
+            && existing.Images.SequenceEqual(metadata))
         {
             return false;
         }
@@ -120,6 +144,7 @@ public sealed class WorkReceptionWriter
                 Source = ImageSources.Igdb,
                 Kind = kind,
                 ImageIds = joined,
+                Images = metadata,
                 ObservedAt = observedAt,
             },
             ct);

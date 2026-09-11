@@ -109,7 +109,8 @@ public sealed class FullscreenInteractionTests
             Assert.Equal("Library", television.CurrentPage.Title);
             Assert.True(nav.IsVisible);
             Assert.False(back.IsVisible);
-            Assert.Null(art.Content);
+            Assert.Same(television.CurrentPage.Backdrop, art.Content);
+            Assert.NotNull(art.Content);
         }
         finally { window.Close(); }
     }

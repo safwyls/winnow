@@ -6,7 +6,7 @@ using Winnow.Core.Repositories;
 
 namespace Winnow.App.ViewModels;
 
-/// <summary>SETTINGS › APPLICATION: window lifetime and Windows sign-in behavior.</summary>
+/// <summary>SETTINGS › APPLICATION: window behavior, metadata credentials and updates.</summary>
 public partial class ApplicationSettingsViewModel : ObservableObject
 {
     internal const string MinimizeToTraySettingKey = "application.minimize_to_tray";
@@ -24,12 +24,14 @@ public partial class ApplicationSettingsViewModel : ObservableObject
         ISettingsRepository? settings = null,
         IStartupRegistration? startup = null,
         IApplicationUpdater? updater = null,
-        IUriDispatcher? uris = null)
+        IUriDispatcher? uris = null,
+        IgdbSettingsViewModel? igdb = null)
     {
         _settings = settings;
         _startup = startup;
         _updater = updater;
         _uris = uris;
+        Igdb = igdb ?? new IgdbSettingsViewModel();
         if (_updater is not null)
         {
             _updater.Changed += (_, _) =>
@@ -42,12 +44,16 @@ public partial class ApplicationSettingsViewModel : ObservableObject
     }
 
     public string Title => "Application";
+    public IgdbSettingsViewModel Igdb { get; }
+    public event Action? SetupRequested;
+    [RelayCommand]
+    private void OpenSetup() => SetupRequested?.Invoke();
     public string ApplicationVersion => ApplicationBuildInfo.Current.Version;
     public string BuildCommit => ApplicationBuildInfo.Current.Commit;
     public string IntroMessage =>
-        "Choose where Winnow waits when you are not browsing your library.";
+        "Manage startup and updates.";
     public string SegmentLabel => "APPLICATION";
-    public string SegmentTooltip => "Window and startup behavior";
+    public string SegmentTooltip => "Startup, metadata and updates";
 
     public bool HasUpdater => _updater is not null;
     public string AutomaticUpdatesNote => "Check GitHub Releases and download updates in the background. Restart when you are ready.";
@@ -181,6 +187,7 @@ public partial class ApplicationSettingsViewModel : ObservableObject
         {
             _loading = false;
         }
+        await Igdb.LoadAsync(ct);
     }
 
     partial void OnMinimizeToTrayChanged(bool value)

@@ -55,6 +55,10 @@ public enum IgdbAssignmentOutcome
     /// <summary>Another game in the library already holds that IGDB entry (<c>works.igdb_id</c> is UNIQUE).</summary>
     IgdbIdClaimedByAnotherWork,
 
+    MappingChanged,
+    IdentifierHistoryUnavailable,
+    StorefrontObservation,
+
     /// <summary>Something threw and was logged. The user sees an error, not a wrong pin.</summary>
     Failed,
 }

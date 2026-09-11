@@ -25,6 +25,15 @@ public sealed record WorkEnrichment(
     string? SteamAppType = null,
     string? EpicCategories = null)
 {
+    /// <summary>Captured before provider IO; a mismatch makes the entire patch a no-op.</summary>
+    public IgdbMappingVersion? ExpectedIgdbMapping { get; init; }
+
+    /// <summary>
+    /// An explicit refetch of the current IGDB id may fill pinned metadata.
+    /// Requires an expected mapping and never replaces user-owned fields.
+    /// </summary>
+    public bool RefetchCurrentIgdbMapping { get; init; }
+
     /// <summary>
     /// Valve's numeric <c>StoreItem.type</c> (migration 0022). Init property
     /// rather than a positional parameter so every existing construction site

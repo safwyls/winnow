@@ -18,6 +18,7 @@
          migrated temp-file database — the same convention as Winnow.Tests. -->
     <ProjectReference Include="..\..\src\Winnow.Data\Winnow.Data.csproj" />
     <ProjectReference Include="..\..\src\Winnow.Recommend\Winnow.Recommend.csproj" />
+    <ProjectReference Include="..\..\tools\Winnow.Replay\Winnow.Replay.csproj" />
   </ItemGroup>
 
 </Project>

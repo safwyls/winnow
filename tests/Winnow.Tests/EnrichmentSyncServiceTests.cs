@@ -1644,6 +1644,8 @@ public sealed class EnrichmentSyncServiceTests
         fixture.Igdb.Games[1020] = new IgdbGame(
             1020, "Portal 2", "https://images.example/portal2.jpg", 2011, "Still alive.",
             ["Puzzle"], ["Comedy"], ["Valve"]);
+        fixture.Igdb.Games[103_298] = new IgdbGame(
+            103_298, "Prey (2017)", null, 2017, "The chosen game's summary.", [], [], []);
 
         await fixture.Pins.PinAsync(new WorkIgdbPinAssignment
         {
@@ -1661,12 +1663,12 @@ public sealed class EnrichmentSyncServiceTests
         await fixture.Service.EnrichAsync();
 
         var after = await fixture.WorkAsync(work.WorkId);
-        Assert.Contains("620", fixture.Igdb.Asked);
-        Assert.Equal("Still alive.", after.Summary);
-        Assert.Equal(2011, after.FirstReleaseYear);
+        Assert.Empty(fixture.Igdb.Asked);
+        Assert.Equal("The chosen game's summary.", after.Summary);
+        Assert.Equal(2017, after.FirstReleaseYear);
 
         // The pin's hand-picked title and id stand after clearing: the
-        // name is no longer provisional, and igdb_id is write-once.
+        // name is no longer provisional, and enrichment asks the chosen id.
         Assert.Equal("Prey (2017)", after.Name);
         Assert.Equal(103_298, after.IgdbId);
     }

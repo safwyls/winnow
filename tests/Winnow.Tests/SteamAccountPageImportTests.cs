@@ -38,6 +38,7 @@ public class SteamAccountPageImportTests : IDisposable
         _ownerships,
         _releases,
         _facts,
+        new AccountAcquisitionRepository(_db.Factory),
         _db.Factory,
         new LibrarySyncGate(),
         NullLogger<SteamAccountPageImportService>.Instance);

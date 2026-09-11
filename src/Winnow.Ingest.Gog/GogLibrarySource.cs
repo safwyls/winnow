@@ -6,6 +6,11 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Winnow.Ingest.Gog;
 
+public sealed record GogLibraryScan(
+    IReadOnlyList<CandidateOwnership> Candidates,
+    IReadOnlyList<string> RegistryProductIds,
+    IReadOnlyList<string> GalaxyInstalledProductIds);
+
 /// <summary>
 /// Composes GOG's local sources (Galaxy database + install registry) into the
 /// normalised <see cref="CandidateOwnership"/> feed. Strictly read-only; a
@@ -60,16 +65,22 @@ public sealed class GogLibrarySource
     /// it is the whole point of the Galaxy-less case.
     /// </param>
     public IReadOnlyList<CandidateOwnership> Scan(string? galaxyRoot = null)
+        => ScanLibrary(galaxyRoot).Candidates;
+
+    public GogLibraryScan ScanLibrary(string? galaxyRoot = null)
     {
         galaxyRoot ??= _galaxyRoot ?? GogPaths.FindGalaxyRoot();
 
         var galaxyEntries = ReadGalaxy(galaxyRoot);
-        var registryGames = ReadRegistry();
+        var registryScan = ScanRegistry();
+        var registryGames = registryScan.Games.DistinctBy(game => game.GameId)
+            .ToDictionary(game => game.GameId, StringComparer.Ordinal);
+        var galaxyInstalled = new HashSet<string>(StringComparer.Ordinal);
 
         if (galaxyEntries.Count == 0 && registryGames.Count == 0)
         {
             _logger.LogInformation("No GOG installation found; GOG ingest yields nothing");
-            return [];
+            return new([], [], []);
         }
 
         var observedAt = _timeProvider.GetUtcNow().UtcDateTime;
@@ -94,6 +105,7 @@ public sealed class GogLibrarySource
             }
 
             fromGalaxy.Add(winner.ProductId);
+            if (!string.IsNullOrWhiteSpace(winner.InstallationPath)) galaxyInstalled.Add(winner.ProductId);
             registryGames.TryGetValue(winner.ProductId, out var registryGame);
 
             // Both records look at the same disk. Galaxy is usually right and is
@@ -113,7 +125,7 @@ public sealed class GogLibrarySource
                     // A real observation: Galaxy tracks installs and this scan
                     // read InstalledBaseProducts, so false is what makes an
                     // uninstall visible rather than a shrug.
-                    Installed: !string.IsNullOrWhiteSpace(installPath),
+                    Installed: !string.IsNullOrWhiteSpace(installPath) ? true : registryScan.IsComplete ? false : null,
                     // 0 when Galaxy has a row saying zero; null when it has no
                     // row at all. Not the same statement.
                     PlaytimeMinutes: winner.PlaytimeMinutes,
@@ -207,7 +219,7 @@ public sealed class GogLibrarySource
             ordered.Count, fromGalaxy.Count, registryOnly,
             ordered.Count(c => c.Installed == true));
 
-        return ordered;
+        return new(ordered, registryGames.Keys.ToArray(), galaxyInstalled.ToArray());
     }
 
     private IReadOnlyList<GogLibraryEntry> ReadGalaxy(string? galaxyRoot)
@@ -243,16 +255,8 @@ public sealed class GogLibrarySource
         return _galaxyReader.Read(snapshot);
     }
 
-    private Dictionary<string, GogRegistryGame> ReadRegistry()
-    {
-        var games = new Dictionary<string, GogRegistryGame>(StringComparer.Ordinal);
-        foreach (var game in _registry.Enumerate())
-        {
-            games.TryAdd(game.GameId, game);
-        }
-
-        return games;
-    }
+    /// <summary>Cheap current install evidence; never opens Galaxy or game files.</summary>
+    public GogRegistryScan ScanRegistry() => _registry.Scan();
 
     /// <summary>
     /// Galaxy keys everything by <c>userId</c> and a machine can have several. One

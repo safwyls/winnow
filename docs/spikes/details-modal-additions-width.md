@@ -1,8 +1,9 @@
 # Spike: Detail modal additions width
 
-> **Evidence, not a rule.** This document records how something was measured and is
-> never the place to look up what to do. The current rules are in `design-system.md`
-> §10.1 and §10.3.
+> **Dated evidence.** Findings describe the builds and services observed on the dates below.
+> Current implementation choices are in [the build spec](../../game-library-design.md);
+> current interactions and layout are in [the visual spec](../../design-system.md).
+> This record is optional background.
 
 **Settles:** the reception line wrap behaviour, the screenshot strip geometry and the
 acquisition block fit for the details modal restructuring. Measured 2026-09-05.

@@ -21,6 +21,7 @@ namespace Winnow.App.ViewModels;
 public partial class MergeRowViewModel : ObservableObject, IPlayedEntry
 {
     private Action<MergeRowViewModel>? _makeHeader;
+    private readonly DateTime _nowUtc;
 
     public MergeRowViewModel(
         long workId,
@@ -41,7 +42,7 @@ public partial class MergeRowViewModel : ObservableObject, IPlayedEntry
         Facts = facts;
         CanPromote = canPromote;
         IsPack = isPack;
-        DormancyAlpha = Dormancy.VividAlphaFor(facts.LastPlayedAt, nowUtc);
+        _nowUtc = nowUtc;
         PlaytimeText = BuildPlaytimeText(facts.PlaytimeMinutes, isPack);
         IdleText = BuildIdleText(facts, nowUtc, isPack);
         DetailText = BuildDetailText(side, facts, isPack);
@@ -107,7 +108,9 @@ public partial class MergeRowViewModel : ObservableObject, IPlayedEntry
     public string DetailText { get; }
 
     /// <summary>The dormancy ramp's vivid alpha for the cover, from the row's last-played.</summary>
-    public double DormancyAlpha { get; }
+    public double DormancyAlpha => Side.Ramp.VividAlphaFor(Facts.LastPlayedAt, _nowUtc);
+
+    internal void RefreshDormancy() => OnPropertyChanged(nameof(DormancyAlpha));
 
     /// <summary>Tooltip on the unread dot.</summary>
     public string UnreadTip => MergeCopy.RowUnreadTip;

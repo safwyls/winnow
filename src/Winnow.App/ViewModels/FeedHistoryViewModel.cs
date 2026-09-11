@@ -57,9 +57,9 @@ public partial class FeedHistoryViewModel : ObservableObject
         {
             rows = await _feed.GetHistoryAsync(ct);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            throw;
+            return;
         }
         catch
         {

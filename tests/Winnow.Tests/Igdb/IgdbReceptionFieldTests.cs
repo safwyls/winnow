@@ -159,7 +159,7 @@ public sealed class IgdbReceptionFieldTests
         var stored = await cache.GetAsync(IgdbClient.CacheProvider, IgdbClient.GameCacheKey(100_440));
         Assert.NotNull(stored);
         using var document = JsonDocument.Parse(stored.Value.PayloadJson!);
-        Assert.Equal(4, document.RootElement.GetProperty("version").GetInt32());
+        Assert.Equal(IgdbClient.GamePayloadVersion, document.RootElement.GetProperty("version").GetInt32());
     }
 
     [Fact]

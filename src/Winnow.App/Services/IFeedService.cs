@@ -36,7 +36,7 @@ public sealed record FeedShelf(
     IReadOnlyList<FeedItem> Items)
 {
     /// <summary>
-    /// Items this shelf computed but is not showing: the replacements a
+    /// Additional computed items held back by desktop (fullscreen may expose them): the replacements a
     /// dismissed card is swapped for, in score order, cap-legal against
     /// <see cref="Items"/> because the same pass placed them.
     ///
@@ -60,10 +60,16 @@ public sealed record FeedSnapshot(
     FeedConfidence Confidence,
     bool Failed)
 {
+    /// <summary>Optional shelves computed separately; consumers append only to this snapshot's generation.</summary>
+    public Task<FeedSupplement>? AdditionalShelves { get; init; }
+
     /// <summary>The answer when there is no engine to ask, or when asking threw.</summary>
     public static FeedSnapshot Unavailable { get; } =
         new([], 0, FeedConfidence.EarlyDays, Failed: true);
 }
+
+/// <summary>Optional provider shelves. Their completion never gates the built-in feed.</summary>
+public sealed record FeedSupplement(IReadOnlyList<FeedShelf> Shelves, int CandidateCount);
 
 /// <summary>The two things a user can say about a card: "not interested" (durable) or "not now" (snooze).
 /// Translated from <c>FeedVerdictKinds</c> in <see cref="FeedService"/>. No positive kind; that signal is behavioural.</summary>

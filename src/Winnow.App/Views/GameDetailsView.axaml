@@ -345,7 +345,7 @@
             <Panel>
                 <Border CornerRadius="{StaticResource RadiusTile}" ClipToBounds="True" IsHitTestVisible="False">
                     <Panel>
-                        <Image Source="{Binding Cover}" Stretch="UniformToFill"/>
+                        <Image Source="{Binding Backdrop}" Stretch="UniformToFill"/>
                         <Border Background="{StaticResource ArtVeil}"/>
                     </Panel>
                 </Border>
@@ -1203,6 +1203,7 @@
                                                                   ItemsSource="{Binding Rows}">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate DataType="lists:GameListEntryViewModel">
+                                                              <StackPanel Spacing="3">
                                                                 <CheckBox Classes="listtick"
                                                                           IsChecked="{Binding IsMember, Mode=TwoWay}"
                                                                           AutomationProperties.Name="{Binding AutomationName}"
@@ -1213,6 +1214,10 @@
                                                                                TextTrimming="CharacterEllipsis"
                                                                                Text="{Binding Name}"/>
                                                                 </CheckBox>
+                                                                <TextBlock Classes="body" FontSize="12" TextWrapping="Wrap"
+                                                                           Foreground="{StaticResource Amber}"
+                                                                           Text="{Binding StatusText}" IsVisible="{Binding HasStatus}"/>
+                                                              </StackPanel>
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>
                                                     </ItemsControl>

@@ -67,9 +67,10 @@ public interface IIgdbClient
     /// art, genres, themes, game modes, perspectives and publisher for the
     /// entire library.
     ///
-    /// <para>Returns only ids IGDB reported at least one mappable rating for.
-    /// A game with no age ratings, or only ratings this client cannot name,
-    /// is absent rather than present-and-empty.</para>
+    /// <para>A successful answer with no mappable ratings is present with an
+    /// empty token list, including a known cached empty answer. Unavailable
+    /// ids are absent. Callers may retire old evidence only for an explicit
+    /// empty answer, never because a request failed or credentials are absent.</para>
     /// </summary>
     Task<IReadOnlyDictionary<long, IgdbAgeRatings>> GetAgeRatingsAsync(
         IEnumerable<long> igdbIds, TimeSpan? cacheTtl = null, CancellationToken ct = default);

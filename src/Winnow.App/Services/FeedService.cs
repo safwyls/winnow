@@ -18,7 +18,7 @@ public sealed class FeedService : IFeedService
     private static readonly RecommendationTuning Tuning = RecommendationTuning.Default;
 
     /// <summary>
-    /// Cards a shelf puts on screen.
+    /// Cards a desktop shelf puts on screen. Fullscreen also exposes the scored reserve.
     ///
     /// Six, and the number came from measuring the grid rather than from
     /// taste. Ten was a RAIL's number: items past the right edge cost no
@@ -68,21 +68,48 @@ public sealed class FeedService : IFeedService
     private readonly IFeedFeedbackRepository? _feedback;
     private readonly TimeProvider _clock;
     private readonly ILogger<FeedService>? _log;
+    private readonly PluginFeedService? _plugins;
 
     public FeedService(
         IRecommendationEngine? engine = null,
         IFeedFeedbackRepository? feedback = null,
         TimeProvider? clock = null,
-        ILogger<FeedService>? log = null)
+        ILogger<FeedService>? log = null,
+        PluginFeedService? plugins = null)
     {
         _engine = engine;
         _feedback = feedback;
         _clock = clock ?? TimeProvider.System;
         _log = log;
+        _plugins = plugins;
     }
 
     /// <inheritdoc/>
     public async Task<FeedSnapshot> GetShelvesAsync(CancellationToken ct = default)
+    {
+        var now = _clock.GetUtcNow().UtcDateTime;
+        // Start optional work independently; neither its queue nor its provider deadline
+        // belongs on the built-in feed's critical path.
+        var additional = _plugins is null ? null : ReadAdditionalShelvesAsync(now, ct);
+        var builtIn = await GetBuiltInShelvesAsync(now, ct).ConfigureAwait(false);
+        return builtIn with { AdditionalShelves = additional };
+    }
+
+    private async Task<FeedSupplement> ReadAdditionalShelvesAsync(DateTime now, CancellationToken ct)
+    {
+        try
+        {
+            return await Task.Run(() => _plugins!.GetShelvesAsync(now, ct), ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) { return new([], 0); }
+        catch (Exception)
+        {
+            _log?.LogWarning("Plugin recommendations could not be read; the built-in feed is unchanged.");
+            return new([], 0);
+        }
+    }
+
+    private async Task<FeedSnapshot> GetBuiltInShelvesAsync(DateTime now, CancellationToken ct)
     {
         if (_engine is null)
         {
@@ -93,8 +120,6 @@ public sealed class FeedService : IFeedService
         // from this DATE, so the feed rotates daily and is stable within a day —
         // refreshing the screen must not deal a new hand. Impression timestamps
         // come from actual viewport entry, which may happen on a later day.
-        var now = _clock.GetUtcNow().UtcDateTime;
-
         try
         {
             var started = Stopwatch.GetTimestamp();

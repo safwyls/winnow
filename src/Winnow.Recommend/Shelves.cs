@@ -24,6 +24,9 @@ public static class ShelfIds
 
     /// <summary>Never opened, and it carries a descriptor the user's hours concentrate in.</summary>
     public const string OnYourTaste = "on_your_taste";
+
+    /// <summary>Never-opened games without an installation or a strong taste match.</summary>
+    public const string WaitingToBeOpened = "waiting_to_be_opened";
 }
 
 /// <summary>

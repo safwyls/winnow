@@ -1,7 +1,9 @@
 # Spike: embedded-browser sign-in for Epic and GOG
 
-> **Evidence, not a rule.** This document records how something was measured and is
-> never the place to look up what to do. The current rule is in `game-library-design.md` §4.7 and `ROADMAP.md` §4.
+> **Dated evidence.** Findings describe the builds and services observed on the dates below.
+> Current implementation choices are in [the build spec](../../game-library-design.md);
+> current interactions and layout are in [the visual spec](../../design-system.md).
+> This record is optional background.
 
 Date: 2026-08-26
 Status: **spike only.** Nothing in `src/` was modified, nothing was committed.
@@ -133,25 +135,12 @@ with an `EndsWith` condition. Verified by building the full solution: zero `MSB3
 `Winnow.deps.json`, `Core.dll` and the three `WebView2Loader` RIDs intact, full test suite
 green.
 
-**(c) The TFM must become `net10.0-windows`.** `Winnow.App` is `net10.0` today. This is the
-strongest argument for putting the browser host in its own small Windows-only project rather
-than in `Winnow.App` directly — see §7.
-
-> **CORRECTED 2026-08-26, during M4.6.** This is wrong, and it is wrong in a way that would
-> have broken §7's quarantine. NuGet's TFM compatibility check is one-directional: a `net10.0`
-> project **cannot reference** a `net10.0-windows` project (NU1201). So a Windows-targeted
-> leaf project forces `Winnow.App` to follow it, which is exactly what §7 exists to prevent —
-> the two recommendations are mutually exclusive.
->
-> The TFM is not needed. `Winnow.Auth.WebView` targets plain `net10.0`, references
-> `Microsoft.Web.WebView2` unconditionally, and guards every entry point with
-> `OperatingSystem.IsWindows()` — the same shape `Winnow.Ingest.Epic` already uses for DPAPI.
-> Verified on this machine rather than reasoned about: it builds, copies `Core.dll` and all
-> three RIDs of `WebView2Loader.dll` to output, and
-> `CoreWebView2Environment.GetAvailableBrowserVersionString()` returns **151.0.4129.107** at
-> runtime from a non-Windows TFM. `MSB3277` appears and, as §2(b) says, does not break the
-> build. (At the time it did — it no longer appears since TASK-149 removed the wrappers; see
-> §2(b).)
+**(c) A Windows target framework is unnecessary.** `Winnow.Auth.WebView` targets
+`net10.0` and guards Windows entry points at runtime. A `net10.0` app cannot reference
+a `net10.0-windows` leaf project (NU1201), so runtime guards keep the app portable.
+The prototype built, copied Core.dll and the three WebView2Loader RIDs, and reported
+runtime version **151.0.4129.107** from the non-Windows target framework. The wrapper
+exclusion described in section 2(b) removes the unused WPF/WinForms references.
 
 ### Dependency cost, measured
 
@@ -561,12 +550,8 @@ Three points this buys:
 - **`Ingest.*` never references Avalonia or WebView2.** It depends on a Core interface. A
   headless caller supplies a console implementation of the same interface — which is exactly
   §8's fallback, for free.
-- **The Windows-only TFM is quarantined** in one leaf project, so `Winnow.App` need not become
-  `net10.0-windows` and the non-Windows story stays a missing implementation rather than a
-  broken build. This is the main argument for a separate project over putting it in
-  `Winnow.App`. *(As built, the leaf project targets plain `net10.0` with runtime platform
-  guards — see §2(c)'s correction. The quarantine still holds and is in fact stronger: the
-  WebView2 dependency lives in one project, and no project in the tree is Windows-targeted.)*
+- **WebView2 lives in one project**, targeting `net10.0` with runtime platform guards.
+  Other projects can reference the auth contract without becoming Windows-targeted.
 - **Epic's existing `Web/Auth/` is the template for GOG**, if GOG is ever built:
   `IEpicSecretProtector` / `DpapiEpicSecretProtector`, and `SettingsEpicTokenStore`'s
   discipline of one versioned key (`epic.oauth.session.v1`), encrypted before it reaches the
@@ -677,15 +662,12 @@ got smoother.
 
 1. **Epic breaks it.** Legendary's remote `webview_killswitch` exists because this happens.
    Everything must degrade to §8's console flow and then to the local readers.
-2. **Hosting someone's password entry inside Winnow is a posture change.** `epic-oauth.md` §1
-   explicitly **rejected** the embedded webview on this ground — *"hosting someone's password
-   entry inside Winnow is a worse posture than not touching it at all"* — and chose copy-paste
-   deliberately. This spike answers the *technical* half of that objection and does not
-   dissolve the *posture* half. That reversal should be made consciously, and §1 of
-   `epic-oauth.md` corrected to record it rather than left to contradict this document.
+2. **The browser host can access page contents.** Password entry happens on Epic's
+   origin inside a process Winnow hosts. Winnow captures the authorization code and does
+   not read password fields. This differs from using the user's external browser.
 3. **Cloudflare.** `/id/authorize` already challenges non-browser clients. An embedded browser
    with an injected `window.ue` and a spoofed UA is more fingerprintable, not less.
-4. **The credential problem is unchanged and is worse for GOG.** Epic's can stay user-supplied
-   per `epic-oauth.md` §10; GOG's mandatory `client_secret` with no registration path cannot.
+4. **Launcher credentials.** Storefront access requires a launcher client pair. Current
+   built-in and user-supplied credential handling is in the build spec, section 4.8.
 5. **Windows-only.** WebView2 is Windows-only, so the §7 quarantine is what keeps this from
    becoming a portability problem.

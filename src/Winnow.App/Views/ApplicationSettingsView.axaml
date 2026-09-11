@@ -23,7 +23,7 @@
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
-        <Border Grid.Row="0" Padding="24,20,24,18"
+        <Border Grid.Row="0" Name="ApplicationHeader" Padding="24,20,24,18"
                 BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
             <StackPanel Spacing="7">
                 <TextBlock AutomationProperties.HeadingLevel="1"
@@ -54,8 +54,6 @@
                             </StackPanel>
                             <ToggleSwitch Grid.Column="1" VerticalAlignment="Center"
                                           IsChecked="{Binding MinimizeToTray, Mode=TwoWay}"
-                                          OnContent="Minimize to notification area"
-                                          OffContent="Minimize to notification area"
                                           AutomationProperties.Name="Minimize to notification area"/>
                         </Grid>
                         <Border Height="1" Background="{StaticResource Line}"/>
@@ -68,8 +66,6 @@
                             </StackPanel>
                             <ToggleSwitch Grid.Column="1" VerticalAlignment="Center"
                                           IsChecked="{Binding CloseToTray, Mode=TwoWay}"
-                                          OnContent="Close to notification area"
-                                          OffContent="Close to notification area"
                                           AutomationProperties.Name="Close to notification area"/>
                         </Grid>
                     </StackPanel>
@@ -88,7 +84,6 @@
                         </StackPanel>
                         <ToggleSwitch Grid.Column="1" VerticalAlignment="Center"
                                       IsChecked="{Binding StartInFullscreen, Mode=TwoWay}"
-                                      OnContent="Start in fullscreen" OffContent="Start in fullscreen"
                                       AutomationProperties.Name="Start in fullscreen"/>
                     </Grid>
                 </Border>
@@ -103,8 +98,6 @@
                         <ToggleSwitch Grid.Column="1" VerticalAlignment="Center"
                                       IsEnabled="{Binding IsStartupSupported}"
                                       IsChecked="{Binding StartWithWindows, Mode=TwoWay}"
-                                      OnContent="Start with Windows"
-                                      OffContent="Start with Windows"
                                       AutomationProperties.Name="Start with Windows"/>
                     </Grid>
                 </Border>
@@ -122,8 +115,7 @@
                             </StackPanel>
                             <ToggleSwitch Grid.Column="1" VerticalAlignment="Center"
                                           IsChecked="{Binding AutomaticUpdates, Mode=TwoWay}"
-                                          AutomationProperties.Name="Automatic background updates"
-                                          OnContent="Automatic background updates" OffContent="Automatic background updates"/>
+                                          AutomationProperties.Name="Automatic background updates"/>
                         </Grid>
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
                             <StackPanel Spacing="5">
@@ -133,8 +125,7 @@
                             </StackPanel>
                             <ToggleSwitch Grid.Column="1" VerticalAlignment="Center"
                                           IsChecked="{Binding IncludeBetaReleases, Mode=TwoWay}"
-                                          AutomationProperties.Name="Include beta releases"
-                                          OnContent="Include beta releases" OffContent="Include beta releases"/>
+                                          AutomationProperties.Name="Include beta releases"/>
                         </Grid>
                         <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding UpdateStatus}"
                                    AutomationProperties.LiveSetting="Polite"/>
@@ -162,10 +153,21 @@
                 <TextBlock Classes="problem" IsVisible="{Binding HasProblem}"
                            Text="{Binding Problem}" AutomationProperties.LiveSetting="Polite"/>
 
+                <Border Name="SetupCard" Classes="card" AutomationProperties.Name="Setup wizard"
+                        AutomationProperties.AccessibilityView="Control">
+                    <StackPanel Spacing="12">
+                        <TextBlock Classes="body-l" Text="Setup wizard"/>
+                        <TextBlock Classes="body" TextWrapping="Wrap"
+                                   Text="Walk through metadata, platforms, appearance and preferences again."/>
+                        <Button Name="OpenSetupButton" Classes="act" Content="Run setup again"
+                                HorizontalAlignment="Left" Command="{Binding OpenSetupCommand}"/>
+                    </StackPanel>
+                </Border>
+
                 <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
                            Margin="0,6,0,0" AutomationProperties.HeadingLevel="2"
-                           Text="ABOUT WINNOW"/>
-                <Border Classes="card" AutomationProperties.Name="About Winnow"
+                           Name="AboutHeading" Text="ABOUT WINNOW"/>
+                <Border Name="AboutCard" Classes="card" AutomationProperties.Name="About Winnow"
                         AutomationProperties.AccessibilityView="Control">
                     <StackPanel Spacing="12">
                         <StackPanel Spacing="5">

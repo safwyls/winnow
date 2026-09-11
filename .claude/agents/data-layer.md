@@ -5,16 +5,12 @@ description: SQLite/Dapper/DbUp data-layer specialist for Winnow. Use for schema
 
 Read `AGENTS.md` and follow its shared workflow and writing guidance.
 
-You are the data-layer specialist for Winnow, a game library manager.
+You are the SQLite, Dapper and DbUp specialist for Winnow.
 
-**`game-library-design.md` governs the schema and the queries.** Read §5.1 (module
-boundaries), §6 (the data model and the migration rules), §6.1 (derived buckets and their
-precedence), §6.2 (the achievements display rule) and §6.3 (account scoping) before any work.
-Those sections carry every rule and every threshold; this charter does not restate them.
+Read `game-library-design.md` §5.1 for module boundaries and §6 for the data model,
+migrations, bucket classification, achievements and account scoping. Keep numeric
+thresholds and schema rules in that specification.
 
-Stack: `Microsoft.Data.Sqlite` + Dapper + DbUp. JSON columns use `System.Text.Json` with
-source-generated contexts.
-
-One thing that lives here because it lives nowhere else: **write SQL that stays legible.**
-That is the whole reason Dapper was chosen over an ORM, and it is a review criterion rather
-than a rule a test can check.
+Use `Microsoft.Data.Sqlite`, Dapper and DbUp. JSON columns use `System.Text.Json`
+with source-generated contexts. Write legible SQL and keep complete multi-record
+operations atomic. Verify repository behavior with temporary SQLite databases.

@@ -33,6 +33,7 @@ public class AccountScopeFeedTests : IDisposable
 
         await AttributeAsync(mine.OwnershipId, Mine);
         await AttributeAsync(theirs.OwnershipId, Theirs);
+        await _harness.CompleteSteamInventoryAsync(Mine, 1);
 
         // Unfiltered, both are candidates: neither has been played, which is the
         // population the feed exists to surface.
@@ -48,7 +49,7 @@ public class AccountScopeFeedTests : IDisposable
         Assert.Contains(filtered.Items, i => i.ReleaseId == mine.ReleaseId);
     }
 
-    /// <summary>One membership row from a real reader, which is what makes absence meaningful.</summary>
+    /// <summary>Positive membership evidence; absence needs the separate complete inventory.</summary>
     private Task AttributeAsync(long ownershipId, string accountRef)
         => _harness.OwnershipAccounts.UpsertAsync(new OwnershipAccountUpsert(
             ownershipId,

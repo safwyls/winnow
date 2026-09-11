@@ -100,6 +100,15 @@ public sealed class WorkFieldSourceRepository : IWorkFieldSourceRepository
     public async Task<WorkFieldEditOutcome> SetFieldAsync(
         long workId, string field, string? value, CancellationToken ct = default)
     {
+        using var batch = new RepositoryWriteBatch(_factory);
+        var result = await SetFieldAsync(batch.Lease, workId, field, value, ct);
+        batch.Commit();
+        return result;
+    }
+
+    internal async Task<WorkFieldEditOutcome> SetFieldAsync(
+        DbLease lease, long workId, string field, string? value, CancellationToken ct)
+    {
         if (ColumnFor(field) is not { } column)
         {
             return WorkFieldEditOutcome.UnknownField;
@@ -113,8 +122,7 @@ public sealed class WorkFieldSourceRepository : IWorkFieldSourceRepository
         if (WorkFields.IsNumeric(field) && trimmed is not null)
         {
             if (!int.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
-                || parsed < 1900
-                || parsed > 2200)
+                || !WorkFields.IsValidReleaseYear(parsed))
             {
                 return WorkFieldEditOutcome.InvalidValue;
             }
@@ -128,8 +136,6 @@ public sealed class WorkFieldSourceRepository : IWorkFieldSourceRepository
         {
             return WorkFieldEditOutcome.InvalidValue;
         }
-
-        using var lease = _factory.Lease();
 
         var exists = await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition(
             "SELECT COUNT(*) FROM works WHERE id = @workId;",
@@ -179,7 +185,8 @@ public sealed class WorkFieldSourceRepository : IWorkFieldSourceRepository
             return WorkFieldEditOutcome.UnknownField;
         }
 
-        using var lease = _factory.Lease();
+        using var batch = new RepositoryWriteBatch(_factory);
+        var lease = batch.Lease;
 
         var exists = await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition(
             "SELECT COUNT(*) FROM works WHERE id = @workId;",
@@ -203,6 +210,7 @@ public sealed class WorkFieldSourceRepository : IWorkFieldSourceRepository
             """,
             new { workId, field }, transaction: lease.Transaction, cancellationToken: ct));
 
+        batch.Commit();
         return WorkFieldEditOutcome.Applied;
     }
 

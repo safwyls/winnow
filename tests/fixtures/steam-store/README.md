@@ -22,11 +22,11 @@ throwing — has started silently returning nothing.
 Recapture with (Git Bash):
 
 ```
-curl -sS -G -A "Winnow/0.1 (+https://github.com/winnow-app; local game library manager)" \
+curl -sS -G -A "Winnow/0.1 (+https://github.com/safwyls/winnow; local game library manager)" \
   --data-urlencode 'input_json={"ids":[{"appid":1245620},{"appid":570},{"appid":440},{"appid":760}],"context":{"language":"english","country_code":"US","steam_realm":1},"data_request":{"include_tag_count":20,"include_basic_info":true,"include_assets":true,"include_release":true,"include_platforms":true,"include_reviews":true}}' \
   -o getitems-v1.json "https://api.steampowered.com/IStoreBrowseService/GetItems/v1/"
 
-curl -sS -G -A "Winnow/0.1 (+https://github.com/winnow-app; local game library manager)"   --data-urlencode 'input_json={"language":"english"}'   -o getstorecategories-v1.json "https://api.steampowered.com/IStoreBrowseService/GetStoreCategories/v1/"
+curl -sS -G -A "Winnow/0.1 (+https://github.com/safwyls/winnow; local game library manager)"   --data-urlencode 'input_json={"language":"english"}'   -o getstorecategories-v1.json "https://api.steampowered.com/IStoreBrowseService/GetStoreCategories/v1/"
 ```
 
 ## Quirks deliberately preserved
@@ -44,7 +44,7 @@ curl -sS -G -A "Winnow/0.1 (+https://github.com/winnow-app; local game library m
 | Dota 2 has no `controller_categoryids`; appid `760` has no `categories` key at all | A partial or absent block is ordinary. The parser reads a missing list as empty, never as an error. |
 | `getstorecategories-v1.json`: ids 55 and 56 share the display name `DualShock Controller Support`, as do 57/58 and 30/51 | Valve ships duplicate display names. Migration 0007 keys facets on the NAME, which collapses them into one checkbox — the answer a filter panel wants. |
 | three categories (80, 81, 82) have `display_name` values like `#category_playable_at_your_own_pace` | Unresolved localization tokens on Valve's side. The client falls back to `internal_name`, which reads correctly. |
-| tagid `29482` → `Souls-like` and `1091588` → `Roguelike Deckbuilder` in the tag list | The two tags §4.3 names by example; their presence is what makes the vocabulary useful. |
+| tagid `29482` → `Souls-like` and `1091588` → `Roguelike Deckbuilder` in the tag list | Examples of specific player-facing genres in the tag vocabulary. |
 | `version_hash` `711684454`, 446 tags, 15792 bytes | Byte-identical to the spike's capture. `version_hash` is how a caller detects the vocabulary moving. |
 
 ## Reviews captured from the live service

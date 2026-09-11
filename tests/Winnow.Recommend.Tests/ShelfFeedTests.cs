@@ -126,8 +126,9 @@ public class ShelfFeedTests : IDisposable
         var feed = await GetShelvesAsync();
 
         Assert.True(OnShelf(feed, ShelfIds.OnYourTaste, onTaste));
-        Assert.False(OnAnyShelf(feed, offTaste));
-        Assert.Equal(3, feed.CandidateCount); // absent from shelves ≠ absent from the pool
+        Assert.False(OnShelf(feed, ShelfIds.OnYourTaste, offTaste));
+        Assert.True(OnShelf(feed, ShelfIds.WaitingToBeOpened, offTaste));
+        Assert.Equal(3, feed.CandidateCount);
     }
 
     [Fact]
@@ -228,15 +229,13 @@ public class ShelfFeedTests : IDisposable
     [Fact]
     public async Task Empty_shelves_are_omitted_not_rendered_blank()
     {
-        // Facetless shelfware only: no patch stories, nothing installed,
-        // nothing sampled, no taste evidence — the answer is no shelves,
-        // each absent rather than present-and-empty.
+        // Facetless shelfware has one honest shelf. Story-specific shelves remain absent.
         await _harness.SeedGameAsync("Never Opened A");
         await _harness.SeedGameAsync("Never Opened B");
 
         var feed = await GetShelvesAsync();
 
-        Assert.Empty(feed.Shelves);
+        Assert.Equal(ShelfIds.WaitingToBeOpened, Assert.Single(feed.Shelves).Id);
         Assert.Equal(2, feed.CandidateCount);
     }
 

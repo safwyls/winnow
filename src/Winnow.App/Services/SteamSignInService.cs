@@ -88,6 +88,7 @@ public sealed class SteamSignInService
     private readonly TimeProvider _clock;
     private readonly ILogger<SteamSignInService> _log;
     private readonly ISteamAccountConfirmation? _confirmation;
+    private readonly OwnershipRefreshRequests? _refresh;
 
     public SteamSignInService(
         ISteamSignInSession session,
@@ -97,13 +98,15 @@ public sealed class SteamSignInService
         // Optional so a host that composed a sign-in without the settings table
         // still signs in. Absent means the session works and the visibility
         // toggle waits, which is the pre-S4 behaviour rather than a failure.
-        ISteamAccountConfirmation? confirmation = null)
+        ISteamAccountConfirmation? confirmation = null,
+        OwnershipRefreshRequests? refresh = null)
     {
         _session = session;
         _sessions = sessions;
         _clock = clock;
         _log = log ?? NullLogger<SteamSignInService>.Instance;
         _confirmation = confirmation;
+        _refresh = refresh;
     }
 
     /// <summary>Whether an embedded sign-in can run on this machine right now.</summary>
@@ -185,6 +188,7 @@ public sealed class SteamSignInService
                 session.SteamId, SteamAccountConfirmationSource.Session, ct);
 
         var health = await _sessions.GetHealthAsync(ct);
+        _refresh?.Request();
 
         return new SteamSignInReport(
             result.Outcome,
@@ -224,5 +228,6 @@ public sealed class SteamSignInService
         {
             await _confirmation.ReconcileAsync(ct);
         }
+        _refresh?.Request();
     }
 }

@@ -76,14 +76,14 @@ public sealed class LifecycleTests
     public async Task Evidence_roundtrips_and_bucket_preserves_viable_sibling()
     {
         using var db = new TempDatabase();
-        var work = await new WorkRepository(db.Factory).InsertAsync(new Work { Name = "Game" });
+        var work = await new WorkRepository(db.Factory).InsertAsync(new Work { Name = "Game", IgdbId = 100 });
         var releases = new ReleaseRepository(db.Factory);
         var release = await releases.InsertAsync(new Release { WorkId = work, Name = "Steam" });
         var ownerships = new OwnershipRepository(db.Factory);
         await ownerships.InsertAsync(new Ownership { ReleaseId = release, Store = "steam" });
         var repository = new LifecycleRepository(db.Factory);
         var observation = Observation(new() { IgdbStatus = "offline", OfficialShutdownAt = Now })
-            with { ReleaseId = release, ObservedAt = DateTime.UtcNow, RawJson = "{\"status\":6}" };
+            with { ReleaseId = release, SourceId = "100", ObservedAt = DateTime.UtcNow, RawJson = "{\"status\":6}" };
         await repository.AppendAsync(observation);
         var stored = Assert.Single(await repository.GetForReleaseAsync(release));
         Assert.Equal(observation.Signals, stored.Signals);
@@ -123,6 +123,8 @@ public sealed class LifecycleTests
         }
         Assert.Equal(LibraryBuckets.NeverPlayed,
             Assert.Single(await query.GetOwnershipBucketsAsync(BucketThresholds.Default)).Game.Bucket);
-        Assert.Single(await repository.GetAllAsync());
+        Assert.Empty(await repository.GetAllAsync());
+        using var check = db.Factory.Open();
+        Assert.Equal(1, check.ExecuteScalar<int>("SELECT COUNT(*) FROM lifecycle_observations;"));
     }
 }

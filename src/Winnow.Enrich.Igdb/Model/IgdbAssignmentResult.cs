@@ -26,6 +26,10 @@ public enum IgdbAssignmentStatus
     /// </summary>
     IgdbIdClaimedByAnotherWork,
 
+    MappingChanged,
+    IdentifierHistoryUnavailable,
+    StorefrontObservation,
+
     /// <summary>
     /// Something threw and was logged. The caller shows an error rather
     /// than a wrong pin.

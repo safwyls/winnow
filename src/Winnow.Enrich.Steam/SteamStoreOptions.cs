@@ -8,6 +8,13 @@ namespace Winnow.Enrich.Steam;
 /// </summary>
 public sealed class SteamStoreOptions
 {
+    /// <summary>Uncompressed response ceiling enforced inside every attempted send.</summary>
+    public long MaxResponseBytes { get; set; } = Winnow.Http.ProviderHttpTransport.DefaultMaxResponseBytes;
+    /// <summary>One attempt, including response body buffering.</summary>
+    public TimeSpan AttemptTimeout { get; set; } = Winnow.Http.ProviderHttpTransport.DefaultAttemptTimeout;
+    /// <summary>Total request budget, including retries and rate-limit waiting.</summary>
+    public TimeSpan OverallTimeout { get; set; } = Winnow.Http.ProviderHttpTransport.DefaultOverallTimeout;
+
     /// <summary>Web API root. Trailing slash required (relative URIs hang off it).</summary>
     public Uri BaseAddress { get; set; } = new("https://api.steampowered.com/");
 

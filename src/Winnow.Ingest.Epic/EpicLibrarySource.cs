@@ -85,12 +85,8 @@ public sealed class EpicLibrarySource
 
         var manifestsDirectory = EpicPaths.ManifestsDirectory(dataRoot);
 
-        // The one thing that decides whether "no manifest" may be reported as
-        // Installed: false. If the directory itself is not there, this reader
-        // never looked, and saying false would be inventing an observation.
-        var manifestsReadable = Directory.Exists(manifestsDirectory);
-
-        var manifests = _manifestReader.ReadDirectory(manifestsDirectory);
+        var manifestScan = _manifestReader.ScanDirectory(manifestsDirectory);
+        var manifests = manifestScan.Manifests;
         var catalog = _catalogReader.Read(EpicPaths.CatalogCachePath(dataRoot));
         var thirdParty = _thirdPartyReader.ReadDirectory(
             EpicPaths.ThirdPartyManagedAppsDirectory(dataRoot));
@@ -130,7 +126,7 @@ public sealed class EpicLibrarySource
             manifestsById.TryGetValue(catalogItemId, out var manifest);
             thirdPartyById.TryGetValue(catalogItemId, out var app);
 
-            var install = ResolveInstallState(manifest, entry, app, manifestsReadable);
+            var install = ResolveInstallState(manifest, entry, app, manifestScan.IsComplete);
             if (install.Installed == true)
             {
                 installedCount++;
@@ -180,7 +176,7 @@ public sealed class EpicLibrarySource
             candidates.Count, installedCount, catalog.Count, manifests.Count, thirdPartyCount,
             launchTriples.Count, dataRoot);
 
-        return new EpicScanResult(candidates, launchTriples);
+        return new EpicScanResult(candidates, launchTriples) { ManifestScanComplete = manifestScan.IsComplete };
     }
 
     /// <summary>
@@ -278,18 +274,18 @@ public sealed class EpicLibrarySource
     /// <item><b>Neither</b> — the catalog knows the title and the manifests
     /// directory has no record of it, so it is owned and not installed. That
     /// <c>false</c> is an observation, and it is what makes an uninstall show. It
-    /// downgrades to null only when the manifests directory could not be read at
-    /// all.</item>
+    /// downgrades to null when any part of the manifests scan is incomplete.</item>
     /// </list>
     /// </summary>
     private EpicInstallState ResolveInstallState(
         EpicManifest? manifest,
         EpicCatalogEntry? entry,
         EpicThirdPartyApp? app,
-        bool manifestsReadable)
+        bool manifestsComplete)
     {
         if (manifest is not null)
         {
+            if (!manifest.HasInstallState) return EpicInstallState.Unknown;
             if (!manifest.IsFullyInstalled)
             {
                 _logger.LogDebug(
@@ -312,7 +308,7 @@ public sealed class EpicLibrarySource
             return _installProbe.Probe(registryPath, registryKey);
         }
 
-        return manifestsReadable ? EpicInstallState.NotInstalled : EpicInstallState.Unknown;
+        return manifestsComplete ? EpicInstallState.NotInstalled : EpicInstallState.Unknown;
     }
 
     /// <summary>Blank is never an answer — matches <c>CandidateOwnership.Title</c>'s contract.</summary>

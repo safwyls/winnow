@@ -109,13 +109,13 @@ public sealed class SteamAccountIdentityTests : IDisposable
         await MarkFinishedAsync(populated: 2025);
         await MarkConfirmedAsync(Mine);
 
-        var confirmation = Confirmation(new FakeSteamApiKeyProvider(), out var sessions);
+        var confirmation = Confirmation(new FakeSteamApiKeyProvider(null), out var sessions);
 
         var (service, _) = SignIn(Mine, confirmation: confirmation, sessions: sessions);
         await service.SignInAsync(new SteamSignInRequest { ConsentGranted = true });
 
         var history = new YearStub { PopulatedYears = { 2025 } };
-        await Backfill(history, confirmation).BackfillAsync();
+        await Backfill(history, confirmation, new FakeSteamApiKeyProvider(null)).BackfillAsync();
 
         // Only the current year, which the ordinary loop always fetches. No
         // repair read, because there was nothing to repair.
@@ -412,7 +412,11 @@ public sealed class SteamAccountIdentityTests : IDisposable
 
     private SteamPlaytimeBackfillService Backfill(
         YearStub history, ISteamAccountConfirmation confirmation, FakeSteamApiKeyProvider? keys = null)
-        => new(
+    {
+        keys ??= new FakeSteamApiKeyProvider();
+        history.Identity = keys.Identity ?? new SteamCredentialIdentity(
+            SteamCredentialKind.SessionToken, SteamCredentialFingerprint.OfSession(SteamIdFor(Mine))!, SteamIdFor(Mine));
+        return new(
             history,
             new ReleaseRepository(_db.Factory),
             new OwnershipRepository(_db.Factory),
@@ -424,9 +428,10 @@ public sealed class SteamAccountIdentityTests : IDisposable
             new LibrarySyncGate(),
             new SteamPlaytimeBackfillOptions { FirstYear = 2022 },
             _clock,
-            keys ?? new FakeSteamApiKeyProvider(),
+            keys,
             NullLogger<SteamPlaytimeBackfillService>.Instance,
             confirmation);
+    }
 
     private async Task SeedOwnershipAsync(string accountRef)
     {
@@ -496,6 +501,12 @@ public sealed class SteamAccountIdentityTests : IDisposable
     /// </summary>
     private sealed class YearStub : ISteamHistoryClient
     {
+        public SteamCredentialIdentity Identity { get; set; } = new FakeSteamApiKeyProvider().Identity!;
+
+        public ValueTask<bool> IsCurrentAsync(SteamCredentialIdentity identity,
+            SteamCredentialPurpose purpose = SteamCredentialPurpose.Unattended, CancellationToken ct = default)
+            => ValueTask.FromResult(identity == Identity);
+
         public HashSet<int> PopulatedYears { get; } = [];
 
         /// <summary>Set to answer for a DIFFERENT account, as a stranger's key would.</summary>
@@ -524,7 +535,7 @@ public sealed class SteamAccountIdentityTests : IDisposable
                     : null,
                 Games: [],
                 ObservedAt: Now.UtcDateTime,
-                FromCache: false));
+                FromCache: false) { CredentialIdentity = Identity });
         }
 
         public Task<SteamLastPlayedTimes> GetLastPlayedTimesAsync(
@@ -532,6 +543,6 @@ public sealed class SteamAccountIdentityTests : IDisposable
             TimeSpan? cacheTtl = null,
             CancellationToken ct = default)
             => Task.FromResult(new SteamLastPlayedTimes(
-                Answered: true, Games: [], ObservedAt: Now.UtcDateTime, FromCache: false));
+                Answered: true, Games: [], ObservedAt: Now.UtcDateTime, FromCache: false) { CredentialIdentity = Identity });
     }
 }

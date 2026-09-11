@@ -13,7 +13,7 @@ namespace Winnow.App.Services;
 /// </summary>
 public static class Dormancy
 {
-    public const double SatFloor = 0.22;
+    public const double SatFloor = Winnow.Covers.DormancyStyle.SaturationFloor;
 
     /// <summary>
     /// Brightness floor. Raised from the originally documented 0.60 after the
@@ -23,7 +23,7 @@ public static class Dormancy
     /// titles, that spent the ramp's dynamic range before the first scroll.
     /// Saturation, not brightness, is what carries the "dormant" signal.
     /// </summary>
-    public const double BrightFloor = 0.68;
+    public const double BrightFloor = Winnow.Covers.DormancyStyle.BrightnessFloor;
 
     private const double DaysPerMonth = 30.4375;
 

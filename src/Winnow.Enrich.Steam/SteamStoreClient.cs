@@ -100,9 +100,9 @@ public sealed class SteamStoreClient : ISteamStoreClient
 
             if (entry.PayloadJson is null)
             {
-                // A cached miss: the store answered and had nothing for this
-                // appid. Re-asking every run would spend the request budget
-                // learning the same nothing.
+                // Legacy null rows did not retain the requested id or result
+                // code. Recheck them once rather than inherit an unsupported miss.
+                pending.Add(appId);
                 continue;
             }
 
@@ -110,7 +110,7 @@ public sealed class SteamStoreClient : ISteamStoreClient
             {
                 results[appId] = item;
             }
-            else
+            else if (!SteamStoreJson.IsConfirmedMiss(appId, entry.PayloadJson))
             {
                 // Stored payload no longer projects — a shape change that landed
                 // in the cache before it was noticed. Refetch rather than serve
@@ -153,7 +153,7 @@ public sealed class SteamStoreClient : ISteamStoreClient
             // {"success":15,"visible":false,"name":""}; the request still 200s
             // and still returns one item per appid asked for. So "the store
             // answered and had nothing for this appid" arrives as a present item
-            // that fails to project, which the loop below handles. An appid
+            // with that explicit result code, which the loop below handles. An appid
             // simply absent from the array is the endpoint behaving differently
             // from the way it was verified to behave.
             //
@@ -162,7 +162,8 @@ public sealed class SteamStoreClient : ISteamStoreClient
             // either 99 games Steam has never heard of, or one truncated
             // response. Recording the first costs 99 cached misses held for the
             // full 7-day TTL, and nothing re-asks until it expires.
-            var answered = raw.Count >= batch.Length;
+            var answeredCount = batch.Count(raw.ContainsKey);
+            var answered = answeredCount == batch.Length;
             if (!answered)
             {
                 _log.LogWarning(
@@ -171,7 +172,7 @@ public sealed class SteamStoreClient : ISteamStoreClient
                     + "change rather than a batch of misses — the {Missing} unanswered appids are "
                     + "left uncached and retried next pass. The endpoint is undocumented; check the "
                     + "contract test.",
-                    raw.Count, batch.Length, batch.Length - raw.Count);
+                    answeredCount, batch.Length, batch.Length - answeredCount);
             }
 
             foreach (var appId in batch)
@@ -190,20 +191,18 @@ public sealed class SteamStoreClient : ISteamStoreClient
                 // out of the cache entirely, so the next pass asks again. It is
                 // NOT written as a miss: a miss is a claim about the store's
                 // contents, and a truncated response is no evidence for one.
-                if (!present && !answered)
+                if (!present || (item is null && !SteamStoreJson.IsConfirmedMiss(appId, rawItem!)))
                 {
                     continue;
                 }
 
-                // Every appid the batch actually answered for gets a row,
-                // matched or not. A null payload records a genuine miss
-                // (success != 1, or an item present but unprojectable); the raw
+                // Only an explicit non-store result earns a negative row. The raw
                 // item body is stored verbatim so nothing has to be refetched to
                 // look at a field this client does not project today.
                 await _cache.SetAsync(
                     CacheProvider,
                     AppCacheKey(appId),
-                    item is null ? null : rawItem,
+                    rawItem,
                     fetchedAt,
                     ct);
             }

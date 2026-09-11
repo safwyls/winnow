@@ -6,6 +6,7 @@ using Winnow.Core.Ingest;
 using Winnow.Ingest.Epic.Web.Auth;
 using Winnow.Ingest.Epic.Web.Credentials;
 using Winnow.Ingest.Epic.Web.Model;
+using Winnow.Ingest.Epic.Web.Http;
 using Microsoft.Extensions.Logging;
 
 namespace Winnow.Ingest.Epic.Web;
@@ -22,8 +23,8 @@ public sealed class EpicAccountClient : IEpicAccountClient
     /// <summary><c>CandidateOwnership.Source</c> value for candidates this module emits (§5.1 provenance).</summary>
     public const string SourceName = "epic_api";
 
-    /// <summary>Cache key for the owned library. One account per install, so one key.</summary>
-    public const string LibraryCacheKey = "epic:library";
+    /// <summary>Account-scoped cache key. Legacy unscoped entries cannot identify their owner.</summary>
+    public static string LibraryCacheKey(string accountId) => "epic:library:v2:" + accountId;
 
     /// <summary>
     /// Owned artifacts, cursor-paginated. <c>includeMetadata=true</c> matches
@@ -94,39 +95,28 @@ public sealed class EpicAccountClient : IEpicAccountClient
         var now = _clock.GetUtcNow().UtcDateTime;
         var cutoff = Cutoff(cacheTtl ?? _options.CacheTtl, now);
 
-        var entry = await _cache.GetAsync(LibraryCacheKey, ct);
+        if (await _tokens.GetIdentityAsync(ct) is not { } identity)
+            return EpicOwnedLibrary.Unanswered(now);
+        var cacheKey = LibraryCacheKey(identity.AccountId);
+        var entry = await _cache.GetAsync(cacheKey, ct);
+        if (!await IsCurrentAsync(identity, ct)) return EpicOwnedLibrary.Unanswered(now);
         if (entry is { } cached && cached.FetchedAt >= cutoff
-            && TryReadCache(cached.PayloadJson) is { } fresh)
+            && TryReadCache(cached.PayloadJson, identity.AccountId) is { } fresh)
         {
-            _log.LogDebug("Epic owned library served from cache ({Count} items).", fresh.Count);
-            return new EpicOwnedLibrary(
-                Succeeded: true,
-                Items: fresh,
-                ObservedAt: cached.FetchedAt,
-                FromCache: true,
-                // The cached payload records whatever the fetch that produced it
-                // learned. If any item carries a figure, playtime answered then.
-                PlaytimeAnswered: fresh.Any(static i => i.TotalPlaytime is not null));
+            _log.LogDebug("Epic owned library served from cache ({Count} items).", fresh.Items.Count);
+            return Build(fresh, identity, cached.FetchedAt, fromCache: true);
         }
 
-        // Not configured and not signed in are the same thing to this method: no
-        // request is possible. Neither is logged as a problem — the first is an
-        // install nobody opted in on, the second is one whose session lapsed, and
-        // the token provider has already said so at the right level.
-        if (await _tokens.GetAsync(ct) is not { } token)
-        {
-            return ServeStale(entry, now);
-        }
-
-        var records = await FetchLibraryAsync(ct);
+        var records = await FetchLibraryAsync(identity, ct);
         if (records is null)
         {
-            return ServeStale(entry, now);
+            return await IsCurrentAsync(identity, ct) ? ServeStale(entry, identity, now) : EpicOwnedLibrary.Unanswered(now);
         }
 
         // Playtime is a separate, optional call. Its failure must not cost the
         // ownership data that already arrived.
-        var playtime = await FetchPlaytimeAsync(token.AccountId, ct);
+        var playtime = await FetchPlaytimeAsync(identity, ct);
+        if (!await IsCurrentAsync(identity, ct)) return EpicOwnedLibrary.Unanswered(now);
 
         var items = records
             .Select(record => new EpicLibraryItem(
@@ -146,7 +136,9 @@ public sealed class EpicAccountClient : IEpicAccountClient
             .ToArray();
 
         // Only a real answer reaches the cache.
-        await _cache.SetAsync(LibraryCacheKey, WriteCache(items), now, ct);
+        var payload = new CachePayload(2, identity.AccountId, items, playtime is not null);
+        await _cache.SetAsync(cacheKey, JsonSerializer.Serialize(payload, CacheSerializerOptions), now, ct);
+        if (!await IsCurrentAsync(identity, ct)) return EpicOwnedLibrary.Unanswered(now);
 
         _log.LogInformation(
             "Epic library: {Count} owned titles, {WithPlaytime} with a playtime figure, "
@@ -156,19 +148,14 @@ public sealed class EpicAccountClient : IEpicAccountClient
             items.Count(static i => i.AcquiredAt is not null),
             playtime is null ? "did not answer" : "answered");
 
-        return new EpicOwnedLibrary(
-            Succeeded: true,
-            Items: items,
-            ObservedAt: now,
-            FromCache: false,
-            PlaytimeAnswered: playtime is not null);
+        return Build(payload, identity, now, fromCache: false);
     }
 
     public async Task<IReadOnlyList<CandidateOwnership>> GetOwnershipCandidatesAsync(
         TimeSpan? cacheTtl = null, CancellationToken ct = default)
     {
         var library = await GetOwnedLibraryAsync(cacheTtl, ct);
-        return library.Succeeded
+        return library.Succeeded && library.SessionIdentity is { } identity && await IsCurrentAsync(identity, ct)
             // ObservedAt is stamped now rather than taken from the library, so a
             // cache hit does not backdate the observation. The cached facts may
             // be hours old; the observation that they are still Winnow's best
@@ -187,18 +174,20 @@ public sealed class EpicAccountClient : IEpicAccountClient
     /// today's request failed. Falls back to unanswered when there is no entry at
     /// all.
     /// </summary>
-    private EpicOwnedLibrary ServeStale(EpicCacheEntry? entry, DateTime now)
-        => entry?.PayloadJson is { } payload && TryReadCache(payload) is { } stale
-            ? new EpicOwnedLibrary(
-                Succeeded: true,
-                Items: stale,
-                ObservedAt: entry.Value.FetchedAt,
-                FromCache: true,
-                PlaytimeAnswered: stale.Any(static i => i.TotalPlaytime is not null))
+    private EpicOwnedLibrary ServeStale(EpicCacheEntry? entry, EpicSessionIdentity identity, DateTime now)
+        => entry?.PayloadJson is { } payload && TryReadCache(payload, identity.AccountId) is { } stale
+            ? Build(stale, identity, entry.Value.FetchedAt, fromCache: true)
             : EpicOwnedLibrary.Unanswered(now);
 
+    private async ValueTask<bool> IsCurrentAsync(EpicSessionIdentity identity, CancellationToken ct)
+        => await _tokens.GetIdentityAsync(ct) == identity;
+
+    private static EpicOwnedLibrary Build(CachePayload payload, EpicSessionIdentity identity, DateTime observedAt, bool fromCache)
+        => new(true, payload.Items, observedAt, fromCache, payload.PlaytimeAnswered)
+            { AccountId = identity.AccountId, SessionIdentity = identity };
+
     /// <summary>Walks every page of the library. Returns null when Epic did not answer; partial results are discarded.</summary>
-    private async Task<IReadOnlyList<EpicLibraryRecord>?> FetchLibraryAsync(CancellationToken ct)
+    private async Task<IReadOnlyList<EpicLibraryRecord>?> FetchLibraryAsync(EpicSessionIdentity identity, CancellationToken ct)
     {
         var records = new List<EpicLibraryRecord>();
         string? cursor = null;
@@ -209,7 +198,7 @@ public sealed class EpicAccountClient : IEpicAccountClient
                 ? LibraryItemsPath
                 : LibraryItemsPath + "&cursor=" + Uri.EscapeDataString(cursor);
 
-            var body = await SendAsync(path, "library items", ct);
+            var body = await SendAsync(path, "library items", identity, ct);
             if (body is null)
             {
                 return null;
@@ -248,12 +237,12 @@ public sealed class EpicAccountClient : IEpicAccountClient
 
     /// <summary>Per-artifact playtime, or null when Epic did not answer.</summary>
     private async Task<IReadOnlyDictionary<string, long>?> FetchPlaytimeAsync(
-        string accountId, CancellationToken ct)
+        EpicSessionIdentity identity, CancellationToken ct)
     {
         var path = string.Format(
-            CultureInfo.InvariantCulture, PlaytimePathFormat, Uri.EscapeDataString(accountId));
+            CultureInfo.InvariantCulture, PlaytimePathFormat, Uri.EscapeDataString(identity.AccountId));
 
-        var body = await SendAsync(path, "playtime", ct);
+        var body = await SendAsync(path, "playtime", identity, ct);
         if (body is null)
         {
             // Already logged by SendAsync at the right level. Not escalated: the
@@ -273,11 +262,12 @@ public sealed class EpicAccountClient : IEpicAccountClient
     }
 
     /// <summary>One GET against the library service. Returns the body, or null on failure.</summary>
-    private async Task<string?> SendAsync(string path, string what, CancellationToken ct)
+    private async Task<string?> SendAsync(string path, string what, EpicSessionIdentity identity, CancellationToken ct)
     {
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, path);
+            request.Options.Set(EpicAuthenticationHandler.ExpectedSession, identity);
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
             // The Authorization header is attached by EpicAuthenticationHandler,
@@ -287,7 +277,8 @@ public sealed class EpicAccountClient : IEpicAccountClient
 
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content.ReadAsStringAsync(ct);
+                var body = await response.Content.ReadAsStringAsync(ct);
+                return await IsCurrentAsync(identity, ct) ? body : null;
             }
 
             _log.LogWarning(
@@ -318,11 +309,9 @@ public sealed class EpicAccountClient : IEpicAccountClient
         }
     }
 
-    /// <summary>Serialises the normalised library items for the cache.</summary>
-    private static string WriteCache(IReadOnlyList<EpicLibraryItem> items)
-        => JsonSerializer.Serialize(items, CacheSerializerOptions);
+    private sealed record CachePayload(int Version, string AccountId, IReadOnlyList<EpicLibraryItem> Items, bool PlaytimeAnswered);
 
-    private IReadOnlyList<EpicLibraryItem>? TryReadCache(string? payloadJson)
+    private CachePayload? TryReadCache(string? payloadJson, string accountId)
     {
         if (string.IsNullOrWhiteSpace(payloadJson))
         {
@@ -331,7 +320,9 @@ public sealed class EpicAccountClient : IEpicAccountClient
 
         try
         {
-            return JsonSerializer.Deserialize<List<EpicLibraryItem>>(payloadJson, CacheSerializerOptions);
+            var payload = JsonSerializer.Deserialize<CachePayload>(payloadJson, CacheSerializerOptions);
+            return payload is { Version: 2, Items: not null } && payload.AccountId == accountId
+                ? payload : null;
         }
         catch (JsonException)
         {

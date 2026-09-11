@@ -4,12 +4,14 @@ title: Polish account stats presentation
 status: To Do
 assignee: []
 created_date: '2026-08-29 21:55'
-updated_date: '2026-09-06 20:57'
+updated_date: '2026-09-11 14:03'
 labels:
   - ui
   - data
-dependencies:
-  - TASK-38
+dependencies: []
+documentation:
+  - design-system.md
+  - game-library-design.md
 priority: low
 ordinal: 169000
 ---
@@ -17,12 +19,19 @@ ordinal: 169000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-The account stats screen is functional and its figures are correct, but it is a first pass. Presentation cleanup is shelved until core functionality (M5, M6) is complete. Concrete candidates: layout hierarchy and grouping, per-transaction averages, per-year averages, percentage breakdowns across spend-by-kind slices, cost per hour played, and spend on games never launched. Source: ROADMAP.md section 6 (deferred 2026-08-29).
+Improve the account-statistics hierarchy and add at least two useful derived figures, such as a safely defined transaction/year average or percentage breakdown. Current views already show counts and monetary totals. Define each new figure from attributable evidence, preserving currency, account, wallet and refund distinctions instead of assuming every aggregate can be combined.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Visual hierarchy distinguishes primary figures from breakdowns
-- [ ] #2 At least two derived figures (from the candidates listed) are implemented
-- [ ] #3 The screen remains correct under an empty import (no account-page data)
+- [ ] #1 Visual hierarchy clearly distinguishes primary figures from breakdowns.
+- [ ] #2 Implement at least two derived figures with documented inputs and limits; do not present mixed-currency or ambiguous-account totals as a valid calculation.
+- [ ] #3 Remain correct with no account-page data, partial imports, missing prices and zero denominators.
+- [ ] #4 Verify the statistics presentation on desktop and fullscreen; shared calculations agree and each surface remains readable.
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Audit evidence: AccountStatsViewModel and AccountStatsView show counts/totals; proposed derived averages and ratios remain absent. FullscreenActivityPage supplies the TV presentation. TASK-38's acquisition CSV is delivered and does not gate this presentation work. Any cost-per-hour or unplayed-spend figure requires justified matching and scope before implementation.
+<!-- SECTION:NOTES:END -->

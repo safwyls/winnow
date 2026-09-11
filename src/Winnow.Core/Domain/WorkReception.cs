@@ -2,6 +2,19 @@ using Winnow.Core.Queries;
 
 namespace Winnow.Core.Domain;
 
+/// <summary>Source image metadata. Null attributes mean the source did not report them.</summary>
+public sealed record GameImage
+{
+    public required string ImageId { get; init; }
+    public int? Width { get; init; }
+    public int? Height { get; init; }
+    public bool? AlphaChannel { get; init; }
+    public bool? Animated { get; init; }
+    public string? ImageType { get; init; }
+    /// <summary>Optional source asset URL when its image ID alone does not identify the CDN file.</summary>
+    public string? Url { get; init; }
+}
+
 /// <summary>
 /// One source's screenshot or artwork list for a work. Projected from
 /// <c>work_images</c> (migration 0028), one row per (work, source, kind),
@@ -19,16 +32,19 @@ public sealed record WorkImages
     public required string Source { get; init; }
 
     /// <summary>
-    /// Screenshot or artwork (an <see cref="ImageKinds"/> value). They are
-    /// separate IGDB assets and a game can have one and not the other.
+    /// Screenshot or artwork (an <see cref="ImageKinds"/> value). A game can
+    /// have one and not the other.
     /// </summary>
     public required string Kind { get; init; }
 
     /// <summary>
-    /// Comma-joined IGDB image ids, verbatim and in IGDB's own order. The
-    /// ids are the durable handles; no URL is stored.
+    /// Comma-joined source image IDs in source order. Optional CDN URLs live
+    /// beside the matching IDs in <see cref="Images"/>.
     /// </summary>
     public required string ImageIds { get; init; }
+
+    /// <summary>Optional metadata in source order; older observations have none.</summary>
+    public IReadOnlyList<GameImage> Images { get; init; } = [];
 
     /// <summary>When this source's reading was taken (UTC).</summary>
     public required DateTime ObservedAt { get; init; }

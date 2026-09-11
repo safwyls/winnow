@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <Compile Include="..\Shared\StorefrontFile.cs" Link="StorefrontFile.cs" />
+    <InternalsVisibleTo Include="Winnow.Tests" />
   </ItemGroup>
 
 </Project>

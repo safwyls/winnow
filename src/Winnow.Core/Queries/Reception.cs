@@ -8,11 +8,12 @@ namespace Winnow.Core.Queries;
 public static class ImageSources
 {
     public const string Igdb = "igdb";
+    public const string SteamGridDb = "steamgriddb";
 }
 
 /// <summary>
 /// The kind vocabulary for <c>work_images</c> (migration 0028). Screenshots and
-/// artworks are separate IGDB assets; a game can have one and not the other.
+/// artworks are separate assets; a game can have one and not the other.
 /// </summary>
 public static class ImageKinds
 {
@@ -37,10 +38,9 @@ public static class RatingSources
 }
 
 /// <summary>
-/// Comma-joined IGDB image ids: the stored form in <c>work_images.image_ids</c>.
-/// <see cref="Join"/> preserves IGDB's order, collapses duplicates ordinally
-/// (IGDB image ids are lowercase alphanumeric, so two ids differing in case
-/// would be two different assets), and returns null when nothing survives —
+/// Comma-joined source image IDs: the stored form in <c>work_images.image_ids</c>.
+/// <see cref="Join"/> preserves source order, collapses duplicates ordinally,
+/// and returns null when nothing survives —
 /// which is what makes "no screenshots" reach the database as no row.
 /// <see cref="IsImageId"/> is ASCII alphanumeric, 1–64 characters, strict for
 /// the reason <c>IgdbImageUrl.ImageId</c> is strict: an id that is not one

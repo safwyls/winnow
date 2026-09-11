@@ -11,6 +11,10 @@ public interface ILibraryQueryRepository
     /// <summary>Loads the library, identifiers and list membership in one database command.</summary>
     Task<LibrarySnapshot> GetSnapshotAsync(BucketThresholds thresholds, CancellationToken ct = default);
 
+    /// <summary>Uses one instant for dated evidence and lifecycle rules. Mutable fields still require a captured database for historical replay.</summary>
+    Task<LibrarySnapshot> GetSnapshotAsync(BucketThresholds thresholds, DateTime asOfUtc, CancellationToken ct = default)
+        => GetSnapshotAsync(thresholds, ct);
+
     /// <summary>
     /// One row per ownership with its derived bucket. Excludes consolidated
     /// demos and non-game entries (unless thresholds opt in).

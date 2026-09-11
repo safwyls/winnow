@@ -1,5 +1,11 @@
 namespace Winnow.Ingest.Epic.Web.Auth;
 
+/// <summary>Nonsecret account and sign-in generation captured by an ownership operation.</summary>
+public sealed record EpicSessionIdentity(string AccountId, string ClientId, long Generation)
+{
+    public override string ToString() => "EpicSessionIdentity(account redacted)";
+}
+
 /// <summary>
 /// Why a sign-in attempt did not produce a session. Carried instead of an
 /// exception because every one of these is an ordinary outcome the caller
@@ -95,6 +101,9 @@ public interface IEpicTokenProvider
     /// null when there is no session to be had.
     /// </summary>
     Task<EpicOAuthToken?> GetAsync(CancellationToken ct = default);
+
+    /// <summary>Reads account identity without minting or refreshing a token. Sign-in changes its generation; renewal does not.</summary>
+    ValueTask<EpicSessionIdentity?> GetIdentityAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Discards <paramref name="staleToken"/> and refreshes. Called by the auth

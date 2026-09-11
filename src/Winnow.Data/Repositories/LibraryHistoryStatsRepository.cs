@@ -27,14 +27,17 @@ public sealed class LibraryHistoryStatsRepository : ILibraryHistoryStatsReposito
 
     public LibraryHistoryStatsRepository(ISqliteConnectionFactory factory) => _factory = factory;
 
-    public async Task<LibraryHistoryStats> GetAsync(CancellationToken ct = default)
+    public Task<LibraryHistoryStats> GetAsync(CancellationToken ct = default)
+        => GetAsync(DateTime.UtcNow, ct);
+
+    public async Task<LibraryHistoryStats> GetAsync(DateTime asOfUtc, CancellationToken ct = default)
     {
         using var lease = _factory.Lease();
 
         var stats = await lease.Connection.QueryFirstAsync<LibraryHistoryStats>(new CommandDefinition("""
-            SELECT (SELECT COUNT(*)        FROM sessions) AS SessionCount,
-                   (SELECT MIN(started_at) FROM sessions) AS FirstSessionAt,
-                   (SELECT MAX(started_at) FROM sessions) AS LastSessionAt,
+            SELECT (SELECT COUNT(*)        FROM sessions WHERE started_at <= @asOfUtc) AS SessionCount,
+                   (SELECT MIN(started_at) FROM sessions WHERE started_at <= @asOfUtc) AS FirstSessionAt,
+                   (SELECT MAX(started_at) FROM sessions WHERE started_at <= @asOfUtc) AS LastSessionAt,
                    (SELECT COUNT(*)
                     FROM ownerships o
                     WHERE EXISTS (
@@ -44,8 +47,9 @@ public sealed class LibraryHistoryStatsRepository : ILibraryHistoryStatsReposito
                           ON later.ownership_id      = earlier.ownership_id
                          AND later.observed_at       > earlier.observed_at
                          AND later.playtime_minutes  > earlier.playtime_minutes
-                        WHERE earlier.ownership_id = o.id)) AS OwnershipsWithSnapshotRises;
-            """, transaction: lease.Transaction, cancellationToken: ct));
+                        WHERE earlier.ownership_id = o.id
+                          AND earlier.observed_at <= @asOfUtc AND later.observed_at <= @asOfUtc)) AS OwnershipsWithSnapshotRises;
+            """, new { asOfUtc }, transaction: lease.Transaction, cancellationToken: ct));
 
         // IsEstimate stays false: every figure above is an exact aggregate over
         // the whole table, which is the entire reason this repository exists.

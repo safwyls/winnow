@@ -89,7 +89,7 @@ public sealed class ReceptionSyncService
                 && games.TryGetValue(igdbId, out var game)
                 && igdbDone.Add(target.WorkId))
             {
-                changed += await _writer.ApplyIgdbAsync(target.WorkId, game, ct);
+                changed += await _writer.ApplyIgdbAsync(target.IgdbMapping, game, ct);
             }
 
             if (target.SteamAppId is { } appId

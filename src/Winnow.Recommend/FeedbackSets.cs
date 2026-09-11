@@ -38,6 +38,7 @@ public sealed record FeedbackSets
         var snoozed = new HashSet<long>();
         foreach (var verdict in await feedback.GetActiveVerdictsAsync(asOfUtc, ct))
         {
+            if (!verdict.IsActiveAt(asOfUtc)) continue;
             // GetActiveVerdictsAsync already applied revocation and expiry;
             // routing by kind is all that is left. An unknown kind (a future
             // migration's) is deliberately dropped rather than guessed at —
@@ -72,7 +73,7 @@ public sealed record FeedbackSets
 
         var endorsed = new HashSet<long>();
         foreach (var endorsement in await feedback.GetEndorsementsAsync(
-                     tuning.EndorsementWindowDays, ct))
+                     tuning.EndorsementWindowDays, asOfUtc, ct))
         {
             endorsed.Add(endorsement.ReleaseId);
         }

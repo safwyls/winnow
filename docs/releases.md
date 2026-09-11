@@ -3,11 +3,9 @@
 `Release builds` packages self-contained .NET 10 applications for Windows x64 and Linux
 x64. It leaves trimming and single-file publishing disabled because Winnow uses reflection,
 embedded migrations, Avalonia resources, and native libraries. The Windows x64 build is
-also ReadyToRun-compiled and ships with `System.GC.ConserveMemory=9`; both measured a real
-reduction in resident memory and (for ReadyToRun) startup time over the plain JIT build,
-at the cost of a larger package — see the TASK-152.4 follow-up in
-`docs/spikes/memory-footprint.md`. Linux x64 was not measured and keeps its prior,
-non-ReadyToRun publish.
+also ReadyToRun-compiled and ships with `System.GC.ConserveMemory=9`. The Windows
+[memory measurements](spikes/memory-footprint.md) support these settings. Linux x64
+uses neither setting; its performance was not measured in that study.
 
 ## Application version
 
@@ -83,23 +81,29 @@ relaunch leave `failure.txt` and, if Setup ran, `installer.log` under
 `<data directory>/updates/handoff-*`. Run the latest official installer manually into the same
 installation directory to recover, then start Winnow normally. Keep the data directory.
 There is no automatic binary or database rollback: an older binary must not be reopened
-against a database a newer build may have migrated.
+against a database a newer build may have migrated. Startup refuses applied migration names
+that its binary does not recognize before changing the database journal or schema. Install
+the same or a newer release, or restore a pre-upgrade backup into a separate data directory.
 
 Release CI fetches a digest-verified earlier published Windows installer and exercises an
 upgrade in a disposable custom directory. It also checks bad checksums, cancellation,
 shutdown timeout and locked binaries, relaunch arguments, and preservation of user files.
 These installation checks run only on disposable GitHub runners; local unit and headless UI
-tests do not install software. Portable replacement and Linux in-place updating remain
-tracked in TASK-159.
+tests do not install software. Portable Windows and Linux updates use the manual routes in the table above.
 
 ## Build without publishing
 
 Pushes to `main` and `codex/**`, and pull requests, build packages when application,
-packaging, version, SDK, dependency configuration, or workflow files change. Their version is
+bundled plugin, packaging, version, SDK, dependency configuration, or workflow files change. Their version is
 `<version base>-ci.<run number>`. Download
 `packages-win-x64` and `packages-linux-x64` from the workflow's artifacts, retained for 14 days.
 
-Once the workflow is on the default branch, **Actions → Release builds → Run workflow**
+Publishing verifies the bundled plugin's source manifest, assembly identity and entry type
+before either platform package is built. The entry type is inspected from metadata without
+loading provider code. Run `packaging/Test-BundledPlugin.ps1 -BuildDirectory <build output>`
+to exercise missing/mismatched package failures against a built application.
+
+**Actions → Release builds → Run workflow**
 accepts a version such as `0.1.0-beta.1`. This path runs verification and creates artifacts
 without creating a tag or GitHub Release. Versions use three numeric components with an
 optional prerelease suffix; numeric components must fit 0–65535. Build metadata and a

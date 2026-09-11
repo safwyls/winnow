@@ -23,7 +23,8 @@ namespace Winnow.Data;
 /// for what happens when the copy cannot be written.</para>
 ///
 /// <para>A launch with nothing pending — every launch after the first, for most
-/// of a release's life — costs one journal read and does none of that.</para>
+    /// of a release's life — reads the journal for compatibility and pending
+    /// scripts and does none of that.</para>
 /// </summary>
 public sealed class DatabaseInitializer
 {
@@ -49,6 +50,11 @@ public sealed class DatabaseInitializer
     public void Initialize()
     {
         LastBackupPath = null;
+
+        // The normal factory switches a database to WAL on open. Check an
+        // existing journal before that write or the legacy-name repair: an
+        // older binary must leave an unsupported newer database alone.
+        Reading(ValidateSupportedHistory);
 
         var directory = Path.GetDirectoryName(_connectionFactory.DatabasePath);
         if (!string.IsNullOrEmpty(directory))
@@ -296,6 +302,53 @@ public sealed class DatabaseInitializer
 
     /// <summary>What <see cref="WithScriptsEmbeddedInAssembly"/> calls the same scripts now.</summary>
     private const string ScriptPrefix = "Winnow.Data.Migrations.";
+
+    private void ValidateSupportedHistory()
+    {
+        if (!File.Exists(_connectionFactory.DatabasePath))
+        {
+            return;
+        }
+
+        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = _connectionFactory.DatabasePath,
+            Mode = SqliteOpenMode.ReadOnly,
+            Pooling = false,
+        }.ToString());
+        connection.Open();
+        using var transaction = connection.BeginTransaction(deferred: true);
+        using var exists = connection.CreateCommand();
+        exists.Transaction = transaction;
+        exists.CommandText =
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'SchemaVersions';";
+        if (exists.ExecuteScalar() is null)
+        {
+            return;
+        }
+
+        var supported = typeof(DatabaseInitializer).Assembly.GetManifestResourceNames()
+            .Where(name => name.EndsWith(".sql", StringComparison.OrdinalIgnoreCase))
+            .ToHashSet(StringComparer.Ordinal);
+        using var journal = connection.CreateCommand();
+        journal.Transaction = transaction;
+        journal.CommandText = "SELECT ScriptName FROM SchemaVersions;";
+        using var reader = journal.ExecuteReader();
+        while (reader.Read())
+        {
+            var name = reader.GetString(0);
+            var currentName = name.StartsWith(LegacyScriptPrefix, StringComparison.Ordinal)
+                ? ScriptPrefix + name[LegacyScriptPrefix.Length..]
+                : name;
+            if (!supported.Contains(currentName))
+            {
+                throw new InvalidOperationException(
+                    $"This database contains a migration this version of Winnow does not support: '{name}'. "
+                    + "No migration or journal changes were made. Install the same or a newer Winnow version, "
+                    + "or restore a backup made before the upgrade into a separate data directory.");
+            }
+        }
+    }
 
     /// <summary>
     /// Re-points DbUp journal entries from the old <c>Hoard.Data</c> namespace

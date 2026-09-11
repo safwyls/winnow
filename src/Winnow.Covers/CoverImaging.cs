@@ -116,8 +116,7 @@ public static class CoverImaging
     /// The §5.1 floor matrix: Rec.709 luma desaturation to
     /// <paramref name="saturation"/>, a hue rotation of
     /// <paramref name="hueDegrees"/>, then a uniform brightness scale — the
-    /// composition of mock-library.html's
-    /// <c>saturate() brightness() hue-rotate(-6deg)</c>, in that order.
+    /// transform specified in design-system.md §5.1.
     ///
     /// <para>The hue term is what makes dormant art read as <em>cool</em> and
     /// not merely grey (§1). It is small on purpose: Steam capsules are mostly
@@ -145,7 +144,7 @@ public static class CoverImaging
     }
 
     /// <summary>The §5.1 cool shift, in degrees. Negative rotates toward blue.</summary>
-    public const float DefaultHueDegrees = -6f;
+    public const float DefaultHueDegrees = (float)DormancyStyle.HueDegrees;
 
     private const float LumaR = 0.2126f;
     private const float LumaG = 0.7152f;

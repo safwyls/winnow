@@ -380,6 +380,10 @@ public sealed class JournalPromptTests
     {
         public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+        public Task<Session?> FindOpenMonitoredAsync(long ownershipId, IReadOnlyList<MonitoredProcessIdentity> processes, CancellationToken ct = default)
+            => inner.FindOpenMonitoredAsync(ownershipId, processes, ct);
+        public Task<Session> SaveMonitoredAsync(Session session, IReadOnlyList<MonitoredProcessIdentity> processes, CancellationToken ct = default)
+            => inner.SaveMonitoredAsync(session, processes, ct);
         public Task<long> InsertAsync(Session session, CancellationToken ct = default)
             => inner.InsertAsync(session, ct);
 

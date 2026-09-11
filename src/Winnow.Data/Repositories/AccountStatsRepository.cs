@@ -33,6 +33,16 @@ public sealed class AccountStatsRepository : IAccountStatsRepository
         var conn = lease.Connection;
         var tx = lease.Transaction;
 
+        var accounts = await conn.QuerySingleAsync<AccountShapeRow>(new CommandDefinition("""
+            SELECT COUNT(DISTINCT account_ref) AS KnownAccounts,
+                   COALESCE(SUM(CASE WHEN account_ref IS NULL THEN 1 ELSE 0 END), 0) AS UnknownFacts
+            FROM (
+                SELECT account_ref FROM account_transactions WHERE source=@source
+                UNION ALL
+                SELECT account_ref FROM account_licenses WHERE source=@source
+            );
+            """, new { source }, transaction: tx, cancellationToken: ct)).ConfigureAwait(false);
+
         var shape = await conn.QuerySingleAsync<ShapeRow>(new CommandDefinition("""
             SELECT COUNT(*)                                                          AS TransactionCount,
                    COALESCE(SUM(CASE WHEN occurred_at IS NULL THEN 1 END), 0)        AS TransactionsWithoutDate,
@@ -163,6 +173,8 @@ public sealed class AccountStatsRepository : IAccountStatsRepository
         return new AccountStats
         {
             Source = source,
+            KnownAccountCount = (int)accounts.KnownAccounts,
+            UnknownAccountFactCount = (int)accounts.UnknownFacts,
             TransactionCount = (int)shape.TransactionCount,
             LicenseCount = (int)licenses.LicenseCount,
             GrossProductSpendCents = spend.GrossCents,
@@ -226,6 +238,12 @@ public sealed class AccountStatsRepository : IAccountStatsRepository
         public DateTime? FirstTransactionAt { get; init; }
 
         public DateTime? LastTransactionAt { get; init; }
+    }
+
+    private sealed class AccountShapeRow
+    {
+        public long KnownAccounts { get; init; }
+        public long UnknownFacts { get; init; }
     }
 
     private sealed class SpendRow

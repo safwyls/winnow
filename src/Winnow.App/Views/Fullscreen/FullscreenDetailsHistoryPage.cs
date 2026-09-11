@@ -14,6 +14,7 @@ public sealed class FullscreenDetailsHistoryPage : FullscreenPage
     public FullscreenDetailsHistoryPage(FullscreenContext context, ActivityTrackerViewModel tracker) : base(context)
     {
         _tracker = tracker;
+        tracker.SnapshotChanged += TrackerSnapshotChanged;
         Render();
     }
     public override string Title => "Your play history";
@@ -24,8 +25,17 @@ public sealed class FullscreenDetailsHistoryPage : FullscreenPage
         if (buttons.HasFlag(GamepadButtons.PageNext)) { _page = Math.Min(Math.Max(0, (_tracker.Series.Bars.Count - 1) / PageSize), _page + 1); Render(); return true; }
         return base.Handle(buttons);
     }
-    private void Render()
+    private void TrackerSnapshotChanged(object? sender, EventArgs e)
     {
+        var restore = PreserveFocus();
+        Render(focus: false);
+        restore();
+    }
+    public override void Dispose() { _tracker.SnapshotChanged -= TrackerSnapshotChanged; base.Dispose(); }
+
+    private void Render(bool focus = true)
+    {
+        _page = Math.Clamp(_page, 0, Math.Max(0, (_tracker.Series.Bars.Count - 1) / PageSize));
         var lifetime = FullscreenUi.Button("Lifetime", () => { _tracker.ShowLifetimeCommand.Execute(null); _page = 0; Render(); });
         var tracked = FullscreenUi.Button("Tracked sessions", () => { _tracker.ShowTrackedSessionsCommand.Execute(null); _page = 0; Render(); });
         lifetime.Classes.Set("current", _tracker.IsLifetime);
@@ -49,6 +59,6 @@ public sealed class FullscreenDetailsHistoryPage : FullscreenPage
         content.Children.Add(FullscreenUi.Text(_tracker.UpdateSummary, 24, "TextDim"));
         Content = FullscreenUi.Scroll(content);
         SetFocusRows(rows.ToArray());
-        FocusInitial();
+        if (focus) FocusInitial();
     }
 }

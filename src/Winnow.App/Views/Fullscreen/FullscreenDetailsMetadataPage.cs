@@ -16,8 +16,10 @@ public sealed class FullscreenDetailsMetadataPage : FullscreenPage
         var rows = new List<Control[]>();
         foreach (var field in editor.Rows)
         {
-            var button = FullscreenUi.Button($"{field.Label} · {field.SourceLabel}", () =>
+            var button = FullscreenUi.Button(field.MenuLabel, () =>
                 Context.Push(new FullscreenDetailsFieldPage(Context, field)));
+            button.Bind(Button.ContentProperty, new Binding(nameof(MetadataFieldRowViewModel.MenuLabel)) { Source = field });
+            button.Bind(AutomationProperties.NameProperty, new Binding(nameof(MetadataFieldRowViewModel.MenuLabel)) { Source = field });
             content.Children.Add(button);
             rows.Add([button]);
         }
@@ -40,6 +42,7 @@ public sealed class FullscreenDetailsFieldPage : FullscreenPage
     private readonly MetadataFieldRowViewModel _field;
     private readonly TextBox _text;
     private readonly string _original;
+    private bool _disposed;
 
     public FullscreenDetailsFieldPage(FullscreenContext context, MetadataFieldRowViewModel field) : base(context)
     {
@@ -49,22 +52,25 @@ public sealed class FullscreenDetailsFieldPage : FullscreenPage
             TextWrapping = TextWrapping.Wrap, MinHeight = field.IsMultiline ? 240 : 64,
             Watermark = field.Watermark };
         _text.Bind(TextBox.TextProperty, new Binding(nameof(MetadataFieldRowViewModel.Draft)) { Source = field, Mode = BindingMode.TwoWay });
+        _text.Bind(IsEnabledProperty, new Binding(nameof(MetadataFieldRowViewModel.CanEdit)) { Source = field });
         AutomationProperties.SetName(_text, field.FieldAutomationName);
         var edit = FullscreenUi.Button("Edit value", () => Context.EditText(_text));
+        edit.Bind(IsEnabledProperty, new Binding(nameof(MetadataFieldRowViewModel.CanEdit)) { Source = field });
         var save = FullscreenUi.Button(field.SaveLabel, async () =>
         {
             await field.SaveCommand.ExecuteAsync(null);
-            if (field.Problem is null) { Context.Back(); Context.Notify(field.Note ?? "Saved."); }
+            if (!_disposed && field.Problem is null) { Context.Back(); Context.Notify(field.Note ?? "Saved."); }
         });
         save.Bind(IsEnabledProperty, new Binding(nameof(MetadataFieldRowViewModel.CanSave)) { Source = field });
         var reset = FullscreenUi.Button(field.ResetLabel, () => Context.ShowActions($"Reset {field.Label}?",
             [new("Cancel", () => { }), new(field.ResetLabel, async () =>
             {
                 await field.ResetCommand.ExecuteAsync(null);
-                if (field.Problem is null) { Context.Back(); Context.Notify(field.Note ?? "Reset."); }
+                if (!_disposed && field.Problem is null) { Context.Back(); Context.Notify(field.Note ?? "Reset."); }
             })]));
         reset.Bind(IsEnabledProperty, new Binding(nameof(MetadataFieldRowViewModel.CanReset)) { Source = field });
         var cancel = FullscreenUi.Button("Cancel", Cancel);
+        cancel.Bind(IsEnabledProperty, new Binding(nameof(MetadataFieldRowViewModel.CanEdit)) { Source = field });
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24 };
         actions.Children.Add(save);
         actions.Children.Add(reset);
@@ -81,8 +87,9 @@ public sealed class FullscreenDetailsFieldPage : FullscreenPage
                 var path = await Context.PickFile($"Choose {field.Label}", [".png", ".jpg", ".jpeg", ".webp", ".bmp"]);
                 if (path is null) return;
                 await art.ImportFileAsync(path);
-                if (art.Problem is null) { Context.Back(); Context.Notify(art.Note ?? "Image saved."); }
+                if (!_disposed && art.Problem is null) { Context.Back(); Context.Notify(art.Note ?? "Image saved."); }
             });
+            file.Bind(IsEnabledProperty, new Binding(nameof(MetadataFieldRowViewModel.CanEdit)) { Source = field });
             content.Children.Insert(4, file);
             focusRows.Add([file]);
         }
@@ -95,14 +102,16 @@ public sealed class FullscreenDetailsFieldPage : FullscreenPage
     public override string Hints => "A Select   Y Keyboard   B Cancel";
     public override bool Handle(GamepadButtons buttons)
     {
-        if (buttons.HasFlag(GamepadButtons.Keyboard)) { Context.EditText(_text); return true; }
+        if (buttons.HasFlag(GamepadButtons.Keyboard)) { if (_field.CanEdit) Context.EditText(_text); return true; }
         if (buttons.HasFlag(GamepadButtons.Back)) { Cancel(); return true; }
         return base.Handle(buttons);
     }
 
     private void Cancel()
     {
+        if (!_field.CanEdit) return;
         _field.Draft = _original;
         Context.Back();
     }
+    public override void Dispose() { _disposed = true; base.Dispose(); }
 }

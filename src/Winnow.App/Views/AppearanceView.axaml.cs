@@ -13,6 +13,12 @@ namespace Winnow.App.Views;
 /// </summary>
 public partial class AppearanceView : UserControl
 {
+    public bool IsEmbedded
+    {
+        get => !AppearanceHeader.IsVisible;
+        set => AppearanceHeader.IsVisible = !value;
+    }
+
     public AppearanceView()
     {
         InitializeComponent();

@@ -10,4 +10,8 @@ public sealed record LibrarySnapshot(
     IReadOnlyList<Release> Releases,
     IReadOnlyList<ExternalId> ExternalIds,
     IReadOnlyList<GameList> Lists,
-    IReadOnlyList<ListItem> ListItems);
+    IReadOnlyList<ListItem> ListItems)
+{
+    /// <summary>Complete identity state, including works omitted by visibility filters.</summary>
+    public Identity.IdentityResolution IdentityResolution { get; init; } = Identity.IdentityResolution.Empty;
+}

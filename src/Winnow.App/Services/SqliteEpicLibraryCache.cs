@@ -11,7 +11,7 @@ namespace Winnow.App.Services;
 /// </summary>
 public sealed class SqliteEpicLibraryCache : IEpicLibraryCache
 {
-    /// <summary>Namespace reserved for the one account-level library payload.</summary>
+    /// <summary>Namespace reserved for authenticated account-level library payloads.</summary>
     public const string Provider = "epic-library";
 
     private readonly ISqliteConnectionFactory _factory;

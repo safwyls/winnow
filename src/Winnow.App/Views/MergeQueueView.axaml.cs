@@ -154,6 +154,17 @@ public partial class MergeQueueView : UserControl
         SortButton.Flyout?.Hide();
     }
 
+    private async void OnPlatformItemClick(object? sender, RoutedEventArgs e)
+    {
+        var option = (sender as Control)?.DataContext as MergePlatformOptionViewModel;
+        PreferredPlatformButton.Flyout?.Hide();
+        if (option is not null && _queue is { } queue)
+        {
+            try { await queue.SelectPlatformCommand.ExecuteAsync(option); }
+            catch (Exception) { queue.ShowPlatformSaveFailure(); }
+        }
+    }
+
     // The view model moved the cursor (a keyboard step, or the row that took
     // an answered card's place): put keyboard focus on that row and bring it
     // into view. The row's container is found by data context because the

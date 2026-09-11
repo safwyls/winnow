@@ -40,6 +40,11 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     public static readonly TimeSpan DockFor = TimeSpan.FromSeconds(7);
 
     private const double ExactTitleFloor = 0.999;
+    public const string PreferredPlatformSettingKey = "merges.preferred_platform";
+
+    private readonly ISettingsRepository? _settings;
+    private readonly Services.DormancyRamp _ramp;
+    private string? _preferredPlatform;
 
     private readonly IMergeCandidateRepository _candidates;
     private readonly IReleaseRepository _releases;
@@ -50,6 +55,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     private readonly IExpansionRefusalRepository _expansionRefusals;
     private readonly ILibraryQueryRepository _libraryQueries;
     private readonly ICoverLeases? _covers;
+    private readonly Services.ArtworkPreferences? _artworkPreferences;
     private readonly IResolveStateRepository? _resolveState;
 
     /// <summary>
@@ -101,9 +107,15 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         IResolveStateRepository? resolveState = null,
         Services.IIgdbAssignmentService? igdb = null,
         TimeProvider? clock = null,
-        Action<Action>? post = null)
+        Action<Action>? post = null,
+        ISettingsRepository? settings = null,
+        Services.DormancyRamp? ramp = null,
+        Services.ArtworkPreferences? artworkPreferences = null)
     {
         _candidates = candidates;
+        _settings = settings;
+        _ramp = ramp ?? new Services.DormancyRamp();
+        _ramp.PropertyChanged += OnRampChanged;
         _releases = releases;
         _works = works;
         _links = links;
@@ -112,6 +124,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         _expansionRefusals = expansionRefusals;
         _libraryQueries = libraryQueries;
         _covers = covers;
+        _artworkPreferences = artworkPreferences;
         _resolveState = resolveState;
         _igdb = igdb;
         _clock = clock ?? TimeProvider.System;
@@ -151,6 +164,64 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
 
     /// <summary>The sort menu's rows.</summary>
     public IReadOnlyList<MergeSortOptionViewModel> SortOptions { get; }
+
+    public IReadOnlyList<MergePlatformOptionViewModel> PlatformOptions { get; } =
+    [
+        new(null, "None") { IsSelected = true },
+        new("steam", "Steam"),
+        new("epic", "Epic"),
+        new("gog", "GOG"),
+    ];
+
+    public string PreferredPlatformLabel => string.Format(CultureInfo.CurrentCulture,
+        MergeCopy.PreferredPlatformFormat, PlatformOptions.First(option => option.IsSelected).Label);
+
+    public string PreferredPlatformTooltip => MergeCopy.PreferredPlatformTooltip;
+
+    [RelayCommand]
+    private async Task SelectPlatformAsync(MergePlatformOptionViewModel? option, CancellationToken ct)
+    {
+        if (option is null || !PlatformOptions.Contains(option)) return;
+
+        if (_settings is not null)
+            await _settings.SetAsync(PreferredPlatformSettingKey, option.Store ?? string.Empty, ct);
+
+        SetPlatform(option);
+        ApplyPreferredPlatform(_sectionOfCard.Keys.ToArray());
+        foreach (var section in Sections) section.Resort(Sort);
+    }
+
+    private void SetPlatform(MergePlatformOptionViewModel option)
+    {
+        _preferredPlatform = option.Store;
+        foreach (var candidate in PlatformOptions) candidate.IsSelected = ReferenceEquals(candidate, option);
+        OnPropertyChanged(nameof(PreferredPlatformLabel));
+    }
+
+    private async Task<bool> ReadPreferredPlatformAsync(CancellationToken ct)
+    {
+        if (_settings is null) return false;
+        var stored = await _settings.GetAsync(PreferredPlatformSettingKey, ct);
+        var option = PlatformOptions.FirstOrDefault(candidate =>
+            string.Equals(candidate.Store, stored, StringComparison.OrdinalIgnoreCase)) ?? PlatformOptions[0];
+        if (_preferredPlatform == option.Store) return false;
+        SetPlatform(option);
+        return true;
+    }
+
+    private void ApplyPreferredPlatform(IEnumerable<MergeCardViewModel> cards)
+    {
+        if (_preferredPlatform is null) return;
+        foreach (var card in cards)
+        {
+            if (!card.IsPending || card.IsDecided) continue;
+            bool Matches(MergeRowViewModel row) => row.CanPromote
+                && row.Side.Stores.Contains(_preferredPlatform, StringComparer.OrdinalIgnoreCase);
+            // Keep the existing choice when more than one member carries this platform.
+            var preferred = Matches(card.Header) ? card.Header : card.Rows.FirstOrDefault(Matches);
+            if (preferred is not null) card.Promote(preferred);
+        }
+    }
 
     /// <summary>The cut bar's segments.</summary>
     public IReadOnlyList<MergeKindOptionViewModel> KindOptions { get; }
@@ -475,11 +546,17 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     }
 
     private void ShowRefusalDock()
+        => ShowNotice(MergeCopy.DockLinkRefusedTitle, MergeCopy.DockLinkRefusedNote);
+
+    public void ShowPlatformSaveFailure()
+        => ShowNotice(MergeCopy.PlatformSaveFailedTitle, MergeCopy.PlatformSaveFailedNote);
+
+    private void ShowNotice(string title, string note)
     {
         _run = null;
         CanUndoDock = false;
-        DockTitle = MergeCopy.DockLinkRefusedTitle;
-        DockNote = MergeCopy.DockLinkRefusedNote;
+        DockTitle = title;
+        DockNote = note;
         IsDockOpen = true;
 
         _dockTimer?.Dispose();
@@ -517,6 +594,11 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     {
         if (_loaded && !_stale)
         {
+            if (await ReadPreferredPlatformAsync(ct))
+            {
+                ApplyPreferredPlatform(_sectionOfCard.Keys.ToArray());
+                foreach (var section in Sections) section.Resort(Sort);
+            }
             return;
         }
 
@@ -607,10 +689,12 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             return (hasCompletedSweep, cards, pendingCount: pending.Count);
         }, ct);
 
+        await ReadPreferredPlatformAsync(ct);
         HasCompletedSweep = loaded.hasCompletedSweep;
         _pendingAtLoad = loaded.pendingCount;
         _stale = false;
         _loaded = true;
+        ApplyPreferredPlatform(loaded.cards);
         Place(loaded.cards);
 
         Focus(VisibleRows().FirstOrDefault());
@@ -675,6 +759,12 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(MergeSelectedLabel));
             OnPropertyChanged(nameof(CanMergeSelected));
         }
+    }
+
+    private void OnRampChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not (nameof(Services.DormancyRamp.DimsDormantCovers) or null)) return;
+        foreach (var row in _cardOfRow.Keys) row.RefreshDormancy();
     }
 
     private void RefreshCounts()
@@ -1795,19 +1885,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             }
         }
 
-        // Same order the ladder in DescribeAsync uses, for a work whose
-        // releases the snapshot had no key for.
-        if (coverKey is null)
-        {
-            if (UserArtRef.Token(work?.CoverUrl) is { Length: > 0 } userArtToken)
-            {
-                coverKey = CoverKey.User(userArtToken);
-            }
-            else if (IgdbImageUrl.ImageId(work?.CoverUrl) is { Length: > 0 } imageId)
-            {
-                coverKey = CoverKey.Igdb(imageId);
-            }
-        }
+        coverKey ??= library.CoverSelection.Select(work?.CoverUrl);
 
         var stores = new List<string>();
         foreach (var candidate in releaseIds)
@@ -1833,7 +1911,8 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             work?.Publisher,
             coverKey,
             _covers,
-            stores));
+            stores,
+            _ramp));
     }
 
     /// <summary>What one load read about the releases the queue names.</summary>
@@ -1845,7 +1924,8 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         Dictionary<long, IReadOnlyList<string>> Stores,
         Dictionary<long, List<OwnershipBucket>> Played,
         Dictionary<long, List<Ownership>> Owned,
-        Dictionary<long, Work> WorkRecords)
+        Dictionary<long, Work> WorkRecords,
+        Services.CoverSelection CoverSelection)
     {
         /// <summary>Folds the read model over a work's releases, the one permitted way.</summary>
         public MergeRowFacts FactsOf(IReadOnlyList<long> releaseIds)
@@ -1895,6 +1975,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     {
         var titles = new Dictionary<long, string>();
         var coverKeys = new Dictionary<long, CoverKey>();
+        var coverSelection = new Services.CoverSelection(_artworkPreferences?.AvailableSources.Select(source => source.Id));
         var workOfRelease = new Dictionary<long, long>();
         var works = new Dictionary<long, SurvivorCandidate>();
         var stores = new Dictionary<long, IReadOnlyList<string>>();
@@ -1968,39 +2049,11 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             var externalIds = externalIdsByRelease[releaseId];
             var steam = externalIds.FirstOrDefault(x => x.Provider == ExternalIdProviders.Steam);
 
-            // Cover-key ladder — the same four rungs the library load
-            // uses (cover-key precedence block in LibraryViewModel.LoadAsync, §10.9):
-            //   0. user-set art
-            //   1. a live IGDB pin on this work
-            //   2. the Steam portrait capsule for this release's appid
-            //   3. the image id in the work's stored cover_url
-            // The pin is read off the release's own work row (fetched
-            // above), never a resolved work, for §10.9's reason.
-            // Rung 3 is the IGDB fallback for the side without a Steam
-            // appid, common in cross-store pairs.
-            var pinnedImageId = work is not null && pinnedWorkIds.Contains(work.Id)
-                ? IgdbImageUrl.ImageId(work.CoverUrl)
-                : null;
-
-            if (UserArtRef.Token(work?.CoverUrl) is { Length: > 0 } userArtToken)
-            {
-                coverKeys[releaseId] = CoverKey.User(userArtToken);
-            }
-            else if (pinnedImageId is { Length: > 0 })
-            {
-                coverKeys[releaseId] = CoverKey.Igdb(pinnedImageId);
-            }
-            else if (steam is not null)
-            {
-                coverKeys[releaseId] = CoverKey.Steam(steam.ProviderId);
-            }
-            else if (IgdbImageUrl.ImageId(work?.CoverUrl) is { Length: > 0 } imageId)
-            {
-                coverKeys[releaseId] = CoverKey.Igdb(imageId);
-            }
+            if (coverSelection.Select(work?.CoverUrl, steam?.ProviderId, work is not null && pinnedWorkIds.Contains(work.Id)) is { } key)
+                coverKeys[releaseId] = key;
         }
 
-        return new LibrarySnapshot(titles, coverKeys, workOfRelease, works, stores, played, owned, workRecords);
+        return new LibrarySnapshot(titles, coverKeys, workOfRelease, works, stores, played, owned, workRecords, coverSelection);
     }
 
     // ── Undo bookkeeping ─────────────────────────────────────────────────────
@@ -2032,6 +2085,8 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         }
 
         _disposed = true;
+        _ramp.PropertyChanged -= OnRampChanged;
+        foreach (var card in _sectionOfCard.Keys) card.ReleaseCovers();
         _dockTimer?.Dispose();
         _dockTimer = null;
     }

@@ -22,14 +22,13 @@ pinning, and both are asserted directly in `Updates/SteamNewsClientTests.cs`:
   feed"*, **not** rate limiting. It is the single most dangerous shape in this
   module; see `NewsOutcome.NoFeed`.
 - **HTTP 429** — never observed from either host. The handling ships anyway
-  (§4.2), so the test synthesises it.
+  so the test synthesises it.
 
 ## Why these are pinned
 
 `GetNewsForApp` is documented but its `tags` filter is not (Valve's own
 description misspells the value as `patchnodes`), and api.steamcmd.net is an
-unofficial volunteer mirror with no SLA — §4.5 records it erroring outright
-during design. `UpdateSignalContractTests` asserts the exact shapes the parsers
+unofficial volunteer mirror with no SLA. `UpdateSignalContractTests` asserts the exact shapes the parsers
 depend on against these bytes, so when someone recaptures a fixture and the
 assertions break, the contract changed and the soft-fail paths — which already
 degrade to "no signal" rather than throw — can be re-verified against the new

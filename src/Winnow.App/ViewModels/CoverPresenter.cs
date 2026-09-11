@@ -27,6 +27,7 @@ public sealed class CoverPresenter : ObservableObject, IDisposable
 
     /// <summary>Widths with a load in flight for the current generation.</summary>
     private readonly HashSet<int> _pending = [];
+    private readonly HashSet<ICoverLease> _loading = [];
 
     private ICoverLeases? _leases;
     private CoverKey? _key;
@@ -170,6 +171,7 @@ public sealed class CoverPresenter : ObservableObject, IDisposable
         }
 
         _cancellation ??= new CancellationTokenSource();
+        _loading.Add(lease);
         _ = LoadAsync(lease, generation, width, _cancellation.Token);
     }
 
@@ -196,6 +198,8 @@ public sealed class CoverPresenter : ObservableObject, IDisposable
 
         _held?.Dispose();
         _held = null;
+        foreach (var lease in _loading) lease.Dispose();
+        _loading.Clear();
     }
 
     public void Dispose()
@@ -246,12 +250,13 @@ public sealed class CoverPresenter : ObservableObject, IDisposable
             return;
         }
 
-        if (_disposed || _art is null || _art.Satisfies(Layers))
+        if (_disposed || (_art is not null && _art.Satisfies(Layers)))
         {
             return;
         }
 
-        var width = _presentedWidth;
+        var width = Math.Max(_presentedWidth, _pending.DefaultIfEmpty(0).Max());
+        if (width == 0) return;
         _pending.Remove(width);
         Request(width);
     }
@@ -276,6 +281,7 @@ public sealed class CoverPresenter : ObservableObject, IDisposable
 
     private void Settle(ICoverLease lease, CoverArt? art, int generation, int width)
     {
+        _loading.Remove(lease);
         if (generation == _generation)
         {
             _pending.Remove(width);
@@ -285,7 +291,8 @@ public sealed class CoverPresenter : ObservableObject, IDisposable
         // retired, or a bucket smaller than what is already on screen. A pair
         // arriving at the presented width is not a loser — that is the ramp
         // being turned back on under a vivid-only decode.
-        if (art is null || generation != _generation || (_art is not null && width < _presentedWidth))
+        if (art is null || generation != _generation || (_art is not null && width < _presentedWidth)
+            || (_art is not null && _art.Satisfies(Layers) && !art.Satisfies(Layers)))
         {
             lease.Dispose();
             return;

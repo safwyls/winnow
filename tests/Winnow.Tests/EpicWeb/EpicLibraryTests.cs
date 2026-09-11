@@ -4,6 +4,7 @@ using Winnow.Core.Ingest;
 using Winnow.App.Services;
 using Winnow.Ingest.Epic;
 using Winnow.Ingest.Epic.Web;
+using Winnow.Ingest.Epic.Web.Auth;
 using Winnow.Ingest.Epic.Web.Model;
 using Xunit;
 
@@ -143,6 +144,7 @@ public sealed class EpicLibraryTests
         await host.SignInAsync();
 
         var candidates = await host.Client.GetOwnershipCandidatesAsync();
+        var account = (await host.Tokens.GetIdentityAsync())!.AccountId;
 
         Assert.All(candidates, c =>
         {
@@ -159,10 +161,9 @@ public sealed class EpicLibraryTests
             // confirmed absent from the live GraphQL Playtime type.
             Assert.Null(c.LastPlayedAt);
 
-            // Attribution stays null so the API half and the local half agree:
-            // the local reader cannot attribute an account at all, because Epic's
-            // manifests are machine-wide.
-            Assert.Null(c.AccountRef);
+            // The authenticated source retains account evidence even though the
+            // machine-wide local manifests cannot name an account.
+            Assert.Equal(account, c.AccountRef);
 
             Assert.Equal(EpicAccountClient.SourceName, c.Source);
         });
@@ -219,15 +220,16 @@ public sealed class EpicLibraryTests
     {
         using var db = new TempDatabase();
         var cache = new SqliteEpicLibraryCache(db.Factory);
+        var tokens = new InMemoryEpicTokenStore();
 
-        using (var first = new EpicWebTestHost(EpicWebTestHost.Healthy(), libraryCache: cache))
+        using (var first = new EpicWebTestHost(EpicWebTestHost.Healthy(), libraryCache: cache, tokenStore: tokens))
         {
             await first.SignInAsync();
             Assert.False((await first.Client.GetOwnedLibraryAsync()).FromCache);
             Assert.Equal(2, first.Handler.CountFor(EpicEndpoint.LibraryItems));
         }
 
-        using var restarted = new EpicWebTestHost(EpicWebTestHost.Healthy(), libraryCache: cache);
+        using var restarted = new EpicWebTestHost(EpicWebTestHost.Healthy(), libraryCache: cache, tokenStore: tokens);
         var library = await restarted.Client.GetOwnedLibraryAsync();
 
         Assert.True(library.Succeeded);

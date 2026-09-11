@@ -1,7 +1,9 @@
 # Spike: Epic OAuth as an authenticated ownership source
 
-> **Evidence, not a rule.** This document records how something was measured and is
-> never the place to look up what to do. The current rule is in `game-library-design.md` §4.8.
+> **Dated evidence.** Findings describe the builds and services observed on the dates below.
+> Current implementation choices are in [the build spec](../../game-library-design.md);
+> current interactions and layout are in [the visual spec](../../design-system.md).
+> This record is optional background.
 
 Date: 2026-08-26
 Method: live unauthenticated probes from this machine against Epic's production hosts, plus
@@ -9,133 +11,25 @@ source reading at HEAD of `legendary-gl/legendary` (`master` last pushed 2026-08
 `Heroic-Games-Launcher/HeroicGamesLauncher` (`main` last pushed 2026-08-10), plus live
 GraphQL schema enumeration through Apollo validation errors.
 
-**No authenticated call was made during this spike.** Everything below is either CONFIRMED by
-an unauthenticated probe or by source at HEAD, or is explicitly marked UNVERIFIED. The one
-thing that requires a real token to settle is named in section 7, and the implementation
-prints exactly what is needed to settle it.
+The initial endpoint and schema probes were unauthenticated. Section 14 records a later
+authenticated catalog capture on the same date. Unverified claims are labeled; section 7
+describes the unresolved playtime-unit comparison.
 
-Sections 21–22 of `epic-gog-local-files.md` reached their conclusions from source and
-community documentation without probing. This spike probed the live endpoints, so where the
-two records differ it is because this one measured what the other inferred; section 9 lists
-the differences, because one of them matters. Neither document states a rule: the rule is in
-`game-library-design.md` §4.8.
+The local-file study covers ownership available without authentication. This probe
+examines acquisition dates, playtime and the sign-in flow.
 
 ---
 
-## 1. The §4.6 question, answered directly
+## 1. Sign-in findings
 
-§4.6 excludes PSN and Xbox and gives three reasons. The claim under test is that Epic OAuth
-trips only the first. **It trips one and a half of the three, and the half is the
-interesting part.**
+Epic supports an embedded browser and a manual authorization-code flow. In both cases the
+user signs in on Epic's domain. An embedded browser runs in Winnow's process; Winnow
+captures the authorization code and does not read password fields. The console flow opens
+the user's browser and accepts the pasted single-use code.
 
-| §4.6 reason | PSN | Epic | Verdict |
-|---|---|---|---|
-| No consumer API; every wrapper is reverse-engineered | Yes | **Yes** | **Trips.** Identical in kind |
-| User must manually extract a credential by hand, and repeat it when it lapses | `npsso` cookie from a browser session, redone ~every 2 months | **An `authorizationCode` pasted from a JSON page.** Redone only when the refresh token lapses, which rolls forward indefinitely while the app is used | **Trips, but materially weaker.** See below |
-| Documented account-ban risk | PSNAWP's own docs warn of temporary or permanent bans and recommend a throwaway account | **Nothing comparable exists.** Heroic's FAQ says the opposite; no report of an Epic ban for Legendary/Heroic/Rare was found | **Does not trip** |
-
-### The manual-extraction row, honestly
-
-The task framing that prompted this work held that Epic "needs no manual cookie extraction".
-**That is not quite right and the difference should be recorded rather than glossed.** Epic's
-interactive login has two viable shapes and neither is credential-free:
-
-- **Embedded webview** (what Heroic does). The user types their Epic password and 2FA into a
-  browser Winnow hosts. Avalonia has no webview, so this means WebView2 on Windows and
-  something else everywhere else. **Rejected** — the cost is large and hosting someone's
-  password entry inside Winnow is a worse posture than not touching it at all.
-- **Manual copy-paste** (what Legendary falls back to, and what Winnow implements). The user
-  signs in on Epic's own page, in their own browser, and pastes back one code.
-
-> **CORRECTED 2026-08-26 (M4.6): this rejection was reversed.** The embedded webview
-> ships. The reasoning, and the half of the objection that survives, are recorded in
-> "CORRECTED 2026-08-26: the embedded webview is no longer rejected" at the end of this
-> section — read that before relying on anything in this bullet.
-
-So there *is* a manual step. What makes it weaker than PSN's is not its absence but three
-properties, each verified:
-
-1. **It is not a session cookie.** The user copies a single-use authorization code that is
-   dead within minutes, not a live credential with two months of life in it.
-2. **It is not repeated on a schedule.** PSN's `npsso` expires roughly every two months by
-   construction. Epic's refresh token is *rolling* — each refresh returns a new one — so a
-   session that is exercised renews indefinitely. Re-login is an exception, not a cadence.
-3. **Winnow never sees the password.** The user authenticates to Epic, on Epic's domain.
-
-The honest summary is therefore: **Epic trips one of §4.6's three reasons outright, trips a
-weaker version of the second, and does not trip the third.** That is a materially different
-risk profile from PSN, and it is a real difference rather than a rhetorical one — but it is
-not the clean "only the first" the premise assumed.
-
-### CORRECTED 2026-08-26: the embedded webview is no longer rejected
-
-The "Rejected" verdict above was reversed by the user after
-`docs/spikes/embedded-auth.md`. Recorded here rather than left to contradict that document,
-because a reader arriving at this section would otherwise act on a decision that no longer
-holds.
-
-**What changed, and it is only half of the objection.** The verdict rested on two claims and
-the spike falsified the first one:
-
-- *"The cost is large."* Measured: WebView2 hosts inside Avalonia 11.3.20 for **1.26 MB** of
-  DLLs against CEF's 123 MB, on a runtime Windows 11 preinstalls. Roughly forty lines. Not
-  large.
-- Separately, the alternative got worse rather than better. **Loopback is impossible for
-  Epic** — `redirectUrl` is validated against an exact allowlist, and same-host-different-port
-  and same-path-different-scheme are both refused — so there is no third option where the
-  user signs in on Epic's own page *and* the code is captured automatically. Playnite and
-  Heroic both embed a browser for this reason.
-- And the manual flow's fragility stopped being theoretical. The code is single-use and dies
-  within minutes, so every misstep between issuing and spending it burns it. In practice that
-  cost several rounds of debugging on one machine, for a step that has to work first time on
-  someone else's.
-
-**What did NOT change: the posture objection stands, and point 3 above is now weaker.** That
-list claims *"Winnow never sees the password — the user authenticates to Epic, on Epic's own
-domain."* Under an embedded webview the domain is still Epic's, but the **host process is
-Winnow's**, and a host process can read what is typed into the page it renders. Winnow does not
-do that. The point is that the user's protection changes from *structural* to *promised*,
-and no amount of care on our side converts it back.
-
-That is a real cost, accepted deliberately rather than argued away:
-
-- The manual flow stays a **peer**, not a legacy path — `IInteractiveAuthPrompt` has a console
-  implementation beside the WebView2 one, so a user who declines to type their password into
-  Winnow keeps a first-class route.
-- Nothing is injected into, read from, or logged around the credential fields. The capture
-  hooks are the ones Epic's own page offers (`window.ue`) or its redirect.
-- The consent moment survives the change. The console flow showed Epic's warning before
-  opening a browser; an embedded flow makes the code invisible and removes the moment the
-  user could reconsider, so the warning has to be stated before the browser opens instead of
-  being allowed to disappear with the copy-paste step.
-
-§10's principle is unchanged and now carries more weight, not less: the decision to
-impersonate Epic's launcher belongs to the person doing it.
-
-### The reason §4.6 does not cover, and it is the biggest one
-
-**There is no third-party registration path that reaches the storefront library.** Epic
-Account Services will issue anyone a real OAuth client, but its consent scopes stop at
-`basic_profile` / `friends_list` / `presence` / `country` — none of which read entitlements.
-`library:public:items` and the playtime permission live only on Epic's own launcher client,
-`launcherAppClient2`, whose id and secret were extracted from the launcher binary and have
-circulated publicly since 2020. Epic has never rotated them. Every tool in this space —
-Legendary, Heroic, Rare — authenticates as that client.
-
-Epic staff have said plainly, on the Epic Developer Community forums, that this is not
-offered and not supported: *"we do not offer or expose an API for these specific items, and
-it is not something we would be able to support."*
-
-**So using this at all means impersonating Epic's launcher with a credential taken from their
-binary.** §4.6 does not have a row for that because PSN does not have this problem. It is the
-single largest thing a user is accepting, and section 10 sets out how the implementation
-responds to it.
-
-**Verdict: no ban risk was found, so the stop condition in the brief is not met.** The work
-proceeds. But it proceeds with the client credentials treated as the user's to supply, not
-Winnow's to ship — see section 10.
-
----
+The WebView2 prototype needed 1.26 MB of DLLs. Epic's redirect allowlist rejected loopback
+variants, so the probe did not find an automatic external-browser callback route. The
+manual flow remains useful when WebView2 is unavailable or embedded sign-in fails.
 
 ## 2. The auth flow — CONFIRMED live
 
@@ -242,20 +136,10 @@ and the `.item` manifest as `CatalogItemId`. That is what lets the API half and 
 land on one ownership and be collapsed by `CandidateOwnershipMerge`. Using `appName` would
 never join — "Bluebird" is Fez.
 
-**The catalog `bulk/items` endpoint is deliberately NOT called *by the ownership fetch*.** It
-requires auth and costs a request per namespace, and `catcache.bin` already has the title for
-every owned game, locally and for free. So API candidates carry `Title: null`, which the
-ingest contract reads as "this source has no title" and which leaves the local name in charge.
-
-> **CORRECTED 2026-08-26. The "not called" half of that was wrong, and it cost the library 29
-> nameless tiles.** See section 14 below. The reasoning above holds for every title
-> `catcache.bin` knows — and silently assumed that is every title the account owns. It is not:
-> this account owns 99 distinct catalog items and the launcher's local catalog covers 70 of
-> them, so 29 ownership rows arrived with no name from any source and rendered as
-> `App 16a66a9f5630407d923429470bd5c967`. The catalog endpoint is now called, but from
-> **enrichment** rather than from the ownership fetch, so the ordering above is preserved
-> exactly: the local title still wins, and the service is only asked about works that have
-> none.
+The ownership fetch supplies candidates without titles. Catalog `bulk/items` enrichment
+provides names absent from the local cache. In the measured account, 99 distinct catalog
+items were owned and only 70 had local catalog entries; section 14 records the missing
+29 entries and their classification.
 
 ---
 
@@ -365,58 +249,16 @@ is throughput-sensitive.
 
 ---
 
-## 9. Where this contradicts the earlier spike
+## 9. Data added by authentication
 
-`epic-gog-local-files.md` §22 recommended **not building this**. Its reasoning was sound and
-most of it still stands — the owned library really is already on disk, and the identity join
-really is solved unauthenticated via gamesdb. Two of its points need correcting:
+The API adds acquisition dates, total playtime and a fresh entitlement list. It exposes no
+last-played timestamp. Local ownership remains available without sign-in. The unit of
+`totalTime` was unverified in this probe; section 7 records the comparison procedure.
 
-| §21–22 said | This spike found |
-|---|---|
-| Token lifetimes are 8 h / ~23 days | **Unverified.** No authoritative source states them. Do not hardcode; read the response |
-| Playtime has "no last-played timestamp" (inferred) | **Confirmed by schema**, which is stronger. `lastPlayed`, `firstPlayed`, `updatedAt`, `lastModified` all individually rejected |
-| "OAuth buys one thing: a playtime floor with no dates" | **It buys two.** Playtime, and **`acquisitionDate`** — when the user actually claimed a title. Nothing on disk records that; `releaseInfo[0].dateAdded` is the store release date. §22 missed this |
-| The unit of `totalTime` is "seconds is the plausible reading, unverified" | Unchanged, and still the one open item |
+## 10. Credentials
 
-**§22's core judgement was not wrong, and it should not be quietly overwritten.** The owned
-library is free locally; this module is not how Epic ownership is discovered. What it adds is
-two facts Epic writes nowhere on disk — acquisition dates and playtime — plus a true
-entitlement list that does not go stale between launcher runs. Whether that is worth the
-costs in section 10 is a judgement for the user, which is why the module is opt-in, off by
-default, and requires a deliberate act to enable.
-
----
-
-## 10. What the implementation does about the client-secret problem
-
-The one unavoidable cost is that reading a storefront library requires Epic's own launcher
-client. Winnow's response:
-
-> **REVERSED 2026-08-26 (M4.6). This section describes what the module did before the sign-in
-> button existed, and is kept because the reasoning is still worth reading — it just lost.**
-> Winnow now ships Epic's launcher pair built in, as the LAST credential source, so anything
-> the user supplies still wins. What broke the argument below is that a sign-in *button*
-> cannot ask for an OAuth client secret, and there is no pair the user could supply instead:
-> Epic Account Services will register anyone an application, but its consent scopes cannot
-> read entitlements, so `library:public:items` exists only on the launcher client. The choice
-> was never "Winnow's credentials or the user's" — it was "these credentials, or the feature
-> does not exist". Winnow is now the party distributing them, which is a real transfer of
-> responsibility and is recorded as such in `BuiltInEpicCredentialSource` and `ROADMAP.md` §3.
-> The values were verified live returning HTTP 200 on 2026-08-26 rather than trusted.
-
-**Winnow does not ship Epic's client credentials, and this repository does not contain them.**
-The pair is user-supplied and stored locally, exactly like the Steam Web API key and the IGDB
-pair — the charter rule is "user-supplied, stored locally, never logged, never committed", and
-baking a credential Winnow has no right to into every checkout would break the last clause.
-
-This is a real trade, not a dodge. It costs the user a setup step they must resolve
-themselves, and it means the module ships disabled and stays that way for anyone who does not
-go looking. In exchange:
-
-- No credential Winnow has no right to enters the repository or a shipped binary.
-- The decision to impersonate Epic's launcher is made by the person doing it.
-- An unconfigured install is a clean no-op that makes no requests at all
-  (`Registering_the_module_without_credentials_makes_no_requests_on_any_call`).
+Winnow supplies the launcher client pair as its fallback credential source. User-supplied
+configuration can replace that pair. This is distinct from the user's private session tokens.
 
 ### Storage
 
@@ -435,12 +277,12 @@ guarantee for a stronger one.
 
 ## 11. The verification step
 
-Since M4.6 there are two, and neither needs credentials any more (§10's amendment).
+Both verification flows use the built-in client pair unless configuration supplies another.
 
 **The embedded browser** — this is the one to run:
 
 ```powershell
-dotnet run --project src/Winnow.App -- --epic-signin
+dotnet run --project src/Winnow.App -- --epic-signin --data-dir C:/Temp/winnow-epic-probe
 ```
 
 A window opens showing what Winnow is about to hold; accepting it loads Epic's own sign-in
@@ -452,7 +294,7 @@ prints **which of the three capture routes actually fired**, which is the one th
 breaks the embedded page:
 
 ```powershell
-dotnet run --project src/Winnow.App -- --epic-login
+dotnet run --project src/Winnow.App -- --epic-login --data-dir C:/Temp/winnow-epic-probe
 ```
 
 It prints the Epic sign-in URL together with Epic's own warning about the code, waits for a
@@ -478,8 +320,7 @@ is also the workaround the day Epic rotates the built-in pair.
 to their own browser. The embedded flow hosts Epic's page in a Chromium surface — the user
 types into Epic's form, which posts to Epic over TLS, and Winnow reads only the code Epic hands
 back. That is a weaker statement than the console flow's and it is made deliberately: the
-password is typed into a window Winnow opened, and §1's amendment says so rather than claiming
-the two postures are identical.
+password is typed into a window Winnow opened.
 
 ---
 

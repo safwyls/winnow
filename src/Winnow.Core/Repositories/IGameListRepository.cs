@@ -18,6 +18,15 @@ public interface IGameListRepository
     /// <summary>Inserts a list (Id ignored) and returns the assigned id.</summary>
     Task<long> InsertAsync(GameList list, CancellationToken ct = default);
 
+    /// <summary>Creates a manual list and its distinct ordered members atomically.</summary>
+    Task<long> CreateManualAsync(string name, IReadOnlyList<long> releaseIds, CancellationToken ct = default);
+
+    /// <summary>Atomically appends distinct releases and returns the complete committed membership order.</summary>
+    Task<IReadOnlyList<long>> AppendItemsAsync(long listId, IReadOnlyList<long> releaseIds, CancellationToken ct = default);
+
+    /// <summary>Atomically removes releases and returns the complete committed membership order.</summary>
+    Task<IReadOnlyList<long>> RemoveItemsAsync(long listId, IReadOnlyList<long> releaseIds, CancellationToken ct = default);
+
     Task<GameList?> GetAsync(long id, CancellationToken ct = default);
 
     Task<IReadOnlyList<GameList>> GetAllAsync(CancellationToken ct = default);
@@ -53,7 +62,7 @@ public interface IGameListRepository
     /// Rewrites the whole order of a manual list. Unknown ids are ignored;
     /// omitted members are appended in their previous relative order.
     /// </summary>
-    Task ReorderAsync(long listId, IReadOnlyList<long> releaseIdsInOrder, CancellationToken ct = default);
+    Task<IReadOnlyList<long>> ReorderAsync(long listId, IReadOnlyList<long> releaseIdsInOrder, CancellationToken ct = default);
 
     /// <summary>
     /// Every list that contains this game, resolved through <c>same_game</c>

@@ -15,6 +15,9 @@ public interface IWorkMaturityRepository
     /// </summary>
     Task UpsertAsync(WorkMaturity maturity, CancellationToken ct = default);
 
+    /// <summary>Removes one source's evidence after a confirmed empty response.</summary>
+    Task<bool> DeleteAsync(long workId, string source, CancellationToken ct = default);
+
     /// <summary>Every source's evidence for one work, ordered by source.</summary>
     Task<IReadOnlyList<WorkMaturity>> GetForWorkAsync(long workId, CancellationToken ct = default);
 

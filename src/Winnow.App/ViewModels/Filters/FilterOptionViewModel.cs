@@ -26,17 +26,21 @@ public partial class FilterOptionViewModel : ObservableObject
     public string Label { get; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CountText), nameof(IsAvailable), nameof(AutomationName))]
+    [NotifyPropertyChangedFor(nameof(CountText), nameof(IsAvailable), nameof(AutomationName), nameof(CountedLabel))]
     public partial int Count { get; set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsAvailable))]
+    [NotifyPropertyChangedFor(nameof(IsAvailable), nameof(CountedLabel), nameof(SelectionState))]
     public partial bool IsChecked { get; set; }
 
     /// <summary>Formatted count for display.</summary>
     public string CountText => Count.ToString("N0");
 
     public string AutomationName => $"{Label}, {CountText} matching {(Count == 1 ? "title" : "titles")}";
+
+    public string CountedLabel => $"{(IsChecked ? "✓ " : string.Empty)}{Label} · {CountText}";
+
+    public string SelectionState => IsChecked ? "Selected" : "Not selected";
 
     /// <summary>False when unchecked and count is zero (would produce empty results). Checked rows stay available.</summary>
     public bool IsAvailable => IsChecked || Count > 0;

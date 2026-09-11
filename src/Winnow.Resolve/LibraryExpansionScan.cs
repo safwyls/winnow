@@ -218,45 +218,13 @@ public sealed class LibraryExpansionScan
             return false;
         }
 
-        // Already grouped, or grouped the other way round, or held as one game
-        // with its base. All three are answers, and the queue must never ask an
-        // answered question — the complaint that opened TASK-70.
-        if (resolution.Expansions.BaseOf(proposal.ChildWorkId) is not null
-            || resolution.Expansions.BaseOf(proposal.BaseWorkId) == proposal.ChildWorkId)
-        {
-            return false;
-        }
-
-        // The same three answers again, at the variant_of kind. A demo already
-        // grouped under the game it samples is an answered question, and
-        // ux_identity_links_live would refuse a second parent for it anyway.
-        if (resolution.Variants.ParentOf(proposal.ChildWorkId) is not null
-            || resolution.Variants.ParentOf(proposal.BaseWorkId) == proposal.ChildWorkId)
-        {
-            return false;
-        }
-
-        // Depth one, half one: a work that already has a live parent of any
-        // kind cannot take a second one, and ux_identity_links_live would
-        // refuse the write. Asking would produce a card whose answer throws.
-        if (resolution.SameGame.IsChild(proposal.ChildWorkId))
-        {
-            return false;
-        }
-
-        // Depth one, half two: grouping under a base that is itself a child
-        // would re-parent the whole group under its grandparent, which is a
-        // decision nobody made. The base is already resolved, so this is a
-        // belt-and-braces guard rather than an expected case.
-        if (resolution.SameGame.IsChild(proposal.BaseWorkId))
-        {
-            return false;
-        }
-
-        // A work that is a same-game PARENT is a fine base. A work that is a
-        // same-game parent cannot be a child, so it is not a fine expansion:
-        // linking it would displace its own children onto the base.
-        return !resolution.SameGame.IsParent(proposal.ChildWorkId);
+        // A proposal must not reopen an answered membership decision. The
+        // command also rechecks structure in its transaction, because the
+        // standing graph can change while a proposal is on screen.
+        return !resolution.IsChild(proposal.ChildWorkId)
+            && IdentityLinkRules.GetRefusal(
+                proposal.Kind, proposal.BaseWorkId, proposal.ChildWorkId, resolution)
+                == IdentityLinkRefusal.None;
     }
 
     /// <summary>

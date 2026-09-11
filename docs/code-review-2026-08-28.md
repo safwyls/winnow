@@ -1,5 +1,9 @@
 # Winnow full repository code review — 2026-08-28
 
+> Historical review of the August 28 working tree. Findings and release-readiness statements
+> describe that baseline. Use [ROADMAP.md](../ROADMAP.md) for current capabilities and remaining
+> validation, and Backlog for task status; this report is not an active work queue.
+
 ## Executive verdict
 
 Winnow has unusually deliberate design documents and several strong implementation seams, but the
@@ -162,8 +166,8 @@ non-null regression test for every column; the existing null-input tests are ins
 
 **Evidence.** [Program.cs:145–163](../src/Winnow.App/Program.cs#L145) synchronously waits for
 `SteamSyncService` before starting Avalonia. The service awaits Steam Web and Epic API work at
-[SteamSyncService.cs:74–75](../src/Winnow.App/Services/SteamSyncService.cs#L74) and
-[120–122](../src/Winnow.App/Services/SteamSyncService.cs#L120). The same service is the scheduler's
+`SteamSyncService.cs:74–75` (path at the inspected baseline) and
+`120–122`. The same service is the scheduler's
 `ISteamSync`, despite `SnapshotSchedulerService` claiming the path has no network at
 [lines 20–24](../src/Winnow.App/Services/SnapshotSchedulerService.cs#L20).
 
@@ -747,7 +751,7 @@ automation help text.
 ### F49 — Sync naming/comments materially misdescribe behavior (P3)
 
 **Evidence.** `SteamSyncService` ingests three stores and two network APIs, yet its type/docs claim a
-local Steam/filesystem-only path at [SteamSyncService.cs:13–34](../src/Winnow.App/Services/SteamSyncService.cs#L13).
+local Steam/filesystem-only path at `SteamSyncService.cs:13–34` (path at the inspected baseline).
 `SnapshotSchedulerService` repeats the no-network claim at
 [lines 20–24](../src/Winnow.App/Services/SnapshotSchedulerService.cs#L20).
 

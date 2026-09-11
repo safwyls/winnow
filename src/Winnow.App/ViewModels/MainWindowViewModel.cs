@@ -9,7 +9,7 @@ namespace Winnow.App.ViewModels;
 
 /// <summary>
 /// Window shell: hosts the Feed, library, merge queue, STATS and the settings
-/// surface (Platforms, Library, Appearance, Application). The rail navigates between the
+/// surface (Platforms, Library, Appearance, Metadata &amp; artwork, Application). The rail navigates between the
 /// first four; the gear at its foot opens the settings surface. One screen at a
 /// time.
 ///
@@ -37,7 +37,9 @@ public partial class MainWindowViewModel : ObservableObject
         ISettingsRepository? settings = null,
         Services.SessionJournalService? journal = null,
         ILibraryQueryRepository? libraryQueries = null,
-        ApplicationSettingsViewModel? applicationSettings = null)
+        ApplicationSettingsViewModel? applicationSettings = null,
+        FirstRunSetupViewModel? setup = null,
+        EnrichmentSettingsViewModel? enrichmentSettings = null)
     {
         Fetch = fetch ?? new FetchStatusViewModel();
         Library = library;
@@ -48,6 +50,8 @@ public partial class MainWindowViewModel : ObservableObject
         AccountStats = accountStats;
         LibrarySettings = librarySettings;
         ApplicationSettings = applicationSettings ?? new ApplicationSettingsViewModel();
+        EnrichmentSettings = enrichmentSettings ?? new(ApplicationSettings.Igdb);
+        Setup = setup ?? new FirstRunSetupViewModel(Stores, Appearance, ApplicationSettings, LibrarySettings);
 
         // Hiding a game, unhiding one, adding one by hand and turning the
         // explicit filter on all change which rows the bucket query returns, so
@@ -128,6 +132,8 @@ public partial class MainWindowViewModel : ObservableObject
         Appearance,
         Library,
         Application,
+        Enrichment,
+        Plugins,
     }
 
     public FetchStatusViewModel Fetch { get; }
@@ -158,6 +164,9 @@ public partial class MainWindowViewModel : ObservableObject
 
     /// <summary>SETTINGS › APPLICATION — window lifetime and Windows sign-in.</summary>
     public ApplicationSettingsViewModel ApplicationSettings { get; }
+    public EnrichmentSettingsViewModel EnrichmentSettings { get; }
+    public PluginSettingsViewModel PluginSettings => EnrichmentSettings.Plugins;
+    public FirstRunSetupViewModel Setup { get; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
@@ -203,6 +212,24 @@ public partial class MainWindowViewModel : ObservableObject
         nameof(IsLibraryVisible), nameof(IsFilterPanelVisible), nameof(IsSettingsVisible))]
     public partial bool IsApplicationSettingsVisible { get; set; }
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible), nameof(IsSettingsVisible))]
+    public partial bool IsEnrichmentSettingsVisible { get; set; }
+
+    partial void OnIsEnrichmentSettingsVisibleChanged(bool value)
+    {
+        if (!value) EnrichmentSettings.ClearSecrets();
+    }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible), nameof(IsSettingsVisible))]
+    public partial bool IsPluginSettingsVisible { get; set; }
+
+    partial void OnIsPluginSettingsVisibleChanged(bool value)
+    {
+        if (!value) PluginSettings.ClearSecrets();
+    }
+
     /// <summary>The STATS screen, opened from the rail's ACCOUNT › STATS row.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
@@ -222,11 +249,11 @@ public partial class MainWindowViewModel : ObservableObject
     /// </summary>
     public bool IsSettingsVisible =>
         IsStoresVisible || IsAppearanceVisible || IsLibrarySettingsVisible
-        || IsApplicationSettingsVisible;
+        || IsApplicationSettingsVisible || IsEnrichmentSettingsVisible || IsPluginSettingsVisible;
 
     public bool IsLibraryVisible =>
         !IsMergeQueueVisible && !IsStoresVisible && !IsAppearanceVisible
-        && !IsLibrarySettingsVisible && !IsApplicationSettingsVisible
+        && !IsLibrarySettingsVisible && !IsApplicationSettingsVisible && !IsEnrichmentSettingsVisible && !IsPluginSettingsVisible
         && !IsAccountStatsVisible && !IsFeedVisible;
 
     /// <summary>The filter panel is part of the library screen, not of the window.</summary>
@@ -304,6 +331,14 @@ public partial class MainWindowViewModel : ObservableObject
                 ShowApplicationSettings();
                 break;
 
+            case SettingsSection.Enrichment:
+                ShowEnrichmentSettings();
+                break;
+
+            case SettingsSection.Plugins:
+                ShowPluginSettings();
+                break;
+
             default:
                 await ShowStoresAsync();
                 break;
@@ -344,6 +379,22 @@ public partial class MainWindowViewModel : ObservableObject
         _settingsSection = SettingsSection.Application;
         ShowLibraryPane();
         IsApplicationSettingsVisible = true;
+    }
+
+    [RelayCommand]
+    private void ShowEnrichmentSettings()
+    {
+        _settingsSection = SettingsSection.Enrichment;
+        ShowLibraryPane();
+        IsEnrichmentSettingsVisible = true;
+    }
+
+    [RelayCommand]
+    private void ShowPluginSettings()
+    {
+        _settingsSection = SettingsSection.Plugins;
+        ShowLibraryPane();
+        IsPluginSettingsVisible = true;
     }
 
     /// <summary>
@@ -393,6 +444,8 @@ public partial class MainWindowViewModel : ObservableObject
         IsAppearanceVisible = false;
         IsLibrarySettingsVisible = false;
         IsApplicationSettingsVisible = false;
+        IsEnrichmentSettingsVisible = false;
+        IsPluginSettingsVisible = false;
         IsAccountStatsVisible = false;
         IsFeedVisible = false;
 

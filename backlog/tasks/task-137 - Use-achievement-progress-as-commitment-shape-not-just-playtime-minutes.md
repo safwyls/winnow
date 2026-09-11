@@ -1,13 +1,18 @@
 ---
 id: TASK-137
-title: 'Use achievement progress as commitment shape, not just playtime minutes'
+title: Evaluate achievement progress as recommendation evidence
 status: To Do
 assignee: []
 created_date: '2026-09-06 16:20'
+updated_date: '2026-09-11 14:01'
 labels:
   - recommend
 dependencies:
   - TASK-15
+  - TASK-135
+documentation:
+  - docs/recommendation-engine.md
+  - game-library-design.md
 priority: medium
 ordinal: 164000
 ---
@@ -15,21 +20,21 @@ ordinal: 164000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Commitment shape currently reads where playtime sits against the refund line. Achievement progress answers the same question better and is fully retroactive: three of forty achievements unlocked and thirty-five of forty are opposite verdicts that both present as "some hours, then stopped".
-
-This bears on correctness, not only on ranking. Retired is a hard exclusion under section 4, so a game the user effectively finished but which does not clear the playtime threshold stays a candidate — and section 8 lists nagging about correctly-abandoned games as a failure mode the model is supposed to design against. Sharper retirement detection closes that gap from the evidence side.
-
-Steam global achievement unlock percentages additionally give a progress reading normalised across games without knowing how long any game is, which is a cheaper partial answer to the genre-conditional threshold problem section 7 defers pending expected-commitment data.
-
-TASK-15 owns the ingest (the tables exist since migration 0001; nothing populates them and there is no Steam fetch). This task owns only the scoring consumer.
+Evaluate whether available achievement progress adds reliable commitment evidence while retaining per-release and account distinctions. TASK-15 supplies the missing producer and availability contract. Achievement completion does not inherently mean game completion, and global unlock percentages are not a universal progress scale. Preserve baseline behavior without usable evidence.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 CandidateFacts carries achievement progress, keeping not-probed distinct from probed-and-zero, per the ReturnEpisodes precedent
-- [ ] #2 RecommendationScorer uses achievement progress in commitment shape via a pure function, unit-tested to the decimal
-- [ ] #3 A release with no achievement data scores exactly as it does today
-- [ ] #4 A release with no achievements defined is distinguished from one with achievements and none unlocked
-- [ ] #5 Retired classification is re-examined against achievement completion and the outcome recorded, whether or not it changes
-- [ ] #6 The signal is documented in the section 3 inventory and carries a one-sentence explanation
+- [ ] #1 Consume TASK-15's explicit availability, account identity and achievement-schema states, including unknown versus known zero unlocks.
+- [ ] #2 Preserve separate release/platform evidence and define any grouped recommendation aggregation without blending percentages.
+- [ ] #3 Missing, private and unsupported achievement data leaves baseline scoring unchanged.
+- [ ] #4 Implement a bounded pure contribution only if evaluation supports one, with truthful one-sentence explanations that distinguish achievement completion from game completion.
+- [ ] #5 Evaluate retirement separately: any bucket change updates the shared query contract and both presentation paths; otherwise retain existing retirement behavior.
+- [ ] #6 Use captured-state replay to report evidence, coverage and limits, and document the resulting signal or supported decision not to add one.
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Audit evidence: no achievement scoring facts or contribution exist. RecommendationEngine filters retired buckets before scoring, so retirement changes cannot be achieved by a scorer-only weight. Existing per-release summaries must remain distinct. TASK-15 remains the required data producer; TASK-135 provides evaluation tooling.
+<!-- SECTION:NOTES:END -->

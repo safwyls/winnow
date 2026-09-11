@@ -24,6 +24,7 @@ public sealed class FullscreenView : UserControl, IDisposable
     private readonly FullscreenContext _context;
     private readonly List<FullscreenPage> _stack = [];
     private readonly FullscreenPage[] _roots;
+    private readonly FullscreenSetupPage _setup;
     private readonly ContentControl _body = new();
     private readonly ContentControl _backdrop = new() { Name = "FullscreenPageBackdrop", IsHitTestVisible = false,
         HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch };
@@ -35,7 +36,7 @@ public sealed class FullscreenView : UserControl, IDisposable
     private readonly Grid _safe = new() { RowDefinitions = new RowDefinitions("80,*,64") };
     private readonly Grid _canvas = new() { Width = 1920, Height = 1080 };
     private readonly TextBlock _clock = FullscreenUi.Text("", 24);
-    private readonly TextBlock _status = FullscreenUi.Text("Controller disconnected", 24, "TextDim");
+    private readonly TextBlock _status = FullscreenUi.Text("Controller disconnected", 24, "Text");
     private readonly ContentControl _hints = new();
     private readonly ContentControl _rightHints = new() { HorizontalAlignment = HorizontalAlignment.Right };
     private readonly TextBlock _launch = FullscreenUi.Text("", 28);
@@ -48,7 +49,7 @@ public sealed class FullscreenView : UserControl, IDisposable
     private sealed record TypeSize(double Value);
     public event Action? ExitRequested;
     public event Action? QuitRequested;
-    public FullscreenPage CurrentPage => _stack.Count > 0 ? _stack[^1] : _roots[_section];
+    public FullscreenPage CurrentPage => _stack.Count > 0 ? _stack[^1] : _context.Shared.Setup.IsOpen ? _setup : _roots[_section];
 
     public FullscreenView(FullscreenContext context)
     {
@@ -81,6 +82,7 @@ public sealed class FullscreenView : UserControl, IDisposable
         Styles.Add(new Style(s => s.OfType<Button>().Class("tv-action").Class(":focus"))
         { Setters = { new Setter(TemplatedControl.BorderBrushProperty, new DynamicResourceExtension("Volt")), new Setter(TemplatedControl.ForegroundProperty, new DynamicResourceExtension("Volt")) } });
         _roots = [new FullscreenBrowsePage(context, true), new FullscreenBrowsePage(context, false), new FullscreenActivityPage(context), new FullscreenSettingsPage(context)];
+        _setup = new FullscreenSetupPage(context);
         _tabs = new[] { "For you", "Library", "Activity", "Settings" }.Select((label, index) => FullscreenUi.Button(label, () => SelectSection(index))).ToArray();
         foreach (var tab in _tabs)
         {
@@ -147,6 +149,7 @@ public sealed class FullscreenView : UserControl, IDisposable
         context.PreferencesChanged += Preferences;
         context.DetailsChanged += ReplaceDetails;
         context.Shared.Library.Journal.PropertyChanged += JournalChanged;
+        context.Shared.Setup.PropertyChanged += SetupChanged;
         context.Shared.Library.LaunchStatus.PropertyChanged += LaunchChanged;
         context.Library.LaunchStatus.PropertyChanged += LaunchChanged;
         context.FilePicker = PickFile;
@@ -166,10 +169,12 @@ public sealed class FullscreenView : UserControl, IDisposable
     }
     private void FitCanvas()
     {
-        // Keep pixel proportions and the TV type scale while opening horizontal space on wide displays.
-        _canvas.Width = _context.FitUltrawide && Bounds.Height > 0
+        // A smaller reference canvas enlarges every control through the same uniform Viewbox transform.
+        var referenceWidth = _context.FitUltrawide && Bounds.Height > 0
             ? Math.Max(1920, 1080 * Bounds.Width / Bounds.Height) : 1920;
-        _safe.Margin = new Thickness(_canvas.Width * _context.SafeMarginPercent / 100, 1080 * _context.SafeMarginPercent / 100);
+        _canvas.Width = referenceWidth / _context.UiScale;
+        _canvas.Height = 1080 / _context.UiScale;
+        _safe.Margin = new Thickness(_canvas.Width * _context.SafeMarginPercent / 100, _canvas.Height * _context.SafeMarginPercent / 100);
     }
     private void ApplyTextSize()
     {
@@ -227,6 +232,7 @@ public sealed class FullscreenView : UserControl, IDisposable
     }
     private void JournalChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (_context.Shared.Setup.IsOpen) return;
         if (TopLevel.GetTopLevel(this) is null || !IsEffectivelyVisible) return;
         var prompt = _context.Shared.Library.Journal;
         var existing = _stack.FindIndex(page => page is FullscreenSessionJournalPage);
@@ -255,6 +261,11 @@ public sealed class FullscreenView : UserControl, IDisposable
     public void Back()
     {
         if (_keyboard is { } keyboard) { keyboard.Close(); return; }
+        if (_stack.Count == 0 && _context.Shared.Setup.IsOpen)
+        {
+            if (_context.Shared.Setup.BackCommand.CanExecute(null)) _context.Shared.Setup.BackCommand.Execute(null);
+            return;
+        }
         if (_stack.Count == 0) { QuickMenu(); return; }
         var page = _stack[^1]; _stack.RemoveAt(_stack.Count - 1); page.Dispose();
         if (page is FullscreenDetailsPage) _context.Library.CloseDetailsCommand.Execute(null);
@@ -262,6 +273,7 @@ public sealed class FullscreenView : UserControl, IDisposable
     }
     private void SelectSection(int section)
     {
+        if (_context.Shared.Setup.IsOpen) return;
         foreach (var page in _stack) page.Dispose(); _stack.Clear();
         _context.Library.CloseDetailsCommand.Execute(null);
         _section = (section + _roots.Length) % _roots.Length; ShowPage();
@@ -272,14 +284,15 @@ public sealed class FullscreenView : UserControl, IDisposable
         var page = CurrentPage; _body.Content = page; page.PageChanged += PageChanged;
         _backdrop.Content = page.Backdrop;
         var details = page is FullscreenDetailsPage;
-        _brand.IsVisible = _navigation.IsVisible = !details;
+        _brand.IsVisible = !details;
+        _navigation.IsVisible = !details && !_context.Shared.Setup.IsOpen;
         _back.IsVisible = details;
         _backLabel.Text = _stack.Count > 1 ? _stack[^2].Title : _roots[_section].Title;
         Avalonia.Automation.AutomationProperties.SetName(_back, $"Back to {_backLabel.Text}");
         for (var i = 0; i < _tabs.Length; i++)
         {
             _tabs[i].Opacity = i == _section ? 1 : .7;
-            _tabs[i].IsEnabled = _stack.Count == 0;
+            _tabs[i].IsEnabled = _stack.Count == 0 && !_context.Shared.Setup.IsOpen;
             _tabs[i].Classes.Set("current", i == _section);
         }
         PageChanged(this, EventArgs.Empty); FocusPage();
@@ -317,6 +330,7 @@ public sealed class FullscreenView : UserControl, IDisposable
     }
     private void QuickMenu()
     {
+        if (_context.Shared.Setup.IsOpen) return;
         var actions = new List<FullscreenAction> { new("Resume", () => { }) };
         if (_stack.Count == 0) actions.Add(new("Settings", () => SelectSection(3)));
         actions.Add(new("Exit fullscreen", () => ExitRequested?.Invoke()));
@@ -325,6 +339,15 @@ public sealed class FullscreenView : UserControl, IDisposable
         _context.ShowActions("Quick menu", actions);
     }
     private void Notice(string text) => _context.ShowActions(text, [new("Continue", () => { })]);
+    private void SetupChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(FirstRunSetupViewModel.IsOpen)) return;
+        _keyboard?.Close();
+        foreach (var page in _stack) page.Dispose();
+        _stack.Clear();
+        if (!_context.Shared.Setup.IsOpen) _section = 1;
+        ShowPage();
+    }
     private void EditText(TextBox text)
     {
         if (_keyboard is not null) return;
@@ -354,9 +377,11 @@ public sealed class FullscreenView : UserControl, IDisposable
         _context.Notice -= Notice; _context.PreferencesChanged -= Preferences; _context.FilePicker = null; _context.SaveFilePicker = null;
         _context.DetailsChanged -= ReplaceDetails;
         _context.Shared.Library.Journal.PropertyChanged -= JournalChanged;
+        _context.Shared.Setup.PropertyChanged -= SetupChanged;
         _context.Shared.Library.LaunchStatus.PropertyChanged -= LaunchChanged;
         _context.Library.LaunchStatus.PropertyChanged -= LaunchChanged;
         foreach (var page in _stack.Concat(_roots)) page.Dispose();
+        _setup.Dispose();
         _context.Dispose();
         GC.SuppressFinalize(this);
     }

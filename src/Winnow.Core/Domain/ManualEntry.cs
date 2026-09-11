@@ -34,6 +34,9 @@ public sealed record ManualGameDraft
     /// <summary>Optional Steam appid. Checked for uniqueness before the entry is created.</summary>
     public string? SteamAppId { get; init; }
 
+    /// <summary>The revision loaded by the edit form; null when creating or using a current-state command.</summary>
+    public long? ExpectedIgdbMappingRevision { get; init; }
+
     /// <summary>The title after whitespace trimming.</summary>
     public string TrimmedTitle => Title.Trim();
 
@@ -82,6 +85,15 @@ public sealed record ManualEntry
     /// <summary>The work the release belongs to.</summary>
     public required long WorkId { get; init; }
 
+    /// <summary>The standing IGDB mapping displayed by the edit form.</summary>
+    public long? IgdbId { get; init; }
+
+    /// <summary>The manual Steam assertion, or an existing legacy identifier until explicitly resolved.</summary>
+    public string? SteamAppId { get; init; }
+
+    /// <summary>Mapping revision loaded with this entry.</summary>
+    public long IgdbMappingRevision { get; init; }
+
     /// <summary>The work's display title.</summary>
     public required string Title { get; init; }
 
@@ -118,4 +130,15 @@ public sealed class ManualEntryConflictException : InvalidOperationException
     /// Which draft field conflicted: <c>IgdbId</c> or <c>SteamAppId</c>.
     /// </summary>
     public string Field { get; }
+
+    /// <summary>Distinguishes another game's identifier from a correction that cannot safely retract old evidence.</summary>
+    public ManualEntryConflictReason Reason { get; init; } = ManualEntryConflictReason.ClaimedByAnotherGame;
+}
+
+public enum ManualEntryConflictReason
+{
+    ClaimedByAnotherGame,
+    LegacyIdentifierHistory,
+    StorefrontObservation,
+    MappingChanged,
 }

@@ -162,6 +162,28 @@ public sealed class LinuxProcessSmokeTests
     private sealed class SmokeSessions : ISessionRepository
     {
         public List<Session> Items { get; } = [];
+        private readonly Dictionary<long, HashSet<MonitoredProcessIdentity>> _processes = [];
+
+        public Task<Session?> FindOpenMonitoredAsync(long ownershipId,
+            IReadOnlyList<MonitoredProcessIdentity> processes, CancellationToken ct = default)
+            => Task.FromResult(Items.SingleOrDefault(s => s.OwnershipId == ownershipId && s.EndedAt is null
+                && _processes.TryGetValue(s.Id, out var known) && known.Overlaps(processes)));
+
+        public async Task<Session> SaveMonitoredAsync(Session session,
+            IReadOnlyList<MonitoredProcessIdentity> processes, CancellationToken ct = default)
+        {
+            var existing = Items.SingleOrDefault(s => s.MonitorKey == session.MonitorKey)
+                ?? await FindOpenMonitoredAsync(session.OwnershipId, processes, ct);
+            var saved = existing is null ? session with { Id = Items.Count + 1 }
+                : existing with { EndedAt = existing.EndedAt ?? session.EndedAt,
+                    DurationSeconds = existing.DurationSeconds ?? session.DurationSeconds };
+            if (existing is null) Items.Add(saved);
+            else Items[Items.IndexOf(existing)] = saved;
+            _processes.TryAdd(saved.Id, []);
+            _processes[saved.Id].UnionWith(processes);
+            return saved;
+        }
+
         public Task<long> InsertAsync(Session session, CancellationToken ct = default)
         {
             Items.Add(session);

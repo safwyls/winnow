@@ -36,4 +36,9 @@ public interface IFeedFeedbackRepository
     /// </summary>
     Task<IReadOnlyList<FeedEndorsement>> GetEndorsementsAsync(
         int windowDays, CancellationToken ct = default);
+
+    /// <summary>Endorsements whose launch was already observed at the given instant.</summary>
+    async Task<IReadOnlyList<FeedEndorsement>> GetEndorsementsAsync(
+        int windowDays, DateTime asOfUtc, CancellationToken ct = default)
+        => (await GetEndorsementsAsync(windowDays, ct)).Where(item => item.StartedAt <= asOfUtc).ToArray();
 }

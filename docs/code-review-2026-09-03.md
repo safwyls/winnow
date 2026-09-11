@@ -1,5 +1,9 @@
 # Winnow full repository code review — 2026-09-03
 
+> Historical review of the September 3 working tree. Findings and release-readiness statements
+> describe that baseline. Use [ROADMAP.md](../ROADMAP.md) for current capabilities and remaining
+> validation, and Backlog for task status; this report is not an active work queue.
+
 ## Scope and method
 
 This review targets the **current working tree** of `safwyls/winnow` at merge commit
@@ -69,7 +73,7 @@ But the Steam Web API key is written raw to the settings table —
 token are likewise plaintext (`igdb.client_secret` in
 [CredentialSources.cs:16](../src/Winnow.Enrich.Igdb/Credentials/CredentialSources.cs#L16);
 token written unencrypted at
-[TwitchTokenProvider.cs:219](../src/Winrich.Igdb/../src/Winnow.Enrich.Igdb/Auth/TwitchTokenProvider.cs#L219)).
+[TwitchTokenProvider.cs:219](../src/Winnow.Enrich.Igdb/Auth/TwitchTokenProvider.cs#L219)).
 Meanwhile the README states *"credentials use DPAPI"*.
 
 **Impact.** A Steam Web API key grants read access to a user's full owned-games list for the

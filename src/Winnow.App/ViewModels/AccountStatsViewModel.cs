@@ -61,6 +61,8 @@ public partial class AccountStatsViewModel : ObservableObject
 
     /// <summary>The one symbol observed, or empty when there is none or several.</summary>
     private string _symbol = string.Empty;
+    private string _accountScopeNote = string.Empty;
+    private bool _ambiguousAccountOverlap;
 
     public AccountStatsViewModel(
         IAccountStatsRepository repository,
@@ -78,7 +80,7 @@ public partial class AccountStatsViewModel : ObservableObject
 
     public string Title => AccountStatsCopy.Title;
 
-    public string IntroMessage => AccountStatsCopy.Intro;
+    public string IntroMessage => AccountStatsCopy.Intro + _accountScopeNote;
 
     public string EmptyMessage => AccountStatsCopy.EmptyMessage;
 
@@ -221,13 +223,26 @@ public partial class AccountStatsViewModel : ObservableObject
     [RelayCommand]
     private async Task RefreshAsync(CancellationToken ct)
     {
-        Apply(await _repository.GetAsync(_source, ct));
+        // Microsoft.Data.Sqlite completes its async reads synchronously. The
+        // account's lifetime aggregates must not occupy the UI dispatcher.
+        var stats = await Task.Run(() => _repository.GetAsync(_source, ct), ct);
+        ct.ThrowIfCancellationRequested();
+        Apply(stats);
     }
 
     // ══ Projection ══════════════════════════════════════════════════════════
 
     private void Apply(AccountStats stats)
     {
+        _accountScopeNote = stats.KnownAccountCount > 0
+            ? $" Totals include {stats.KnownAccountCount:N0} identified Steam {(stats.KnownAccountCount == 1 ? "account" : "accounts")}."
+            : string.Empty;
+        if (stats.UnknownAccountFactCount > 0)
+            _accountScopeNote += stats.KnownAccountCount > 0
+                ? " Records with an unknown account may overlap identified captures. Money totals are withheld; counts describe captured records."
+                : " Account identity was not recorded for these saved-file or legacy records.";
+        _ambiguousAccountOverlap = stats.KnownAccountCount > 0 && stats.UnknownAccountFactCount > 0;
+        OnPropertyChanged(nameof(IntroMessage));
         HasFacts = stats.HasAnything;
         IsMixedCurrency = !stats.IsSingleCurrency;
         _symbol = stats.Currencies.Count == 1 ? stats.Currencies[0].Symbol : string.Empty;
@@ -425,7 +440,7 @@ public partial class AccountStatsViewModel : ObservableObject
     /// mixes currencies. This is the single gate every amount passes through.
     /// </summary>
     private string Money(long cents)
-        => IsMixedCurrency ? string.Empty : _symbol + Amount(cents);
+        => IsMixedCurrency || _ambiguousAccountOverlap ? string.Empty : _symbol + Amount(cents);
 
     private static string Amount(long cents)
         => (cents / 100m).ToString("N2", CultureInfo.InvariantCulture);

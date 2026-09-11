@@ -195,7 +195,7 @@ public sealed class OwnedAccountConfirmationTests : IDisposable
                 NullLogger<LocalLibrarySyncService>.Instance),
             resolver,
             gate,
-            NullLogger<RemoteOwnershipSyncService>.Instance,
+            NullLogger<RemoteOwnershipSyncService>.Instance, new OwnershipInventoryRepository(_db.Factory),
             steam);
     }
 
@@ -228,7 +228,7 @@ public sealed class OwnedAccountConfirmationTests : IDisposable
         => new(
             // Configured exactly when a key is present, as the real client is:
             // its IsConfiguredAsync asks the same provider.
-            new ConfirmingHistoryClient { Configured = keys.HasKey, Discloses = discloses },
+            new ConfirmingHistoryClient { Configured = keys.HasKey, Discloses = discloses, Identity = keys.Identity },
             new ReleaseRepository(_db.Factory),
             new OwnershipRepository(_db.Factory),
             new OwnershipAccountRepository(_db.Factory),
@@ -277,6 +277,12 @@ public sealed class OwnedAccountConfirmationTests : IDisposable
     /// </summary>
     private sealed class ConfirmingHistoryClient : ISteamHistoryClient
     {
+        public SteamCredentialIdentity? Identity { get; init; }
+
+        public ValueTask<bool> IsCurrentAsync(SteamCredentialIdentity identity,
+            SteamCredentialPurpose purpose = SteamCredentialPurpose.Unattended, CancellationToken ct = default)
+            => ValueTask.FromResult(identity == Identity);
+
         public bool Configured { get; init; } = true;
 
         /// <summary>Whether Steam names the account it answered for. False is "not proved".</summary>
@@ -294,14 +300,14 @@ public sealed class OwnedAccountConfirmationTests : IDisposable
             => Task.FromResult(new SteamYearInReview(
                 steamId, year, Answered: true,
                 AccountId: Discloses ? steamId.AccountId : null, Games: [],
-                ObservedAt: DateTime.UtcNow, FromCache: false));
+                ObservedAt: DateTime.UtcNow, FromCache: false) { CredentialIdentity = Identity });
 
         public Task<SteamLastPlayedTimes> GetLastPlayedTimesAsync(
             SteamCredentialPurpose purpose = SteamCredentialPurpose.Unattended,
             TimeSpan? cacheTtl = null,
             CancellationToken ct = default)
             => Task.FromResult(new SteamLastPlayedTimes(
-                Answered: true, Games: [], ObservedAt: DateTime.UtcNow, FromCache: false));
+                Answered: true, Games: [], ObservedAt: DateTime.UtcNow, FromCache: false) { CredentialIdentity = Identity });
     }
 
 }

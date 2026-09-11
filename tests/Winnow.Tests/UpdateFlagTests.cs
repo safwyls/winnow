@@ -237,12 +237,7 @@ public sealed class UpdateFlagTests
     public void The_dots_quiet_at_or_below_the_watermark_and_stay_lit_above_it()
     {
         var watermark = Now.AddDays(-20);
-        var updates = new[]
-        {
-            Announcement(Now.AddDays(-5)),
-            Announcement(watermark),
-            Announcement(Now.AddDays(-40)),
-        };
+        UpdateEvent[] updates = [.. Correlated(Now.AddDays(-5)), .. Correlated(watermark), .. Correlated(Now.AddDays(-40))];
 
         var details = Details(Tile(lastPlayed: Now.AddDays(-60)), updates, acknowledgedThrough: watermark);
 
@@ -252,12 +247,12 @@ public sealed class UpdateFlagTests
         Assert.Equal("UPDATES", details.UpdatesLabel);
 
         Assert.True(details.Updates[0].IsUnread);
-        Assert.False(details.Updates[1].IsUnread);
-        Assert.False(details.Updates[2].IsUnread);
+        Assert.True(details.Updates[1].IsUnread);
+        Assert.All(details.Updates.Skip(2), row => Assert.False(row.IsUnread));
 
         // §10.2 draws the rail's marks in Flare because they are the same
         // unread signal plotted in time, so they quiet with the dots.
-        Assert.Single(details.RailMarks);
+        Assert.Equal(2, details.RailMarks.Count);
         Assert.Equal("1 update landed while you were away.", details.GapCaption);
     }
 
@@ -273,11 +268,7 @@ public sealed class UpdateFlagTests
     {
         var pushedAt = Now.AddDays(-40);
 
-        var events = new List<UpdateEvent>(Correlated(pushedAt))
-        {
-            // Five weeks past the watermark: a different update entirely.
-            Announcement(Now.AddDays(-5)),
-        };
+        UpdateEvent[] events = [.. Correlated(pushedAt), .. Correlated(Now.AddDays(-5))];
 
         var details = Details(
             Tile(lastPlayed: Now.AddDays(-90), hasUnread: true),
@@ -285,12 +276,11 @@ public sealed class UpdateFlagTests
             acknowledgedThrough: pushedAt,
             flags: Service(new FakeAcknowledgements()));
 
-        // Newest first: the unrelated announcement, then the corroborating one,
-        // then the push.
+        // Both observations of the newer patch stay unread; the earlier pair quiets together.
         Assert.True(details.Updates[0].IsUnread);
-        Assert.False(details.Updates[1].IsUnread);
-        Assert.False(details.Updates[2].IsUnread);
-        Assert.Single(details.RailMarks);
+        Assert.True(details.Updates[1].IsUnread);
+        Assert.All(details.Updates.Skip(2), row => Assert.False(row.IsUnread));
+        Assert.Equal(1, details.UnreadUpdateCount);
     }
 
     /// <summary>
@@ -301,7 +291,7 @@ public sealed class UpdateFlagTests
     [Fact]
     public void A_fully_read_gap_says_so_rather_than_claiming_nothing_shipped()
     {
-        var updates = new[] { Announcement(Now.AddDays(-5)), Announcement(Now.AddDays(-9)) };
+        UpdateEvent[] updates = [.. Correlated(Now.AddDays(-5)), .. Correlated(Now.AddDays(-9))];
 
         var details = Details(
             Tile(lastPlayed: Now.AddDays(-60)), updates, acknowledgedThrough: Now.AddDays(-4));
@@ -319,11 +309,11 @@ public sealed class UpdateFlagTests
     [Fact]
     public void An_undismissed_gap_is_unchanged()
     {
-        var updates = new[] { Announcement(Now.AddDays(-5)), Announcement(Now.AddDays(-9)) };
+        UpdateEvent[] updates = [.. Correlated(Now.AddDays(-5)), .. Correlated(Now.AddDays(-9))];
 
         var details = Details(Tile(lastPlayed: Now.AddDays(-60)), updates);
 
-        Assert.Equal(2, details.RailMarks.Count);
+        Assert.Equal(4, details.RailMarks.Count);
         Assert.All(details.Updates, u => Assert.True(u.IsUnread));
         Assert.Equal("2 updates landed while you were away.", details.GapCaption);
     }
@@ -442,7 +432,7 @@ public sealed class UpdateFlagTests
 
         var details = Details(
             Tile(lastPlayed: Now.AddDays(-90), hasUnread: true),
-            [Announcement(dismissed), Announcement(Now.AddDays(-3))],
+            [.. Correlated(dismissed), .. Correlated(Now.AddDays(-3))],
             acknowledgedThrough: dismissed,
             flags: Service(new FakeAcknowledgements()));
 
@@ -452,7 +442,8 @@ public sealed class UpdateFlagTests
 
         // Only the newer row is unread, which is the same answer the bucket
         // query gave when it left the game flagged.
-        Assert.Single(details.Updates, u => u.IsUnread);
+        Assert.Equal(2, details.Updates.Count(u => u.IsUnread));
+        Assert.Equal(1, details.UnreadUpdateCount);
     }
 
     /// <summary>
@@ -470,6 +461,52 @@ public sealed class UpdateFlagTests
     }
 
     // ══ Helpers ═════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void Marketing_and_notes_for_a_push_at_last_play_are_not_unread_patches()
+    {
+        var played = Now.AddDays(-30);
+        using var details = Details(Tile(lastPlayed: played),
+            [Push(played), Announcement(played.AddDays(1)), Announcement(Now.AddDays(-1))]);
+        Assert.Equal(0, details.UnreadUpdateCount);
+        Assert.DoesNotContain(details.Updates, row => row.IsUnread);
+    }
+
+    [Fact]
+    public void Correlated_notes_do_not_extend_a_watermark_over_a_newer_build()
+    {
+        var through = Now.AddDays(-10);
+        using var details = Details(Tile(lastPlayed: Now.AddDays(-90)),
+            [Push(through), Push(through.AddDays(1)), Announcement(through.AddDays(2))],
+            acknowledgedThrough: through, flags: Service(new FakeAcknowledgements()));
+        Assert.Equal(1, details.UnreadUpdateCount);
+        Assert.True(details.Updates.Single(row => !row.IsAnnouncement && row.OccurredAtUtc == through.AddDays(1)).IsUnread);
+        Assert.True(details.Updates.Single(row => row.IsAnnouncement).IsUnread);
+    }
+
+    [Fact]
+    public async Task A_partially_saved_group_reports_the_failure_and_retries_only_the_remaining_release()
+    {
+        var store = new FakeAcknowledgements { FailReleaseId = ReleaseId + 1 };
+        var played = Now.AddYears(-2);
+        var pushed = Now.AddDays(-40);
+        var tile = TileFixture.Tile(Now,
+            [TileEntry.For(1, ReleaseId, 1, "steam", 600, played), TileEntry.For(2, ReleaseId + 1, 1, "epic", 600, played)],
+            1, LibraryBuckets.StaleButPatched, pushed);
+        using var details = Details(tile,
+            [.. Correlated(pushed), .. Correlated(pushed.AddDays(1)).Select(item => item with { ReleaseId = ReleaseId + 1 })],
+            flags: Service(store));
+        await details.DismissFlagCommand.ExecuteAsync(null);
+        Assert.Equal("Couldn't mark every patch read. Try again.", details.FlagProblem);
+        Assert.True(details.ShowDismissFlag);
+        Assert.All(details.Updates.Where(row => row.ReleaseId == ReleaseId), row => Assert.False(row.IsUnread));
+        Assert.Contains(details.Updates, row => row.ReleaseId == ReleaseId + 1 && row.IsUnread);
+        store.FailReleaseId = null;
+        await details.DismissFlagCommand.ExecuteAsync(null);
+        Assert.Null(details.FlagProblem);
+        Assert.True(details.ShowRestoreFlag);
+        Assert.Equal(new long[] { ReleaseId, ReleaseId + 1 }, store.Recorded.Select(ack => ack.ReleaseId));
+    }
 
     private static UpdateFlagService Service(IUpdateAcknowledgementRepository store)
         => new(store, BucketThresholds.Default, new FakeTimeProvider(Now));
@@ -546,6 +583,7 @@ public sealed class UpdateFlagTests
         public List<(long ReleaseId, DateTime RevokedAt)> Revoked { get; } = [];
 
         public bool Fails { get; init; }
+        public long? FailReleaseId { get; set; }
 
         public int RevokeCount { get; init; }
 
@@ -553,7 +591,7 @@ public sealed class UpdateFlagTests
 
         public Task<long> RecordAsync(UpdateAcknowledgement ack, CancellationToken ct = default)
         {
-            if (Fails)
+            if (Fails || FailReleaseId == ack.ReleaseId)
             {
                 throw new InvalidOperationException("database is locked");
             }

@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
@@ -13,6 +14,150 @@ namespace Winnow.Ui.Tests;
 
 public sealed class FullscreenHomeLayoutTests
 {
+    [AvaloniaFact]
+    public void Wide_home_can_show_and_navigate_all_ten_recommendations()
+    {
+        using var feed = new FeedViewModel(new PreviewFeedService(), PreviewData.Library);
+        feed.Shelves.Add(new FeedShelfViewModel("ten", "Ready to play", "",
+            Enumerable.Range(0, 10).Select(_ => new FeedCardViewModel(PreviewData.Tile, "An update arrived."))));
+        using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell);
+        context.SetFitUltrawide(true);
+        using var view = new FullscreenView(context);
+        var window = new Window { Width = 3440, Height = 1440, Content = view };
+        try
+        {
+            context.UiScale = .8;
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            var cards = view.CurrentPage.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("tv-cover")).ToArray();
+            Assert.Equal(10, cards.Length);
+            for (var i = 0; i < 9; i++) view.Handle(GamepadButtons.Right);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Same(cards[^1], window.FocusManager!.GetFocusedElement());
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(5, 1)]
+    [InlineData(10, 1.4)]
+    public void Reducing_interface_scale_reduces_rendered_home_covers(double margin, double textScale)
+    {
+        using var feed = new FeedViewModel(new PreviewFeedService(), PreviewData.Library);
+        for (var i = 0; i < 6; i++)
+            feed.Shelves.Add(new FeedShelfViewModel($"shelf-{i}", $"Shelf {i + 1}", "",
+                Enumerable.Range(0, 20).Select(_ => new FeedCardViewModel(PreviewData.Tile, "An update arrived."))));
+        using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell)
+            { SafeMarginPercent = margin, TextScale = textScale };
+        using var view = new FullscreenView(context);
+        var window = new Window { Width = 1920, Height = 1080, Content = view };
+        double CoverHeight()
+        {
+            var cover = view.CurrentPage.GetVisualDescendants().OfType<FullscreenCover>().First();
+            return cover.Bounds.Height * cover.TransformToVisual(window)!.Value.M22;
+        }
+        void AssertBottomAlignment()
+        {
+            var page = view.CurrentPage;
+            var cover = page.GetVisualDescendants().OfType<FullscreenCover>().First();
+            var tile = cover.GetVisualAncestors().OfType<Button>().First();
+            var wall = Assert.IsType<Grid>(tile.GetVisualParent());
+            var bottom = wall.TranslatePoint(new Point(0, wall.Bounds.Height), page)!.Value.Y;
+            Assert.Equal(page.Bounds.Height, bottom, 3);
+            var heading = page.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == "Shelf 1" || t.Text == "Shelf 2");
+            var headingBottom = heading.TranslatePoint(new Point(0, heading.Bounds.Height), page)!.Value.Y;
+            var wallTop = wall.TranslatePoint(default, page)!.Value.Y;
+            Assert.InRange(wallTop - headingBottom, 11, 13);
+            var indicator = page.GetVisualDescendants().OfType<FullscreenShelfIndicator>().Single();
+            var railCenter = indicator.TranslatePoint(new Point(0, indicator.Bounds.Height / 2), page)!.Value.Y;
+            var wallCenter = wall.TranslatePoint(new Point(0, wall.Bounds.Height / 2), page)!.Value.Y;
+            Assert.InRange(Math.Abs(railCenter - wallCenter), 0, 1);
+        }
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            var original = CoverHeight();
+            Assert.True(original > 100);
+            AssertBottomAlignment();
+            context.UiScale = .8; Dispatcher.UIThread.RunJobs();
+            AssertBottomAlignment();
+            Assert.InRange(CoverHeight() / original, .78, .82);
+            view.Handle(GamepadButtons.Down); Dispatcher.UIThread.RunJobs();
+            Assert.Contains(view.CurrentPage.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Shelf 2");
+            Assert.InRange(CoverHeight() / original, .78, .82);
+            context.UiScale = 1; Dispatcher.UIThread.RunJobs();
+            Assert.InRange(CoverHeight() / original, .98, 1.02);
+            context.UiScale = 1.2; Dispatcher.UIThread.RunJobs();
+            AssertBottomAlignment();
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(.7)]
+    [InlineData(1)]
+    [InlineData(1.4)]
+    public void Long_title_keeps_single_line_cover_geometry(double scale)
+    {
+        var source = PreviewData.Tile;
+        using var feed = new FeedViewModel(new PreviewFeedService(), PreviewData.Library);
+        feed.Shelves.Add(new FeedShelfViewModel("titles", "Ready to play", "",
+            new[] { "A short title", string.Join(" ", Enumerable.Repeat("The Forgotten Kingdom", 10)) }
+                .Select(name => new FeedCardViewModel(new GameTileViewModel(source.Entries, source.Game, name, DateTime.UtcNow), "An update arrived."))));
+        using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell) { TextScale = scale };
+        using var television = new FullscreenView(context);
+        var window = new Window { Width = 1280, Height = 720, Content = television };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            var initial = television.CurrentPage.GetVisualDescendants().OfType<FullscreenCover>()
+                .Select(c => (c.Bounds, c.TranslatePoint(default, television))).ToArray();
+            Assert.NotEmpty(initial);
+            television.Handle(GamepadButtons.Right); Dispatcher.UIThread.RunJobs();
+            var title = television.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == "FullscreenHomeTitle");
+            Assert.True(title.Text!.Length > 100);
+            Assert.Single(title.TextLayout.TextLines);
+            Assert.Equal(64, title.FontSize);
+            Assert.Equal(TextTrimming.WordEllipsis, title.TextTrimming);
+            Assert.Equal(initial, television.CurrentPage.GetVisualDescendants().OfType<FullscreenCover>()
+                .Select(c => (c.Bounds, c.TranslatePoint(default, television))).ToArray());
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Root_backdrops_fill_canvas_outside_safe_margins(bool ultrawide)
+    {
+        using var feed = new FeedViewModel(new PreviewFeedService(), PreviewData.Library);
+        feed.Shelves.Add(new FeedShelfViewModel("art", "Ready to play", "",
+            new[] { new FeedCardViewModel(PreviewData.Tile, "An update arrived.") }));
+        using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell)
+            { SafeMarginPercent = 10 };
+        context.SetFitUltrawide(ultrawide);
+        using var television = new FullscreenView(context);
+        var window = new Window { Width = ultrawide ? 2560 : 1920, Height = 1080, Content = television };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            for (var i = 0; i < 4; i++)
+            {
+                var backdrop = television.CurrentPage.Backdrop!;
+                Assert.NotNull(backdrop);
+                var origin = backdrop.TranslatePoint(default, television)!.Value;
+                Assert.Equal(0, origin.X, 4);
+                Assert.Equal(0, origin.Y, 4);
+                Assert.Equal(television.Bounds.Width, backdrop.Bounds.Width, 4);
+                Assert.Equal(1080, backdrop.Bounds.Height, 4);
+                var pageOrigin = television.CurrentPage.TranslatePoint(default, television)!.Value;
+                Assert.True(pageOrigin.X > 0);
+                Assert.True(pageOrigin.Y > 0);
+                television.Handle(GamepadButtons.Next); Dispatcher.UIThread.RunJobs();
+            }
+        }
+        finally { window.Close(); }
+    }
+
     [AvaloniaTheory]
     [InlineData(.7)]
     [InlineData(1)]

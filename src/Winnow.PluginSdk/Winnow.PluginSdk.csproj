@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk" TreatAsLocalProperty="AssemblyVersion;Version">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <Version>1.0.0</Version>
+    <PackageId>Winnow.PluginSdk</PackageId>
+    <Description>Versioned, UI-independent provider contracts for Winnow plugins.</Description>
+  </PropertyGroup>
+</Project>

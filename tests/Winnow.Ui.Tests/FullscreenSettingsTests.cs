@@ -17,6 +17,42 @@ namespace Winnow.Ui.Tests;
 public sealed class FullscreenSettingsTests
 {
     [AvaloniaFact]
+    public void Dormancy_toggle_tracks_desktop_changes_and_controller_changes_update_desktop()
+    {
+        using var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell);
+        var original = context.Shared.Display.DimDormantCovers;
+        using var page = new FullscreenSettingsPage(context);
+        var window = new Window { Width = 1920, Height = 1080, Content = page };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            var toggle = page.GetVisualDescendants().OfType<Button>().Single(b => AutomationProperties.GetName(b) == "Dim dormant covers");
+            context.Shared.Display.DimDormantCovers = false;
+            Assert.Equal("Off", AutomationProperties.GetItemStatus(toggle));
+            toggle.Focus();
+            page.Handle(GamepadButtons.Right);
+            Assert.True(context.Shared.Display.DimDormantCovers);
+            Assert.True(context.Library.Ramp.DimsDormantCovers);
+            Assert.Equal("On", AutomationProperties.GetItemStatus(toggle));
+            page.Handle(GamepadButtons.Left);
+            Assert.False(context.Shared.Display.DimDormantCovers);
+            Assert.Equal("Off", AutomationProperties.GetItemStatus(toggle));
+            FullscreenPage? confirmation = null;
+            context.PageRequested += requested => confirmation = requested;
+            page.Handle(GamepadButtons.Keyboard);
+            Assert.NotNull(confirmation);
+            window.Content = confirmation;
+            Dispatcher.UIThread.RunJobs();
+            confirmation.GetVisualDescendants().OfType<Button>()
+                .Single(b => AutomationProperties.GetName(b) == "Reset fullscreen appearance")
+                .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.False(context.Shared.Display.DimDormantCovers);
+            confirmation.Dispose();
+        }
+        finally { context.Shared.Display.DimDormantCovers = original; window.Close(); }
+    }
+
+    [AvaloniaFact]
     public void Fullscreen_startup_setting_is_shared_with_desktop_application_toggle()
     {
         var settings = PreviewData.ApplicationSettings;
@@ -29,7 +65,8 @@ public sealed class FullscreenSettingsTests
         try
         {
             window.Show(); desktopWindow.Show(); Dispatcher.UIThread.RunJobs();
-            for (var i = 0; i < 4; i++) page.Handle(GamepadButtons.PageNext);
+            page.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Application")).Focus();
+            page.Handle(GamepadButtons.Accept);
             Dispatcher.UIThread.RunJobs();
             var tvToggle = page.GetVisualDescendants().OfType<Button>().Single(b => AutomationProperties.GetName(b) == "Start in fullscreen");
             tvToggle.Focus(); page.Handle(GamepadButtons.Accept);
@@ -96,7 +133,8 @@ public sealed class FullscreenSettingsTests
             Assert.InRange(outline.Data!.Bounds.Width / outline.Data.Bounds.Height, 1.4, 1.5);
             Assert.Contains(settings.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Move");
             Assert.Contains(settings.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Select");
-            Assert.Empty(settings.GetVisualDescendants().OfType<ScrollViewer>());
+            Assert.DoesNotContain(settings.GetVisualDescendants().OfType<ScrollViewer>(),
+                scroll => scroll.VerticalScrollBarVisibility != Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled);
             foreach (var text in settings.GetVisualDescendants().OfType<TextBlock>())
             {
                 var position = text.TranslatePoint(default, settings)!.Value;

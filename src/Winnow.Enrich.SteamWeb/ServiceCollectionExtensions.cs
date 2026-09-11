@@ -137,6 +137,7 @@ public static class ServiceCollectionExtensions
 
                 // §4.3's rule applied here too: a descriptive User-Agent so Valve
                 // can attribute — and if necessary contact — this traffic.
+                Winnow.Http.ProviderHttpTransport.Configure(client, options.MaxResponseBytes, options.OverallTimeout);
                 client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
             })
             .RemoveAllLoggers()
@@ -158,6 +159,7 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient<ISteamHistoryClient, SteamHistoryClient>(client =>
             {
                 client.BaseAddress = options.BaseAddress;
+                Winnow.Http.ProviderHttpTransport.Configure(client, options.MaxResponseBytes, options.OverallTimeout);
                 client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
             })
             .RemoveAllLoggers()
@@ -180,6 +182,7 @@ public static class ServiceCollectionExtensions
         // budget rather than two.
         services.AddHttpClient(SteamSessionRenewer.HttpClientName, client =>
             {
+                Winnow.Http.ProviderHttpTransport.Configure(client, options.MaxResponseBytes, options.OverallTimeout);
                 client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
             })
             .ConfigurePrimaryHttpMessageHandler(static () => new HttpClientHandler

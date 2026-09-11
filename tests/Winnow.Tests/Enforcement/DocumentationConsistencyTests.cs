@@ -5,31 +5,12 @@ using Xunit;
 namespace Winnow.Tests.Enforcement;
 
 /// <summary>
-/// The check that keeps the source-of-truth migration from undoing itself.
-///
-/// <para>The documents used to hold a conditional precedence chain — the
-/// roadmap superseded part of the design doc and amended another part, the
-/// spikes overrode both, and README ranked six files "in precedence order" —
-/// and several of them carried superseded text next to its correction. An
-/// agent had to reconcile all of that per task and reconciled it
-/// inconsistently.</para>
-///
-/// <para>Four rules replaced it, and this asserts them. One document owns each
-/// domain; a wrong section is edited rather than amended, with the sentence it
-/// used to say appended to the decisions log; cross-references resolve; and
-/// README states no rules.</para>
+/// Keeps current specifications direct, checks section references and prevents
+/// instructions from depending on historical plans or decision logs.
 /// </summary>
 public sealed class DocumentationConsistencyTests
 {
-    /// <summary>
-    /// The documents that state rules. These are what the migration produced
-    /// and what it has to keep true.
-    ///
-    /// <para><c>docs/spikes/</c> and <c>docs/code-review-*.md</c> are dated lab
-    /// records rather than governing documents: a correction inside one, dated
-    /// later than the finding it corrects, is the record working as intended.
-    /// They are scanned for cross-reference resolution and nothing else.</para>
-    /// </summary>
+    // Current specifications and contributor/user guides.
     private static readonly string[] Governing =
     [
         "AGENTS.md",
@@ -39,13 +20,12 @@ public sealed class DocumentationConsistencyTests
         "design-system.md",
         "docs/recommendation-engine.md",
         "docs/facet-provenance.md",
+        "docs/plugins.md",
+        "docs/plugin-system-walkthrough.md",
+        "docs/releases.md",
     ];
 
-    /// <summary>
-    /// Words that mean a document is carrying its own history. They belong in
-    /// <c>docs/decisions.md</c>, which exists so that deleting rationale from a
-    /// spec is not deleting it from the repository.
-    /// </summary>
+    // Correct a false statement in place; Git preserves earlier wording.
     private static readonly string[] AmendmentWords =
     [
         "supersede",
@@ -71,38 +51,14 @@ public sealed class DocumentationConsistencyTests
             {
                 foreach (Match m in Regex.Matches(text, $@"\b{Regex.Escape(word)}\b", RegexOptions.IgnoreCase))
                 {
-                    if (IsTheRuleItself(doc, text, m.Index))
-                    {
-                        continue;
-                    }
-
                     failures.Add(
                         $"{doc}:{RepositoryTree.LineAt(text, m.Index)} says \"{m.Value}\". "
-                        + "Edit the section to the current truth and append what it used to say "
-                        + "to docs/decisions.md.");
+                        + "Edit the section to the current truth; Git preserves earlier wording.");
                 }
             }
         }
 
         Assert.True(failures.Count == 0, Report(failures));
-    }
-
-    /// <summary>
-    /// The docs-writer charter states the rule, which means quoting the words
-    /// the rule forbids. That one paragraph is the exception, and it is
-    /// recognised by the sentence it sits in rather than by file name, so a
-    /// second use in the same file still fails.
-    /// </summary>
-    private static bool IsTheRuleItself(string doc, string text, int offset)
-    {
-        if (doc != ".claude/agents/docs-writer.md")
-        {
-            return false;
-        }
-
-        var start = Math.Max(0, offset - 400);
-        return text.AsSpan(start, offset - start).Contains("belong only in that log", StringComparison.Ordinal)
-            || text.AsSpan(offset, Math.Min(400, text.Length - offset)).Contains("belong only in that log", StringComparison.Ordinal);
     }
 
     // ── (b) Every section cross-reference resolves ──────────────────────────
@@ -302,7 +258,7 @@ public sealed class DocumentationConsistencyTests
 
             foreach (var claim in onlyAboutDocuments)
             {
-                foreach (Match m in Regex.Matches(text, $@"{Regex.Escape(claim)}", RegexOptions.IgnoreCase))
+                foreach (Match m in Regex.Matches(text, $@"\b{Regex.Escape(claim)}\b", RegexOptions.IgnoreCase))
                 {
                     var from = Math.Max(0, m.Index - 90);
                     var window = text[from..Math.Min(text.Length, m.Index + 90)];
@@ -318,19 +274,11 @@ public sealed class DocumentationConsistencyTests
         Assert.True(failures.Count == 0, Report(failures));
     }
 
-    // ── (e) The decisions log exists, and nothing sends an agent to it ───────
+    // ── (e) Current instructions do not depend on historical documents ─────
 
     [Fact]
-    public void The_decisions_log_is_write_only_for_agents()
+    public void Current_instructions_do_not_require_a_history_document()
     {
-        // The log holds the reasoning removed from the specs. It binds nothing,
-        // so no document may send a reader to it for a rule. Naming it as a
-        // place reasoning lives is fine; "see decisions.md" for an instruction
-        // is not.
-        Assert.True(
-            File.Exists(RepositoryTree.Path("docs/decisions.md")),
-            "docs/decisions.md is missing. It is where rationale removed from a spec goes.");
-
         var failures = new List<string>();
 
         foreach (var doc in Governing.Concat(CharterFiles()))
@@ -339,12 +287,12 @@ public sealed class DocumentationConsistencyTests
 
             foreach (Match m in Regex.Matches(
                 text,
-                @"(?:see|read|per|according to|refer to)\s+`?docs/decisions\.md",
+                @"(?:see|read|per|according to|refer to|append[^\r\n]*?to)\s+`?docs/(?:decisions\.md|plans/ssot-migration\.md)",
                 RegexOptions.IgnoreCase))
             {
                 failures.Add(
-                    $"{doc}:{RepositoryTree.LineAt(text, m.Index)} sends a reader to the decisions "
-                    + "log. Nothing in it binds; state the rule here instead.");
+                    $"{doc}:{RepositoryTree.LineAt(text, m.Index)} requires a historical document. "
+                    + "State the current choice and its rationale in the relevant specification.");
             }
         }
 
@@ -365,7 +313,8 @@ public sealed class DocumentationConsistencyTests
         || window.Contains("nor does", StringComparison.OrdinalIgnoreCase);
 
     private static IReadOnlyList<string> CharterFiles()
-        => RepositoryTree.Files(".claude/agents", "*.md");
+        => [.. RepositoryTree.Files(".claude/agents", "*.md"),
+            .. RepositoryTree.Files(".codex/agents", "*.toml")];
 
     private static string Report(IReadOnlyCollection<string> failures)
     {

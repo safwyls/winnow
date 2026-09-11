@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Winnow.App.ViewModels;
 
 /// <summary>
-/// The rail's fetch status field (§8): words naming what the enrichment pass
+/// The desktop titlebar's fetch status field (§8): words naming what the enrichment pass
 /// has left to do, shown as a real count that falls a slice at a time.
 ///
 /// <para>Deliberately free of any <c>Dispatcher</c> call, so a test can drive

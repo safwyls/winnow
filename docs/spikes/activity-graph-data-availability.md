@@ -1,8 +1,9 @@
 # Spike: Activity graph data availability
 
-> **Evidence, not a rule.** This document records what was found and how; it is
-> never the place to look up what to do. The current rule will be in
-> `design-system.md` once Band 2 is rebuilt.
+> **Dated evidence.** Findings describe the builds and services observed on the dates below.
+> Current implementation choices are in [the build spec](../../game-library-design.md);
+> current interactions and layout are in [the visual spec](../../design-system.md).
+> This record is optional background.
 
 **Settles:** whether a per-game activity graph can be drawn on the details modal
 (TASK-115). Investigated 2026-09-05.
@@ -68,8 +69,7 @@ game. No source Winnow has access to provides that data.
 - SteamDB holds historical player-count data but forbids automated access in
   its own FAQ.
 
-There is no legitimate automated source for a historical player-population
-curve. This finding should prevent the question from being re-investigated.
+The sources examined did not supply an automated historical player-population curve.
 
 ### 2. A per-user playtime series does exist for keyed Steam installs
 
@@ -78,11 +78,8 @@ series from Steam Replay, anchored on `playtime_forever`. Coverage begins at
 2022, the first year Valve ran Steam Replay. The series is written to
 `playtime_snapshots` as month-end cumulative points.
 
-This means `design-system.md` section 10.2's statement that the snapshot table
-holds "one reading per game -- measured, 611 of 616" is stale for any install
-that has run the backfill. Those installs hold a multi-year monthly series per
-game. The section needs correction when Band 2 is rebuilt; the correction is
-not made in this note.
+Backfilled installs therefore have multiple monthly points per game; a newly observed
+local library can have only one snapshot. Chart coverage must distinguish those cases.
 
 ### 3. Two ways to draw this data that would mislead
 

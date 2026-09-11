@@ -86,6 +86,10 @@ public interface ISteamCredentialProvider
     ValueTask<SteamCredential?> GetAsync(
         SteamCredentialPurpose purpose, CancellationToken ct = default);
 
+    /// <summary>Reads the selected credential without starting or waiting for renewal.</summary>
+    ValueTask<SteamCredential?> GetCurrentAsync(
+        SteamCredentialPurpose purpose, CancellationToken ct = default) => GetAsync(purpose, ct);
+
     /// <summary>What exists, without exposing a secret.</summary>
     ValueTask<SteamCredentialInventory> GetInventoryAsync(CancellationToken ct = default);
 

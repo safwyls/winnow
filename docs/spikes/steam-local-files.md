@@ -1,7 +1,9 @@
 # Spike: Steam local file formats — empirical verification
 
-> **Evidence, not a rule.** This document records how something was measured and is
-> never the place to look up what to do. The current rule is in `game-library-design.md` §4.1.
+> **Dated evidence.** Findings describe the builds and services observed on the dates below.
+> Current implementation choices are in [the build spec](../../game-library-design.md);
+> current interactions and layout are in [the visual spec](../../design-system.md).
+> This record is optional background.
 
 Date: 2026-08-23
 Verified against: live Steam install at `C:\Program Files (x86)\Steam`, Windows 11,
@@ -9,7 +11,7 @@ two accounts present under `userdata\` (steam3 ids sanitized in fixtures).
 Resolves the [VERIFY] items in `game-library-design.md` §4.1.
 
 Fixtures captured from these real files (sanitized) live in `tests/fixtures/steam/`.
-Production readers should be coded from this document and tested against those fixtures.
+The fixtures preserve these observations for parser contract tests.
 
 ---
 

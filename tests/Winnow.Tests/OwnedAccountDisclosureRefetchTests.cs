@@ -192,7 +192,7 @@ public sealed class OwnedAccountDisclosureRefetchTests : IDisposable
     }
 
     [Fact]
-    public async Task An_unchanged_key_uses_the_ordinary_cache()
+    public async Task Recovering_a_missing_confirmation_requires_fresh_disclosure_even_for_an_unchanged_key()
     {
         await SeedAsync();
         await MarkFinishedAsync(populated: 2025);
@@ -209,10 +209,9 @@ public sealed class OwnedAccountDisclosureRefetchTests : IDisposable
 
         Assert.Equal(Mine, await _settings.GetAsync(SteamOwnedAccount.RefSettingKey));
 
-        // Null means "the client's own 6-hour TTL", which is what respecting the
-        // existing caching looks like from here.
+        // Cached provenance can support history, but cannot attest fresh disclosure.
         var disclosure = Assert.Single(history.Asked, a => a.Year == 2025);
-        Assert.Null(disclosure.CacheTtl);
+        Assert.Equal(TimeSpan.Zero, disclosure.CacheTtl);
     }
 
     // ══ AC#3 — nothing to disclose from leaves the toggle disabled ══════════
@@ -340,7 +339,10 @@ public sealed class OwnedAccountDisclosureRefetchTests : IDisposable
 
     private SteamPlaytimeBackfillService Backfill(
         YearStub history, FakeSteamApiKeyProvider? keys = null)
-        => new(
+    {
+        keys ??= new FakeSteamApiKeyProvider();
+        history.Identity = keys.Identity!;
+        return new(
             history,
             new ReleaseRepository(_db.Factory),
             new OwnershipRepository(_db.Factory),
@@ -352,8 +354,9 @@ public sealed class OwnedAccountDisclosureRefetchTests : IDisposable
             new LibrarySyncGate(),
             new SteamPlaytimeBackfillOptions { FirstYear = 2022 },
             _clock,
-            keys ?? new FakeSteamApiKeyProvider(),
+            keys,
             NullLogger<SteamPlaytimeBackfillService>.Instance);
+    }
 
     /// <summary>
     /// A Year in Review that discloses only for the years named, and records
@@ -362,6 +365,12 @@ public sealed class OwnedAccountDisclosureRefetchTests : IDisposable
     /// </summary>
     private sealed class YearStub : ISteamHistoryClient
     {
+        public SteamCredentialIdentity Identity { get; set; } = new FakeSteamApiKeyProvider().Identity!;
+
+        public ValueTask<bool> IsCurrentAsync(SteamCredentialIdentity identity,
+            SteamCredentialPurpose purpose = SteamCredentialPurpose.Unattended, CancellationToken ct = default)
+            => ValueTask.FromResult(identity == Identity);
+
         /// <summary>Years whose Replay was compiled. Everything else answers empty.</summary>
         public HashSet<int> PopulatedYears { get; } = [];
 
@@ -394,7 +403,7 @@ public sealed class OwnedAccountDisclosureRefetchTests : IDisposable
                 // with nothing in it and no account id to read.
                 return Task.FromResult(new SteamYearInReview(
                     steamId, year, Answered: true, AccountId: null, Games: [],
-                    ObservedAt: Now, FromCache: false));
+                    ObservedAt: Now, FromCache: false) { CredentialIdentity = Identity });
             }
 
             var games = GamesInPopulatedYears
@@ -413,7 +422,7 @@ public sealed class OwnedAccountDisclosureRefetchTests : IDisposable
                 steamId, year, Answered: true,
                 AccountId: AnswersForAccountId ?? steamId.AccountId,
                 Games: games,
-                ObservedAt: Now, FromCache: false));
+                ObservedAt: Now, FromCache: false) { CredentialIdentity = Identity });
         }
 
         public Task<SteamLastPlayedTimes> GetLastPlayedTimesAsync(
@@ -434,7 +443,7 @@ public sealed class OwnedAccountDisclosureRefetchTests : IDisposable
                     ]
                     : [],
                 ObservedAt: Now,
-                FromCache: false));
+                FromCache: false) { CredentialIdentity = Identity });
     }
 
 }

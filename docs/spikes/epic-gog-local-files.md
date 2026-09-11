@@ -1,7 +1,9 @@
 # Spike: Epic + GOG local file formats — empirical verification
 
-> **Evidence, not a rule.** This document records how something was measured and is
-> never the place to look up what to do. The current rule is in `game-library-design.md` §4.8 and §5.3.
+> **Dated evidence.** Findings describe the builds and services observed on the dates below.
+> Current implementation choices are in [the build spec](../../game-library-design.md);
+> current interactions and layout are in [the visual spec](../../design-system.md).
+> This record is optional background.
 
 Date: 2026-08-25
 Verified against: live **Epic Games Launcher 20.2.4** (one game installed: Fez) and live
@@ -9,13 +11,8 @@ Verified against: live **Epic Games Launcher 20.2.4** (one game installed: Fez) 
 on Windows 11. IGDB claims verified against the live IGDB v4 API with the project's
 credentials.
 
-`game-library-design.md` §5 names an "Epic Manifest Reader" and a "GOG Galaxy Reader" and
-gives **no paths or formats for either** — M4 is otherwise unspecified. This document
-supplies them. Everything below marked CONFIRMED was observed on this machine; anything
-inferred or reported is labelled as such.
-
-Sanitized fixtures live in `tests/fixtures/epic/` and `tests/fixtures/gog/`. Readers should
-be coded from this document and tested against those fixtures.
+This study records local paths, formats and identity coverage observed on the capture date.
+Sanitized fixtures live in `tests/fixtures/epic/` and `tests/fixtures/gog/`.
 
 **Read-only, both stores.** §4.1's "v1 is read-only against all store files" applies in
 full. Section 11 below documents a case where an apparently read-only SQLite open **writes** to
@@ -761,149 +758,29 @@ Work. Nothing here relaxes the ban on fuzzy auto-merge.
 
 ---
 
-# Part D
+# Part D — OAuth findings
 
-## 21. Epic OAuth — what it costs, from source and docs
+## 21. Epic OAuth data
 
-> **Corrected by `docs/spikes/epic-oauth.md` (2026-08-26).** That spike probed the live
-> endpoints rather than reading source alone, and corrects this section on three points:
-> the token lifetimes below (8 h / ~23 days) are **unverified** and must not be hardcoded;
-> the playtime endpoint's lack of a last-played date is now **confirmed by schema** rather
-> than inferred; and this section **missed `acquisitionDate`**, which the API exposes and
-> which nothing on disk records.
+The authenticated API exposes acquisition dates and total playtime. The local entitlement
+cache supplies ownership without authentication, but does not contain those two fields.
+The API has no last-played timestamp. Token expiry must be read from each response;
+the source-only lifetime estimates in the original study were not verified.
 
-**No Epic OAuth flow was executed during this spike.** Everything in this section is read
-from the source of `legendary-gl/legendary` (the only real implementation — Heroic shells
-out to its binary, Rare imports it as a library), from the community endpoint documentation
-(`MixV2/EpicResearch`, `LeleDerGrasshalmi/FortniteEndpointsDocumentation`), and from live
-unauthenticated probes of Epic's login redirect and legendary's config server. It is
-**reported, not verified end-to-end.**
+The separate [OAuth probe](epic-oauth.md) contains endpoint responses and schema checks.
 
-**The flow.** Two viable paths, both still working as of 2026-08-26:
+## 22. Scope of this study
 
-- *Embedded webview (what Heroic does, and what Winnow would copy).* Open
-  `https://www.epicgames.com/id/login?responseType=code` in an embedded browser with UA
-  `…EpicGamesLauncher`, watch for navigation to
-  `https://localhost/launcher/authorized?code=<authorizationCode>`, scrape `code`.
-  Interactive cost: the user types their Epic password and 2FA in an embedded window.
-  Avalonia has no built-in webview — this means hosting WebView2 on Windows, and something
-  else everywhere else.
-- *Manual copy-paste (the fallback).* User visits `https://legendary.gl/epiclogin`, logs in,
-  and pastes an `authorizationCode` out of a JSON response by hand. Confirmed still live —
-  the redirect endpoint answers with the documented shape today. legendary's own source
-  comment: *"unfortunately the captcha stuff makes a complete CLI login flow kinda impossible
-  right now"*.
+This study establishes what can be read from Epic and GOG local files. Optional authenticated
+Epic enrichment and its credential handling are specified in the build spec, section 4.8.
 
-A device-code flow would be the clean answer and **is not available**: `launcherAppClient2`'s
-grant-type allowlist is `authorization_code, client_credentials, exchange_code, refresh_token`.
+## 23. Local-reader findings
 
-**The credentials are Epic's, not ours.** Every tool in this space authenticates as
-`launcherAppClient2`, client id `34a02cf8f4414e29b15921876da36f9a` with a matching secret,
-extracted from the Epic Games Launcher binary and hard-coded in a public repo since 2020.
-Epic has never rotated it. There is **no third-party registration path** for this: Epic
-Account Services will issue a real client, but its consent scopes stop at
-`basic_profile / friends_list / presence / country` — nothing that reads the storefront
-library. The `library:public:items` and `launcher:download:*` permissions live only on
-Epic's internal launcher client. **Shipping this means shipping Epic's client secret inside
-Winnow and impersonating their launcher.** There is no version of it that does not.
-
-**Tokens.** Access token 8 h; refresh token **~23 days**, rolling — each refresh returns a
-new one, so it runs unattended indefinitely provided the app talks to Epic at least
-fortnightly. When it does expire (idle, password change, Epic-side revocation) there is no
-silent recovery: credentials are wiped and the user redoes the full interactive login.
-Heroic's tracker carries a long tail of users hitting this far more often than 23 days
-predicts, cause unestablished.
-
-**Playtime — this corrects my prior.** Epic *does* expose it, and `launcherAppClient2` has
-the permission (`library:public:{accountId}:playtime:all READ`):
-
-```
-GET https://library-service.live.use1a.on.epicgames.com/library/api/public/playtime/account/{accountId}/all
-  -> [ { "accountId": "...", "artifactId": "Fortnite", "totalTime": 68363 }, ... ]
-```
-
-legendary and Heroic simply never call it (`grep -i playtime` over legendary's source
-returns nothing; Heroic times the child process instead). But three caveats gut its value
-for Winnow specifically:
-
-1. **No last-played timestamp anywhere.** `totalTime` is a running total, nothing more.
-   Winnow's staleness buckets (§6.1) are a recency model. A total without a date does not
-   place a game in a bucket.
-2. **The total only accrues from `PUT`s the real Epic launcher makes.** A user who plays
-   through Heroic — or through Winnow's own process monitor — accumulates **zero** Epic-side
-   playtime. For an app about forgotten games, undercounting play is the wrong direction of
-   error.
-3. `artifactId` is `releaseInfo[].appId` (i.e. `AppName`), not the catalog item id, and the
-   unit of `totalTime` is undocumented (seconds is the plausible reading, unverified).
-
-**Terms of service.** Epic's ToS has **no clause about automated access or API scraping** —
-it is written around game-client cheating. The closest fit is section 3's prohibition on reverse
-engineering, which extracting the launcher's client secret plainly is; §8.b's penalty is
-account suspension "a year or longer" or termination. There are **no documented cases** of
-anyone being banned or rate-limited for legendary/Heroic/Rare, and no published Epic
-statement either endorsing or objecting. Epic's clearest signal is the endpoint's own
-response text, shown to the user at the moment of the copy-paste:
-*"Do not share this code with any 3rd party service. It allows full access to your Epic
-account."*
-
-Risk profile versus PSN (§4.6): **materially lower.** PSNAWP's own docs warn of account
-bans and recommend a throwaway account; nothing comparable exists here, and six years of
-unrotated credentials is de facto tolerance. The realistic Epic failure mode is
-**breakage, not bans** — legendary ships a remote `webview_killswitch` precisely because
-Epic's login page breaks the flow periodically.
-
-## 22. Verdict as of 2026-08-25: do not build it. Reversed 2026-08-26
-
-> **This verdict no longer holds.** It was revisited in `docs/spikes/epic-oauth.md`
-> (2026-08-26) and reversed —
-> not because the reasoning below was wrong, but because the module was subsequently built
-> as an **opt-in** source adding two facts this section did not account for (acquisition
-> dates and playtime) without displacing `catcache.bin` as the ownership source. The core
-> point below stands and is restated there: the owned library is already on disk, and this
-> is not how Epic ownership is discovered. See section 9 of the new spike.
-
-The user pre-approved this work. I recommend **not** doing it, because the spike removed
-the reason for it.
-
-- **The owned library is already on disk.** `catcache.bin` (section 6) is the launcher's entitlement
-  catalog — 74 entitled apps, 73 games, one installed. Plain base64 JSON: no auth, no
-  network, no token store, no refresh cycle, no borrowed client secret, no ToS surface. It
-  carries title, developer, cover art, DLC parentage and store release date — the same
-  payload the `assets` + `library/items` + `catalog/bulk/items` call chain would return, for
-  none of the cost.
-- **The identity problem is solved without it too.** section 20's gamesdb route resolved 67/67 Epic
-  titles by `AppName`, unauthenticated, using an id that is already in the local manifest.
-- **OAuth buys one thing: a playtime floor with no dates**, which does not feed the staleness
-  feature and systematically undercounts anyone who does not launch through Epic's own client.
-- **The gap it would close is small and bounded:** `catcache.bin` needs the launcher installed
-  and signed in once, and goes stale until the launcher is next opened. §4.1 already commits
-  Winnow to eventually-consistent local reads; this is the same bargain.
-
-This is the shape of judgement §4.6 made about PSN — a reverse-engineered flow, someone
-else's credentials, a manual re-auth step, shipped to users — with one difference: here we
-do not need the data it would fetch. The cost is not just the auth flow; it is an embedded
-browser in an Avalonia app, a DPAPI-protected token store, a refresh scheduler, and Epic's
-client secret in Winnow's binary, all to duplicate a file already sitting in `%PROGRAMDATA%`.
-
-**Read `catcache.bin`. Document the staleness. Revisit only if Epic encrypts it** — and if
-that day comes, revisit with the playtime endpoint's limits (no dates, EGL-only sessions)
-already understood, so the decision is not made twice.
-
----
-
-## 23. Summary of deviations from the plan
-
-| Plan said | Reality |
-|---|---|
-| §5 "Epic Manifest Reader" — no path given | `%PROGRAMDATA%\Epic\EpicGamesLauncher\Data\Manifests\*.item`, located via `HKCU\SOFTWARE\Epic Games\EOS\ModSdkMetadataDir` |
-| §5 "GOG Galaxy Reader" — no path given | `%PROGRAMDATA%\GOG.com\Galaxy\storage\galaxy-2.0.db`, located via `…\Galaxy\config.json` → `storagePath` |
-| §4.4 "`external_games` maps Steam appid / **GOG id / Epic catalog id**" | **GOG id: true** (13/14 coverage). **Epic catalog id: false** — 0/73. IGDB stores Epic *offer* and *page* ids, not catalog item ids |
-| §8 M4 "installed titles from both appear and dedupe correctly" | Achievable, but Epic dedup needs the gamesdb hop (section 20), not IGDB |
-| M4 scoped to *installed* titles | Epic's **owned** library is also free locally (section 6). GOG's always was (`LibraryReleases`). M4 can deliver owned-not-installed for both at no extra cost |
-| — | Epic has **no per-game playtime and no last-played on disk** (only one `LastPlayedGame` slot). An OAuth endpoint returns total playtime but **no date**, and only counts sessions the Epic launcher itself started. Epic entries cannot get a real last-played without M3's process monitor (sections 8, 21) |
-| — | GOG **does** have playtime (minutes) and last-played (UTC), including for uninstalled games |
-| — | `galaxy-2.0.db` is WAL; `immutable=1` silently returns stale data and `mode=ro` writes `-wal`/`-shm` into the store's directory. Copy first (section 11) |
-| — | Galaxy's library contains **other stores' releases marked owned**. Filter `substr(releaseKey,1,4)='gog_'` or double-count the Steam library (section 12) |
-| — | Epic's `LauncherInstalled.dat` reports an empty install list while a game is installed. Dead path, like §4.1's `sharedconfig.vdf` |
-| — | Local GOG titles are installer-locale (Polish for GWENT); Galaxy's `GamePieces.title` is canonical (section 17) |
-| §4.6 excluded PSN partly on ban risk | Epic OAuth carries **no documented ban risk**, but requires shipping Epic's own launcher client secret. Recommended **not** built — `catcache.bin` already supplies the library (section 22) |
+- Epic manifests contain installed titles; its entitlement cache includes owned titles.
+- GOG Galaxy stores ownership, playtime in minutes and UTC last-played values, including
+  for uninstalled titles. Filter ownership to GOG releases to avoid importing other stores.
+- Copy Galaxy's database and sidecars before opening it. Its WAL data can be newer than
+  the main file; opening the live database can create sidecars even in read-only mode.
+- GOG local installer titles may be localized; Galaxy's title records supply canonical names.
+- Epic catalog item IDs did not match IGDB external IDs in this sample. The gamesdb
+  AppName route resolved all 67 tested Epic titles through exact identifiers.

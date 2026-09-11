@@ -49,6 +49,15 @@ public partial class App : Application
 
             _applicationSettings = services.GetRequiredService<ApplicationSettingsViewModel>();
             ApplyStartupApplicationSettings(_applicationSettings);
+            try
+            {
+                Task.Run(() => services.GetRequiredService<ArtworkPreferences>().LoadAsync()).GetAwaiter().GetResult();
+            }
+            catch (Exception)
+            {
+                services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(App))
+                    .LogWarning("The artwork source order could not be read; using defaults.");
+            }
 
             _backgroundStart = Environment.GetCommandLineArgs()
                 .Contains("--background", StringComparer.Ordinal);

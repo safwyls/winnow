@@ -364,24 +364,25 @@ public sealed class FullscreenBrowseTests
     }
 
     [AvaloniaFact]
-    public async Task Library_selection_replaces_its_dimmed_backdrop()
+    public async Task Library_selection_reuses_its_dimmed_backdrop_for_art_transitions()
     {
         var library = CreateLibrary();
         await library.LoadCommand.ExecuteAsync(null);
         using var context = new FullscreenContext(library, new FeedViewModel(new PreviewFeedService(), library), PreviewData.Shell);
         var page = new FullscreenBrowsePage(context, false);
-        var window = new Window { Width = 1920, Height = 1080, Content = page };
+        var window = new Window { Width = 1920, Height = 1080,
+            Content = new Panel { Children = { page.Backdrop!, page } } };
         window.Show();
         try
         {
             Dispatcher.UIThread.RunJobs();
             page.FocusInitial();
-            var previous = Assert.Single(page.GetVisualDescendants().OfType<FullscreenBackdrop>());
+            var previous = Assert.Single(page.Backdrop!.GetVisualDescendants().OfType<FullscreenBackdrop>());
             page.Handle(GamepadButtons.Right);
             Dispatcher.UIThread.RunJobs();
-            var current = Assert.Single(page.GetVisualDescendants().OfType<FullscreenBackdrop>());
-            Assert.NotSame(previous, current);
-            Assert.Null(previous.GetVisualParent());
+            var current = Assert.Single(page.Backdrop!.GetVisualDescendants().OfType<FullscreenBackdrop>());
+            Assert.Same(previous, current);
+            Assert.NotNull(current.GetVisualParent());
             Assert.Equal(.45, Assert.IsType<ContentControl>(current.Parent).Opacity);
         }
         finally { window.Close(); }
@@ -644,8 +645,8 @@ public sealed class FullscreenBrowseTests
         try
         {
             Dispatcher.UIThread.RunJobs();
-            Assert.Contains(CoverKey.IgdbBackdrop("tv_screenshot"), leases.Keys);
-            var image = Assert.Single(backdrop.Children.OfType<Image>());
+            Assert.Contains(CoverKey.IgdbBackdrop("tvscreenshot"), leases.Keys);
+            var image = backdrop.GetVisualDescendants().OfType<Image>().Last();
             Assert.Same(pixels, image.Source);
             Assert.True(leases.Active > 0);
             window.Content = null;
@@ -661,7 +662,7 @@ public sealed class FullscreenBrowseTests
         public Task<bool> DeleteAsync(long workId, string source, string kind, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<WorkImages>> GetForWorkAsync(long workId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<WorkImages>>([new() { WorkId = workId, Source = ImageSources.Igdb,
-                Kind = ImageKinds.Screenshot, ImageIds = "tv_screenshot", ObservedAt = DateTime.UtcNow }]);
+                Kind = ImageKinds.Screenshot, ImageIds = "tvscreenshot", ObservedAt = DateTime.UtcNow }]);
     }
 
     private sealed class TestLeases(CoverArt art) : ICoverLeases

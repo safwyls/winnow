@@ -36,6 +36,7 @@ public partial class FeedViewModel : ObservableObject, IDisposable
     private readonly TimeProvider _clock;
     private readonly Action<Action> _post;
     private readonly ListsViewModel? _lists;
+    private readonly bool _includeReserve;
 
     private ITimer? _ticker;
     private long _tickedAt;
@@ -46,6 +47,10 @@ public partial class FeedViewModel : ObservableObject, IDisposable
     /// computed by a pass this one superseded must not land on top of it.
     /// </summary>
     private long _generation;
+    private long _additionRevision;
+
+    /// <summary>Optional work is observed without holding the loading state or rebuilding existing cards.</summary>
+    internal Task AdditionalShelvesLoading { get; private set; } = Task.CompletedTask;
 
     /// <summary>An invalidation that arrived during a load, waiting to be answered by the next one.</summary>
     private bool _reloadPending;
@@ -76,11 +81,13 @@ public partial class FeedViewModel : ObservableObject, IDisposable
         IGameTileSource? tiles = null,
         TimeProvider? clock = null,
         Action<Action>? post = null,
-        ListsViewModel? lists = null)
+        ListsViewModel? lists = null,
+        bool includeReserve = false)
     {
         _feed = feed;
         _tiles = tiles;
         _lists = lists;
+        _includeReserve = includeReserve;
         _clock = clock ?? TimeProvider.System;
         _post = post ?? (action => Avalonia.Threading.Dispatcher.UIThread.Post(action));
 
@@ -130,14 +137,22 @@ public partial class FeedViewModel : ObservableObject, IDisposable
                 try
                 {
                     var created = await _lists.CreateListAsync(prompt.Text, [tile.ReleaseId]);
-                    if (created is null || !ReferenceEquals(ListPrompt, activePrompt)) return;
+                    if (created is null)
+                    {
+                        prompt.Problem = "Couldn't save that list. Try again.";
+                        return;
+                    }
+                    if (!ReferenceEquals(ListPrompt, activePrompt)) return;
                     ListStatus = $"Added {tile.Title} to {created.Name}.";
                     ListPrompt = null;
                 }
                 catch
                 {
                     if (ReferenceEquals(ListPrompt, activePrompt))
+                    {
                         ListStatus = "Couldn't save that list. Try again.";
+                        prompt.Problem = ListStatus;
+                    }
                 }
             },
             cancel: () => ListPrompt = null,
@@ -155,7 +170,10 @@ public partial class FeedViewModel : ObservableObject, IDisposable
                 catch
                 {
                     if (ReferenceEquals(ListPrompt, activePrompt))
+                    {
                         ListStatus = "Couldn't add that game. Try again.";
+                        activePrompt!.Problem = ListStatus;
+                    }
                 }
             });
         ListPrompt = activePrompt;
@@ -234,6 +252,7 @@ public partial class FeedViewModel : ObservableObject, IDisposable
         if (_disposed) return;
         do
         {
+            var additionRevision = ++_additionRevision;
             // Claimed before the read, not after. An invalidation that arrives
             // while this pass is in flight is about state this pass has already
             // read, so it can only be answered by another pass — dropping it
@@ -269,8 +288,11 @@ public partial class FeedViewModel : ObservableObject, IDisposable
             }
 
             if (_disposed) return;
+            var beforeApply = _generation;
             Apply(snapshot);
             IsLoading = false;
+            if (snapshot.AdditionalShelves is { } additional && _generation != beforeApply)
+                AdditionalShelvesLoading = AppendAdditionalAsync(additional, _generation, additionRevision, snapshot.CandidateCount);
 
             // Load history so the header count is ready before the screen opens.
             await History.LoadCommand.ExecuteAsync(null);
@@ -336,10 +358,28 @@ public partial class FeedViewModel : ObservableObject, IDisposable
             return;
         }
 
-        foreach (var shelf in snapshot.Shelves)
+        AddShelves(snapshot.Shelves, generation);
+
+        if (Shelves.Count > 0)
         {
-            var cards = new List<FeedCardViewModel>(shelf.Items.Count);
-            foreach (var item in shelf.Items)
+            Message = null;
+            return;
+        }
+
+        // Distinguish "library not loaded" from "nothing to suggest".
+        Message = _tiles is { HasTiles: false } || snapshot.CandidateCount == 0
+            ? "Nothing to score yet. The feed appears once your library has loaded."
+            : "Nothing to suggest right now.";
+    }
+
+    private void AddShelves(IEnumerable<FeedShelf> shelves, long generation)
+    {
+        foreach (var shelf in shelves)
+        {
+            // TV can show the full scored shelf horizontally; desktop keeps replacements hidden.
+            var shown = _includeReserve ? shelf.Items.Concat(shelf.Reserve).ToArray() : shelf.Items;
+            var cards = new List<FeedCardViewModel>(shown.Count);
+            foreach (var item in shown)
             {
                 // Drop items with no matching tile (no cover to draw).
                 if (_tiles?.TileForOwnership(item.OwnershipId) is { } tile)
@@ -356,14 +396,14 @@ public partial class FeedViewModel : ObservableObject, IDisposable
             // A reserve item with no tile is dropped here for the same reason a
             // visible one is, and here rather than at the swap: a receipt that
             // offers a replacement has to have one.
-            var reserve = shelf.Reserve
+            var reserve = (_includeReserve ? [] : shelf.Reserve)
                 .Where(item => _tiles?.TileForOwnership(item.OwnershipId) is not null)
                 .ToList();
 
             // Everything this pass accounted for, shown or held, so a backfill
             // reading the feed again can tell what is new from what is already
             // spoken for.
-            foreach (var item in shelf.Items.Concat(reserve))
+            foreach (var item in shown.Concat(reserve))
             {
                 _spent.Add(item.ReleaseId);
             }
@@ -373,16 +413,23 @@ public partial class FeedViewModel : ObservableObject, IDisposable
             Shelves.Add(built);
         }
 
+    }
+
+    private async Task AppendAdditionalAsync(Task<FeedSupplement> pending, long generation, long revision, int baselineCount)
+    {
+        FeedSupplement addition;
+        try { addition = await pending; }
+        catch (Exception) { return; }
+        if (_disposed || generation != _generation || revision != _additionRevision) return;
+        var existing = Shelves.Select(shelf => shelf.Id).ToHashSet(StringComparer.Ordinal);
+        AddShelves(addition.Shelves.Where(shelf => existing.Add(shelf.Id)), generation);
         if (Shelves.Count > 0)
         {
             Message = null;
-            return;
+            CanRetry = false;
+            CandidateCountText = Math.Max(baselineCount, addition.CandidateCount).ToString("N0");
+            HasCandidates = baselineCount > 0 || addition.CandidateCount > 0;
         }
-
-        // Distinguish "library not loaded" from "nothing to suggest".
-        Message = _tiles is { HasTiles: false } || snapshot.CandidateCount == 0
-            ? "Nothing to score yet. The feed appears once your library has loaded."
-            : "Nothing to suggest right now.";
     }
 
     /// <summary>Toggles the history view; loads on open.</summary>
@@ -456,6 +503,9 @@ public partial class FeedViewModel : ObservableObject, IDisposable
     /// <summary>Re-reads history after a card verdict changes.</summary>
     private void OnCardVerdictChanged(object? sender, EventArgs e)
     {
+        // A provider evaluated the pre-verdict library. Its late answer cannot
+        // reintroduce that game; the next refresh can request a fresh supplement.
+        ++_additionRevision;
         _ = History.LoadCommand.ExecuteAsync(null);
 
         // The verdict has just put a receipt on the clock, or an undo has just
@@ -543,6 +593,7 @@ public partial class FeedViewModel : ObservableObject, IDisposable
         if (_disposed) return;
         _disposed = true;
         ++_generation;
+        ++_additionRevision;
         _reloadPending = false;
         _backfillPending = false;
         LoadCommand.Cancel();
@@ -733,6 +784,7 @@ public partial class FeedViewModel : ObservableObject, IDisposable
                 _backfillPending = false;
 
                 var generation = _generation;
+                var revision = _additionRevision;
 
                 FeedSnapshot snapshot;
                 try
@@ -757,7 +809,24 @@ public partial class FeedViewModel : ObservableObject, IDisposable
                     return;
                 }
 
+                // A later verdict invalidates this answer, but a swap may already
+                // have queued the next read. Keep that coalesced request alive.
+                if (revision != _additionRevision) continue;
+
                 Merge(snapshot);
+                if (snapshot.AdditionalShelves is { } additional)
+                {
+                    try
+                    {
+                        var supplement = await additional;
+                        if (!_disposed && generation == _generation && revision == _additionRevision)
+                            Merge(snapshot with { Shelves = supplement.Shelves, AdditionalShelves = null });
+                    }
+                    catch (Exception)
+                    {
+                        // Optional provider failure does not discard a pending built-in read.
+                    }
+                }
             }
             while (_backfillPending);
         }
@@ -821,11 +890,12 @@ public partial class FeedViewModel : ObservableObject, IDisposable
     /// <summary>Restores cards whose verdict was revoked on the history screen.</summary>
     private void OnVerdictRevoked(object? sender, long releaseId)
     {
+        ++_additionRevision;
         foreach (var shelf in Shelves)
         {
             foreach (var card in shelf.Cards)
             {
-                if (card.Tile.ReleaseId == releaseId)
+                if (card.FeedbackReleaseId == releaseId)
                 {
                     card.Restore();
                 }

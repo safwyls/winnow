@@ -17,7 +17,8 @@
      bare <TimeSpan> does not resolve in the Avalonia namespace (AVLN2000). -->
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:sys="using:System">
+                    xmlns:sys="using:System"
+                    xmlns:themes="using:Winnow.App.Themes">
 
     <!-- ══ Colour ══════════════════════════════════════════════════════════
          The neutral family is a single dark green-teal ink, stepped five
@@ -473,9 +474,10 @@
          you cannot identify is a cover you cannot choose. Colour-agnostic —
          untouched by the palette revision.
     -->
-    <x:Double x:Key="DormancySatFloor">0.22</x:Double>
-    <x:Double x:Key="DormancyBrightFloor">0.68</x:Double>
-    <x:Double x:Key="DormancyHueDegrees">-6</x:Double>
+    <!-- Shared with the headless cover renderer; these resources expose the same values. -->
+    <themes:DormancyToken x:Key="DormancySatFloor" Component="Saturation"/>
+    <themes:DormancyToken x:Key="DormancyBrightFloor" Component="Brightness"/>
+    <themes:DormancyToken x:Key="DormancyHueDegrees" Component="Hue"/>
     <x:Double x:Key="DormancyFullMonths">36</x:Double>
     <sys:TimeSpan x:Key="HoverRestoreDuration">0:0:0.140</sys:TimeSpan>
 

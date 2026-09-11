@@ -69,6 +69,9 @@ public sealed class IgdbAssignmentService : IIgdbAssignmentService
             IgdbAssignmentStatus.Assigned => IgdbAssignmentOutcome.Assigned,
             IgdbAssignmentStatus.WorkNotFound => IgdbAssignmentOutcome.WorkNotFound,
             IgdbAssignmentStatus.MetadataUnavailable => IgdbAssignmentOutcome.MetadataUnavailable,
+            IgdbAssignmentStatus.MappingChanged => IgdbAssignmentOutcome.MappingChanged,
+            IgdbAssignmentStatus.IdentifierHistoryUnavailable => IgdbAssignmentOutcome.IdentifierHistoryUnavailable,
+            IgdbAssignmentStatus.StorefrontObservation => IgdbAssignmentOutcome.StorefrontObservation,
             IgdbAssignmentStatus.IgdbIdClaimedByAnotherWork =>
                 IgdbAssignmentOutcome.IgdbIdClaimedByAnotherWork,
             _ => IgdbAssignmentOutcome.Failed,

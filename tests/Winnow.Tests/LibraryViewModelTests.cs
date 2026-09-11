@@ -400,11 +400,13 @@ public sealed class LibraryViewModelTests
             ["v1.19.2 Patch", "Build 24678461", "Old news"],
             details.Updates.Select(u => u.Headline));
 
-        // Two landed after the 2017 session; the 2024 one did too. All three
-        // are after it, so all three are marks and the section says so.
+        // The announcement and build are evidence of one patch. Uncorrelated
+        // news remains in the history without contributing an unread patch.
         Assert.Equal("UPDATES", details.UpdatesLabel);
-        Assert.Equal("3 updates landed while you were away.", details.GapCaption);
-        Assert.Equal(3, details.RailMarks.Count);
+        Assert.Equal("1 update landed while you were away.", details.GapCaption);
+        Assert.Equal(1, details.UnreadUpdateCount);
+        Assert.Equal(2, details.RailMarks.Count);
+        Assert.False(details.Updates[2].IsUnread);
 
         // A build push has no reader-facing page, and a non-http scheme is not
         // something to hand to the shell.
@@ -419,6 +421,7 @@ public sealed class LibraryViewModelTests
         using var fixture = new LibraryFixture();
         var releaseId = await fixture.SeedAsync("Solo", minutes: 600, lastPlayed: Now.AddYears(-2));
         await fixture.AddUpdateAsync(releaseId, UpdateEventKinds.BuildPush, Now.AddDays(-1));
+        await fixture.AddUpdateAsync(releaseId, UpdateEventKinds.Announcement, Now.AddDays(-1), title: "Patch notes");
 
         var library = fixture.CreateViewModel();
         await library.LoadCommand.ExecuteAsync(null);

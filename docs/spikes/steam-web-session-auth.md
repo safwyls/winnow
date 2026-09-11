@@ -1,7 +1,9 @@
 # Spike: Steam web session token as an alternative credential
 
-> **Evidence, not a rule.** This document records how something was measured and is
-> never the place to look up what to do. The current rule is in `game-library-design.md` §4.7.
+> **Dated evidence.** Findings describe the builds and services observed on the dates below.
+> Current implementation choices are in [the build spec](../../game-library-design.md);
+> current interactions and layout are in [the visual spec](../../design-system.md).
+> This record is optional background.
 
 Date: 2026-08-29; updated 2026-08-30 with live probe results
 Evidence: public sources, anonymous probes, and one authenticated live session
@@ -374,12 +376,8 @@ mornings, which is precisely the user experience in Playnite issue #512.
 
 **If Winnow holds cookies**, and only one cookie matters (`steamRefresh_steam`), it
 gains up to ~207 days of silent re-minting through `/jwt/finalizelogin`, and takes on a
-durable full-account bearer credential at rest. That is the exact thing ROADMAP
-section 4.7's amendment condition 1 forbids today ("Ephemeral session... Cookies are
-never persisted to disk. The profile is torn down after harvest"). DPAPI CurrentUser is
-the same protection Winnow already applies to the Epic refresh token via
-`DpapiEpicSecretProtector`, so the machinery exists and this is a policy question, not
-an engineering one. Two caveats belong in the same breath: `steamRefresh_steam` is only
+durable full-account bearer credential at rest. That is a durable full-account bearer credential at rest. DPAPI CurrentUser supplies
+local encryption, as it does for Epic refresh tokens. Two caveats belong in the same breath: `steamRefresh_steam` is only
 long-lived if the user chose "remember me", and renewing a refresh token invalidates the
 previous one, so a stored copy can be silently killed by the user logging in elsewhere.
 
@@ -647,7 +645,7 @@ with DPAPI CurrentUser and the `Winnow.Steam.Session.v1` entropy the shipped
 protector uses. The decrypted JSON carried exactly the eleven documented keys
 (matching `SettingsSteamSessionStore.StoredSession`), no more and no fewer. No
 cookie jar, no `steamLoginSecure`, no `sessionid`, no API key appeared in the
-blob; section 4.7's second amendment holds in practice.
+blob, consistent with the documented storage boundary.
 
 **Storage round-trip.** The `steam.session.v1` settings row is 2100 characters
 of base64 ciphertext. It decrypted on the first attempt with the shipped
@@ -756,7 +754,7 @@ is green, and the failure classification is exercised across both layers
 for the provider's decisions). What is unproven is specifically listed at the
 end of this section.
 
-**The three-request closed list.** Section 4.7's second amendment, condition 3,
+**The three-request closed list.** The renewal contract
 permits exactly three unattended request kinds. All three live as URI constants
 in one file (`SteamSessionRenewer`) so an audit of the closed list reads one
 file:
@@ -828,20 +826,9 @@ always emitted.
    audiences (never the token). An absent `aud` claim leaves the stored
    audience alone; it is a fact nobody has, not a change.
 
-This was a reversal. The audience check was originally a hard lapse, the third
-refusal, on the rationale that a token minted for an audience the Web API will
-not accept produces a 401, which triggers a renewal, which mints the same wrong
-audience again, and looping costs the refresh token and the request budget. The
-full-feature review caught what that would actually cost. A hard lapse discards
-the refresh token unrecoverably. The sign-in token carries `aud ["web:store"]`,
-and nobody has observed what the `pointssummary` renewal route mints. If it
-differs at all, the first renewal would permanently sign out every signed-in
-user, on a guess, with a ~23-hour fuse from the moment anyone signs in. The
-anti-loop intent the refusal was written for survives, because the adoption is
-unconditional rather than retried: it happens once, the stored audience becomes
-the new one, and nothing re-attempts anything. A token Steam will not actually
-accept still fails honestly, as a 401, through the reactive path that renews at
-most once per pass.
+Audience changes are diagnostic information, not grounds to destroy a refresh token.
+A token rejected by Steam still enters the reactive renewal path, limited to one renewal
+per pass.
 
 The issuer is deliberately NOT compared: §7.2's live capture records it varying
 per mint (`r:0012_...` on one mint, `r:0018_...` on an earlier one), so
@@ -936,37 +923,12 @@ report or log.
 
 ---
 
-## 8. Recommended architecture sketch
+## 8. Scope of the evidence
 
-**Premises verified 2026-08-30.** The §7.1 probe confirmed that a store-minted token
-returns populated data from all three endpoints, that sign-in completes inside Winnow's
-WebView2 profile, and that the token lifetime is about a day (24h 22m measured). The
-recommendation below is unchanged; the refresh question (items 6, 7) that would enable
-unattended token use remains open.
-
-Treat the token as a second credential behind the seam that already exists, not as a
-second auth system. `ISteamApiKeyProvider` / `SteamApiKey` in
-`src/Winnow.Enrich.SteamWeb/Credentials/` already isolate "what goes in the query
-string" from the three call sites that build it (`SteamHistoryClient` lines 102 and 154,
-`SteamWebApiClient` line 184, each of which hand-concatenates `&key=`); widening that
-record into a credential that knows its own parameter name (`key=` or `access_token=`)
-and its own expiry is a small change, and it is the right place for a WebView sign-in to
-plug in. Mint the token the way Playnite does, read `application_config`'s
-`data-store_user_config.webapi_token` and `data-userinfo.steamid` off a store page, but
-do it as the last step of the harvest session ROADMAP section 4.7 already sanctions, so
-no new browser visit and no new trust condition is introduced. Persist the token, its
-`exp` and the steamid under DPAPI and nothing else: no cookies, which keeps amendment
-condition 1 intact. Then be honest about what that buys, roughly a day, so the token
-should be the credential for user-initiated work (a sign-in-then-backfill run, plus the
-Family Sharing calls the key cannot make at all) while the API key stays the credential
-for the unattended snapshot scheduler; a 401 should mark the token dead and surface a
-one-click re-sign-in rather than retry. Persisting `steamRefresh_steam` to get silent
-months-long re-minting is a real option and the only one that would make the token a true
-peer of the key for scheduled work, but it puts a durable full-account bearer credential
-at rest and is therefore a section 4.7 amendment in its own right, not an implementation
-detail; it should be deferred to its own decision.
-
----
+The probes establish token capture and response shapes; sections 7.2 and 7.3 record the
+refresh-token capture and renewal implementation. The initial access-token-only proposal
+is not a current restriction. Current credential storage, renewal and request limits are
+specified in the build spec, section 4.7.
 
 ## Sources
 

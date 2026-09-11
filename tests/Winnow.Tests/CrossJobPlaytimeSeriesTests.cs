@@ -86,7 +86,7 @@ public sealed class CrossJobPlaytimeSeriesTests : IDisposable
             _local,
             resolver,
             gate,
-            NullLogger<RemoteOwnershipSyncService>.Instance,
+            NullLogger<RemoteOwnershipSyncService>.Instance, new OwnershipInventoryRepository(_db.Factory),
             new OwnedLibraryStub(AccountWideMinutes, AccountLastPlayed));
     }
 
@@ -263,7 +263,7 @@ public sealed class CrossJobPlaytimeSeriesTests : IDisposable
                 NullLogger<LocalLibrarySyncService>.Instance),
             resolver,
             gate,
-            NullLogger<RemoteOwnershipSyncService>.Instance,
+            NullLogger<RemoteOwnershipSyncService>.Instance, new OwnershipInventoryRepository(_db.Factory),
             new OwnedLibraryStub(AccountWideMinutes, AccountLastPlayed, configured: false));
 
         var report = await unconfigured.SyncAsync();

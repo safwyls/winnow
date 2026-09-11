@@ -30,6 +30,8 @@ public partial class FilterPanelViewModel : ObservableObject
 
     /// <summary>Suppresses per-option change callbacks during batch application.</summary>
     private bool _applying;
+    private IReadOnlyList<GameTileViewModel> _tiles = [];
+    private FacetSnapshot _snapshot = FacetSnapshot.Empty;
 
     public FilterPanelViewModel(Action onChanged)
     {
@@ -39,6 +41,7 @@ public partial class FilterPanelViewModel : ObservableObject
         {
             if (!_applying)
             {
+                RefreshVisibleGroups();
                 onChanged();
             }
         }
@@ -103,7 +106,10 @@ public partial class FilterPanelViewModel : ObservableObject
     public partial string LatestYearText { get; set; } = "—";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowYearRange))]
     public partial bool HasYearData { get; set; }
+
+    public bool ShowYearRange => HasYearData || HasYearRange || YearFromText.Length > 0 || YearToText.Length > 0;
 
     /// <summary>How many rules are in force — the number on the Filters button.</summary>
     [ObservableProperty]
@@ -114,13 +120,23 @@ public partial class FilterPanelViewModel : ObservableObject
 
     public string ActiveCountText => ActiveCount.ToString("N0");
 
-    public int? YearFrom => ParseYear(YearFromText);
+    private ReleaseYearRange _appliedYears;
 
-    public int? YearTo => ParseYear(YearToText);
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasYearProblem))]
+    public partial string? YearProblem { get; private set; }
+
+    public bool HasYearProblem => YearProblem is not null;
+
+    public int? YearFrom => _appliedYears.From;
+
+    public int? YearTo => _appliedYears.To;
 
     /// <summary>Rebuilds every group's options from the current tiles. Selections survive by key.</summary>
     public void Rebuild(IReadOnlyList<GameTileViewModel> tiles, FacetSnapshot snapshot)
     {
+        _tiles = tiles;
+        _snapshot = snapshot;
         var names = snapshot.ById;
 
         SetOptions(GenreKey, Labelled(tiles, t => t.Facets.GenreIds, names));
@@ -147,9 +163,14 @@ public partial class FilterPanelViewModel : ObservableObject
         EarliestYearText = HasYearData ? years.Min().ToString(CultureInfo.InvariantCulture) : "—";
         LatestYearText = HasYearData ? years.Max().ToString(CultureInfo.InvariantCulture) : "—";
 
-        VisibleGroups = [.. _specs
-            .Where(s => s.Group.HasOptions && !CannotCut(s, tiles))
-            .Select(s => s.Group)];
+        RefreshVisibleGroups();
+    }
+
+    private void RefreshVisibleGroups()
+    {
+        var visible = _specs.Where(s => s.Group.HasSelection ||
+            (s.Group.HasOptions && !CannotCut(s, _tiles))).Select(s => s.Group).ToArray();
+        if (!VisibleGroups.SequenceEqual(visible)) VisibleGroups = visible;
     }
 
     /// <summary>True when the group has one option that every title carries (cannot filter).</summary>
@@ -320,12 +341,14 @@ public partial class FilterPanelViewModel : ObservableObject
 
             YearFromText = filter.YearFrom?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
             YearToText = filter.YearTo?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
+            UpdateYearRange();
         }
         finally
         {
             _applying = false;
         }
 
+        RefreshVisibleGroups();
         _onChanged();
     }
 
@@ -344,12 +367,14 @@ public partial class FilterPanelViewModel : ObservableObject
 
             YearFromText = string.Empty;
             YearToText = string.Empty;
+            UpdateYearRange();
         }
         finally
         {
             _applying = false;
         }
 
+        RefreshVisibleGroups();
         _onChanged();
     }
 
@@ -385,6 +410,7 @@ public partial class FilterPanelViewModel : ObservableObject
         {
             YearFromText = string.Empty;
             YearToText = string.Empty;
+            UpdateYearRange();
         }
         finally
         {
@@ -398,7 +424,14 @@ public partial class FilterPanelViewModel : ObservableObject
         => _specs.Add(new GroupSpec(group, keys));
 
     private void SetOptions(string key, IEnumerable<(string Key, string Label)> options)
-        => Group(key).SetOptions(options);
+        => Group(key).SetOptions(options, value => key switch
+        {
+            StoreKey => StoreLabel(value),
+            ModeKey => ModeLabel(value, _snapshot),
+            InstalledKey => value == OnDisk ? "Installed" : "Not installed",
+            _ => long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id)
+                && _snapshot.ById.TryGetValue(id, out var facet) ? facet.Name : $"Unavailable value ({value})",
+        });
 
     private IReadOnlyList<long> LongKeys(string key)
         => [.. Group(key).Checked
@@ -462,14 +495,17 @@ public partial class FilterPanelViewModel : ObservableObject
     /// </summary>
     private static string StoreLabel(string store) => StoreNaming.Label(store);
 
-    private static int? ParseYear(string text)
+    private void UpdateYearRange()
     {
-        var trimmed = text.Trim();
-        return trimmed.Length == 4
-            && int.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out var year)
-            && year is >= 1000 and <= 9999
-                ? year
-                : null;
+        if (ReleaseYearRange.TryParse(YearFromText, YearToText, out var range))
+        {
+            _appliedYears = range;
+            YearProblem = null;
+            OnPropertyChanged(nameof(YearFrom));
+            OnPropertyChanged(nameof(YearTo));
+        }
+        else YearProblem = ReleaseYearRange.ValidationMessage;
+        OnPropertyChanged(nameof(ShowYearRange));
     }
 
     partial void OnYearFromTextChanged(string value)
@@ -477,6 +513,7 @@ public partial class FilterPanelViewModel : ObservableObject
         _ = value;
         if (!_applying)
         {
+            UpdateYearRange();
             _onChanged();
         }
     }
@@ -486,6 +523,7 @@ public partial class FilterPanelViewModel : ObservableObject
         _ = value;
         if (!_applying)
         {
+            UpdateYearRange();
             _onChanged();
         }
     }

@@ -402,7 +402,7 @@ public class SteamSignInServiceTests
     }
 
     private static (SteamSignInService Service, ISteamSessionProvider Sessions, FakeSignInSession Session)
-        Build(SteamSignInResult result)
+        Build(SteamSignInResult result, OwnershipRefreshRequests? refresh = null)
     {
         var session = new FakeSignInSession(result);
         var provider = new SteamSessionProvider(
@@ -410,7 +410,7 @@ public class SteamSignInServiceTests
             new SteamWebOptions(),
             new FixedClock(Now));
 
-        return (new SteamSignInService(session, provider, new FixedClock(Now)), provider, session);
+        return (new SteamSignInService(session, provider, new FixedClock(Now), refresh: refresh), provider, session);
     }
 
     private sealed class FixedClock(DateTimeOffset now) : TimeProvider
@@ -427,6 +427,20 @@ public class SteamSignInServiceTests
             "steam",
             withRefresh ? SteamSessionFixtures.RefreshToken(Now.AddDays(207)) : null,
             pages);
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Successful_sign_in_and_sign_out_request_background_ownership_refresh(bool cancelled)
+    {
+        var requests = new OwnershipRefreshRequests();
+        var count = 0;
+        requests.Requested += () => count++;
+        var (service, _, _) = Build(cancelled ? SteamSignInResult.Cancelled("cancelled") : Minted(), requests);
+        await service.SignInAsync(new SteamSignInRequest { ConsentGranted = true });
+        Assert.Equal(cancelled ? 0 : 1, count);
+        if (!cancelled) { await service.SignOutAsync(); Assert.Equal(2, count); }
+    }
 
     [Fact]
     public async Task A_minted_session_is_written_where_the_credential_selector_will_find_it()

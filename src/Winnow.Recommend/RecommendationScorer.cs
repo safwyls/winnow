@@ -194,6 +194,8 @@ public static class RecommendationScorer
             DormancyDays = DormancyDays(facts, asOfUtc),
             UpdatesSinceLastPlayed = facts.UpdatesSinceLastPlayed,
             LatestUpdateTitle = facts.LatestUpdateTitle,
+            LatestUpdateReleaseId = facts.LatestUpdateReleaseId,
+            EvidenceReleaseIds = facts.EvidenceReleaseIds,
             ReturnEpisodes = facts.ReturnEpisodes,
             StoreCount = facts.StoreCount,
             TasteFacetName = facts.TasteFacetName,

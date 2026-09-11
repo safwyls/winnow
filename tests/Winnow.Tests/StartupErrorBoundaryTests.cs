@@ -132,6 +132,39 @@ public class StartupErrorBoundaryTests
         Assert.NotEqual(0, StartupFailure.ExitCode);
     }
 
+    [Fact]
+    public void Configuration_secrets_are_redacted_before_a_logger_exists()
+    {
+        var channel = new Channel();
+        var code = StartupFailure.Report(
+            new InvalidOperationException("Invalid setting: api_key=private-review-secret"),
+            string.Empty, null, channel.Surface);
+
+        Assert.Equal(3, code);
+        var shown = Assert.Single(channel.Shown).Text;
+        Assert.DoesNotContain("private-review-secret", shown, StringComparison.Ordinal);
+        Assert.Contains("[redacted-secret]", shown, StringComparison.Ordinal);
+        Assert.DoesNotContain("has not been changed", shown, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_logger_construction_failure_cannot_replace_the_original_startup_fault()
+    {
+        var channel = new Channel();
+        var code = StartupFailure.Report(new IOException("original failure"),
+            string.Empty, new InvalidLoggerFactory(), channel.Surface);
+
+        Assert.Equal(3, code);
+        Assert.Contains("original failure", Assert.Single(channel.Shown).Text, StringComparison.Ordinal);
+    }
+
+    private sealed class InvalidLoggerFactory : ILoggerFactory
+    {
+        public void AddProvider(ILoggerProvider provider) => throw new InvalidOperationException();
+        public ILogger CreateLogger(string categoryName) => throw new InvalidOperationException();
+        public void Dispose() { }
+    }
+
     private sealed class ThrowingLoggerFactory : ILoggerFactory
     {
         public void AddProvider(ILoggerProvider provider) => throw new ObjectDisposedException(nameof(ThrowingLoggerFactory));

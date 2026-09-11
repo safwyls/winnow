@@ -100,6 +100,7 @@ public static class EpicWebServiceCollectionExtensions
         // 429ing as any other.
         services.AddHttpClient(EpicTokenProvider.HttpClientName, client =>
             {
+                Winnow.Http.ProviderHttpTransport.Configure(client, options.MaxResponseBytes, options.OverallTimeout);
                 client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
             })
             .RemoveAllLoggers()
@@ -110,6 +111,7 @@ public static class EpicWebServiceCollectionExtensions
         services.AddHttpClient<IEpicAccountClient, EpicAccountClient>(client =>
             {
                 client.BaseAddress = options.LibraryBaseAddress;
+                Winnow.Http.ProviderHttpTransport.Configure(client, options.MaxResponseBytes, options.OverallTimeout);
                 client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
             })
             .RemoveAllLoggers()
@@ -128,6 +130,7 @@ public static class EpicWebServiceCollectionExtensions
         services.AddHttpClient<IEpicCatalogClient, EpicCatalogClient>(client =>
             {
                 client.BaseAddress = options.CatalogBaseAddress;
+                Winnow.Http.ProviderHttpTransport.Configure(client, options.MaxResponseBytes, options.OverallTimeout);
                 client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
             })
             .RemoveAllLoggers()

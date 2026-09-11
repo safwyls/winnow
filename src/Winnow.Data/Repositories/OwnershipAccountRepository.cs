@@ -96,11 +96,8 @@ public sealed class OwnershipAccountRepository : IOwnershipAccountRepository
         // earliest moment Winnow could prove this account holds this game, and
         // re-observing a fact does not make it newer.
         //
-        // source DOES move, and that is load-bearing rather than cosmetic:
-        // migration 0015's seed writes 'ownerships.account_ref', and the bucket
-        // query refuses to hide a game whose only evidence carries that mark. A
-        // real reader re-reporting the membership is exactly the event that
-        // should retire the seed's caveat, and this is where it happens.
+        // Re-observation retires the legacy seed label but does not establish
+        // inventory completeness. That is recorded separately per account/source.
         using var lease = _factory.Lease();
         await lease.Connection.ExecuteAsync(new CommandDefinition("""
             INSERT INTO ownership_accounts (

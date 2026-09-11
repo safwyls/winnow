@@ -507,6 +507,12 @@ public sealed class SteamPlaytimeBackfillTests : IDisposable
     /// </summary>
     private sealed class HistoryStub : ISteamHistoryClient
     {
+        private static readonly SteamCredentialIdentity Identity = new FakeSteamApiKeyProvider().Identity!;
+
+        public ValueTask<bool> IsCurrentAsync(SteamCredentialIdentity identity,
+            SteamCredentialPurpose purpose = SteamCredentialPurpose.Unattended, CancellationToken ct = default)
+            => ValueTask.FromResult(identity == Identity);
+
         public bool Configured { get; init; } = true;
 
         public bool AnchorsAnswer { get; init; } = true;
@@ -543,7 +549,7 @@ public sealed class SteamPlaytimeBackfillTests : IDisposable
                 .Where(g => g.AppId != WithholdAnchorFor)
                 .ToArray();
 
-            return Task.FromResult(new SteamLastPlayedTimes(true, games, Now, FromCache: false));
+            return Task.FromResult(new SteamLastPlayedTimes(true, games, Now, FromCache: false) { CredentialIdentity = Identity });
         }
 
         public Task<SteamYearInReview> GetYearInReviewAsync(
@@ -572,7 +578,7 @@ public sealed class SteamPlaytimeBackfillTests : IDisposable
                 // An answered-but-empty year: the bare envelope, which is what a
                 // year with no Steam Replay looks like.
                 return Task.FromResult(new SteamYearInReview(
-                    steamId, year, Answered: true, AccountId: null, Games: [], Now, FromCache: false));
+                    steamId, year, Answered: true, AccountId: null, Games: [], Now, FromCache: false) { CredentialIdentity = Identity });
             }
 
             var payload = SteamHistoryJson.TryReadYearInReview(body)!.Value;
@@ -583,7 +589,7 @@ public sealed class SteamPlaytimeBackfillTests : IDisposable
                 AccountId: AccountIdOverride ?? payload.AccountId,
                 Games: payload.Games,
                 Now,
-                FromCache: false));
+                FromCache: false) { CredentialIdentity = Identity });
         }
     }
 }

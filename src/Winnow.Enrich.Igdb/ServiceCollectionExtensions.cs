@@ -74,7 +74,9 @@ public static class ServiceCollectionExtensions
         // pass needs an IWorkMaturityRepository.
         services.TryAddSingleton<IgdbManualAssignment>();
 
-        services.TryAddSingleton<IIgdbTokenProvider, TwitchTokenProvider>();
+        services.TryAddSingleton<TwitchTokenProvider>();
+        services.TryAddSingleton<IIgdbTokenProvider>(sp => sp.GetRequiredService<TwitchTokenProvider>());
+        services.TryAddSingleton<IIgdbCredentialUpdater>(sp => sp.GetRequiredService<TwitchTokenProvider>());
         services.TryAddSingleton<IgdbRateLimiter>();
         services.TryAddTransient<IgdbAuthenticationHandler>();
         services.TryAddTransient<IgdbResilienceHandler>();
@@ -85,6 +87,7 @@ public static class ServiceCollectionExtensions
         // produces the credential), so it gets retry only.
         services.AddHttpClient(TwitchTokenProvider.HttpClientName, client =>
             {
+                Winnow.Http.ProviderHttpTransport.Configure(client, options.MaxResponseBytes, options.OverallTimeout);
                 client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
             })
             .AddHttpMessageHandler<IgdbResilienceHandler>();
@@ -92,6 +95,7 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient<IIgdbClient, IgdbClient>(client =>
             {
                 client.BaseAddress = options.BaseAddress;
+                Winnow.Http.ProviderHttpTransport.Configure(client, options.MaxResponseBytes, options.OverallTimeout);
                 client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
             })
             .AddHttpMessageHandler<IgdbAuthenticationHandler>()
@@ -101,6 +105,7 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient<IIgdbLifecycleClient, IgdbLifecycleClient>(client =>
             {
                 client.BaseAddress = options.BaseAddress;
+                Winnow.Http.ProviderHttpTransport.Configure(client, options.MaxResponseBytes, options.OverallTimeout);
                 client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
             })
             .AddHttpMessageHandler<IgdbAuthenticationHandler>()

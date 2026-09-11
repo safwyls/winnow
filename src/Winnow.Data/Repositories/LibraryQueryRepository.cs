@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using Winnow.Core.Domain;
 using System.Text.Json;
 using Winnow.Core.Lifecycle;
@@ -59,8 +59,13 @@ namespace Winnow.Data.Repositories;
 public sealed class LibraryQueryRepository : ILibraryQueryRepository
 {
     private readonly ISqliteConnectionFactory _factory;
+    private readonly TimeProvider _clock;
 
-    public LibraryQueryRepository(ISqliteConnectionFactory factory) => _factory = factory;
+    public LibraryQueryRepository(ISqliteConnectionFactory factory, TimeProvider? clock = null)
+    {
+        _factory = factory;
+        _clock = clock ?? TimeProvider.System;
+    }
 
     public async Task<IReadOnlyList<OwnershipBucket>> GetOwnershipBucketsAsync(
         BucketThresholds thresholds, CancellationToken ct = default)
@@ -142,12 +147,13 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         BucketThresholds shown, BucketThresholds hidden, CancellationToken ct)
     {
         using var lease = _factory.Lease();
+        var asOfUtc = _clock.GetUtcNow().UtcDateTime;
         var rows = (await lease.Connection.QueryAsync<BucketRow>(new CommandDefinition(
-            BucketSql, Parameters(shown, scopeOverride: null),
+            BucketSql, Parameters(shown, scopeOverride: null, asOfUtc),
             transaction: lease.Transaction, cancellationToken: ct))).AsList();
 
         return Math.Max(
-            0, DistinctGames(Consolidate(rows, shown)) - DistinctGames(Consolidate(rows, hidden)));
+            0, DistinctGames(Consolidate(rows, shown, asOfUtc)) - DistinctGames(Consolidate(rows, hidden, asOfUtc)));
     }
 
     private static int DistinctGames(IReadOnlyList<OwnershipBucket> rows)
@@ -184,6 +190,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                                PARTITION BY ownership_id
                                ORDER BY observed_at DESC, id DESC) AS rn
                     FROM play_records
+                    WHERE observed_at <= @AsOfUtc
                 )
                 WHERE rn = 1
             ),
@@ -256,18 +263,16 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                 -- retuned" still holds — the acknowledgement is a separate fact
                 -- layered over untouched rows, which is also why the detail
                 -- view can still list every update the user missed.
-                -- The count rides in the same aggregate as the timestamp, under
-                -- the same watermark and the same correlation EXISTS, so it can
-                -- never stand for more patches than the badge does. Counting it
-                -- anywhere else would be a second reading of update_events with
-                -- its own chance of drifting from this one; here it is another
-                -- aggregate over rows already grouped, and costs no extra scan.
+                -- Retain the qualifying instants for Fold: only the surviving
+                -- group knows its effective last play, including another store's
+                -- newer session. Counting before that fold includes already-played patches.
                 SELECT push.release_id,
                        MAX(push.occurred_at) AS occurred_at,
-                       COUNT(*)              AS update_count
+                       json_group_array(strftime('%Y-%m-%dT%H:%M:%fZ', push.occurred_at)) AS push_times
                 FROM update_events push
                 LEFT JOIN acknowledged ack ON ack.release_id = push.release_id
                 WHERE push.kind = 'build_push'
+                  AND push.occurred_at <= @AsOfUtc
                   AND (ack.through IS NULL
                        OR datetime(push.occurred_at) > datetime(ack.through))
                   AND EXISTS (
@@ -275,6 +280,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                       FROM update_events news
                       WHERE news.release_id = push.release_id
                         AND news.kind = 'announcement'
+                        AND news.occurred_at <= @AsOfUtc
                         AND abs(julianday(news.occurred_at) - julianday(push.occurred_at))
                             <= @UpdateCorrelationWindowDays
                   )
@@ -315,91 +321,27 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                 JOIN ownerships    o  ON o.id = oa.ownership_id AND o.store = @Store
             ),
             owned_account_attested AS (
-                -- Proof that the pass which can name the user's account has
-                -- actually run at least once, anywhere in this store.
-                --
-                -- ── Why absence needs this before it means anything ──────────
-                --
-                -- The two kinds of evidence come from DIFFERENT passes, and only
-                -- one of them is on the local, always-available path. The local
-                -- scan reads localconfig.vdf, which records games an account has
-                -- PLAYED — so it happily attests that a housemate played
-                -- something while saying nothing at all about the games the user
-                -- owns and has never launched. Those come only from
-                -- GetOwnedGames, a network call whose failure is caught and
-                -- logged so a private profile or a dead endpoint cannot cost the
-                -- user the local scan.
-                --
-                -- That asymmetry is a trap. On a machine where the account is
-                -- confirmed but the owned-list pass has not yet succeeded, every
-                -- game the user owns-but-never-launched that a housemate DID
-                -- play carries exactly one non-seed row — the housemate's — and
-                -- the predicate below would read it as positive evidence the
-                -- game is not the user's. The user would watch their own
-                -- never-played backlog disappear, which is the failure
-                -- acceptance criterion #2 exists to forbid, arriving by a
-                -- different road than the account_ref column it names.
-                --
-                -- One non-seed row for the user's account, anywhere in the
-                -- store, is the cheapest honest proof that the pass has run. It
-                -- costs one indexed lookup and it cannot be satisfied by a seed,
-                -- which is what makes it evidence about the PASS rather than
-                -- about any particular game.
-                SELECT 1 AS attested
-                FROM ownership_accounts oa
-                JOIN owned_account oc ON oc.account_ref = oa.account_ref
-                JOIN ownerships    o  ON o.id = oa.ownership_id AND o.store = @Store
-                WHERE oa.source <> @LegacySeedSource
-                LIMIT 1
+                -- A local play row cannot prove an owned-library pass completed.
+                SELECT inventory.observed_at
+                FROM account_inventory_observations inventory
+                JOIN owned_account oc ON oc.account_ref = inventory.account_ref
+                WHERE inventory.store = @Store AND inventory.source = @InventorySource
+                  AND inventory.is_complete = 1
             ),
             hidden AS (
-                -- ── The filter, and the exact shape of its honesty ───────────
-                --
-                -- A game is hidden ONLY on positive evidence that no account row
-                -- names the user's account. Four conditions, each load-bearing:
-                --
-                --   EXISTS owned_account_attested — the user's own evidence pass
-                --   has run at all. Until it has, nothing here can distinguish
-                --   "not yours" from "not yet looked for", and the CTE above
-                --   explains why that distinction cannot be assumed.
-                --
-                --   o.store = @Store — the stored account reference is a Steam3
-                --   id. A GOG user id and an Epic ownership with no account at
-                --   all are not evidence about a Steam account, and letting them
-                --   fail the match would empty two thirds of the library.
-                --
-                --   EXISTS a non-seed row — evidence has to exist before absence
-                --   from it means anything. A game no reader has enumerated
-                --   accounts for stays VISIBLE; "not known" is not "not yours".
-                --   Migration 0015's seed rows are excluded from this test by
-                --   source, because a seed carries the single-winner ambiguity
-                --   this whole table replaces: it names whoever played the game
-                --   most, which on a shared game is routinely not the only owner.
-                --   Trusting one would hide the user's own game because a
-                --   housemate played it more — the exact failure the feature
-                --   forbids. The first sync after the migration supplies real
-                --   rows and the caveat retires itself.
-                --
-                --   NOT EXISTS a row for the user's account — the question
-                --   itself. Note it is asked over ALL rows, seeded ones
-                --   included: a seed naming the user IS proof they hold the game,
-                --   even though a seed naming somebody else proves nothing about
-                --   them. The asymmetry is not an oversight; evidence of
-                --   presence and evidence of absence are different claims and
-                --   this table can make only one of them cheaply.
-                --
-                -- Family Sharing needs no special case and gets none. The rows
-                -- record which ACCOUNT played, not which account bought, so a
-                -- title played under the user's login counts as theirs whoever
-                -- paid for the licence.
+                -- Selected-account positives survive, including legacy seeds and
+                -- Family Sharing play. Absence needs a complete inventory and
+                -- per-game evidence already known when that inventory was fetched.
+                -- Unknown games and other stores remain visible.
                 SELECT o.id AS ownership_id
                 FROM ownerships o
                 CROSS JOIN owned_account oc
                 WHERE o.store = @Store
-                  AND EXISTS (SELECT 1 FROM owned_account_attested)
                   AND EXISTS (
                       SELECT 1 FROM ownership_accounts e
-                      WHERE e.ownership_id = o.id AND e.source <> @LegacySeedSource)
+                      CROSS JOIN owned_account_attested inventory
+                      WHERE e.ownership_id = o.id AND e.source <> @LegacySeedSource
+                        AND julianday(e.first_seen_at) <= julianday(inventory.observed_at))
                   AND NOT EXISTS (
                       SELECT 1 FROM ownership_accounts m
                       WHERE m.ownership_id = o.id AND m.account_ref = oc.account_ref)
@@ -531,12 +473,14 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                        'Signals', json(lo.signals_json)))
                     FROM lifecycle_observations lo
                     WHERE lo.release_id = o.release_id
-                      AND (lo.source <> 'igdb' OR lo.source_id IS NULL
+                      AND lo.observed_at <= @AsOfUtc
+                      AND (lo.source <> 'igdb'
                            OR lo.source_id = CAST(w.igdb_id AS TEXT))
                       AND (lo.observed_at >= @LifecycleHistorySince
                            OR lo.id = (
                                SELECT prior.id FROM lifecycle_observations prior
                                WHERE prior.release_id = lo.release_id
+                                 AND prior.observed_at <= @AsOfUtc
                                  AND prior.source = lo.source AND prior.source_id IS lo.source_id
                                  AND json_extract(prior.signals_json, '$.StoreListed') = 1
                                ORDER BY prior.observed_at DESC, prior.id DESC LIMIT 1))) AS LifecycleJson,
@@ -578,11 +522,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                    -- LibraryBucketRules.Classify so it can run at two grains
                    -- (per row and per game) without two implementations.
                    mu.occurred_at                      AS MajorUpdateAt,
-                   -- The count beside the timestamp it was aggregated with, so
-                   -- the tile's words and its dot come off one row. Zero when
-                   -- the join found nothing, which is the same case as a null
-                   -- MajorUpdateAt: no qualifying push, no badge, no count.
-                   COALESCE(mu.update_count, 0)        AS UnreadUpdateCount,
+                   mu.push_times                       AS UnreadPushTimesJson,
                    -- The stored maturity EVIDENCE, verbatim, never a verdict.
                    -- Carried on the row so Consolidate can evaluate
                    -- MaturityRules.IsExplicit in C# over the same rows the
@@ -620,14 +560,15 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             ORDER BY o.id;
             """;
 
-    private static object Parameters(BucketThresholds thresholds, string? scopeOverride) => new
+    private static object Parameters(BucketThresholds thresholds, string? scopeOverride, DateTime asOfUtc) => new
         {
             thresholds.BouncedFloorMinutes,
             thresholds.RetiredFloorMinutes,
             thresholds.StaleWindowMonths,
             thresholds.UpdateCorrelationWindowDays,
             ScopeOverride = scopeOverride,
-            LifecycleHistorySince = DateTime.UtcNow.AddDays(-Math.Max(
+            AsOfUtc = asOfUtc,
+            LifecycleHistorySince = asOfUtc.AddDays(-Math.Max(
                 LifecycleTuning.Default.EvidenceFreshDays, LifecycleTuning.Default.PlayerHistoryDays)),
             ScopeKey = AccountScope.SettingKey,
             ScopeAll = AccountScope.All,
@@ -635,6 +576,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             OwnedAccountKey = SteamOwnedAccount.RefSettingKey,
             Store = ExternalIdProviders.Steam,
             LegacySeedSource = OwnershipAccountSources.LegacyOwnershipColumn,
+            InventorySource = OwnershipInventorySources.SteamOwnedGames,
             SameGameKind = IdentityLinkKinds.SameGame,
             VariantKind = IdentityLinkKinds.VariantOf,
         };
@@ -643,14 +585,19 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         BucketThresholds thresholds, string? scopeOverride, CancellationToken ct)
     {
         using var lease = _factory.Lease();
+        var asOfUtc = _clock.GetUtcNow().UtcDateTime;
         var rows = await lease.Connection.QueryAsync<BucketRow>(new CommandDefinition(
-            BucketSql, Parameters(thresholds, scopeOverride), transaction: lease.Transaction, cancellationToken: ct));
+            BucketSql, Parameters(thresholds, scopeOverride, asOfUtc), transaction: lease.Transaction, cancellationToken: ct));
 
-        return Consolidate(rows.AsList(), thresholds);
+        return Consolidate(rows.AsList(), thresholds, asOfUtc);
     }
 
-    public async Task<LibrarySnapshot> GetSnapshotAsync(BucketThresholds thresholds, CancellationToken ct = default)
+    public Task<LibrarySnapshot> GetSnapshotAsync(BucketThresholds thresholds, CancellationToken ct = default)
+        => GetSnapshotAsync(thresholds, _clock.GetUtcNow().UtcDateTime, ct);
+
+    public async Task<LibrarySnapshot> GetSnapshotAsync(BucketThresholds thresholds, DateTime asOfUtc, CancellationToken ct = default)
     {
+        if (asOfUtc.Kind != DateTimeKind.Utc) throw new ArgumentException("The library instant must be UTC.", nameof(asOfUtc));
         using var lease = _factory.Lease();
         using var snapshot = lease.Transaction is null ? lease.Connection.BeginTransaction(deferred: true) : null;
         using var results = await lease.Connection.QueryMultipleAsync(new CommandDefinition(
@@ -664,15 +611,21 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             SELECT {GameListRepository.Columns} FROM lists ORDER BY id;
             SELECT list_id AS ListId, release_id AS ReleaseId, position AS Position
             FROM list_items ORDER BY list_id, position, release_id;
-            """, Parameters(thresholds, null), transaction: lease.Transaction ?? snapshot, cancellationToken: ct));
-        var buckets = Consolidate((await results.ReadAsync<BucketRow>()).AsList(), thresholds);
+            SELECT {IdentityLinkRepository.LinkColumns} FROM identity_links l
+            WHERE l.retracted_at IS NULL ORDER BY l.id;
+            """, Parameters(thresholds, null, asOfUtc), transaction: lease.Transaction ?? snapshot, cancellationToken: ct));
+        var buckets = Consolidate((await results.ReadAsync<BucketRow>()).AsList(), thresholds, asOfUtc);
         var works = (await results.ReadAsync<Work>()).AsList();
         var ownerships = (await results.ReadAsync<Ownership>()).AsList();
         var releases = (await results.ReadAsync<Release>()).AsList();
         var ids = (await results.ReadAsync<ExternalId>()).AsList();
         var lists = (await results.ReadAsync<GameList>()).AsList();
         var items = (await results.ReadAsync<ListItem>()).AsList();
-        return new LibrarySnapshot(buckets, works, ownerships, releases, ids, lists, items);
+        var links = (await results.ReadAsync<Winnow.Core.Identity.IdentityLink>()).AsList();
+        return new LibrarySnapshot(buckets, works, ownerships, releases, ids, lists, items)
+        {
+            IdentityResolution = Winnow.Core.Identity.IdentityResolution.FromLiveLinks(links),
+        };
     }
 
     public async Task<IReadOnlyList<FacetTarget>> GetFacetTargetsAsync(CancellationToken ct = default)
@@ -690,6 +643,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             SELECT r.work_id  AS WorkId,
                    r.id       AS ReleaseId,
                    w.igdb_id  AS IgdbId,
+                   w.igdb_mapping_revision AS IgdbMappingRevision,
                    (SELECT e.provider_id
                     FROM external_ids e
                     WHERE e.release_id = r.id AND e.provider = 'steam'
@@ -729,7 +683,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
     /// un-hiding is one toggle away.)
     /// </remarks>
     private static IReadOnlyList<OwnershipBucket> Consolidate(
-        List<BucketRow> rows, BucketThresholds thresholds)
+        List<BucketRow> rows, BucketThresholds thresholds, DateTime asOfUtc)
     {
         var showNonGameEntries = thresholds.ShowNonGameEntries;
 
@@ -878,7 +832,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             survivors.Add(row);
         }
 
-        return Fold(survivors, absorbedByBase, thresholds);
+        return Fold(survivors, absorbedByBase, thresholds, asOfUtc);
     }
 
     /// <summary>
@@ -904,7 +858,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
     private static IReadOnlyList<OwnershipBucket> Fold(
         List<BucketRow> survivors,
         Dictionary<long, int> absorbedByBase,
-        BucketThresholds thresholds)
+        BucketThresholds thresholds, DateTime asOfUtc)
     {
         var members = new Dictionary<long, List<BucketRow>>();
         foreach (var row in survivors)
@@ -918,13 +872,19 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         }
 
         var games = new Dictionary<long, GameGrouping>(members.Count);
-        var now = DateTime.UtcNow;
+        var now = asOfUtc;
         var lifecycles = survivors.DistinctBy(r => r.ReleaseId).ToDictionary(r => r.ReleaseId,
             r => LifecycleClassifier.Classify(JsonSerializer.Deserialize(
                 r.LifecycleJson ?? "[]", LifecycleJsonContext.Default.LifecycleObservationArray) ?? [], now));
+        var pushTimes = survivors.DistinctBy(r => r.ReleaseId).ToDictionary(r => r.ReleaseId, r =>
+        {
+            using var document = JsonDocument.Parse(r.UnreadPushTimesJson ?? "[]");
+            return document.RootElement.EnumerateArray().Select(value => value.GetDateTime()).ToArray();
+        });
         foreach (var (resolvedWorkId, rows) in members)
         {
             DateTime? update = null;
+            var play = CoveragePlaytime.Across(rows);
 
             // The game's figure is the MAXIMUM across its releases, never the
             // sum. Two store copies of one game carry the same patches, so
@@ -938,10 +898,8 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                     update = at;
                 }
 
-                if (row.UnreadUpdateCount > unread)
-                {
-                    unread = row.UnreadUpdateCount;
-                }
+                unread = Math.Max(unread, pushTimes[row.ReleaseId].Count(at =>
+                    UpdateReading.SincePlay(at, play.LastPlayedAt, play.PlaytimeMinutes)));
             }
 
             // A healthy or unknown sibling is not made derelict by another store edition.
@@ -994,7 +952,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         public long PlaytimeMinutes { get; init; }
         public DateTime? LastPlayedAt { get; init; }
         public DateTime? MajorUpdateAt { get; init; }
-        public int UnreadUpdateCount { get; init; }
+        public string? UnreadPushTimesJson { get; init; }
         public string? Title { get; init; }
         public bool NameIsProvisional { get; init; }
         public int? FirstReleaseYear { get; init; }

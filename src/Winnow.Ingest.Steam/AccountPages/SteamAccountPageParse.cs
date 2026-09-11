@@ -134,6 +134,9 @@ public sealed record SteamAccountPageParseResult(
     SteamLicensesPageResult Licenses,
     SteamPurchaseHistoryPageResult History)
 {
+    /// <summary>The capture's account identity, carried without inference from HTML.</summary>
+    public string? SteamId { get; init; }
+
     /// <summary>Whether at least one page produced rows.</summary>
     public bool AnythingParsed =>
         Licenses.Outcome == SteamAccountPageParseOutcome.Parsed

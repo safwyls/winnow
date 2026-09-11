@@ -1,0 +1,40 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Winnow.App.ViewModels"
+             x:Class="Winnow.App.Views.IgdbSettingsView"
+             x:DataType="vm:IgdbSettingsViewModel"
+             AutomationProperties.Name="IGDB metadata">
+    <Grid RowDefinitions="*,Auto">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <Border Margin="24" Padding="24" Background="{StaticResource Surface}"
+                BorderBrush="{StaticResource Line}" BorderThickness="1"
+                CornerRadius="{StaticResource RadiusControl}">
+                    <StackPanel Spacing="12">
+                        <TextBlock Classes="para" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                                   Text="IGDB adds game details and artwork. Enter the client ID and secret from your Twitch developer application."/>
+                        <Button Classes="act" HorizontalAlignment="Left" Content="Get IGDB credentials"
+                                Command="{Binding OpenSetupCommand}"/>
+                        <TextBlock Classes="body" Text="Client ID"/>
+                        <TextBox Name="IgdbClientId" Text="{Binding ClientId, Mode=TwoWay}"
+                                 IsEnabled="{Binding !IsBusy}" AutomationProperties.Name="IGDB client ID"/>
+                        <TextBlock Classes="body" Text="Client secret"/>
+                        <TextBox Name="IgdbClientSecret" Text="{Binding ClientSecret, Mode=TwoWay}"
+                                 PasswordChar="●" IsEnabled="{Binding !IsBusy}"
+                                 AutomationProperties.Name="IGDB client secret" Watermark="Enter a secret to save or replace credentials"/>
+                        <TextBlock Classes="para" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                                   Text="The secret is stored securely on this device. Changes take effect immediately."/>
+                    </StackPanel>
+        </Border>
+    </ScrollViewer>
+        <StackPanel Grid.Row="1" Margin="24,12,24,16" Spacing="12">
+            <WrapPanel>
+                <Button Name="SaveCredentialsButton" Classes="act" Content="Save credentials" Margin="0,0,8,0"
+                        Command="{Binding SaveCommand}"/>
+                <Button Name="RemoveCredentialsButton" Classes="act" Content="Remove saved credentials"
+                        Command="{Binding RemoveCommand}"/>
+            </WrapPanel>
+            <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Status}"
+                       AutomationProperties.LiveSetting="Polite"/>
+        </StackPanel>
+    </Grid>
+</UserControl>
