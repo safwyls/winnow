@@ -425,12 +425,11 @@ public partial class GameDetailsView : UserControl
     }
 
     /// <summary>
-    /// Tries the embedded panel first; if the reader is unavailable or the
-    /// policy refuses the URL, falls back to the system browser silently.
-    /// The fallback is silent because both routes open the same page.
+    /// Uses the shared destination preference and surfaces any fallback in details.
     /// </summary>
     private async Task OpenAsync(GameLink link)
     {
+        if (DataContext is GameDetailsViewModel routed && await routed.OpenReadingLinkAsync(link)) return;
         if (DataContext is GameDetailsViewModel details && details.TryReadNotes(link))
         {
             return;

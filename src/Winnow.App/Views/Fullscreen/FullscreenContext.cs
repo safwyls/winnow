@@ -214,6 +214,12 @@ public sealed class FullscreenContext : IDisposable
         if (_disposed) return;
         try
         {
+            if (link.Kind == GameLinkKind.Link && Services?.GetService<IGameLinkRouter>() is { } router)
+            {
+                var result = await router.OpenAsync(link, Library.Details?.Title ?? link.Label);
+                if (!_disposed && result.Message is { } message) Notify(message);
+                return;
+            }
             var uri = new Uri(link.Uri);
             if (!link.IsLauncherProtocol && Services?.GetService<Winnow.Core.Reading.IPatchNotesReader>() is { IsAvailable: true } reader &&
                 reader.Open(uri, Library.Details?.Title ?? link.Label) == Winnow.Core.Reading.PatchNotesOutcome.Opened)

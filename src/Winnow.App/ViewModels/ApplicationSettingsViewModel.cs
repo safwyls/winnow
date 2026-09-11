@@ -19,18 +19,22 @@ public partial class ApplicationSettingsViewModel : ObservableObject
     private readonly IUriDispatcher? _uris;
     private bool _refreshingUpdate;
     private bool _loading;
+    private Task _linkWrite = Task.CompletedTask;
 
     public ApplicationSettingsViewModel(
         ISettingsRepository? settings = null,
         IStartupRegistration? startup = null,
         IApplicationUpdater? updater = null,
         IUriDispatcher? uris = null,
-        IgdbSettingsViewModel? igdb = null)
+        IgdbSettingsViewModel? igdb = null,
+        IStoreClientAvailability? storeClients = null)
     {
         _settings = settings;
         _startup = startup;
         _updater = updater;
         _uris = uris;
+        LinkDestinationOptions = storeClients?.IsAvailable(GameLink.SteamScheme) == true
+            ? ["In Winnow", "System browser", "Store client"] : ["In Winnow", "System browser"];
         Igdb = igdb ?? new IgdbSettingsViewModel();
         if (_updater is not null)
         {
@@ -51,9 +55,28 @@ public partial class ApplicationSettingsViewModel : ObservableObject
     public string ApplicationVersion => ApplicationBuildInfo.Current.Version;
     public string BuildCommit => ApplicationBuildInfo.Current.Commit;
     public string IntroMessage =>
-        "Manage startup and updates.";
+        "Manage startup, links and updates.";
     public string SegmentLabel => "APPLICATION";
-    public string SegmentTooltip => "Startup, metadata and updates";
+    public string SegmentTooltip => "Startup, links, metadata and updates";
+
+    public IReadOnlyList<string> LinkDestinationOptions { get; }
+    public string LinkDestinationNote => LinkDestinationOptions.Count == 3
+        ? "Winnow reads supported patch notes. Store client opens Steam store pages. Other pages use your browser."
+        : "Winnow reads supported patch notes. Other pages use your browser. Store client is available when Steam is installed on Windows.";
+    [ObservableProperty]
+    public partial int LinkDestinationIndex { get; set; }
+    partial void OnLinkDestinationIndexChanged(int value)
+    {
+        if (_loading || _settings is null || value < 0 || value >= LinkDestinationOptions.Count) return;
+        _linkWrite = SaveLinkDestinationAsync(_linkWrite, (LinkDestination)value);
+        PendingSave = _linkWrite;
+    }
+    private async Task SaveLinkDestinationAsync(Task previous, LinkDestination destination)
+    {
+        await previous;
+        try { await _settings!.SetAsync(GameLinkRouter.SettingKey, GameLinkRouter.Serialize(destination)); Problem = null; }
+        catch { Problem = "Couldn't save the link destination. Try again."; }
+    }
 
     public bool HasUpdater => _updater is not null;
     public string AutomaticUpdatesNote => "Check GitHub Releases and download updates in the background. Restart when you are ready.";
@@ -171,7 +194,8 @@ public partial class ApplicationSettingsViewModel : ObservableObject
             var fullscreen = _settings is null
                 ? null
                 : await _settings.GetAsync(StartInFullscreenSettingKey, ct);
-            return (minimize, close, startup, fullscreen);
+            var links = _settings is null ? null : await _settings.GetAsync(GameLinkRouter.SettingKey, ct);
+            return (minimize, close, startup, fullscreen, links);
         }, ct);
 
         _loading = true;
@@ -181,6 +205,8 @@ public partial class ApplicationSettingsViewModel : ObservableObject
             CloseToTray = Parse(stored.close);
             StartWithWindows = stored.startup;
             StartInFullscreen = Parse(stored.fullscreen);
+            var linkIndex = (int)GameLinkRouter.Parse(stored.links);
+            LinkDestinationIndex = linkIndex < LinkDestinationOptions.Count ? linkIndex : 1;
             Problem = null;
         }
         finally

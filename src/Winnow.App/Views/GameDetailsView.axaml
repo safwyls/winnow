@@ -547,6 +547,9 @@
                                        TextWrapping="Wrap"
                                        IsVisible="{Binding HasNoWayInSentence}"
                                        Text="{Binding NoWayInSentence}"/>
+                            <TextBlock Classes="body" FontSize="12" TextWrapping="Wrap"
+                                       Foreground="{StaticResource TextDim}" IsVisible="{Binding HasLinkStatus}"
+                                       Text="{Binding LinkStatus}" AutomationProperties.LiveSetting="Polite"/>
                         </StackPanel>
                         <Border Grid.Row="0"
                                 Name="HeaderCover"

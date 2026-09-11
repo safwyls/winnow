@@ -275,6 +275,14 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             Toggle("Minimize to tray", "Keep Winnow running when minimized.", () => app.MinimizeToTray, value => app.MinimizeToTray = value);
             Toggle("Close to tray", "Keep Winnow running when its window is closed.", () => app.CloseToTray, value => app.CloseToTray = value);
             if (app.IsStartupSupported) Toggle("Start with Windows", "Start Winnow when you sign in.", () => app.StartWithWindows, value => app.StartWithWindows = value);
+            Group("Links");
+            Adjust("Open links in", app.LinkDestinationNote, () => app.LinkDestinationOptions[app.LinkDestinationIndex],
+                direction => app.LinkDestinationIndex = (app.LinkDestinationIndex + direction + app.LinkDestinationOptions.Count) % app.LinkDestinationOptions.Count);
+            var problem = FullscreenUi.Text("", 28, "Amber");
+            problem.Bind(TextBlock.TextProperty, new Binding(nameof(app.Problem)) { Source = app });
+            problem.Bind(IsVisibleProperty, new Binding(nameof(app.HasProblem)) { Source = app });
+            AutomationProperties.SetLiveSetting(problem, AutomationLiveSetting.Polite);
+            rows.Children.Add(problem);
             Group("Tools");
             if (!Context.Shared.Setup.IsOpen)
                 Action("Run setup again", () => app.OpenSetupCommand.Execute(null));

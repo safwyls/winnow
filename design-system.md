@@ -1572,8 +1572,14 @@ identifiers are inside the Library tab's collapsed disclosure.
 ### 10.8 The patch notes panel
 
 A patched game's `Patch notes` button on an Activity update row, and the `All patch notes`
-row in More, open the notes in an embedded browser window rather than in the system browser.
-The host uses Winnow's WebView2 browser with a policy limited to reading patch notes.
+row in More, follow **Settings → Application → Links → Open links in** on desktop and
+fullscreen. The default, **In Winnow**, uses Winnow's WebView2 window for permitted patch
+notes. **System browser** opens web links externally. **Store client** is offered when a
+registered Steam executable exists on Windows; it opens Steam store pages in that client.
+Other web pages, unavailable readers and refused client routes fall back to the system
+browser, with a status line in desktop details or a fullscreen notice. Failed browser opens
+report failure. Play, Install, Uninstall and explicit client-management actions keep their
+native targets. The preference never broadens the reader's origin gate.
 
 **It is a separate top-level window, not an overlay.** The reason is the airspace problem the
 sign-in window already records: a hosted native browser HWND paints over Avalonia content

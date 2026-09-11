@@ -989,6 +989,8 @@ public static class Program
         // firing the URI, so a warm store client cannot start the game before
         // the watcher has been told whose it is.
         services.AddSingleton<IUriDispatcher, TopLevelUriDispatcher>();
+        services.AddSingleton<IStoreClientAvailability, StoreClientAvailability>();
+        services.AddSingleton<IGameLinkRouter, GameLinkRouter>();
         services.AddSingleton<GameLaunchService>();
 
         // §5.2's journal prompt, and §9 pitfall 7's constraint on it: OFF unless

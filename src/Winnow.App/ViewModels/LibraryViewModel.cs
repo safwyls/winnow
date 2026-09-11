@@ -128,6 +128,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// the same degradation every other optional seam on this type takes.
     /// </summary>
     private readonly Core.Reading.IPatchNotesReader? _patchNotes;
+    private readonly Services.IGameLinkRouter? _linkRouter;
 
     /// <summary>
     /// Manual IGDB assignment, handed down to the details modal. Optional,
@@ -237,7 +238,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         ArtworkPreferences? artworkPreferences = null,
         Services.IUpdateFlagService? updateFlags = null,
         IAccountAcquisitionReader? acquisitionReader = null,
-        IGroupHeaderPreferenceRepository? groupHeaders = null)
+        IGroupHeaderPreferenceRepository? groupHeaders = null,
+        Services.IGameLinkRouter? linkRouter = null)
     {
         _storefrontCache = storefrontCache;
         _workRatings = workRatings;
@@ -248,6 +250,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         _metadataEdits = metadataEdits;
         _imagePicker = imagePicker;
         _patchNotes = patchNotes;
+        _linkRouter = linkRouter;
         _identityLinks = identityLinks;
         _achievements = achievements;
         _hidden = hidden;
@@ -1382,7 +1385,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                 ownerships: snapshot.Ownerships, refetch: BuildRefetch(GameWorkIdFor(target)), lightbox: Lightbox,
                 journal: _sessions is null ? null : new GameJournalViewModel(snapshot.JournalEntries, Journal.PromptEnabled, _sessions),
                 addToList: new RelayCommand(() => BeginAddToListFor([Details?.Tile ?? target])),
-                sessions: snapshot.Sessions, backgroundUrl: snapshot.BackgroundUrl, artworkPreferences: _artworkPreferences);
+                sessions: snapshot.Sessions, backgroundUrl: snapshot.BackgroundUrl, artworkPreferences: _artworkPreferences,
+                linkRouter: _linkRouter);
             if (_disposed || ct.IsCancellationRequested || generation != Volatile.Read(ref _detailsGeneration)) { details.Dispose(); return; }
             if (libraryGeneration == _publishedGeneration) { Details = details; return; }
 
