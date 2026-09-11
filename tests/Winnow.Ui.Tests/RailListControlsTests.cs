@@ -9,6 +9,8 @@ using Avalonia.VisualTree;
 using Winnow.App.Design;
 using Winnow.App.ViewModels.Lists;
 using Winnow.App.Views;
+using Winnow.App.Views.Fullscreen;
+using Avalonia.Interactivity;
 using Winnow.Core.Domain;
 using Winnow.Core.Queries;
 using Xunit;
@@ -17,6 +19,50 @@ namespace Winnow.Ui.Tests;
 
 public sealed class RailListControlsTests
 {
+    [AvaloniaFact]
+    public async Task Statistics_sits_with_screens_and_stays_reachable_on_both_surfaces()
+    {
+        var shell = PreviewData.Shell;
+        shell.ShowLibraryCommand.Execute(null);
+        var window = new MainWindow { DataContext = shell, Width = 1200, Height = 900 };
+        try
+        {
+            window.Show(); Flush();
+            var buttons = window.GetVisualDescendants().OfType<Button>().ToArray();
+            var stats = buttons.Single(button => ReferenceEquals(button.Command, shell.ToggleAccountStatsCommand));
+            var feed = buttons.Single(button => ReferenceEquals(button.Command, shell.ShowFeedCommand));
+            var merges = buttons.Single(button => ReferenceEquals(button.Command, shell.ToggleMergeQueueCommand));
+            var all = buttons.Single(button => ReferenceEquals(button.CommandParameter, shell.Library.AllGames));
+            Assert.True(feed.Bounds.Top < merges.Bounds.Top);
+            Assert.True(merges.Bounds.Top < stats.Bounds.Top);
+            Assert.True(stats.Bounds.Top < all.Bounds.Top);
+            Assert.DoesNotContain(window.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "ACCOUNT");
+            Activate(window, stats);
+            if (shell.ToggleAccountStatsCommand.ExecutionTask is { } load) await load;
+            Flush();
+            Assert.True(shell.IsAccountStatsVisible);
+            Assert.Equal(shell.AccountStats.RailRow, AutomationProperties.GetName(stats));
+            Activate(window, all); Flush();
+            Assert.False(shell.IsAccountStatsVisible);
+        }
+        finally { window.Close(); shell.ShowLibraryCommand.Execute(null); }
+
+        using var context = new FullscreenContext(shell.Library, shell.Feed, shell);
+        using var page = new FullscreenActivityPage(context);
+        FullscreenPage? opened = null;
+        context.PageRequested += target => opened = target;
+        var tv = new Window { Width = 1920, Height = 1080, Content = page };
+        try
+        {
+            tv.Show(); await page.PendingRefresh; Flush();
+            var summary = page.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Library summary"));
+            Assert.True(summary.Focus(NavigationMethod.Tab));
+            tv.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+            Assert.IsType<FullscreenLibrarySummaryPage>(opened);
+        }
+        finally { tv.Close(); opened?.Dispose(); }
+    }
+
     [AvaloniaFact]
     public void Context_menu_offers_removal_only_for_a_static_list_selection()
     {

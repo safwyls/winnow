@@ -1013,6 +1013,21 @@
                         </Grid>
                     </Button>
 
+                    <Button AutomationProperties.Name="{Binding AccountStats.RailRow}" Classes="bucket"
+                            Classes.selected="{Binding IsAccountStatsVisible}"
+                            Command="{Binding ToggleAccountStatsCommand}"
+                            ToolTip.Tip="{Binding AccountStats.RailTooltip}">
+                        <Grid ColumnDefinitions="2,16,*,16">
+                            <Border Grid.Column="0"
+                                    Background="{StaticResource Volt}"
+                                    IsVisible="{Binding IsAccountStatsVisible}"/>
+                            <TextBlock Grid.Column="2"
+                                       Classes="display-s"
+                                       Text="{Binding AccountStats.RailRow}"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+
                     <Button AutomationProperties.Name="{Binding Library.AllGames.AutomationName}" Classes="bucket"
                             Classes.selected="{Binding Library.AllGames.IsSelected}"
                             Command="{Binding SelectBucketCommand}"
@@ -1094,43 +1109,6 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-
-                    <!-- ── ACCOUNT ───────────────────────────────────────
-                         STATS is a reading of the user's Steam account, not a
-                         cut of their library, so it sits BELOW the buckets:
-                         everything under the divider above is a subset of ALL
-                         GAMES, and this is not a subset of anything. It is not
-                         behind the gear either; the import on the Steam card
-                         there is the act of importing the pages, and this is
-                         the content those pages produced. Content before
-                         configuration, so it leads the rail's non-cut
-                         sections. -->
-                    <Border Margin="16,22,16,8"
-                            Padding="0,14,0,0"
-                            BorderBrush="{StaticResource Line}"
-                            BorderThickness="0,1,0,0">
-                        <TextBlock AutomationProperties.HeadingLevel="2" Classes="label"
-                                   FontSize="10"
-                                   LetterSpacing="1.4"
-                                   Text="ACCOUNT"/>
-                    </Border>
-                    <Button AutomationProperties.Name="{Binding AccountStats.RailRow}" Classes="bucket"
-                            Classes.selected="{Binding IsAccountStatsVisible}"
-                            Command="{Binding ToggleAccountStatsCommand}"
-                            ToolTip.Tip="{Binding AccountStats.RailTooltip}">
-                        <Grid ColumnDefinitions="2,16,*,16">
-                            <Border Grid.Column="0"
-                                    Background="{StaticResource Volt}"
-                                    IsVisible="{Binding IsAccountStatsVisible}"/>
-                            <TextBlock Grid.Column="2"
-                                       Classes="display-s"
-                                       Text="{Binding AccountStats.RailRow}"
-                                       VerticalAlignment="Center"/>
-                        </Grid>
-                    </Button>
-
-                    <!-- The MERGES row sits with FEED above the rule: a
-                         screen, not a cut of the library (docs/merge_queue_design). -->
 
                     <!-- ══ LISTS / LIVE LISTS ═══════════════════════════════
                          Two sections distinguished by heading, not by a dot

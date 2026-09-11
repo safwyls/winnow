@@ -1994,11 +1994,12 @@ or live list."* The footer keeps **New list** on the left and the settings cog o
 New list pairs its label with a vector list-plus icon and offers **Static list** (choose games yourself) and **Live list** (save the current
 library filters, with membership updating automatically), with a tooltip explaining each.
 
-**The desktop rail distinguishes screens from library subsets.** FEED and MERGES open screens;
-ALL GAMES opens the whole library above the divider. Buckets below it narrow the library.
-ACCOUNT contains the statistics destination, followed by LISTS and LIVE LISTS. Creation and
-configuration actions sit in the footer. Keep these roles clear when changing the grouping;
-fullscreen uses its own navigation hierarchy.
+**The desktop rail distinguishes screens from library subsets.** FEED, MERGES and STEAM STATS
+open screens in that order, followed by ALL GAMES above the divider. Buckets below it narrow
+the library, followed by LISTS and LIVE LISTS. Statistics sits with the other screens, so it
+needs no single-entry ACCOUNT heading. Creation and configuration actions sit in the footer.
+Fullscreen retains Activity → Library summary for statistics and its own root destinations;
+the desktop rail order does not govern controller navigation.
 
 ### 12.2 A list composes, a live list restores
 
