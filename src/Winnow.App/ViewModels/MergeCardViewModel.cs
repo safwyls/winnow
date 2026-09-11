@@ -241,7 +241,7 @@ public partial class MergeCardViewModel : ObservableObject
     public long HeaderGroupWorkId { get; private set; }
     public IReadOnlyList<GroupHeaderOption> HeaderStoreOptions { get; private set; } = [];
     public bool CanChooseHeaderStore => IsResolved && HeaderStoreOptions.Count > 0;
-    public string HeaderStoreAutomationName => "Header store for " + HeaderTitle;
+    public string HeaderStoreAutomationName => string.Format(MergeCopy.GroupHeaderAutomationFormat, HeaderTitle);
 
     [ObservableProperty]
     public partial GroupHeaderOption? SelectedHeaderStore { get; set; }

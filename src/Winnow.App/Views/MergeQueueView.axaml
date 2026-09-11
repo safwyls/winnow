@@ -532,7 +532,7 @@
                                                                   IsVisible="{Binding CanChooseHeaderStore}"
                                                                   IsEnabled="{Binding !IsSavingHeader}"
                                                                   AutomationProperties.Name="{Binding HeaderStoreAutomationName}"
-                                                                  ToolTip.Tip="Choose the store supplying this group's header"
+                                                                  ToolTip.Tip="{x:Static vm:MergeCopy.GroupHeaderTooltip}"
                                                                   ItemsSource="{Binding HeaderStoreOptions}"
                                                                   SelectedItem="{Binding SelectedHeaderStore, Mode=OneWay}"
                                                                   SelectionChanged="OnHeaderStoreChanged">

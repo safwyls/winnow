@@ -878,7 +878,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         try
         {
             if (!await _groupHeaders.SetAsync(card.HeaderGroupWorkId, option.Store, ct))
-                card.HeaderStoreProblem = "This group changed. Reopen Merges to choose its header.";
+                card.HeaderStoreProblem = MergeCopy.GroupHeaderChanged;
             else
             {
                 await RefreshGroupHeadersAsync(ct);
@@ -888,7 +888,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception)
         {
-            card.HeaderStoreProblem = "Couldn't save the header store. Try again.";
+            card.HeaderStoreProblem = MergeCopy.GroupHeaderSaveFailed;
         }
         finally { card.IsSavingHeader = false; card.RestoreHeaderStoreSelection(); }
     }
@@ -916,10 +916,10 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
                 .Where(row => resolution.Resolve(row.WorkId) == root).ToArray();
             var preferred = preferences.GetValueOrDefault(root);
             var stores = available.Select(row => row.Store).Distinct().Order(StringComparer.Ordinal).ToArray();
-            List<GroupHeaderOption> options = [new(null, "Automatic")];
+            List<GroupHeaderOption> options = [new(null, MergeCopy.GroupHeaderAutomatic)];
             options.AddRange(stores.Select(store => new GroupHeaderOption(store, StoreNaming.Label(store))));
             if (preferred is not null && !stores.Contains(preferred))
-                options.Add(new(preferred, StoreNaming.Label(preferred) + " (unavailable)"));
+                options.Add(new(preferred, string.Format(MergeCopy.UnavailableStoreFormat, StoreNaming.Label(preferred))));
             var selectedWork = GroupHeaderSelection.SelectWork(root, preferred, available);
             card.ConfigureHeaderStore(root, options, preferred, works.GetValueOrDefault(selectedWork)?.Name);
         }

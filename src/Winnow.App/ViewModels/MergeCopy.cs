@@ -14,6 +14,12 @@ public static class MergeCopy
         "Choose headers from this platform where available, across all pending proposals. You can still change individual headers. None keeps the current choices.";
     public const string PlatformSaveFailedTitle = "Couldn't save the preferred platform.";
     public const string PlatformSaveFailedNote = "Try choosing the platform again.";
+    public const string GroupHeaderTooltip = "Choose the store supplying this group's header";
+    public const string GroupHeaderAutomationFormat = "Header store for {0}";
+    public const string GroupHeaderChanged = "This group changed. Reopen Merges to choose its header.";
+    public const string GroupHeaderSaveFailed = "Couldn't save the header store. Try again.";
+    public const string GroupHeaderAutomatic = "Automatic";
+    public const string UnavailableStoreFormat = "{0} (unavailable)";
 
     // ══ The app's one separator ═══════════════════════════════════════════
 
