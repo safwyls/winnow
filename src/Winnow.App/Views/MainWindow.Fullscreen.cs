@@ -49,7 +49,7 @@ public partial class MainWindow
         if (!_fullscreenReady) return;
         var fullscreen = IsFullscreen;
         if (fullscreen != _presentingTv && DataContext is MainWindowViewModel shared)
-            shared.ApplicationSettings.Igdb.ClientSecret = "";
+            shared.EnrichmentSettings.ClearSecrets();
         DesktopHost.IsVisible = !fullscreen;
         TvHost.IsVisible = fullscreen;
         UpdateSetupPresentation();

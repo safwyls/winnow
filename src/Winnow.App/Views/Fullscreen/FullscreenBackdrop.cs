@@ -31,6 +31,7 @@ public sealed class FullscreenBackdrop : Panel
     private readonly Stopwatch _fadeTime = new();
     private ICoverLease? _pending;
     private readonly FullscreenContext _context;
+    private readonly ArtworkPreferences? _artworkPreferences;
     private GameTileViewModel _tile;
     private readonly Image _image;
     private readonly ContentControl _fallback = new();
@@ -48,6 +49,7 @@ public sealed class FullscreenBackdrop : Panel
     {
         IsHitTestVisible = false; ClipToBounds = true;
         _context = context;
+        _artworkPreferences = context.Services?.GetService<ArtworkPreferences>();
         _cinematic = cinematic;
         _tile = tile;
         _image = new Image { Stretch = Stretch.UniformToFill };
@@ -112,6 +114,7 @@ public sealed class FullscreenBackdrop : Panel
         AttachedToVisualTree += (_, _) =>
         {
             _attached = true;
+            if (_artworkPreferences is not null) _artworkPreferences.Changed += ArtworkPreferencesChanged;
             context.Shared.Appearance.Service.Applied += RefreshTint;
             RefreshTint(this, EventArgs.Empty);
             BeginSelection();
@@ -132,6 +135,7 @@ public sealed class FullscreenBackdrop : Panel
         };
         DetachedFromVisualTree += (_, _) =>
         {
+            if (_artworkPreferences is not null) _artworkPreferences.Changed -= ArtworkPreferencesChanged;
             context.Shared.Appearance.Service.Applied -= RefreshTint;
             _attached = false;
             FinishFade();
@@ -166,6 +170,11 @@ public sealed class FullscreenBackdrop : Panel
         _ = ResolveAsync(_tile, generation);
     }
 
+    private void ArtworkPreferencesChanged() => Dispatcher.UIThread.Post(() =>
+    {
+        if (_attached) BeginSelection();
+    });
+
     private async Task ResolveAsync(GameTileViewModel tile, int generation)
     {
         string? backgroundUrl = null;
@@ -173,16 +182,17 @@ public sealed class FullscreenBackdrop : Panel
         try
         {
             if (_context.Services?.GetService<IWorkRepository>() is { } works)
-                backgroundUrl = (await works.GetAsync(tile.Primary.WorkId))?.BackgroundUrl;
+                backgroundUrl = (await works.GetAsync(tile.Game.ResolvedWorkId))?.BackgroundUrl;
             if (_context.Services?.GetService<IWorkImageRepository>() is { } images)
-                rows = await images.GetForWorkAsync(tile.Primary.WorkId);
+                rows = await BackdropImages.LoadAsync(images, tile.Game.ResolvedWorkId, tile.Entries.Select(entry => entry.WorkId));
         }
         catch (Exception) { /* Missing metadata uses available art, then the selected game's cover. */ }
         if (!_attached || generation != _generation) return;
         _rows = rows;
         _backgroundUrl = backgroundUrl;
         _selectionRatio = Bounds.Height > 0 ? Bounds.Width / Bounds.Height : 16d / 9;
-        _candidates = BackdropSelection.Candidates(backgroundUrl, rows, _selectionRatio, tile.SteamBackdropAppIds);
+        _candidates = BackdropSelection.Candidates(backgroundUrl, rows, _selectionRatio,
+            tile.SteamBackdropAppIds, _artworkPreferences?.SourceOrder);
         _candidateIndex = 0;
         NextCandidate();
     }
@@ -265,7 +275,8 @@ public sealed class FullscreenBackdrop : Panel
         if (_selectionRatio > 0 && Math.Abs(ratio - _selectionRatio) > .0001)
         {
             _selectionRatio = ratio;
-            var candidates = BackdropSelection.Candidates(_backgroundUrl, _rows, ratio, _tile.SteamBackdropAppIds);
+            var candidates = BackdropSelection.Candidates(_backgroundUrl, _rows, ratio,
+                _tile.SteamBackdropAppIds, _artworkPreferences?.SourceOrder);
             if (!_candidates.SequenceEqual(candidates))
             {
                 _candidates = candidates;
@@ -278,7 +289,7 @@ public sealed class FullscreenBackdrop : Panel
         var scale = Math.Abs(this.TransformToVisual(top)?.M11 ?? 1) * top.RenderScaling;
         if (_key is not { } key || _context.Services?.GetService<ICoverLeases>() is not { } leases) return;
         var width = CoverImaging.SnapWidth(FitsWholeHero(key)
-            ? Math.Min(Bounds.Width, Bounds.Height * BackdropSelection.SteamHeroRatio) * scale
+            ? Math.Min(Bounds.Width, Bounds.Height * BackdropSelection.AspectRatio(key, _rows)) * scale
             : BackdropSelection.DecodeWidth(key, _rows, Bounds.Width * scale, Bounds.Height * scale));
         if (width <= _requestedWidth) return;
         _requestedWidth = width;
@@ -331,5 +342,5 @@ public sealed class FullscreenBackdrop : Panel
     private bool IsUltrawide => Bounds.Height > 0 && Bounds.Width / Bounds.Height >= 21d / 9 - .0001;
 
     private bool FitsWholeHero(CoverKey? key) =>
-        IsUltrawide && key is { } selected && BackdropSelection.IsSteamHero(selected);
+        IsUltrawide && key is { } selected && BackdropSelection.IsHero(selected);
 }

@@ -2023,6 +2023,11 @@
                                         ToolTip.Tip="Theme and transparency">
                                     <TextBlock Classes="display-s" Text="APPEARANCE"/>
                                 </Button>
+                                <Button AutomationProperties.Name="{Binding EnrichmentSettings.SegmentLabel}" Classes="seg tab"
+                                        Classes.on="{Binding IsEnrichmentSettingsVisible}" Command="{Binding ShowEnrichmentSettingsCommand}"
+                                        ToolTip.Tip="{Binding EnrichmentSettings.SegmentTooltip}">
+                                    <TextBlock Classes="display-s" Text="{Binding EnrichmentSettings.SegmentLabel}"/>
+                                </Button>
                                 <Button AutomationProperties.Name="{Binding ApplicationSettings.SegmentLabel}"
                                         Classes="seg tab"
                                         Classes.on="{Binding IsApplicationSettingsVisible}"
@@ -2062,6 +2067,13 @@
                         <views:LazyPane.PaneTemplate>
                             <DataTemplate DataType="vm:MainWindowViewModel">
                                 <views:AppearanceView DataContext="{Binding Appearance}"/>
+                            </DataTemplate>
+                        </views:LazyPane.PaneTemplate>
+                    </views:LazyPane>
+                    <views:LazyPane IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsEnrichmentSettingsVisible}">
+                        <views:LazyPane.PaneTemplate>
+                            <DataTemplate DataType="vm:MainWindowViewModel">
+                                <views:EnrichmentSettingsView DataContext="{Binding EnrichmentSettings}"/>
                             </DataTemplate>
                         </views:LazyPane.PaneTemplate>
                     </views:LazyPane>

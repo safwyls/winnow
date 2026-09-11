@@ -28,7 +28,8 @@ public sealed class ApplicationUpdaterUiTests
         try
         {
             television.Show(); window.Show();
-            for (var i = 0; i < 4; i++) page.Handle(GamepadButtons.PageNext);
+            FindButton(page, "Application").Focus();
+            page.Handle(GamepadButtons.Accept);
             Dispatcher.UIThread.RunJobs();
             var beta = FindButton(page, "Include beta releases");
             Assert.Equal("Off", AutomationProperties.GetItemStatus(beta));
@@ -60,7 +61,8 @@ public sealed class ApplicationUpdaterUiTests
         try
         {
             television.Show(); window.Show();
-            for (var i = 0; i < 4; i++) page.Handle(GamepadButtons.PageNext);
+            FindButton(page, "Application").Focus();
+            page.Handle(GamepadButtons.Accept);
             Dispatcher.UIThread.RunJobs();
             var beta = FindButton(page, "Include beta releases"); beta.Focus();
             await Task.Run(() => updater.Publish(updater.Snapshot with
@@ -95,7 +97,8 @@ public sealed class ApplicationUpdaterUiTests
         try
         {
             television.Show();
-            for (var i = 0; i < 4; i++) page.Handle(GamepadButtons.PageNext);
+            FindButton(page, "Application").Focus();
+            page.Handle(GamepadButtons.Accept);
             Dispatcher.UIThread.RunJobs();
             foreach (var label in new[] { "Download update", "Cancel download", "Restart to update", "Release notes", "Download in browser" })
                 Assert.False(FindButton(page, label).IsVisible);
@@ -144,7 +147,8 @@ public sealed class ApplicationUpdaterUiTests
         try
         {
             television.Show();
-            for (var i = 0; i < 4; i++) page.Handle(GamepadButtons.PageNext);
+            FindButton(page, "Application").Focus();
+            page.Handle(GamepadButtons.Accept);
             Dispatcher.UIThread.RunJobs();
             FindButton(page, "Check for updates").Focus();
             page.Handle(GamepadButtons.Down);

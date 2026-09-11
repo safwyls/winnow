@@ -50,6 +50,7 @@ public static class CoverCacheServiceCollectionExtensions
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ICoverSource, UserArtCoverSource>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ICoverSource, SteamCapsuleSource>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ICoverSource, SteamHeroSource>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<ICoverSource, SteamGridDbHeroSource>());
         services.TryAddSingleton<CoverDiskCache>();
         services.TryAddSingleton<CoverPipeline>();
         // Constructed by hand so the cache keeps its own default for how a

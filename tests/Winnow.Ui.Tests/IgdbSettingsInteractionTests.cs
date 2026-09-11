@@ -18,7 +18,7 @@ public sealed class IgdbSettingsInteractionTests
     public async Task Desktop_binds_masked_input_and_reports_missing_fields_without_exposing_secret()
     {
         var model = new ApplicationSettingsViewModel(igdb: new IgdbSettingsViewModel(new SettingsService()));
-        var view = new ApplicationSettingsView { DataContext = model };
+        var view = new EnrichmentSettingsView { DataContext = new EnrichmentSettingsViewModel(model.Igdb, model.SteamGridDb) };
         var window = new Window { Width = 1200, Height = 688, Content = view };
         window.Show();
         try

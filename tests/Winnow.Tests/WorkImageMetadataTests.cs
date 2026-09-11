@@ -45,6 +45,28 @@ public sealed class WorkImageMetadataTests : IDisposable
     }
 
     [Fact]
+    public async Task SteamGridDb_url_round_trips_without_changing_igdb_metadata()
+    {
+        var workId = await new WorkRepository(_db.Factory).InsertAsync(new Work { Name = "Hero game" });
+        var repository = new WorkImageRepository(_db.Factory);
+        var observed = new WorkImages
+        {
+            WorkId = workId, Source = ImageSources.SteamGridDb, Kind = ImageKinds.Artwork,
+            ImageIds = "50584", ObservedAt = DateTime.UtcNow,
+            Images = [new() { ImageId = "50584", Width = 1920, Height = 620,
+                Url = "https://cdn2.steamgriddb.com/hero/61ba87bf4177f576150389d84d14bb01.png" }],
+        };
+        await repository.UpsertAsync(observed);
+        await repository.UpsertAsync(observed with
+        {
+            Source = ImageSources.Igdb, ImageIds = "ar1", Images = [new() { ImageId = "ar1" }],
+        });
+        var rows = await repository.GetForWorkAsync(workId);
+        Assert.Equal(observed.Images, Assert.Single(rows, row => row.Source == ImageSources.SteamGridDb).Images);
+        Assert.Null(Assert.Single(Assert.Single(rows, row => row.Source == ImageSources.Igdb).Images).Url);
+    }
+
+    [Fact]
     public async Task Migration_preserves_existing_ids_and_supplies_empty_metadata()
     {
         var workId = await new WorkRepository(_db.Factory).InsertAsync(new Work { Name = "Legacy artwork" });

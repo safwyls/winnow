@@ -642,9 +642,9 @@ Game artwork fades in further to the right to keep the left content area quiet: 
 backdrops reveal between 30% and 85% of the canvas width, and the details veil stays dense
 through 58% before opening toward the right edge.
 
-Below 21:9, fullscreen Steam library heroes fill the canvas with a centered crop and the
+Below 21:9, fullscreen Steam and SteamGridDB heroes fill the canvas with a centered crop and the
 canvas-wide vertical fade. Request enough source pixels to fill the crop's height.
-At 21:9 and wider, Steam library heroes retain their whole composition. Fit them across the
+At 21:9 and wider, these heroes retain their whole composition. Fit them across the
 canvas width, preserve their aspect ratio and align them at the top; exceptionally wide
 canvases fit the whole image within the height and center it horizontally. Fade the final
 15% of the image height into Ground, with Ground filling the canvas below. Each crossfade
@@ -673,9 +673,10 @@ and returning restores the collection and selected game.
 
 **Game details** uses a landscape backdrop across the full canvas, including the header.
 A dark left and top veil protects the title and status text; a vertical fade settles into
-Ground before the overview content. Prefer the saved game background, then a high-resolution
-Steam library hero, then suitable IGDB landscape artwork or screenshots, then a standard
-Steam hero, then a quiet cover fallback. Desktop and fullscreen
+Ground before the overview content. Prefer the saved game background, then the automatic
+source order from Metadata & artwork settings. The default is high-resolution Steam heroes,
+SteamGridDB, then suitable IGDB landscape artwork or screenshots. Standard Steam heroes and
+a quiet cover remain final fallbacks. Desktop and fullscreen
 share this selection policy. Artwork has its own display-sized lease
 and high-resolution cache entry; its source quality remains the upper limit on sharpness.
 The header shows B and the previous page name plus controller status and the clock. The
@@ -2620,8 +2621,8 @@ Two, and neither is fatal:
 
 ## 16. The settings surface
 
-The gear at the foot of the rail opens `SETTINGS`, which holds four screens in this order:
-**PLATFORMS**, **LIBRARY**, **APPEARANCE**, **APPLICATION**. Each is drawn the same way: a
+The gear at the foot of the rail opens `SETTINGS`, which holds five screens in this order:
+**PLATFORMS**, **LIBRARY**, **APPEARANCE**, **METADATA & ARTWORK**, **APPLICATION**. Each is drawn the same way: a
 48px header lining up with the command bar and the filter panel's header, its own scroll,
 cards on `PaneGround`.
 
@@ -2652,18 +2653,30 @@ switch the current view. Windows sign-in and explicit background launches retain
 behavior. Exiting fullscreen restores the desktop, and reopening a hidden window does not
 reapply the startup preference.
 
-The **IGDB METADATA** card offers **Get IGDB credentials**, labelled **Client ID** and
+METADATA & ARTWORK groups credentials and automatic backdrop preferences. Its **IGDB METADATA**
+card offers **Get IGDB credentials**, labelled **Client ID** and
 **Client secret** fields, **Save credentials** and **Remove saved credentials**. The secret
 is masked, is cleared after saving or leaving the form, and is never loaded back into the
 field. A polite status line reports saved configuration and failures without claiming that
 Twitch has validated the credentials. Copy explains secure local storage and immediate
 activation, with a metadata refresh queued in the background. Removing saved credentials
 preserves any environment or local configuration fallback.
-Fullscreen Application opens a dedicated **IGDB metadata** page with the same model and
+Fullscreen Metadata & artwork opens a dedicated **IGDB metadata** page with the same model and
 actions, large fields and explicit controller focus rows. A opens the existing on-screen
 keyboard for either field; secret entry retains its masking.
 
-Its **ABOUT WINNOW** card shows **Version** and **Source commit** as selectable Data-font
+The **STEAMGRIDDB ARTWORK** card accepts a masked API key and offers the provider's key page,
+save and remove actions. Saving clears the field and queues background artwork enrichment;
+leaving the editor also clears it. Status distinguishes saved credentials, configuration
+fallback and unavailable secure storage, without claiming that the provider has validated a key.
+Fullscreen provides the same actions with controller text entry.
+
+The backdrop preference list orders **High-resolution Steam heroes**, **SteamGridDB** and
+**IGDB** with accessible move-up and move-down actions. Changes save immediately and apply to
+both presentations. Explain that saved backgrounds always come first and standard Steam
+heroes and covers remain fallbacks. This order governs artwork, not unrelated metadata fields.
+
+Application's **ABOUT WINNOW** card shows **Version** and **Source commit** as selectable Data-font
 text. The version retains prerelease labels; builds without source metadata say `Unavailable`
 for the commit.
 

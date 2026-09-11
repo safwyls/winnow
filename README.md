@@ -145,13 +145,13 @@ available as an alternative.
 | Cover cache | `%LOCALAPPDATA%\Winnow\covers\` |
 | Your themes | `%LOCALAPPDATA%\Winnow\themes\` |
 
-Nothing leaves the machine except read-only requests to IGDB, Steam's public endpoints,
+Nothing leaves the machine except read-only requests to IGDB, SteamGridDB, Steam's public endpoints,
 `gamesdb.gog.com` and `api.steamcmd.net`. **Winnow reads launcher files and does not write to
 them.**
 
 Winnow encrypts stored credentials with Windows DPAPI (`CurrentUser` scope): Epic and Steam
 sign-in sessions, the Steam Web API key, the optional Epic OAuth client secret, and the IGDB
-client secret and cached access token. Legacy plaintext credentials migrate on first read;
+client secret and cached access token, plus the SteamGridDB API key. Legacy plaintext credentials migrate on first read;
 cleanup retries if an earlier migration was interrupted. A system that cannot encrypt refuses
 to persist new credentials. It leaves legacy user-entered secrets untouched but unused, and
 clears legacy machine-minted tokens. This migration updates settings rows; it does not scrub
@@ -164,7 +164,7 @@ remain readable.
 ### Optional: IGDB
 
 Winnow works without it; a keyless Steam endpoint covers most titles. IGDB adds years,
-publishers and genres. Open **Settings → Application → IGDB metadata** on desktop or
+publishers and genres. Open **Settings → Metadata & artwork → IGDB metadata** on desktop or
 fullscreen. **Get IGDB credentials** opens the [Twitch developer console](https://dev.twitch.tv/console/apps).
 Register a Confidential application and generate a client secret; see
 [IGDB's setup instructions](https://api-docs.igdb.com/#account-creation) for the registration steps.
@@ -186,6 +186,19 @@ setx Igdb__ClientSecret "your-client-secret"
 
 **Then open a new terminal** — environment variables are read at shell startup. Or use
 `src/Winnow.App/appsettings.local.json` (gitignored).
+
+### Optional: SteamGridDB
+
+Open **Settings → Metadata & artwork** to add your own
+[SteamGridDB API key](https://www.steamgriddb.com/profile/preferences/api).
+Saving protects the key on supported devices and queues background hero-artwork enrichment.
+SteamGridDB matches known Steam app IDs, including Steam copies linked to other stores.
+Games without that ID continue using the existing artwork sources. Cached artwork remains
+available offline; Winnow also accepts `SteamGridDb__ApiKey` as an environment variable.
+
+The same settings tab lets you reorder **High-resolution Steam heroes**, **SteamGridDB**
+and **IGDB** for backdrops. Saved per-game backgrounds always take priority. The order takes
+effect on desktop and fullscreen without restarting; it does not change metadata field sources.
 
 ### Writing a theme
 
@@ -225,7 +238,7 @@ Winnow.Core           Domain records, repository interfaces, ingest contracts.
 Winnow.Data           SQLite, Dapper, DbUp migrations, and the bucket queries.
 Winnow.Ingest.*       Steam / Epic / GOG readers over local launcher files.
 Winnow.Resolve        Candidates to Work and Release, with a confirmation queue.
-Winnow.Enrich.*       IGDB, Steam store, steamcmd, GamesDB.
+Winnow.Enrich.*       IGDB, SteamGridDB, Steam store, steamcmd, GamesDB.
 Winnow.Covers[.Igdb]  Cover art pipeline and disk cache.
 Winnow.Monitor        Process watching and session recording.
 Winnow.Recommend      The scoring model and the shelves.

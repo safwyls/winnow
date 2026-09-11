@@ -48,7 +48,7 @@ public sealed class FirstRunSetupDesktopTests
             {
                 var application = fixture.View.GetVisualDescendants().OfType<ApplicationSettingsView>().Single();
                 Assert.False(application.FindControl<Border>("SetupCard")!.IsVisible);
-                Assert.False(application.FindControl<Border>("IgdbCard")!.IsVisible);
+                Assert.Null(application.FindControl<Border>("IgdbCard"));
             }
             if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
             {

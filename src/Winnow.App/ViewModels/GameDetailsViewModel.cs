@@ -33,6 +33,10 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     private readonly LeasedBackdrop _backdrop;
     private readonly IReadOnlyList<WorkImages>? _images;
     private readonly string? _backgroundUrl;
+    private readonly ArtworkPreferences? _artworkPreferences;
+    private double _backdropWidth;
+    private double _backdropHeight;
+    private bool _disposed;
 
     /// <summary>Update flag service. Null hides the mark-as-read control.</summary>
     private readonly IUpdateFlagService? _flags;
@@ -82,7 +86,8 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         GameJournalViewModel? journal = null,
         System.Windows.Input.ICommand? addToList = null,
         IReadOnlyList<Session>? sessions = null,
-        string? backgroundUrl = null)
+        string? backgroundUrl = null,
+        ArtworkPreferences? artworkPreferences = null)
     {
         Reception = GameReceptionViewModel.From(ratings);
         Screenshots = GameScreenshotsViewModel.From(images, covers, lightbox);
@@ -102,6 +107,8 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         _images = images;
         _backgroundUrl = backgroundUrl;
         _backdrop = new LeasedBackdrop(covers, art => Backdrop = art?.Vivid);
+        _artworkPreferences = artworkPreferences;
+        if (_artworkPreferences is not null) _artworkPreferences.Changed += ArtworkPreferencesChanged;
         BucketLabel = bucketLabel;
         Updates = updates;
         _nowUtc = nowUtc;
@@ -809,11 +816,19 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
 
     public void RequestBackdrop(double widthPixels, double heightPixels)
     {
-        if (widthPixels <= 0 || heightPixels <= 0) return;
-        var keys = BackdropSelection.Candidates(_backgroundUrl, _images, widthPixels / heightPixels, Tile.SteamBackdropAppIds).ToList();
+        if (_disposed || widthPixels <= 0 || heightPixels <= 0) return;
+        _backdropWidth = widthPixels;
+        _backdropHeight = heightPixels;
+        var keys = BackdropSelection.Candidates(_backgroundUrl, _images, widthPixels / heightPixels,
+            Tile.SteamBackdropAppIds, _artworkPreferences?.SourceOrder).ToList();
         if (Tile.CoverKey is { } coverKey && !keys.Contains(coverKey)) keys.Add(coverKey);
         _backdrop.Request(keys, key => BackdropSelection.DecodeWidth(key, _images, widthPixels, heightPixels));
     }
+
+    private void ArtworkPreferencesChanged() => Dispatcher.UIThread.Post(() =>
+    {
+        if (!_disposed) RequestBackdrop(_backdropWidth, _backdropHeight);
+    });
 
     /// <summary>The tile's own placeholder gradient, so the modal looks like the tile it came from.</summary>
     public IBrush PlaceholderBrush => Tile.VividBrush;
@@ -829,6 +844,9 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     /// </summary>
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
+        if (_artworkPreferences is not null) _artworkPreferences.Changed -= ArtworkPreferencesChanged;
         if (IgdbMatch is not null) IgdbMatch.PropertyChanged -= OnToolPropertyChanged;
         if (MetadataEditor is not null) MetadataEditor.PropertyChanged -= OnToolPropertyChanged;
         _backdrop.Dispose();

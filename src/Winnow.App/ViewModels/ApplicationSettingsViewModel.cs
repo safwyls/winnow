@@ -25,13 +25,15 @@ public partial class ApplicationSettingsViewModel : ObservableObject
         IStartupRegistration? startup = null,
         IApplicationUpdater? updater = null,
         IUriDispatcher? uris = null,
-        IgdbSettingsViewModel? igdb = null)
+        IgdbSettingsViewModel? igdb = null,
+        SteamGridDbSettingsViewModel? steamGridDb = null)
     {
         _settings = settings;
         _startup = startup;
         _updater = updater;
         _uris = uris;
         Igdb = igdb ?? new IgdbSettingsViewModel();
+        SteamGridDb = steamGridDb ?? new SteamGridDbSettingsViewModel();
         if (_updater is not null)
         {
             _updater.Changed += (_, _) =>
@@ -45,13 +47,14 @@ public partial class ApplicationSettingsViewModel : ObservableObject
 
     public string Title => "Application";
     public IgdbSettingsViewModel Igdb { get; }
+    public SteamGridDbSettingsViewModel SteamGridDb { get; }
     public event Action? SetupRequested;
     [RelayCommand]
     private void OpenSetup() => SetupRequested?.Invoke();
     public string ApplicationVersion => ApplicationBuildInfo.Current.Version;
     public string BuildCommit => ApplicationBuildInfo.Current.Commit;
     public string IntroMessage =>
-        "Manage startup, metadata and updates.";
+        "Manage startup and updates.";
     public string SegmentLabel => "APPLICATION";
     public string SegmentTooltip => "Startup, metadata and updates";
 
@@ -188,6 +191,7 @@ public partial class ApplicationSettingsViewModel : ObservableObject
             _loading = false;
         }
         await Igdb.LoadAsync(ct);
+        await SteamGridDb.LoadAsync(ct);
     }
 
     partial void OnMinimizeToTrayChanged(bool value)

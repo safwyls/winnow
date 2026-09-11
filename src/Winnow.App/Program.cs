@@ -11,6 +11,7 @@ using Winnow.Data;
 using Winnow.Data.Repositories;
 using Winnow.Enrich.GamesDb;
 using Winnow.Enrich.Igdb;
+using Winnow.Enrich.SteamGridDb;
 using Winnow.Enrich.Steam;
 using Winnow.Enrich.Stores;
 using Winnow.Enrich.SteamWeb;
@@ -163,6 +164,7 @@ public static class Program
         // seconds into the first run is a normal thing to do.
         Task startup = Task.CompletedTask;
         CredentialMetadataRefresh? credentialRefresh = null;
+        CredentialMetadataRefresh? steamGridDbRefresh = null;
         try
         {
             // Migrations run before ANY reader or writer touches the db —
@@ -402,6 +404,17 @@ public static class Program
                         .LogWarning("Metadata refresh after an IGDB credential change failed; saved credentials remain available."),
                     Shutdown.Token);
                 host.Services.GetRequiredService<IgdbSettingsService>().CredentialsChanged += credentialRefresh.Request;
+                steamGridDbRefresh = new CredentialMetadataRefresh(startup,
+                    async ct =>
+                    {
+                        await host.Services.GetRequiredService<SteamGridDbSyncService>().SyncAsync(ct);
+                        if (!ct.IsCancellationRequested) await RefreshLibraryAsync(host.Services);
+                    },
+                    _ => host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(Program))
+                        .LogWarning("SteamGridDB artwork refresh failed; stored artwork remains available."),
+                    Shutdown.Token);
+                host.Services.GetRequiredService<SteamGridDbSettingsService>().CredentialsChanged += steamGridDbRefresh.Request;
+                steamGridDbRefresh.Request();
             }
 
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
@@ -434,7 +447,8 @@ public static class Program
             Shutdown.Cancel();
             try
             {
-                Task.WhenAll(startup, credentialRefresh?.Completion ?? Task.CompletedTask)
+                Task.WhenAll(startup, credentialRefresh?.Completion ?? Task.CompletedTask,
+                        steamGridDbRefresh?.Completion ?? Task.CompletedTask)
                     .Wait(TimeSpan.FromSeconds(5));
             }
             catch (AggregateException)
@@ -763,6 +777,7 @@ public static class Program
         // resolving with no credentials set. Both soft-fail to "no data", and
         // neither may block a user-facing path (§5.1, pitfall 3).
         services.AddIgdbEnrichment();
+        services.AddSteamGridDb();
         services.AddSteamStoreEnrichment();
 
         // The cross-store identity graph (ROADMAP §6). Keyless and unauthenticated,
@@ -931,6 +946,12 @@ public static class Program
         services.AddSingleton<IgdbSettingsService>();
         services.AddSingleton<IIgdbSettingsService>(sp => sp.GetRequiredService<IgdbSettingsService>());
         services.AddSingleton<IgdbSettingsViewModel>();
+        services.AddSingleton<SteamGridDbSettingsService>();
+        services.AddSingleton<ISteamGridDbSettingsService>(sp => sp.GetRequiredService<SteamGridDbSettingsService>());
+        services.AddSingleton<SteamGridDbSettingsViewModel>();
+        services.AddSingleton<ArtworkPreferences>();
+        services.AddSingleton<ArtworkOrderViewModel>();
+        services.AddSingleton<EnrichmentSettingsViewModel>();
         services.AddSingleton<ApplicationSettingsViewModel>();
         services.AddSingleton<FirstRunSetupService>();
         services.AddSingleton<FirstRunSetupViewModel>();
@@ -993,6 +1014,7 @@ public static class Program
         // clients' own rate limiters.
         services.AddSingleton<WorkReceptionWriter>();
         services.AddSingleton<ReceptionSyncService>();
+        services.AddSingleton<SteamGridDbSyncService>();
         services.AddSingleton<LifecycleSyncService>();
         services.AddSingleton<GameRefetchService>();
         services.AddSingleton<IGameRefetch>(sp => sp.GetRequiredService<GameRefetchService>());

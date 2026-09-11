@@ -16,7 +16,7 @@ namespace Winnow.App.Views.Fullscreen;
 public sealed class FullscreenSettingsPage : FullscreenPage
 {
     public override Control? Backdrop { get; } = new FullscreenAmbientBackdrop("settings");
-    private static readonly string[] Sections = ["Appearance", "Controller", "Library", "Platforms", "Application"];
+    private static readonly string[] Sections = ["Appearance", "Controller", "Library", "Platforms", "Metadata & artwork", "Application"];
     private string _section = "Appearance";
     private readonly Dictionary<Control, Action<int>> _adjustments = [];
     private readonly List<Action> _valueRefreshers = [];
@@ -231,6 +231,14 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             }
             PendingPlatformRefresh = RefreshPlatformsAsync();
         }
+        else if (_section == "Metadata & artwork")
+        {
+            Group("Sources");
+            Action("IGDB metadata", () => Context.Push(new FullscreenIgdbSettingsPage(Context)));
+            Action("SteamGridDB artwork", () => Context.Push(new FullscreenSteamGridDbSettingsPage(Context)));
+            Action("Artwork source order", () => Context.Push(new FullscreenArtworkOrderPage(Context)));
+            rows.Children.Add(FullscreenUi.Text(ArtworkOrderViewModel.Explanation, 28, "TextDim"));
+        }
         else
         {
             var app = Context.Shared.ApplicationSettings;
@@ -240,7 +248,6 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             Toggle("Close to tray", "Keep Winnow running when its window is closed.", () => app.CloseToTray, value => app.CloseToTray = value);
             if (app.IsStartupSupported) Toggle("Start with Windows", "Start Winnow when you sign in.", () => app.StartWithWindows, value => app.StartWithWindows = value);
             Group("Tools");
-            Action("IGDB metadata", () => Context.Push(new FullscreenIgdbSettingsPage(Context)));
             if (!Context.Shared.Setup.IsOpen)
                 Action("Run setup again", () => app.OpenSetupCommand.Execute(null));
             if (app.HasUpdater)

@@ -12,7 +12,7 @@ public sealed class FullscreenIgdbSettingsPage : FullscreenPage
 
     public FullscreenIgdbSettingsPage(FullscreenContext context) : base(context)
     {
-        _model = context.Shared.ApplicationSettings.Igdb;
+        _model = context.Shared.EnrichmentSettings.Igdb;
         DetachedFromVisualTree += (_, _) => _model.ClientSecret = "";
         var id = Field("IGDB client ID", nameof(_model.ClientId));
         var secret = Field("IGDB client secret", nameof(_model.ClientSecret));

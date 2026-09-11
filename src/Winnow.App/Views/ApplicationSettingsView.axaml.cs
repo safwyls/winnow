@@ -10,8 +10,9 @@ public partial class ApplicationSettingsView : UserControl
         get => !ApplicationHeader.IsVisible;
         set
         {
-            ApplicationHeader.IsVisible = IgdbHeading.IsVisible = IgdbCard.IsVisible =
+            ApplicationHeader.IsVisible =
                 SetupCard.IsVisible = AboutHeading.IsVisible = AboutCard.IsVisible = !value;
+            if (value) ClearSecret();
         }
     }
 
@@ -35,6 +36,9 @@ public partial class ApplicationSettingsView : UserControl
     private void ClearSecret()
     {
         if (DataContext is ViewModels.ApplicationSettingsViewModel model)
+        {
             model.Igdb.ClientSecret = "";
+            model.SteamGridDb.ApiKey = "";
+        }
     }
 }

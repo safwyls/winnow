@@ -209,7 +209,7 @@ stored locally.
 
 ### 4.4 IGDB
 
-- Desktop and fullscreen Application settings accept the user's Twitch client ID and secret.
+- Desktop and fullscreen Metadata & artwork settings accept the user's Twitch client ID and secret.
   An App service writes through the existing IGDB settings store and secret
   protector, atomically replaces the pair and clears persisted token caches. It refuses
   plaintext storage and never reloads the secret into the editor. Credential changes are
@@ -262,6 +262,33 @@ stored locally.
   `total_rating`/`total_rating_count` exist and are deliberately not requested — a blended
   figure cannot be attributed to anyone, and the rule is that a score is shown with its source
   and its count or not at all.
+
+#### SteamGridDB artwork
+
+`Winnow.Enrich.SteamGridDb` retrieves static landscape heroes through
+`GET https://www.steamgriddb.com/api/v2/heroes/steam/{appid}` with a user-supplied Bearer
+API key. This slice uses exact Steam app IDs only; it does not search names or change identity.
+Requests exclude NSFW, humor and epilepsy-tagged assets. Returned dimensions, type flags,
+format and canonical CDN URL are checked before storing a candidate. Each response is bounded
+to 2 MiB and supplies the first page of candidates.
+
+A shared Polly pipeline limits requests to one per second and permits two retries for
+transport, timeout, rate-limit and server failures, with Retry-After delays capped at 30 seconds.
+Credential-specific failure pauses prevent a failed key from being retried for every game.
+Version-1 hero payloads and confirmed misses live in `metadata_cache` for 30 days. Failed or
+unauthorized requests do not write misses; older successful payloads remain usable offline.
+
+Metadata & artwork settings saves the key with current-user DPAPI and refuses plaintext
+persistence on unsupported hosts. The editor never reloads the key. Saved keys take precedence
+over `SteamGridDb:ApiKey` configuration or `SteamGridDb__ApiKey`; removing one preserves that
+fallback. Saving queues a background pass after startup. The same coalesced worker also runs
+once per launch and reloads the library after its pass; it does not hold up other startup sync.
+
+Hero observations use `work_images` source `steamgriddb`, kind `artwork`, with the asset ID,
+dimensions and optional `GameImage.Url` in `images_json`. They stay on the original work.
+Presentation reads share these rows through the current tile's confirmed members, so unlinking
+stops sharing without copying or deleting another game's observation. Existing IGDB galleries
+and saved backgrounds are independent. A warm pass does not rewrite unchanged observations.
 
 ### 4.5 Update detection
 
@@ -638,8 +665,10 @@ Resizing requests the appropriate display-sized lease. Compact desktop covers an
 gallery renditions remain unchanged; both presentations share lease and eviction behavior.
 
 Backdrop selection is shared application behavior. A saved user background leads the
-candidate list, followed by high-resolution Steam library heroes, ranked IGDB landscapes,
-standard Steam heroes, and the game's cover. Steam candidates use known app IDs from every
+candidate list. The persisted `enrichment.artwork_source_order` orders automatic source groups:
+high-resolution Steam heroes, SteamGridDB and IGDB, in that default order. Standard Steam
+heroes and the game's cover remain final fallbacks. Changes apply to displayed backdrops on
+both surfaces without restarting. Steam candidates use known app IDs from every
 release in the displayed game group, independent of the playable copy or IGDB enrichment.
 Automatic IGDB candidates exclude known portrait or square images, transparent
 or animated assets, images explicitly typed as logo or cover, and invalid image IDs.
@@ -649,6 +678,9 @@ pixels take precedence, with artwork before screenshots within that tier. Unknow
 remain a compatible fallback, followed by smaller landscapes; ties retain source order.
 Failed downloads advance through the remaining candidates before using the game's cover.
 No automatic selection overwrites the user's saved background or reorders the screenshot gallery.
+SteamGridDB candidates within their source group rank by detail remaining after the display crop.
+Their `steamgriddb-hero` image keys contain a validated asset filename; downloads are restricted
+to `https://cdn2.steamgriddb.com/hero/` and the shared bounded image pipeline.
 
 Steam heroes use separate `steam-hero` and `steam-hero-standard` cache keys for
 `library_hero_2x.jpg` and `library_hero.jpg`. Each rendition is requested independently through

@@ -3768,3 +3768,32 @@ The visual specification previously said:
 The uncropped hero edge remained abrupt at 16:9. Standard aspect fullscreen now fills the canvas; 21:9 and wider retain whole-image fitting. The visual specification previously said:
 
 > Steam library heroes retain their whole composition in fullscreen.
+
+### 2026-09-10 — SteamGridDB enrichment and shared artwork preferences
+
+SteamGridDB adds exact Steam-ID hero lookups with protected user credentials and independent
+cache entries. Metadata & artwork groups provider credentials and backdrop source order on
+both surfaces. Saved backgrounds remain first; source order does not govern metadata fields.
+Hero observations stay on the original work and are shared through current links when read.
+
+The architecture specification previously said:
+
+> Desktop and fullscreen Application settings accept the user's Twitch client ID and secret.
+> A saved user background leads the candidate list, followed by high-resolution Steam library heroes, ranked IGDB landscapes, standard Steam heroes, and the game's cover.
+
+The visual specification previously said:
+
+> Below 21:9, fullscreen Steam library heroes fill the canvas with a centered crop and the canvas-wide vertical fade.
+> At 21:9 and wider, Steam library heroes retain their whole composition.
+> Prefer the saved game background, then a high-resolution Steam library hero, then suitable IGDB landscape artwork or screenshots, then a standard Steam hero, then a quiet cover fallback.
+> The gear at the foot of the rail opens `SETTINGS`, which holds four screens in this order: **PLATFORMS**, **LIBRARY**, **APPEARANCE**, **APPLICATION**.
+> The **IGDB METADATA** card offers **Get IGDB credentials**, labelled **Client ID** and **Client secret** fields, **Save credentials** and **Remove saved credentials**.
+> Fullscreen Application opens a dedicated **IGDB metadata** page with the same model and actions, large fields and explicit controller focus rows.
+> Its **ABOUT WINNOW** card shows **Version** and **Source commit** as selectable Data-font text.
+
+README previously said:
+
+> Nothing leaves the machine except read-only requests to IGDB, Steam's public endpoints, `gamesdb.gog.com` and `api.steamcmd.net`.
+> Winnow encrypts stored credentials with Windows DPAPI (`CurrentUser` scope): Epic and Steam sign-in sessions, the Steam Web API key, the optional Epic OAuth client secret, and the IGDB client secret and cached access token.
+> Open **Settings → Application → IGDB metadata** on desktop or fullscreen.
+> Winnow.Enrich.*       IGDB, Steam store, steamcmd, GamesDB.

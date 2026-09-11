@@ -65,7 +65,8 @@ public sealed class FullscreenSettingsTests
         try
         {
             window.Show(); desktopWindow.Show(); Dispatcher.UIThread.RunJobs();
-            for (var i = 0; i < 4; i++) page.Handle(GamepadButtons.PageNext);
+            page.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Application")).Focus();
+            page.Handle(GamepadButtons.Accept);
             Dispatcher.UIThread.RunJobs();
             var tvToggle = page.GetVisualDescendants().OfType<Button>().Single(b => AutomationProperties.GetName(b) == "Start in fullscreen");
             tvToggle.Focus(); page.Handle(GamepadButtons.Accept);

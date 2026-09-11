@@ -9,6 +9,7 @@
     <Project Path="src/Winnow.Enrich.GamesDb/Winnow.Enrich.GamesDb.csproj" />
     <Project Path="src/Winnow.Enrich.Igdb/Winnow.Enrich.Igdb.csproj" />
     <Project Path="src/Winnow.Enrich.Steam/Winnow.Enrich.Steam.csproj" />
+    <Project Path="src/Winnow.Enrich.SteamGridDb/Winnow.Enrich.SteamGridDb.csproj" />
     <Project Path="src/Winnow.Enrich.Stores/Winnow.Enrich.Stores.csproj" />
     <Project Path="src/Winnow.Enrich.SteamWeb/Winnow.Enrich.SteamWeb.csproj" />
     <Project Path="src/Winnow.Enrich.Updates/Winnow.Enrich.Updates.csproj" />

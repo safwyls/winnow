@@ -188,6 +188,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     private readonly IWorkRatingRepository? _workRatings;
 
     private readonly IWorkImageRepository? _workImages;
+    private readonly ArtworkPreferences? _artworkPreferences;
 
     private readonly Services.IGameRefetch? _refetch;
 
@@ -230,11 +231,13 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         IWorkImageRepository? workImages = null,
         Services.IGameRefetch? refetch = null,
         Winnow.Core.Repositories.IStorefrontRepository? storefrontCache = null,
-        ISessionRepository? sessions = null)
+        ISessionRepository? sessions = null,
+        ArtworkPreferences? artworkPreferences = null)
     {
         _storefrontCache = storefrontCache;
         _workRatings = workRatings;
         _workImages = workImages;
+        _artworkPreferences = artworkPreferences;
         _refetch = refetch;
         _igdb = igdb;
         _metadataEdits = metadataEdits;
@@ -1385,7 +1388,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
         IReadOnlyList<WorkImages> images = _workImages is null || workId is null
             ? []
-            : await _workImages.GetForWorkAsync(workId.Value);
+            : await BackdropImages.LoadAsync(_workImages, workId.Value, target.Entries.Select(entry => entry.WorkId));
 
         Details = new GameDetailsViewModel(
             target,
@@ -1411,7 +1414,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             sessions: sessions,
             backgroundUrl: workId is { } backgroundWorkId
                 ? (await _works.GetAsync(backgroundWorkId))?.BackgroundUrl
-                : null);
+                : null,
+            artworkPreferences: _artworkPreferences);
     }
 
     /// <summary>
