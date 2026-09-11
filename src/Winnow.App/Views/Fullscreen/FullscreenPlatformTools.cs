@@ -83,6 +83,8 @@ public sealed class FullscreenPlatformPage : FullscreenPage
             Text(nameof(stores.EpicAccountLine), nameof(stores.ShowEpicAccountLine));
             Text(nameof(stores.EpicAnonymousMessage), nameof(stores.ShowEpicAnonymousLine));
             Text(nameof(stores.EpicLocalMessage), resource: "TextDim");
+            Text(nameof(stores.EpicGapMessage), nameof(stores.EpicCanSignIn), "TextDim");
+            Text(nameof(stores.EpicConsentPromiseMessage), nameof(stores.EpicCanSignIn), "TextDim");
             Text(nameof(stores.EpicSessionNotPersistedMessage), nameof(stores.EpicSessionNotPersisted), "Amber");
             Text(nameof(stores.EpicProblemMessage), nameof(stores.ShowEpicProblem), "Amber");
             Add("Sign out of Epic", () => context.ShowActions(stores.EpicSignOutMessage,
@@ -124,7 +126,14 @@ public sealed class FullscreenSteamConsentPage : FullscreenPage
         var stores = context.Shared.Stores;
         var capture = false;
         var permission = FullscreenUi.Button(stores.CapturePurchaseHistoryLabel + "     Off", () => { });
-        permission.Click += (_, _) => { capture = !capture; permission.Content = stores.CapturePurchaseHistoryLabel + (capture ? "     On" : "     Off"); };
+        Avalonia.Automation.AutomationProperties.SetName(permission, stores.CapturePurchaseHistoryLabel);
+        Avalonia.Automation.AutomationProperties.SetItemStatus(permission, "Off");
+        permission.Click += (_, _) =>
+        {
+            capture = !capture;
+            permission.Content = stores.CapturePurchaseHistoryLabel + (capture ? "     On" : "     Off");
+            Avalonia.Automation.AutomationProperties.SetItemStatus(permission, capture ? "On" : "Off");
+        };
         var status = FullscreenUi.Text("", 28, "TextDim");
         _cancel = FullscreenUi.Button(stores.SignInConsentCancelText, context.Back);
         var proceed = FullscreenUi.Button(stores.SignInConsentContinueText, async () =>

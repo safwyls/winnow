@@ -24,6 +24,38 @@ namespace Winnow.Ui.Tests;
 public sealed class StoresAccountContextTests
 {
     [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Consent_explains_scope_and_keeps_purchase_permission_optional(bool fullscreen)
+    {
+        var stores = new StoresViewModel(new Connections());
+        using var context = Context(stores);
+        using var page = new FullscreenSteamConsentPage(context, () => { });
+        stores.OpenSignInConsentCommand.Execute(null);
+        var view = new StoresView { DataContext = stores };
+        var window = new Window { Width = 1200, Height = 900, Content = fullscreen ? page : view };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            AssertText(window, stores.SteamSignInGivesMessage);
+            AssertText(window, stores.SteamSignInCostsMessage);
+            AssertText(window, stores.CapturePurchaseHistoryMessage);
+            var permission = Assert.Single(window.GetVisualDescendants().OfType<Control>(), control =>
+                control.IsEffectivelyVisible && AutomationProperties.GetName(control) == stores.CapturePurchaseHistoryLabel);
+            if (fullscreen)
+            {
+                Assert.Equal("Off", AutomationProperties.GetItemStatus(permission));
+                permission.Focus();
+                page.Handle(GamepadButtons.Accept);
+                Assert.Equal("On", AutomationProperties.GetItemStatus(permission));
+                Assert.False(stores.CapturePurchaseHistory);
+            }
+            else Assert.False(Assert.IsType<CheckBox>(permission).IsChecked);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
     [InlineData(false, "Steam", StorePlatform.Steam)]
     [InlineData(false, "Epic", StorePlatform.Epic)]
     [InlineData(false, "GOG", StorePlatform.Gog)]

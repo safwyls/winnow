@@ -543,6 +543,23 @@ carries one fact wrapped in reasoning, the fact stays and the reasoning moves he
 | Journal prompt | `How was that?` | `Rate your session!` |
 | Card answer | `Same game` / `Different games` | `Merge records` / `Cancel` |
 | Merges header | `Merge 3 selected`, `Rolled up under Hades.` | `Confirm identity link` |
+| Steam with neither credential stored | `NO CONNECTION`; `No sign-in session is stored.` when explaining session state | `Connection failed` without a failed attempt |
+| Epic with no stored session | `NOT SIGNED IN` | `Session expired` before a session existed |
+| Steam renewal due | `SIGN-IN NEEDS RENEWING`; `Renews automatically.` | Asking the user to repair a renewal that has not failed |
+| Steam renewal failed | `Renewal was attempted and did not succeed. Signing in again will restore it. An API key, if set, keeps scheduled updates running regardless.` | Implying the independent API key stopped working |
+| Steam session expired | `SIGN-IN EXPIRED`; `The sign-in has expired and cannot be used. Only a fresh sign-in can recover it. An API key, if set, is unaffected.` | An unexplained warning |
+| Epic session expired | `SESSION EXPIRED`; `Sign in again` | A generic connection error with no recovery action |
+| GOG local-only discovery | `LOCAL FILES`; `Not needed. Winnow reads the local Galaxy database.` | `The local database has everything.` |
+| Steam consent, before opening sign-in | `Before you sign in`; `Identifies your account and can read your purchase history.`; `Continue` / `Cancel` | Treating sign-in as consent to read purchases |
+| Steam credential lifetime in consent | `Lasts about a day. Winnow renews it automatically, but this may not work against live servers. An API key does not expire.` | Promising successful renewal |
+| Separate optional purchase permission | `Also read my purchase history`, initially off; fullscreen announces `Off` / `On` | Preselected consent or a hidden state |
+| Epic credential consent | `You'll see what Winnow is requesting before anything connects. The credential is stored encrypted on this machine.` | Connecting before the request is explained |
+
+These meanings apply to desktop and fullscreen. Provider-specific capability text stays
+specific: Epic sign-in adds playtime and acquisition dates; GOG uses local discovery without
+a sign-in action. Optional states use the neutral provider treatment (§6). Expiry and failed
+attempts retain a recovery action, and machine-local credential persistence failures say
+that another sign-in will be needed after restart.
 
 `Merge` is the screen's name and its bulk verb. The answer on a card is still `Same game`,
 which asks about games rather than records.
