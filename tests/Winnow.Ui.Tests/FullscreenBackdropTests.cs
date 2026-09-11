@@ -216,9 +216,11 @@ public sealed class FullscreenBackdropTests
     }
 
     [AvaloniaTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Steam_hero_keeps_whole_composition_and_crossfades_independent_geometry(bool cinematic)
+    [InlineData(false, 1920)]
+    [InlineData(true, 1920)]
+    [InlineData(false, 2520)]
+    [InlineData(true, 2520)]
+    public async Task Steam_hero_adapts_crop_and_crossfades_independent_geometry(bool cinematic, int width)
     {
         using var hero = new RenderTargetBitmap(new PixelSize(384, 124));
         using var landscape = new RenderTargetBitmap(new PixelSize(160, 90));
@@ -228,12 +230,14 @@ public sealed class FullscreenBackdropTests
         using var feed = new FeedViewModel(new PreviewFeedService(), PreviewData.Library);
         using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell, services);
         var backdrop = new FullscreenBackdrop(context, TileFixture.Tile(DateTime.UtcNow, steamAppId: "42"), cinematic);
-        var window = new Window { Width = 1920, Height = 1080, Content = backdrop };
+        var window = new Window { Width = width, Height = 1080, Content = backdrop };
+        var fitted = width >= 2520;
+        var heroSize = new Size(width, fitted ? Math.Round(width * 124d / 384) : 1080);
         try
         {
             window.Show(); Dispatcher.UIThread.RunJobs();
             Assert.Equal(CoverKey.SteamHero("42"), leases.Last.Key);
-            Assert.Equal(1920, leases.Last.Width);
+            Assert.Equal(fitted ? 2560 : 3840, leases.Last.Width);
             leases.Last.Complete(new CoverArt(hero, hero));
             await Flush();
             var images = backdrop.GetVisualDescendants().OfType<Image>().ToArray();
@@ -241,21 +245,21 @@ public sealed class FullscreenBackdropTests
             var current = images[1];
             var art = Assert.IsType<Panel>(current.Parent);
             var surface = Assert.IsType<Panel>(art.Parent);
-            Assert.Equal(new Size(1920, 620), art.Bounds.Size);
+            Assert.Equal(heroSize, art.Bounds.Size);
+            Assert.Equal(Stretch.UniformToFill, current.Stretch);
             Assert.Equal(0, art.Bounds.Top);
-            Assert.Equal(new Size(1920, 1080), surface.Bounds.Size);
+            Assert.Equal(new Size(width, 1080), surface.Bounds.Size);
             Assert.IsType<SolidColorBrush>(surface.Background);
             var gradient = Assert.IsType<LinearGradientBrush>(Assert.Single(art.Children.OfType<Border>()).Background);
-            Assert.Equal(.85, gradient.GradientStops[^2].Offset);
-            Assert.Equal(0, gradient.GradientStops[^2].Color.A);
-            Assert.Equal(1, gradient.GradientStops[^1].Offset);
+            Assert.Equal(fitted ? 1 : cinematic ? .55 : .85,
+                gradient.GradientStops.First(stop => stop.Color.A == 255).Offset);
             Assert.Equal(255, gradient.GradientStops[^1].Color.A);
 
             backdrop.Select(TileFixture.Tile(DateTime.UtcNow, workId: 2));
             leases.Last.Complete(new CoverArt(landscape, landscape));
             await Flush();
-            Assert.Equal(new Size(1920, 1080), art.Bounds.Size);
-            Assert.Equal(new Size(1920, 620), Assert.IsType<Panel>(outgoing.Parent).Bounds.Size);
+            Assert.Equal(new Size(width, 1080), art.Bounds.Size);
+            Assert.Equal(heroSize, Assert.IsType<Panel>(outgoing.Parent).Bounds.Size);
             Assert.Same(hero, outgoing.Source);
             Assert.InRange(surface.Opacity, 0, .99);
             await Task.Delay(230); Dispatcher.UIThread.RunJobs();
@@ -263,8 +267,8 @@ public sealed class FullscreenBackdropTests
             backdrop.Select(TileFixture.Tile(DateTime.UtcNow, workId: 3, steamAppId: "43"));
             leases.Last.Complete(new CoverArt(hero, hero));
             await Flush();
-            Assert.Equal(new Size(1920, 620), art.Bounds.Size);
-            Assert.Equal(new Size(1920, 1080), Assert.IsType<Panel>(outgoing.Parent).Bounds.Size);
+            Assert.Equal(heroSize, art.Bounds.Size);
+            Assert.Equal(new Size(width, 1080), Assert.IsType<Panel>(outgoing.Parent).Bounds.Size);
             Assert.IsType<SolidColorBrush>(surface.Background);
             Assert.InRange(surface.Opacity, 0, .99);
 
@@ -275,6 +279,15 @@ public sealed class FullscreenBackdropTests
             Assert.InRange(art.Bounds.Left, 247, 248);
             Assert.Equal(0, art.Bounds.Top);
             Assert.Equal(3840, leases.Last.Width);
+            gradient = Assert.IsType<LinearGradientBrush>(Assert.Single(art.Children.OfType<Border>()).Background);
+            Assert.Equal(.85, gradient.GradientStops[^2].Offset);
+            Assert.Equal(0, gradient.GradientStops[^2].Color.A);
+            window.Width = 1920;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(new Size(1920, 1080), art.Bounds.Size);
+            Assert.Equal(new Size(1920, 1080), Assert.IsType<Panel>(outgoing.Parent).Bounds.Size);
+            gradient = Assert.IsType<LinearGradientBrush>(Assert.Single(art.Children.OfType<Border>()).Background);
+            Assert.Equal(cinematic ? .55 : .85, gradient.GradientStops.First(stop => stop.Color.A == 255).Offset);
             window.Content = null;
             Assert.All(leases.All, lease => Assert.True(lease.Disposed));
         }

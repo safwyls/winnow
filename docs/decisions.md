@@ -3762,3 +3762,9 @@ The architecture specification previously said:
 The visual specification previously said:
 
 > Prefer the saved game background, then suitable landscape artwork, then a landscape screenshot, then a quiet cover fallback.
+
+### 2026-09-10 — Crop Steam heroes on standard aspect displays
+
+The uncropped hero edge remained abrupt at 16:9. Standard aspect fullscreen now fills the canvas; 21:9 and wider retain whole-image fitting. The visual specification previously said:
+
+> Steam library heroes retain their whole composition in fullscreen.

@@ -42,6 +42,7 @@ public sealed class FullscreenBackdrop : Panel
     private double _selectionRatio;
     private int _requestedWidth;
     private bool _attached;
+    private bool _wideHeroLayout;
     private int _generation;
     public FullscreenBackdrop(FullscreenContext context, GameTileViewModel tile, bool cinematic = false)
     {
@@ -118,6 +119,13 @@ public sealed class FullscreenBackdrop : Panel
         // A Viewbox can change pixel scale without changing this reference canvas size.
         LayoutUpdated += (_, _) =>
         {
+            if (_wideHeroLayout != IsUltrawide)
+            {
+                _wideHeroLayout = IsUltrawide;
+                var ground = _context.Shared.Appearance.Service.Theme.Ground;
+                RefreshLayer(_surface, _image, _veil, _held?.Key, ground);
+                RefreshLayer(_outgoingSurface, _outgoing, _outgoingVeil, _outgoingLease?.Key, ground);
+            }
             UpdateLayerGeometry(_art, _image, _held?.Key);
             UpdateLayerGeometry(_outgoingArt, _outgoing, _outgoingLease?.Key);
             RequestDisplaySize();
@@ -269,7 +277,7 @@ public sealed class FullscreenBackdrop : Panel
         }
         var scale = Math.Abs(this.TransformToVisual(top)?.M11 ?? 1) * top.RenderScaling;
         if (_key is not { } key || _context.Services?.GetService<ICoverLeases>() is not { } leases) return;
-        var width = CoverImaging.SnapWidth(BackdropSelection.IsSteamHero(key)
+        var width = CoverImaging.SnapWidth(FitsWholeHero(key)
             ? Math.Min(Bounds.Width, Bounds.Height * BackdropSelection.SteamHeroRatio) * scale
             : BackdropSelection.DecodeWidth(key, _rows, Bounds.Width * scale, Bounds.Height * scale));
         if (width <= _requestedWidth) return;
@@ -290,7 +298,7 @@ public sealed class FullscreenBackdrop : Panel
         veil.Background = new LinearGradientBrush
         {
             StartPoint = new RelativePoint(.5, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(.5, 1, RelativeUnit.Relative),
-            GradientStops = key is { } selected && BackdropSelection.IsSteamHero(selected)
+            GradientStops = FitsWholeHero(key)
                 ? [new GradientStop(clear, 0), new GradientStop(clear, .85), new GradientStop(ground, 1)]
                 : _cinematic
                     ? [new GradientStop(clear, 0), new GradientStop(Color.FromArgb(35, ground.R, ground.G, ground.B), .25),
@@ -301,7 +309,7 @@ public sealed class FullscreenBackdrop : Panel
 
     private void UpdateLayerGeometry(Panel surface, Image image, CoverKey? key)
     {
-        if (key is { } selected && BackdropSelection.IsSteamHero(selected) && image.Source is { } source)
+        if (FitsWholeHero(key) && image.Source is { } source)
         {
             // Each transition layer retains its own aspect ratio and lower-edge fade.
             var ratio = source.Size.Width / source.Size.Height;
@@ -319,4 +327,9 @@ public sealed class FullscreenBackdrop : Panel
             surface.VerticalAlignment = VerticalAlignment.Stretch;
         }
     }
+
+    private bool IsUltrawide => Bounds.Height > 0 && Bounds.Width / Bounds.Height >= 21d / 9 - .0001;
+
+    private bool FitsWholeHero(CoverKey? key) =>
+        IsUltrawide && key is { } selected && BackdropSelection.IsSteamHero(selected);
 }

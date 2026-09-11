@@ -642,7 +642,9 @@ Game artwork fades in further to the right to keep the left content area quiet: 
 backdrops reveal between 30% and 85% of the canvas width, and the details veil stays dense
 through 58% before opening toward the right edge.
 
-Steam library heroes retain their whole composition in fullscreen. Fit them across the
+Below 21:9, fullscreen Steam library heroes fill the canvas with a centered crop and the
+canvas-wide vertical fade. Request enough source pixels to fill the crop's height.
+At 21:9 and wider, Steam library heroes retain their whole composition. Fit them across the
 canvas width, preserve their aspect ratio and align them at the top; exceptionally wide
 canvases fit the whole image within the height and center it horizontally. Fade the final
 15% of the image height into Ground, with Ground filling the canvas below. Each crossfade
