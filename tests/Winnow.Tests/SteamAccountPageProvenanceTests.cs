@@ -15,6 +15,42 @@ namespace Winnow.Tests;
 
 public sealed class SteamAccountPageProvenanceTests
 {
+    [Fact]
+    public async Task Zero_purchase_keeps_account_provenance_in_projection_and_export()
+    {
+        using var db = new TempDatabase();
+        var owned = new OwnershipRepository(db.Factory);
+        var releases = new ReleaseRepository(db.Factory);
+        var work = await new WorkRepository(db.Factory).InsertAsync(new Work { Name = "Lantern Hollow" });
+        var release = await releases.InsertAsync(new Release { WorkId = work, Name = "Lantern Hollow" });
+        var ownership = await owned.InsertAsync(new Ownership { ReleaseId = release, Store = "steam" });
+        await new OwnershipAccountRepository(db.Factory).UpsertAsync(
+            new(ownership, "10001", null, null, "steam_local", DateTime.UtcNow));
+        var facts = new AccountFactRepository(db.Factory);
+        var acquisitions = new AccountAcquisitionRepository(db.Factory);
+        var importer = new SteamAccountPageImportService(owned, releases, facts, acquisitions, db.Factory,
+            new LibrarySyncGate(), NullLogger<SteamAccountPageImportService>.Instance);
+        var pages = Pages(10001);
+        await importer.ImportAsync(pages with
+        {
+            HistoryHtml = pages.HistoryHtml!.Replace("$13.49", "$0.00", StringComparison.Ordinal),
+        });
+
+        var observation = Assert.Single(await acquisitions.GetAsync([ownership]));
+        Assert.Equal("10001", observation.AccountRef);
+        Assert.Equal(0, observation.PricePaidCents);
+        Assert.Null((await owned.GetAsync(ownership))!.PricePaidCents);
+        var settings = new SettingsRepository(db.Factory);
+        await settings.SetAsync(AccountScope.SettingKey, AccountScope.Own);
+        await settings.SetAsync(SteamOwnedAccount.RefSettingKey, "10001");
+        var reader = new AccountAcquisitionReader(acquisitions, settings);
+        Assert.Equal(0, Assert.Single(await reader.ProjectAsync(await owned.GetAllAsync())).PricePaidCents);
+        await settings.SetAsync(SteamOwnedAccount.RefSettingKey, "10002");
+        Assert.Null(Assert.Single(await reader.ProjectAsync(await owned.GetAllAsync())).PricePaidCents);
+        var csv = await new AcquisitionExport(owned, releases, acquisitions).ReadAsync();
+        Assert.Contains("\"0\",\"steam_account_history\",\"10001\"", csv.Content);
+    }
+
     private static SteamAccountPages Pages(uint? account) => new()
     {
         SteamId = account is { } id ? SteamId.FromAccountId(id)!.Value.ToString() : null,

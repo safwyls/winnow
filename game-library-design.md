@@ -454,6 +454,14 @@ data underdetermines it: bundles appear as a single line item for N games, and t
 keys from Humble, Fanatical and the rest never appear in Steam's spending data at all, which
 is exactly the population with large libraries and unplayed piles.
 
+A known zero total on an eligible single-item, non-refunded Purchase fills an unknown
+ownership acquisition price just like a positive total. Missing or negative totals, bundles,
+gifts, in-game purchases and refund rows never supply that price. Account provenance and
+conflict suppression apply equally to zero; an existing price is never overwritten. The
+transaction fact always retains its parsed total. Acquisition CSV writes known zero as `0`
+and missing price as an empty cell. Desktop and fullscreen details continue to show the
+acquisition date and licence, without a per-game price or an inferred free-game label.
+
 #### Rules governing the account-stats figures
 
 Every figure on the account-stats screen is computed from the captured pages, never from the

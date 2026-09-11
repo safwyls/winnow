@@ -156,7 +156,8 @@ public sealed class StoresAccountContextTests
         var settings = new SettingsRepository(db.Factory);
         var acquisitions = new AccountAcquisitionRepository(db.Factory);
         var observation = new OwnershipAcquisitionObservation { OwnershipId = 1, AccountRef = "10001",
-            AcquiredAt = new DateTime(2020, 1, 2, 12, 0, 0, DateTimeKind.Utc), LicenseType = "retail", Source = "steam", CapturedAt = DateTime.UtcNow };
+            AcquiredAt = new DateTime(2020, 1, 2, 12, 0, 0, DateTimeKind.Utc), LicenseType = "retail", Source = "steam", CapturedAt = DateTime.UtcNow,
+            PricePaidCents = 0, PriceSource = PriceSources.SteamAccountHistory };
         await acquisitions.TryAppendAsync(observation);
         await acquisitions.TryAppendAsync(observation with { AccountRef = "10002", AcquiredAt = new DateTime(2024, 1, 2, 12, 0, 0, DateTimeKind.Utc), LicenseType = "gift" });
         await settings.SetAsync(AccountScope.SettingKey, AccountScope.Own);
