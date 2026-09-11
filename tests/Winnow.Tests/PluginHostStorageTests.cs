@@ -120,6 +120,8 @@ public sealed class PluginHostStorageTests
         using var host = new Host();
         host.AddManifest(Manifest("first"));
         host.AddManifest(Manifest("incompatible") with { ApiVersion = 99 });
+        var archive = Path.Combine(host.UserDirectory, "broken.zip");
+        await File.WriteAllTextAsync(archive, "not a ZIP");
         await using var catalog = host.Catalog();
         await catalog.DiscoverAsync(host.BuiltinDirectory, host.UserDirectory);
         var backend = new PluginSettingsBackend(catalog, host.Storage, host.UserDirectory);
@@ -128,12 +130,13 @@ public sealed class PluginHostStorageTests
         { ["label"] = "Must not persist", ["undeclared"] = "Invalid" }));
         Assert.Equal("Before", await host.Storage.ReadSettingAsync("first", "label"));
         var snapshots = await backend.LoadAsync();
-        Assert.Equal(2, snapshots.Count);
+        Assert.Equal(3, snapshots.Count);
         var valid = snapshots.Single(x => x.Id == "first");
         Assert.False(valid.Enabled);
         Assert.False(valid.IsLoaded);
         Assert.True(valid.CanConfigure);
-        Assert.False(snapshots.Single(x => x.Id != "first").CanConfigure);
+        Assert.All(snapshots.Where(x => x.Id != "first"), snapshot => Assert.False(snapshot.CanConfigure));
+        Assert.Contains("ZIP", snapshots.Single(x => x.Name == "broken.zip").Status);
         await backend.SetEnabledAsync("first", true);
         Assert.True((await backend.LoadAsync()).Single(x => x.Id == "first").RestartRequired);
         Assert.False(Assert.Single(catalog.Plugins).Loaded);

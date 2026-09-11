@@ -12,7 +12,7 @@ public partial class PluginSettingsViewModel(
     public string SegmentLabel => "PLUGINS";
     public string SegmentTooltip => "Install and configure provider plugins";
     public string IntroMessage => "Manage plugins for library imports, metadata, artwork and recommendations.";
-    public const string InstallationNote = "Place an unpacked plugin in the plugins folder, restart Winnow, then enable it here. Only enable plugins from authors you trust: plugins run with Winnow's access to this device.";
+    public const string InstallationNote = "Place a plugin ZIP or unpacked plugin in the plugins folder, then restart Winnow. ZIPs unpack automatically. Enable the plugin here and restart to activate it. Only enable plugins from authors you trust: plugins run with Winnow's access to this device.";
     public const string SecretNote = "Secrets are stored securely on this device and are never shown again. Leave a secret blank to keep its saved value.";
     public ObservableCollection<PluginCardViewModel> Plugins { get; } = [];
     public string UserPluginDirectory => backend?.UserPluginDirectory ?? string.Empty;

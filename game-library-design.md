@@ -751,6 +751,14 @@ first-paint path.**
 disabled; activation changes require restart. Settings declarations generate separate desktop
 and fullscreen editors. Custom screens and UI replacement are not part of the contract.
 
+After discovering existing directories, startup imports top-level user ZIP packages through
+`PluginArchiveInstaller`. It accepts a package at the archive root or in one enclosing folder,
+validates paths and the manifest, and bounds compressed/uncompressed bytes and entry count.
+Extraction uses a private staging directory and publishes with a directory move only after
+validation. Existing plugin IDs and destination paths cannot be replaced. Successful ZIPs
+move to `.archives`; failed inputs remain with a settings diagnostic. Discovery ignores
+`.archives` and `.unpack-*` staging directories, including leftovers from interrupted launches.
+
 Plugin code runs in-process with the application's permissions. Assembly load contexts isolate
 dependencies, not filesystem/network access. Initializers and provider calls run on worker
 threads with 30-second and 120-second deadlines. Exceptions use fixed diagnostics; timeouts

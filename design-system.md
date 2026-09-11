@@ -2650,7 +2650,8 @@ keyboard for either field; secret entry retains its masking.
 
 The separate **PLUGINS** tab shows one card per discovered plugin, with its name, version,
 description, supported features and status. **Open plugins folder** opens the installation
-directory. Explain that installing and changing enablement requires a restart and that plugins
+directory. ZIP packages unpack automatically at startup; users may also place unpacked packages
+there. Failed ZIP imports appear alongside other package diagnostics. Explain that installing and changing enablement requires a restart and that plugins
 run with Winnow's access to the device. A malformed or incompatible package states its failure;
 only a package with a valid manifest offers configuration controls.
 

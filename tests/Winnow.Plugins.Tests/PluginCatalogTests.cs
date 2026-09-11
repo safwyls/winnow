@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Text.Json;
 using Winnow.PluginFixture;
 using Winnow.PluginSdk;
@@ -8,6 +9,75 @@ namespace Winnow.Plugins.Tests;
 
 public sealed class PluginCatalogTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Dropped_zip_is_discovered_disabled_and_loads_only_after_enablement_and_restart(bool enclosingFolder)
+    {
+        using var files = new Packages();
+        var archive = files.AddZip("download.ZIP", "fixture", enclosingFolder);
+        var state = new State();
+        var context = new Context();
+        await using (var first = new PluginCatalog(state, context))
+        {
+            await first.DiscoverAsync(files.Builtin, files.User);
+            var plugin = Assert.Single(first.Plugins);
+            Assert.Equal("fixture", plugin.Manifest.Id);
+            Assert.Equal(Path.Combine(files.User, "fixture"), plugin.DirectoryPath);
+            Assert.False(plugin.Enabled);
+            Assert.False(plugin.Loaded);
+            Assert.Empty(context.Values);
+            Assert.Empty(first.Issues);
+            Assert.False(File.Exists(archive));
+            Assert.Single(Directory.GetFiles(Path.Combine(files.User, ".archives"), "*.zip"));
+            await first.SetEnabledAsync("fixture", true);
+            Assert.Empty(context.Values);
+        }
+        await using var restarted = new PluginCatalog(state, context);
+        await restarted.DiscoverAsync(files.Builtin, files.User);
+        Assert.True(Assert.Single(restarted.Plugins).Loaded);
+        Assert.Empty(restarted.Issues);
+        Assert.Single(Directory.GetFiles(Path.Combine(files.User, ".archives"), "*.zip"));
+    }
+
+    [Fact]
+    public async Task Bad_archives_do_not_block_other_imports_and_staging_directories_are_never_loaded()
+    {
+        using var files = new Packages();
+        files.Add(files.Builtin, "builtin");
+        files.Add(files.User, ".unpack-interrupted", manifest: Packages.Manifest("unfinished"));
+        var good = files.AddZip("b-good.zip", "fixture");
+        var bad = Path.Combine(files.User, "a-bad.zip");
+        await File.WriteAllTextAsync(bad, "not a ZIP");
+        await using var catalog = new PluginCatalog(new State(), new Context());
+
+        await catalog.DiscoverAsync(files.Builtin, files.User);
+
+        Assert.Equal(["builtin", "fixture"], catalog.Plugins.Select(plugin => plugin.Manifest.Id));
+        Assert.True(catalog.Plugins[0].Loaded);
+        Assert.Equal(bad, Assert.Single(catalog.Issues).DirectoryPath);
+        Assert.Equal("not a ZIP", await File.ReadAllTextAsync(bad));
+        Assert.False(File.Exists(good));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Dropped_zip_cannot_replace_a_plugin_already_discovered_in_another_directory(bool builtin)
+    {
+        using var files = new Packages();
+        files.Add(builtin ? files.Builtin : files.User, "custom-folder", manifest: Packages.Manifest("fixture"));
+        var archive = files.AddZip("replacement.zip", "fixture");
+        await using var catalog = new PluginCatalog(new State(), new Context());
+
+        await catalog.DiscoverAsync(files.Builtin, files.User);
+
+        Assert.EndsWith("custom-folder", Assert.Single(catalog.Plugins).DirectoryPath);
+        Assert.Equal(archive, Assert.Single(catalog.Issues).DirectoryPath);
+        Assert.True(File.Exists(archive));
+        Assert.False(Directory.Exists(Path.Combine(files.User, "fixture")));
+    }
+
     [Fact]
     public async Task Discovery_creates_the_missing_user_directory_without_creating_the_builtin_directory()
     {
@@ -221,6 +291,15 @@ public sealed class PluginCatalogTests
         private readonly string _root = Path.Combine(Path.GetTempPath(), "winnow-plugin-fixture-" + Guid.NewGuid().ToString("N"));
         public string Builtin => Path.Combine(_root, "builtin");
         public string User => Path.Combine(_root, "user");
+        public string AddZip(string name, string id, bool enclosingFolder = false)
+        {
+            var source = Path.Combine(_root, "source-" + Guid.NewGuid().ToString("N"));
+            Add(source, "package", manifest: Manifest(id));
+            Directory.CreateDirectory(User);
+            var archive = Path.Combine(User, name);
+            ZipFile.CreateFromDirectory(enclosingFolder ? source : Path.Combine(source, "package"), archive);
+            return archive;
+        }
         public void Add(string root, string id, Type? entry = null, PluginManifest? manifest = null)
         {
             var directory = Path.Combine(root, id);

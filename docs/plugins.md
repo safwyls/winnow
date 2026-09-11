@@ -12,15 +12,26 @@ For an explanation of the design with a SteamGridDB trace and a buildable exampl
 1. Open **Settings → Plugins → Open plugins folder**. The folder is `plugins`
    inside Winnow's data directory, including when using `--data-dir`. Winnow creates it
    during startup if it is missing.
-2. Copy the extracted package into its own subdirectory. That directory must contain
-   `plugin.json`, the entry DLL and any private dependencies. Restart Winnow to discover it.
+2. Drop a plugin `.zip` into that folder and restart Winnow. The archive must contain
+   `plugin.json`, the entry DLL and any private dependencies, either at its root or inside
+   one enclosing folder. Winnow unpacks it into a directory named for the plugin ID.
+   You can also copy an already extracted package into its own subdirectory.
 3. Enable the plugin in the same settings tab, then restart to activate it. Third-party
    packages start disabled. Enabling a plugin authorizes its code to run on your device.
 4. Enter its declared settings and credentials. Saving queues a background refresh;
    **Refresh** queues another pass. Artwork providers appear in the source-order controls.
 
-Desktop and fullscreen expose the same configuration through their own controls. To update,
-close Winnow and replace the package files; to uninstall, close it and remove its directory.
+Successful imports move the original ZIP into `plugins/.archives` for safekeeping; those archives
+are not imported again. Failed archives stay in place and show a diagnostic in Plugins settings.
+Imports allow at most 2,048 entries, 256 MiB of ZIP data and 256 MiB unpacked. Entry paths are
+limited to 1,024 characters and 32 components to bound validation work. Unsafe paths,
+links, conflicting filenames and invalid packages are rejected before installation is published.
+An interrupted extraction is not discovered as a plugin.
+
+Desktop and fullscreen expose the same configuration through their own controls. ZIP imports
+never overwrite existing packages or replace a bundled plugin. To update a user plugin, close
+Winnow and replace its package files, or remove its directory before dropping in the replacement
+ZIP. To uninstall, close Winnow and remove the plugin directory.
 Disabling or uninstalling retains imported library facts and cached metadata. It stops future
 provider execution after restart. There is no online gallery, package downloader or hot reload.
 

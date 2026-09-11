@@ -208,8 +208,9 @@ effect on desktop and fullscreen without restarting; it does not change metadata
 ### Provider plugins
 
 Plugins can import game libraries, add metadata and artwork, and supply recommendation shelves.
-Open **Settings → Plugins → Open plugins folder**, copy a package into its own
-directory, restart, enable it and restart again. Third-party plugins run trusted code with
+Open **Settings → Plugins → Open plugins folder**, drop in a plugin ZIP or copy an unpacked
+package into its own directory, then restart. ZIPs unpack automatically; enable the plugin
+and restart again to activate it. Third-party plugins run trusted code with
 Winnow's permissions; install packages from authors you trust. Settings are available on
 desktop and fullscreen. See [plugin authoring and installation](docs/plugins.md) for the SDK,
 supported data contracts, compatibility and current limits.

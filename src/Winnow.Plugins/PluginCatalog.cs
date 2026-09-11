@@ -53,41 +53,72 @@ public sealed class PluginCatalog(IPluginStateStore state, IPluginContextFactory
         }
         foreach (var directory in directories)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var manifestPath = Path.Combine(directory, "plugin.json");
-            if (!File.Exists(manifestPath)) continue;
-            PluginManifest manifest;
-            try { manifest = await PluginManifestReader.ReadAsync(manifestPath, cancellationToken).ConfigureAwait(false); }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
-            catch (InvalidDataException ex)
-            {
-                AddIssue(directory, ex.Message);
-                continue;
-            }
-            catch (Exception)
-            {
-                AddIssue(directory, "The plugin manifest could not be read.");
-                continue;
-            }
-            if (!ids.Add(manifest.Id))
-            {
-                AddIssue(directory, "Another installed plugin already uses this ID.");
-                continue;
-            }
-            var descriptor = new PluginDescriptor
-            {
-                Manifest = manifest, DirectoryPath = Path.GetFullPath(directory), BuiltIn = builtin,
-            };
-            lock (_registry) _plugins.Add(descriptor);
-            try { descriptor.Enabled = await state.GetEnabledAsync(manifest.Id, cancellationToken).ConfigureAwait(false) ?? builtin; }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
-            catch (Exception)
-            {
-                descriptor.Error = "The plugin activation setting could not be read.";
-                continue;
-            }
-            if (descriptor.Enabled) await LoadAsync(descriptor, cancellationToken).ConfigureAwait(false);
+            var name = Path.GetFileName(directory);
+            if (!builtin && (name.Equals(".archives", StringComparison.OrdinalIgnoreCase)
+                || name.StartsWith(".unpack-", StringComparison.OrdinalIgnoreCase))) continue;
+            await DiscoverDirectoryAsync(directory, builtin, ids, cancellationToken).ConfigureAwait(false);
         }
+        if (!builtin) await InstallArchivesAsync(root, ids, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task InstallArchivesAsync(string root, HashSet<string> ids, CancellationToken cancellationToken)
+    {
+        string[] archives;
+        try
+        {
+            archives = Directory.GetFiles(root).Where(path => Path.GetExtension(path).Equals(".zip", StringComparison.OrdinalIgnoreCase))
+                .Order(StringComparer.Ordinal).ToArray();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            AddIssue(root, "Plugin ZIP files could not be read. Check that the plugins folder is available, then restart Winnow.");
+            return;
+        }
+        foreach (var archive in archives)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var directory = await PluginArchiveInstaller.TryInstallAsync(archive, root, ids, AddIssue, cancellationToken).ConfigureAwait(false);
+            if (directory is not null)
+                await DiscoverDirectoryAsync(directory, false, ids, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task DiscoverDirectoryAsync(string directory, bool builtin, HashSet<string> ids, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var manifestPath = Path.Combine(directory, "plugin.json");
+        if (!File.Exists(manifestPath)) return;
+        PluginManifest manifest;
+        try { manifest = await PluginManifestReader.ReadAsync(manifestPath, cancellationToken).ConfigureAwait(false); }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (InvalidDataException ex)
+        {
+            AddIssue(directory, ex.Message);
+            return;
+        }
+        catch (Exception)
+        {
+            AddIssue(directory, "The plugin manifest could not be read.");
+            return;
+        }
+        if (!ids.Add(manifest.Id))
+        {
+            AddIssue(directory, "Another installed plugin already uses this ID.");
+            return;
+        }
+        var descriptor = new PluginDescriptor
+        {
+            Manifest = manifest, DirectoryPath = Path.GetFullPath(directory), BuiltIn = builtin,
+        };
+        lock (_registry) _plugins.Add(descriptor);
+        try { descriptor.Enabled = await state.GetEnabledAsync(manifest.Id, cancellationToken).ConfigureAwait(false) ?? builtin; }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (Exception)
+        {
+            descriptor.Error = "The plugin activation setting could not be read.";
+            return;
+        }
+        if (descriptor.Enabled) await LoadAsync(descriptor, cancellationToken).ConfigureAwait(false);
     }
 
     private void AddIssue(string directory, string message)

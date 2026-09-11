@@ -18,6 +18,38 @@ namespace Winnow.Ui.Tests;
 public sealed class PluginSettingsInteractionTests
 {
     [AvaloniaFact]
+    public async Task Zip_installation_help_and_archive_errors_are_visible_on_both_surfaces()
+    {
+        var shell = await ShellAsync(new ArchiveIssueBackend());
+        var plugin = Assert.Single(shell.PluginSettings.Plugins);
+        var desktop = new PluginSettingsView { DataContext = shell.PluginSettings };
+        var window = new Window { Width = 1200, Height = 800, Content = desktop };
+        using var context = new FullscreenContext(shell.Library, shell.Feed, shell);
+        window.Show();
+        try
+        {
+            Assert.Contains(desktop.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == PluginSettingsViewModel.InstallationNote);
+            Assert.Contains(desktop.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == ArchiveIssueBackend.Error);
+            Assert.False(plugin.CanConfigure);
+            using var settings = new FullscreenSettingsPage(context, "Plugins");
+            window.Content = settings;
+            await settings.PendingPluginRefresh;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Contains(settings.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == PluginSettingsViewModel.InstallationNote);
+            var archiveButton = Named<Button>(settings, "broken.zip");
+            FullscreenPage? opened = null;
+            context.PageRequested += page => opened = page;
+            archiveButton.Focus();
+            settings.Handle(GamepadButtons.Accept);
+            using var errorPage = Assert.IsType<FullscreenPluginSettingsPage>(opened);
+            window.Content = errorPage;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Contains(errorPage.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == ArchiveIssueBackend.Error);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
     public async Task Desktop_tabs_separate_plugin_controls_from_metadata_and_fit_the_minimum_window()
     {
         var shell = await ShellAsync();
@@ -236,14 +268,27 @@ public sealed class PluginSettingsInteractionTests
         frame!.Save(Path.Combine(directory, name + ".png"));
     }
 
-    private static async Task<MainWindowViewModel> ShellAsync()
+    private static async Task<MainWindowViewModel> ShellAsync(IPluginSettingsBackend? backend = null)
     {
         var preview = PreviewData.Shell;
-        var plugins = new PluginSettingsViewModel(new Backend());
+        var plugins = new PluginSettingsViewModel(backend ?? new Backend());
         await plugins.LoadAsync();
         return new(preview.Library, preview.MergeQueue, preview.Stores, preview.Appearance,
             preview.Feed, preview.AccountStats, preview.LibrarySettings,
             enrichmentSettings: new EnrichmentSettingsViewModel(new(), plugins));
+    }
+
+    private sealed class ArchiveIssueBackend : IPluginSettingsBackend
+    {
+        public const string Error = "Could not unpack the plugin ZIP. Download the package again, then restart Winnow.";
+        public string UserPluginDirectory => "plugins";
+        public Task<IReadOnlyList<PluginSettingsSnapshot>> LoadAsync(CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<PluginSettingsSnapshot>>([new("invalid:broken.zip", "broken.zip", "This plugin could not be loaded.",
+                "", "", false, false, false, Error, [], CanConfigure: false)]);
+        public Task SaveAsync(string pluginId, IReadOnlyDictionary<string, string> values, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task RemoveSecretAsync(string pluginId, string key, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task SetEnabledAsync(string pluginId, bool enabled, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task RefreshAsync(string pluginId, CancellationToken ct = default) => throw new NotSupportedException();
     }
 
     private sealed class Backend : IPluginSettingsBackend
