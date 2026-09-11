@@ -269,6 +269,18 @@ internal static class StandingMergeReplay
 
         if (affected != 1)
         {
+            if (affected == 0 && TryRestoreMissingWorkFacet(
+                    connection, transaction, application, row, key, values))
+            {
+                return 1;
+            }
+
+            if (affected == 0 && TryRestoreMissingReleaseFacet(
+                    connection, transaction, application, row, key, values))
+            {
+                return 1;
+            }
+
             throw Refuse(
                 application,
                 $"the {table} row it must move back is no longer where the merge left it "
@@ -278,6 +290,78 @@ internal static class StandingMergeReplay
         }
 
         return affected;
+    }
+
+    private static bool TryRestoreMissingWorkFacet(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        ApplicationRow application,
+        JournalRow row,
+        IReadOnlyList<Field> key,
+        IReadOnlyList<Field> values)
+    {
+        // Enrichment replaces this set after a merge. A missing assignment is
+        // recoverable from its complete two-column journal identity; preserve
+        // the survivor's current facets and restore only the absorbed work's.
+        // Identity, play and user-organisation rows still require an exact match.
+        if (row.TableName != "work_facets" || row.Op != "repoint"
+            || key.Count != 2 || values.Count != 1
+            || application.AbsorbedWorkId is not { } absorbedWorkId
+            || !key.Contains(new Field("work_id", application.SurvivingWorkId))
+            || values[0] != new Field("work_id", absorbedWorkId)
+            || key.SingleOrDefault(f => f.Column == "facet_id").Value is not long facetId
+            || !RowExists(connection, transaction, "facets", "id", facetId))
+        {
+            return false;
+        }
+
+        return connection.Execute("""
+            INSERT INTO work_facets (work_id, facet_id)
+            VALUES (@absorbedWorkId, @facetId);
+            """, new { absorbedWorkId, facetId }, transaction) == 1;
+    }
+
+    private static bool TryRestoreMissingReleaseFacet(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        ApplicationRow application,
+        JournalRow row,
+        IReadOnlyList<Field> key,
+        IReadOnlyList<Field> values)
+    {
+        if (row.TableName != "release_facets" || row.Op != "repoint"
+            || key.Count != 2 || values.Count != 1
+            || key.SingleOrDefault(f => f.Column == "release_id").Value is not long currentReleaseId
+            || key.SingleOrDefault(f => f.Column == "facet_id").Value is not long facetId
+            || values[0].Column != "release_id" || values[0].Value is not long restoredReleaseId
+            || currentReleaseId == restoredReleaseId
+            || (currentReleaseId != application.LeftReleaseId && currentReleaseId != application.RightReleaseId)
+            || (restoredReleaseId != application.LeftReleaseId && restoredReleaseId != application.RightReleaseId)
+            || !RowExists(connection, transaction, "facets", "id", facetId)
+            || !RowExists(connection, transaction, "releases", "id", currentReleaseId)
+            || !RowExists(connection, transaction, "releases", "id", restoredReleaseId))
+        {
+            return false;
+        }
+
+        var restoredFromJournal = connection.ExecuteScalar<long>("""
+            SELECT COUNT(*) FROM merge_undo_rows
+            WHERE application_id = @applicationId AND table_name = 'releases' AND op = 'delete'
+              AND json_extract(key_json, '$.id') = @restoredReleaseId
+              AND json_extract(before_json, '$.id') = @restoredReleaseId;
+            """, new { applicationId = application.Id, restoredReleaseId }, transaction);
+        if (restoredFromJournal != 1)
+        {
+            return false;
+        }
+
+        // Release facet refreshes also replace assignments. The repoint journal
+        // retained the identity but not rank; restore membership with unknown
+        // ordering only onto the release this same journal just brought back.
+        return connection.Execute("""
+            INSERT INTO release_facets (release_id, facet_id, rank)
+            VALUES (@restoredReleaseId, @facetId, NULL);
+            """, new { restoredReleaseId, facetId }, transaction) == 1;
     }
 
     // ── Writing the link the merge stood for ─────────────────────────────────
@@ -504,7 +588,7 @@ internal static class StandingMergeReplay
         JsonValueKind.True => 1L,
         JsonValueKind.False => 0L,
         JsonValueKind.String => element.GetString(),
-        JsonValueKind.Number => element.TryGetInt64(out var whole) ? whole : element.GetDouble(),
+        JsonValueKind.Number => element.TryGetInt64(out var whole) ? (object)whole : element.GetDouble(),
         _ => element.GetRawText(),
     };
 

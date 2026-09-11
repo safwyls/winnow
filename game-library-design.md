@@ -1158,6 +1158,16 @@ refused before changing journal mode, renaming legacy entries or running migrati
 legacy migration names are compared as their Winnow equivalents; missing known scripts remain eligible
 for the normal backed-up upgrade, including an interrupted upgrade.
 
+Before migration 0019 retires destructive merge history, startup restores journalled rows
+and carries the standing decisions into reversible identity links. Enrichment may have
+replaced a survivor's facets since the merge. A missing work-facet assignment can be
+restored to the absorbed work only when the journal identifies both original works and an
+existing facet exactly. Release-facet recovery additionally requires the two merge release
+IDs and a matching deleted-release journal entry. Its rank remains unknown because repoint
+entries did not record ranking. The survivor's current facet set is preserved. Other missing rows
+and identity conflicts still refuse the replay transaction. This upgrade runs before either
+desktop or fullscreen opens.
+
 Timestamp parameters use `DateTime` with an explicit kind. Winnow.Data rejects
 `DateTimeKind.Unspecified` before executing a write, converts Local values to UTC, and stores
 UTC text as `yyyy-MM-dd HH:mm:ss.FFFFFFF`, retaining fractional seconds when present.
