@@ -4,7 +4,7 @@ title: Evaluate GOG session-history evidence before scheduling sign-in
 status: To Do
 assignee: []
 created_date: '2026-08-29 21:55'
-updated_date: '2026-09-11 14:07'
+updated_date: '2026-09-11 19:11'
 labels:
   - auth
   - ingest
@@ -35,4 +35,6 @@ GOG integration currently reads Galaxy and registry data without sign-in. Evalua
 
 <!-- SECTION:NOTES:BEGIN -->
 Audit evidence: src/Winnow.Ingest.Gog/ServiceCollectionExtensions.cs registers only local discovery with no credentials. GogLibrarySource composes Galaxy and registry facts. The old task's blanket assertions about the remote service were stronger than the dated probe supports; research remains useful and unverified.
+
+2026-09-11 execution: requested a local path to a supplied authenticated GOG session-history response. No response or authorized session has been supplied during this run. No live session endpoint was probed and no credentials were extracted from Galaxy. Authentication/availability and incremental dated-session coverage remain unknown, not a verified empty history. Sign-in remains deferred and all acceptance criteria remain open.
 <!-- SECTION:NOTES:END -->
