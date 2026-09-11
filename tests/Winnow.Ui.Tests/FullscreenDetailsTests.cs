@@ -127,7 +127,7 @@ public sealed class FullscreenDetailsTests
             Assert.Equal(1920, backdrop.Bounds.Width);
             Assert.Equal(1080, backdrop.Bounds.Height);
             Assert.Same(pixels, Assert.Single(backdrop.GetVisualDescendants().OfType<Image>(), image => image.Source is not null).Source);
-            Assert.Contains(userBackground ? CoverKey.User("landscape") : CoverKey.IgdbBackdrop("detailshot"), leases.Keys);
+            Assert.Contains(userBackground ? CoverKey.User("landscape") : CoverKey.SteamHero("42"), leases.Keys);
             Assert.Equal(1, images.Reads);
             var hero = Assert.IsType<Grid>(Assert.IsType<Grid>(view.CurrentPage.Content).Children[0]);
             Assert.Empty(hero.GetVisualDescendants().OfType<Image>());
@@ -142,7 +142,7 @@ public sealed class FullscreenDetailsTests
             window.Width = 3840;
             window.Height = 2160;
             Dispatcher.UIThread.RunJobs();
-            Assert.Contains(leases.Requests, request => request.Key == (userBackground ? CoverKey.User("landscape") : CoverKey.IgdbBackdrop("detailshot")) && request.Width >= 3840);
+            Assert.Contains(leases.Requests, request => request.Key == (userBackground ? CoverKey.User("landscape") : CoverKey.SteamHero("42")) && request.Width >= 3840);
             context.TextScale = 1.4;
             window.Width = 1280;
             window.Height = 720;

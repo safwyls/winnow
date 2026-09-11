@@ -810,7 +810,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     public void RequestBackdrop(double widthPixels, double heightPixels)
     {
         if (widthPixels <= 0 || heightPixels <= 0) return;
-        var keys = BackdropSelection.Candidates(_backgroundUrl, _images, widthPixels / heightPixels).ToList();
+        var keys = BackdropSelection.Candidates(_backgroundUrl, _images, widthPixels / heightPixels, Tile.SteamBackdropAppIds).ToList();
         if (Tile.CoverKey is { } coverKey && !keys.Contains(coverKey)) keys.Add(coverKey);
         _backdrop.Request(keys, key => BackdropSelection.DecodeWidth(key, _images, widthPixels, heightPixels));
     }

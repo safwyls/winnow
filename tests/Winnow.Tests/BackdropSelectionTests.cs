@@ -1,5 +1,6 @@
 using Xunit;
 using Winnow.App.Services;
+using Winnow.App.ViewModels;
 using Winnow.Core.Domain;
 using Winnow.Core.Queries;
 using Winnow.Covers;
@@ -38,6 +39,31 @@ public sealed class BackdropSelectionTests
         var rows = new[] { Row(ImageKinds.Artwork, new GameImage { ImageId = "chosen", Width = 3840, Height = 2160 }) };
         Assert.Equal([CoverKey.IgdbBackdrop("chosen")], BackdropSelection.Candidates(
             "https://images.igdb.com/igdb/image/upload/t_original/chosen.jpg", rows));
+    }
+
+    [Fact]
+    public void Known_Steam_heroes_bracket_IGDB_after_the_saved_background()
+    {
+        var rows = new[] { Row(ImageKinds.Artwork, new GameImage { ImageId = "art", Width = 3840, Height = 2160 }) };
+        Assert.Equal([CoverKey.User("chosen"), CoverKey.SteamHero("42"), CoverKey.SteamHero("43"),
+            CoverKey.IgdbBackdrop("art"), CoverKey.SteamHeroStandard("42"), CoverKey.SteamHeroStandard("43")],
+            BackdropSelection.Candidates(UserArtRef.Format("chosen"), rows, steamAppIds: ["42", "42", "invalid", "43"]));
+        Assert.Equal([CoverKey.SteamHero("42"), CoverKey.SteamHeroStandard("42")],
+            BackdropSelection.Candidates(null, null, steamAppIds: ["42"]));
+        Assert.Equal(3840, CoverImaging.SnapWidth(BackdropSelection.DecodeWidth(CoverKey.SteamHero("42"), null, 1920, 1080)));
+    }
+
+    [Fact]
+    public void Grouped_non_Steam_playable_copy_keeps_known_Steam_hero_ids()
+    {
+        var tile = TileFixture.Tile(DateTime.UtcNow,
+            [TileEntry.For(1, 1, 1, "gog", 0, null, ownership: new Ownership { ReleaseId = 1, Store = "gog", Installed = true }),
+             TileEntry.For(2, 2, 1, "steam", 0, null, steamAppId: "42"),
+             TileEntry.For(3, 2, 1, "steam", 0, null, steamAppId: "42")],
+            1, LibraryBuckets.NeverPlayed);
+        Assert.Equal("gog", tile.PlayableEntry.Store);
+        Assert.Null(tile.SteamAppId);
+        Assert.Equal(["42"], tile.SteamBackdropAppIds);
     }
 
     private static WorkImages Row(string kind, params GameImage[] images) => new()

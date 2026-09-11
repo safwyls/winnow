@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +19,14 @@ public sealed class FullscreenBackdrop : Panel
     private ICoverLease? _held;
     private ICoverLease? _outgoingLease;
     private readonly Image _outgoing = new() { Stretch = Stretch.UniformToFill };
+    private readonly Panel _outgoingSurface = new();
+    private readonly Panel _surface = new();
+    private readonly Panel _outgoingArt = new();
+    private readonly Panel _art = new();
+    private readonly Border _outgoingVeil = new();
+    private readonly Border _veil = new();
+    private readonly Border _fallbackVeil = new() { IsVisible = false };
+    private readonly bool _cinematic;
     private readonly DispatcherTimer _fade = new() { Interval = TimeSpan.FromMilliseconds(16) };
     private readonly Stopwatch _fadeTime = new();
     private ICoverLease? _pending;
@@ -38,14 +47,21 @@ public sealed class FullscreenBackdrop : Panel
     {
         IsHitTestVisible = false; ClipToBounds = true;
         _context = context;
+        _cinematic = cinematic;
         _tile = tile;
         _image = new Image { Stretch = Stretch.UniformToFill };
+        _outgoingArt.Children.Add(_outgoing);
+        _outgoingArt.Children.Add(_outgoingVeil);
+        _art.Children.Add(_image);
+        _art.Children.Add(_veil);
+        _outgoingSurface.Children.Add(_outgoingArt);
+        _surface.Children.Add(_art);
         Children.Add(_fallback);
-        Children.Add(new Panel { Opacity = cinematic ? 1 : .8, Children = { _outgoing, _image } });
+        Children.Add(new Panel { Opacity = cinematic ? 1 : .8, Children = { _outgoingSurface, _surface } });
         _fade.Tick += (_, _) =>
         {
             var progress = _context.ReducedMotion ? 1 : Math.Clamp(_fadeTime.Elapsed.TotalMilliseconds / 180, 0, 1);
-            _image.Opacity = progress;
+            _surface.Opacity = progress;
             if (progress >= 1) FinishFade();
         };
         if (!cinematic) OpacityMask = new LinearGradientBrush
@@ -54,7 +70,17 @@ public sealed class FullscreenBackdrop : Panel
             GradientStops = [new GradientStop(Colors.Transparent, .3), new GradientStop(Colors.White, .85)]
         };
         var ground = context.Themes.FirstOrDefault(t => t.Id == context.ThemeId)?.Ground ?? Color.Parse("#0F1C1E");
+        Background = new SolidColorBrush(ground);
         var clearGround = Color.FromArgb(0, ground.R, ground.G, ground.B);
+        _fallbackVeil.Background = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(.5, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(.5, 1, RelativeUnit.Relative),
+            GradientStops = cinematic
+                ? [new GradientStop(clearGround, 0), new GradientStop(Color.FromArgb(35, ground.R, ground.G, ground.B), .25),
+                    new GradientStop(ground, .55), new GradientStop(ground, 1)]
+                : [new GradientStop(clearGround, 0), new GradientStop(ground, .85)]
+        };
+        Children.Add(_fallbackVeil);
         if (cinematic)
         {
             // The title reads against a solid left edge while landscape detail survives on the right.
@@ -71,21 +97,16 @@ public sealed class FullscreenBackdrop : Panel
                     new GradientStop(clearGround, .2)]
             } });
         }
-        Children.Add(new Border { Background = new LinearGradientBrush
-        {
-            StartPoint = new RelativePoint(.5, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(.5, 1, RelativeUnit.Relative),
-            GradientStops = cinematic
-                ? [new GradientStop(clearGround, 0), new GradientStop(Color.FromArgb(35, ground.R, ground.G, ground.B), .25),
-                    new GradientStop(ground, .55), new GradientStop(ground, 1)]
-                : [new GradientStop(clearGround, 0), new GradientStop(ground, .85)]
-        } });
         void RefreshTint(object? sender, EventArgs e)
         {
             var current = context.Shared.Appearance.Service.Theme.Ground;
+            Background = new SolidColorBrush(current);
             foreach (var veil in Children.OfType<Border>())
                 if (veil.Background is LinearGradientBrush gradient)
                     foreach (var stop in gradient.GradientStops)
                         stop.Color = Color.FromArgb(stop.Color.A, current.R, current.G, current.B);
+            RefreshLayer(_surface, _image, _veil, _held?.Key, current);
+            RefreshLayer(_outgoingSurface, _outgoing, _outgoingVeil, _outgoingLease?.Key, current);
         }
         AttachedToVisualTree += (_, _) =>
         {
@@ -95,7 +116,12 @@ public sealed class FullscreenBackdrop : Panel
             BeginSelection();
         };
         // A Viewbox can change pixel scale without changing this reference canvas size.
-        LayoutUpdated += (_, _) => RequestDisplaySize();
+        LayoutUpdated += (_, _) =>
+        {
+            UpdateLayerGeometry(_art, _image, _held?.Key);
+            UpdateLayerGeometry(_outgoingArt, _outgoing, _outgoingLease?.Key);
+            RequestDisplaySize();
+        };
         DetachedFromVisualTree += (_, _) =>
         {
             context.Shared.Appearance.Service.Applied -= RefreshTint;
@@ -104,6 +130,9 @@ public sealed class FullscreenBackdrop : Panel
             _generation++;
             _pending?.Dispose(); _pending = null;
             _image.Source = null;
+            _veil.Background = null;
+            _surface.Background = null;
+            _fallbackVeil.IsVisible = false;
             _fallback.Content = null;
             _held?.Dispose(); _held = null;
         };
@@ -145,7 +174,7 @@ public sealed class FullscreenBackdrop : Panel
         _rows = rows;
         _backgroundUrl = backgroundUrl;
         _selectionRatio = Bounds.Height > 0 ? Bounds.Width / Bounds.Height : 16d / 9;
-        _candidates = BackdropSelection.Candidates(backgroundUrl, rows, _selectionRatio);
+        _candidates = BackdropSelection.Candidates(backgroundUrl, rows, _selectionRatio, tile.SteamBackdropAppIds);
         _candidateIndex = 0;
         NextCandidate();
     }
@@ -162,6 +191,9 @@ public sealed class FullscreenBackdrop : Panel
     {
         FinishFade();
         _image.Source = null;
+        _veil.Background = null;
+        _surface.Background = null;
+        _fallbackVeil.IsVisible = true;
         _held?.Dispose(); _held = null;
         _fallback.Content = new FullscreenCover(_tile, background: true);
     }
@@ -191,12 +223,15 @@ public sealed class FullscreenBackdrop : Panel
         var previousImage = _image.Source;
         _held = lease;
         _image.Source = art.Vivid;
+        RefreshLayer(_surface, _image, _veil, lease.Key, _context.Shared.Appearance.Service.Theme.Ground);
         _fallback.Content = null;
+        _fallbackVeil.IsVisible = false;
         if (previousImage is not null && previous?.Key != lease.Key && !_context.ReducedMotion)
         {
             _outgoingLease = previous;
             _outgoing.Source = previousImage;
-            _image.Opacity = 0;
+            RefreshLayer(_outgoingSurface, _outgoing, _outgoingVeil, previous?.Key, _context.Shared.Appearance.Service.Theme.Ground);
+            _surface.Opacity = 0;
             _fadeTime.Restart();
             _fade.Start();
         }
@@ -207,8 +242,10 @@ public sealed class FullscreenBackdrop : Panel
     {
         _fade.Stop();
         _fadeTime.Reset();
-        _image.Opacity = 1;
+        _surface.Opacity = 1;
         _outgoing.Source = null;
+        _outgoingVeil.Background = null;
+        _outgoingSurface.Background = null;
         _outgoingLease?.Dispose(); _outgoingLease = null;
     }
 
@@ -220,7 +257,7 @@ public sealed class FullscreenBackdrop : Panel
         if (_selectionRatio > 0 && Math.Abs(ratio - _selectionRatio) > .0001)
         {
             _selectionRatio = ratio;
-            var candidates = BackdropSelection.Candidates(_backgroundUrl, _rows, ratio);
+            var candidates = BackdropSelection.Candidates(_backgroundUrl, _rows, ratio, _tile.SteamBackdropAppIds);
             if (!_candidates.SequenceEqual(candidates))
             {
                 _candidates = candidates;
@@ -232,8 +269,9 @@ public sealed class FullscreenBackdrop : Panel
         }
         var scale = Math.Abs(this.TransformToVisual(top)?.M11 ?? 1) * top.RenderScaling;
         if (_key is not { } key || _context.Services?.GetService<ICoverLeases>() is not { } leases) return;
-        var width = CoverImaging.SnapWidth(BackdropSelection.DecodeWidth(key, _rows,
-            Bounds.Width * scale, Bounds.Height * scale));
+        var width = CoverImaging.SnapWidth(BackdropSelection.IsSteamHero(key)
+            ? Math.Min(Bounds.Width, Bounds.Height * BackdropSelection.SteamHeroRatio) * scale
+            : BackdropSelection.DecodeWidth(key, _rows, Bounds.Width * scale, Bounds.Height * scale));
         if (width <= _requestedWidth) return;
         _requestedWidth = width;
         _pending?.Dispose();
@@ -241,5 +279,44 @@ public sealed class FullscreenBackdrop : Panel
         _pending = lease;
         if (lease.TryGetArt(out var hit)) Settle(lease, hit, _generation);
         else _ = LoadAsync(lease, _generation);
+    }
+
+    private void RefreshLayer(Panel surface, Image image, Border veil, CoverKey? key, Color ground)
+    {
+        UpdateLayerGeometry((Panel)image.Parent!, image, key);
+        surface.Background = image.Source is null ? null : new SolidColorBrush(ground);
+        if (image.Source is null) { veil.Background = null; return; }
+        var clear = Color.FromArgb(0, ground.R, ground.G, ground.B);
+        veil.Background = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(.5, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(.5, 1, RelativeUnit.Relative),
+            GradientStops = key is { } selected && BackdropSelection.IsSteamHero(selected)
+                ? [new GradientStop(clear, 0), new GradientStop(clear, .85), new GradientStop(ground, 1)]
+                : _cinematic
+                    ? [new GradientStop(clear, 0), new GradientStop(Color.FromArgb(35, ground.R, ground.G, ground.B), .25),
+                        new GradientStop(ground, .55), new GradientStop(ground, 1)]
+                    : [new GradientStop(clear, 0), new GradientStop(ground, .85)]
+        };
+    }
+
+    private void UpdateLayerGeometry(Panel surface, Image image, CoverKey? key)
+    {
+        if (key is { } selected && BackdropSelection.IsSteamHero(selected) && image.Source is { } source)
+        {
+            // Each transition layer retains its own aspect ratio and lower-edge fade.
+            var ratio = source.Size.Width / source.Size.Height;
+            var width = Math.Min(Bounds.Width, Bounds.Height * ratio);
+            surface.Width = width;
+            surface.Height = width / ratio;
+            surface.HorizontalAlignment = HorizontalAlignment.Center;
+            surface.VerticalAlignment = VerticalAlignment.Top;
+        }
+        else
+        {
+            surface.Width = double.NaN;
+            surface.Height = double.NaN;
+            surface.HorizontalAlignment = HorizontalAlignment.Stretch;
+            surface.VerticalAlignment = VerticalAlignment.Stretch;
+        }
     }
 }

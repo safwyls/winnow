@@ -5,6 +5,8 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Winnow.App.Design;
+using Winnow.App.Services;
+using Avalonia.Media;
 using Winnow.App.ViewModels;
 using Winnow.App.Views.Fullscreen;
 using Winnow.Core.Queries;
@@ -60,12 +62,12 @@ public sealed class FullscreenBackdropTests
             Assert.Equal(reducedMotion, held.Disposed);
             if (!reducedMotion)
             {
-                Assert.InRange(image.Opacity, 0, .99);
+                Assert.InRange(Assert.IsType<Panel>(image.Parent!.Parent).Opacity, 0, .99);
                 Assert.Same(first, backdrop.GetVisualDescendants().OfType<Image>().First().Source);
                 await Task.Delay(230);
                 Dispatcher.UIThread.RunJobs();
             }
-            Assert.Equal(1, image.Opacity);
+            Assert.Equal(1, Assert.IsType<Panel>(image.Parent!.Parent).Opacity);
             Assert.True(held.Disposed);
             Assert.Same(selected, leases.Last);
             var finalTile = TileFixture.Tile(DateTime.UtcNow, workId: 4);
@@ -210,6 +212,93 @@ public sealed class FullscreenBackdropTests
             Assert.Equal(1920, leases.Last.Width);
         }
         finally { window.Close(); }
+        Assert.All(leases.All, lease => Assert.True(lease.Disposed));
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Steam_hero_keeps_whole_composition_and_crossfades_independent_geometry(bool cinematic)
+    {
+        using var hero = new RenderTargetBitmap(new PixelSize(384, 124));
+        using var landscape = new RenderTargetBitmap(new PixelSize(160, 90));
+        var leases = new DelayedLeases();
+        using var services = new ServiceCollection().AddSingleton<ICoverLeases>(leases)
+            .AddSingleton<IWorkImageRepository>(new Images()).BuildServiceProvider();
+        using var feed = new FeedViewModel(new PreviewFeedService(), PreviewData.Library);
+        using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell, services);
+        var backdrop = new FullscreenBackdrop(context, TileFixture.Tile(DateTime.UtcNow, steamAppId: "42"), cinematic);
+        var window = new Window { Width = 1920, Height = 1080, Content = backdrop };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            Assert.Equal(CoverKey.SteamHero("42"), leases.Last.Key);
+            Assert.Equal(1920, leases.Last.Width);
+            leases.Last.Complete(new CoverArt(hero, hero));
+            await Flush();
+            var images = backdrop.GetVisualDescendants().OfType<Image>().ToArray();
+            var outgoing = images[0];
+            var current = images[1];
+            var art = Assert.IsType<Panel>(current.Parent);
+            var surface = Assert.IsType<Panel>(art.Parent);
+            Assert.Equal(new Size(1920, 620), art.Bounds.Size);
+            Assert.Equal(0, art.Bounds.Top);
+            Assert.Equal(new Size(1920, 1080), surface.Bounds.Size);
+            Assert.IsType<SolidColorBrush>(surface.Background);
+            var gradient = Assert.IsType<LinearGradientBrush>(Assert.Single(art.Children.OfType<Border>()).Background);
+            Assert.Equal(.85, gradient.GradientStops[^2].Offset);
+            Assert.Equal(0, gradient.GradientStops[^2].Color.A);
+            Assert.Equal(1, gradient.GradientStops[^1].Offset);
+            Assert.Equal(255, gradient.GradientStops[^1].Color.A);
+
+            backdrop.Select(TileFixture.Tile(DateTime.UtcNow, workId: 2));
+            leases.Last.Complete(new CoverArt(landscape, landscape));
+            await Flush();
+            Assert.Equal(new Size(1920, 1080), art.Bounds.Size);
+            Assert.Equal(new Size(1920, 620), Assert.IsType<Panel>(outgoing.Parent).Bounds.Size);
+            Assert.Same(hero, outgoing.Source);
+            Assert.InRange(surface.Opacity, 0, .99);
+            await Task.Delay(230); Dispatcher.UIThread.RunJobs();
+
+            backdrop.Select(TileFixture.Tile(DateTime.UtcNow, workId: 3, steamAppId: "43"));
+            leases.Last.Complete(new CoverArt(hero, hero));
+            await Flush();
+            Assert.Equal(new Size(1920, 620), art.Bounds.Size);
+            Assert.Equal(new Size(1920, 1080), Assert.IsType<Panel>(outgoing.Parent).Bounds.Size);
+            Assert.IsType<SolidColorBrush>(surface.Background);
+            Assert.InRange(surface.Opacity, 0, .99);
+
+            window.Width = 3840;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(1080, art.Bounds.Height);
+            Assert.InRange(art.Bounds.Width, 3344, 3345);
+            Assert.InRange(art.Bounds.Left, 247, 248);
+            Assert.Equal(0, art.Bounds.Top);
+            Assert.Equal(3840, leases.Last.Width);
+            window.Content = null;
+            Assert.All(leases.All, lease => Assert.True(lease.Disposed));
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Desktop_hero_tries_IGDB_then_standard_hero_then_cover()
+    {
+        var leases = new DelayedLeases();
+        using var details = new GameDetailsViewModel(TileFixture.Tile(DateTime.UtcNow,
+            steamAppId: "42", coverKey: CoverKey.Steam("42")), "All", [], DateTime.UtcNow,
+            covers: leases, images: RankedImages());
+        details.RequestBackdrop(1920, 1080);
+        var expected = new[] { CoverKey.SteamHero("42"), CoverKey.IgdbBackdrop("art"),
+            CoverKey.IgdbBackdrop("shot"), CoverKey.SteamHeroStandard("42"), CoverKey.Steam("42") };
+        foreach (var key in expected)
+        {
+            Assert.Equal(key, leases.Last.Key);
+            if (BackdropSelection.IsSteamHero(key)) Assert.Equal(3840, leases.Last.Width);
+            leases.Last.Complete(null);
+            await Flush();
+        }
+        Assert.Null(details.Backdrop);
         Assert.All(leases.All, lease => Assert.True(lease.Disposed));
     }
 

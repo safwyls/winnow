@@ -4,6 +4,8 @@ namespace Winnow.Covers;
 public static class CoverProviders
 {
     public const string Steam = "steam";
+    public const string SteamHero = "steam-hero";
+    public const string SteamHeroStandard = "steam-hero-standard";
     public const string Igdb = "igdb";
     /// <summary>
     /// Provider for IGDB screenshot assets. A separate provider from
@@ -26,6 +28,12 @@ public static class CoverProviders
 public readonly record struct CoverKey(string Provider, string Id)
 {
     public static CoverKey Steam(string appId) => new(CoverProviders.Steam, appId);
+
+    /// <summary>Steam's high-resolution library hero, isolated from standard heroes and capsules.</summary>
+    public static CoverKey SteamHero(string appId) => new(CoverProviders.SteamHero, appId);
+
+    /// <summary>Steam's standard library hero; a separate candidate and cache entry.</summary>
+    public static CoverKey SteamHeroStandard(string appId) => new(CoverProviders.SteamHeroStandard, appId);
 
     /// <summary>
     /// A key for IGDB cover art, keyed by <c>image_id</c> (not the game id,

@@ -638,14 +638,24 @@ Resizing requests the appropriate display-sized lease. Compact desktop covers an
 gallery renditions remain unchanged; both presentations share lease and eviction behavior.
 
 Backdrop selection is shared application behavior. A saved user background leads the
-candidate list. Automatic candidates exclude known portrait or square images, transparent
+candidate list, followed by high-resolution Steam library heroes, ranked IGDB landscapes,
+standard Steam heroes, and the game's cover. Steam candidates use known app IDs from every
+release in the displayed game group, independent of the playable copy or IGDB enrichment.
+Automatic IGDB candidates exclude known portrait or square images, transparent
 or animated assets, images explicitly typed as logo or cover, and invalid image IDs.
-Rank each source image by the pixel area remaining
+Rank each IGDB image by the pixel area remaining
 after a centered crop to the target aspect ratio. Candidates retaining at least 1280×720
 pixels take precedence, with artwork before screenshots within that tier. Unknown dimensions
 remain a compatible fallback, followed by smaller landscapes; ties retain source order.
 Failed downloads advance through the remaining candidates before using the game's cover.
 No automatic selection overwrites the user's saved background or reorders the screenshot gallery.
+
+Steam heroes use separate `steam-hero` and `steam-hero-standard` cache keys for
+`library_hero_2x.jpg` and `library_hero.jpg`. Each rendition is requested independently through
+the existing unauthenticated Steam image client and bounded disk/lease pipeline. A missing
+high-resolution hero can therefore fall through to IGDB before the smaller Steam rendition.
+HTTP 404 records a missing asset; transport and service failures do not record a durable miss.
+Downloads happen on demand, without changing stored game metadata or requiring an API key.
 
 Controller input lives in `Winnow.App.Services`, independent of ingest and process monitoring.
 The window polls a read-only source at 33 ms while open. Windows loads XInput from the system

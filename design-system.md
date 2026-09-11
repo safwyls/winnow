@@ -640,6 +640,13 @@ Game artwork fades in further to the right to keep the left content area quiet: 
 backdrops reveal between 30% and 85% of the canvas width, and the details veil stays dense
 through 58% before opening toward the right edge.
 
+Steam library heroes retain their whole composition in fullscreen. Fit them across the
+canvas width, preserve their aspect ratio and align them at the top; exceptionally wide
+canvases fit the whole image within the height and center it horizontally. Fade the final
+15% of the image height into Ground, with Ground filling the canvas below. Each crossfade
+layer keeps its own image geometry. Desktop detail backdrops continue to fill their card
+with a crop and request enough source pixels for that crop.
+
 **Library** uses two rows of complete portrait covers. The column count responds to available
 width, row height and text size; wider displays show more games instead of stretching or
 cropping artwork. Stable 2:3 frames use uniform fitting so user-supplied art keeps its whole
@@ -662,8 +669,9 @@ and returning restores the collection and selected game.
 
 **Game details** uses a landscape backdrop across the full canvas, including the header.
 A dark left and top veil protects the title and status text; a vertical fade settles into
-Ground before the overview content. Prefer the saved game background, then suitable landscape
-artwork, then a landscape screenshot, then a quiet cover fallback. Desktop and fullscreen
+Ground before the overview content. Prefer the saved game background, then a high-resolution
+Steam library hero, then suitable IGDB landscape artwork or screenshots, then a standard
+Steam hero, then a quiet cover fallback. Desktop and fullscreen
 share this selection policy. Artwork has its own display-sized lease
 and high-resolution cache entry; its source quality remains the upper limit on sharpness.
 The header shows B and the previous page name plus controller status and the clock. The

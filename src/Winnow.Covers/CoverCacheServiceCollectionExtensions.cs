@@ -49,6 +49,7 @@ public static class CoverCacheServiceCollectionExtensions
         // about which source wins a contested key.
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ICoverSource, UserArtCoverSource>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ICoverSource, SteamCapsuleSource>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<ICoverSource, SteamHeroSource>());
         services.TryAddSingleton<CoverDiskCache>();
         services.TryAddSingleton<CoverPipeline>();
         // Constructed by hand so the cache keeps its own default for how a

@@ -1,4 +1,5 @@
 using Winnow.Core.Domain;
+using Winnow.App.ViewModels;
 using Winnow.Core.Queries;
 using Winnow.Covers;
 using Winnow.Covers.Igdb;
@@ -9,12 +10,14 @@ namespace Winnow.App.Services;
 public static class BackdropSelection
 {
     public static IReadOnlyList<CoverKey> Candidates(string? backgroundUrl, IReadOnlyList<WorkImages>? rows,
-        double aspectRatio = 16d / 9)
+        double aspectRatio = 16d / 9, IReadOnlyList<string>? steamAppIds = null)
     {
         if (!double.IsFinite(aspectRatio) || aspectRatio <= 0) aspectRatio = 16d / 9;
         var result = new List<CoverKey>();
         if (UserArtRef.Token(backgroundUrl) is { } token) result.Add(CoverKey.User(token));
         else if (IgdbImageUrl.ImageId(backgroundUrl) is { } id) result.Add(CoverKey.IgdbBackdrop(id));
+        var steamIds = (steamAppIds ?? []).Where(GameLink.IsSteamAppId).Distinct().ToArray();
+        result.AddRange(steamIds.Select(CoverKey.SteamHero));
 
         var candidates = (rows ?? []).Where(row => row.Source == ImageSources.Igdb
                 && row.Kind is ImageKinds.Artwork or ImageKinds.Screenshot)
@@ -34,6 +37,7 @@ public static class BackdropSelection
             .ThenBy(item => item.Kind == ImageKinds.Artwork ? 0 : 1)
             .ThenByDescending(item => item.Pixels);
         result.AddRange(candidates.Select(item => CoverKey.IgdbBackdrop(item.Image.ImageId)));
+        result.AddRange(steamIds.Select(CoverKey.SteamHeroStandard));
         return result.Distinct().ToArray();
     }
 
@@ -46,9 +50,15 @@ public static class BackdropSelection
                 .SelectMany(row => row.Images).FirstOrDefault(image => image.ImageId == key.Id
                     && image.Width is > 0 && image.Height is > 0)
             : null;
-        var ratio = image is { Width: { } width, Height: { } height } ? (double)width / height : 16d / 9;
+        var ratio = IsSteamHero(key) ? SteamHeroRatio
+            : image is { Width: { } width, Height: { } height } ? (double)width / height : 16d / 9;
         return Math.Max(displayWidthPixels, displayHeightPixels * ratio);
     }
+
+    public const double SteamHeroRatio = 3840d / 1240;
+
+    public static bool IsSteamHero(CoverKey key) =>
+        key.Provider is CoverProviders.SteamHero or CoverProviders.SteamHeroStandard;
 
     private static double CroppedPixels(GameImage image, double ratio)
     {

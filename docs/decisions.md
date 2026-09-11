@@ -3746,3 +3746,19 @@ The selection lifetime wording now avoids a term reserved by the documentation c
 check for historical amendments. Its behavior is unchanged. The visual specification said:
 
 > Ignore results from superseded selections.
+
+### 2026-09-10 — Steam library hero backdrops
+
+Steam heroes add a keyless source independent of IGDB matching. High-resolution heroes lead
+other automatic sources; the standard rendition remains a fallback so it does not hide
+higher-detail IGDB artwork. Saved backgrounds retain priority.
+
+The architecture specification previously said:
+
+> A saved user background leads the candidate list.
+> Automatic candidates exclude known portrait or square images, transparent or animated assets, images explicitly typed as logo or cover, and invalid image IDs.
+> Rank each source image by the pixel area remaining after a centered crop to the target aspect ratio.
+
+The visual specification previously said:
+
+> Prefer the saved game background, then suitable landscape artwork, then a landscape screenshot, then a quiet cover fallback.

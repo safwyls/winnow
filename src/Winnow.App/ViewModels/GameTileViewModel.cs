@@ -52,6 +52,8 @@ public partial class GameTileViewModel : ObservableObject
         }
 
         Entries = entries;
+        SteamBackdropAppIds = entries.Select(entry => entry.SteamAppId)
+            .Where(GameLink.IsSteamAppId).Select(id => id!).Distinct().ToArray();
         Game = game;
         CoverKey = coverKey;
         Leases = covers;
@@ -166,6 +168,9 @@ public partial class GameTileViewModel : ObservableObject
     /// overwhelming majority of tiles.
     /// </summary>
     public IReadOnlyList<TileEntry> Entries { get; }
+
+    /// <summary>Known Steam releases in this group, independent of which copy can currently launch.</summary>
+    public IReadOnlyList<string> SteamBackdropAppIds { get; }
 
     /// <summary>The game this tile is, as the library read model folded it.</summary>
     public GameGrouping Game { get; }
