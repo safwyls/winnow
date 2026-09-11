@@ -456,6 +456,7 @@ public static class Program
         services.AddSingleton<IIgdbObservationWriter, IgdbObservationWriter>();
         services.AddSingleton<IReleaseRepository, ReleaseRepository>();
         services.AddSingleton<IReleaseYearEvidenceRepository, ReleaseYearEvidenceRepository>();
+        services.AddSingleton<IGroupHeaderPreferenceRepository, GroupHeaderPreferenceRepository>();
         services.AddSingleton<IOwnershipRepository, OwnershipRepository>();
         services.AddSingleton<ISteamInstallStateRepository, SteamInstallStateRepository>();
         services.AddSingleton<IGogInstallStateRepository, GogInstallStateRepository>();

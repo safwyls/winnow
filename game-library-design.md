@@ -1231,6 +1231,7 @@ works(id, igdb_id UNIQUE, igdb_mapping_revision, name, sort_name,
 releases(id, work_id FK, igdb_version_id, name, platform, edition_note)
 release_year_evidence(release_id FK, source, source_id, year,
                       PRIMARY KEY(release_id, source, source_id))
+group_header_preferences(work_id PK FK, preferred_store NULL, revision)
 external_ids(release_id FK, provider, provider_id, PRIMARY KEY(provider, provider_id))
   -- provider ∈ {steam, gog, epic, igdb} or plugin:<id>
 
@@ -1307,6 +1308,24 @@ merge_candidates(id, left_release_id, right_release_id, score, signals_json, sta
 metadata_cache(provider, provider_id, payload_json, fetched_at, PRIMARY KEY(provider, provider_id))
 settings(key, value)
 ```
+
+`group_header_preferences` (migration 0041) stores a preferred header store independently
+of identity links. A choice is anchored to the same-game root at the time it is saved.
+Reads resolve that anchor through current same-game links; the highest revision wins when
+groups combine. An explicit null means Automatic and overrides older inherited choices.
+Retraction leaves preferences on their original anchors, so a separated group can recover
+its previous choice. Re-ingest never rewrites these preferences. Writes validate that the
+target is still a group root and that a selected store has an ownership in that group.
+
+Desktop and fullscreen share header selection: prefer a currently available member on the
+saved store, then the root's available entry, then the lowest work ID. Within a matching
+work, the preferred store's entry leads. The choice supplies header title, cover and primary
+store entry only; canonical identity, Work metadata, metadata editing, groups, lists and
+undo continue to use the identity root. Unavailable saved stores remain visible as unavailable
+in Merges and fall back automatically until an ownership returns or the user chooses Automatic.
+Resolved strips stay keyed by identity act for Separate again; their preferred header may
+come from another current member of the same group. Pending-proposal platform preferences
+remain separate and never overwrite a saved group choice.
 
 `works.first_release_year` remains the shared display and filter year for desktop and
 fullscreen, with its existing field-source and IGDB-pin rules. Edition matching uses

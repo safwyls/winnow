@@ -42,6 +42,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     public const string AllGamesKey = "all_games";
 
     private readonly ILibraryQueryRepository _libraryQueries;
+    private readonly IGroupHeaderPreferenceRepository? _groupHeaders;
     private readonly IOwnershipRepository _ownerships;
     private readonly IReleaseRepository _releases;
     private readonly IWorkRepository _works;
@@ -235,7 +236,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         ISessionRepository? sessions = null,
         ArtworkPreferences? artworkPreferences = null,
         Services.IUpdateFlagService? updateFlags = null,
-        IAccountAcquisitionReader? acquisitionReader = null)
+        IAccountAcquisitionReader? acquisitionReader = null,
+        IGroupHeaderPreferenceRepository? groupHeaders = null)
     {
         _storefrontCache = storefrontCache;
         _workRatings = workRatings;
@@ -256,6 +258,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         _updateEvents = updateEvents;
         _updateFlags = updateFlags;
         _acquisitionReader = acquisitionReader;
+        _groupHeaders = groupHeaders;
         _sessions = sessions;
         _leases = leases;
         _snapshots = snapshots;
@@ -861,7 +864,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             var storefronts = _storefrontCache is null
                 ? new Dictionary<string, StorefrontDetails>()
                 : await _storefrontCache.ReadAllAsync(ct);
-            return (snapshot, identity, facets, pins, epic, storefronts);
+            var headers = _groupHeaders is null ? new Dictionary<long, string?>() : await _groupHeaders.GetAllAsync(ct);
+            return (snapshot, identity, facets, pins, epic, storefronts, headers);
         }, ct);
         if (_disposed || ct.IsCancellationRequested || generation != Volatile.Read(ref _loadGeneration)) return;
         var bucketRows = loaded.snapshot.Buckets;
@@ -1013,20 +1017,24 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         var tiles = new List<GameTileViewModel>(groupOrder.Count);
         foreach (var resolvedWorkId in groupOrder)
         {
-            // The primary work's own entries lead, then the covered titles'
-            // by work and ownership — the same order IdentityCoverage puts
-            // its rows in, so the chips on a tile and the rows in ALSO
-            // COVERS read in the same sequence. The order is total, so the
-            // primary entry and the chip order do not shuffle between loads.
+            // The selected header's entry leads; remaining members retain a
+            // total order so store chips and launch choices do not shuffle.
             var members = groups[resolvedWorkId];
+            var preferredStore = resolution.IsParent(resolvedWorkId) ? loaded.headers.GetValueOrDefault(resolvedWorkId) : null;
+            var headerWorkId = GroupHeaderSelection.SelectWork(resolvedWorkId, preferredStore,
+                members.Select(member => (member.WorkId, ownershipById.GetValueOrDefault(member.OwnershipId)?.Store ?? "?")));
             members.Sort((a, b) =>
             {
-                var aOwn = a.WorkId == resolvedWorkId ? 0 : 1;
-                var bOwn = b.WorkId == resolvedWorkId ? 0 : 1;
+                var aOwn = a.WorkId == headerWorkId ? 0 : 1;
+                var bOwn = b.WorkId == headerWorkId ? 0 : 1;
                 if (aOwn != bOwn)
                 {
                     return aOwn - bOwn;
                 }
+
+                var aStore = ownershipById.GetValueOrDefault(a.OwnershipId)?.Store == preferredStore ? 0 : 1;
+                var bStore = ownershipById.GetValueOrDefault(b.OwnershipId)?.Store == preferredStore ? 0 : 1;
+                if (aOwn == 0 && aStore != bStore) return aStore - bStore;
 
                 return a.WorkId == b.WorkId
                     ? a.OwnershipId.CompareTo(b.OwnershipId)
@@ -1035,11 +1043,11 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
             var primaryRow = members[0];
 
-            // The work the user is SHOWN. On a collapsed tile it is the primary
-            // work, whose name and art both store entries have read since 70.4;
-            // the collapse simply stops drawing the second tile.
+            // Header presentation may come from another member. Scalar metadata
+            // keeps the canonical root so editing and IGDB pinning retain their target.
             var display = workById.GetValueOrDefault(resolvedWorkId)
                 ?? workByRelease.GetValueOrDefault(primaryRow.ReleaseId);
+            var header = workById.GetValueOrDefault(headerWorkId) ?? display;
 
             // The primary entry's own art, which for an unlinked tile is the
             // exact key it has always had. A group whose primary release has no
@@ -1048,7 +1056,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             // a cover.
             var tileCoverKey = coverKeyByRelease.TryGetValue(primaryRow.ReleaseId, out var own)
                 ? own
-                : coverKeyByWork.TryGetValue(resolvedWorkId, out var primaryKey)
+                : coverKeyByWork.TryGetValue(headerWorkId, out var primaryKey)
                     ? primaryKey
                     : (CoverKey?)null;
 
@@ -1092,7 +1100,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                 // badge all come off this one object, which the read model
                 // folded with CoveragePlaytime.Across.
                 game: primaryRow.Game,
-                title: display?.Name ?? $"Release {primaryRow.ReleaseId}",
+                title: header?.Name ?? $"Release {primaryRow.ReleaseId}",
                 nowUtc: now,
                 coverKey: tileCoverKey,
                 covers: _leases,

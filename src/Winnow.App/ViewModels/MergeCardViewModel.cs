@@ -236,7 +236,38 @@ public partial class MergeCardViewModel : ObservableObject
     public MergeRowViewModel Header => Rows[HeaderIndex];
 
     /// <summary>The header's title, drawn at the top of the card.</summary>
-    public string HeaderTitle => Header.Title;
+    public string HeaderTitle => IsResolved ? PreferredHeaderTitle ?? Header.Title : Header.Title;
+
+    public long HeaderGroupWorkId { get; private set; }
+    public IReadOnlyList<GroupHeaderOption> HeaderStoreOptions { get; private set; } = [];
+    public bool CanChooseHeaderStore => IsResolved && HeaderStoreOptions.Count > 0;
+    public string HeaderStoreAutomationName => "Header store for " + HeaderTitle;
+
+    [ObservableProperty]
+    public partial GroupHeaderOption? SelectedHeaderStore { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HeaderTitle), nameof(HeaderStoreAutomationName))]
+    public partial string? PreferredHeaderTitle { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsSavingHeader { get; set; }
+
+    [ObservableProperty]
+    public partial string? HeaderStoreProblem { get; set; }
+
+    public void RestoreHeaderStoreSelection() => OnPropertyChanged(nameof(SelectedHeaderStore));
+
+    public void ConfigureHeaderStore(long rootWorkId, IReadOnlyList<GroupHeaderOption> options,
+        string? preferredStore, string? title)
+    {
+        HeaderGroupWorkId = rootWorkId;
+        HeaderStoreOptions = options;
+        PreferredHeaderTitle = title;
+        SelectedHeaderStore = options.FirstOrDefault(option => option.Store == preferredStore);
+        OnPropertyChanged(nameof(HeaderStoreOptions));
+        OnPropertyChanged(nameof(CanChooseHeaderStore));
+    }
 
     /// <summary>The parent of every link this card writes.</summary>
     public long ParentWorkId => Header.WorkId;
@@ -419,6 +450,7 @@ public partial class MergeCardViewModel : ObservableObject
     {
         ActId = actId;
         IsResolved = true;
+        OnPropertyChanged(nameof(CanChooseHeaderStore));
         IsSelected = false;
         HoveredRow = null;
     }
@@ -428,6 +460,8 @@ public partial class MergeCardViewModel : ObservableObject
     {
         ActId = null;
         IsResolved = false;
+        PreferredHeaderTitle = null;
+        OnPropertyChanged(nameof(CanChooseHeaderStore));
         IsDecided = false;
     }
 

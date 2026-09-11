@@ -38,5 +38,6 @@
   "0037_minimal_lifecycle_review_cache.sql": "a281dfc290a75de45946a85ebd082ba1523b82f1a4f5b6ae58aae5d000868bd0",
   "0038_monitored_session_identity.sql": "21ac5d6ebddc875142b78cd62f8d76a3df458079a990899280de4df510dbc5c4",
   "0039_release_year_evidence.sql": "d3b76cea74197a9c96f0826bb99fa1d51cf57e6ad46c1f8279eb934339b562b1",
+  "0041_group_header_preferences.sql": "0faf2e7d054414501e3c3ed6eccf672018f67ec78798d7f9b360fc3a83aecc17",
   "0040_achievement_accounts.sql": "e0ed48c84eff0158f6197728b0ea9d85a5eae4cb48a4b45009a74a1e4cf668a7"
 }

@@ -487,6 +487,15 @@ owned on two stores is one row wearing two chips. Resolved, the card collapses t
 `Volt` edge, the header title, `N entries · Nh · nested, nothing deleted`, and `Separate
 again`. The strip stays in place so the list never reflows under the pointer.
 
+Already linked same-game groups also offer `Header store` with `Automatic` and their owned
+stores. Desktop places a named selector beside the resolved strip; fullscreen offers the
+same choices in the group's action sheet. The selected store is saved for that group and
+supplies the header title, cover and primary store entry. `Automatic` restores the canonical
+root's header, falling back to an available member. An unavailable saved store is labeled
+`(unavailable)` and uses Automatic until that store returns. This changes presentation only:
+the canonical identity, Work metadata and editing, and `Separate again` remain unchanged.
+The pending-proposal `Prefer` setting remains a separate queue default.
+
 Confidence is a word, never a score: EXACT MATCH in `Text`, LIKELY in `TextDim`, WORTH A LOOK in
 `Amber`, the one Amber on the screen. Flare marks only the unread dots. The screen's two
 transitions are the 140ms row-fill restore and the 120ms reason cross-fade. The answers on a

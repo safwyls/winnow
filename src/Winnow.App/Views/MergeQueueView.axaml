@@ -518,20 +518,31 @@
 
                                                     <!-- ── Resolved: the strip ───────────── -->
                                                     <Grid IsVisible="{Binding IsResolved}"
-                                                          ColumnDefinitions="2,Auto,Auto,*,Auto"
+                                                          ColumnDefinitions="2,*,Auto,Auto"
                                                           MinHeight="44"
                                                           Margin="12,8,12,8">
                                                         <Border Grid.Column="0" Background="{StaticResource Volt}"/>
-                                                        <TextBlock Grid.Column="1" Classes="headline"
-                                                                   Margin="12,0,0,0"
-                                                                   VerticalAlignment="Center"
-                                                                   Text="{Binding HeaderTitle}"/>
-                                                        <TextBlock Grid.Column="2" Classes="data"
-                                                                   Margin="12,0,0,0"
-                                                                   VerticalAlignment="Center"
-                                                                   Foreground="{StaticResource TextDim}"
-                                                                   Text="{Binding ResolvedMeta}"/>
-                                                        <Button Grid.Column="4" Classes="act quiet sm"
+                                                        <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                                                            <TextBlock Classes="headline" Text="{Binding HeaderTitle}" TextTrimming="CharacterEllipsis"/>
+                                                            <TextBlock Classes="data" Foreground="{StaticResource TextDim}" Text="{Binding ResolvedMeta}"/>
+                                                            <TextBlock Text="{Binding HeaderStoreProblem}" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"/>
+                                                        </StackPanel>
+                                                        <ComboBox Grid.Column="2" Width="180" Margin="0,0,12,0"
+                                                                  VerticalAlignment="Center"
+                                                                  IsVisible="{Binding CanChooseHeaderStore}"
+                                                                  IsEnabled="{Binding !IsSavingHeader}"
+                                                                  AutomationProperties.Name="{Binding HeaderStoreAutomationName}"
+                                                                  ToolTip.Tip="Choose the store supplying this group's header"
+                                                                  ItemsSource="{Binding HeaderStoreOptions}"
+                                                                  SelectedItem="{Binding SelectedHeaderStore, Mode=OneWay}"
+                                                                  SelectionChanged="OnHeaderStoreChanged">
+                                                            <ComboBox.ItemTemplate>
+                                                                <DataTemplate x:DataType="vm:GroupHeaderOption">
+                                                                    <TextBlock Text="{Binding Label}"/>
+                                                                </DataTemplate>
+                                                            </ComboBox.ItemTemplate>
+                                                        </ComboBox>
+                                                        <Button Grid.Column="3" Classes="act quiet sm"
                                                                 VerticalAlignment="Center"
                                                                 Content="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).SeparateButtonText}"
                                                                 ToolTip.Tip="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).SeparateTooltip}"

@@ -164,6 +164,14 @@ public sealed class FullscreenIdentityPage : FullscreenPage
     {
         if (_model is null) return;
         var actions = new List<FullscreenAction>();
+        if (card.CanChooseHeaderStore)
+            actions.Add(new("Header store · " + card.SelectedHeaderStore?.Label, () => Context.ShowActions(
+                "Header store for " + card.HeaderTitle, card.HeaderStoreOptions.Select(option => new FullscreenAction(
+                    option.Label, async () => await Apply(async () =>
+                    {
+                        await _model.SetGroupHeaderAsync(card, option);
+                        if (card.HeaderStoreProblem is { } problem) Context.Notify(problem);
+                    }))).ToArray())));
         foreach (var row in card.Rows)
         {
             var tile = row.ReleaseIds.Select(Context.Library.TileForRelease).FirstOrDefault(t => t is not null);

@@ -58,6 +58,8 @@ public sealed class IdentityReadInventoryTests
     private static readonly Entry[] Inventory =
     [
         // ── RESOLVE ────────────────────────────────────────────────────────
+        new("src/Winnow.Data/Repositories/GroupHeaderPreferenceRepository.cs", "SetAsync", Policy.Resolve,
+            "Validates the current same-game root and the chosen store's ownership in that group; presentation preferences never reparent identity links."),
         new("src/Winnow.Data/Repositories/LibraryQueryRepository.cs", "BucketSql", Policy.Resolve,
             "The chokepoint. One LEFT JOIN over live same_game links, in the same pass as demo "
             + "consolidation, and every surface it feeds inherits it: the grid, the rail bucket "
@@ -84,6 +86,12 @@ public sealed class IdentityReadInventoryTests
             "Renders the members MergeGrouping produced, and a member IS a resolved work: the "
             + "grouping resolves both ends of every proposal and drops the ones that resolve to "
             + "one work before a card exists."),
+
+        new("src/Winnow.App/ViewModels/MergeQueueViewModel.cs", "RefreshGroupHeadersAsync", Policy.Resolve,
+            "Reads current ownerships and same-game resolution to choose a group's header presentation; act membership and canonical root remain unchanged."),
+
+        new("src/Winnow.App/ViewModels/MergeQueueViewModel.cs", "ConfigureGroupHeaders", Policy.Resolve,
+            "Selects header metadata from a current member of the resolved group while retaining the group's canonical identity root."),
 
         // ── DO NOT RESOLVE ─────────────────────────────────────────────────
         new("src/Winnow.Data/Repositories/ActivityRepository.cs", "GetPageAsync", Policy.DoNotResolve,

@@ -22,6 +22,12 @@ public partial class MergeQueueView : UserControl
     /// <summary>Whether the covers have been asked for since the pane was last shown.</summary>
     private bool _covered;
 
+    private async void OnHeaderStoreChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_queue is not null && sender is ComboBox { DataContext: MergeCardViewModel card, SelectedItem: GroupHeaderOption option })
+            await _queue.SetGroupHeaderAsync(card, option);
+    }
+
     public MergeQueueView()
     {
         InitializeComponent();
