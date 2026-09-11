@@ -567,4 +567,30 @@
         <Setter Property="Stroke" Value="{DynamicResource Text}"/>
     </Style>
 
+        <!-- ══ Status pill ══════════════════════════════════════════════════
+             A word, not a dot. State carried by label; colour reinforces (§8).
+        -->
+        <Style Selector="Border.provider-status">
+            <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}"/>
+            <Setter Property="Padding" Value="8,3"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Border.provider-status TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextDim}"/>
+        </Style>
+        <Style Selector="Border.provider-status.live">
+            <Setter Property="BorderBrush" Value="{DynamicResource Volt}"/>
+        </Style>
+        <Style Selector="Border.provider-status.live TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource Volt}"/>
+        </Style>
+        <Style Selector="Border.provider-status.attention">
+            <Setter Property="BorderBrush" Value="{DynamicResource Amber}"/>
+        </Style>
+        <Style Selector="Border.provider-status.attention TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource Amber}"/>
+        </Style>
+
 </Styles>

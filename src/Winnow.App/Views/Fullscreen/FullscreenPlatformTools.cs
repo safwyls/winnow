@@ -25,6 +25,7 @@ public sealed class FullscreenPlatformPage : FullscreenPage
         {
             var text = FullscreenUi.Text("", 28, resource);
             Bind(text, TextBlock.TextProperty, property);
+            Bind(text, Avalonia.Automation.AutomationProperties.NameProperty, property);
             if (visible is not null) Bind(text, IsVisibleProperty, visible);
             body.Children.Add(text);
         }
@@ -48,7 +49,7 @@ public sealed class FullscreenPlatformPage : FullscreenPage
         }
         if (platform == "Steam")
         {
-            Text(nameof(stores.SteamStatusLabel));
+            Text(nameof(stores.SteamStatusLabel), resource: "TextDim");
             Text(nameof(stores.SteamSessionHealthMessage), nameof(stores.SteamHasSession), "TextDim");
             Text(nameof(stores.SteamSignedInAccountText), nameof(stores.ShowSteamSignedInAccount), "TextDim");
             Text(nameof(stores.SteamConnectionMessage));
@@ -78,7 +79,7 @@ public sealed class FullscreenPlatformPage : FullscreenPage
         }
         else if (platform == "Epic")
         {
-            Text(nameof(stores.EpicStatusLabel));
+            Text(nameof(stores.EpicStatusLabel), resource: "TextDim");
             Text(nameof(stores.EpicAccountLine), nameof(stores.ShowEpicAccountLine));
             Text(nameof(stores.EpicAnonymousMessage), nameof(stores.ShowEpicAnonymousLine));
             Text(nameof(stores.EpicLocalMessage), resource: "TextDim");
@@ -91,7 +92,7 @@ public sealed class FullscreenPlatformPage : FullscreenPage
             Label(signIn, nameof(stores.EpicSignInButtonText));
             Bind(signIn, IsEnabledProperty, nameof(stores.EpicCanSignIn));
         }
-        else { Text(nameof(stores.GogLocalMessage)); Text(nameof(stores.GogNoSignInMessage)); }
+        else { Text(nameof(stores.GogStatusLabel), resource: "TextDim"); Text(nameof(stores.GogLocalMessage)); Text(nameof(stores.GogNoSignInMessage)); }
         if (platform != "GOG") body.Children.Add(FullscreenUi.Text("The sign-in window supports controller field navigation and text entry. Provider challenges may still ask for a phone or pointer.", 28, "TextDim"));
         body.Children.Add(_notice); Add("Back", context.Back);
         Content = FullscreenUi.Scroll(body); SetFocusRows(controls.ToArray());

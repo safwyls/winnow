@@ -36,32 +36,6 @@
             <Setter Property="Width" Value="560"/>
         </Style>
 
-        <!-- ══ Status pill ══════════════════════════════════════════════════
-             A word, not a dot. State carried by label; colour reinforces (§8).
-        -->
-        <Style Selector="Border.pill">
-            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
-            <Setter Property="Padding" Value="8,3"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
-        <Style Selector="Border.pill TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
-        </Style>
-        <Style Selector="Border.pill.live">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
-        </Style>
-        <Style Selector="Border.pill.live TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource Volt}"/>
-        </Style>
-        <Style Selector="Border.pill.attention">
-            <Setter Property="BorderBrush" Value="{StaticResource Amber}"/>
-        </Style>
-        <Style Selector="Border.pill.attention TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource Amber}"/>
-        </Style>
-
         <!-- ══ Prose and actions live in Themes/controls.axaml now ═════════
              Moved there when the Epic consent window needed the same styles.
              Uses DynamicResource for Application.Styles load ordering. -->
@@ -376,13 +350,14 @@
                                               ToolTip.Tip="{Binding AccountScopeMessage}"/>
                             </StackPanel>
 
-                            <Border Grid.Column="3" Classes="pill"
+                            <Border Grid.Column="3" Classes="provider-status"
                                     VerticalAlignment="Center"
                                     Classes.live="{Binding SteamStatusIsLive}"
                                     Classes.attention="{Binding SteamStatusNeedsAttention}">
                                 <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
                                            VerticalAlignment="Center"
-                                           Text="{Binding SteamStatusLabel}"/>
+                                           Text="{Binding SteamStatusLabel}"
+                                           AutomationProperties.Name="{Binding SteamStatusLabel}"/>
                             </Border>
                         </Grid>
 
@@ -500,7 +475,7 @@
                                 <TextBlock Classes="para lead"
                                            VerticalAlignment="Center"
                                            Text="{Binding SteamSignInStateText}"/>
-                                <Border Classes="pill live"
+                                <Border Classes="provider-status live"
                                         VerticalAlignment="Center"
                                         IsVisible="{Binding SteamSignInIsInUse}"
                                         ToolTip.Tip="{Binding MethodInUseTooltip}">
@@ -721,7 +696,7 @@
                                            VerticalAlignment="Center"
                                            Text="{Binding SteamApiKeyStateText}"/>
                                 <Border Grid.Column="4"
-                                        Classes="pill live"
+                                        Classes="provider-status live"
                                         VerticalAlignment="Center"
                                         IsVisible="{Binding SteamApiKeyIsInUse}"
                                         ToolTip.Tip="{Binding MethodInUseTooltip}">
@@ -951,11 +926,12 @@
                                 </TextBlock>
                             </StackPanel>
 
-                            <Border Grid.Column="1" Classes="pill"
+                            <Border Grid.Column="1" Classes="provider-status"
                                     Classes.live="{Binding EpicStatusIsLive}"
                                     Classes.attention="{Binding EpicStatusNeedsAttention}">
                                 <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                           Text="{Binding EpicStatusLabel}"/>
+                                           Text="{Binding EpicStatusLabel}"
+                                           AutomationProperties.Name="{Binding EpicStatusLabel}"/>
                             </Border>
                         </Grid>
 
@@ -1119,9 +1095,10 @@
                             </StackPanel>
 
                             <!-- Volt: this source is complete. -->
-                            <Border Grid.Column="1" Classes="pill live">
+                            <Border Grid.Column="1" Classes="provider-status live">
                                 <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                           Text="{Binding GogStatusLabel}"/>
+                                           Text="{Binding GogStatusLabel}"
+                                           AutomationProperties.Name="{Binding GogStatusLabel}"/>
                             </Border>
                         </Grid>
 

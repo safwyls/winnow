@@ -397,6 +397,15 @@ how much art gets through. It warns and never refuses, like every other check th
 
 ## 6. Components
 
+**Provider status.** Optional and unconnected means no stored connection was chosen; it
+does not imply a failure or reduced service. The shared desktop `provider-status` component
+uses a `Line` border and `TextDim` label for this neutral state. Its `live` state uses `Volt`
+for a working credential or complete local source; `attention` uses `Amber` for a failed
+renewal or expired session. Every state is named in text and accessible to assistive
+technology. Fullscreen uses a `TextDim` status line beneath the provider heading, with
+separate actionable attention text; it shares the state meanings without the desktop pill.
+Local-only discovery is an available source, not an unconnected account requiring repair.
+
 **Rail bucket.** Display S name, Data count. Selected: `ChromeRaised` fill, 2px `Volt` left
 edge. The `Patched` bucket is the only one carrying a `Flare` dot next to its count.
 Zero-count buckets render at 40% opacity rather than hiding, so the rail never reflows.
