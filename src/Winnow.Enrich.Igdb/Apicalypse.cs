@@ -76,6 +76,15 @@ public static class Apicalypse
             offset {offset.ToString(CultureInfo.InvariantCulture)};
             """;
 
+    /// <summary>Explicit edition fields with the source returned for exact response correlation.</summary>
+    public static string ExternalEditions(IEnumerable<string> uids, int sourceId, int limit, int offset)
+        => $"""
+            fields uid,external_game_source,game.id,game.version_parent,game.version_title;
+            where external_game_source = {sourceId.ToString(CultureInfo.InvariantCulture)} & uid = {StringList(uids)};
+            limit {Clamp(limit).ToString(CultureInfo.InvariantCulture)};
+            offset {offset.ToString(CultureInfo.InvariantCulture)};
+            """;
+
     /// <summary>
     /// The <c>games</c> query for full metadata.
     ///
@@ -84,11 +93,8 @@ public static class Apicalypse
     /// client-side; Apicalypse cannot filter on a nested field of an expanded
     /// array.</para>
     ///
-    /// <para>Editions — Skyrim vs. Special Edition vs. Anniversary — are
-    /// deliberately absent. §4.4 names <c>game_versions</c> as the right
-    /// abstraction for the Release layer and tells us not to reinvent it; that
-    /// is a later milestone, not this one, and nothing here should grow an
-    /// ad-hoc edition guess in the meantime.</para>
+    /// <para>Edition identity uses the separate strict external-id query; catalog
+    /// metadata alone does not establish a store release's edition.</para>
     ///
     /// <para><c>game_modes</c> and <c>player_perspectives</c> are the library
     /// filter's descriptors (migration 0007). They cost NOTHING to ask for: an

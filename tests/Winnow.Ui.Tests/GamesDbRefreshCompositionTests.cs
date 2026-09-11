@@ -15,6 +15,9 @@ using Winnow.Core.Repositories;
 using Winnow.Data;
 using Winnow.Enrich.GamesDb;
 using Winnow.Enrich.GamesDb.Model;
+using Winnow.Enrich.Igdb;
+using Winnow.Enrich.Igdb.Storage;
+using Winnow.Enrich.Stores;
 using Winnow.Tests;
 using Xunit;
 
@@ -34,11 +37,28 @@ public sealed class GamesDbRefreshCompositionTests
         {
             connection.Execute("""
                 UPDATE works SET name='Shared game',sort_name='Shared game';
-                UPDATE releases SET name='Shared game',igdb_version_id=42;
-                UPDATE external_ids SET provider='epic',provider_id='catalog' WHERE release_id=1;
+                UPDATE releases SET name='Shared game';
+                UPDATE external_ids SET provider='epic',provider_id=@catalogId WHERE release_id=1;
                 UPDATE ownerships SET store='epic' WHERE release_id=1;
                 INSERT INTO merge_candidates(left_release_id,right_release_id,score,status) VALUES(1,2,0.9,'pending');
-                """);
+                """, new { catalogId = EditionEvidenceFixture.CatalogId });
+        }
+        var observed = DateTime.UtcNow;
+        var storefront = new StorefrontCache(db.Factory);
+        await storefront.SaveAsync("epic", "{\"" + EditionEvidenceFixture.Namespace + "\":\"fez\"}", observed);
+        await storefront.SaveAsync("epic-edition-v1:fez", EditionEvidenceFixture.Cms, observed);
+        var metadata = new SqliteMetadataCache(db.Factory);
+        await metadata.SetAsync(SqliteEpicLaunchKeyStore.Provider, EditionEvidenceFixture.CatalogId,
+            "{\"Namespace\":\"" + EditionEvidenceFixture.Namespace + "\",\"AppName\":\"Bluebird\"}", observed);
+        await SeedEdition(1, "2", edition: true);
+        await SeedEdition(26, EditionEvidenceFixture.OfferId, edition: true);
+        await SeedEdition(26, EditionEvidenceFixture.PageId, edition: false);
+        async Task SeedEdition(int source, string uid, bool edition)
+        {
+            var fields = edition ? "\"status\":3,\"game_id\":42,\"parent_id\":1,\"title\":\"Gold Edition\""
+                : "\"status\":0,\"game_id\":null,\"parent_id\":null,\"title\":null";
+            await metadata.SetAsync(IgdbClient.EditionCacheProvider, IgdbClient.EditionCacheKey(source, uid),
+                "{\"version\":1,\"source_id\":" + source + ",\"uid\":\"" + uid + "\"," + fields + "}", observed);
         }
         var registrations = new ServiceCollection();
         registrations.AddLogging();
@@ -74,13 +94,15 @@ public sealed class GamesDbRefreshCompositionTests
             Assert.Equal(2, connection.ExecuteScalar<int>("SELECT COUNT(*) FROM ownerships"));
             Assert.Equal(2, connection.ExecuteScalar<int>("SELECT COUNT(*) FROM external_ids"));
             Assert.Equal(0, connection.ExecuteScalar<int>("SELECT COUNT(*) FROM merge_candidates WHERE status='pending'"));
+            Assert.Equal(2, connection.ExecuteScalar<int>("SELECT COUNT(*) FROM release_edition_evidence"));
+            Assert.Equal(0, connection.ExecuteScalar<int>("SELECT COUNT(*) FROM releases WHERE igdb_version_id IS NOT NULL"));
         }
     }
 
     private sealed class Aliases : IStoreArtifactAliasSource
     {
         public ValueTask<IReadOnlyDictionary<string, string>> GetAliasesAsync(string provider, CancellationToken ct = default) =>
-            ValueTask.FromResult<IReadOnlyDictionary<string, string>>(new Dictionary<string, string> { ["catalog"] = "artifact" });
+            ValueTask.FromResult<IReadOnlyDictionary<string, string>>(new Dictionary<string, string> { [EditionEvidenceFixture.CatalogId] = "Bluebird" });
     }
 
     private sealed class Graph : IGameIdentityGraph

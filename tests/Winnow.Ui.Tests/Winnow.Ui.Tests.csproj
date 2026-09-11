@@ -14,5 +14,6 @@
     <Compile Include="../Winnow.Tests/LibraryReadFixtures.cs" Link="Fixtures/LibraryReadFixtures.cs" />
     <Compile Include="../Winnow.Tests/TileFixture.cs" Link="Fixtures/TileFixture.cs" />
     <Compile Include="../Winnow.Tests/GroupHeaderFixture.cs" Link="Fixtures/GroupHeaderFixture.cs" />
+    <Compile Include="../Winnow.Tests/EditionEvidenceFixture.cs" Link="Fixtures/EditionEvidenceFixture.cs" />
   </ItemGroup>
 </Project>

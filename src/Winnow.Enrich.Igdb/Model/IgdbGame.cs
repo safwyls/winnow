@@ -60,7 +60,7 @@ public sealed record IgdbGame(
     /// <summary>IGDB <c>parent_game</c> id. The main game when this is DLC, an expansion, or part of a bundle.</summary>
     public long? ParentGameId { get; init; }
 
-    /// <summary>IGDB <c>version_parent</c> id. The original game when this is a remaster, remake or port.</summary>
+    /// <summary>IGDB <c>version_parent</c>: the main game of this edition entry.</summary>
     public long? VersionParentId { get; init; }
 
     /// <summary>IGDB <c>version_title</c>, e.g. "Game of the Year Edition". Null when IGDB gave none.</summary>

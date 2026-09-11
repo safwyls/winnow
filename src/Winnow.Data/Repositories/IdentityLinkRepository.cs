@@ -319,10 +319,19 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
 
     // ── Validation ───────────────────────────────────────────────────────────
 
-    private static async Task AssertAutomaticLinkAllowedAsync(
+    private async Task AssertAutomaticLinkAllowedAsync(
         DbLease lease, IdentityLinkRequest request, List<long> everyWork,
         IdentityResolution resolution, CancellationToken ct)
     {
+        if (request.ExpectedEditionEvidence is { } editions)
+        {
+            foreach (var edition in editions)
+            {
+                if (!await ReleaseEditionEvidenceRepository.IsCurrentAsync(lease, edition, _clock.GetUtcNow().UtcDateTime, ct))
+                    throw new IdentityLinkRefusedException("The native-store edition evidence changed.");
+            }
+        }
+
         if (request.ExpectedReleaseIdentities is { } releases)
         {
             foreach (var release in releases)

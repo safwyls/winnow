@@ -242,8 +242,10 @@ stored locally.
   high-precision join and the backbone of entity resolution. It also resolves GOG ids. It does
   **not** resolve Epic catalog ids: IGDB stores Epic *offer* and *page* ids instead, and a
   catalog-id lookup returns nothing.
-- **`game_versions` exposes release editions** (Skyrim, Special Edition, Anniversary). This is
-  the abstraction the Release layer needs. Do not reinvent it.
+- **An IGDB edition is a `games.id` with `version_parent` and `version_title`.**
+  `game_versions` groups a main game and its edition game IDs; its own ID is not one edition's
+  identity. Automatic linking requires a positive parent different from the edition game ID
+  and a nonempty version title, independently mapped from each release's native store ID.
 - A title search is the `search "…"` clause on the same `games` endpoint. It rides its own
   query body and its own cache namespace rather than widening the shared metadata query, so a
   400 costs the search alone. The term is user-typed free text, sanitized into the quoted
@@ -263,6 +265,13 @@ stored locally.
   beyond their TTL when credentials are absent or refetch fails; reading them never refreshes
   their timestamps. A stale miss has no such authority. Unsupported future versions and
   game payloads carrying another ID are ignored; a successful fresh answer replaces the old one.
+- Edition lookups use `external_games` with exact source and UID correlation, in the separate
+  `igdb-editions-v1` provider with payload version 1 and the existing 30-day TTL. They accept
+  one distinct explicit edition game per UID; conflicting game IDs, parent/title values or
+  malformed correlated rows cannot qualify. Complete empty answers are cached as Missing;
+  ordinary games are NotEdition. Failed or uncorrelatable responses remain unresolved.
+  This path accepts only current, complete, matching-version payloads with no future
+  timestamp. It never upgrades a legacy external mapping or serves expired positive evidence.
 - The shared `games` query carries `screenshots` and `artworks` as separate image arrays.
   Each row retains `image_id`, `width`, `height`, `alpha_channel` and `animated`; artworks also
   retain `image_type.name`. Dimensions and suitability metadata inform backdrop selection;
@@ -631,6 +640,19 @@ HTTP policy as the bulk response. Accept one distinct safe `productHome` slug; o
 and ambiguous answers yield no link. A null namespace or null/empty mappings is a cached
 negative result. GraphQL errors or malformed envelopes retain a prior answer. The bulk map
 keeps precedence when it later includes the namespace.
+
+For edition evidence, the resolved slug locates
+`GET https://store-content.ak.epicgames.com/api/en-US/content/products/<slug>`.
+Its CMS pages supply a native Epic offer/page ID only when the page namespace, item namespace,
+catalog item ID and artifact AppName exactly match the stored launch triple and `hasItem`
+is true. An offer also needs its own matching namespace and `hasOffer`. A title or GamesDB
+counterpart ID never supplies this mapping. Duplicate/malformed fields and conflicting item
+identities cannot qualify. CMS responses use `epic-edition-v1:<slug>` in `storefront-v1`, the
+same bounded transport and a 24-hour lifetime. Expired or future-dated evidence requires a
+new valid response; transport or malformed-response failures yield no usable edition
+evidence. HTTP 403/404 cache an empty answer for that lifetime. The ordinary storefront-link
+cache keeps its existing stale-data policy. Measured source fields and fixture coverage are
+recorded in `docs/spikes/native-edition-evidence.md`.
 
 ---
 
@@ -1073,15 +1095,21 @@ queue is where soft matches are cleared; a hard external-id join is not a soft m
 the shared ownership-refresh pipeline used at startup, on scheduled passes and after account
 changes. The lookup planner retains a graph answer only when it matches the requested Epic
 artifact and has a game ID. A numeric Steam or GOG counterpart already in the library can
-join through a reversible `same_game` link only when both referenced releases have the same
-positive `IgdbVersionId`. Unknown or conflicting versions remain reviewable; a game-level
-reference or similar title alone cannot establish edition equivalence.
+join through a reversible `same_game` link only when independent native-store observations
+map both releases to the same explicit IGDB edition game, parent and version title. Steam
+and GOG use their own exact external IDs; Epic uses only CMS-correlated offer/page IDs.
+All current native identifiers on a participating release must be accounted for. Multiple
+Epic IDs may include a complete Missing answer, but every positive answer must agree and an
+unanswered, ordinary-game or ambiguous alias cannot be silently ignored. Unknown or
+conflicting editions remain reviewable; game-level references and similar titles cannot
+establish edition equivalence.
 
-The link records the graph game ID, store IDs, release IDs and version evidence. Existing
-groups keep their representative when a singleton joins them. Ordinary launcher ingestion
-does not currently populate `IgdbVersionId`, so most imported pairs remain unresolved rather
-than being automatically linked. Logs distinguish observed counterparts, unresolved edition
-evidence, refused links and created links. Broader edition-evidence acquisition remains TASK-37.
+The link records the graph game ID, store IDs, release IDs and both native observations.
+Existing groups keep their representative when a singleton joins them. The legacy
+`releases.igdb_version_id` column supplies no automatic-link authority and is not backfilled.
+Logs distinguish observed pairs, eligible pairs, created links, unresolved evidence,
+conflicting editions and protected/changed identities. Eligibility is a source outcome,
+not a target queue size; unavailable CMS or IGDB edition mappings remain unresolved.
 
 `external_ids` remains globally keyed by `(provider, provider_id)`. No key is copied onto
 another release, and no work, release, ownership or history row is collapsed. A live identity
@@ -1091,8 +1119,9 @@ No fuzzy title evidence enters this automatic path.
 
 Rejected pairs, active metadata pins, expansion/variant membership and explicit separation
 history prevent automatic linking. A separated group's members remain available for manual
-linking. Repository checks revalidate release IDs, version evidence, external IDs and expected
-same-game roots inside the link transaction, so a changed mapping or user decision made while
+linking. Repository checks revalidate release IDs, persisted edition evidence, cached source
+payload hashes, evidence expiry, external IDs and expected same-game roots inside the link
+transaction, so a changed mapping or user decision made while
 the background lookup is running cannot be overwritten. Ordinary group reparenting is not
 a separation. Repeated passes create no extra links. Desktop and fullscreen share this
 pipeline and the identity-aware library refresh.
@@ -1245,6 +1274,9 @@ releases(id, work_id FK, igdb_version_id, name, platform, edition_note)
 release_year_evidence(release_id FK, source, source_id, year,
                       PRIMARY KEY(release_id, source, source_id))
 group_header_preferences(work_id PK FK, preferred_store NULL, revision)
+release_edition_evidence(id, release_id FK, work_id FK, provider, provider_id,
+                         edition_game_id, version_parent_id, version_title,
+                         sources_json, valid_until, observed_at)
 external_ids(release_id FK, provider, provider_id, PRIMARY KEY(provider, provider_id))
   -- provider ∈ {steam, gog, epic, igdb} or plugin:<id>
 
@@ -1321,6 +1353,20 @@ merge_candidates(id, left_release_id, right_release_id, score, signals_json, sta
 metadata_cache(provider, provider_id, payload_json, fetched_at, PRIMARY KEY(provider, provider_id))
 settings(key, value)
 ```
+
+`release_edition_evidence` (migration 0042) records validated native-store observations
+without changing canonical Work metadata or globally unique external IDs. `edition_game_id`
+is an explicit IGDB game, never the ID of a `game_versions` grouping. Its positive parent
+must differ from that game ID; its title must be nonempty. Source-generated JSON holds
+provider/cache-key/SHA-256 references. Epic observations include both local and remote launch
+cache inputs (including an absent payload), the exact CMS page and every answered native
+IGDB lookup. A newly present preferred launch source therefore invalidates an older plan.
+The validity deadline is the earliest input deadline. Exact repeat observations reuse their
+row; refreshed or changed observations retain separate history. Recording and linking each
+revalidate the current release/work/store key and source hashes in a write transaction.
+Only evidence acquired during the current pass can qualify a pair; retained historical rows
+never restore eligibility after an unanswered refresh. Desktop and fullscreen read the same
+reversible identity and preserve per-release details and Separate again.
 
 `group_header_preferences` (migration 0041) stores a preferred header store independently
 of identity links. A choice is anchored to the same-game root at the time it is saved.

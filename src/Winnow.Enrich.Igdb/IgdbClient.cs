@@ -13,7 +13,7 @@ namespace Winnow.Enrich.Igdb;
 /// Apicalypse client for IGDB v4. Auth, retry and rate limiting live in the
 /// <see cref="HttpClient"/> handler pipeline.
 /// </summary>
-public sealed class IgdbClient : IIgdbClient
+public sealed partial class IgdbClient : IIgdbClient
 {
     /// <summary>Named/typed <see cref="HttpClient"/> for api.igdb.com.</summary>
     public const string HttpClientName = "igdb";
@@ -604,7 +604,7 @@ public sealed class IgdbClient : IIgdbClient
     /// cached.</para>
     /// </summary>
     private async Task<PageResult<T>> FetchAllAsync<T>(
-        string endpoint, Func<int, int, string> queryFactory, CancellationToken ct)
+        string endpoint, Func<int, int, string> queryFactory, CancellationToken ct, bool requireArray = false)
     {
         // Always ask for the full 500-row page even though a batch carries 400
         // ids: the limit bounds rows returned, not ids requested, and the slack
@@ -615,7 +615,7 @@ public sealed class IgdbClient : IIgdbClient
 
         while (true)
         {
-            var page = await PostAsync<T>(endpoint, queryFactory(limit, offset), ct);
+            var page = await PostAsync<T>(endpoint, queryFactory(limit, offset), ct, requireArray);
             if (!page.Succeeded)
             {
                 return new PageResult<T>(false, items);
@@ -631,7 +631,7 @@ public sealed class IgdbClient : IIgdbClient
         }
     }
 
-    private async Task<PageResult<T>> PostAsync<T>(string endpoint, string query, CancellationToken ct)
+    private async Task<PageResult<T>> PostAsync<T>(string endpoint, string query, CancellationToken ct, bool requireArray = false)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, endpoint)
         {
@@ -659,6 +659,7 @@ public sealed class IgdbClient : IIgdbClient
 
             await using var stream = await response.Content.ReadAsStreamAsync(ct);
             var items = await JsonSerializer.DeserializeAsync<List<T>>(stream, IgdbJson.Options, ct);
+            if (requireArray && items is null) return new PageResult<T>(false, []);
             return new PageResult<T>(true, items ?? []);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)

@@ -456,6 +456,7 @@ public static class Program
         services.AddSingleton<IIgdbObservationWriter, IgdbObservationWriter>();
         services.AddSingleton<IReleaseRepository, ReleaseRepository>();
         services.AddSingleton<IReleaseYearEvidenceRepository, ReleaseYearEvidenceRepository>();
+        services.AddSingleton<IReleaseEditionEvidenceRepository, ReleaseEditionEvidenceRepository>();
         services.AddSingleton<IGroupHeaderPreferenceRepository, GroupHeaderPreferenceRepository>();
         services.AddSingleton<IOwnershipRepository, OwnershipRepository>();
         services.AddSingleton<ISteamInstallStateRepository, SteamInstallStateRepository>();
@@ -735,6 +736,7 @@ public static class Program
         services.AddGamesDbIdentityGraph();
         services.AddSingleton<EnrichmentLookupPlanner>();
         services.AddSingleton<GamesDbIdentitySyncService>();
+        services.AddSingleton<IReleaseEditionEvidenceAcquirer, ReleaseEditionEvidenceAcquirer>();
 
         // §4.2. A second INGEST source, not a name fallback: localconfig.vdf
         // only records games that have been played, so the never-launched

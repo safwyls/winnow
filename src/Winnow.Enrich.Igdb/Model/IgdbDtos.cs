@@ -441,9 +441,8 @@ internal sealed class IgdbGameDto
     public long? ParentGame { get; init; }
 
     /// <summary>
-    /// <c>version_parent</c>: the game this is a version of. A remaster, remake
-    /// or port names its original through this field. Arrives as a bare id
-    /// under the shipped query.
+    /// <c>version_parent</c>: the main game this edition is a version of.
+    /// Arrives as a bare id under the shipped query.
     /// </summary>
     [JsonConverter(typeof(ReferenceIdConverter))]
     public long? VersionParent { get; init; }
