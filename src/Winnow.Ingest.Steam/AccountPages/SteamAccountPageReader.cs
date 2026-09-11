@@ -17,7 +17,7 @@ public static class SteamAccountPageReader
 
         return new SteamAccountPageParseResult(
             SteamLicensesPageParser.Parse(pages.LicensesHtml),
-            SteamPurchaseHistoryPageParser.Parse(pages.HistoryHtml));
+            SteamPurchaseHistoryPageParser.Parse(pages.HistoryHtml)) { SteamId = pages.SteamId };
     }
 
     /// <summary>

@@ -261,6 +261,7 @@ public sealed class WebView2SteamSignInSession : ISteamSignInSession
 
         /// <summary>Documents captured after the mint. Empty unless the capture was consented to.</summary>
         public Dictionary<SteamAccountPageKind, string> Captured { get; } = new();
+        public SteamAccountPageIdentity CaptureIdentity { get; } = new();
 
         /// <summary>Navigations this flow performed itself during the capture, capped as a loop guard.</summary>
         public int DeliberateNavigations { get; set; }
@@ -793,8 +794,16 @@ public sealed class WebView2SteamSignInSession : ISteamSignInSession
         {
             run.Working(true);
 
+            var before = await SteamAccountPageReader.ReadAccountIdentityAsync(browser);
             var html = await run.Reader.ReadAsync(
                 browser, kind, () => run.CaptureFinished.Task.IsCompleted, ct);
+            var after = await SteamAccountPageReader.ReadAccountIdentityAsync(browser);
+            if (!run.CaptureIdentity.TryAccept(run.Claims.Subject ?? run.PageSteamId, before, after))
+            {
+                run.Captured.Clear();
+                run.CaptureFinished.TrySetResult(true);
+                return;
+            }
 
             if (html is null)
             {
@@ -906,6 +915,7 @@ public sealed class WebView2SteamSignInSession : ISteamSignInSession
                 HistoryHtml = run.Captured.GetValueOrDefault(SteamAccountPageKind.PurchaseHistory),
                 CapturedAt = DateTimeOffset.UtcNow,
                 Source = SteamAccountPageSource.EmbeddedSession,
+                SteamId = run.CaptureIdentity.SteamId,
             };
 
         return SteamSignInResult.SignedIn(
@@ -925,7 +935,9 @@ public sealed class WebView2SteamSignInSession : ISteamSignInSession
             run.Reader.LoadMoreStop,
             run.Reader.LicensesPagesWalked,
             run.Reader.LicensesStop,
-            run.Request.CapturePurchaseHistory
+            run.CaptureIdentity.Rejected
+                ? "signed in; the account changed during page capture, so those pages were discarded"
+                : run.Request.CapturePurchaseHistory && pages is not null
                 ? "signed in, with the account pages captured in the same session"
                 : "signed in; the account pages were not captured");
     }

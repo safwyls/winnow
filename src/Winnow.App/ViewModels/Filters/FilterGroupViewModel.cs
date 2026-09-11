@@ -15,6 +15,7 @@ public partial class FilterGroupViewModel : ObservableObject
 
     private readonly Action _onChanged;
     private readonly List<FilterOptionViewModel> _all = [];
+    private Func<string, string> _missingLabel = key => key;
 
     /// <summary>
     /// Whether <see cref="_all"/> has been sorted. Count-ordered groups sort once
@@ -80,18 +81,25 @@ public partial class FilterGroupViewModel : ObservableObject
     public bool HasSelection => _all.Exists(o => o.IsChecked);
 
     /// <summary>Rebuilds option rows from scratch, preserving checked state by key.</summary>
-    public void SetOptions(IEnumerable<(string Key, string Label)> options)
+    public void SetOptions(IEnumerable<(string Key, string Label)> options, Func<string, string>? missingLabel = null)
     {
-        var previously = _all.Where(o => o.IsChecked).Select(o => o.Key).ToHashSet(StringComparer.Ordinal);
+        var previously = _all.Where(o => o.IsChecked).ToDictionary(o => o.Key, StringComparer.Ordinal);
+        if (missingLabel is not null) _missingLabel = missingLabel;
 
         _all.Clear();
         _ordered = false;
         foreach (var (key, label) in options)
         {
-            var option = new FilterOptionViewModel(key, label, _ => _onChanged())
-            {
-                IsChecked = previously.Contains(key),
-            };
+            var option = new FilterOptionViewModel(key, label, _ => _onChanged());
+            option.SetCheckedSilently(previously.Remove(key));
+            _all.Add(option);
+        }
+
+        // An absent choice is still a restrictive rule. Keep its known label and
+        // a clearable zero-count row until the person removes that selection.
+        foreach (var option in previously.Values)
+        {
+            option.Count = 0;
             _all.Add(option);
         }
 
@@ -113,6 +121,8 @@ public partial class FilterGroupViewModel : ObservableObject
     public void ApplySelection(IEnumerable<string> keys, bool silent)
     {
         var wanted = keys.ToHashSet(StringComparer.Ordinal);
+        foreach (var key in wanted.Except(_all.Select(option => option.Key), StringComparer.Ordinal))
+            _all.Add(new FilterOptionViewModel(key, _missingLabel(key), _ => _onChanged()));
         foreach (var option in _all)
         {
             if (option.IsChecked == wanted.Contains(option.Key))
@@ -129,6 +139,7 @@ public partial class FilterGroupViewModel : ObservableObject
                 option.IsChecked = wanted.Contains(option.Key);
             }
         }
+        Reflow();
     }
 
     public void ClearSelection(bool silent)

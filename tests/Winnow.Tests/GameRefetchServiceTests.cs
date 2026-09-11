@@ -112,6 +112,22 @@ public sealed class GameRefetchServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task A_new_mapping_can_refetch_immediately_and_fill_its_pinned_metadata()
+    {
+        var workId = await SeedAsync("620", igdbId: 1020);
+        _igdb.Games[1020] = Game(1020, screenshots: ["old"]);
+        _igdb.Games[1021] = new IgdbGame(1021, "Corrected", null, 2017, "Correct summary", [], [], []);
+        var service = Service();
+        await service.RefetchAsync(workId);
+        await _pins.PinAsync(new() { WorkId = workId, IgdbId = 1021, Name = "Corrected" });
+        var result = await service.RefetchAsync(workId);
+        Assert.Equal(GameRefetchOutcome.Updated, result.Outcome);
+        Assert.True(result.MetadataFilled);
+        Assert.Equal("Correct summary", (await _works.GetAsync(workId))!.Summary);
+        Assert.Equal([1020L, 1021L], _igdb.GameIdsAsked);
+    }
+
+    [Fact]
     public async Task A_second_refetch_inside_the_cooldown_is_refused_without_a_request()
     {
         var workId = await SeedAsync("620", igdbId: 1020);
@@ -258,7 +274,7 @@ public sealed class GameRefetchServiceTests : IDisposable
             _pins,
             _igdb,
             _store,
-            new WorkReceptionWriter(_images, _ratings, _clock),
+            new WorkReceptionWriter(_images, _ratings, new IgdbObservationWriter(_db.Factory), _clock),
             _db.Factory,
             NullLogger<GameRefetchService>.Instance,
             new GameRefetchOptions { Cooldown = TimeSpan.FromMinutes(5) },

@@ -97,6 +97,13 @@ public sealed class ScriptedProcessSource : IProcessSource
             return null;
         }
 
+        if (process.Disposed)
+        {
+            process = new FakeProcess(pid, process.ProcessName, process.ExecutablePath,
+                process.StartedAtUtc, process.SteamCompatibilityDataPath);
+            _running[pid] = process;
+        }
+
         _handles[pid] = process;
         return process;
     }
@@ -198,6 +205,39 @@ public sealed class FakeProcess : ITrackedProcess
 /// </summary>
 public sealed class FlakySessionRepository(ISessionRepository inner) : ISessionRepository
 {
+    public int FailAfterCommit { get; set; }
+    public int FailRecoveryReads { get; set; }
+
+    public Task<Session?> FindOpenMonitoredAsync(long ownershipId,
+        IReadOnlyList<MonitoredProcessIdentity> processes, CancellationToken ct = default)
+    {
+        if (FailRecoveryReads-- > 0)
+        {
+            throw new InvalidOperationException("Recovery read failed (simulated).");
+        }
+
+        return inner.FindOpenMonitoredAsync(ownershipId, processes, ct);
+    }
+
+    public async Task<Session> SaveMonitoredAsync(Session session,
+        IReadOnlyList<MonitoredProcessIdentity> processes, CancellationToken ct = default)
+    {
+        InsertAttempts++;
+        if (FailNextInserts > 0)
+        {
+            FailNextInserts--;
+            throw new InvalidOperationException("database is locked (simulated)");
+        }
+
+        var saved = await inner.SaveMonitoredAsync(session, processes, ct);
+        if (FailAfterCommit-- > 0)
+        {
+            throw new InvalidOperationException("Response lost after commit (simulated).");
+        }
+
+        return saved;
+    }
+
     /// <summary>Inserts to reject before letting writes through again.</summary>
     public int FailNextInserts { get; set; }
 

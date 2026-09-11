@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Automation;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
@@ -19,6 +20,33 @@ public partial class GameDetailsView : UserControl
     private GameDetailsViewModel? _observedDetails;
     private bool _wasFocusedView;
     private readonly List<MenuItem> _linkRows = [];
+    private Control? _refreshFocused;
+    private (long ReleaseId, DateTime At, bool Announcement)? _refreshUpdate;
+
+    private void OnSnapshotChanging(object? sender, EventArgs e)
+    {
+        _refreshFocused = this.GetVisualDescendants().OfType<Control>().FirstOrDefault(control => control.IsFocused);
+        _refreshUpdate = _refreshFocused?.DataContext is UpdateEventViewModel update
+            ? (update.ReleaseId, update.OccurredAtUtc, update.IsAnnouncement) : null;
+    }
+
+    private void OnSnapshotChanged(object? sender, EventArgs e)
+    {
+        var previous = _refreshFocused;
+        var update = _refreshUpdate;
+        if (previous is null) return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (!ReferenceEquals(DataContext, sender) || previous.IsFocused || !IsEffectivelyVisible) return;
+            var name = AutomationProperties.GetName(previous);
+            var target = this.GetVisualDescendants().OfType<Control>().FirstOrDefault(control =>
+                control.Focusable && control.IsEffectivelyVisible && control.IsEffectivelyEnabled &&
+                (update is { } key ? control.DataContext is UpdateEventViewModel row &&
+                    (row.ReleaseId, row.OccurredAtUtc, row.IsAnnouncement) == key
+                    : !string.IsNullOrEmpty(name) && AutomationProperties.GetName(control) == name));
+            target?.Focus(NavigationMethod.Tab);
+        }, DispatcherPriority.Loaded);
+    }
 
     public GameDetailsView()
     {
@@ -48,6 +76,7 @@ public partial class GameDetailsView : UserControl
     private void OnDetailsPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is null or "" or nameof(GameDetailsViewModel.Links)) RefreshLinkRows();
+        if (e.PropertyName is null or "" or nameof(GameDetailsViewModel.Screenshots)) RequestCover();
         if (e.PropertyName != nameof(GameDetailsViewModel.IsFocusedView)
             || _observedDetails is not { } details) return;
 
@@ -154,9 +183,19 @@ public partial class GameDetailsView : UserControl
     {
         base.OnDataContextChanged(e);
 
-        if (_observedDetails is not null) _observedDetails.PropertyChanged -= OnDetailsPropertyChanged;
+        if (_observedDetails is not null)
+        {
+            _observedDetails.PropertyChanged -= OnDetailsPropertyChanged;
+            _observedDetails.SnapshotChanging -= OnSnapshotChanging;
+            _observedDetails.SnapshotChanged -= OnSnapshotChanged;
+        }
         _observedDetails = DataContext as GameDetailsViewModel;
-        if (_observedDetails is not null) _observedDetails.PropertyChanged += OnDetailsPropertyChanged;
+        if (_observedDetails is not null)
+        {
+            _observedDetails.PropertyChanged += OnDetailsPropertyChanged;
+            _observedDetails.SnapshotChanging += OnSnapshotChanging;
+            _observedDetails.SnapshotChanged += OnSnapshotChanged;
+        }
         _wasFocusedView = _observedDetails?.IsFocusedView == true;
         RefreshLinkRows();
 

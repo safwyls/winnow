@@ -171,7 +171,7 @@ internal sealed class FakeGogInstalledGameRegistry : IGogInstalledGameRegistry
     /// <summary>An empty registry — a machine that has never installed a GOG game.</summary>
     internal static FakeGogInstalledGameRegistry Empty => new();
 
-    public IReadOnlyList<GogRegistryGame> Enumerate() => _games;
+    public GogRegistryScan Scan() => new(_games, true);
 }
 
 /// <summary>

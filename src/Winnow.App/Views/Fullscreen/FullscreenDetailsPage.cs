@@ -19,6 +19,8 @@ public sealed class FullscreenDetailsPage : FullscreenPage
     private readonly List<Control[]> _rows = [];
     private readonly Button[] _tabs;
     private readonly FullscreenBackdrop? _backdrop;
+    private readonly StackPanel _actions = new() { Orientation = Orientation.Horizontal, Spacing = 24 };
+    private readonly TextBlock _identity = FullscreenUi.Text("", 28, "TextDim");
     private int _tab;
 
     public FullscreenDetailsPage(FullscreenContext context, GameDetailsViewModel details, int selectedSection = 0) : base(context)
@@ -26,17 +28,8 @@ public sealed class FullscreenDetailsPage : FullscreenPage
         _details = details;
         _backdrop = context is null ? null : new FullscreenBackdrop(context, details.Tile, cinematic: true);
         DataContext = details;
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24 };
-        if (details.HasPrimaryAction)
-        {
-            var primary = FullscreenUi.Button(details.PrimaryAction!.Label, () => Context.Play(details.Tile));
-            primary.FontSize = 36;
-            primary.MinHeight = 76;
-            actions.Children.Add(primary);
-        }
-        if (details.Tile.Entries.Count > 1)
-            actions.Children.Add(FullscreenUi.Button("Choose version", () => Context.ChooseVersion(details.Tile)));
-        actions.Children.Add(FullscreenUi.Button("More", ShowMore));
+        var actions = _actions;
+        RefreshHero();
         var title = FullscreenUi.Text(details.Title, details.Title.Length > 45 ? 72 : 96);
         title.Bind(TextBlock.TextProperty, new Binding(nameof(GameDetailsViewModel.Title)) { Source = details });
         title.MaxLines = 2;
@@ -44,10 +37,8 @@ public sealed class FullscreenDetailsPage : FullscreenPage
         title.HorizontalAlignment = HorizontalAlignment.Left;
         title.TextTrimming = TextTrimming.CharacterEllipsis;
         title.Classes.Add("tv-title");
-        var identity = string.Join(" · ", new[] { details.HasInstallState ? details.InstallText : null, details.StoreNames }
-            .Where(value => !string.IsNullOrWhiteSpace(value)));
         var hero = new Grid { MinHeight = 330 };
-        var heroText = FullscreenUi.Stack(title, FullscreenUi.Text(identity, 28, "TextDim"), actions);
+        var heroText = FullscreenUi.Stack(title, _identity, actions);
         heroText.MaxWidth = 1050;
         heroText.HorizontalAlignment = HorizontalAlignment.Left;
         hero.Children.Add(heroText);
@@ -73,6 +64,7 @@ public sealed class FullscreenDetailsPage : FullscreenPage
             if (_tab == 2) SelectTab(2, false);
         };
         SelectTab(Math.Clamp(selectedSection, 0, 3), false);
+        details.SnapshotChanged += DetailsSnapshotChanged;
     }
 
     public override string Title => _details.Title;
@@ -80,6 +72,41 @@ public sealed class FullscreenDetailsPage : FullscreenPage
     public override string Hints => "A Select   B Back   Y More";
     public override string RightHints => "LT / RT Section";
     public int SelectedSection => _tab;
+
+    private void RefreshHero()
+    {
+        _actions.Children.Clear();
+        if (_details.HasPrimaryAction)
+        {
+            var primary = FullscreenUi.Button(_details.PrimaryAction!.Label, () => Context.Play(_details.Tile));
+            primary.FontSize = 36;
+            primary.MinHeight = 76;
+            AutomationProperties.SetAutomationId(primary, "details-primary-action");
+            _actions.Children.Add(primary);
+        }
+        if (_details.Tile.Entries.Count > 1)
+            _actions.Children.Add(FullscreenUi.Button("Choose version", () => Context.ChooseVersion(_details.Tile)));
+        _actions.Children.Add(FullscreenUi.Button("More", ShowMore));
+        _identity.Text = string.Join(" · ", new[] { _details.HasInstallState ? _details.InstallText : null, _details.StoreNames }
+            .Where(value => !string.IsNullOrWhiteSpace(value)));
+    }
+
+    private void DetailsSnapshotChanged(object? sender, EventArgs e)
+    {
+        var restore = PreserveFocus();
+        RefreshHero();
+        _rows[0] = _actions.Children.ToArray();
+        _backdrop?.Select(_details.Tile);
+        SelectTab(_tab, false);
+        _details.Screenshots?.RequestThumbnails(3);
+        restore();
+    }
+
+    public override void Dispose()
+    {
+        _details.SnapshotChanged -= DetailsSnapshotChanged;
+        base.Dispose();
+    }
 
     public override bool Handle(GamepadButtons buttons)
     {
@@ -197,6 +224,7 @@ public sealed class FullscreenDetailsPage : FullscreenPage
                 else Context.Push(new FullscreenDetailsReadingPage(Context, update.Headline, "No patch notes page available for this update."));
             });
             AutomationProperties.SetName(button, update.AutomationName);
+            AutomationProperties.SetAutomationId(button, $"update-{update.ReleaseId}-{update.OccurredAtUtc.Ticks}-{update.IsAnnouncement}");
             if (update.IsUnread)
             {
                 var label = (Control)button.Content!;
@@ -235,8 +263,12 @@ public sealed class FullscreenDetailsPage : FullscreenPage
             return content;
         }
         foreach (var entry in journal.Entries)
-            content.Children.Add(Action($"{entry.DateText}  {entry.RatingText}\n{entry.Note}", () =>
-                Context.Push(new FullscreenDetailsJournalPage(Context, entry))));
+        {
+            var button = Action($"{entry.DateText}  {entry.RatingText}\n{entry.Note}", () =>
+                Context.Push(new FullscreenDetailsJournalPage(Context, entry)));
+            AutomationProperties.SetAutomationId(button, $"journal-{entry.SessionId}");
+            content.Children.Add(button);
+        }
         return content;
     }
 
@@ -300,13 +332,15 @@ public sealed class FullscreenDetailsPage : FullscreenPage
             content.Children.Add(FullscreenUi.Text("Lists", 32));
             foreach (var list in lists.Rows)
             {
-                var button = Action($"{(list.IsMember ? "✓ " : "")}{list.Name}", async () =>
-                {
-                    list.IsMember = !list.IsMember;
-                    await list.Pending;
-                    SelectTab(3);
-                });
+                var button = Action(list.SelectionLabel, () => list.IsMember = !list.IsMember);
+                button.Bind(ContentControl.ContentProperty, new Binding(nameof(list.SelectionLabel)) { Source = list });
+                button.Bind(AutomationProperties.NameProperty, new Binding(nameof(list.AutomationName)) { Source = list });
+                button.Bind(AutomationProperties.ItemStatusProperty, new Binding(nameof(list.StatusText)) { Source = list });
                 content.Children.Add(button);
+                var status = FullscreenUi.Text("", 24, "Amber");
+                status.Bind(TextBlock.TextProperty, new Binding(nameof(list.StatusText)) { Source = list });
+                status.Bind(IsVisibleProperty, new Binding(nameof(list.HasStatus)) { Source = list });
+                content.Children.Add(status);
             }
         }
         if (_details.AddToListCommand is { } add)

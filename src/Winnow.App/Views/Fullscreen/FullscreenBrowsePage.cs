@@ -345,7 +345,13 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         count.VerticalAlignment = VerticalAlignment.Center;
         Grid.SetColumn(count, 1);
         heading.Children.Add(count);
-        grid.Children.Add(heading);
+        var headingStack = new StackPanel { Spacing = 4 };
+        headingStack.Children.Add(heading);
+        var problem = FullscreenUi.Text("", 24, "Amber");
+        problem.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding(nameof(ListsViewModel.Problem)) { Source = library.Lists });
+        problem.Bind(IsVisibleProperty, new Avalonia.Data.Binding(nameof(ListsViewModel.HasProblem)) { Source = library.Lists });
+        headingStack.Children.Add(problem);
+        grid.Children.Add(headingStack);
         var collections = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"),
             Margin = new Thickness(0, 4, 0, 8) };
         var shelves = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
@@ -715,6 +721,7 @@ public sealed class FullscreenBrowseSearchPage : FullscreenPage
 
     public FullscreenBrowseSearchPage(FullscreenContext context) : base(context)
     {
+        AutomationProperties.SetName(_query, "Search games");
         _edit = FullscreenUi.Button("Enter search", () => Context.EditText(_query));
         _edit.GotFocus += (_, _) => _inResults = false;
         _query.GotFocus += (_, _) => _inResults = false;
@@ -884,7 +891,7 @@ public sealed class FullscreenBrowseFiltersPage : FullscreenPage
         Add(browse, FullscreenUi.Button($"Sort · {Context.Library.SortOptions.First(s => s.Sort == _draft.Sort).Label}", () =>
             Context.ShowActions("Sort", Context.Library.SortOptions.Select(option => new FullscreenAction(option.Label,
                 () => { _draft.Sort = option.Sort; Build(); FocusInitial(); })).ToArray())));
-        if (Context.Library.Filters.HasYearData)
+        if (Context.Library.Filters.ShowYearRange)
         {
             browse.Children.Add(SectionHeading("Release year", "M 3,5 H 21 V 21 H 3 Z M 3,10 H 21 M 7,2 V 7 M 17,2 V 7"));
             _from.Text = _draft.Filters.YearFromText;
@@ -977,6 +984,7 @@ public sealed class FullscreenBrowseFiltersPage : FullscreenPage
 
     private void Recount()
     {
+        _draft.Recount();
         var filter = _draft.Filters.ToFilter() with
         {
             Search = Context.Library.SearchText,
@@ -1014,12 +1022,14 @@ internal sealed class FullscreenBrowseFilterGroupPage : FullscreenPage
         var rows = new List<Control[]>();
         foreach (var option in _group.AllOptions)
         {
-            var button = FullscreenUi.Button($"{(option.IsChecked ? "✓ " : string.Empty)}{option.Label}", () => { });
+            var button = FullscreenUi.Button(option.CountedLabel, () => { });
+            button.Bind(ContentControl.ContentProperty, new Avalonia.Data.Binding(nameof(option.CountedLabel)) { Source = option });
+            button.Bind(AutomationProperties.NameProperty, new Avalonia.Data.Binding(nameof(option.AutomationName)) { Source = option });
+            button.Bind(AutomationProperties.ItemStatusProperty, new Avalonia.Data.Binding(nameof(option.SelectionState)) { Source = option });
+            button.Bind(IsEnabledProperty, new Avalonia.Data.Binding(nameof(option.IsAvailable)) { Source = option });
             button.Click += (_, _) =>
             {
                 option.IsChecked = !option.IsChecked;
-                button.Content = FullscreenUi.Text($"{(option.IsChecked ? "✓ " : string.Empty)}{option.Label}");
-                AutomationProperties.SetName(button, $"{option.Label}, {(option.IsChecked ? "selected" : "not selected")}");
                 _changed();
             };
             panel.Children.Add(button);

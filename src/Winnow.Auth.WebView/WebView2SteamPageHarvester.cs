@@ -189,6 +189,7 @@ public sealed class WebView2SteamPageHarvester : ISteamAccountPageHarvester
         public Action<bool> Working { get; }
 
         public Dictionary<SteamAccountPageKind, string> Captured { get; } = new();
+        public SteamAccountPageIdentity Identity { get; } = new();
 
         public TaskCompletionSource<bool> Finished { get; }
             = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -359,6 +360,7 @@ public sealed class WebView2SteamPageHarvester : ISteamAccountPageHarvester
             HistoryHtml = run.Captured.GetValueOrDefault(SteamAccountPageKind.PurchaseHistory),
             CapturedAt = DateTimeOffset.UtcNow,
             Source = SteamAccountPageSource.EmbeddedSession,
+            SteamId = run.Identity.SteamId,
         };
 
         if (pages.IsComplete)
@@ -571,7 +573,16 @@ public sealed class WebView2SteamPageHarvester : ISteamAccountPageHarvester
         // input block enforces it.
         run.Working(true);
 
+        var before = await SteamAccountPageReader.ReadAccountIdentityAsync(browser);
         var html = await run.Reader.ReadAsync(browser, kind, () => run.Done, ct);
+        var after = await SteamAccountPageReader.ReadAccountIdentityAsync(browser);
+        if (!run.Identity.TryAccept(null, before, after))
+        {
+            run.Captured.Clear();
+            run.Say("The Steam account changed during capture. Import the pages again.");
+            run.Finished.TrySetResult(true);
+            return;
+        }
 
         if (html is null)
         {

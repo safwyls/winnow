@@ -18,19 +18,33 @@ public sealed class WorkReceptionWriter
 {
     private readonly IWorkImageRepository _images;
     private readonly IWorkRatingRepository _ratings;
+    private readonly IIgdbObservationWriter _observations;
     private readonly TimeProvider _clock;
 
     public WorkReceptionWriter(
         IWorkImageRepository images,
         IWorkRatingRepository ratings,
+        IIgdbObservationWriter observations,
         TimeProvider? clock = null)
     {
         _images = images;
         _ratings = ratings;
+        _observations = observations;
         _clock = clock ?? TimeProvider.System;
     }
 
-    public async Task<int> ApplyIgdbAsync(long workId, IgdbGame game, CancellationToken ct = default)
+    public async Task<int> ApplyIgdbAsync(IgdbMappingVersion mapping, IgdbGame game, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(mapping);
+        ArgumentNullException.ThrowIfNull(game);
+        if (mapping.IgdbId != game.IgdbId) return 0;
+        var changed = 0;
+        await _observations.TryWriteAsync(mapping, async token =>
+            changed = await PersistIgdbAsync(mapping.WorkId, game, token), ct);
+        return changed;
+    }
+
+    private async Task<int> PersistIgdbAsync(long workId, IgdbGame game, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(game);
 

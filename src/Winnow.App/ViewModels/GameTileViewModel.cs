@@ -11,7 +11,7 @@ namespace Winnow.App.ViewModels;
 /// <summary>
 /// One cover tile. Dormancy renders as the two-layer cross-fade from
 /// docs/spikes/avalonia-dormancy-rendering.md: a floor variant (saturation
-/// 0.22, brightness 0.60) sits under the vivid art, whose opacity is
+/// and brightness from the shared dormancy endpoint) sits under the vivid art, whose opacity is
 /// <see cref="DisplayAlpha"/> — the ramp value normally, 1.0 under the
 /// pointer (the view animates the change over 140ms).
 /// <para>The decoded bitmaps live on the requesting surface's own
@@ -539,7 +539,7 @@ public partial class GameTileViewModel : ObservableObject
     public IBrush VividBrush { get; private set; }
 
     /// <summary>
-    /// Floor variant (sat 0.22 / bright 0.60). Pre-computed bitmap variant
+    /// Floor variant at the shared dormancy endpoint. Pre-computed bitmap variant
     /// later. Recomputed by <see cref="Rename"/>.
     /// </summary>
     public IBrush FloorBrush { get; private set; }

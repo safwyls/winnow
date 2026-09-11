@@ -24,6 +24,7 @@ public sealed class SessionWatcherHarness : IDisposable
     private readonly WorkRepository _works;
     private readonly ReleaseRepository _releases;
     private readonly OwnershipRepository _ownerships;
+    private readonly IOptions<SessionWatcherOptions> _options;
 
     public SessionWatcherHarness(Action<SessionWatcherOptions>? configure = null)
     {
@@ -43,6 +44,7 @@ public sealed class SessionWatcherHarness : IDisposable
         var options = new SessionWatcherOptions();
         configure?.Invoke(options);
         var wrapped = Options.Create(options);
+        _options = wrapped;
         IndexBuilder = new GameExecutableIndexBuilder(_ownerships, _releases, wrapped, Clock);
 
         // M3b: the registry the UI declares launches on. Real rather than
@@ -65,9 +67,23 @@ public sealed class SessionWatcherHarness : IDisposable
     /// <summary>Declares a Winnow launch at the harness clock's current time.</summary>
     public bool Declare(long ownershipId) => Intents.Declare(ownershipId, Clock.GetUtcNow().UtcDateTime);
 
-    public SessionWatcher Watcher { get; }
+    public SessionWatcher Watcher { get; private set; }
+
+    public async Task RestartAsync(bool flush)
+    {
+        if (flush)
+        {
+            await Watcher.FlushAsync();
+        }
+
+        Watcher.Dispose();
+        Watcher = new SessionWatcher(Processes, IndexBuilder, SessionWrites, _options, Clock,
+            logger: null, intents: Intents);
+    }
 
     public SessionRepository Sessions { get; }
+
+    public Winnow.Data.ISqliteConnectionFactory Factory => _db.Factory;
 
     /// <summary>
     /// The same settings table the app reads its preferences from, so the

@@ -152,10 +152,10 @@ public sealed class FullscreenContext : IDisposable
         Shared.Appearance.Service.Applied -= ThemeChanged;
         Shared.Display.PropertyChanged -= DisplayChanged;
         Shared.Library.TilesChanged -= SharedTilesChanged;
+        if (!ReferenceEquals(Feed, Shared.Feed)) Feed.Dispose();
         if (!ReferenceEquals(Library, Shared.Library))
         {
-            Feed.Dispose();
-            Library.CloseDetailsCommand.Execute(null);
+            Library.Dispose();
             Library.Journal.Dispose();
             if (!ReferenceEquals(Library.LaunchStatus, Shared.Library.LaunchStatus)) Library.LaunchStatus.Dispose();
         }

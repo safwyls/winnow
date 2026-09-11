@@ -5,6 +5,7 @@ namespace Winnow.Core.Repositories;
 /// <summary>
 /// The per-account membership rows behind the account-visibility filter
 /// (migration 0015).
+/// Individual rows establish presence, never inventory completeness.
 ///
 /// <para><b>Append and update only. Nothing here deletes.</b> A row says "this
 /// account was observed holding this game", and a later scan that cannot see the

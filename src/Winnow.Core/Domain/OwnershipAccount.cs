@@ -9,7 +9,8 @@ namespace Winnow.Core.Domain;
 /// play tuple — one account per (release, store) — so a game two people own
 /// reports whichever of them played it more, and the other one is invisible to
 /// any question asked of that column. These rows are the per-account form of the
-/// same observation, and the account-visibility filter is decided from them.</para>
+/// same positive observation. Inferring absence additionally requires a separate
+/// complete account inventory; playing one game does not enumerate a library.</para>
 /// </summary>
 /// <param name="OwnershipId">The ownership these figures belong to.</param>
 /// <param name="AccountRef">
@@ -70,9 +71,9 @@ public static class OwnershipAccountSources
     /// <para>A seeded row is <b>not</b> evidence about who does not own a game.
     /// It names the account that won the play tuple, which on a shared game is
     /// routinely not the only owner — so treating it as a complete account list
-    /// would hide exactly the games acceptance criterion #2 forbids hiding. The
-    /// bucket query therefore requires at least one non-seed row before it will
-    /// hide anything, and the first sync after the migration supplies them.</para>
+    /// would hide the other owner's shared games. A non-seed per-game row is
+    /// also insufficient by itself: the account query separately requires a
+    /// completed inventory for the selected account and source.</para>
     /// </summary>
     public const string LegacyOwnershipColumn = "ownerships.account_ref";
 }

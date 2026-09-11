@@ -73,7 +73,7 @@ knowing before filing a bug:
 | Auth | Twitch client-credentials; token cached ~60 days, refreshed on 401 (§4.4) |
 | Rate limit | 4 req/s, shared Polly limiter on the typed client |
 | Batch | 400 ids per request (`IgdbOptions.BatchSize`); 865 games = 3 requests |
-| Cache | `metadata_cache` provider `igdb`, key `game:{igdbId}` |
+| Cache | `metadata_cache` provider `igdb`, key `game:{igdbId}`, game payload version 5 |
 | TTL | 30 days (`IgdbOptions.CacheTtl`) |
 
 **Field paths** (response → `IgdbGameDto` → `IgdbGame` → `FacetSyncService.WorkFacets`):
@@ -86,19 +86,18 @@ knowing before filing a bug:
 | `game_mode` | `game_modes[].name` | **normalised** via `GameModes.FromIgdbName` |
 
 **The IGDB cache stores the PROJECTION, not the raw response.** `metadata_cache`
-holds a serialised `IgdbGame` (snake_case JSON: `igdb_id`, `genres`, `themes`,
-`game_modes`, `player_perspectives`, and so on), not IGDB's body. This is why the
+holds a versioned envelope around a serialised `IgdbGame` (snake_case JSON:
+`igdb_id`, `genres`, `themes`, `game_modes`, `player_perspectives`, and so on), not
+IGDB's body. This is why the
 vocabulary is keyed on names: the ids were dropped at projection time and are not
 recoverable without a refetch.
 
-It is also the single most likely cause of an empty IGDB-derived filter group.
-A payload written before a field was added to `Apicalypse.Games()` simply has no
-property for it; the deserializer supplies the default, and the field reads empty
-forever until that cache entry expires. `IgdbGame.GameModes` and
-`PlayerPerspectives` are init properties rather than positional parameters
-specifically so that old payloads still deserialize and keep their genres — the
-cost is that they carry no modes or perspectives. **A new field on `IgdbGame`
-does not backfill; it waits out the 30-day TTL.**
+`IgdbClient.GamePayloadVersion` is 5. Adding projected fields requires a version bump;
+an older shape or expired entry requests a refetch on its next read instead of waiting
+out a fresh TTL. A compatible older positive envelope or bare legacy game remains an
+offline fallback, with its original fetch time, when credentials or a successful response
+are unavailable. Future versions, mismatched game IDs and stale negative entries are not
+fallback evidence. A fallback can still lack a newly added field until a refetch succeeds.
 
 `game_mode` normalisation (`GameModes.FromIgdb`, matched on the slugged name so
 casing drift cannot silently drop a mode):
@@ -219,7 +218,7 @@ the projection is stored the same way facets are.
 | Auth | Twitch client-credentials; token cached ~60 days, refreshed on 401 (§4.4) |
 | Rate limit | 4 req/s, shared Polly limiter on the typed client |
 | Batch | 400 ids per request (`IgdbOptions.BatchSize`) |
-| Cache | `metadata_cache` provider `igdb`, key `game:{igdbId}`, payload version **4**, TTL 30 days |
+| Cache | `metadata_cache` provider `igdb`, key `game:{igdbId}`, payload version **5**, TTL 30 days |
 
 **Field paths** (response → `IgdbGameDto` → `IgdbGame` → `ReceptionSyncService`):
 
@@ -246,10 +245,11 @@ label of its own for either figure (Steam has one and IGDB does not, which is
 why `work_ratings.label` is null on both IGDB rows).
 `total_rating`/`total_rating_count` exist and are deliberately not used.
 
-**A new field on the cached payload does not backfill.** Entries written under
-version 3 carry no property for it. Here the version bump makes the whole
-library refetch instead, and the measured cost is 3 requests for 967 games —
-the cached payload grows from 628 to 658 bytes per game, about 4.8%.
+Version 4 added image IDs and reception; version 5 adds source image dimensions,
+transparency, animation and artwork image type. Older compatible positives follow the
+refetch-and-fallback rule above. The measured 3-to-4 upgrade used three requests for 967
+games and grew the cached payload from 628 to 658 bytes per game (about 4.8%); that is a
+historical measurement of version 4, not a size or request measurement for version 5.
 
 ### Steam reception
 
@@ -313,16 +313,15 @@ and is not used.
 
 ## Refresh cadence
 
-`FacetSyncService.SyncAsync` runs **once per app launch**, on a background task
-after `EnrichmentSyncService`, never gating the window (`Program.cs`; §5.1, §7).
-`ReceptionSyncService` follows the same pattern — cache-first, once per launch,
-zero requests on a warm library — and writes `work_images` and `work_ratings`
-from the same two caches.
+`FacetSyncService.SyncAsync` and `ReceptionSyncService` run in the background
+`LibraryRefreshPipeline` after metadata enrichment. Startup, scheduled ownership refresh
+and successful account changes share this pipeline; IGDB credential refresh also invokes
+its IGDB-relevant steps. The window does not wait for these operations. Reception writes
+`work_images` and `work_ratings` from the same caches used by facets.
 
-Both are a **re-read, not a re-fetch**: both clients consult `metadata_cache`
-before the network, so on a warm library each pass costs zero requests, and
-each compares before it writes, so a warm re-run reports zero rows written.
-What a value actually tracks is therefore its cache entry's TTL:
+Both clients consult `metadata_cache` before the network. A complete, compatible, fresh
+cache can answer without requests, and unchanged projections do not rewrite assignment
+rows. Expiry or incompatible shape requests a refetch. The ordinary freshness intervals are:
 
 | Source | Effective refresh |
 |---|---|
@@ -366,15 +365,14 @@ extra, zero rank mismatches.
 | `game_mode` | 1,705 | 1,747 | 0 | precision 100%, recall 49% |
 | `player_perspective` | 0 | 972 | 0 | 0% |
 
-The two shortfalls have one cause and it is not a transformation bug: **no cached
-IGDB payload carries `game_modes` or `player_perspectives`** (0 of 865), because
-every entry predates those fields being added to `Apicalypse.Games()`. Nothing
-stored is wrong; the IGDB half is simply absent. Every `game_mode` in the database
-today came from Steam's player categories.
+In the 2026-08-25 database copy, **no cached IGDB payload carried `game_modes` or
+`player_perspectives`** (0 of 865): every entry predated those query fields. The
+IGDB half was absent, and every stored `game_mode` came from Steam's player categories.
+This describes that measurement, not current cache coverage.
 
 Coverage, and what an IGDB cache refresh would change:
 
-| Kind | Now | After refresh |
+| Kind | Measured 2026-08-25 | Projected after refresh |
 |---|---|---|
 | `tag` | 93.6% | 93.6% |
 | `game_mode` | 92.5% | 95.1% |
@@ -392,8 +390,6 @@ facets — all 3 Valve-typed tools carry none. The table is therefore a floor.
 `controller` at 66% is the one group that mostly hides things, and it is honest:
 a third of the library genuinely declares no gamepad support.
 
-**To populate `player_perspective` now**, delete the `game:%` rows for provider
-`igdb` from `metadata_cache` and relaunch. Cost: 3 requests (865 ids / 400 per
-batch) at 4 req/s. Otherwise it fills in on its own as the 30-day TTL expires
-(entries written 2026-08-24/25, so from ~2026-09-23). Live IGDB currently reports
-`player_perspectives` for 802/865 games and `game_modes` for 863/865.
+The live response in that measurement reported `player_perspectives` for 802/865
+games and `game_modes` for 863/865. Current installations use the versioned refetch
+rule above; manual cache deletion is not required to adopt newly projected fields.

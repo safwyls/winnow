@@ -7,6 +7,13 @@ namespace Winnow.Ingest.Epic.Web;
 /// </summary>
 public sealed class EpicWebOptions
 {
+    /// <summary>Uncompressed response ceiling enforced inside every attempted send.</summary>
+    public long MaxResponseBytes { get; set; } = Winnow.Http.ProviderHttpTransport.DefaultMaxResponseBytes;
+    /// <summary>One attempt, including response body buffering.</summary>
+    public TimeSpan AttemptTimeout { get; set; } = Winnow.Http.ProviderHttpTransport.DefaultAttemptTimeout;
+    /// <summary>Total request budget, including retries and rate-limit waiting.</summary>
+    public TimeSpan OverallTimeout { get; set; } = Winnow.Http.ProviderHttpTransport.DefaultOverallTimeout;
+
     /// <summary>
     /// OAuth token endpoint. Verified live 2026-08-26: rejects GET with 405 and
     /// validates the client pair before the grant.

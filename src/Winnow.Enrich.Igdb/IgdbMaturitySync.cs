@@ -17,6 +17,7 @@ public sealed class IgdbMaturitySync
     private readonly IIgdbClient _igdb;
     private readonly IIgdbMaturityTargetSource _targets;
     private readonly IWorkMaturityRepository _maturity;
+    private readonly IIgdbObservationWriter _observations;
     private readonly TimeProvider _clock;
     private readonly ILogger<IgdbMaturitySync> _log;
 
@@ -24,19 +25,21 @@ public sealed class IgdbMaturitySync
         IIgdbClient igdb,
         IIgdbMaturityTargetSource targets,
         IWorkMaturityRepository maturity,
+        IIgdbObservationWriter observations,
         TimeProvider clock,
         ILogger<IgdbMaturitySync> log)
     {
         _igdb = igdb;
         _targets = targets;
         _maturity = maturity;
+        _observations = observations;
         _clock = clock;
         _log = log;
     }
 
     /// <summary>
     /// Runs the IGDB age-rating pass. Returns the number of
-    /// <c>work_maturity</c> rows written. Soft-fails: a maturity lookup that
+    /// <c>work_maturity</c> rows written or retired. Soft-fails: a maturity lookup that
     /// fails must not fail the enrichment pass around it (section 5.1).
     /// </summary>
     public async Task<int> SyncAsync(CancellationToken ct = default)
@@ -75,39 +78,32 @@ public sealed class IgdbMaturitySync
         var observedAt = _clock.GetUtcNow().UtcDateTime;
         var written = 0;
 
-        foreach (var group in targets.GroupBy(t => t.WorkId))
+        foreach (var target in targets.DistinctBy(t => t.WorkId))
         {
             ct.ThrowIfCancellationRequested();
 
-            var tokens = new List<string>();
-            foreach (var target in group)
-            {
-                if (ratings.TryGetValue(target.IgdbId, out var rated))
-                {
-                    tokens.AddRange(rated.RatingTokens);
-                }
-            }
-
-            var joined = MaturityRules.Join(tokens);
+            if (!ratings.TryGetValue(target.IgdbId, out var rated)) continue;
+            var joined = MaturityRules.Join(rated.RatingTokens);
             if (joined is null)
             {
-                // No tokens means no row. An empty row would assert that a
-                // work is not explicit, which is a claim nobody established;
-                // absence is what makes a work not explicit.
+                var removed = false;
+                await _observations.TryWriteAsync(target.IgdbMapping, async token =>
+                    removed = await _maturity.DeleteAsync(target.WorkId, MaturitySources.Igdb, token), ct);
+                if (removed) written++;
                 continue;
             }
 
-            await _maturity.UpsertAsync(
+            var accepted = await _observations.TryWriteAsync(target.IgdbMapping, token => _maturity.UpsertAsync(
                 new WorkMaturity
                 {
-                    WorkId = group.Key,
+                    WorkId = target.WorkId,
                     Source = MaturitySources.Igdb,
                     Ratings = joined,
                     Descriptors = null,
                     ObservedAt = observedAt,
                 },
-                ct);
-            written++;
+                token), ct);
+            if (accepted) written++;
         }
 
         _log.LogInformation(

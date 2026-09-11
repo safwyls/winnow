@@ -55,6 +55,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     private readonly IExpansionRefusalRepository _expansionRefusals;
     private readonly ILibraryQueryRepository _libraryQueries;
     private readonly ICoverLeases? _covers;
+    private readonly Services.ArtworkPreferences? _artworkPreferences;
     private readonly IResolveStateRepository? _resolveState;
 
     /// <summary>
@@ -108,7 +109,8 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         TimeProvider? clock = null,
         Action<Action>? post = null,
         ISettingsRepository? settings = null,
-        Services.DormancyRamp? ramp = null)
+        Services.DormancyRamp? ramp = null,
+        Services.ArtworkPreferences? artworkPreferences = null)
     {
         _candidates = candidates;
         _settings = settings;
@@ -122,6 +124,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         _expansionRefusals = expansionRefusals;
         _libraryQueries = libraryQueries;
         _covers = covers;
+        _artworkPreferences = artworkPreferences;
         _resolveState = resolveState;
         _igdb = igdb;
         _clock = clock ?? TimeProvider.System;
@@ -1882,19 +1885,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             }
         }
 
-        // Same order the ladder in DescribeAsync uses, for a work whose
-        // releases the snapshot had no key for.
-        if (coverKey is null)
-        {
-            if (UserArtRef.Token(work?.CoverUrl) is { Length: > 0 } userArtToken)
-            {
-                coverKey = CoverKey.User(userArtToken);
-            }
-            else if (IgdbImageUrl.ImageId(work?.CoverUrl) is { Length: > 0 } imageId)
-            {
-                coverKey = CoverKey.Igdb(imageId);
-            }
-        }
+        coverKey ??= library.CoverSelection.Select(work?.CoverUrl);
 
         var stores = new List<string>();
         foreach (var candidate in releaseIds)
@@ -1933,7 +1924,8 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         Dictionary<long, IReadOnlyList<string>> Stores,
         Dictionary<long, List<OwnershipBucket>> Played,
         Dictionary<long, List<Ownership>> Owned,
-        Dictionary<long, Work> WorkRecords)
+        Dictionary<long, Work> WorkRecords,
+        Services.CoverSelection CoverSelection)
     {
         /// <summary>Folds the read model over a work's releases, the one permitted way.</summary>
         public MergeRowFacts FactsOf(IReadOnlyList<long> releaseIds)
@@ -1983,6 +1975,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     {
         var titles = new Dictionary<long, string>();
         var coverKeys = new Dictionary<long, CoverKey>();
+        var coverSelection = new Services.CoverSelection(_artworkPreferences?.AvailableSources.Select(source => source.Id));
         var workOfRelease = new Dictionary<long, long>();
         var works = new Dictionary<long, SurvivorCandidate>();
         var stores = new Dictionary<long, IReadOnlyList<string>>();
@@ -2056,39 +2049,11 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             var externalIds = externalIdsByRelease[releaseId];
             var steam = externalIds.FirstOrDefault(x => x.Provider == ExternalIdProviders.Steam);
 
-            // Cover-key ladder — the same four rungs the library load
-            // uses (cover-key precedence block in LibraryViewModel.LoadAsync, §10.9):
-            //   0. user-set art
-            //   1. a live IGDB pin on this work
-            //   2. the Steam portrait capsule for this release's appid
-            //   3. the image id in the work's stored cover_url
-            // The pin is read off the release's own work row (fetched
-            // above), never a resolved work, for §10.9's reason.
-            // Rung 3 is the IGDB fallback for the side without a Steam
-            // appid, common in cross-store pairs.
-            var pinnedImageId = work is not null && pinnedWorkIds.Contains(work.Id)
-                ? IgdbImageUrl.ImageId(work.CoverUrl)
-                : null;
-
-            if (UserArtRef.Token(work?.CoverUrl) is { Length: > 0 } userArtToken)
-            {
-                coverKeys[releaseId] = CoverKey.User(userArtToken);
-            }
-            else if (pinnedImageId is { Length: > 0 })
-            {
-                coverKeys[releaseId] = CoverKey.Igdb(pinnedImageId);
-            }
-            else if (steam is not null)
-            {
-                coverKeys[releaseId] = CoverKey.Steam(steam.ProviderId);
-            }
-            else if (IgdbImageUrl.ImageId(work?.CoverUrl) is { Length: > 0 } imageId)
-            {
-                coverKeys[releaseId] = CoverKey.Igdb(imageId);
-            }
+            if (coverSelection.Select(work?.CoverUrl, steam?.ProviderId, work is not null && pinnedWorkIds.Contains(work.Id)) is { } key)
+                coverKeys[releaseId] = key;
         }
 
-        return new LibrarySnapshot(titles, coverKeys, workOfRelease, works, stores, played, owned, workRecords);
+        return new LibrarySnapshot(titles, coverKeys, workOfRelease, works, stores, played, owned, workRecords, coverSelection);
     }
 
     // ── Undo bookkeeping ─────────────────────────────────────────────────────

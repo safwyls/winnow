@@ -63,13 +63,17 @@ public static class ServiceCollectionExtensions
 
                 // §4.3: a descriptive User-Agent so Valve can attribute — and if
                 // necessary contact — this traffic.
+                Winnow.Http.ProviderHttpTransport.Configure(client, options.MaxResponseBytes, options.OverallTimeout);
                 client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
             })
             .AddHttpMessageHandler<SteamStoreResilienceHandler>()
             .AddHttpMessageHandler<SteamStoreRateLimitingHandler>();
 
         services.AddHttpClient<ISteamLifecycleClient, SteamLifecycleClient>(client =>
-            client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent))
+            {
+                Winnow.Http.ProviderHttpTransport.Configure(client, options.MaxResponseBytes, options.OverallTimeout);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
+            })
             .AddHttpMessageHandler<SteamStoreResilienceHandler>()
             .AddHttpMessageHandler<SteamStoreRateLimitingHandler>();
 

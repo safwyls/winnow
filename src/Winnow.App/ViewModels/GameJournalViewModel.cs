@@ -39,6 +39,28 @@ public sealed partial class GameJournalViewModel : ObservableObject
 
     internal ISessionRepository Sessions => _sessions;
 
+    internal void ApplySnapshot(IReadOnlyList<SessionJournalEntry> entries)
+    {
+        var existing = Entries.ToDictionary(entry => entry.SessionId);
+        var ordered = entries.OrderByDescending(entry => entry.SessionAt).ThenByDescending(entry => entry.SessionId)
+            .Select(entry =>
+            {
+                if (!existing.TryGetValue(entry.SessionId, out var current)) return new JournalEntryViewModel(entry, this);
+                current.RefreshSaved(entry);
+                return current;
+            }).ToList();
+        // An external deletion must not discard a draft or detach a write already in flight.
+        ordered.AddRange(Entries.Where(entry => (entry.IsEditing || entry.IsSaving) && !ordered.Contains(entry)));
+        foreach (var removed in Entries.Except(ordered).ToArray()) Entries.Remove(removed);
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            var from = Entries.IndexOf(ordered[i]);
+            if (from < 0) Entries.Insert(i, ordered[i]);
+            else if (from != i) Entries.Move(from, i);
+        }
+        OnPropertyChanged(nameof(HasEntries));
+    }
+
     internal async Task DeleteAsync(JournalEntryViewModel entry, CancellationToken ct)
     {
         await _sessions.DeleteNoteAsync(entry.SessionId, ct);
@@ -127,6 +149,14 @@ public sealed partial class JournalEntryViewModel : ObservableObject
     public partial bool IsConfirmingDelete { get; set; }
 
     public string AutomationName => DateText.Length == 0 ? "Journal entry" : $"Journal entry from {DateText}";
+
+    internal void RefreshSaved(SessionJournalEntry entry)
+    {
+        if (IsSaving) return;
+        Note = entry.Note;
+        Rating = entry.Rating;
+        if (!IsEditing) { DraftNote = Note ?? string.Empty; DraftRating = Rating ?? 0; }
+    }
 
     [RelayCommand]
     private void Edit()

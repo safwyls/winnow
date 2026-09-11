@@ -254,7 +254,7 @@
                          whenever a game has no cover at all. Never a spinner,
                          never a hole. -->
 
-                    <!-- Layer 1: dormancy floor (sat 0.22 / bright 0.60). -->
+                    <!-- Layer 1: the shared dormancy floor. -->
                     <Border Background="{Binding FloorBrush}"
                             IsVisible="{Binding #Root.Cover.ShowPlaceholder}">
                         <TextBlock Classes="art-title" Text="{Binding Title}"

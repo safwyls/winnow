@@ -43,6 +43,7 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient<ISteamNewsClient, SteamNewsClient>(client =>
             {
                 client.BaseAddress = options.NewsBaseAddress;
+                Winnow.Http.ProviderHttpTransport.Configure(client, options.MaxResponseBytes, options.OverallTimeout);
                 client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
             })
             .AddHttpMessageHandler<SteamNewsResilienceHandler>()
@@ -55,6 +56,7 @@ public static class ServiceCollectionExtensions
                 // The User-Agent matters more here than anywhere else in Winnow:
                 // steamcmd.net is run by a volunteer with no SLA and no contact
                 // channel other than whatever traffic identifies itself.
+                Winnow.Http.ProviderHttpTransport.Configure(client, options.MaxResponseBytes, options.OverallTimeout);
                 client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
             })
             .AddHttpMessageHandler<BuildInfoResilienceHandler>()

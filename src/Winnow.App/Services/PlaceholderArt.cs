@@ -5,13 +5,12 @@ using Avalonia.Media.Immutable;
 namespace Winnow.App.Services;
 
 /// <summary>
-/// Procedural cover stand-ins until IGDB art lands (M1): a deterministic-hue
-/// gradient on a Surface-toned field, per mock-library.html's <c>.art</c>
-/// treatment. Also computes the desaturated/darkened "floor" endpoint colours
-/// so the tile can run the real two-layer dormancy cross-fade now — when a
+/// Procedural cover stand-ins: a deterministic-hue gradient on a Surface-toned
+/// field (design-system.md §6). Computes the dormancy endpoint colours
+/// so the tile can run the same two-layer cross-fade — when a
 /// real bitmap arrives, <see cref="ToFloor"/>'s colour math is exactly the
-/// per-pixel matrix the cover cache will apply (Rec.709 luma desaturation to
-/// 0.22, brightness scale to 0.60).
+/// per-pixel matrix the cover cache applies, using the shared saturation,
+/// cool hue rotation and brightness endpoint.
 /// </summary>
 public static class PlaceholderArt
 {
@@ -65,7 +64,7 @@ public static class PlaceholderArt
     }
 
     /// <summary>The §5.1 cool shift. Mirrors CoverImaging.DefaultHueDegrees.</summary>
-    private const double HueDegrees = -6.0;
+    private const double HueDegrees = Winnow.Covers.DormancyStyle.HueDegrees;
 
     /// <summary>A ~155° two-stop gradient brush (mock's <c>linear-gradient(155deg, …)</c>).</summary>
     public static IBrush Gradient(Color start, Color end) =>

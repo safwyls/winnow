@@ -88,24 +88,24 @@ public sealed class FeedService : IFeedService
     public async Task<FeedSnapshot> GetShelvesAsync(CancellationToken ct = default)
     {
         var now = _clock.GetUtcNow().UtcDateTime;
+        // Start optional work independently; neither its queue nor its provider deadline
+        // belongs on the built-in feed's critical path.
+        var additional = _plugins is null ? null : ReadAdditionalShelvesAsync(now, ct);
         var builtIn = await GetBuiltInShelvesAsync(now, ct).ConfigureAwait(false);
-        if (_plugins is null) return builtIn;
+        return builtIn with { AdditionalShelves = additional };
+    }
+
+    private async Task<FeedSupplement> ReadAdditionalShelvesAsync(DateTime now, CancellationToken ct)
+    {
         try
         {
-            var extra = await Task.Run(() => _plugins.GetShelvesAsync(now, ct), ct).ConfigureAwait(false);
-            if (extra.Shelves.Count == 0) return builtIn;
-            return builtIn with
-            {
-                Shelves = builtIn.Shelves.Concat(extra.Shelves).ToArray(),
-                CandidateCount = Math.Max(builtIn.CandidateCount, extra.CandidateCount),
-                Failed = false,
-            };
+            return await Task.Run(() => _plugins!.GetShelvesAsync(now, ct), ct).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (OperationCanceledException) { return new([], 0); }
         catch (Exception)
         {
             _log?.LogWarning("Plugin recommendations could not be read; the built-in feed is unchanged.");
-            return builtIn;
+            return new([], 0);
         }
     }
 

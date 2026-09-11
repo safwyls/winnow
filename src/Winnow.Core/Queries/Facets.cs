@@ -279,6 +279,10 @@ public sealed record FacetTarget
     /// <summary><c>works.igdb_id</c>, or null when the work was never resolved.</summary>
     public long? IgdbId { get; init; }
 
+    public long IgdbMappingRevision { get; init; }
+
+    public IgdbMappingVersion IgdbMapping => new(WorkId, IgdbId, IgdbMappingRevision);
+
     /// <summary>Steam appid from <c>external_ids</c>, or null.</summary>
     public string? SteamAppId { get; init; }
 }

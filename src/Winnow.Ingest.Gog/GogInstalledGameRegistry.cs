@@ -47,12 +47,13 @@ public sealed record GogRegistryGame(
 public interface IGogInstalledGameRegistry
 {
     /// <summary>
-    /// Every installed GOG game this machine records. Empty — never an exception —
-    /// off Windows, when GOG has never installed anything, or when the key cannot
-    /// be read.
+    /// Readable positive observations and whether enumeration completed. A missing
+    /// Windows key is complete and empty; unsupported or unreadable access is incomplete.
     /// </summary>
-    IReadOnlyList<GogRegistryGame> Enumerate();
+    GogRegistryScan Scan();
 }
+
+public sealed record GogRegistryScan(IReadOnlyList<GogRegistryGame> Games, bool IsComplete);
 
 /// <summary>
 /// Reads <c>HKLM\SOFTWARE\WOW6432Node\GOG.com\Games</c>, read-only. The path
@@ -66,11 +67,11 @@ public interface IGogInstalledGameRegistry
 public sealed class WindowsGogInstalledGameRegistry : IGogInstalledGameRegistry
 {
     /// <inheritdoc/>
-    public IReadOnlyList<GogRegistryGame> Enumerate()
+    public GogRegistryScan Scan()
     {
         if (!OperatingSystem.IsWindows())
         {
-            return [];
+            return new([], false);
         }
 
         try
@@ -78,41 +79,74 @@ public sealed class WindowsGogInstalledGameRegistry : IGogInstalledGameRegistry
             using var games = Registry.LocalMachine.OpenSubKey(GogPaths.InstalledGamesRegistryKey);
             if (games is null)
             {
-                return [];
+                return new([], true);
             }
 
-            var results = new List<GogRegistryGame>();
-            foreach (var subkeyName in games.GetSubKeyNames())
+            var names = games.GetSubKeyNames();
+            var result = ReadInventory(() => names, subkeyName =>
             {
+                if (!OperatingSystem.IsWindows()) return null;
                 using var game = games.OpenSubKey(subkeyName);
                 if (game is null)
                 {
-                    continue;
+                    return null;
                 }
 
                 var gameId = Value(game, "gameID") ?? Value(game, "productID") ?? subkeyName;
                 if (string.IsNullOrWhiteSpace(gameId))
                 {
-                    continue;
+                    return null;
                 }
 
-                results.Add(new GogRegistryGame(
+                return new GogRegistryGame(
                     GameId: gameId,
                     GameName: Value(game, "gameName"),
                     InstallPath: Value(game, "path") ?? Value(game, "workingDir"),
                     Executable: Value(game, "exe"),
                     BuildId: Value(game, "BUILDID"),
                     Version: Value(game, "ver"),
-                    InstallDateLocal: Value(game, "INSTALLDATE")));
-            }
+                    InstallDateLocal: Value(game, "INSTALLDATE"));
+            });
 
-            return results;
+            // A changed key set cannot establish absence, even when every key
+            // from the first enumeration was readable.
+            try
+            {
+                return result with { IsComplete = result.IsComplete
+                    && names.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(games.GetSubKeyNames()) };
+            }
+            catch (Exception ex) when (IsReadFailure(ex)) { return result with { IsComplete = false }; }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
         {
-            return [];
+            return new([], false);
         }
     }
+
+    internal static GogRegistryScan ReadInventory(
+        Func<IEnumerable<string>> enumerate, Func<string, GogRegistryGame?> read)
+    {
+        var results = new List<GogRegistryGame>();
+        var complete = true;
+        try
+        {
+            foreach (var name in enumerate())
+            {
+                try
+                {
+                    var game = read(name);
+                    if (game is null || string.IsNullOrWhiteSpace(game.GameId)) complete = false;
+                    else results.Add(game);
+                }
+                catch (Exception ex) when (IsReadFailure(ex)) { complete = false; }
+            }
+        }
+        catch (Exception ex) when (IsReadFailure(ex)) { complete = false; }
+        return new(results, complete);
+    }
+
+    private static bool IsReadFailure(Exception ex)
+        => ex is IOException or UnauthorizedAccessException or System.Security.SecurityException;
 
     private static string? Value(RegistryKey key, string name)
     {

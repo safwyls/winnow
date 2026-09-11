@@ -126,9 +126,8 @@ public sealed class RemoteOwnershipSchedulerService : BackgroundService
         }
         catch (Exception ex)
         {
-            // Offline, rate-limited or a token that would not refresh. The
-            // resolver runs the whole pass in one transaction, so a failed tick
-            // left nothing half-written.
+            // The coordinator has already published any committed ownerships
+            // and attempted independent downstream steps before reporting failure.
             _logger.LogWarning(ex, "Remote ownership backfill failed; it resumes at the next tick.");
         }
     }

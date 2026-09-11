@@ -1,8 +1,9 @@
 # Winnow — Design System
 
 **Applies to:** Avalonia 11+ desktop client, dark by default with optional light themes
-**Companion files:** `src/Winnow.App/Themes/tokens.axaml` (the token dictionary),
-`mock-library.html` (visual target)
+**Companion file:** `src/Winnow.App/Themes/tokens.axaml` (the token dictionary).
+`mock-library.html` is a historical desktop sketch, retired as a fidelity target. Its palette,
+unread placement and dormancy values predate this specification; it does not define fullscreen.
 
 This document owns the palette, the type, the layout, the dormancy encoding, the components,
 the copy, the accessibility floor, the themes, translucency and the two layouts. Why a value
@@ -212,6 +213,13 @@ Map months-since-last-played to a saturation/brightness pair:
 **Clamp at `0.22 / 0.68` — never fully grey.** A cover you can't identify is a cover you can't
 choose, and the point is to make forgotten games *findable*, not invisible. **Saturation, not
 brightness, is what carries the dormancy signal**, which is why the floor is set high.
+
+The numeric transform endpoint is defined once in `Winnow.Covers.DormancyStyle`.
+`tokens.axaml` exposes those constants as double-valued resources; the disk renderer,
+desktop/fullscreen ramp and procedural art consume that same endpoint. The brightness floor
+remains `0.68`: the earlier `0.60` was calibrated on gradients and made dark Steam capsules
+hard to identify. Cache options cannot override one surface independently. Changing this
+endpoint also requires changing the disk variant version so stored pixels are regenerated.
 
 A **−6° hue rotation is part of the floor.** The matrix is Rec.709 luma desaturation, then the
 hue rotation, then a uniform brightness scale; brightness is a scalar and commutes, so it is
@@ -549,6 +557,14 @@ panel's strings were written from the auth spikes instead. TASK-81.
 
 ## 8. Accessibility floor
 
+Automated checks cover both presentation paths. Desktop AXAML checks enforce named controls
+and reachable automation names. Headless fullscreen checks inspect the rendered automation
+tree, including pages built in C#, and exercise directional focus paths, disabled and error
+states, journal editors, settings, modal return and controller keyboard return. These checks
+verify the exposed controls and application navigation; they do not establish platform
+screen-reader behavior. TASK-4 retains physical-controller and seating-distance readability
+verification.
+
 ### Fullscreen and controller navigation
 
 Fullscreen is a separate TV-distance interface with its own composition, components,
@@ -714,6 +730,17 @@ uses contour art. Both use theme-colored paths. The note editor offers deliberat
 Cancel actions and an optional one-to-five rating. Library summary provides the current
 visible game count and separate reading pages for captured Steam account statistics; it
 retains the shared rules for mixed currencies and wallet credit.
+
+Activity initially reads up to 50 events for the selected week. **Load more** appends older
+events while preserving selection. A failed read says “Couldn't read your activity. Try again.”
+and offers **Try again** beside any retained events. Returning from a note editor keeps loaded
+pages and selection, and updates the saved note's badge and preview. Completing a delayed read
+preserves focus on the section controls or reading actions.
+
+Account summary says “Reading your account statistics…” while its background read is pending.
+A failed read says “Couldn't read account statistics. Try again.” and offers **Try again**;
+an unavailable repository says “Account statistics are unavailable.” Existing results remain
+available during a retry. These states do not present an empty account as a completed read.
 
 Settings content uses subdued uppercase group headings, separate from focusable rows.
 Navigation and picker rows end in **Open ›**; immediate commands end in **Run** with an
@@ -1627,15 +1654,13 @@ reduced motion has nothing to disable and the surface is identical in both motio
 (0) user-set art, when `works.cover_url` holds a `winnow://user-art/<token>` reference
 (migration 0027, §10.10); (1) a live IGDB pin on this work, when the work's `cover_url`
 yields an IGDB image id; (2) the Steam portrait capsule for this release's appid; (3) the
-image id in the work's stored `cover_url`. Rung 0 outranks the pin because under the
+stored IGDB image or enabled-plugin artwork reference in the work's `cover_url`. Rung 0 outranks the pin because under the
 field-source model the value in `cover_url` *is* the user's — there is nothing for it to
 outrank — and a later metadata fetch replaces that value rather than layering over it. A user
 reaching for the wrong-game control is not only saying the metadata is wrong, they are saying
-the storefront art is wrong, so the pin wins. The ladder is not the grid's alone: both
-surfaces that derive a game's art from a release use it — the library load and the Merges
-queue. The queue previously had its own store-first ladder with neither rung 0 nor rung 1, so
-an imported cover drew on the grid and in the details modal but not in the queue — the same
-failure this paragraph already settled for the store capsule. The queue reads the pin set once
+the storefront art is wrong, so the pin wins. One shared policy selects keys for library
+tiles, merge rows and work previews, including plugin art and provider availability.
+Desktop and fullscreen consume these same keys. The queue reads the pin set once
 per load, and reads the pin off the release's own work row, never the resolved work: the pin
 and the `cover_url` it rewrote are columns of the same row, and resolving through the
 same-game map would pair one work's pin with another work's URL. The assignment service is
@@ -1745,23 +1770,26 @@ motion settings (§8). Refusals are `Amber`, per §2: attention, not a destructi
 controls stay in place under the sentence, so the retry is where the failure was. One busy flag
 for the whole editor: a second write cannot start while one is in flight.
 
-**Saving art reloads the library and reopens the modal on the same ownership**, carrying its
-confirmation across — the same arrangement §10.9 already describes for an assignment, and for
-the same reason: the stored value becomes a user-art reference, the tile's cover key is
-computed when the library loads, and only a reload draws the new art on the wall. **A text save does not reload**, and does not need to: the save hands the library the field
-key and the value as stored, after the editor's own rows refresh. Only `name` is acted on; the
-other three text fields are drawn nowhere outside the modal, which has already refreshed
-itself. The library renames every live tile behind that work — several when a same-game link
-group sits behind one work — and with it the grid tile, the list-view row, the modal headline,
-the tile's filterable row (so search and every live list follow), and any feed card, which
-borrows the same tile instance. The provisional-name badge is cleared, because a name save
-clears `works.name_is_provisional`. The placeholder gradient is recomputed, because it is
-derived from the title. The current sort and filter are re-applied in the same pass, so a
-renamed game takes its new place in the order immediately. Every draft in the other five rows
-survives, the modal stays open on the same ownership, and the editor stays open — which
-is precisely what a reload would have cost. The seam is optional like every other seam on this
-modal: unwired, the save is exactly what it was. A carried confirmation appears in the modal's persistent footer while the tools are closed,
-so a successful art save is visible after the rebuilt details returns to its selected tab.
+**Every saved field refreshes its visible facts.** Text and art saves reload the library's
+read projections, including summary, publisher, release year, title and artwork. Sort order,
+filters, live-list counts and feed cards follow those committed values. The same open details
+and editor instances remain in place, with the selected section and every other field draft
+intact. Artwork refreshes its leases and leaves a confirmation available when the editor
+closes. Fullscreen field actions and source labels follow the same observable state as desktop.
+
+**Background refresh also reaches open details.** Updates, acknowledgement state, recorded
+play, reception, screenshots, acquisition and saved journal rows refresh together after the
+read completes. The tracker keeps its selected view, and an unfinished journal note keeps its
+draft and focus. Each surface retains the current section and restores an existing focused
+update or journal entry by identity when rows are rebuilt. A new patch cannot update only the
+badge while leaving its evidence absent from Updates. The editor and artwork seams remain
+optional; an unwired host still saves through its configured services.
+
+**The latest requested library wins.** A slower earlier refresh cannot restore games excluded
+by the current maturity, account or non-game settings. Tiles, rail counts and details use the
+same winning publication. Selection survives by ownership when still visible; details close
+when that ownership is excluded. Closing details also retires an unfinished open request, so a
+late read cannot reopen it. Desktop and fullscreen share this behavior.
 
 **Optional in the way every seam on this modal is.** With no edit service registered, or a tile
 that resolves to no work id, the link is not drawn at all and the modal is exactly what it was.
@@ -1831,6 +1859,14 @@ Options inside a group are an OR, so ticking one genre must not drop every other
 stop**, at the 40% opacity §6 already gives a zero-count bucket. **An option that is ticked
 stays live whatever its count says:** the way out of an empty result has to be the control that
 caused it.
+
+Selected rules survive when their matching games or metadata disappear. A missing store or
+facet remains checked with a zero count and can still be cleared; reopening a saved live list
+retains that restriction even if this view has never seen a matching game. Facet names come
+from the full stored vocabulary, with `Unavailable value (id)` when that name is no longer
+known. An active release-year rule keeps its fields available when no dated games remain.
+Desktop checkboxes and fullscreen option buttons use the same residual counts and availability.
+Opening or saving an unchanged list never drops a rule because its current count is zero.
 
 **Order freezes on the first counts.** A long group leads with its commonest options and then
 holds that order for the session. Re-sorting on every recount is the obvious reading of
@@ -2037,6 +2073,14 @@ Feed cards and every game details view also offer **Add to list**, opening the s
 for that game independently of library selection. Existing static lists and a new-list name
 are available; live lists remain excluded. Adding a game from details refreshes its membership
 checkboxes and leaves details open. Escape dismisses only the list modal.
+
+List counts, names, rules and order change after the save succeeds. A failed change keeps
+the last saved state and its open context. Desktop membership checkboxes and fullscreen
+membership buttons show **Saving list changes…** while a write is pending; another toggle
+records the latest choice and saves it after the current write. If a write fails, the control
+returns to the saved membership and shows **Couldn't save list changes. Try again.** beside
+the control. List actions use the same error copy beside the library actions, while modal
+actions keep their prompt and draft. Refreshing the library preserves a pending choice.
 
 Feed feedback occupies a dedicated right-hand column: bookmark-plus **Add to list** in Azure,
 clock **Not now** in Amber, and circle-minus **Not interested** in TextDim. Each 32px icon
@@ -2463,9 +2507,10 @@ editing; nothing reads it.
 
 **Three surfaces do not open at all.** `TileGround`, because §14.4 is construction. The
 popovers, because a flyout is its own popup root. And **polarity does not reach the panes**:
-the merge queue is the only pane that shows cover art, it shows it inside an opaque
-`Border.card`, and it applies no dormancy ramp, because the question there is identity and not
-recency.
+the desktop merge queue shows its cover art inside an opaque `Border.card`. Its thumbnails
+use the shared dormancy ramp on that opaque ground, as specified in §6. Fullscreen Merges
+uses text proposals and controller actions; opening a member uses the normal game details
+presentation. Pane translucency and cover dormancy remain separate controls.
 
 ### 14.8 The honest costs
 

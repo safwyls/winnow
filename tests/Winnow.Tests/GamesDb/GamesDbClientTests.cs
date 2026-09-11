@@ -26,6 +26,56 @@ namespace Winnow.Tests.GamesDb;
 /// </summary>
 public sealed class GamesDbClientTests
 {
+    [Theory]
+    [InlineData("not json")]
+    [InlineData("{}")]
+    [InlineData("{\"game_id\":\"fixture\",\"releases\":null}")]
+    [InlineData("{\"game_id\":\"fixture\",\"releases\":[null]}")]
+    [InlineData("{\"game_id\":\"fixture\",\"releases\":[{}]}")]
+    [InlineData("{\"version\":99,\"game_id\":\"fixture\",\"releases\":[]}")]
+    public async Task Invalid_warm_cache_is_refetched_and_repaired_without_waiting_for_its_ttl(string payload)
+    {
+        using var host = new GamesDbTestHost(GamesDbTestHost.FezResponder());
+        var key = GamesDbClient.CacheKey(GamesDbPlatforms.Epic, GamesDbFixtures.FezAppName);
+        await host.Cache.SetAsync(key, payload, host.Clock.Now.UtcDateTime);
+        var first = await host.Client.ResolveAsync(GamesDbPlatforms.Epic, GamesDbFixtures.FezAppName);
+        Assert.NotNull(first);
+        Assert.Equal(GamesDbFixtures.FezSteamAppId, first.IdOn(GamesDbPlatforms.Steam));
+        Assert.NotNull(await host.Client.ResolveAsync(GamesDbPlatforms.Epic, GamesDbFixtures.FezAppName));
+        Assert.Single(host.Handler.Requests);
+        using var json = JsonDocument.Parse((await host.Cache.GetAsync(key))!.Value.PayloadJson!);
+        Assert.Equal(1, json.RootElement.GetProperty("version").GetInt32());
+    }
+
+    [Fact]
+    public async Task Invalid_warm_cache_and_offline_failure_never_become_a_cached_miss()
+    {
+        var online = false;
+        using var host = new GamesDbTestHost((request, prior) => online
+            ? GamesDbTestHost.FezResponder()(request, prior)
+            : throw new HttpRequestException("Fixture offline"), options => options.MaxRetryAttempts = 1);
+        var key = GamesDbClient.CacheKey(GamesDbPlatforms.Epic, GamesDbFixtures.FezAppName);
+        var observed = host.Clock.Now.UtcDateTime.AddHours(-1);
+        await host.Cache.SetAsync(key, "not json", observed);
+        Assert.Null(await host.Client.ResolveAsync(GamesDbPlatforms.Epic, GamesDbFixtures.FezAppName));
+        var retained = (await host.Cache.GetAsync(key))!.Value;
+        Assert.Equal("not json", retained.PayloadJson);
+        Assert.Equal(observed, retained.FetchedAt);
+        online = true;
+        Assert.NotNull(await host.Client.ResolveAsync(GamesDbPlatforms.Epic, GamesDbFixtures.FezAppName));
+    }
+
+    [Fact]
+    public async Task Valid_legacy_projection_remains_a_warm_offline_hit()
+    {
+        using var host = new GamesDbTestHost((_, _) => throw new InvalidOperationException("No network expected"));
+        await host.Cache.SetAsync(GamesDbClient.CacheKey("epic", "Bluebird"),
+            """{"game_id":"fixture","releases":[{"platform":"steam","external_id":"224760"}]}""",
+            host.Clock.Now.UtcDateTime);
+        Assert.Equal("224760", (await host.Client.ResolveAsync("epic", "Bluebird"))!.IdOn("steam"));
+        Assert.Empty(host.Handler.Requests);
+    }
+
     [Fact]
     public async Task Resolves_epic_appname_to_the_steam_appid()
     {

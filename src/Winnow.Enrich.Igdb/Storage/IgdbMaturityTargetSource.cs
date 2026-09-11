@@ -1,10 +1,14 @@
 using Dapper;
+using Winnow.Core.Queries;
 using Winnow.Data;
 
 namespace Winnow.Enrich.Igdb.Storage;
 
 /// <summary>One work that needs IGDB maturity evidence: the work id to write and the IGDB id to query.</summary>
-public sealed record IgdbMaturityTarget(long WorkId, long IgdbId);
+public sealed record IgdbMaturityTarget(long WorkId, long IgdbId, long IgdbMappingRevision = 0)
+{
+    public IgdbMappingVersion IgdbMapping => new(WorkId, IgdbId, IgdbMappingRevision);
+}
 
 /// <summary>Lists the works whose IGDB age ratings should be fetched.</summary>
 public interface IIgdbMaturityTargetSource
@@ -29,7 +33,8 @@ public sealed class SqliteIgdbMaturityTargetSource : IIgdbMaturityTargetSource
         // before this one. No identity work here.
         const string sql = """
             SELECT id      AS WorkId,
-                   igdb_id AS IgdbId
+                   igdb_id AS IgdbId,
+                   igdb_mapping_revision AS IgdbMappingRevision
             FROM works
             WHERE igdb_id IS NOT NULL
               AND igdb_id > 0

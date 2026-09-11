@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
@@ -23,6 +24,26 @@ public abstract class FullscreenPage : UserControl, IDisposable
     protected FullscreenPage(FullscreenContext context) { Context = context; }
     public virtual void Dispose() { GC.SuppressFinalize(this); }
     protected void Changed() => PageChanged?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>Retains the user's current control when an imperative page rebuilds its rows.</summary>
+    protected Action PreserveFocus()
+    {
+        var previous = _focused;
+        var wasFocused = previous?.IsKeyboardFocusWithin == true;
+        var id = previous is null ? null : AutomationProperties.GetAutomationId(previous);
+        var name = previous is null ? null : AutomationProperties.GetName(previous);
+        var index = Array.IndexOf(_rows.SelectMany(row => row).ToArray(), previous);
+        return () =>
+        {
+            if (!wasFocused) return;
+            var controls = _rows.SelectMany(row => row).Where(control => control.IsEffectivelyVisible && control.IsEffectivelyEnabled).ToArray();
+            var target = controls.FirstOrDefault(control => ReferenceEquals(control, previous))
+                ?? (string.IsNullOrEmpty(id) ? null : controls.FirstOrDefault(control => AutomationProperties.GetAutomationId(control) == id))
+                ?? (string.IsNullOrEmpty(name) ? null : controls.FirstOrDefault(control => AutomationProperties.GetName(control) == name))
+                ?? controls.ElementAtOrDefault(Math.Clamp(index, 0, Math.Max(0, controls.Length - 1)));
+            if (target is not null) FocusControl(target);
+        };
+    }
     protected void SetFocusRows(params Control[][] rows)
     {
         foreach (var control in _rows.SelectMany(r => r).Distinct()) control.GotFocus -= TrackFocus;

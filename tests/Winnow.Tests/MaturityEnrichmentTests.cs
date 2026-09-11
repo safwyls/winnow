@@ -238,7 +238,7 @@ public sealed class MaturityEnrichmentTests
     }
 
     [Fact]
-    public async Task A_rated_game_yields_its_tokens_and_an_unrated_one_is_absent()
+    public async Task A_rated_game_yields_tokens_and_an_unrated_one_is_an_explicit_empty_answer()
     {
         using var host = new IgdbTestHost(AgeRatingResponder());
 
@@ -248,9 +248,9 @@ public sealed class MaturityEnrichmentTests
             ["esrb:ao", "pegi:18"],
             ratings[AdultsOnlyIgdbId].RatingTokens.Order(StringComparer.Ordinal));
 
-        // Absent, not present-and-empty. An empty row would assert the work
-        // is not explicit, which is a claim nobody established.
-        Assert.False(ratings.ContainsKey(UnratedIgdbId));
+        // Empty confirms that old evidence can be removed. Absent means the
+        // request was unavailable and stored evidence must survive.
+        Assert.Empty(ratings[UnratedIgdbId].RatingTokens);
     }
 
     [Fact]
@@ -265,7 +265,7 @@ public sealed class MaturityEnrichmentTests
 
         Assert.Equal(before, host.Handler.CountFor("games"));
         Assert.True(again.ContainsKey(AdultsOnlyIgdbId));
-        Assert.False(again.ContainsKey(UnratedIgdbId));
+        Assert.Empty(again[UnratedIgdbId].RatingTokens);
     }
 
     /// <summary>
@@ -377,6 +377,7 @@ public sealed class MaturityEnrichmentTests
             host.Client,
             new SqliteIgdbMaturityTargetSource(db.Factory),
             maturity,
+            new IgdbObservationWriter(db.Factory),
             TimeProvider.System,
             NullLogger<IgdbMaturitySync>.Instance);
 
@@ -411,6 +412,7 @@ public sealed class MaturityEnrichmentTests
             host.Client,
             new SqliteIgdbMaturityTargetSource(db.Factory),
             maturity,
+            new IgdbObservationWriter(db.Factory),
             TimeProvider.System,
             NullLogger<IgdbMaturitySync>.Instance);
 

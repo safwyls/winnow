@@ -88,13 +88,17 @@ verification. TASK-32 now has passing Ubuntu smoke coverage for native discovery
 Proton-environment attribution. Actual Wine/Proton game compatibility remains unmeasured.
 
 Unassigned tasks left outside beta are new scoring signals and evaluation research
-(TASK-135–138), achievement ingestion (TASK-15), per-edition years (TASK-13), broader
+(TASK-136–138), achievement ingestion (TASK-15), per-edition years (TASK-13), broader
 cross-store automation (TASK-37), notification and navigation features (TASK-108–110,
-TASK-114), optional presentation work (TASK-27, TASK-42, TASK-43, TASK-80–82), and deferred
+TASK-114), optional presentation work (TASK-42, TASK-43, TASK-80–82), and deferred
 import/research or test maintenance (TASK-40, TASK-41, TASK-44, TASK-46, TASK-49, TASK-65).
 These remain useful work, but do not repair the beta's existing core loop. Exact history
 aggregates (TASK-139) are included because they fix tier decisions and avoid repeated sampling
 reads; new ranking weights can wait for evidence from beta use.
+
+TASK-135 delivers offline tuning comparison over captured database states. It rejects
+backdated mutable projections and reports judged-cohort metrics with their coverage and
+limitations; it adds development tooling rather than a new app surface.
 
 TASK-14 implements the Derelict library bucket and feed shelf using dated IGDB and Steam
 lifecycle evidence. Classification is local and recomputed; missing data remains unknown.
@@ -124,6 +128,12 @@ TASK-49.
 survives Winnow's own premise is wishlist intelligence, acting on titles the user has already
 flagged, rather than a purchase feed.
 
+**Steam collection import: deferred.** Local ingest reads installed manifests and per-account
+play history; it does not import Steam's static or dynamic collections. Winnow's user-authored
+lists are available on desktop and fullscreen. DRAFT-1 records the future scope decision,
+including account ownership, repeated import and preservation of local list edits; it is
+outside the architecture repair and pre-beta queues.
+
 ## 5. Carried debt
 
 Tracked so none of it silently becomes permanent. Each item is a Backlog task; read the task
@@ -131,9 +141,6 @@ for its current state.
 
 | Debt | Task |
 |---|---|
-| Merge execution is not built; the queue records intent and nothing applies it | TASK-5, TASK-64 |
-| Cross-store identity should be a link relation, not a destructive merge | TASK-70 and its subtasks |
-
 | The account stats screen is a first pass; presentation cleanup is shelved | TASK-43 |
 | The fact tables cannot distinguish two identical same-day transactions | TASK-44 |
 
@@ -142,6 +149,10 @@ for its current state.
 | ACCOUNT and REVIEW each spend a rail section heading on a single row | TASK-42 |
 
 The account-scope filter deliberately errs visible (`game-library-design.md` §6.3). Linux session discovery and Proton-environment attribution passed real-process Ubuntu smoke tests under TASK-32; this does not establish compatibility across actual Wine/Proton games.
+
+Identity grouping is delivered through the reversible link model (TASK-70 and TASK-189).
+Confirming a proposal applies the relation immediately on desktop and fullscreen; the old
+destructive executor and separate apply queue were retired by TASK-70.7 and TASK-83.
 
 ## 6. The risk
 

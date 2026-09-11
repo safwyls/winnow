@@ -60,4 +60,7 @@
     <Compile Include="..\Shared\StorefrontFile.cs" Link="StorefrontFile.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="..\Shared\ProviderHttpTransport.cs" Link="Http\ProviderHttpTransport.cs" />
+  </ItemGroup>
 </Project>

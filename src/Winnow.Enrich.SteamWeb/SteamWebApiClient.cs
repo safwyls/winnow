@@ -22,7 +22,7 @@ public sealed class SteamWebApiClient : ISteamWebApiClient
     public const string CacheProvider = "steam-web";
 
     /// <summary><c>CandidateOwnership.Source</c> value for candidates this module emits (§5.1 provenance).</summary>
-    public const string SourceName = "steam_web_api";
+    public const string SourceName = Winnow.Core.Domain.OwnershipInventorySources.SteamOwnedGames;
 
     /// <summary>
     /// Verified live 2026-08-24: 200, one request for the whole library
@@ -83,7 +83,8 @@ public sealed class SteamWebApiClient : ISteamWebApiClient
             _log.LogDebug(
                 "Steam Web API owned library for {SteamId} served from cache ({Count} games).",
                 steamId, fresh.Count);
-            return new SteamOwnedLibrary(steamId, Succeeded: true, fresh, cached.FetchedAt, FromCache: true);
+            return new SteamOwnedLibrary(steamId, Succeeded: true, fresh, cached.FetchedAt, FromCache: true)
+            { IsComplete = SteamWebJson.IsCompleteOwnedGames(cached.PayloadJson, fresh) };
         }
 
         if (await _credentials.GetAsync(purpose, ct) is not { } credential)
@@ -131,7 +132,8 @@ public sealed class SteamWebApiClient : ISteamWebApiClient
             games.Count(static g => g.PlaytimeForeverMinutes > 0),
             games.Count(static g => g.LastPlayedUtc is not null));
 
-        return new SteamOwnedLibrary(steamId, Succeeded: true, games, now, FromCache: false);
+        return new SteamOwnedLibrary(steamId, Succeeded: true, games, now, FromCache: false)
+        { IsComplete = SteamWebJson.IsCompleteOwnedGames(body, games) };
     }
 
     public async Task<IReadOnlyList<CandidateOwnership>> GetOwnershipCandidatesAsync(

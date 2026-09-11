@@ -1,21 +1,22 @@
 ---
 id: TASK-4
 title: Build full-screen gamepad mode
-status: In Progress
+status: To Do
 assignee:
   - codex
 created_date: '2026-08-29 21:52'
-updated_date: '2026-09-11 05:07'
+updated_date: '2026-09-11 08:10'
 labels:
   - ui
   - accessibility
+  - needs-user
 milestone: m-3
 dependencies:
   - TASK-3
 references:
   - docs/architecture-review-2026-09-10.md
 priority: low
-ordinal: 60000
+ordinal: 259000
 ---
 
 ## Description
@@ -121,4 +122,6 @@ Pinned the Home shelf heading12px above the bottom-anchored covers; alignment te
 Confirmed shared feed computes six primary cards plus four reserves, up to ten per shelf. Fullscreen now includes those reserves as cards at initial load, preserving score order and unique spent tracking; adaptive layout renders more than six when space permits and retains overflow navigation. Desktop default remains six cards with four held replacements. Loading cards does not record impressions; only viewport entry does. Verified106 feed tests and36 fullscreen Home/browse/context tests, including ten simultaneously visible/reachable cards on ultrawide and separate desktop/fullscreen presentation counts. Updated visual/architecture docs and contract comments. Preserved unrelated ApplicationSettingsView.axaml edit.
 
 Architecture review 2026-09-10: physical-controller and ten-foot validation remain unverified by this audit. Concrete fullscreen prompt, year-filter and session-note defects are isolated in TASK-219, TASK-220 and TASK-221; runtime coverage of code-built accessibility is TASK-226. Shared data/feed/list fixes record both surfaces in their acceptance criteria. The full Windows suite passed 288 UI tests, which does not satisfy the remaining hardware acceptance criteria.
+
+Shelved at the end of the backlog per the user instruction on2026-09-11. TASK219-221 and226 now address the concrete prompt/year/note/accessibility defects, and the reviewed shared data/list/artwork paths have desktop and fullscreen automated coverage. Remaining AC1-3 need a hands-on pass with a real controller and intended TV/display from normal seating distance; simulated inputs and headless focus checks cannot establish those physical results. Please provide the controller model/OS/display setup and any screen where focus, readability or controller-only completion fails. No product or data-policy decision is waiting on the user.
 <!-- SECTION:NOTES:END -->

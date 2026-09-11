@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using Avalonia;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
@@ -33,11 +32,12 @@ public interface ICoverCache
 /// two-layer slot as well before it decodes anything, so a wall tile and the
 /// detail modal at the same width share one decode.</para>
 /// </summary>
-public sealed class CoverCache : ICoverCache, IDisposable
+public sealed class CoverCache : ICoverCache, IDisposable, IAsyncDisposable
 {
     private readonly CoverPipeline _pipeline;
     private readonly ILogger<CoverCache> _log;
     private readonly Action<Action> _post;
+    private readonly Func<SKBitmap, Bitmap> _convert;
 
     private readonly DecodedLru<Slot, CoverArt> _memory;
 
@@ -49,7 +49,12 @@ public sealed class CoverCache : ICoverCache, IDisposable
     /// </summary>
     private readonly SemaphoreSlim _decodeGate;
 
-    private readonly ConcurrentDictionary<Slot, Task<CoverArt?>> _inFlight = new();
+    private readonly Lock _gate = new();
+    private readonly Dictionary<Slot, Load> _inFlight = [];
+    private readonly CancellationTokenSource _lifetime = new();
+    private readonly int _maxPendingLoads;
+    private bool _stopping;
+    private Task? _shutdown;
 
     /// <param name="post">
     /// How the disposal of evicted art reaches the UI thread; see
@@ -62,14 +67,22 @@ public sealed class CoverCache : ICoverCache, IDisposable
         CoverCacheOptions options,
         ILogger<CoverCache>? log = null,
         Action<Action>? post = null)
+        : this(pipeline, options, log, post, ToAvalonia)
+    {
+    }
+
+    internal CoverCache(CoverPipeline pipeline, CoverCacheOptions options, ILogger<CoverCache>? log,
+        Action<Action>? post, Func<SKBitmap, Bitmap> convert)
     {
         ArgumentNullException.ThrowIfNull(options);
 
         _pipeline = pipeline;
         _log = log ?? NullLogger<CoverCache>.Instance;
         _post = post ?? PostToUiThread;
+        _convert = convert;
         _memory = new DecodedLru<Slot, CoverArt>(options.MaxDecodedBytes, static art => art.ReleaseHold());
         _decodeGate = new SemaphoreSlim(Math.Max(1, options.MaxConcurrentDecodes));
+        _maxPendingLoads = Math.Max(1, options.MaxPendingLoads);
     }
 
     /// <summary>Decoded pixel bytes currently held. Diagnostics only.</summary>
@@ -78,7 +91,19 @@ public sealed class CoverCache : ICoverCache, IDisposable
     /// <summary>Entries currently cached. Diagnostics and tests only.</summary>
     public int DecodedCount => _memory.Count;
 
+    /// <summary>Running and queued slots. Never exceeds the configured admission limit.</summary>
+    public int PendingCount { get { lock (_gate) return _inFlight.Count; } }
+
     public bool TryGet(CoverKey key, double displayWidthPixels, CoverLayers layers, out CoverArt art)
+    {
+        lock (_gate)
+        {
+            if (_stopping) { art = null!; return false; }
+            return TryGetCore(key, displayWidthPixels, layers, out art);
+        }
+    }
+
+    private bool TryGetCore(CoverKey key, double displayWidthPixels, CoverLayers layers, out CoverArt art)
     {
         var width = CoverImaging.SnapWidth(displayWidthPixels);
         if (_memory.TryGet(new Slot(key, width, layers), out art))
@@ -96,46 +121,70 @@ public sealed class CoverCache : ICoverCache, IDisposable
     public Task<CoverArt?> GetAsync(
         CoverKey key, double displayWidthPixels, CoverLayers layers, CancellationToken ct = default)
     {
-        if (TryGet(key, displayWidthPixels, layers, out var hit))
+        if (ct.IsCancellationRequested) return Task.FromCanceled<CoverArt?>(ct);
+        lock (_gate)
         {
-            return Task.FromResult<CoverArt?>(hit);
+            if (_stopping) return Task.FromResult<CoverArt?>(null);
+            if (TryGetCore(key, displayWidthPixels, layers, out var hit))
+                return Task.FromResult<CoverArt?>(hit);
+
+            var slot = new Slot(key, CoverImaging.SnapWidth(displayWidthPixels), layers);
+            if (!_inFlight.TryGetValue(slot, out var load))
+            {
+                if (_inFlight.Count >= _maxPendingLoads) return Task.FromResult<CoverArt?>(null);
+                load = new Load(CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token));
+                _inFlight.Add(slot, load);
+                // Creation and publication share one lock: task factories cannot race.
+                load.Task = Task.Run(() => LoadAsync(slot, load), CancellationToken.None);
+            }
+            if (load.Cancellation.IsCancellationRequested) return Task.FromResult<CoverArt?>(null);
+            load.Waiters++;
+            return AwaitLoadAsync(load, ct);
         }
-
-        var slot = new Slot(key, CoverImaging.SnapWidth(displayWidthPixels), layers);
-
-        // Task.Run, not a bare async call: this is invoked from the UI thread as
-        // a tile realizes, and everything downstream (file IO, JPEG decode, the
-        // colour-matrix pass) must stay off it (§5.1, §5.4).
-        return _inFlight.GetOrAdd(slot, s => Task.Run(() => LoadAsync(s, ct), CancellationToken.None));
     }
 
-    private async Task<CoverArt?> LoadAsync(Slot slot, CancellationToken ct)
+    private async Task<CoverArt?> AwaitLoadAsync(Load load, CancellationToken ct)
     {
+        try { return await load.Task.WaitAsync(ct).ConfigureAwait(false); }
+        finally
+        {
+            Task? cancellation = null;
+            lock (_gate)
+            {
+                // Mark cancellation before another waiter can join, but let
+                // source callbacks run asynchronously outside the cache lock.
+                if (--load.Waiters == 0 && !load.Finished) cancellation = load.Cancellation.CancelAsync();
+            }
+            if (cancellation is not null) await ObserveCancellationAsync(cancellation).ConfigureAwait(false);
+        }
+    }
+
+    private async Task<CoverArt?> LoadAsync(Slot slot, Load load)
+    {
+        var ct = load.Cancellation.Token;
         try
         {
-            CoverBitmaps? bitmaps;
+            CoverArt art;
             await _decodeGate.WaitAsync(ct).ConfigureAwait(false);
             try
             {
-                bitmaps = await _pipeline.GetAsync(slot.Key, slot.Width, slot.Layers, ct).ConfigureAwait(false);
+                using var bitmaps = await _pipeline.GetAsync(slot.Key, slot.Width, slot.Layers, ct).ConfigureAwait(false);
+                if (bitmaps is null) return null;
+                ct.ThrowIfCancellationRequested();
+                Bitmap? vivid = null;
+                Bitmap? floor = null;
+                try
+                {
+                    vivid = _convert(bitmaps.Vivid);
+                    floor = bitmaps.Floor is null ? null : _convert(bitmaps.Floor);
+                    art = new CoverArt(vivid, floor, _post);
+                    vivid = floor = null;
+                }
+                finally { vivid?.Dispose(); floor?.Dispose(); }
             }
             finally
             {
                 _decodeGate.Release();
-            }
-
-            if (bitmaps is null)
-            {
-                return null;
-            }
-
-            CoverArt art;
-            using (bitmaps)
-            {
-                art = new CoverArt(
-                    ToAvalonia(bitmaps.Vivid),
-                    bitmaps.Floor is null ? null : ToAvalonia(bitmaps.Floor),
-                    _post);
             }
 
             // Four bytes a pixel, once per layer this slot asked for. The
@@ -143,17 +192,17 @@ public sealed class CoverCache : ICoverCache, IDisposable
             // the aspect ratio, because a capsule that is not exactly 2:3 would
             // otherwise be under-declared.
             var layers = slot.Layers == CoverLayers.VividAndFloor ? 2L : 1L;
-            var cached = _memory.Admit(slot, art, layers * slot.Width * art.Vivid.PixelSize.Height * 4L);
-
-            // Another decode of the same slot beat this one into the cache. The
-            // cached art is the one every caller shares, so drop the
-            // duplicate's pixels here rather than leave them to a finalizer.
-            if (!ReferenceEquals(cached, art))
+            lock (_gate)
             {
-                art.ReleaseHold();
+                if (_stopping || ct.IsCancellationRequested)
+                {
+                    art.ReleaseHold();
+                    return null;
+                }
+                var cached = _memory.Admit(slot, art, layers * slot.Width * art.Vivid.PixelSize.Height * 4L);
+                if (!ReferenceEquals(cached, art)) art.ReleaseHold();
+                return cached;
             }
-
-            return cached;
         }
         catch (OperationCanceledException)
         {
@@ -166,7 +215,12 @@ public sealed class CoverCache : ICoverCache, IDisposable
         }
         finally
         {
-            _inFlight.TryRemove(slot, out _);
+            lock (_gate)
+            {
+                load.Finished = true;
+                _inFlight.Remove(slot);
+                load.Cancellation.Dispose();
+            }
         }
     }
 
@@ -201,14 +255,47 @@ public sealed class CoverCache : ICoverCache, IDisposable
     }
 
     public void Dispose()
+        => DisposeAsync().AsTask().GetAwaiter().GetResult();
+
+    public ValueTask DisposeAsync()
     {
-        // Clear reports every entry as an eviction, so this releases the LRU's
-        // hold on all of them. Art a lease still holds survives until that
-        // lease is disposed, which is the rule eviction follows too.
-        _memory.Clear();
+        lock (_gate)
+        {
+            _stopping = true;
+            return new ValueTask(_shutdown ??= Task.Run(DrainAsync));
+        }
+    }
+
+    private async Task DrainAsync()
+    {
+        await ObserveCancellationAsync(_lifetime.CancelAsync()).ConfigureAwait(false);
+        Task[] pending;
+        lock (_gate) pending = _inFlight.Values.Select(load => load.Task).ToArray();
+        await Task.WhenAll(pending).ConfigureAwait(false);
+        lock (_gate) _memory.Clear();
         _decodeGate.Dispose();
         _pipeline.Dispose();
+        _lifetime.Dispose();
+    }
+
+    private async Task ObserveCancellationAsync(Task cancellation)
+    {
+        try { await cancellation.ConfigureAwait(false); }
+        catch (Exception ex)
+        {
+            // Source callbacks are outside our control; their failure must not
+            // leave decoded art or the remaining loads alive during shutdown.
+            _log.LogWarning(ex, "Cover source cancellation callback failed");
+        }
     }
 
     private readonly record struct Slot(CoverKey Key, int Width, CoverLayers Layers);
+
+    private sealed class Load(CancellationTokenSource cancellation)
+    {
+        public CancellationTokenSource Cancellation { get; } = cancellation;
+        public Task<CoverArt?> Task { get; set; } = null!;
+        public int Waiters;
+        public bool Finished;
+    }
 }

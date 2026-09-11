@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-04 18:13'
-updated_date: '2026-09-04 20:38'
+updated_date: '2026-09-11 08:06'
 labels:
   - ui
   - data
@@ -82,6 +82,8 @@ LIVE LISTS ARE NOT OFFERED. A live list holds a rule and finds its own members, 
 WHAT WAS NOT CHANGED, AND WHY. The rail count and the manual-list AND term still fold in memory over GameTileViewModel.ReleaseIds rather than calling GetMemberWorkIdsAsync. That is already link-resolved — a tile's Entries are every visible store entry of the folded game — and ApplyFilter runs on every keystroke in the search box, so a per-list database round trip there would be a regression for an answer the loaded read model already holds. GetMemberWorkIdsAsync remains the contract for any caller that does not have the tiles.
 
 TESTS (tests/Winnow.Tests/ListsViewModelTests.cs, three new): the modal ticks the lists that already hold this game and leaves the others unticked; a live list is not offered and the empty state is stated; ticking a row puts the game in the list and unticking takes it out, asserted through the repository and the rail count both. The cross-store case is already proven at the data layer by ListMembershipResolutionTests.
+
+Documentation correction from TASK223 (2026-09-11): the original description says Steam collections are read during ingest, but source inspection confirms there is no collection reader. This does not change the completed Winnow user-authored lists feature. Steam collection import is explicitly deferred in ROADMAP section4 and tracked as DRAFT-1 for a future scope decision.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

@@ -161,10 +161,11 @@ public sealed class IgdbClient : IIgdbClient
 
         foreach (var uid in wanted)
         {
-            if (cached.TryGetValue(cacheKey(uid), out var entry) && entry.FetchedAt >= cutoff)
+            if (cached.TryGetValue(cacheKey(uid), out var entry))
             {
                 var payload = Deserialize<ExternalMatchPayload>(entry.PayloadJson);
-                if (payload is { Version: ExternalMatchPayloadVersion })
+                if (entry.FetchedAt >= cutoff && payload is { Version: ExternalMatchPayloadVersion }
+                    && (payload.Match is null || payload.Match.IgdbId > 0))
                 {
                     if (payload.Match is { IgdbId: > 0 } hit)
                         results[uid] = hit.ToDomain(uid);
@@ -172,7 +173,8 @@ public sealed class IgdbClient : IIgdbClient
                 }
                 // Keep an older positive answer available when refetch fails or
                 // credentials are absent, but never treat it as current.
-                var legacy = payload?.Match ?? Deserialize<ExternalMatchCacheEntry>(entry.PayloadJson);
+                var legacy = payload is { Version: < 0 or > ExternalMatchPayloadVersion } ? null
+                    : payload?.Match ?? Deserialize<ExternalMatchCacheEntry>(entry.PayloadJson);
                 if (legacy is { IgdbId: > 0 }) results[uid] = legacy.ToDomain(uid);
             }
 
@@ -265,8 +267,8 @@ public sealed class IgdbClient : IIgdbClient
         var cutoff = Cutoff(cacheTtl);
         var pending = new List<long>(wanted.Length);
 
-        // Payloads written under an older version, kept aside. A version
-        // mismatch asks for a refetch but does NOT throw the old answer away:
+        // Older compatible payloads, kept aside. Expiry or a version mismatch
+        // asks for a refetch but does NOT throw the old positive answer away:
         // the machine may have no Twitch credentials and no network, and 1,923
         // entries that stop deserializing on an offline install would be a worse
         // bug than a missing field. Anything the refetch does not replace is
@@ -275,10 +277,11 @@ public sealed class IgdbClient : IIgdbClient
 
         foreach (var id in wanted)
         {
-            if (cached.TryGetValue(GameCacheKey(id), out var entry) && entry.FetchedAt >= cutoff)
+            if (cached.TryGetValue(GameCacheKey(id), out var entry))
             {
                 var payload = Deserialize<GamePayload>(entry.PayloadJson);
-                if (payload is { Version: GamePayloadVersion })
+                if (entry.FetchedAt >= cutoff && payload is { Version: GamePayloadVersion }
+                    && (payload.Game is null || payload.Game.IgdbId == id))
                 {
                     if (payload.Game is { } game) results.Add(game);
                     continue;
@@ -300,11 +303,12 @@ public sealed class IgdbClient : IIgdbClient
                 // a machine with no credentials and no network, repealing the
                 // guarantee above. Whoever bumps the version next inherits this:
                 // the fallback reads envelopes, and must go on reading them.
-                if (payload is { Game: { IgdbId: > 0 } outdated })
+                if (payload is { Version: > 0 and <= GamePayloadVersion, Game: { } outdated } && outdated.IgdbId == id)
                 {
                     superseded[id] = outdated;
                 }
-                else if (Deserialize<IgdbGame>(entry.PayloadJson) is { IgdbId: > 0 } legacy)
+                else if (payload is not { Version: > GamePayloadVersion }
+                    && Deserialize<IgdbGame>(entry.PayloadJson) is { } legacy && legacy.IgdbId == id)
                 {
                     superseded[id] = legacy;
                 }
@@ -403,8 +407,7 @@ public sealed class IgdbClient : IIgdbClient
                 if (Deserialize<AgeRatingsPayload>(entry.PayloadJson) is
                     { Version: AgeRatingsPayloadVersion } payload)
                 {
-                    if (payload.Ratings is { Count: > 0 } ratings)
-                        results[id] = new IgdbAgeRatings(id, ratings);
+                    results[id] = new IgdbAgeRatings(id, payload.Ratings ?? []);
                     continue;
                 }
             }
@@ -451,10 +454,7 @@ public sealed class IgdbClient : IIgdbClient
             foreach (var id in batch)
             {
                 var tokens = found.GetValueOrDefault(id);
-                if (tokens is { Count: > 0 })
-                {
-                    results[id] = new IgdbAgeRatings(id, tokens);
-                }
+                results[id] = new IgdbAgeRatings(id, tokens ?? []);
 
                 await _cache.SetAsync(
                     CacheProvider,

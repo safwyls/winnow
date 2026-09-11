@@ -15,6 +15,17 @@ namespace Winnow.App.ViewModels.Lists;
 public partial class ListsViewModel : ObservableObject
 {
     private readonly IGameListRepository? _lists;
+    private readonly SemaphoreSlim _writes = new(1, 1);
+    internal long Revision { get; private set; }
+
+    [ObservableProperty]
+    public partial bool IsBusy { get; private set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasProblem))]
+    public partial string? Problem { get; private set; }
+
+    public bool HasProblem => Problem is { Length: > 0 };
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ListsSectionState))]
@@ -91,18 +102,22 @@ public partial class ListsViewModel : ObservableObject
 
     public async Task LoadAsync(CancellationToken ct = default)
     {
+        await WaitForWritesAsync(ct);
+        var revision = Revision;
         var loaded = await Task.Run(async () =>
         {
             var records = _lists is null ? [] : await _lists.GetAllAsync(ct);
             var items = _lists is null ? [] : await _lists.GetAllItemsAsync(ct);
             return (records, items);
         }, ct);
+        if (revision != Revision || IsBusy) { await LoadAsync(ct); return; }
         ApplySnapshot(loaded.records, loaded.items);
     }
 
     internal void ApplySnapshot(IReadOnlyList<GameList> records, IReadOnlyList<ListItem> items)
     {
         var openId = Open?.Id;
+        var existing = All.ToDictionary(list => list.Id);
 
         Lists.Clear();
         LiveLists.Clear();
@@ -117,7 +132,11 @@ public partial class ListsViewModel : ObservableObject
         var itemsByList = items.ToLookup(item => item.ListId);
         foreach (var record in records.OrderBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase))
         {
-            var list = new GameListViewModel(record);
+            var list = existing.TryGetValue(record.Id, out var current) && current.IsLive == record.IsLive
+                ? current : new GameListViewModel(record);
+            list.Name = record.Name;
+            list.Description = record.Description;
+            list.Filter = record.Filter;
             if (list.IsLive)
             {
                 LiveLists.Add(list);
@@ -129,7 +148,7 @@ public partial class ListsViewModel : ObservableObject
             }
         }
 
-        // Re-find the open list by id after reload (row objects were replaced).
+        // Preserve the open list while removing rows that no longer exist.
         Open = openId is { } id ? All.FirstOrDefault(l => l.Id == id) : null;
         MarkSelection();
 
@@ -147,8 +166,9 @@ public partial class ListsViewModel : ObservableObject
         => _lists is null ? [] : await _lists.GetMembershipForGameAsync(workId, ct);
 
     /// <summary>Creates a hand-built list seeded with the current selection.</summary>
-    public async Task<GameListViewModel?> CreateListAsync(
+    public Task<GameListViewModel?> CreateListAsync(
         string name, IReadOnlyList<long> releaseIds, CancellationToken ct = default)
+        => WriteAsync<GameListViewModel?>(async () =>
     {
         var trimmed = name.Trim();
         if (_lists is null || trimmed.Length == 0)
@@ -156,26 +176,24 @@ public partial class ListsViewModel : ObservableObject
             return null;
         }
 
-        var id = await _lists.InsertAsync(GameList.Manual(trimmed), ct);
-        foreach (var releaseId in releaseIds)
-        {
-            await _lists.AppendItemAsync(id, releaseId, ct);
-        }
+        var distinct = releaseIds.Distinct().ToArray();
+        var id = await _lists.CreateManualAsync(trimmed, distinct, ct);
 
         var list = new GameListViewModel(GameList.Manual(trimmed) with { Id = id })
         {
-            ReleaseIds = releaseIds,
+            ReleaseIds = distinct,
         };
 
         Insert(Lists, list);
         RaiseSectionState();
         MembershipChanged?.Invoke(this, EventArgs.Empty);
         return list;
-    }
+    }, ct);
 
     /// <summary>Creates a rule-backed list from the filter as it stands.</summary>
-    public async Task<GameListViewModel?> CreateLiveListAsync(
+    public Task<GameListViewModel?> CreateLiveListAsync(
         string name, LibraryFilter filter, CancellationToken ct = default)
+        => WriteAsync<GameListViewModel?>(async () =>
     {
         var trimmed = name.Trim();
         if (_lists is null || trimmed.Length == 0)
@@ -190,60 +208,45 @@ public partial class ListsViewModel : ObservableObject
         Insert(LiveLists, list);
         RaiseSectionState();
         return list;
-    }
+    }, ct);
 
     /// <summary>Adds releases to a manual list, keeping order and ignoring duplicates.</summary>
-    public async Task AddToListAsync(
+    public Task AddToListAsync(
         GameListViewModel list, IEnumerable<long> releaseIds, CancellationToken ct = default)
+        => WriteAsync(async () =>
     {
         if (list.IsLive)
         {
-            return;
+            return false;
         }
 
-        var next = list.ReleaseIds.ToList();
-        foreach (var id in releaseIds)
-        {
-            if (next.Contains(id))
-            {
-                continue;
-            }
-
-            next.Add(id);
-
-            if (_lists is not null)
-            {
-                await _lists.AppendItemAsync(list.Id, id, ct);
-            }
-        }
-
-        list.ReleaseIds = next;
+        var requested = releaseIds.Distinct().ToArray();
+        list.ReleaseIds = _lists is null ? [.. list.ReleaseIds.Concat(requested).Distinct()]
+            : await _lists.AppendItemsAsync(list.Id, requested, ct);
         MembershipChanged?.Invoke(this, EventArgs.Empty);
-    }
+        return true;
+    }, ct);
 
-    public async Task RemoveFromListAsync(
+    public Task RemoveFromListAsync(
         GameListViewModel list, IEnumerable<long> releaseIds, CancellationToken ct = default)
+        => WriteAsync(async () =>
     {
         if (list.IsLive)
         {
-            return;
+            return false;
         }
 
         var dropped = releaseIds.ToHashSet();
-        foreach (var id in dropped)
-        {
-            if (_lists is not null)
-            {
-                await _lists.RemoveItemAsync(list.Id, id, ct);
-            }
-        }
-
-        list.ReleaseIds = [.. list.ReleaseIds.Where(id => !dropped.Contains(id))];
-    }
+        list.ReleaseIds = _lists is null ? [.. list.ReleaseIds.Where(id => !dropped.Contains(id))]
+            : await _lists.RemoveItemsAsync(list.Id, dropped.ToArray(), ct);
+        MembershipChanged?.Invoke(this, EventArgs.Empty);
+        return true;
+    }, ct);
 
     /// <summary>Moves one release by <paramref name="delta"/> places in a manual list.</summary>
-    public async Task<bool> MoveAsync(
+    public Task<bool> MoveAsync(
         GameListViewModel list, long releaseId, int delta, CancellationToken ct = default)
+        => WriteAsync(async () =>
     {
         if (list.IsLive)
         {
@@ -260,55 +263,60 @@ public partial class ListsViewModel : ObservableObject
 
         order.RemoveAt(from);
         order.Insert(to, releaseId);
-        list.ReleaseIds = order;
-
         if (_lists is not null)
         {
-            await _lists.ReorderAsync(list.Id, order, ct);
+            order = [.. await _lists.ReorderAsync(list.Id, order, ct)];
         }
 
+        list.ReleaseIds = order;
         return true;
-    }
+    }, ct);
 
-    public async Task RenameAsync(GameListViewModel list, string name, CancellationToken ct = default)
+    public Task RenameAsync(GameListViewModel list, string name, CancellationToken ct = default)
+        => WriteAsync(async () =>
     {
         var trimmed = name.Trim();
         if (trimmed.Length == 0 || trimmed == list.Name)
         {
-            return;
+            return false;
         }
-
-        list.Name = trimmed;
 
         if (_lists is not null)
         {
             // Pass description back unchanged to avoid erasing it.
-            await _lists.RenameAsync(list.Id, trimmed, list.Description, ct);
+            if (!await _lists.RenameAsync(list.Id, trimmed, list.Description, ct))
+                throw new InvalidOperationException("The list is no longer available.");
         }
 
+        list.Name = trimmed;
         Resort(list.IsLive ? LiveLists : Lists);
-    }
+        return true;
+    }, ct);
 
     /// <summary>Updates a live list's filter rules in place.</summary>
-    public async Task UpdateFilterAsync(
+    public Task UpdateFilterAsync(
         GameListViewModel list, LibraryFilter filter, CancellationToken ct = default)
+        => WriteAsync(async () =>
     {
         if (list.IsManual)
         {
-            return;
+            return false;
         }
-
-        list.Filter = filter;
 
         if (_lists is not null)
         {
-            await _lists.SetFilterAsync(list.Id, filter, ct);
+            if (!await _lists.SetFilterAsync(list.Id, filter, ct))
+                throw new InvalidOperationException("The list is no longer available.");
         }
-    }
+        list.Filter = filter;
+        return true;
+    }, ct);
 
     /// <summary>Deletes the list (games themselves are not affected).</summary>
-    public async Task DeleteAsync(GameListViewModel list, CancellationToken ct = default)
+    public Task DeleteAsync(GameListViewModel list, CancellationToken ct = default)
+        => WriteAsync(async () =>
     {
+        if (_lists is not null) await _lists.DeleteAsync(list.Id, ct);
         if (ReferenceEquals(Open, list))
         {
             Open = null;
@@ -317,10 +325,24 @@ public partial class ListsViewModel : ObservableObject
         (list.IsLive ? LiveLists : Lists).Remove(list);
         RaiseSectionState();
 
-        if (_lists is not null)
-        {
-            await _lists.DeleteAsync(list.Id, ct);
-        }
+        return true;
+    }, ct);
+
+    internal async Task WaitForWritesAsync(CancellationToken ct)
+    {
+        await _writes.WaitAsync(ct);
+        _writes.Release();
+    }
+
+    private async Task<T> WriteAsync<T>(Func<Task<T>> write, CancellationToken ct)
+    {
+        await _writes.WaitAsync(ct);
+        Revision++;
+        IsBusy = true;
+        Problem = null;
+        try { return await write(); }
+        catch { Problem = GameListsCopy.SaveFailed; throw; }
+        finally { Revision++; IsBusy = false; _writes.Release(); }
     }
 
     /// <summary>Rail selection. Exactly one row across both sections is ever marked.</summary>

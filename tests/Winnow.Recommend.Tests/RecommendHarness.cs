@@ -43,6 +43,7 @@ public sealed class RecommendHarness : IDisposable
         // exists — which is the property worth a test here.
         Settings = new SettingsRepository(_db.Factory);
         OwnershipAccounts = new OwnershipAccountRepository(_db.Factory);
+        OwnershipInventories = new OwnershipInventoryRepository(_db.Factory);
 
         // Identity links (migration 0018). The engine does not take this: it
         // reads the resolved work id off the bucket rows, so the feed and the
@@ -76,6 +77,13 @@ public sealed class RecommendHarness : IDisposable
 
     /// <summary>Per-account membership rows (migration 0015).</summary>
     public OwnershipAccountRepository OwnershipAccounts { get; }
+    public OwnershipInventoryRepository OwnershipInventories { get; }
+
+    public async Task CompleteSteamInventoryAsync(string accountRef, int count)
+    {
+        var attempt = await OwnershipInventories.BeginAttemptAsync("steam", accountRef, OwnershipInventorySources.SteamOwnedGames);
+        await OwnershipInventories.CompleteAsync(attempt, AsOf, count);
+    }
 
     /// <summary>Identity links (migration 0018), for the feed-suppression tests.</summary>
     public IdentityLinkRepository Links { get; }

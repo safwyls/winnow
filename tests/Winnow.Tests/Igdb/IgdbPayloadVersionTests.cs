@@ -9,6 +9,69 @@ namespace Winnow.Tests.Igdb;
 public sealed class IgdbPayloadVersionTests
 {
     [Theory]
+    [InlineData(0, "current", false)]
+    [InlineData(0, "older", false)]
+    [InlineData(0, "bare", false)]
+    [InlineData(0, "current", true)]
+    [InlineData(0, "older", true)]
+    [InlineData(0, "bare", true)]
+    [InlineData(1, "current", false)]
+    [InlineData(1, "older", false)]
+    [InlineData(1, "bare", false)]
+    [InlineData(1, "current", true)]
+    [InlineData(1, "older", true)]
+    [InlineData(1, "bare", true)]
+    public async Task Expired_compatible_positive_survives_offline_without_refreshing_its_timestamp(
+        int kind, string shape, bool credentials)
+    {
+        var cache = new InMemoryMetadataCache();
+        using (var seed = new IgdbTestHost(IgdbTestHost.DefaultResponder(), cache: cache))
+            await Fetch(seed, kind);
+        var original = (await cache.GetAsync("igdb", Key(kind)))!.Value;
+        var payload = JsonNode.Parse(original.PayloadJson!)!;
+        if (shape == "older") payload["version"] = payload["version"]!.GetValue<int>() - 1;
+        if (shape == "bare") payload = payload[kind == 0 ? "match" : "game"]!.DeepClone();
+        var expired = original.FetchedAt.AddDays(-365);
+        await cache.SetAsync("igdb", Key(kind), payload.ToJsonString(), expired);
+        using var host = new IgdbTestHost((request, prior) => request.Endpoint == "token"
+            ? IgdbTestHost.DefaultResponder()(request, prior)
+            : FakeHttpMessageHandler.Json(HttpStatusCode.ServiceUnavailable, "{}"),
+            clientId: credentials ? "fixture-client" : null, clientSecret: credentials ? "fixture-secret" : null,
+            configure: options => options.MaxRetryAttempts = 1, cache: cache);
+        if (kind == 0)
+            Assert.Equal(100440, (await host.Client.ResolveBySteamAppIdsAsync(["440"]))["440"].IgdbId);
+        else Assert.Equal(100440, Assert.Single(await host.Client.GetGamesAsync([100440])).IgdbId);
+        var retained = (await cache.GetAsync("igdb", Key(kind)))!.Value;
+        Assert.Equal(expired, retained.FetchedAt);
+        Assert.Equal(payload.ToJsonString(), retained.PayloadJson);
+        Assert.Equal(credentials ? 2 : 0, host.Handler.CountFor(Endpoint(kind)));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public async Task Expired_miss_is_reasked_and_a_new_success_replaces_it(int kind)
+    {
+        using var host = new IgdbTestHost(IgdbTestHost.DefaultResponder());
+        var miss = kind == 0 ? "{\"version\":1,\"match\":null}" : "{\"version\":5,\"game\":null}";
+        await host.Cache.SetAsync("igdb", Key(kind), miss, host.Clock.GetUtcNow().UtcDateTime.AddDays(-365));
+        await Fetch(host, kind);
+        Assert.Equal(1, host.Handler.CountFor(Endpoint(kind)));
+        Assert.NotEqual(miss, (await host.Cache.GetAsync("igdb", Key(kind)))!.Value.PayloadJson);
+    }
+
+    [Theory]
+    [InlineData("{\"version\":99,\"game\":{\"igdb_id\":100440,\"name\":\"Future shape\"}}")]
+    [InlineData("{\"version\":5,\"game\":{\"igdb_id\":999,\"name\":\"Wrong identity\"}}")]
+    [InlineData("not json")]
+    public async Task Unknown_or_miskeyed_game_shape_is_not_an_offline_fallback(string payload)
+    {
+        using var host = new IgdbTestHost(IgdbTestHost.DefaultResponder(), clientId: null, clientSecret: null);
+        await host.Cache.SetAsync("igdb", Key(1), payload, host.Clock.GetUtcNow().UtcDateTime);
+        Assert.Empty(await host.Client.GetGamesAsync([100440]));
+    }
+
+    [Theory]
     [InlineData(0, false)]
     [InlineData(0, true)]
     [InlineData(1, false)]

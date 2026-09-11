@@ -117,7 +117,7 @@
             Background="Transparent"
             BorderBrush="{StaticResource Line}"
             IsVisible="{Binding ShowActionBar}">
-        <Panel Margin="20,7">
+        <StackPanel Margin="20,7" Spacing="3">
 
             <!-- ══ Cut bar ═════════════════════════════════════════════════ -->
             <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding ShowCutBar}">
@@ -244,6 +244,8 @@
                 </StackPanel>
             </Grid>
 
-        </Panel>
+            <TextBlock Classes="body" FontSize="12" Foreground="{StaticResource Amber}"
+                       TextWrapping="Wrap" Text="{Binding Lists.Problem}" IsVisible="{Binding Lists.HasProblem}"/>
+        </StackPanel>
     </Border>
 </UserControl>

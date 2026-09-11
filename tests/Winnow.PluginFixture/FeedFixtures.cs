@@ -24,10 +24,24 @@ public sealed class ConfigurableFeedPlugin : IRecommendationFeedPlugin
     {
         var settings = _context!.Settings;
         await settings.SetAsync("supplied-games", JsonSerializer.Serialize(library, JsonOptions), cancellationToken);
-        if (await settings.GetAsync("behavior", cancellationToken) == "throw")
+        var behavior = await settings.GetAsync("behavior", cancellationToken);
+        if (behavior == "throw")
             throw new InvalidOperationException("fixture-private-key-must-not-escape");
+        if (behavior is "wait" or "wait-ignore-cancellation")
+            await settings.GetAsync("gate", behavior == "wait" ? cancellationToken : CancellationToken.None);
         var canned = await settings.GetAsync("recommendations", cancellationToken);
         return canned is not null ? JsonSerializer.Deserialize<PluginRecommendation[]>(canned, JsonOptions)
             : library.Select(game => new PluginRecommendation(game.Id, 0.8, "A fixture recommendation for " + game.Id + ".")).ToArray();
     }
+}
+
+public sealed class ImmediateFeedPlugin : IRecommendationFeedPlugin
+{
+    public ValueTask InitializeAsync(IPluginContext context, CancellationToken cancellationToken = default)
+        => ValueTask.CompletedTask;
+
+    public Task<IReadOnlyList<PluginRecommendation>?> GetRecommendationsAsync(IReadOnlyList<PluginGame> library,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<PluginRecommendation>?>(library.Select(game =>
+            new PluginRecommendation(game.Id, 0.7, "An immediate recommendation for " + game.Id + ".")).ToArray());
 }

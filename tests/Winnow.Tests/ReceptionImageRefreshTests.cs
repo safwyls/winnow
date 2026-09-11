@@ -42,7 +42,7 @@ public sealed class ReceptionImageRefreshTests
             igdb.Clock.GetUtcNow().UtcDateTime);
         using var steam = new SteamStoreTestHost((_, _) => throw new InvalidOperationException("No Steam IDs to fetch."));
         var sync = new ReceptionSyncService(new LibraryQueryRepository(db.Factory),
-            new WorkReceptionWriter(images, new WorkRatingRepository(db.Factory), igdb.Clock),
+            new WorkReceptionWriter(images, new WorkRatingRepository(db.Factory), new IgdbObservationWriter(db.Factory), igdb.Clock),
             igdb.Client, steam.Client, NullLogger<ReceptionSyncService>.Instance);
 
         var first = await sync.SyncAsync();

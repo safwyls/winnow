@@ -194,6 +194,10 @@ public sealed class SessionNoteParityTests
         public Func<SessionNote, Task> Write { get; set; } = _ => Task.CompletedTask;
         public async Task SetNoteAsync(SessionNote note, CancellationToken ct = default)
         { Attempts++; await Write(note); Saved.Add(note); }
+        public Task<Session?> FindOpenMonitoredAsync(long ownershipId, IReadOnlyList<MonitoredProcessIdentity> processes, CancellationToken ct = default)
+            => throw new NotSupportedException();
+        public Task<Session> SaveMonitoredAsync(Session session, IReadOnlyList<MonitoredProcessIdentity> processes, CancellationToken ct = default)
+            => throw new NotSupportedException();
         public Task<long> InsertAsync(Session session, CancellationToken ct = default) => Task.FromResult(0L);
         public Task<Session?> GetAsync(long id, CancellationToken ct = default) => Task.FromResult<Session?>(null);
         public Task<IReadOnlyList<Session>> GetByOwnershipAsync(long ownershipId, CancellationToken ct = default)

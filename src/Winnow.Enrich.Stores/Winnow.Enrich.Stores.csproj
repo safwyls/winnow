@@ -7,4 +7,7 @@
     <PackageReference Include="AngleSharp" Version="1.7.2" />
     <ProjectReference Include="..\Winnow.Data\Winnow.Data.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\Shared\ProviderHttpTransport.cs" Link="Http\ProviderHttpTransport.cs" />
+  </ItemGroup>
 </Project>

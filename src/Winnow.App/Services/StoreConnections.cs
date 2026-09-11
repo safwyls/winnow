@@ -44,19 +44,22 @@ public sealed class StoreConnections : IStoreConnections
     /// not a failure.
     /// </summary>
     private readonly ISteamAccountConfirmation? _confirmation;
+    private readonly OwnershipRefreshRequests? _refresh;
 
     public StoreConnections(
         EpicSignInService? epic = null,
         IEpicTokenStore? epicSessions = null,
         ISteamCredentialProvider? steamCredentials = null,
         ISteamApiKeyStore? apiKeyStore = null,
-        ISteamAccountConfirmation? confirmation = null)
+        ISteamAccountConfirmation? confirmation = null,
+        OwnershipRefreshRequests? refresh = null)
     {
         _epic = epic;
         _epicSessions = epicSessions;
         _steamCredentials = steamCredentials;
         _apiKeyStore = apiKeyStore;
         _confirmation = confirmation;
+        _refresh = refresh;
     }
 
     /// <inheritdoc/>
@@ -134,6 +137,7 @@ public sealed class StoreConnections : IStoreConnections
             await _confirmation.ReconcileAsync(ct);
         }
 
+        _refresh?.Request();
         return outcome;
     }
 
@@ -193,6 +197,7 @@ public sealed class StoreConnections : IStoreConnections
 
         if (result.Succeeded)
         {
+            _refresh?.Request();
             return new StoreSignInOutcome(
                 true, Clean(result.DisplayName), result.Persisted, StoreSignInProblem.None,
                 EpicSignInService.Explain(EpicSignInFailure.None));
@@ -208,8 +213,12 @@ public sealed class StoreConnections : IStoreConnections
     }
 
     /// <inheritdoc/>
-    public Task SignOutOfEpicAsync(CancellationToken ct = default)
-        => _epic?.SignOutAsync(ct) ?? Task.CompletedTask;
+    public async Task SignOutOfEpicAsync(CancellationToken ct = default)
+    {
+        if (_epic is null) return;
+        await _epic.SignOutAsync(ct);
+        _refresh?.Request();
+    }
 
     /// <summary>
     /// Ingest's reason, in the panel's vocabulary. Exhaustive on purpose: a new

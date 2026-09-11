@@ -58,10 +58,20 @@ public sealed class SteamLifecycleClient(HttpClient http, IStoreMetadataCache ca
             if (cached is { PayloadJson: null } missing && missing.FetchedAt >= now - CacheTtl) return;
             if (cached is { PayloadJson: not null } hit && hit.FetchedAt >= now - CacheTtl)
             {
-                using var json = JsonDocument.Parse(hit.PayloadJson);
-                var signals = parse(json.RootElement, hit.FetchedAt);
-                if (signals is not null) results.Add(new(source, hit.FetchedAt, signals, EvidenceJson(source, json.RootElement, hit.FetchedAt, hit.PayloadJson)));
-                return;
+                try
+                {
+                    using var json = JsonDocument.Parse(hit.PayloadJson);
+                    var signals = parse(json.RootElement, hit.FetchedAt);
+                    if (signals is not null)
+                    {
+                        var evidence = EvidenceJson(source, json.RootElement, hit.FetchedAt, hit.PayloadJson);
+                        if (source == "steam-reviews" && evidence != hit.PayloadJson)
+                            await cache.SetAsync(CacheProvider, key, evidence, hit.FetchedAt, ct);
+                        results.Add(new(source, hit.FetchedAt, signals, evidence));
+                        return;
+                    }
+                }
+                catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException) { }
             }
             using var response = await http.GetAsync(url, ct);
             if (cacheForbidden && response.StatusCode == System.Net.HttpStatusCode.Forbidden)
@@ -75,8 +85,9 @@ public sealed class SteamLifecycleClient(HttpClient http, IStoreMetadataCache ca
             var observed = clock.GetUtcNow().UtcDateTime;
             var result = parse(document.RootElement, observed);
             if (result is null) return;
-            await cache.SetAsync(CacheProvider, key, raw, observed, ct);
-            results.Add(new(source, observed, result, EvidenceJson(source, document.RootElement, observed, raw)));
+            var minimal = EvidenceJson(source, document.RootElement, observed, raw);
+            await cache.SetAsync(CacheProvider, key, minimal, observed, ct);
+            results.Add(new(source, observed, result, minimal));
         }
         catch (Exception ex) when (ex is HttpRequestException or JsonException or InvalidOperationException or FormatException || ex is OperationCanceledException && !ct.IsCancellationRequested) { }
     }
@@ -92,11 +103,11 @@ public sealed class SteamLifecycleClient(HttpClient http, IStoreMetadataCache ca
     private static string EvidenceJson(string source, JsonElement root, DateTime observed, string raw)
     {
         if (source != "steam-reviews") return raw;
-        var timestamps = root.GetProperty("reviews").EnumerateArray()
-            .Select(r => r.GetProperty("timestamp_created").GetInt64()).ToArray();
+        var timestamps = ReviewTimestamps(root).Select(stamp => stamp.GetInt64()).ToArray();
         var cutoff = new DateTimeOffset(observed.AddDays(-30)).ToUnixTimeSeconds();
         return JsonSerializer.Serialize(new
         {
+            version = 2,
             success = 1,
             filter = "recent",
             language = "all",
@@ -111,22 +122,40 @@ public sealed class SteamLifecycleClient(HttpClient http, IStoreMetadataCache ca
 
     private static LifecycleSignals? ParseReviews(JsonElement root, DateTime observed)
     {
-        if (!root.TryGetProperty("success", out var success) || !success.TryGetInt32(out var code) || code != 1 ||
-            !root.TryGetProperty("reviews", out var reviews) || reviews.ValueKind != JsonValueKind.Array) return null;
+        if (!root.TryGetProperty("success", out var success) || !success.TryGetInt32(out var code) || code != 1) return null;
+        if (root.TryGetProperty("version", out var version))
+        {
+            if (!version.TryGetInt32(out var number) || number != 2
+                || !root.TryGetProperty("timestamp_created", out var dates) || dates.ValueKind != JsonValueKind.Array
+                || !root.TryGetProperty("window_days", out var window) || !window.TryGetInt32(out var days) || days != 30
+                || !Matches("filter", "recent") || !Matches("language", "all")
+                || !Matches("purchase_type", "all") || !Matches("review_type", "all")) return null;
+        }
+        else if (!root.TryGetProperty("reviews", out var reviews) || reviews.ValueKind != JsonValueKind.Array) return null;
         var cutoff = new DateTimeOffset(observed.AddDays(-30)).ToUnixTimeSeconds();
         var latest = new DateTimeOffset(observed).ToUnixTimeSeconds();
         var count = 0;
+        var total = 0;
         var reachedOlder = false;
-        foreach (var review in reviews.EnumerateArray())
+        foreach (var stamp in ReviewTimestamps(root))
         {
-            if (!review.TryGetProperty("timestamp_created", out var stamp) || !stamp.TryGetInt64(out var created) || created < 0 || created > latest) return null;
+            if (++total > 100 || !stamp.TryGetInt64(out var created) || created < 0 || created > latest) return null;
             if (created >= cutoff) count++;
             else reachedOlder = true;
         }
         // The summary is lifetime reviews. A full page of recent entries is a lower bound,
-        // so preserve the body but never misrepresent it as an exact 30-day count.
-        return new LifecycleSignals { RecentReviewCount = reachedOlder || reviews.GetArrayLength() < 100 ? count : null };
+        // so retain its timestamps without representing it as an exact 30-day count.
+        return new LifecycleSignals { RecentReviewCount = reachedOlder || total < 100 ? count : null };
+
+        bool Matches(string name, string expected)
+            => root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String && value.GetString() == expected;
     }
+
+    private static IEnumerable<JsonElement> ReviewTimestamps(JsonElement root)
+        => root.TryGetProperty("version", out _)
+            ? root.GetProperty("timestamp_created").EnumerateArray()
+            : root.GetProperty("reviews").EnumerateArray().Select(review =>
+                review.TryGetProperty("timestamp_created", out var stamp) ? stamp : default);
 
     private static LifecycleSignals? ParseNews(JsonElement root, DateTime observed, uint appId, bool patchnotes)
     {

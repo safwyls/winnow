@@ -12,6 +12,56 @@ namespace Winnow.Tests;
 public sealed class FeedViewModelTests
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Optional_shelves_append_without_replacing_existing_cards_or_recording_impressions(bool fullscreen)
+    {
+        var tiles = new FakeTileSource();
+        var builtin = Shelf("builtin", "Built in", "", Item(tiles, 1, "Baseline"));
+        var extra = Shelf("plugin:extra", "Extra", "", Item(tiles, 2, "Optional"));
+        var pending = new TaskCompletionSource<FeedSupplement>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var service = new FakeFeedService(Snapshot(builtin) with { AdditionalShelves = pending.Task });
+        using var feed = new FeedViewModel(service, tiles, includeReserve: fullscreen);
+        await feed.LoadCommand.ExecuteAsync(null);
+        var existing = Assert.Single(Assert.Single(feed.Shelves).Cards);
+        Assert.False(feed.IsLoading);
+        Assert.False(feed.AdditionalShelvesLoading.IsCompleted);
+        pending.SetResult(new([extra], 2));
+        await feed.AdditionalShelvesLoading;
+        Assert.Equal(2, feed.Shelves.Count);
+        Assert.Same(existing, feed.Shelves[0].Cards[0]);
+        Assert.Empty(service.Surfaced);
+        await feed.RecordViewportEntryAsync(existing);
+        Assert.Equal(1, Assert.Single(service.Surfaced).ReleaseId);
+    }
+
+    [Theory]
+    [InlineData("reload")]
+    [InlineData("verdict")]
+    [InlineData("dispose")]
+    public async Task A_supplement_cannot_publish_after_its_generation_or_feedback_changes(string change)
+    {
+        var tiles = new FakeTileSource();
+        var builtin = Shelf("builtin", "Built in", "", Item(tiles, 1, "Baseline"));
+        var extra = Shelf("plugin:extra", "Extra", "", Item(tiles, 2, "Optional"));
+        var pending = new TaskCompletionSource<FeedSupplement>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var service = new FakeFeedService(Snapshot(builtin) with { AdditionalShelves = pending.Task });
+        using var feed = new FeedViewModel(service, tiles);
+        await feed.LoadCommand.ExecuteAsync(null);
+        var applying = feed.AdditionalShelvesLoading;
+        if (change == "reload")
+        {
+            service.Next = Snapshot(builtin);
+            await feed.LoadCommand.ExecuteAsync(null);
+        }
+        else if (change == "verdict") await feed.Shelves[0].Cards[0].NotInterestedCommand.ExecuteAsync(null);
+        else feed.Dispose();
+        pending.SetResult(new([extra], 2));
+        await applying;
+        Assert.DoesNotContain(feed.Shelves, shelf => shelf.Id == extra.Id);
+    }
+
+    [Theory]
     [InlineData(false, 6, 4)]
     [InlineData(true, 10, 0)]
     public async Task Fullscreen_can_present_the_scored_reserve_while_desktop_keeps_it_hidden(bool includeReserve, int visible, int reserve)

@@ -46,7 +46,9 @@ public class FeedbackLoopTests
         await harness.Feedback.RevokeVerdictsAsync(
             dismissed.ReleaseId, FeedVerdictKinds.NotInterested, Day1.AddHours(1));
 
-        var restored = await harness.Engine.GetFeedAsync(await RequestWithFeedbackAsync(harness, Day1));
+        var beforeUndo = await harness.Engine.GetFeedAsync(await RequestWithFeedbackAsync(harness, Day1));
+        Assert.DoesNotContain(beforeUndo.Items, i => i.ReleaseId == dismissed.ReleaseId);
+        var restored = await harness.Engine.GetFeedAsync(await RequestWithFeedbackAsync(harness, Day1.AddHours(1)));
         Assert.Contains(restored.Items, i => i.ReleaseId == dismissed.ReleaseId);
     }
 

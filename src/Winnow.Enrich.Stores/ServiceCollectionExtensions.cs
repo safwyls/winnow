@@ -5,14 +5,20 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Polly;
 using Polly.RateLimiting;
 using Polly.Retry;
+using Polly.Timeout;
+using Winnow.Http;
 using Winnow.Core.Repositories;
 
 namespace Winnow.Enrich.Stores;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddStorefrontEnrichment(this IServiceCollection services)
+    public static IServiceCollection AddStorefrontEnrichment(
+        this IServiceCollection services, Action<StorefrontTransportOptions>? configure = null)
     {
+        var options = new StorefrontTransportOptions();
+        configure?.Invoke(options);
+        services.TryAddSingleton(options);
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<StorefrontCache>();
         services.TryAddSingleton<IStorefrontRepository>(sp => sp.GetRequiredService<StorefrontCache>());
@@ -20,12 +26,19 @@ public static class ServiceCollectionExtensions
         services.AddTransient<StorefrontHandler>();
         services.AddHttpClient<StorefrontClient>(http =>
         {
-            http.Timeout = TimeSpan.FromSeconds(90);
-            http.MaxResponseContentBufferSize = 2 * 1024 * 1024;
+            ProviderHttpTransport.Configure(http, options.MaxResponseBytes, options.OverallTimeout);
             http.DefaultRequestHeaders.UserAgent.ParseAdd("Winnow/1.0 (local game library; storefront metadata)");
         }).AddHttpMessageHandler<StorefrontHandler>();
         return services;
     }
+}
+
+public sealed class StorefrontTransportOptions
+{
+    public long MaxResponseBytes { get; set; } = 2 * 1024 * 1024;
+    public TimeSpan AttemptTimeout { get; set; } = ProviderHttpTransport.DefaultAttemptTimeout;
+    public TimeSpan OverallTimeout { get; set; } = ProviderHttpTransport.DefaultOverallTimeout;
+    public TimeSpan RetryBaseDelay { get; set; } = TimeSpan.FromSeconds(1);
 }
 
 /// <summary>A conservative shared budget for both anonymous services; no vendor budget is published.</summary>
@@ -37,41 +50,41 @@ public sealed class StorefrontBudget : IDisposable
         QueueLimit = 1000, QueueProcessingOrder = QueueProcessingOrder.OldestFirst, AutoReplenishment = true,
     });
 
-    public ResiliencePipeline<HttpResponseMessage> CreatePipeline(TimeSpan? retryDelay = null)
+    public ResiliencePipeline<HttpResponseMessage> CreatePipeline(
+        TimeSpan? retryDelay = null, StorefrontTransportOptions? options = null)
         => new ResiliencePipelineBuilder<HttpResponseMessage>()
+            .AddTimeout(options?.OverallTimeout ?? ProviderHttpTransport.DefaultOverallTimeout)
             .AddRetry(new RetryStrategyOptions<HttpResponseMessage>
             {
                 MaxRetryAttempts = 2,
-                Delay = retryDelay ?? TimeSpan.FromSeconds(1),
+                Delay = retryDelay ?? options?.RetryBaseDelay ?? TimeSpan.FromSeconds(1),
                 BackoffType = DelayBackoffType.Exponential,
                 UseJitter = true,
-                ShouldHandle = new PredicateBuilder<HttpResponseMessage>().Handle<HttpRequestException>()
+                ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
+                    .Handle<HttpRequestException>(exception => exception is not ProviderPayloadTooLargeException)
+                    .Handle<TimeoutRejectedException>()
                     .HandleResult(r => r.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.RequestTimeout || (int)r.StatusCode >= 500),
                 DelayGenerator = args =>
                 {
-                    var header = args.Outcome.Result?.Headers.RetryAfter;
-                    var delay = header?.Delta ?? (header?.Date is { } date ? date - DateTimeOffset.UtcNow : (TimeSpan?)null);
-                    return ValueTask.FromResult(delay is { } d ? (TimeSpan?)TimeSpan.FromSeconds(Math.Clamp(d.TotalSeconds, 0, 30)) : null);
+                    return ValueTask.FromResult(ProviderHttpTransport.GetRetryAfter(args.Outcome.Result, TimeSpan.FromSeconds(30)));
                 },
                 OnRetry = args => { args.Outcome.Result?.Dispose(); return default; },
             })
             .AddRateLimiter(new RateLimiterStrategyOptions
             {
                 RateLimiter = args => _limiter.AcquireAsync(1, args.Context.CancellationToken),
-            }).Build();
+            })
+            .AddTimeout(options?.AttemptTimeout ?? ProviderHttpTransport.DefaultAttemptTimeout)
+            .Build();
 
     public void Dispose() => _limiter.Dispose();
 }
 
-public sealed class StorefrontHandler(StorefrontBudget budget) : DelegatingHandler
+public sealed class StorefrontHandler(StorefrontBudget budget, StorefrontTransportOptions? options = null) : DelegatingHandler
 {
-    private readonly ResiliencePipeline<HttpResponseMessage> _pipeline = budget.CreatePipeline();
+    private readonly ResiliencePipeline<HttpResponseMessage> _pipeline = budget.CreatePipeline(options: options);
 
-    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        => await _pipeline.ExecuteAsync(async token =>
-        {
-            using var attempt = new HttpRequestMessage(request.Method, request.RequestUri);
-            foreach (var header in request.Headers) attempt.Headers.TryAddWithoutValidation(header.Key, header.Value);
-            return await base.SendAsync(attempt, token);
-        }, ct);
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        => ProviderHttpTransport.SendAsync(_pipeline, request, (attempt, token) => base.SendAsync(attempt, token),
+            options?.MaxResponseBytes ?? 2 * 1024 * 1024, ct);
 }

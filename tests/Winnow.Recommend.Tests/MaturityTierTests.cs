@@ -174,6 +174,10 @@ public class MaturityTierTests : IDisposable
     {
         public int Reads { get; private set; }
 
+        public Task<Session?> FindOpenMonitoredAsync(long ownershipId, IReadOnlyList<MonitoredProcessIdentity> processes, CancellationToken ct = default)
+            => inner.FindOpenMonitoredAsync(ownershipId, processes, ct);
+        public Task<Session> SaveMonitoredAsync(Session session, IReadOnlyList<MonitoredProcessIdentity> processes, CancellationToken ct = default)
+            => inner.SaveMonitoredAsync(session, processes, ct);
         public Task<long> InsertAsync(Session session, CancellationToken ct = default)
             => inner.InsertAsync(session, ct);
 

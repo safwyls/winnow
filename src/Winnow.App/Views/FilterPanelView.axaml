@@ -320,7 +320,7 @@
                          language competing with the art two columns away (§1).
                          The watermarks are the real bounds of this library, so
                          the empty state still says what there is. -->
-                    <StackPanel Spacing="8" IsVisible="{Binding HasYearData}">
+                    <StackPanel Spacing="8" IsVisible="{Binding ShowYearRange}">
                         <TextBlock Classes="label"
                                    FontSize="10"
                                    LetterSpacing="1.2"

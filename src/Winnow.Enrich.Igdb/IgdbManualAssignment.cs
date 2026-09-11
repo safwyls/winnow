@@ -30,15 +30,18 @@ public sealed class IgdbManualAssignment
 {
     private readonly IIgdbClient _igdb;
     private readonly IWorkIgdbPinRepository _pins;
+    private readonly IIgdbObservationWriter _observations;
     private readonly ILogger<IgdbManualAssignment> _log;
 
     public IgdbManualAssignment(
         IIgdbClient igdb,
         IWorkIgdbPinRepository pins,
+        IIgdbObservationWriter observations,
         ILogger<IgdbManualAssignment> log)
     {
         _igdb = igdb;
         _pins = pins;
+        _observations = observations;
         _log = log;
     }
 
@@ -130,6 +133,8 @@ public sealed class IgdbManualAssignment
 
         try
         {
+            var mapping = await _observations.CaptureAsync(workId, ct);
+            if (mapping is null) return new IgdbAssignmentResult(IgdbAssignmentStatus.WorkNotFound, null);
             var games = await _igdb.GetGamesAsync([igdbId], ct: ct);
             var game = games.FirstOrDefault(g => g.IgdbId == igdbId);
             if (game is null)
@@ -145,6 +150,7 @@ public sealed class IgdbManualAssignment
                 {
                     WorkId = workId,
                     IgdbId = game.IgdbId,
+                    ExpectedIgdbMappingRevision = mapping.Revision,
                     Name = game.Name,
                     FirstReleaseYear = game.FirstReleaseYear,
                     Summary = game.Summary,
@@ -167,6 +173,15 @@ public sealed class IgdbManualAssignment
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             throw;
+        }
+        catch (ManualEntryConflictException conflict)
+        {
+            return new IgdbAssignmentResult(conflict.Reason switch
+            {
+                ManualEntryConflictReason.MappingChanged => IgdbAssignmentStatus.MappingChanged,
+                ManualEntryConflictReason.StorefrontObservation => IgdbAssignmentStatus.StorefrontObservation,
+                _ => IgdbAssignmentStatus.IdentifierHistoryUnavailable,
+            }, null);
         }
         catch (Exception ex)
         {

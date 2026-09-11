@@ -36,7 +36,7 @@ public sealed class IgdbAuthenticationHandler : DelegatingHandler
 
         var body = await RequestReplay.BufferAsync(request, cancellationToken);
 
-        var first = RequestReplay.Clone(request, body);
+        using var first = RequestReplay.Clone(request, body);
         Authenticate(first, token);
         var response = await base.SendAsync(first, cancellationToken);
 
@@ -56,7 +56,7 @@ public sealed class IgdbAuthenticationHandler : DelegatingHandler
             return new HttpResponseMessage(HttpStatusCode.Unauthorized) { RequestMessage = request };
         }
 
-        var second = RequestReplay.Clone(request, body);
+        using var second = RequestReplay.Clone(request, body);
         Authenticate(second, refreshed);
         return await base.SendAsync(second, cancellationToken);
     }

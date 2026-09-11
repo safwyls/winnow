@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Winnow.Core.Ingest;
+using Winnow.Core.Repositories;
+using Winnow.Data.Repositories;
 using Winnow.Ingest.Steam.AccountPages;
 
 namespace Winnow.App.Services;
@@ -24,6 +26,8 @@ public static class SteamAccountPageImportRegistration
             sp => sp.GetRequiredService<SteamAccountPageFileLoader>());
 
         services.TryAddSingleton<SteamAccountPageImportService>();
+        services.TryAddSingleton<IAccountAcquisitionRepository, AccountAcquisitionRepository>();
+        services.TryAddSingleton<IAccountAcquisitionReader, AccountAcquisitionReader>();
         services.TryAddSingleton<ISteamAccountPageImport>(
             sp => sp.GetRequiredService<SteamAccountPageImportService>());
 

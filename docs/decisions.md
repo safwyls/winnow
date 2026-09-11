@@ -3974,3 +3974,338 @@ caught three prose references. The affected text previously said:
 > Preserve the Hoard data/journal/theme shims.
 > Legacy Hoard journal renaming, supported old/current histories and valid interrupted upgrades continue to work.
 > Hoard names are compared as their Winnow equivalents; missing known scripts remain eligible for normal upgrades and pre-upgrade backups.
+
+### 2026-09-11 — Optional feeds cannot hold the built-in feed (TASK-212)
+
+The shared feed returns built-in shelves immediately and exposes an observed supplemental
+result. Provider work runs concurrently under one five-second budget, including queue time.
+The UI appends new shelves to the requesting generation without replacing existing cards;
+feedback changes and disposal retire outstanding supplements. The plugin document said:
+
+> Feed providers run when the shared feed is computed; a cold provider can delay feed publication up to its deadline.
+
+### 2026-09-11 — Refresh detail facts without replacing drafts (TASK-215)
+
+The library now rebuilds read projections after every metadata save and refreshes open
+details after background changes. Editor, journal draft and tracker navigation state remain
+alive. Fullscreen redraws its active section after the completed refresh and restores focus.
+The old rule incorrectly treated summary, publisher and year as editor-only values. Section
+10.10 previously said:
+
+> **Saving art reloads the library and reopens the modal on the same ownership**, carrying its confirmation across — the same arrangement §10.9 already describes for an assignment, and for the same reason: the stored value becomes a user-art reference, the tile's cover key is computed when the library loads, and only a reload draws the new art on the wall. **A text save does not reload**, and does not need to: the save hands the library the field key and the value as stored, after the editor's own rows refresh. Only `name` is acted on; the other three text fields are drawn nowhere outside the modal, which has already refreshed itself. The library renames every live tile behind that work — several when a same-game link group sits behind one work — and with it the grid tile, the list-view row, the modal headline, the tile's filterable row (so search and every live list follow), and any feed card, which borrows the same tile instance. The provisional-name badge is cleared, because a name save clears `works.name_is_provisional`. The placeholder gradient is recomputed, because it is derived from the title. The current sort and filter are re-applied in the same pass, so a renamed game takes its new place in the order immediately. Every draft in the other five rows survives, the modal stays open on the same ownership, and the editor stays open — which is precisely what a reload would have cost. The seam is optional like every other seam on this modal: unwired, the save is exactly what it was. A carried confirmation appears in the modal's persistent footer while the tools are closed, so a successful art save is visible after the rebuilt details returns to its selected tab.
+
+### 2026-09-11 — Account-page facts retain the captured account (TASK-201)
+
+The account-page contract previously carried documents, capture time and route without an account. Migration0014 explicitly excluded account ids; its shipped SQL remains unchanged. Migration0035 leaves those historical rows unknown and includes the captured account in future fact identity. Known-account acquisition observations are separate from the shared ownership row, and matching uses that account's observed Steam membership. Unknown imports keep the aggregate compatibility path but cannot fill a named account's display. Embedded capture fences changes between and within pages. Shared statistics identify contributing accounts and withhold money totals where known and unknown provenance can overlap.
+
+The export spec previously said: 'The acquisition CSV in Settings → Library is the first implemented export. It writes one row per ownership, including hidden entries, with schema_version (1), ownership_id, release_id, title, store, acquired_at, license_type, price_paid_cents and price_source.' Schema2 adds account_ref and keeps separate account rows so exported receipts do not collapse. Blank remains unknown, and the ownership count still counts distinct ownerships.
+
+The general export list previously said: 'CSV: flattened, one row per ownership, for spreadsheet users.' It now names the account dimension introduced by schema2.
+
+### 2026-09-11 — IGDB observations belong to one mapping revision (TASK-196)
+
+A mapping change now retires the old identity's IGDB projections in the same transaction.
+Each delayed writer captures and rechecks the mapping revision, preventing old responses
+from restoring them after either a correction or a correction back to the previous ID.
+Independent providers and user fields retain their provenance. Lifecycle history remains
+stored, but unknown or mismatched IGDB source IDs cannot drive current classification.
+Known successful empty maturity answers retire old ratings; failed requests preserve them.
+The shared desktop and fullscreen library refresh reads these corrected projections.
+
+Section 6.4 previously said:
+
+> The work's `igdb_mapping_revision` advances on a user mapping transition, including re-pin and pin clear.
+> It clears scalar values explicitly sourced from the old IGDB mapping while preserving user fields and unknown legacy sources; the title and year submitted in that correction become user-owned.
+> The full metadata pin still replaces fields with the chosen record as described below.
+> Clearing the pin returns the work to automatic resolution; the stamps stay, and the pass fills what is empty and not user-owned.
+> Different questions, and they must not be conflated. Both of the pin's guards survive, and the reason is now sharper: the automatic pass resolves identity from the store id via IGDB's `external_games`, so on a pinned work everything it would write is metadata about a game the user has already said this is not. Per-field sources cannot replace that guard, because they do not answer that question.
+
+The cleared-pin path had preserved the selected ID while filling missing fields from a
+different game found through the store ID. A known ID now selects its own metadata.
+An explicit refetch can also fill missing non-user fields on a pin without resolving again.
+Section 4.5 previously said:
+
+> Each pass attempts at most 50 due releases, oldest attempts first, with a persisted daily schedule.
+
+That schedule and the manual refetch cooldown now distinguish mapping revisions, so an
+attempt against the old identity cannot delay the corrected identity's first request.
+
+
+### 2026-09-11 — Shared artwork selection, expiry and lifetime
+
+The visual spec used to say: "image id in the work's stored `cover_url`." It also said: "The ladder is not the grid's alone: both surfaces that derive a game's art from a release use it — the library load and the Merges queue. The queue previously had its own store-first ladder with neither rung 0 nor rung 1, so an imported cover drew on the grid and in the details modal but not in the queue — the same failure this paragraph already settled for the store capsule."
+
+One application policy now includes typed plugin art and provider availability for release and work previews. Negative cache entries retain their original disk deadline in memory. Failed loads can retry while a lease remains held. Shared loads have bounded admission, last-consumer cancellation and a draining host lifetime, preserving the existing bitmap hold rule.
+
+### 2026-09-11 — Persist GOG registry install provenance (TASK-202)
+
+A complete current GOG registry inventory may clear only installation flags and paths for
+identifiers Winnow previously observed there. The provenance survives restart. Partial reads
+retain positives and preserve prior installations; old ownership rows are not retroactively
+classified as registry-derived. Galaxy copying remains outside the resolver gate, while the
+cheap registry inventory is refreshed inside it. Remote backfill cannot republish install
+state from its retained Galaxy snapshot. Local fresh Galaxy positives remain independent evidence.
+
+The build spec previously said: "Network requests and GOG scans remain outside the gate."
+
+### 2026-09-11 — Minimize the lifecycle review cache before persistence (TASK-203)
+
+Steam lifecycle reviews now persist the same version-2 timestamp projection returned as
+evidence. Migration0037 sanitizes every valid legacy review cache row, including unvisited
+entries, and retains its fetched_at value. Malformed rows are removed; unrelated provider
+caches are unchanged. Warm migrated rows preserve offline behavior within the existing TTL.
+SQLite integration tests inspect cold, reopened warm and upgraded payloads directly.
+
+The build spec previously said: "Persisted review evidence keeps timestamps, window and
+completeness rather than review prose or author profiles."
+
+### 2026-09-11 — Complete inventories, not local plays, establish absence (TASK-198)
+
+The selected Steam account's local play on one game no longer authorizes hiding every
+other account's games. Inventory attempts now have their own store/account/source identity
+and revision. A new attempt retires prior completeness; only its successfully resolved,
+complete answer can restore it. Failed, partial and stale answers still contribute usable
+positive game observations. A cached inventory keeps its original time, so absence cannot
+hide a game discovered later. Legacy positive rows are preserved without fabricated
+inventory proof. Desktop and fullscreen consume the same account-filtered library/feed query.
+
+Section 6.3 previously said:
+
+> Two rules govern what that filter does.
+> The filter hides a game only when at least one non-seed `ownership_accounts` row exists and none of them names the selected account. A game with no per-account evidence stays visible. Hiding a game the user owns is worse than showing one they do not.
+> Migration 0015's seed rows are stamped `source = 'ownerships.account_ref'` and excluded from absence evidence, because they inherit the single-winner ambiguity the table replaces. The first real sync supplies authoritative rows and the exclusion stops mattering.
+
+The old account-scope fixture called one `steam_local` membership an attested owned-library
+pass. That test now establishes a separate complete inventory and explicitly verifies that
+a selected-account local positive alone leaves the other game visible.
+
+### 2026-09-11 — Share bounded provider HTTP mechanics (TASK-205)
+
+The built-in provider clients now compile one shared transport source into their independent
+assemblies. It owns replay buffering, cloned-message disposal, bounded response buffering,
+Polly timeout/retry mechanics and Retry-After parsing. Provider wrappers retain status
+allow-lists and rate limiters; Twitch token minting remains outside the IGDB request budget.
+The chosen operating bounds are 1 MiB requests, 16 MiB responses (2 MiB anonymous storefronts),
+30 seconds per attempt and 90 seconds overall. These are Winnow limits, not vendor claims.
+Caller cancellation remains distinct from timeout, and oversized responses do not retry.
+
+### 2026-09-11 — Separate cache absence from unavailable evidence (TASK-206)
+
+Steam store cache misses now retain the requested ID and the observed explicit non-store
+result. Old null misses are rechecked because their source could have been a malformed batch.
+GamesDb validates its cached projection before trusting a long TTL. Compatible IGDB positives
+remain available after expiry while refresh is unavailable, without changing their timestamp;
+expired misses, future payload versions and mismatched game IDs provide no fallback evidence.
+
+Section 4.4 previously said:
+
+> Compatible older game and external-id mapping payloads remain available when credentials are absent or refetch fails; they never become current merely by being read.
+
+### 2026-09-11 — Replay captured knowledge, not reconstructed present-day rows (TASK-135)
+
+The evaluator records a consistent SQLite capture and accepts only its recorded instant.
+Ownership, installation, facets and metadata do not retain enough history to recreate an
+arbitrary past library. Dated query filters therefore supplement a frozen database; they do
+not stand in for it. Subsequent outcomes are a separate input used only after ranking.
+Metrics cover judged positive/explicit-negative games and report coverage; ambiguous dates,
+conflicting outcomes and weak negatives without visibility provenance are excluded.
+
+The history aggregate interface previously described itself as "unimplemented in Winnow.Data
+today, so callers must keep a fallback." Its implementation already exists; it now also
+accepts the same as-of instant used by the scorer's per-game history reads.
+
+The feedback section previously said: "Active" is computed at read time
+(`revoked_at IS NULL AND (expires_at IS NULL OR expires_at > asOf)`), never stored, so
+there is no cached state to drift. Its formula now includes creation and a revocation
+after the asking instant, matching the repository and domain predicate.
+
+ROADMAP's deferred-work sentence previously included the now-delivered replay and dormancy
+tasks:
+
+> Unassigned tasks left outside beta are new scoring signals and evaluation research (TASK-135–138), achievement ingestion (TASK-15), per-edition years (TASK-13), broader cross-store automation (TASK-37), notification and navigation features (TASK-108–110, TASK-114), optional presentation work (TASK-27, TASK-42, TASK-43, TASK-80–82), and deferred import/research or test maintenance (TASK-40, TASK-41, TASK-44, TASK-46, TASK-49, TASK-65).
+
+### 2026-09-11 — one ownership-refresh operation (TASK-204)
+
+The architecture description formerly said: "`RemoteOwnershipSyncService : IRemoteOwnershipSync` handles entitlement backfill on a 6-hour timer." Startup and the scheduler now resolve the same application coordinator, which owns downstream metadata and committed-change publication. The local network-free scanner remains separate. Successful account changes request this operation through a coalesced background queue.
+
+### 2026-09-11 — Recover monitored sittings by durable process identity (TASK-213)
+
+A qualifying running session now receives an open checkpoint with a stable monitor key.
+Restarts match ownership, PID, UTC OS creation time and executable name against its durable
+process ledger, then keep the original start, attribution, session ID and attached note.
+New process members refresh the ledger; unchanged polls do not write. Completion and
+recovery keys share a repository transaction or caller savepoint, so retries after a lost
+response remain idempotent. Only completion announces a journal opportunity.
+
+An unknown exit stays unknown. The policy does not join legacy open rows, merge ambiguous
+matches, infer an unobserved replacement process, or save a run before the existing minimum
+duration boundary is met. A reused PID with a different creation time starts another sitting.
+This favors attributable history over speculative cleanup of existing duplicate rows.
+
+The §6 schema sketch previously said:
+
+> sessions(id, ownership_id FK, started_at, ended_at, duration_s, detection_method)
+
+### 2026-09-11 — Retire conflicting active references (TASK-223)
+
+The library HTML mock remains as a labeled historical sketch. Its purple palette, unread
+placement and dormancy values are not fidelity targets; it never specified fullscreen.
+The paired Avalonia charters now direct both presentation paths to the visual spec and
+shared tokens. TASK-27 continues to own brightness implementation and measured rendering.
+
+The visual spec's companion line previously said:
+
+> **Companion files:** `src/Winnow.App/Themes/tokens.axaml` (the token dictionary),
+> `mock-library.html` (visual target)
+
+The paired Avalonia descriptions previously ended:
+
+> Owns fidelity to design-system.md and mock-library.html.
+
+Their governing paragraph previously said:
+
+> **`design-system.md` governs everything visual.** Read it in full before any work, along with
+> `src/Winnow.App/Themes/tokens.axaml` (consume it, do not fork it) and `mock-library.html` (the
+> visual target). Read `game-library-design.md` §5 for where the UI sits in the architecture.
+> Every palette value, threshold, measurement and copy string is in those files; this charter
+> does not restate them, and a number in a charter is a number that goes stale.
+
+Design-system §14.7 previously said:
+
+> the merge queue is the only pane that shows cover art, it shows it inside an opaque
+> `Border.card`, and it applies no dormancy ramp, because the question there is identity and not
+> recency.
+
+Source inspection shows desktop merge thumbnails already use the shared floor/vivid layers
+and DormancyAlpha inside an opaque card. Fullscreen Merges renders text proposals and opens
+members through game details. The corrected paragraph separates pane opacity from cover
+encoding without adding a fullscreen thumbnail requirement.
+
+The roadmap's carried debt previously included:
+
+> | Merge execution is not built; the queue records intent and nothing applies it | TASK-5, TASK-64 |
+> | Cross-store identity should be a link relation, not a destructive merge | TASK-70 and its subtasks |
+
+TASK-70 delivered the reversible relation model and retired the destructive executor.
+Desktop and fullscreen now apply a confirmed relation immediately. The obsolete debts were
+removed and the delivered behavior recorded in the roadmap.
+
+Build-spec §4.1 previously listed this as a current input:
+
+> | Collections | `<steam>/userdata/<steam3id>/config/cloudstorage/cloud-storage-namespace-1.json` |
+
+No source reader or import contract implements that row. TASK-92's historical description
+also claimed that Steam collections were read; it now carries a correction note. DRAFT-1
+records a deferred post-beta scope decision, covering account identity and preservation of
+Winnow's own lists. The repair does not silently turn the old requirement into a new feature.
+
+The recommendation spec's §4a paragraph previously said:
+
+> **Work collapse happens before any capacity is spent.** One game owned on two stores is two
+> ownership rows and one recommendation; collapsing after the shortlist let a duplicate copy
+> consume a slot a distinct work needed. The survivor is the copy with the highest `Upper`,
+> not the highest preliminary score, so the collapse cannot discard the copy that would have
+> won once history was read. The bought-twice signal is unaffected: store counts are computed
+> per work over every ownership in the library, before candidates are assembled.
+> `RecommendationFeed.WorkCount` reports what the pool collapsed to.
+
+Production now assembles one RecommendationGame per visible resolved group before scoring,
+with an action subject chosen by viability, installation and identity order. Its visible
+members jointly supply evidence. ScoreBounds retains a defensive upper-bound collapse for
+duplicate inputs, but does not choose the production action subject by store-copy scores.
+
+Facet provenance previously described the cache this way:
+
+> holds a serialised `IgdbGame` (snake_case JSON: `igdb_id`, `genres`, `themes`,
+> `game_modes`, `player_perspectives`, and so on), not IGDB's body. This is why the
+
+The projection is inside a versioned envelope. The old refresh paragraph said:
+
+> It is also the single most likely cause of an empty IGDB-derived filter group.
+> A payload written before a field was added to `Apicalypse.Games()` simply has no
+> property for it; the deserializer supplies the default, and the field reads empty
+> forever until that cache entry expires. `IgdbGame.GameModes` and
+> `PlayerPerspectives` are init properties rather than positional parameters
+> specifically so that old payloads still deserialize and keep their genres — the
+> cost is that they carry no modes or perspectives. **A new field on `IgdbGame`
+> does not backfill; it waits out the 30-day TTL.**
+
+The reception table named payload version 4, and its explanation said:
+
+> **A new field on the cached payload does not backfill.** Entries written under
+> version 3 carry no property for it. Here the version bump makes the whole
+> library refetch instead, and the measured cost is 3 requests for 967 games —
+> the cached payload grows from 628 to 658 bytes per game, about 4.8%.
+
+IGDB GamePayloadVersion is now 5; older shapes request a refetch immediately, with compatible
+positive data retained as an offline fallback without refreshing its timestamp. Version 5
+adds image dimensions and format facts. The version-4 size observation remains explicitly
+historical. The review initially named GamesDb in this finding; that was a provider-name
+error, not another version-5 cache. GamesDb currently uses projectionVersion1.
+
+The facet/reception scheduling paragraph previously said:
+
+> `FacetSyncService.SyncAsync` runs **once per app launch**, on a background task
+> after `EnrichmentSyncService`, never gating the window (`Program.cs`; §5.1, §7).
+> `ReceptionSyncService` follows the same pattern — cache-first, once per launch,
+> zero requests on a warm library — and writes `work_images` and `work_ratings`
+> from the same two caches.
+> Both are a **re-read, not a re-fetch**: both clients consult `metadata_cache`
+> before the network, so on a warm library each pass costs zero requests, and
+> each compares before it writes, so a warm re-run reports zero rows written.
+> What a value actually tracks is therefore its cache entry's TTL:
+
+The shared refresh pipeline now invokes both operations after metadata at startup, scheduled
+ownership refresh and account changes, including its IGDB subset for credential refresh.
+Fresh compatible complete data avoids requests; expiry and version mismatch request refresh.
+
+The facet validation record also used present tense for its 2026-08-25 snapshot:
+
+> The two shortfalls have one cause and it is not a transformation bug: **no cached
+> IGDB payload carries `game_modes` or `player_perspectives`** (0 of 865), because
+> every entry predates those fields being added to `Apicalypse.Games()`. Nothing
+> stored is wrong; the IGDB half is simply absent. Every `game_mode` in the database
+> today came from Steam's player categories.
+
+Its coverage table used "Now" and "After refresh", and its footer advised:
+
+> **To populate `player_perspective` now**, delete the `game:%` rows for provider
+> `igdb` from `metadata_cache` and relaunch. Cost: 3 requests (865 ids / 400 per
+> batch) at 4 req/s. Otherwise it fills in on its own as the 30-day TTL expires
+> (entries written 2026-08-24/25, so from ~2026-09-23). Live IGDB currently reports
+> `player_perspectives` for 802/865 games and `game_modes` for 863/865.
+
+Those measurements remain, dated explicitly. The old cache-deletion instruction was removed
+because versioned reads already request the necessary refresh while retaining offline data.
+
+### 2026-09-11 — one artwork transform endpoint (TASK-27)
+
+The cover cache formerly described its floor settings as "Kept as options so a retune is a one-line change, not a rewrite." Those independent values could disagree with the ramp and procedural placeholders. DormancyStyle now defines the transform once in the rendering module; Avalonia tokens reference it through a small markup adapter so Covers has no dependency on application initialization. Brightness remains 0.68 because real dark capsules were hard to recognize at 0.60. This is a source-of-truth correction; cached pixels keep the same endpoint.
+
+The review R35 sentence formerly named "GamesDb cache payload v4 while code uses v5". Source verification confirmed that version boundary belongs to IGDB GamePayloadVersion; the report now names IGDB. GamesDb uses a separate projection version.
+
+### 2026-09-11 — bounded history reads (TASK-222)
+
+The build spec formerly said:
+
+> Fullscreen Activity reads ownerships, sessions, notes and update events from repositories,
+> filtered through its own visible library tile source. The current repository contracts require
+> per-ownership session/note reads and per-release update reads; those reads run off the UI thread.
+> This is not a constant-query bulk history operation.
+
+A synthetic long-history fixture confirmed thousands of reads for one visible week. The new
+date-scoped repository joins notes and pages with a timestamp/ID cursor. Details and account
+aggregates retain their existing data scope but run off the dispatcher, with cancelled or
+obsolete results discarded. Measurements and remaining layout costs belong in
+`docs/spikes/large-history-read-responsiveness.md`.
+
+### 2026-09-11 — final artwork lifetime review (TASK-210, TASK-225)
+
+Controlled interleavings exposed two ownership gaps after the initial artwork changes:
+a waiter could return an evicted result after another waiter had retained its replacement,
+and a floor decoder failure could leave the native vivid layer allocated. The pool now
+returns the retained instance, and native layer construction releases partial results.
+The decode semaphore also covers conversion to Avalonia pixels; releasing it before that
+stage allowed the configured limit to be exceeded. Cancellation callback exceptions are
+contained and logged so final-consumer cancellation and shutdown still complete cleanup.
+The injected failures and passing checks are recorded in the architecture-fixes spike.

@@ -52,7 +52,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
     {
         var tuning = request.Tuning;
         var (candidates, bucketRows, seed, _) = await AssemblePoolAsync(request, ct);
-        var history = new HistoryReader(_snapshots, _sessions);
+        var history = new HistoryReader(_snapshots, _sessions, request.AsOfUtc);
 
         IReadOnlyList<SignalContribution> Score(CandidateFacts facts)
             => RecommendationScorer.Score(facts, request.Thresholds, tuning, request.AsOfUtc, seed);
@@ -98,7 +98,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
         return new RecommendationFeed
         {
             Items = items,
-            Tier = await DetectTierAsync(bucketRows, tuning, history, ct),
+            Tier = await DetectTierAsync(bucketRows, tuning, history, request.AsOfUtc, ct),
             CandidateCount = candidates.Count,
             WorkCount = works.Count,
             HistoryProbeCount = shortlist.Count,
@@ -110,7 +110,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
     {
         var tuning = request.Tuning;
         var (candidates, bucketRows, seed, derelict) = await AssemblePoolAsync(request, ct);
-        var history = new HistoryReader(_snapshots, _sessions);
+        var history = new HistoryReader(_snapshots, _sessions, request.AsOfUtc);
 
         IReadOnlyList<SignalContribution> Score(CandidateFacts facts)
             => RecommendationScorer.Score(facts, request.Thresholds, tuning, request.AsOfUtc, seed);
@@ -171,7 +171,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
         return new ShelfFeed
         {
             Shelves = shelves,
-            Tier = await DetectTierAsync(bucketRows, tuning, history, ct),
+            Tier = await DetectTierAsync(bucketRows, tuning, history, request.AsOfUtc, ct),
             CandidateCount = candidates.Count,
             WorkCount = works.Count,
             HistoryProbeCount = union.Count,
@@ -269,7 +269,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
         var seed = request.ShuffleSeed
             ?? DateOnly.FromDateTime(request.AsOfUtc).DayNumber;
 
-        var snapshot = await _library.GetSnapshotAsync(request.Thresholds, ct);
+        var snapshot = await _library.GetSnapshotAsync(request.Thresholds, request.AsOfUtc, ct);
         var bucketRows = snapshot.Buckets;
         var facetSnapshot = await _facets.GetSnapshotAsync(ct);
         var games = RecommendationGame.Build(snapshot, facetSnapshot);
@@ -407,10 +407,11 @@ public sealed class RecommendationEngine : IRecommendationEngine
         IReadOnlyList<Core.Queries.OwnershipBucket> bucketRows,
         RecommendationTuning tuning,
         HistoryReader history,
+        DateTime asOfUtc,
         CancellationToken ct)
     {
         var stats = _historyStats is not null
-            ? await _historyStats.GetAsync(ct)
+            ? await _historyStats.GetAsync(asOfUtc, ct)
             : await EstimateHistoryAsync(bucketRows, tuning, history, ct);
 
         if (stats.SessionCount >= tuning.Tier2MinSessions
@@ -525,11 +526,13 @@ public sealed class RecommendationEngine : IRecommendationEngine
         private readonly IPlaytimeSnapshotRepository _snapshots;
         private readonly ISessionRepository _sessions;
         private readonly Dictionary<long, OwnershipHistory> _cache = [];
+        private readonly DateTime _asOfUtc;
 
-        public HistoryReader(IPlaytimeSnapshotRepository snapshots, ISessionRepository sessions)
+        public HistoryReader(IPlaytimeSnapshotRepository snapshots, ISessionRepository sessions, DateTime asOfUtc)
         {
             _snapshots = snapshots;
             _sessions = sessions;
+            _asOfUtc = asOfUtc;
         }
 
         public async Task<int> EpisodesAsync(IReadOnlyList<long> ownershipIds, CancellationToken ct)
@@ -556,8 +559,12 @@ public sealed class RecommendationEngine : IRecommendationEngine
                 return cached;
             }
 
-            var snapshots = await _snapshots.GetByOwnershipAsync(ownershipId, ct);
-            var sessions = await _sessions.GetByOwnershipAsync(ownershipId, ct);
+            var snapshots = (await _snapshots.GetByOwnershipAsync(ownershipId, ct))
+                .Where(item => item.ObservedAt <= _asOfUtc).ToList();
+            var sessions = (await _sessions.GetByOwnershipAsync(ownershipId, ct))
+                .Where(item => item.StartedAt <= _asOfUtc)
+                .Select(item => item.EndedAt > _asOfUtc ? item with
+                { EndedAt = null, DurationSeconds = null } : item).ToList();
 
             // A "rise" is a snapshot whose cumulative minutes exceed the
             // previous reading: at least one play episode happened between the

@@ -139,6 +139,8 @@ public sealed class WorkRepository : IWorkRepository
             candidate AS (
             SELECT w.id  AS WorkId,
                    r.id  AS ReleaseId,
+                   w.igdb_id AS IgdbId,
+                   w.igdb_mapping_revision AS IgdbMappingRevision,
                    e.provider    AS Provider,
                    e.provider_id AS ProviderId,
                    (w.name_is_provisional = 1
@@ -204,6 +206,7 @@ public sealed class WorkRepository : IWorkRepository
                      OR LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%weekend%')))
             )
             SELECT WorkId, ReleaseId, Provider, ProviderId, NameIsProvisional,
+                   IgdbId, IgdbMappingRevision,
                    HasIgdbId, HasFirstReleaseYear, HasSummary, HasCoverUrl,
                    HasPublisher, HasSteamAppType, HasEpicCategories, HasIgdbGameType, Title
             FROM (
@@ -234,10 +237,19 @@ public sealed class WorkRepository : IWorkRepository
         using var batch = new RepositoryWriteBatch(_factory);
         var lease = batch.Lease;
 
-        // Defence in depth: a pinned work returns NULL here, so
-        // promoteName stays false and the UPDATE below is a no-op. The
-        // primary enforcement is the target query, which never produces a
-        // pinned work at all.
+        if (enrichment.ExpectedIgdbMapping is { } expected
+            && (expected.WorkId != enrichment.WorkId
+                || (expected.IgdbId is { } mappedId && enrichment.IgdbId is { } suppliedId && mappedId != suppliedId)
+                || !await IgdbObservationWriter.IsCurrentAsync(lease, expected, ct)))
+        {
+            return false;
+        }
+
+        var allowPinned = enrichment.RefetchCurrentIgdbMapping
+            && enrichment.ExpectedIgdbMapping is { IgdbId: not null };
+
+        // Automatic resolution cannot write a pin. An explicit refetch of
+        // the captured current mapping can fill missing, non-user fields.
         var before = await lease.Connection.QuerySingleOrDefaultAsync<EnrichmentWriteState>(
             new CommandDefinition("""
                 SELECT name_is_provisional          AS NameIsProvisional,
@@ -247,10 +259,10 @@ public sealed class WorkRepository : IWorkRepository
                        (publisher          IS NULL) AS PublisherIsEmpty
                 FROM works
                 WHERE id = @WorkId
-                  AND NOT EXISTS (SELECT 1 FROM work_igdb_pins p
-                                  WHERE p.work_id = @WorkId AND p.cleared_at IS NULL);
+                  AND (@allowPinned OR NOT EXISTS (SELECT 1 FROM work_igdb_pins p
+                                  WHERE p.work_id = @WorkId AND p.cleared_at IS NULL));
                 """,
-                new { enrichment.WorkId }, transaction: lease.Transaction, cancellationToken: ct));
+                new { enrichment.WorkId, allowPinned }, transaction: lease.Transaction, cancellationToken: ct));
 
         if (before is null)
         {
@@ -282,6 +294,10 @@ public sealed class WorkRepository : IWorkRepository
                             THEN 0 ELSE name_is_provisional END,
 
                 -- igdb_id is UNIQUE. Skip if another work already claims it.
+                igdb_mapping_revision = igdb_mapping_revision + CASE
+                    WHEN igdb_id IS NULL AND @IgdbId IS NOT NULL
+                         AND NOT EXISTS (SELECT 1 FROM works other WHERE other.igdb_id = @IgdbId)
+                    THEN 1 ELSE 0 END,
                 igdb_id = CASE
                             WHEN igdb_id IS NOT NULL THEN igdb_id
                             WHEN @IgdbId IS NULL     THEN NULL
@@ -316,12 +332,13 @@ public sealed class WorkRepository : IWorkRepository
                 igdb_parent_id         = COALESCE(igdb_parent_id,         @IgdbParentId),
                 igdb_version_parent_id = COALESCE(igdb_version_parent_id, @IgdbVersionParentId)
             WHERE id = @WorkId
-              AND NOT EXISTS (SELECT 1 FROM work_igdb_pins p
-                              WHERE p.work_id = @WorkId AND p.cleared_at IS NULL);
+              AND (@allowPinned OR NOT EXISTS (SELECT 1 FROM work_igdb_pins p
+                              WHERE p.work_id = @WorkId AND p.cleared_at IS NULL));
             """,
             new
             {
                 enrichment.WorkId,
+                allowPinned,
                 Name = name,
                 PromoteName = promoteName ? 1 : 0,
                 enrichment.IgdbId,

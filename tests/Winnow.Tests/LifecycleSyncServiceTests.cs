@@ -43,12 +43,31 @@ public sealed class LifecycleSyncServiceTests
         var clock = new IgdbTestClock(new(2026, 9, 9, 0, 0, 0, TimeSpan.Zero));
         var client = new IgdbStub(clock) { Fail = true };
         LifecycleSyncService Service() => new(new LibraryQueryRepository(db.Factory), new LifecycleRepository(db.Factory),
-            new SettingsRepository(db.Factory), client, new SteamStub(), clock, NullLogger<LifecycleSyncService>.Instance);
+            new SettingsRepository(db.Factory), client, new SteamStub(), new IgdbObservationWriter(db.Factory), clock, NullLogger<LifecycleSyncService>.Instance);
         Assert.Equal(0, await Service().SyncAsync());
         Assert.Equal(50, client.Calls.Count);
         await Service().SyncAsync();
         Assert.Equal(51, client.Calls.Count);
         Assert.Equal(51, client.Calls.Distinct().Count());
+    }
+
+    [Fact]
+    public async Task A_new_mapping_is_due_immediately_without_reusing_the_old_mapping_attempt_time()
+    {
+        using var db = new TempDatabase();
+        var work = await new WorkRepository(db.Factory).InsertAsync(new Work { Name = "Game", IgdbId = 42 });
+        var release = await new ReleaseRepository(db.Factory).InsertAsync(new Release { WorkId = work, Name = "Game" });
+        var clock = new IgdbTestClock(new(2026, 9, 9, 0, 0, 0, TimeSpan.Zero));
+        var client = new IgdbStub(clock);
+        var repository = new LifecycleRepository(db.Factory);
+        var service = new LifecycleSyncService(new LibraryQueryRepository(db.Factory), repository,
+            new SettingsRepository(db.Factory), client, new SteamStub(), new IgdbObservationWriter(db.Factory), clock, NullLogger<LifecycleSyncService>.Instance);
+        Assert.Equal(1, await service.SyncAsync());
+        Assert.Equal(0, await service.SyncAsync());
+        await new WorkIgdbPinRepository(db.Factory).PinAsync(new() { WorkId = work, IgdbId = 43, Name = "Corrected" });
+        Assert.Equal(1, await service.SyncAsync());
+        Assert.Equal([42L, 43L], client.Calls);
+        Assert.Equal("43", Assert.Single(await repository.GetForReleaseAsync(release)).SourceId);
     }
 
     [Fact]
@@ -61,7 +80,7 @@ public sealed class LifecycleSyncServiceTests
         var client = new IgdbStub(clock);
         var repository = new LifecycleRepository(db.Factory);
         var service = new LifecycleSyncService(new LibraryQueryRepository(db.Factory), repository,
-            new SettingsRepository(db.Factory), client, new SteamStub(), clock, NullLogger<LifecycleSyncService>.Instance);
+            new SettingsRepository(db.Factory), client, new SteamStub(), new IgdbObservationWriter(db.Factory), clock, NullLogger<LifecycleSyncService>.Instance);
         Assert.Equal(1, await service.SyncAsync());
         clock.Advance(TimeSpan.FromDays(1));
         Assert.Equal(0, await service.SyncAsync());

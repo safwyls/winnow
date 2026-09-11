@@ -62,6 +62,12 @@ public sealed record AccountStats
 {
     public required string Source { get; init; }
 
+    /// <summary>Distinct captured account identities across both fact tables.</summary>
+    public int KnownAccountCount { get; init; }
+
+    /// <summary>Facts whose captured account is unknown; never assigned by current credentials.</summary>
+    public int UnknownAccountFactCount { get; init; }
+
     public int TransactionCount { get; init; }
 
     public int LicenseCount { get; init; }

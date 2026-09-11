@@ -26,6 +26,7 @@
          requires an Avalonia WriteableBitmap, and the test projects deliberately
          start no rendering platform. -->
     <InternalsVisibleTo Include="Winnow.Covers.Tests" />
+    <InternalsVisibleTo Include="Winnow.Ui.Tests" />
   </ItemGroup>
 
 </Project>

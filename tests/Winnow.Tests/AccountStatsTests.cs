@@ -35,6 +35,7 @@ public sealed class AccountStatsTests : IDisposable
         new OwnershipRepository(_db.Factory),
         new ReleaseRepository(_db.Factory),
         _facts,
+        new AccountAcquisitionRepository(_db.Factory),
         _db.Factory,
         new LibrarySyncGate(),
         NullLogger<SteamAccountPageImportService>.Instance);

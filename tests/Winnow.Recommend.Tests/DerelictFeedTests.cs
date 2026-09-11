@@ -22,6 +22,7 @@ public sealed class DerelictFeedTests
         }
 
         await harness.Settings.SetAsync(SteamOwnedAccount.RefSettingKey, "11111");
+        await harness.CompleteSteamInventoryAsync("11111", 1);
         await harness.Settings.SetAsync(AccountScope.SettingKey, AccountScope.Own);
         var visible = await harness.Engine.GetShelvesAsync(RecommendHarness.Request());
         Assert.Equal(mine.ReleaseId, Assert.Single(Assert.Single(visible.Shelves).Items).ReleaseId);
@@ -37,7 +38,7 @@ public sealed class DerelictFeedTests
             ReleaseId = game.ReleaseId,
             Source = "igdb",
             SourceId = game.WorkId.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            ObservedAt = DateTime.UtcNow.AddMinutes(-1),
+            ObservedAt = RecommendHarness.AsOf.AddMinutes(-1),
             Signals = new LifecycleSignals { IgdbStatus = status },
         });
     }

@@ -102,9 +102,9 @@ public sealed class CoverLeasePool : ICoverLeases
             }
         }
 
-        if (_cache.TryGet(slot.Key, slot.Width, slot.Layers, out var cached) && Hold(entry, cached))
+        if (_cache.TryGet(slot.Key, slot.Width, slot.Layers, out var cached) && Hold(entry, cached) is { } retained)
         {
-            art = entry.Art ?? cached;
+            art = retained;
             return true;
         }
 
@@ -122,11 +122,10 @@ public sealed class CoverLeasePool : ICoverLeases
                 return Task.FromResult<CoverArt?>(held);
             }
 
-            // CancellationToken.None on purpose: the load is shared by every
-            // lease on this slot, so one consumer walking away must not cancel
-            // it for the others. Per-consumer cancellation is the WaitAsync below.
+            // The slot, rather than an individual waiter, owns cancellation.
+            // It remains wanted until the final consumer releases its lease.
             shared = entry.Load ??= _cache.GetAsync(
-                slot.Key, slot.Width, slot.Layers, CancellationToken.None);
+                slot.Key, slot.Width, slot.Layers, entry.Lifetime.Token);
         }
 
         return AwaitShared(slot, shared, entry, ct);
@@ -135,44 +134,46 @@ public sealed class CoverLeasePool : ICoverLeases
     private async Task<CoverArt?> AwaitShared(
         Slot slot, Task<CoverArt?> shared, Entry entry, CancellationToken ct)
     {
-        // Two attempts, not a loop. The cache can evict and dispose a decode
-        // between handing it over and this hold, and asking again decodes it
-        // afresh; a second failure means the whole budget is under this one
-        // slot's cost, and answering "no art yet" leaves the placeholder up
-        // rather than spinning on a decode that cannot be kept.
-        for (var attempt = 0; ; attempt++)
+        try
         {
-            var art = await shared.WaitAsync(ct).ConfigureAwait(false);
-            if (art is null || Hold(entry, art))
+            // A decode can be evicted before this slot holds it. Retry that
+            // race once; a second failure leaves the placeholder in place.
+            for (var attempt = 0; ; attempt++)
             {
-                return art;
-            }
+                var art = await shared.WaitAsync(ct).ConfigureAwait(false);
+                if (art is null) return null;
+                if (Hold(entry, art) is { } held) return held;
+                if (attempt > 0) return null;
 
-            if (attempt > 0)
-            {
-                return null;
+                lock (_gate)
+                {
+                    if (entry.Count == 0) return null;
+                    if (ReferenceEquals(entry.Load, shared) || entry.Load is null)
+                        entry.Load = _cache.GetAsync(slot.Key, slot.Width, slot.Layers, entry.Lifetime.Token);
+                    shared = entry.Load;
+                }
             }
-
+        }
+        finally
+        {
             lock (_gate)
             {
-                if (entry.Count == 0)
-                {
-                    return null;
-                }
-
-                shared = entry.Load = _cache.GetAsync(
-                    slot.Key, slot.Width, slot.Layers, CancellationToken.None);
+                // Null, cancelled and faulted completions are retryable, even
+                // while a modal retains the same lease. Pending work stays shared.
+                if (shared.IsCompleted && entry.Art is null && ReferenceEquals(entry.Load, shared))
+                    entry.Load = null;
             }
         }
     }
 
     /// <summary>
     /// Takes this slot's hold on the pixels, so nothing disposes them while a
-    /// lease is out. False means the caller must not draw the art: either the
+    /// lease is out, returning the artifact actually held by this slot. Null
+    /// means the caller must not draw the art: either the
     /// last lease went while the load ran, and the LRU owns it again, or the LRU
     /// had already evicted and disposed it.
     /// </summary>
-    private bool Hold(Entry entry, CoverArt art)
+    private CoverArt? Hold(Entry entry, CoverArt art)
     {
         lock (_gate)
         {
@@ -180,26 +181,29 @@ public sealed class CoverLeasePool : ICoverLeases
             // memory LRU is the owner again and this slot keeps nothing alive.
             if (entry.Count == 0)
             {
-                return false;
+                return null;
             }
 
-            if (entry.Art is not null)
+            if (entry.Art is { } held)
             {
-                return true;
+                // Another waiter may have replaced an evicted result while
+                // this waiter was resuming. Only the retained pixels are safe.
+                return held;
             }
 
             if (!art.TryHold())
             {
-                return false;
+                return null;
             }
 
             entry.Art = art;
-            return true;
+            return art;
         }
     }
 
     private void Release(Slot slot, Entry entry)
     {
+        Task<CoverArt?>? pending;
         lock (_gate)
         {
             if (--entry.Count > 0)
@@ -217,8 +221,21 @@ public sealed class CoverLeasePool : ICoverLeases
             // so it lands after the consumer's binding has let go.
             entry.Art?.ReleaseHold();
             entry.Art = null;
+            pending = entry.Load;
             entry.Load = null;
         }
+        _ = EndLifetimeAsync(entry.Lifetime, pending);
+    }
+
+    private static async Task EndLifetimeAsync(CancellationTokenSource lifetime, Task<CoverArt?>? pending)
+    {
+        try
+        {
+            await lifetime.CancelAsync().ConfigureAwait(false);
+            if (pending is not null) await pending.ConfigureAwait(false);
+        }
+        catch (Exception) { /* A released slot cannot report a load failure to a surface. */ }
+        finally { lifetime.Dispose(); }
     }
 
     private readonly record struct Slot(CoverKey Key, int Width, CoverLayers Layers);
@@ -228,6 +245,7 @@ public sealed class CoverLeasePool : ICoverLeases
         public int Count;
         public CoverArt? Art;
         public Task<CoverArt?>? Load;
+        public CancellationTokenSource Lifetime { get; } = new();
     }
 
     private sealed class Handle : ICoverLease

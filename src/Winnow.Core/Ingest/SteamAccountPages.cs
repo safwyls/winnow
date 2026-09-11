@@ -52,6 +52,12 @@ public sealed record SteamAccountPages
     /// <summary>Which route produced these documents.</summary>
     public SteamAccountPageSource Source { get; init; } = SteamAccountPageSource.EmbeddedSession;
 
+    /// <summary>
+    /// SteamID64 observed in the captured session. Null means unknown, including
+    /// saved files and legacy imports; a current credential must never supply it.
+    /// </summary>
+    public string? SteamId { get; init; }
+
     /// <summary>Whether the licenses page is present and non-empty.</summary>
     public bool HasLicenses => !string.IsNullOrWhiteSpace(LicensesHtml);
 

@@ -64,14 +64,10 @@ public sealed class IdentityReadInventoryTests
             + "counts, All Games, the filter options, list counts, the recommender, the feed and "
             + "the account-visibility count."),
 
-        new("src/Winnow.App/ViewModels/LibraryViewModel.cs", "LoadLibraryAsync", Policy.Resolve,
+        new("src/Winnow.App/ViewModels/LibraryViewModel.cs", "LoadLibraryCoreAsync", Policy.Resolve,
             "The display title and cover. The row keeps its OWN work for everything enrichment "
             + "reads; the user is shown the primary's name and art, so both store entries of one "
             + "game read as one tile per resolved work."),
-
-        new("src/Winnow.App/ViewModels/LibraryViewModel.cs", "OpenDetailsAsync", Policy.Resolve,
-            "The detail backdrop reads the saved background from GameWorkIdFor, which resolves "
-            + "the selected ownership's work through the live same-game links."),
 
         new("src/Winnow.Recommend/RecommendationEngine.cs", "AssemblePoolAsync", Policy.Resolve,
             "Feed suppression. Verdicts are stored per release and widened to the RESOLVED work, "
@@ -79,7 +75,7 @@ public sealed class IdentityReadInventoryTests
             + "offering the same game twice under two badges. The bought-twice signal is keyed the "
             + "same way, which is what the destructive merge used to give it."),
 
-        new("src/Winnow.App/Services/PluginFeedService.cs", "GetShelvesAsync", Policy.Resolve,
+        new("src/Winnow.App/Services/PluginFeedService.cs", "ReadAsync", Policy.Resolve,
             "Plugin feeds receive one eligible visible ownership per resolved game. Snapshot "
             + "bucket groups supply aggregate play facts and widen release verdicts to the "
             + "confirmed group before any candidates reach plugin code."),
@@ -90,6 +86,12 @@ public sealed class IdentityReadInventoryTests
             + "one work before a card exists."),
 
         // ── DO NOT RESOLVE ─────────────────────────────────────────────────
+        new("src/Winnow.Data/Repositories/ActivityRepository.cs", "GetPageAsync", Policy.DoNotResolve,
+            "Sessions and notes retain their exact ownership. The caller supplies visible ownership ids from its resolved tile snapshot and renders each result through that same tile map; updates are deduplicated per release."),
+        new("src/Winnow.App/Services/EnrichmentSyncService.cs", "EnrichSliceAsync", Policy.DoNotResolve,
+            "Rejects delayed metadata when the exact target work mapping changed; linked games keep independent provider identities."),
+        new("src/Winnow.Data/Repositories/AccountAcquisitionRepository.cs", "GetSteamOwnershipIdsAsync", Policy.DoNotResolve,
+            "Acquisition observations belong to the captured account's exact store ownership; links do not combine receipts or account membership."),
         new("src/Winnow.App/Services/PluginSyncService.cs", "SyncAsync", Policy.DoNotResolve,
             "Provider observations belong to original owned works; current confirmed groups share artwork on presentation reads."),
         new("src/Winnow.Data/Repositories/LibraryQueryRepository.cs", "GetSnapshotAsync", Policy.DoNotResolve,
@@ -315,6 +317,18 @@ public sealed class IdentityReadInventoryTests
             Policy.DoNotResolve,
             "A mapping transition checks the exact work's current revision and updates only "
             + "its own manual identifier assertions; group identity is a separate user decision."),
+
+        new("src/Winnow.Data/Repositories/IgdbObservationWriter.cs", "CaptureAsync", Policy.DoNotResolve,
+            "Captures the exact stored work's provider identity and revision before provider IO."),
+
+        new("src/Winnow.Data/Repositories/IgdbObservationWriter.cs", "IsCurrentAsync", Policy.DoNotResolve,
+            "Fences an observation against that exact work's mapping; a group parent's revision is unrelated."),
+
+        new("src/Winnow.Data/Repositories/LifecycleRepository.cs", "ReadAsync", Policy.DoNotResolve,
+            "Keeps only IGDB history for the release's own current mapping; presentation resolves groups afterward."),
+
+        new("src/Winnow.App/Services/GameRefetchService.cs", "FillMetadataAsync", Policy.DoNotResolve,
+            "Rechecks the selected work's captured mapping and compares its persisted scalar values after the fill."),
 
         new("src/Winnow.App/Services/IgdbAssignmentService.cs", "FindClaimingGameAsync",
             Policy.DoNotResolve,

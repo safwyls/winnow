@@ -98,7 +98,7 @@ public sealed class IgdbPlatformFieldTests
     {
         using var host = new IgdbTestHost(IgdbTestHost.DefaultResponder());
         var assignment = new IgdbManualAssignment(
-            host.Client, new NoPinRepository(), NullLogger<IgdbManualAssignment>.Instance);
+            host.Client, new NoPinRepository(), new UnusedIgdbObservationWriter(), NullLogger<IgdbManualAssignment>.Instance);
 
         IReadOnlyList<IgdbSearchResult> searchResults = await assignment.SearchAsync("Prey");
         var searched = searchResults[0];

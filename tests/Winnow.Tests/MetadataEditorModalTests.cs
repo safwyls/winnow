@@ -124,12 +124,11 @@ public sealed class MetadataEditorModalTests : IDisposable
 
     /// <summary>
     /// A name saved in the editor reaches the grid tile, the visible set, the
-    /// modal headline and the tile's filterable row immediately, without
-    /// reloading the library. The modal is the same instance and the editor is
+    /// modal headline and the tile's filterable row immediately after refresh.
+    /// The modal is the same instance and the editor is
     /// still open. The two rows the user had half-typed keep their drafts and
-    /// their sources unchanged. A text save deliberately does not reload
-    /// (design-system §10.10) because reloading would discard those drafts;
-    /// this test pins the in-place rename that replaced the reload.
+    /// their sources unchanged. Replacing read projections must not replace
+    /// the editor that owns unfinished drafts.
     /// </summary>
     [Fact]
     public async Task A_saved_name_reaches_the_tile_and_the_headline_without_touching_the_drafts()
@@ -153,10 +152,9 @@ public sealed class MetadataEditorModalTests : IDisposable
         name.Draft = "Prey (2006)";
         await name.SaveCommand.ExecuteAsync(null);
 
-        Assert.Equal("Prey (2006)", tile.Title);
         Assert.Equal("Prey (2006)", Assert.Single(library.VisibleTiles).Title);
         Assert.Equal("Prey (2006)", details.Title);
-        Assert.Equal("Prey (2006)", tile.Row.Title);
+        Assert.Equal("Prey (2006)", details.Tile.Row.Title);
 
         Assert.Same(details, library.Details);
         Assert.Same(editor, library.Details!.MetadataEditor);

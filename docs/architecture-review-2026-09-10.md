@@ -1,5 +1,9 @@
 # Winnow architecture and code review — 2026-09-10
 
+The correction work is documented in [the resolution record](architecture-review-resolution-2026-09-11.md)
+and [verification evidence](spikes/architecture-fixes-2026-09-10.md). This report retains the
+findings and limits of the original baseline review.
+
 ## Assessment
 
 Winnow has a sound module skeleton and substantial automated coverage. Core is independent of infrastructure; ingest emits candidates instead of writing identities; exact identity resolution and fuzzy confirmation are distinct; derived buckets are queries; external integrations are designed to fail softly; desktop and fullscreen have separate presentation paths.
@@ -531,7 +535,7 @@ Required verification: Configuration, service registration, host construction an
 
 **Low · Source verified · [TASK-223](<../backlog/tasks/task-223 - Reconcile-active-architecture-visual-and-provenance-documentation-with-current-behavior.md>)**
 
-The active mock/charter target still uses rejected purple, top-right unread badges and a 0.60 floor. design-system says the merge queue has no dormancy ramp despite the active implementation and another spec section. Facet provenance describes GamesDb cache payload v4 while code uses v5 and invalidation. ROADMAP retains obsolete merge-execution debt, and the build spec requires Steam collections although no reader exists. Recommendation text describing best-copy collapse also needs alignment with the actual preselected grouped candidate path.
+The active mock/charter target still uses rejected purple, top-right unread badges and a 0.60 floor. design-system says the merge queue has no dormancy ramp despite the active implementation and another spec section. Facet provenance describes IGDB cache payload v4 while code uses v5 and invalidation. ROADMAP retains obsolete merge-execution debt, and the build spec requires Steam collections although no reader exists. Recommendation text describing best-copy collapse also needs alignment with the actual preselected grouped candidate path.
 
 New work can follow conflicting authorities or recreate retired behavior. Scope decisions must be explicit; stale requirements should not automatically become new features.
 

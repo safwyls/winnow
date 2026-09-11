@@ -84,6 +84,7 @@ public sealed class RecommendationCompositionTests
             await (context.Feed.LoadCommand.ExecutionTask ?? Task.CompletedTask);
             await (feed.History.LoadCommand.ExecutionTask ?? Task.CompletedTask);
             await feed.Backfilling;
+            await feed.AdditionalShelvesLoading;
         }
     }
 

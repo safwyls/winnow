@@ -33,7 +33,7 @@ public sealed class EpicSyncInstallOrderingTests
             new EpicLibrarySource(dataRoot: tree.DataRoot), SilentStores.Gog(), resolver, gate,
             NullLogger<LocalLibrarySyncService>.Instance);
         var backfill = new RemoteOwnershipSyncService(local, resolver, gate,
-            NullLogger<RemoteOwnershipSyncService>.Instance, new ConfiguredSteam());
+            NullLogger<RemoteOwnershipSyncService>.Instance, new OwnershipInventoryRepository(db.Factory), new ConfiguredSteam());
         var stale = local.Scan();
         Assert.False(Assert.Single(stale.Epic, c => c.ProviderId == "7a70b499513441c792b541d53505e0b2").Installed);
 

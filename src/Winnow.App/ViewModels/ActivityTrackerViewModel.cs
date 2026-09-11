@@ -7,11 +7,11 @@ namespace Winnow.App.ViewModels;
 /// <summary>Selection and copy for the two views of one ownership's recorded play.</summary>
 public sealed partial class ActivityTrackerViewModel : ObservableObject
 {
-    private readonly IReadOnlyList<PlaytimeSnapshot> _snapshots;
-    private readonly IReadOnlyList<Session> _sessions;
-    private readonly DateTime? _acquiredUtc;
-    private readonly DateTime _nowUtc;
-    private readonly string _scope;
+    private IReadOnlyList<PlaytimeSnapshot> _snapshots = [];
+    private IReadOnlyList<Session> _sessions = [];
+    private DateTime? _acquiredUtc;
+    private DateTime _nowUtc;
+    private string _scope = string.Empty;
 
     public ActivityTrackerViewModel(
         IReadOnlyList<PlaytimeSnapshot> snapshots,
@@ -21,6 +21,10 @@ public sealed partial class ActivityTrackerViewModel : ObservableObject
         long totalMinutes,
         DateTime nowUtc,
         string scope = "")
+        => ApplySnapshot(snapshots, sessions, acquiredUtc, lastPlayedUtc, totalMinutes, nowUtc, scope);
+
+    internal void ApplySnapshot(IReadOnlyList<PlaytimeSnapshot> snapshots, IReadOnlyList<Session> sessions,
+        DateTime? acquiredUtc, DateTime? lastPlayedUtc, long totalMinutes, DateTime nowUtc, string scope)
     {
         _snapshots = snapshots;
         _sessions = sessions;
@@ -35,13 +39,15 @@ public sealed partial class ActivityTrackerViewModel : ObservableObject
             ? $"Last played {UpdateEventViewModel.LocalDateText(played)}"
             : totalMinutes > 0 ? "Last-played date unavailable" : "No playtime recorded";
         Rebuild();
+        OnPropertyChanged(string.Empty);
     }
 
-    public string TotalText { get; }
+    public string TotalText { get; private set; } = string.Empty;
     public string TotalLabel => _scope.Length > 0 ? $"played · {_scope}" : "total played";
-    public DateTime? LastPlayedUtc { get; }
-    public string LastPlayedText { get; }
-    public bool HasTrackedSessions { get; }
+    public DateTime? LastPlayedUtc { get; private set; }
+    public string LastPlayedText { get; private set; } = string.Empty;
+    public bool HasTrackedSessions { get; private set; }
+    public event EventHandler? SnapshotChanged;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLifetime))]
@@ -75,14 +81,15 @@ public sealed partial class ActivityTrackerViewModel : ObservableObject
     [ObservableProperty]
     public partial string UpdateSummary { get; private set; } = string.Empty;
 
-    public void RefreshUpdates(IReadOnlyList<UpdateEventViewModel> updates)
+    public void RefreshUpdates(IReadOnlyList<UpdateEventViewModel> updates, int? unreadPatchCount = null)
     {
         // A new collection also invalidates mark groups after acknowledgement.
         Updates = updates.ToArray();
-        var unread = updates.Count(update => update.IsUnread);
+        var unread = unreadPatchCount ?? updates.Count(update => update.IsUnread);
         UpdateSummary = unread > 0
             ? $"{unread} unread update{(unread == 1 ? "" : "s")}"
             : updates.Count > 0 ? "No unread updates" : "No updates recorded";
+        SnapshotChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void SelectDetail(string text) => DetailText = text;

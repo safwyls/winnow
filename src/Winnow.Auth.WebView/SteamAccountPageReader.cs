@@ -77,6 +77,9 @@ internal sealed class SteamAccountPageReader
             && signedIn.ValueKind == JsonValueKind.True;
     }
 
+    internal static Task<string?> ReadAccountIdentityAsync(CoreWebView2 browser)
+        => ReadStringAsync(browser, SteamHarvestScripts.AccountIdentity);
+
     /// <summary>
     /// Exhausts one page's list and returns its rendered HTML, or null when the
     /// document could not be read in full.

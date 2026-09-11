@@ -39,25 +39,7 @@ internal static class WorkIgdbMappingWrites
                     workId, ExternalIdProviders.Igdb, providerId, now, ct);
             }
 
-            // A typed identifier supplies no replacement metadata. Preserve
-            // user fields and unknown legacy sources; clear values explicitly
-            // supplied by the old IGDB mapping so they can be fetched again.
-            await lease.Connection.ExecuteAsync(new CommandDefinition("""
-                WITH igdb_fields AS (
-                    SELECT field FROM work_field_sources
-                    WHERE work_id = @workId AND source = 'igdb'
-                )
-                UPDATE works SET
-                    first_release_year = CASE WHEN 'first_release_year' IN igdb_fields
-                        THEN NULL ELSE first_release_year END,
-                    summary = CASE WHEN 'summary' IN igdb_fields THEN NULL ELSE summary END,
-                    cover_url = CASE WHEN 'cover_url' IN igdb_fields THEN NULL ELSE cover_url END,
-                    publisher = CASE WHEN 'publisher' IN igdb_fields THEN NULL ELSE publisher END,
-                    igdb_game_type = NULL, igdb_parent_id = NULL, igdb_version_parent_id = NULL
-                WHERE id = @workId;
-                DELETE FROM work_field_sources WHERE work_id = @workId AND source = 'igdb'
-                  AND field IN ('first_release_year','summary','cover_url','publisher');
-                """, new { workId }, lease.Transaction, cancellationToken: ct));
+            await ClearProjectionsAsync(lease, workId, ct);
         }
 
         await lease.Connection.ExecuteAsync(new CommandDefinition("""
@@ -76,6 +58,34 @@ internal static class WorkIgdbMappingWrites
             """, new { workId, igdbId, expectedRevision }, lease.Transaction, cancellationToken: ct));
         return true;
     }
+
+    /// <summary>
+    /// Clears replaceable IGDB projections. User and unknown scalar sources,
+    /// release/store facets and plugin observations retain their own authority.
+    /// Lifecycle history remains append-only and is filtered by source identity.
+    /// </summary>
+    internal static Task<int> ClearProjectionsAsync(DbLease lease, long workId, CancellationToken ct)
+        => lease.Connection.ExecuteAsync(new CommandDefinition("""
+            WITH igdb_fields AS (
+                SELECT field FROM work_field_sources
+                WHERE work_id = @workId AND source = 'igdb'
+            )
+            UPDATE works SET
+                first_release_year = CASE WHEN 'first_release_year' IN igdb_fields
+                    THEN NULL ELSE first_release_year END,
+                summary = CASE WHEN 'summary' IN igdb_fields THEN NULL ELSE summary END,
+                cover_url = CASE WHEN 'cover_url' IN igdb_fields THEN NULL ELSE cover_url END,
+                background_url = CASE WHEN 'background_url' IN igdb_fields THEN NULL ELSE background_url END,
+                publisher = CASE WHEN 'publisher' IN igdb_fields THEN NULL ELSE publisher END,
+                igdb_game_type = NULL, igdb_parent_id = NULL, igdb_version_parent_id = NULL
+            WHERE id = @workId;
+            DELETE FROM work_field_sources WHERE work_id = @workId AND source = 'igdb'
+              AND field IN ('first_release_year','summary','cover_url','background_url','publisher');
+            DELETE FROM work_facets WHERE work_id = @workId;
+            DELETE FROM work_maturity WHERE work_id = @workId AND source = 'igdb';
+            DELETE FROM work_images WHERE work_id = @workId AND source = 'igdb';
+            DELETE FROM work_ratings WHERE work_id = @workId AND source IN ('igdb_users','igdb_critics');
+            """, new { workId }, lease.Transaction, cancellationToken: ct));
 
     private sealed record Mapping(long? IgdbId, long Revision);
     private sealed record ManualLocation(long OwnershipId, long ReleaseId);

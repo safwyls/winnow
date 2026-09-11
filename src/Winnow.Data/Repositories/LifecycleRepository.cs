@@ -36,7 +36,7 @@ public sealed class LifecycleRepository(ISqliteConnectionFactory factory) : ILif
     }
 
     public Task<IReadOnlyList<LifecycleObservation>> GetForReleaseAsync(long releaseId, CancellationToken ct = default)
-        => ReadAsync("WHERE release_id = @releaseId", new { releaseId }, ct);
+        => ReadAsync("AND release_id = @releaseId", new { releaseId }, ct);
 
     public Task<IReadOnlyList<LifecycleObservation>> GetAllAsync(CancellationToken ct = default)
         => ReadAsync("", null, ct);
@@ -45,7 +45,14 @@ public sealed class LifecycleRepository(ISqliteConnectionFactory factory) : ILif
     {
         using var lease = factory.Lease();
         var rows = await lease.Connection.QueryAsync<ObservationRow>(new CommandDefinition(
-            $"SELECT {Columns} FROM lifecycle_observations {where} ORDER BY observed_at, id;",
+            $"""
+            SELECT {Columns} FROM lifecycle_observations lo
+            WHERE (source <> 'igdb' OR EXISTS (
+                SELECT 1 FROM releases r JOIN works w ON w.id = r.work_id
+                WHERE r.id = lo.release_id AND lo.source_id = CAST(w.igdb_id AS TEXT)
+            )) {where}
+            ORDER BY observed_at, id;
+            """,
             args, transaction: lease.Transaction, cancellationToken: ct));
         return rows.Select(r => r.ToObservation()).ToArray();
     }

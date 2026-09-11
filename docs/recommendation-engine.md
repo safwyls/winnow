@@ -23,6 +23,11 @@ reaches a plugin and before returned cards can appear. Plugin scores are not com
 built-in scores; each provider owns its named shelf. The plugin contract and lifecycle live in
 `docs/plugins.md` and `game-library-design.md` §5.1.
 
+Built-in shelves publish independently of optional providers. Their bounded supplement
+appends only to the generation that requested it, preserving existing cards and viewport
+impressions. A feedback change retires an outstanding supplement so it cannot reintroduce
+a game evaluated before the verdict. Fullscreen retains the focused game when a shelf arrives.
+
 `RecommendationEngine.GetFeedAsync(request)` reads the library through `Winnow.Core`
 repository interfaces and returns a ranked list of **owned** games worth surfacing, each
 carrying a one-sentence human-readable reason and a full per-signal breakdown. It writes
@@ -191,13 +196,16 @@ shortlist cheap rather than merely correct: never-opened shelfware is most of a 
 and none of it can hold a surprise. Measured on a 200-work library shaped like the real one,
 the safe bound probed **60 works** — the comfort floor — so correctness cost nothing.
 
-**Work collapse happens before any capacity is spent.** One game owned on two stores is two
-ownership rows and one recommendation; collapsing after the shortlist let a duplicate copy
-consume a slot a distinct work needed. The survivor is the copy with the highest `Upper`,
-not the highest preliminary score, so the collapse cannot discard the copy that would have
-won once history was read. The bought-twice signal is unaffected: store counts are computed
-per work over every ownership in the library, before candidates are assembled.
-`RecommendationFeed.WorkCount` reports what the pool collapsed to.
+**Resolved games are assembled before scoring or spending shortlist capacity.**
+`RecommendationGame.Build` groups the visible bucket rows and chooses one action subject:
+a viable installed copy first, then the existing identity order. Each resulting candidate
+carries the group's play facts, visible ownership/release IDs and unioned descriptors;
+history probes read those members as described in §1. Store counts use this same visible
+population. The action subject is not chosen by comparing independently scored store copies.
+`ScoreBounds.CollapseByWork` remains a defensive uniqueness pass; its highest-`Upper` tie
+rule applies only if a caller supplies duplicate work candidates. The production assembly
+already supplies one candidate per resolved game. `RecommendationFeed.WorkCount` reports
+the resulting candidate-game count after eligibility exclusions.
 
 **The shelf pass unions the shelf shortlists, interleaved rank by rank.** Each shelf produces its
 own score-bound-safe shortlist; the union (`RecommendationEngine.ProbeUnion`) admits every
@@ -512,7 +520,8 @@ Verdicts are **append-and-revoke, never edited, never deleted**: undo stamps
 `revoked_at` on the active rows (`RevokeVerdictsAsync`), a lapsed snooze needs no write
 at all, and `GetAllVerdictsAsync` returns the entire history — dismissed → undone →
 dismissed again is two rows and a stamp, all visible. "Active" is computed at read time
-(`revoked_at IS NULL AND (expires_at IS NULL OR expires_at > asOf)`), never stored, so
+(`created_at <= asOf AND (revoked_at IS NULL OR revoked_at > asOf) AND
+(expires_at IS NULL OR expires_at > asOf)`), never stored, so
 there is no cached state to drift. The surfacing log is equally inspectable: any
 recommendation's "why am I seeing this again / why did this vanish" has a row to point
 at.
@@ -804,6 +813,41 @@ sits between a digit and a letter. `"Patch 2.0. Read on!"` keeps the period insi
 loses the one after it and loses the trailing `!`, rendering `Patch 2.0 Read on`. The rule
 now matches the contract test's own definition of a sentence: `[.!?]` followed by
 whitespace or end of string, outside quoted spans.
+
+## 6d. Offline replay and evidence boundaries
+
+`tools/Winnow.Replay` captures a consistent SQLite snapshot and compares named tuning sets
+outside the app. It depends on Data and Recommend; Recommend still references Core only.
+The capture manifest records its UTC instant and database hash. Replay accepts that instant
+only. Changing the request date cannot reconstruct earlier ownership, installation, metadata,
+facets, settings or identity from their mutable present-day projections. Old databases must
+have been captured when their state was current; a file modification date is not that proof.
+
+The engine passes one instant into the library's dated queries and lifecycle classification,
+session/snapshot reads, exact tier aggregate and feedback reads. Verdicts bind only after
+creation and before revocation or expiry. Future launches cannot become endorsements. These
+boundaries make dated evidence consistent; they do not make a live database a historical one.
+The replay tool also refuses captured scoring observations with invalid or future timestamps.
+
+Later outcomes come from a separate captured database and never enter scorer dependencies.
+Both tunings rank the same complete frozen population before labels select the judged cohort.
+External identifiers map subsequent outcomes to the captured identity groups; missing or
+conflicting anchors remain unobserved. Labels require an impression strictly after the replay
+day. A launch-attributed session within the outcome window is positive; a standing snooze or
+not-interested verdict is negative. Conflicting positive/negative outcomes are excluded.
+Because impressions retain only dates, same-day action ordering is ambiguous and excluded.
+A matured impression without a qualifying action is a weak negative, reported but excluded
+from metrics: legacy rows do not carry proof of which visibility-recording implementation
+created them. TASK-10's current viewport behavior does not rewrite that history.
+
+The report computes precision@k and MRR over positive and explicit-negative games in ranked
+order, after removing unjudged games. It reports judged coverage and withholds precision
+when fewer than k judged games remain. One capture is one query, so MRR equals that query's
+reciprocal rank. The outcome window defaults to the model's three-day endorsement window;
+the evaluator holds it fixed across tuning comparisons. These are observational, exposure-
+biased measurements, not whole-library precision or causal evidence that a change improves
+the feed. Tunings, thresholds, seed, capture hashes and assembly hashes accompany each report.
+Capture commands, fixtures and measured results live in `docs/spikes/feed-replay.md`.
 
 ## 7. Deliberately deferred (and where each would plug in)
 

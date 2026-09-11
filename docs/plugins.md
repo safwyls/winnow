@@ -40,9 +40,15 @@ These measures handle cooperative failures; native crashes and malicious or nonc
 require process or OS isolation, which this version does not provide.
 
 Discovery, initialization and provider work run off the UI thread. The background pass waits for
-startup synchronization, imports libraries, then enriches original owned works. Feed providers run
-when the shared feed is computed; a cold provider can delay feed publication up to its deadline.
-Plugins should cache network data and answer feed requests promptly.
+startup synchronization, imports libraries, then enriches original owned works. Feed providers
+run concurrently with the built-in feed. Built-in shelves publish as soon as they are ready;
+optional shelves append without replacing existing cards. One five-second aggregate budget
+covers feed snapshot reads, queued provider invocations and execution across all providers.
+Expiry during shared input reads produces an empty optional supplement; caller cancellation
+remains cancellation. Both use the same boundary as expiry while waiting for a provider.
+Completed provider results survive another provider's timeout. A newer feed generation,
+feedback change or closed screen rejects its old supplement. Plugins should cache network
+data and answer promptly; their work cannot delay the built-in recommendations.
 
 ## Author a plugin
 

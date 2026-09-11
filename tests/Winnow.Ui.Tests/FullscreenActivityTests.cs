@@ -24,7 +24,7 @@ public sealed class FullscreenActivityTests
         using var db = new TempDatabase();
         LibraryReadFixtures.Seed(db, 4);
         using var services = new ServiceCollection().AddSingleton<IOwnershipRepository>(new OwnershipRepository(db.Factory))
-            .AddSingleton<ISessionRepository>(new SessionRepository(db.Factory)).BuildServiceProvider();
+            .AddSingleton<IActivityRepository>(new ActivityRepository(db.Factory)).AddSingleton<ISessionRepository>(new SessionRepository(db.Factory)).BuildServiceProvider();
         var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell, services);
         using var page = new FullscreenActivityPage(context);
         var window = new Window { Width = 1920, Height = 1080, Content = page };
@@ -32,23 +32,23 @@ public sealed class FullscreenActivityTests
         {
             window.Show(); Dispatcher.UIThread.RunJobs(); await page.PendingRefresh; Dispatcher.UIThread.RunJobs(); page.FocusInitial();
             Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "No sessions this week");
-            page.Handle(GamepadButtons.Left); Dispatcher.UIThread.RunJobs();
+            page.Handle(GamepadButtons.Left); await page.PendingRefresh; Dispatcher.UIThread.RunJobs();
             Assert.Equal(1, page.WeekOffset);
-            page.Handle(GamepadButtons.Right); page.Handle(GamepadButtons.Right); Dispatcher.UIThread.RunJobs();
+            page.Handle(GamepadButtons.Right); page.Handle(GamepadButtons.Right); await page.PendingRefresh; Dispatcher.UIThread.RunJobs();
             Assert.Equal(0, page.WeekOffset);
             page.Handle(GamepadButtons.Up); Dispatcher.UIThread.RunJobs();
             page.Handle(GamepadButtons.Right);
             Assert.Equal(0, page.WeekOffset);
             page.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Content, "Journal")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            Dispatcher.UIThread.RunJobs();
+            await page.PendingRefresh; Dispatcher.UIThread.RunJobs();
             Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "No journal entries this week");
             Assert.DoesNotContain(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "No sessions this week");
             Assert.Equal("LT / RT  Section", page.RightHints);
             Assert.DoesNotContain("LT", page.Hints);
-            page.Handle(GamepadButtons.PageNext); Dispatcher.UIThread.RunJobs();
+            page.Handle(GamepadButtons.PageNext); await page.PendingRefresh; Dispatcher.UIThread.RunJobs();
             Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "No sessions this week");
             Assert.Equal(0, page.WeekOffset);
-            page.Handle(GamepadButtons.PagePrevious); Dispatcher.UIThread.RunJobs();
+            page.Handle(GamepadButtons.PagePrevious); await page.PendingRefresh; Dispatcher.UIThread.RunJobs();
             Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "No journal entries this week");
         }
         finally { window.Close(); }
@@ -67,7 +67,7 @@ public sealed class FullscreenActivityTests
         await library.LoadCommand.ExecuteAsync(null);
         await sessions.InsertAsync(new Session { OwnershipId = 1, StartedAt = DateTime.UtcNow, DetectionMethod = "manual" });
         var selectedId = await sessions.InsertAsync(new Session { OwnershipId = 2, StartedAt = DateTime.UtcNow.AddMinutes(-1), DetectionMethod = "manual" });
-        using var services = new ServiceCollection().AddSingleton<IOwnershipRepository>(owners).AddSingleton<ISessionRepository>(sessions).AddSingleton<IUpdateEventRepository>(updates).BuildServiceProvider();
+        using var services = new ServiceCollection().AddSingleton<IOwnershipRepository>(owners).AddSingleton<IActivityRepository>(new ActivityRepository(db.Factory)).AddSingleton<ISessionRepository>(sessions).AddSingleton<IUpdateEventRepository>(updates).BuildServiceProvider();
         var context = new FullscreenContext(library, new FeedViewModel(new PreviewFeedService(), library), PreviewData.Shell, services);
         var page = new FullscreenActivityPage(context);
         var window = new Window { Width = 1920, Height = 1080, Content = page };

@@ -106,6 +106,7 @@ public class AccountScopeTests : IDisposable
     {
         var mine = await SeedAsync("Mine", accounts: [(Mine, 10, null)]);
         await SeedAsync("Theirs", accounts: [(Theirs, 900, null)]);
+        await CompleteInventoryAsync();
 
         await ChooseAsync(AccountScope.Own, confirmed: Mine);
 
@@ -220,14 +221,14 @@ public class AccountScopeTests : IDisposable
             [neverLaunched],
             (await _library.GetOwnershipBucketsAsync(Thresholds)).Select(r => r.OwnershipId));
 
-        // One non-seed row for the user's account ANYWHERE in the store is the
-        // proof that their pass has run. It arrives on a different game.
+        // A local positive on another game still proves nothing about absence.
         var elsewhere = await SeedAsync("Something else of mine", accounts: [(Mine, 0, null)]);
 
         var rows = await _library.GetOwnershipBucketsAsync(Thresholds);
+        Assert.Equal([neverLaunched, elsewhere], rows.Select(r => r.OwnershipId).Order());
 
-        // Now the ordinary predicate applies and the housemate's game goes.
-        Assert.Equal([elsewhere], rows.Select(r => r.OwnershipId));
+        await CompleteInventoryAsync();
+        Assert.Equal([elsewhere], (await _library.GetOwnershipBucketsAsync(Thresholds)).Select(r => r.OwnershipId));
     }
 
     [Fact]
@@ -365,6 +366,7 @@ public class AccountScopeTests : IDisposable
         await SeedAsync("Theirs one", accounts: [(Theirs, 900, null)]);
         await SeedAsync("Theirs two", accounts: [(Theirs, 20, null)]);
         await SeedAsync("Unattributed", minutes: 5);
+        await CompleteInventoryAsync();
 
         await ChooseAsync(AccountScope.All, confirmed: Mine);
         Assert.Equal(2, await _library.CountHiddenByAccountScopeAsync(Thresholds));
@@ -388,15 +390,21 @@ public class AccountScopeTests : IDisposable
     private static DateTime Utc(int y, int mo, int d) => new(y, mo, d, 0, 0, 0, DateTimeKind.Utc);
 
     /// <summary>
-    /// One ordinary Steam game carrying a non-seed row for the owned account.
-    ///
-    /// <para>The filter refuses to hide anything until it has seen proof that
-    /// the pass which can name the user's account has actually run, so a test
-    /// about any OTHER property of the filter has to establish that first — the
-    /// same way a real library does on its first successful owned-list sync.</para>
+    /// A positive game plus separately established complete inventory evidence.
     /// </summary>
-    private Task<long> AttestOwnedAccountPassAsync()
-        => SeedAsync("Mine, attesting", accounts: [(Mine, 0, null)]);
+    private async Task<long> AttestOwnedAccountPassAsync()
+    {
+        var id = await SeedAsync("Mine, attesting", accounts: [(Mine, 0, null)]);
+        await CompleteInventoryAsync();
+        return id;
+    }
+
+    private async Task CompleteInventoryAsync()
+    {
+        var inventories = new OwnershipInventoryRepository(_db.Factory);
+        var attempt = await inventories.BeginAttemptAsync("steam", Mine, OwnershipInventorySources.SteamOwnedGames);
+        Assert.True(await inventories.CompleteAsync(attempt, Utc(2026, 8, 27), 1));
+    }
 
     private async Task ChooseAsync(string scope, string confirmed)
     {

@@ -29,4 +29,7 @@
     <ProjectReference Include="..\Winnow.Data\Winnow.Data.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="..\Shared\ProviderHttpTransport.cs" Link="Http\ProviderHttpTransport.cs" />
+  </ItemGroup>
 </Project>

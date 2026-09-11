@@ -23,6 +23,9 @@ public static class GameListsCopy
     public const string EmptyText =
         "Choose Add to list above to create a list for this game.";
 
+    public const string Saving = "Saving list changes…";
+    public const string SaveFailed = "Couldn't save list changes. Try again.";
+
     /// <summary>
     /// Accessible name for an unticked checkbox. <c>{0}</c> is the list name.
     /// </summary>

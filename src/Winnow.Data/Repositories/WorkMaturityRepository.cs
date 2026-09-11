@@ -54,6 +54,14 @@ public sealed class WorkMaturityRepository : IWorkMaturityRepository
         return rows.AsList();
     }
 
+    public async Task<bool> DeleteAsync(long workId, string source, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        return await lease.Connection.ExecuteAsync(new CommandDefinition(
+            "DELETE FROM work_maturity WHERE work_id = @workId AND source = @source;",
+            new { workId, source }, lease.Transaction, cancellationToken: ct)) > 0;
+    }
+
     public async Task<IReadOnlyList<WorkMaturity>> GetAllAsync(CancellationToken ct = default)
     {
         using var lease = _factory.Lease();

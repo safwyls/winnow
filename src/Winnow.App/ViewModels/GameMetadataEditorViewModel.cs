@@ -31,21 +31,15 @@ public partial class GameMetadataEditorViewModel : ObservableObject, IDisposable
     private readonly IImageFilePicker? _picker;
 
     /// <summary>
-    /// Reloads the library after an art field is saved, so the grid draws the
-    /// new cover. Invoked for art fields only; reloading after a text save
-    /// would discard the drafts the user has in the other five rows. With no
+    /// Refreshes library artwork after an art field is saved. The library
+    /// keeps this editor and its drafts alive during the refresh. With no
     /// delegate supplied the confirmation lands on the row instead.
     /// </summary>
     private readonly Func<string, Task>? _afterArtChange;
 
     /// <summary>
-    /// Hands a saved text field to the library so the running session
-    /// shows it — the name is the field this exists for. Unlike
-    /// <see cref="_afterArtChange"/> this does not reload: art has to
-    /// reload because the tile's cover key is computed at load, and a
-    /// text save must not reload because that would discard the drafts
-    /// in the other five rows. With no delegate supplied the save is
-    /// exactly what it was.
+    /// Invalidates visible metadata and filter facts after any saved text
+    /// field. The library preserves this editor and its other drafts.
     /// </summary>
     private readonly Func<string, string?, Task>? _afterTextChange;
 
@@ -99,11 +93,8 @@ public partial class GameMetadataEditorViewModel : ObservableObject, IDisposable
     public partial string? Problem { get; set; }
 
     /// <summary>
-    /// Confirmation an art save carries across the library reload and the
-    /// modal's reopen, since the view model that made the change does not
-    /// survive the rebuild. Drawn outside the <c>IsOpen</c> gate: reopening
-    /// leaves the editor closed, and a confirmation nobody can see is not
-    /// one. Mirrors <see cref="GameIgdbMatchViewModel.Note"/>.
+    /// Confirmation after an art save refreshes visible artwork. It remains
+    /// available outside the editor when the user returns to details.
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasNote))]
@@ -424,14 +415,14 @@ public abstract partial class MetadataFieldRowViewModel : ObservableObject, IDis
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsUserOwned))]
     [NotifyPropertyChangedFor(nameof(IsAutomatic))]
-    [NotifyPropertyChangedFor(nameof(SourceLabel))]
+    [NotifyPropertyChangedFor(nameof(SourceLabel), nameof(MenuLabel), nameof(CanReset))]
     [NotifyPropertyChangedFor(nameof(SourceTooltip))]
     [NotifyCanExecuteChangedFor(nameof(ResetCommand))]
     public partial string? Source { get; set; }
 
     /// <summary>The user's in-progress edit. Save is dead until this differs from the stored value.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsDirty))]
+    [NotifyPropertyChangedFor(nameof(IsDirty), nameof(CanSave))]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     public partial string Draft { get; set; } = string.Empty;
 
@@ -471,6 +462,7 @@ public abstract partial class MetadataFieldRowViewModel : ObservableObject, IDis
     public bool IsAutomatic => Source is null;
 
     public string SourceLabel => GameMetadataEditorCopy.SourceLabelFor(Source);
+    public string MenuLabel => $"{Label} · {SourceLabel}";
 
     public string SourceTooltip => GameMetadataEditorCopy.SourceTooltipFor(Source);
 
@@ -499,6 +491,7 @@ public abstract partial class MetadataFieldRowViewModel : ObservableObject, IDis
 
     /// <summary>Save is available when the draft differs from the stored value and no write is in flight.</summary>
     public bool CanSave => !_editor.IsBusy && IsDirty;
+    public bool CanEdit => !_editor.IsBusy;
 
     /// <summary>Reset is available only when the user is the source. A field nobody has claimed and a field a service owns have nothing to hand back.</summary>
     public bool CanReset => !_editor.IsBusy && IsUserOwned;
@@ -525,6 +518,7 @@ public abstract partial class MetadataFieldRowViewModel : ObservableObject, IDis
     internal void NotifyCommands()
     {
         OnPropertyChanged(nameof(CanSave));
+        OnPropertyChanged(nameof(CanEdit));
         OnPropertyChanged(nameof(CanReset));
         SaveCommand.NotifyCanExecuteChanged();
         ResetCommand.NotifyCanExecuteChanged();

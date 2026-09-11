@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-11 06:02'
-updated_date: '2026-09-11 06:49'
+updated_date: '2026-09-11 08:29'
 labels:
   - architecture
   - hardening
@@ -41,4 +41,8 @@ Implement the concerns recorded in docs/architecture-review-2026-09-10.md: TASK-
 
 <!-- SECTION:NOTES:BEGIN -->
 Foundation checkpoint verified: solution Release build zero warnings/errors; all4838 runnable Windows tests covered, with2 nativeLinux skips. Complete run found3 stale naming/count expectations, corrected and rechecked via46 LibraryViewModel+8 hygiene tests. Shared BaseOutputPath requires build before test--no-build to avoid simultaneoustesthost copy locks.33migrationhashes and isolatedWindows/Linux pluginpublishes pass. Evidence in docs/spikes/architecture-fixes-2026-09-10.md.192/193/195 backend fixes land now; explicitStores/action presentation checks remainassigned toUI. Remaining review tasks continue.
+
+Progress2026-09-11: TASK189-221 and223-226 are Done; TASK27 is Done. TASK222 measured a real long-history bottleneck and its paged/background-read fixes are under final interaction review. TASK135 is implementing honest frozen-snapshot replay and dated-input fences. TASK4 was moved to ordinal259000 at the end with needs-user for physical controller/TV validation. Independent final scrutiny of cover lifetime found an interleaved lease retry race and is correcting it before the consolidated gate. No product-policy decision is waiting on the user.
+
+Consolidated verification is in progress. Fresh audited restore and Release solution build pass with zero warnings/errors; all 38 migration hashes, migration mutation tests, test-summary checks and bundled-plugin verifier mutation checks pass. Native Linux session smoke passes both cases on Fedora 44 WSL. The first full test pass exposed two feed edge cases and two UI lifecycle/awaiting issues; each is being corrected with focused regression evidence before the gate is repeated.
 <!-- SECTION:NOTES:END -->

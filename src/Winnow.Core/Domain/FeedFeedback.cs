@@ -41,7 +41,8 @@ public sealed record FeedVerdict
 
     /// <summary>Whether this verdict binds at the given instant: not revoked, not lapsed.</summary>
     public bool IsActiveAt(DateTime asOfUtc)
-        => RevokedAt is null && (ExpiresAt is null || ExpiresAt > asOfUtc);
+        => CreatedAt <= asOfUtc && (RevokedAt is null || RevokedAt > asOfUtc)
+            && (ExpiresAt is null || ExpiresAt > asOfUtc);
 }
 
 /// <summary>

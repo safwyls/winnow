@@ -103,7 +103,7 @@ public sealed class EpicScanCompletenessTests
             var local = Local(reader);
             if (remote)
                 await new RemoteOwnershipSyncService(local, resolver, gate,
-                    NullLogger<RemoteOwnershipSyncService>.Instance, new ConfiguredSteam()).SyncAsync(stale);
+                    NullLogger<RemoteOwnershipSyncService>.Instance, new OwnershipInventoryRepository(db.Factory), new ConfiguredSteam()).SyncAsync(stale);
             else
                 await local.SyncAsync();
             Assert.Equal(before, connection.QuerySingle<InstallObservation>(query));

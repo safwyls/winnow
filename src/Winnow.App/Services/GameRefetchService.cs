@@ -100,7 +100,7 @@ public sealed class GameRefetchService : IGameRefetch
     private readonly ILogger<GameRefetchService> _logger;
 
     private readonly Lock _gate = new();
-    private readonly Dictionary<long, DateTimeOffset> _lastRefetch = [];
+    private readonly Dictionary<long, (long Revision, DateTimeOffset At)> _lastRefetch = [];
 
     public GameRefetchService(
         IWorkRepository works,
@@ -151,13 +151,13 @@ public sealed class GameRefetchService : IGameRefetch
             return new GameRefetchResult(GameRefetchOutcome.WorkNotFound);
         }
 
-        if (RemainingCooldown(workId) is { } retryAfter)
+        if (RemainingCooldown(work.IgdbMapping) is { } retryAfter)
         {
             return new GameRefetchResult(GameRefetchOutcome.TooSoon) { RetryAfter = retryAfter };
         }
 
         var pin = await _pins.GetAsync(workId, ct);
-        var igdbId = pin?.IgdbId ?? work.IgdbId;
+        var igdbId = work.IgdbId;
         var appIds = await SteamAppIdsAsync(workId, ct);
 
         if (igdbId is null && appIds.Count == 0)
@@ -166,7 +166,7 @@ public sealed class GameRefetchService : IGameRefetch
         }
 
         var configured = igdbId is null || await _igdb.IsConfiguredAsync(ct);
-        MarkRefetched(workId);
+        MarkRefetched(work.IgdbMapping);
 
         var game = igdbId is { } id && configured ? await FetchGameAsync(id, ct) : null;
         var items = appIds.Count > 0
@@ -189,7 +189,7 @@ public sealed class GameRefetchService : IGameRefetch
         var rows = 0;
         if (game is not null)
         {
-            rows += await _reception.ApplyIgdbAsync(workId, game, ct);
+            rows += await _reception.ApplyIgdbAsync(work.IgdbMapping, game, ct);
         }
 
         var storeItem = appIds
@@ -202,7 +202,6 @@ public sealed class GameRefetchService : IGameRefetch
         }
 
         var metadataFilled = game is not null
-                             && pin is null
                              && await FillMetadataAsync(work, game, ct);
 
         _logger.LogInformation(
@@ -263,6 +262,8 @@ public sealed class GameRefetchService : IGameRefetch
             IgdbParentId = work.IgdbParentId is null ? game.ParentGameId : null,
             IgdbVersionParentId = work.IgdbVersionParentId is null ? game.VersionParentId : null,
             NameSource = FieldSources.Igdb,
+            ExpectedIgdbMapping = work.IgdbMapping,
+            RefetchCurrentIgdbMapping = true,
         };
 
         if (patch.IsEmpty)
@@ -271,6 +272,8 @@ public sealed class GameRefetchService : IGameRefetch
         }
 
         using var scope = _unitOfWork.Begin();
+        var current = await _works.GetAsync(work.Id, ct);
+        if (current?.IgdbMapping != work.IgdbMapping) return false;
         var namePromoted = await _works.ApplyEnrichmentAsync(patch, ct);
         if (namePromoted)
         {
@@ -280,11 +283,12 @@ public sealed class GameRefetchService : IGameRefetch
             }
         }
 
+        var changed = current != await _works.GetAsync(work.Id, ct);
         scope.Commit();
-        return true;
+        return changed;
     }
 
-    private TimeSpan? RemainingCooldown(long workId)
+    private TimeSpan? RemainingCooldown(IgdbMappingVersion mapping)
     {
         var cooldown = _options.Cooldown;
         if (cooldown <= TimeSpan.Zero)
@@ -294,21 +298,21 @@ public sealed class GameRefetchService : IGameRefetch
 
         lock (_gate)
         {
-            if (!_lastRefetch.TryGetValue(workId, out var last))
+            if (!_lastRefetch.TryGetValue(mapping.WorkId, out var last) || last.Revision != mapping.Revision)
             {
                 return null;
             }
 
-            var elapsed = _clock.GetUtcNow() - last;
+            var elapsed = _clock.GetUtcNow() - last.At;
             return elapsed >= cooldown ? null : cooldown - elapsed;
         }
     }
 
-    private void MarkRefetched(long workId)
+    private void MarkRefetched(IgdbMappingVersion mapping)
     {
         lock (_gate)
         {
-            _lastRefetch[workId] = _clock.GetUtcNow();
+            _lastRefetch[mapping.WorkId] = (mapping.Revision, _clock.GetUtcNow());
         }
     }
 }

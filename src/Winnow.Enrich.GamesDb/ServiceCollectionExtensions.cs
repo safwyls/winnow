@@ -50,6 +50,7 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient<IGameIdentityGraph, GamesDbClient>(client =>
             {
                 client.BaseAddress = options.BaseAddress;
+                Winnow.Http.ProviderHttpTransport.Configure(client, options.MaxResponseBytes, options.OverallTimeout);
                 client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
             })
             .AddHttpMessageHandler<GamesDbResilienceHandler>()

@@ -115,16 +115,18 @@ internal static class SteamStoreJson
             }
 
             var raw = new Dictionary<string, string>(StringComparer.Ordinal);
+            var duplicates = new HashSet<string>(StringComparer.Ordinal);
             foreach (var item in items.EnumerateArray())
             {
                 if (item.ValueKind == JsonValueKind.Object
                     && item.TryGetProperty("id", out var id)
                     && TryReadId(id) is { } key)
                 {
-                    raw[key] = item.GetRawText();
+                    if (!raw.TryAdd(key, item.GetRawText())) duplicates.Add(key);
                 }
             }
 
+            foreach (var duplicate in duplicates) raw.Remove(duplicate);
             return raw;
         }
         catch (JsonException)
@@ -139,9 +141,8 @@ internal static class SteamStoreJson
     /// warm read and a cold read cannot disagree.
     /// </summary>
     /// <returns>
-    /// Null when Steam answered but has nothing to offer for this appid —
-    /// <c>success</c> other than 1, or no usable name. That is a real answer and
-    /// may be cached as a miss; it is not a failure.
+    /// Null for a miss or an unrecognised item. Only <see cref="IsConfirmedMiss"/>
+    /// establishes a negative cache entry; malformed positives remain retryable.
     /// </returns>
     internal static SteamStoreItem? TryParseItem(string appId, string rawItemJson)
     {
@@ -154,9 +155,11 @@ internal static class SteamStoreJson
                 return null;
             }
 
+            if (!item.TryGetProperty("id", out var id) || TryReadId(id) != appId) return null;
+
             if (!item.TryGetProperty("success", out var success)
                 || success.ValueKind != JsonValueKind.Number
-                || success.GetInt32() != SuccessOk)
+                || !success.TryGetInt32(out var code) || code != SuccessOk)
             {
                 return null;
             }
@@ -181,6 +184,21 @@ internal static class SteamStoreJson
         {
             return null;
         }
+    }
+
+    /// <summary>The verified non-store shape is an explicit result 15 for the requested id.</summary>
+    internal static bool IsConfirmedMiss(string appId, string raw)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(raw);
+            var item = document.RootElement;
+            return item.ValueKind == JsonValueKind.Object
+                && item.TryGetProperty("id", out var id) && TryReadId(id) == appId
+                && item.TryGetProperty("success", out var success) && success.ValueKind == JsonValueKind.Number
+                && success.TryGetInt32(out var code) && code == 15;
+        }
+        catch (JsonException) { return false; }
     }
 
     /// <summary>

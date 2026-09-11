@@ -195,7 +195,7 @@ public sealed class OwnedAccountConfirmationTests : IDisposable
                 NullLogger<LocalLibrarySyncService>.Instance),
             resolver,
             gate,
-            NullLogger<RemoteOwnershipSyncService>.Instance,
+            NullLogger<RemoteOwnershipSyncService>.Instance, new OwnershipInventoryRepository(_db.Factory),
             steam);
     }
 

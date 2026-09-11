@@ -7,8 +7,8 @@ using Microsoft.Extensions.Logging;
 namespace Winnow.Enrich.GamesDb;
 
 /// <summary>
-/// Client for gamesdb.gog.com's cross-store identity graph. Never throws;
-/// failures return null and are not cached.
+/// Client for gamesdb.gog.com's cross-store identity graph. Transport and shape
+/// failures return null and are not cached; caller cancellation propagates.
 /// </summary>
 public sealed class GamesDbClient : IGameIdentityGraph
 {
@@ -69,7 +69,10 @@ public sealed class GamesDbClient : IGameIdentityGraph
             // A null payload is a cached 404: the graph has no release under
             // this id, and asking again for 90 days would spend an unpublished
             // endpoint's goodwill to re-learn the same nothing.
-            return Deserialize(entry.PayloadJson)?.ToDomain(platform, externalId);
+            if (entry.PayloadJson is null) return null;
+            if (Deserialize(entry.PayloadJson) is { } valid) return valid.ToDomain(platform, externalId);
+            // A corrupt or unsupported projection is unknown, never a cached
+            // absence. A valid response can repair it immediately.
         }
 
         var fetched = await FetchAsync(platform, externalId, ct).ConfigureAwait(false);
@@ -162,9 +165,18 @@ public sealed class GamesDbClient : IGameIdentityGraph
         => JsonSerializer.Serialize(value, GamesDbJson.Options);
 
     private static CachedRelease? Deserialize(string? json)
-        => string.IsNullOrWhiteSpace(json)
-            ? null
-            : JsonSerializer.Deserialize<CachedRelease>(json, GamesDbJson.Options);
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            var value = JsonSerializer.Deserialize<CachedRelease>(json, GamesDbJson.Options);
+            return value is { Version: 1, Releases: not null } && !string.IsNullOrWhiteSpace(value.GameId)
+                && value.Releases.All(release => release is not null
+                    && !string.IsNullOrWhiteSpace(release.Platform) && !string.IsNullOrWhiteSpace(release.ExternalId))
+                ? value : null;
+        }
+        catch (JsonException) { return null; }
+    }
 
     private enum FetchOutcome
     {
@@ -181,11 +193,11 @@ public sealed class GamesDbClient : IGameIdentityGraph
     private readonly record struct Fetch(FetchOutcome Outcome, CachedRelease? Payload);
 
     /// <summary>The cached projection: a game id and the store releases sharing it.</summary>
-    private sealed record CachedRelease(string GameId, IReadOnlyList<CachedStoreId> Releases)
+    private sealed record CachedRelease(string GameId, IReadOnlyList<CachedStoreId> Releases, int Version = 1)
     {
         internal static CachedRelease? From(GamesDbLookupDto? dto)
         {
-            if (dto?.GameId is not { Length: > 0 } gameId)
+            if (dto?.GameId is not { } gameId || string.IsNullOrWhiteSpace(gameId))
             {
                 return null;
             }
@@ -193,7 +205,7 @@ public sealed class GamesDbClient : IGameIdentityGraph
             var releases = new List<CachedStoreId>();
             foreach (var release in dto.Game?.Releases ?? [])
             {
-                if (release.PlatformId is { Length: > 0 } platform
+                if (release?.PlatformId is { Length: > 0 } platform
                     && release.ExternalId is { Length: > 0 } externalId)
                 {
                     releases.Add(new CachedStoreId(platform, externalId));

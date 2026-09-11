@@ -309,8 +309,10 @@ public sealed class SessionWatcherTests
         harness.Processes.Exit(102, T0.AddMinutes(31));
         await harness.TickAtAsync(T0.AddMinutes(31).AddSeconds(35));
 
-        // The wrapper outlives them both — no session yet, it is still running.
-        Assert.Empty(await harness.SessionsForAsync(game.OwnershipId));
+        // The wrapper keeps the sitting open; its checkpoint has no inferred duration.
+        var checkpoint = Assert.Single(await harness.SessionsForAsync(game.OwnershipId));
+        Assert.Null(checkpoint.EndedAt);
+        Assert.Null(checkpoint.DurationSeconds);
 
         harness.Processes.Exit(100, T0.AddMinutes(32));
         await harness.TickAtAsync(T0.AddMinutes(32).AddSeconds(31));

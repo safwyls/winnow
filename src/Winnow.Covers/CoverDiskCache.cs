@@ -23,14 +23,17 @@ namespace Winnow.Covers;
 public sealed class CoverDiskCache
 {
     private readonly CoverCacheOptions _options;
+    private readonly TimeProvider _clock;
 
-    public CoverDiskCache(CoverCacheOptions options)
+    public CoverDiskCache(CoverCacheOptions options, TimeProvider? clock = null)
     {
         _options = options;
+        _clock = clock ?? TimeProvider.System;
         Root = options.CacheDirectory;
     }
 
     public string Root { get; }
+    internal DateTimeOffset UtcNow => _clock.GetUtcNow();
 
     public string SourcePath(CoverKey key) => Path.Combine(Root, key.CacheStem + ".src.jpg");
 
@@ -57,7 +60,11 @@ public sealed class CoverDiskCache
     /// <c>.none</c> that Steam wrote while it was the only source.</para>
     /// </summary>
     public bool IsKnownMissing(CoverKey key, string sourceSetId)
+        => TryGetMissingUntil(key, sourceSetId, out _);
+
+    internal bool TryGetMissingUntil(CoverKey key, string sourceSetId, out DateTimeOffset expiresAt)
     {
+        expiresAt = default;
         var path = NegativePath(key);
         if (!File.Exists(path))
         {
@@ -70,8 +77,8 @@ public sealed class CoverDiskCache
             return false;
         }
 
-        var age = DateTime.UtcNow - File.GetLastWriteTimeUtc(path);
-        if (age <= _options.NegativeTtl)
+        expiresAt = new DateTimeOffset(File.GetLastWriteTimeUtc(path)) + _options.NegativeTtl;
+        if (UtcNow < expiresAt)
         {
             return true;
         }
@@ -88,6 +95,9 @@ public sealed class CoverDiskCache
     {
         EnsureRoot();
         WriteAtomic(NegativePath(key), System.Text.Encoding.UTF8.GetBytes(sourceSetId ?? string.Empty));
+        try { File.SetLastWriteTimeUtc(NegativePath(key), UtcNow.UtcDateTime); }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 
     /// <summary>

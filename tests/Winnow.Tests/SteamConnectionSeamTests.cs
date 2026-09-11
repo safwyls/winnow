@@ -19,6 +19,24 @@ public class SteamConnectionSeamTests
 {
     private static readonly DateTimeOffset Now = new(2026, 8, 31, 9, 0, 0, TimeSpan.Zero);
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Only_successful_key_changes_request_background_ownership_refresh_after_reconciliation(bool refuse)
+    {
+        var settings = new InMemorySettingsRepository();
+        ISteamApiKeyProtector protector = refuse ? new UnavailableSteamApiKeyProtector() : new SteamApiKeyFixtures.ReversibleProtector();
+        var confirmation = new RecordingConfirmation();
+        var requests = new OwnershipRefreshRequests();
+        var count = 0;
+        requests.Requested += () => { count++; Assert.Equal(count, confirmation.Reconciliations); };
+        var connections = new StoreConnections(apiKeyStore: new SettingsSteamApiKeyStore(settings, protector),
+            confirmation: confirmation, refresh: requests);
+        await connections.SaveSteamApiKeyAsync("0123456789ABCDEF");
+        Assert.Equal(refuse ? 0 : 1, count);
+        if (!refuse) { await connections.ClearSteamApiKeyAsync(); Assert.Equal(2, count); }
+    }
+
     /// <summary>
     /// The state that used to read as "not configured". A live session is a
     /// usable credential, and the whole keyless sign-in path depends on every

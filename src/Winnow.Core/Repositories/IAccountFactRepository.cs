@@ -11,7 +11,7 @@ public interface IAccountFactRepository
     /// <summary>
     /// Appends a transaction fact unless the same one is already stored.
     /// Returns the new id, or null when the fact was already recorded. The
-    /// ON CONFLICT DO NOTHING identity from migration 0014 does the work, in
+    /// Account-scoped ON CONFLICT DO NOTHING identity does the work, in
     /// the same shape as <see cref="IPlaytimeSnapshotRepository.TryAppendAsync"/>.
     /// Callers use the null to count "already recorded" rather than to detect
     /// an error.
