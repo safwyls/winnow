@@ -3834,3 +3834,15 @@ The governing documents previously said:
 > Winnow encrypts stored credentials with Windows DPAPI (`CurrentUser` scope): Epic and Steam sign-in sessions, the Steam Web API key, the optional Epic OAuth client secret, and the IGDB client secret and cached access token, plus the SteamGridDB API key.
 > The same settings tab lets you reorder **High-resolution Steam heroes**, **SteamGridDB** and **IGDB** for backdrops.
 > A reader unions the two onto the release it is drawing a tile for (`FacetRepository.GetSnapshotAsync`).
+
+## Plugin walkthrough clarification (2026-09-11)
+
+The teaching walkthrough checked unavailable and empty responses against the host adapters.
+Recommendation feeds are computed for the current refresh; only provider-owned background and
+screenshot observations are removed by a confirmed empty artwork result. Assigned covers remain.
+The plugin guide previously said:
+
+> For library/artwork/feed lists, `null` means unavailable and preserves previous observations;
+> an empty list means a confirmed empty result. The host never infers unownership from absence.
+> Artwork refresh replaces only that plugin's images. Saved user backgrounds take precedence
+> over automatic source ordering. Screenshot results use the existing gallery/lightbox.

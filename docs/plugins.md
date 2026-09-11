@@ -4,6 +4,9 @@ Winnow loads optional local .NET plugins for library imports, metadata, artwork 
 feeds. SteamGridDB is the bundled reference plugin in `plugins/Winnow.Plugin.SteamGridDb`.
 It references the public SDK alone; the application supplies storage and HTTP services.
 
+For an explanation of the design with a SteamGridDB trace and a buildable example, read
+[Building Winnow's plugin system, from the inside out](plugin-system-walkthrough.md).
+
 ## Install and configure
 
 1. Open **Settings → Metadata & artwork → Open plugins folder**. The folder is `plugins`
@@ -105,10 +108,13 @@ tags. They exclude hidden account entries, non-games, provisional names, retired
 and active dismissal/snooze groups. Confirmed duplicates appear once. A returned handle cannot
 reintroduce a suppressed game. Each shelf displays six cards with four reserves.
 
-For library/artwork/feed lists, `null` means unavailable and preserves previous observations;
+For library and artwork lists, `null` means unavailable and preserves previous observations;
 an empty list means a confirmed empty result. The host never infers unownership from absence.
-Artwork refresh replaces only that plugin's images. Saved user backgrounds take precedence
-over automatic source ordering. Screenshot results use the existing gallery/lightbox.
+A confirmed empty artwork result removes that plugin's backgrounds and screenshots; it does
+not clear an assigned cover. Recommendation results are computed for the current feed: `null`
+or an empty list produces no shelf, and the host does not retain an older successful result.
+Saved user backgrounds take precedence over automatic source ordering. Screenshot results
+use the existing gallery/lightbox.
 
 ## Host services
 
