@@ -1,10 +1,11 @@
 ---
 id: TASK-159
 title: Extend Winnow updating to portable Windows and Linux with recovery
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@codex'
 created_date: '2026-09-08 04:59'
-updated_date: '2026-09-11 13:58'
+updated_date: '2026-09-11 19:06'
 labels:
   - app-updates
 dependencies:
@@ -35,6 +36,12 @@ Extend the existing release checks and installed-Windows update flow to supporte
 - [ ] #6 Release CI tests actual older-to-newer upgrades and recovery on supported Windows and Linux environments using disposable data; documentation specifies the support matrix and recovery limits.
 - [ ] #7 Desktop and fullscreen share update preferences, progress, failure/recovery state and explicit restart behavior; verify both presentation paths for the supported installation types.
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+Retain current ZIP, tar.gz and Debian layouts. Add a separately packaged helper for Windows x64 and portable Ubuntu 24.04 x64; registered Windows installations retain Inno and package-managed Linux retains the package manager. Validate release metadata, digest, archive paths and writable owned installation boundaries before staging beside the existing directory. After explicit Restart, wait for the exact app process and all database handles to close, create a pre-migration SQLite backup, and durably journal directory replacement while retaining previous binaries. Preserve the selected data directory, including when it lies inside the portable directory, and preserve only supported restart arguments. Require a new-version ready handshake after migrations and host startup. Before that handshake, recover interrupted replacement from the journal; after any possible migration, never automatically reopen old binaries against the changed database. Expose recovery details and same-or-newer reinstall guidance; restoring the paired pre-upgrade database is an explicit recovery operation. Exercise digest, permissions, disk-space, interruption, startup and backup/restore failures with temporary files, plus actual previous-release upgrades on disposable Windows and Ubuntu runners; verify shared desktop/fullscreen state. This helper and recovery architecture is a material decision and awaits plan approval before implementation.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
