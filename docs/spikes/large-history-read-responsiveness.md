@@ -1,5 +1,10 @@
 # Large-history reads — 2026-09-11
 
+> **Dated evidence.** Findings describe the builds and services observed on the dates below.
+> Current implementation choices are in [the build spec](../../game-library-design.md);
+> current interactions and layout are in [the visual spec](../../design-system.md).
+> This record is optional background.
+
 TASK-222 measures the review's scaling concern using synthetic data. The measurements below
 come from the local Windows Release headless test host, .NET 10.0.11, SDK 10.0.400. They do
 not establish native Linux performance, physical-controller latency or a screen refresh rate.

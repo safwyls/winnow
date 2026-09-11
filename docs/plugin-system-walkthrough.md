@@ -5,18 +5,14 @@ interfaces that Winnow already understands. The plugin knows its service or data
 Winnow knows its library, storage rules and presentation. The public SDK is the agreement
 between them.
 
-This walkthrough explains the implementation introduced in commit `7b10b88`. It assumes some
+This walkthrough explains the current plugin runtime and adapters. It assumes some
 familiarity with C# classes and methods, but no experience building plugins. The existing
 [plugin guide](plugins.md) is the shorter installation and API reference. This document explains
 how the parts connect and how to build something similar.
 
 **1. Start with the boundary you want to extend**
 
-Originally, SteamGridDB was an ordinary application dependency. Winnow registered its client
-and synchronization service explicitly, and settings had a SteamGridDB-specific editor. Adding
-another provider meant changing the application in several places.
-
-The extraction gave those responsibilities three homes:
+The host separates the extension contract, runtime and application behavior:
 
 | Piece | Responsibility | Winnow implementation |
 |---|---|---|
@@ -24,7 +20,7 @@ The extraction gave those responsibilities three homes:
 | Runtime | Discovers packages, loads their code and manages calls | `Winnow.Plugins` |
 | Application adapters | Validate results and apply Winnow's database and presentation rules | App services such as `PluginSyncService` |
 
-SteamGridDB becomes a fourth, replaceable piece: an implementation of the artwork interface.
+SteamGridDB is a fourth, replaceable piece: an implementation of the artwork interface.
 It references the SDK alone. It does not need to reference Avalonia, Winnow's database or the
 application assembly.
 
@@ -81,10 +77,8 @@ This avoids making every plugin implement meaningless methods for features it do
 boundary. The game handle is opaque to the plugin. Authors should use the supplied external
 IDs for service lookups and return handles unchanged when making recommendations.
 
-We deliberately did not pass a database connection, a window, or the application's dependency
-injection container. Dependency injection means supplying an object's dependencies from outside
-it. A whole container would let plugins request arbitrary internal services and quietly turn
-those internals into an API we would have to support.
+Plugins receive scoped SDK services. They receive no database connection, window or application
+dependency injection container, keeping the public contract independent of host internals.
 
 **3. Describe a plugin before running its code**
 
@@ -446,8 +440,9 @@ cancellation token. Ordinary exceptions produce a fixed diagnostic and an unavai
 a later call can succeed. An operation timeout disables further calls for that session.
 
 A deadline limits how long Winnow waits. It cannot forcibly terminate code that ignores
-cancellation. A plugin that starts its own threads must manage those too. Even ordinary slow
-feed calls can delay publication of the feed until they finish or reach the deadline.
+cancellation. A plugin that starts its own threads must manage those too. Built-in shelves
+publish independently; optional shelves arrive through a bounded supplement for the current
+feed generation. Feedback changes invalidate an outstanding supplement.
 
 Plugins are trusted code inside Winnow's process. The manifest's HTTP hosts and scoped storage
 govern use of SDK services. A DLL can still call .NET filesystem and network APIs directly.
@@ -460,18 +455,17 @@ boundary, plus operating-system restrictions if the aim is to limit permissions.
 processes alone do not define those restrictions. That would add serialization, process
 lifecycle and permission design to the work. Winnow v1 uses explicit trust and local installation.
 
-**12. Prove the boundary with a real plugin**
+**12. Packaging, compatibility and verification**
 
-Moving SteamGridDB out was valuable because it already needed credentials, HTTP, cache, artwork
-selection and settings. If it had still needed an App reference, that would have exposed a gap
-in the contract immediately.
+SteamGridDB exercises credentials, HTTP, cache, artwork selection and generated settings
+through the SDK alone.
 
 The App's [project file](../src/Winnow.App/Winnow.App.csproj) retains a build dependency on the
 bundled plugin with `ReferenceOutputAssembly="false"`. That builds and packages it without
 making its types an application compile-time dependency. Build/publish targets copy the DLL
 and manifest into the plugin directory.
 
-Existing installs also needed continuity. The
+The
 [legacy migration adapter](../src/Winnow.App/Services/LegacySteamGridDbPluginMigration.cs)
 preserves old credentials, cached responses, artwork observations and downloaded images. This
 is intentionally SteamGridDB-specific compatibility work around an otherwise generic pipeline.
@@ -488,10 +482,8 @@ The verification covers several different boundaries:
 - [UI interaction tests](../tests/Winnow.Ui.Tests/PluginSettingsInteractionTests.cs) exercise
   generated settings separately on desktop and fullscreen.
 
-The implementation's verification run passed 4,635 tests, with two Linux-only tests skipped on
-Windows. Release publishing, loading the published SteamGridDB DLL and local SDK packaging
-also passed. Those checks establish the tested behavior; they do not claim an authenticated
-live SteamGridDB call or arbitrary third-party compatibility.
+These tests cover the host contract and bundled provider. Authenticated live service access
+and compatibility with an arbitrary third-party package require their own verification.
 
 If building your own plugin system from scratch, use the same progression: pick one useful
 capability, define its small contract, make one independently compiled provider work through

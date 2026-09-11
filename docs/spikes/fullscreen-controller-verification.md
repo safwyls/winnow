@@ -1,5 +1,10 @@
 # Fullscreen controller verification
 
+> **Dated evidence.** Findings describe the builds and services observed on the dates below.
+> Current implementation choices are in [the build spec](../../game-library-design.md);
+> current interactions and layout are in [the visual spec](../../design-system.md).
+> This record is optional background.
+
 The fullscreen implementation was checked on Windows on 2026-09-09. This records the
 verification method and its limits; `design-system.md` owns the interaction contracts.
 

@@ -38,7 +38,7 @@ internal static class RepositoryTree
 
     /// <summary>
     /// Every file under <paramref name="relative"/> matching
-    /// <paramref name="pattern"/>, excluding build output. Paths come back
+    /// <paramref name="pattern"/>, excluding build output and staged publish trees. Paths come back
     /// repository-relative with forward slashes, so a failure message reads the
     /// same on any machine.
     /// </summary>
@@ -53,7 +53,8 @@ internal static class RepositoryTree
         return [.. Directory
             .EnumerateFiles(start, pattern, SearchOption.AllDirectories)
             .Select(Relative)
-            .Where(p => !p.Contains("/bin/", StringComparison.Ordinal)
+            .Where(p => !p.StartsWith("artifacts/", StringComparison.Ordinal)
+                     && !p.Contains("/bin/", StringComparison.Ordinal)
                      && !p.Contains("/obj/", StringComparison.Ordinal))
             .OrderBy(p => p, StringComparer.Ordinal)];
     }

@@ -20,7 +20,7 @@ client, and the host supplies compatibility for its previously saved key and cac
 
 Build the project and package `plugin.json` with `Winnow.Plugin.SteamGridDb.dll`. Winnow
 supplies `Winnow.PluginSdk.dll`; no host assemblies or API keys belong in a plugin package.
-See the repository's plugin authoring documentation for installation and API compatibility.
+See [plugin authoring](../../docs/plugins.md) for installation and API compatibility.
 
 `tests/Winnow.Plugin.SteamGridDb.Tests` runs entirely against an in-memory SDK context and
 canned responses. It also verifies that the plugin assembly depends only on the public SDK

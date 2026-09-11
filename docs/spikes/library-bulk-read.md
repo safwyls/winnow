@@ -1,5 +1,10 @@
 # Library bulk-read measurement
 
+> **Dated evidence.** Findings describe the builds and services observed on the dates below.
+> Current implementation choices are in [the build spec](../../game-library-design.md);
+> current interactions and layout are in [the visual spec](../../design-system.md).
+> This record is optional background.
+
 Measured on 2026-09-06 in Windows Release mode with .NET 10.0.11. The fixture uses a
 temporary, migrated SQLite file with pooling disabled, matching the repository tests.
 It contains 1,000 works, releases, ownerships and Steam external IDs, plus one manual list.

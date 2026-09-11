@@ -1,4 +1,8 @@
-# Additional fullscreen mock prompts
+# Fullscreen concept generation inputs
+
+Archived generation text for the images in this folder. These prompts are artifact provenance,
+not current app requirements. Use [design-system.md §8](../../../design-system.md#8-accessibility-floor)
+for fullscreen work.
 
 Method: built-in image-generation tool; home.png supplied as the visual identity reference.
 

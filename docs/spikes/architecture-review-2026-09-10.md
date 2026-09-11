@@ -1,5 +1,10 @@
 # Architecture review evidence — 2026-09-10
 
+> **Dated evidence.** Findings describe the builds and services observed on the dates below.
+> Current implementation choices are in [the build spec](../../game-library-design.md);
+> current interactions and layout are in [the visual spec](../../design-system.md).
+> This record is optional background.
+
 This records how the accompanying [architecture and code review](../architecture-review-2026-09-10.md) was checked. It is measurement evidence, not a new specification.
 
 ## Environment and isolation

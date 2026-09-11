@@ -1,7 +1,9 @@
 # Spike: Steam GDPR / account-data export (what it actually contains)
 
-> **Evidence, not a rule.** This document records how something was measured and is
-> never the place to look up what to do. The current rule is in `game-library-design.md` §5.4.
+> **Dated evidence.** Findings describe the builds and services observed on the dates below.
+> Current implementation choices are in [the build spec](../../game-library-design.md);
+> current interactions and layout are in [the visual spec](../../design-system.md).
+> This record is optional background.
 
 Date: 2026-08-28; updated 2026-08-29
 Verified against: public/primary sources only until 2026-08-28, listed in the Sources
@@ -106,11 +108,8 @@ current cumulative playtime, two-week playtime and last-played: **exactly the sa
 Winnow already ingests from `IPlayerService/GetOwnedGames` and `localconfig.vdf`.** There
 is no per-period, per-month or per-session breakdown anywhere on the dashboard's index.
 
-**The GDPR path does not solve the cold-start problem.** `ROADMAP.md` §2 states "M5 was
-already the cold-start fix. The GDPR-export importer backfills historical playtime." That
-is not supported by what the dashboard actually exposes. This is a correction to the
-roadmap's reasoning, not to its priority; whether to adjust the roadmap is the owner's call
-and this spike does not propose an edit.
+The dashboard does not supply historical playtime. Steam Replay provides the monthly
+series described in section 4; saved account pages provide acquisition and spending data.
 
 Useful detail: the games-list page is JS-rendered from an embedded JSON array, and the
 same data is available as XML at
@@ -132,7 +131,8 @@ and is reachable. Parameters per xPaw's generated `api.json`: `key` (required), 
 `year`, `force_regenerate`, `access_source`, `fetch_previous_year_summary`. Marked
 undocumented.
 
-Response shape, from the proto (but see the correction below):
+Proto field reference. The live JSON places months inside each game; the observed
+envelope and parser support are described immediately after this reference:
 
 ```protobuf
 message CUserYearInReviewStats {
@@ -192,7 +192,7 @@ message CGameSummary {
 }
 ```
 
-**Correction, verified 2026-08-28:** the monthly axis placement observed live does NOT
+**Live JSON envelope, verified 2026-08-28:** the monthly axis placement observed live does NOT
 match this proto's layout. The proto puts `months[]` at the `CUserPlaytimeStats` level,
 each month carrying its own repeated `appid[]` of per-game stats. What came back from a
 real authenticated call was `response.stats.{account_id, year,
@@ -254,13 +254,9 @@ returns HTTP 200 with populated stats. The §4.2 privacy caveat applies as expec
 returned only when the key belongs to the queried account. Coverage confirmed at 2022
 onward, matching the REPORTED note about Steam Replay's first year.
 
-This was the spike's item 5 in "What is still blocked on a real export" and the note that
-said "should be tested first; it may make items 1-4 much less urgent". It was tested, and
-the result is the whole M5 milestone: the two endpoints together provide per-game per-month
-playtime seconds, first-played dates, cumulative totals, and session counts, which is
-everything the cold-start backfill needs. Items 1-4 (HTML scraping for playtime data)
-remain open but are now far less urgent, since the API gives more and better history than
-the dashboard pages ever carried.
+Together these endpoints provide per-game monthly playtime, first-played dates,
+cumulative totals and session counts for historical backfill. Account-page HTML supplies
+acquisition data instead.
 
 ### M5 implementation
 
@@ -294,13 +290,9 @@ Not playtime history. Acquisition facts:
   `MyGameEventSeen` ("Game Event or Announcement First Seen/Read") is interesting for §6's
   `update_events`, since it records when the user first saw an announcement.
 
-**§4.7 tension, flagged explicitly:** §4.7 says "Do not scrape either page" of the
-transaction/spend pages, while §5.4 sanctions "the GDPR export" as the path to the same
-data. Since the export *is* those pages, the distinction that keeps both rules intact is
-**who fetches them**: Winnow parsing HTML files the user saved from their own logged-in
-browser is the sanctioned shape; Winnow holding Steam credentials and fetching those pages
-itself is not. This is a design decision the owner should ratify, not a conclusion the
-spike reaches on its own.
+This study distinguishes the page contents from how Winnow obtains them. The current
+user-present WebView harvest and saved-page import are specified in the build spec,
+sections 4.7 and 5.4.
 
 ## 6. Known open-source parsers: VERIFIED, there are none
 
@@ -328,61 +320,18 @@ No license-compatible parser exists to learn patterns from.
 
 ---
 
-## What is still blocked on a real export
+## Evidence limits
 
-1. ~~Whether any per-page HTML is stable enough to parse: table markup, class names, id
-   attributes, date formats, locale/number formatting, pagination behavior on a large
-   account.~~ **Partially resolved 2026-08-29.** The two `store.steampowered.com/account/`
-   pages (licenses and purchase history) have been parsed from real saved HTML; selectors
-   are VERIFIED and fixtures committed. See §8. The `help.steampowered.com/en/accountdata/*`
-   pages remain unverified; their markup is still a guess.
-2. **Resolved for the live dashboard 2026-09-06:** `ExternalLicenses` renders the index,
-   not a separate data page. There are no distinct columns to document; see §2.
-3. Whether a support ticket yields files, and in what container.
-4. Whether the licenses page distinguishes third-party-key *vendors* (Humble vs Fanatical)
-   or only says "Retail". **Still UNKNOWN as of 2026-08-29.** The sample account had no
-   retail activations, so no "Retail" row appeared at all. This is absence of data, not
-   evidence either way.
+The two store account pages have verified selectors and sanitized fixtures. The live
+`ExternalLicenses` route rendered the dashboard index on 2026-09-06, not a separate
+data page. The API key successfully authenticated Year in Review on 2026-08-28.
 
-~~5. Whether `GetUserYearInReview` authenticates with the API key Winnow already holds.~~
-Resolved, verified 2026-08-28: it does. See "Auth question resolved" above.
+Still unverified in this study:
 
-Item 1 is partially resolved for the two store account pages (2026-08-29); items 2-4 remain
-open. Items 2-3 need the owner's session on `help.steampowered.com`; item 4 needs an
-account with retail activations. The API endpoints give more and better playtime history
-than the dashboard pages carry, so the HTML path is now relevant only for acquisition data
-(licenses, purchase history), not for the cold-start problem M5 set out to solve.
-
-## Recommended scope for M5
-
-Ordered by value per line of code, not by the design doc's original numbering:
-
-- **First, and cheapest: `IPlayerService/ClientGetLastPlayedTimes`** for `first_playtime`
-  per app. One call, existing key, existing client class. Note (verified 2026-08-28):
-  `first_playtime` is 0 ("not tracked") on many entries, so it converts a subset of
-  ownerships from a point into a span, not all of them. Still the highest value per line of
-  code in the milestone; the subset is large enough to matter.
-- **Second, and the actual cold-start fix: `ISaleFeatureService/GetUserYearInReview`** for
-  years 2022..current. Yields per-game per-month playtime seconds and session counts,
-  backfilling `playtime_snapshots` and giving `Winnow.Recommend` a real longitudinal series
-  on install day. Auth verified 2026-08-28: the existing user key works. This is the
-  finding that reshaped M5.
-- **Third, and only for acquisition data: a saved-HTML importer.** User saves
-  `account/licenses` and `account/history` from their own browser; Winnow parses with
-  AngleSharp into `ownerships.acquired_at`, `license_type`, `price_paid_cents`.
-  Deliberately not the playtime path. ~~Blocked on a real page to write selectors against.~~
-  Unblocked 2026-08-29: selectors verified, fixtures committed. See §8.
-- **Do not build:** a general "GDPR export importer" that walks ~100 dashboard pages. The
-  inventory is mostly links to pages Winnow does not need, the high-value subset is four
-  pages, and no archive format exists to target.
-
-Notes for the implementation:
-
-- A parser written against saved HTML should treat markup as hostile and versioned: fail
-  soft per-page, never abort the import, and record which page produced each fact so a
-  Steam redesign degrades rather than corrupts.
-
----
+- Markup on the other `help.steampowered.com/en/accountdata/*` pages.
+- Whether a support ticket yields files, and in what container.
+- Whether licenses distinguish retail-key vendors. The captured account had no retail
+  activations, so it cannot answer that question.
 
 ## 8. Store account pages, verified from real saved HTML: 2026-08-29
 
@@ -451,7 +400,7 @@ See that directory's README for sanitization details.
   Steam's script hides the button with jQuery when exhausted rather than removing it, so
   an exhaustion check must test visibility, not existence.
 
-### Harvest selector verdicts (resolves the harvest work-package follow-up)
+### Harvest selector findings
 
 - `#account_pulldown` (signed-in probe): **CORRECT.** It is a
   `<button id="account_pulldown">` holding the persona name, present on both pages.
@@ -463,13 +412,9 @@ See that directory's README for sanitization details.
   every store page. `getElementById` always returned null and row counting silently fell
   back to counting every `tr` in the document. Corrected to
   `table.wallet_history_table tbody tr.wallet_table_row`.
-- **GAP FOUND:** nothing handled the licences paginator, so the embedded harvest captures
-  only the first 100 licences. Helper scripts to read the paginator were added, but the
-  harvester's own capture loop does not yet use them. ~~This is an open follow-up.~~
-  **Closed 2026-08-29.** `WebView2SteamPageHarvester.GatherLicensesPagesAsync` now walks the
-  paginator in-page (fetch + DOMParser append, paginator element replaced so a complete walk
-  parses as complete), capped by `MaxLicensesPages` (default 50). The result carries
-  `LicensesPagesWalked` and `LicensesStoppedBecause` for diagnostics.
+- The licenses paginator is an in-page fetch followed by DOMParser append. The
+  2026-08-29 implementation walked up to `MaxLicensesPages` (default 50), replaced the
+  paginator element, and reported `LicensesPagesWalked` and `LicensesStoppedBecause`.
 
 **Live paginator recheck, 2026-09-06 (TASK-47).** In an authenticated browser on
 `store.steampowered.com/account/licenses`, the user ran a read-only console probe that

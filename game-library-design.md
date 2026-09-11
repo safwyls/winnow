@@ -17,8 +17,8 @@ API and filesystem behaviour that has been verified against live systems, and se
 constraints contradict what you will find in older blog posts and Stack Overflow answers.
 Read section 4 before writing any ingest code.
 
-Items marked **[VERIFY]** have not been confirmed. Confirm them empirically before building
-on them; do not treat them as established. Two remain, both in §9.
+The two open questions in §9 are unconfirmed. Verify them empirically before implementing
+features that depend on their answers.
 
 ---
 
@@ -57,8 +57,8 @@ exposed by storefront APIs or not retained by anyone.
 
 This application is a **background daemon with a UI attached**. It sits in the tray
 enumerating processes every few seconds, all day, and the user interacts with it briefly and
-occasionally. Avalonia was chosen over Electron on that profile. Do not reopen the choice; the
-reasoning and its accepted costs are in `docs/decisions.md`.
+occasionally. Avalonia provides the native .NET desktop UI for that long-running, local-first
+process; the host and background services remain separate from its views.
 
 ---
 
@@ -135,12 +135,6 @@ Reading these correctly requires four further behaviours:
 
 **Multiple accounts.** `userdata/` may hold several `steam3id` directories. Enumerate all of
 them and attribute playtime per account; `CandidateOwnership` carries the `steam3id`.
-
-**Collections JSON.** The path changed in 2025; older guides pointing at `sharedconfig.vdf` or
-a Chromium LevelDB store in `htmlcache` are dead. The top level is an **array of
-`[key, entry]` pairs**, not an object map. Entries carry tombstones (`is_deleted`) that must
-be honoured, and the id alphabet includes `+`, `/` and `*`. Ingest static membership (`added`
-minus `removed`); record `filterSpec` without evaluating it.
 
 **Steam is an eventually-consistent writer.** The client does not flush config changes to disk
 immediately, and reads may be stale by an unbounded amount.
@@ -379,7 +373,8 @@ the news item's `url` on the event row; the badge is clickable.
 PSN and Xbox are **out of scope and must not be added**. Neither has a consumer API, PSN
 requires the user to extract an `npsso` cookie by hand every two months, and PSNAWP's own
 documentation warns that use may result in PSN account bans. Signing in to Epic is not a
-precedent for these; the reasoning is in `docs/decisions.md`.
+precedent for these: Winnow supports service linking only within each supported provider's
+authentication contract.
 
 ### 4.7 Steam account pages, sign-in, and what may be stored
 
@@ -579,9 +574,10 @@ absence still reconciles known registry installations on the next successful loc
 - Local GOG titles carry the installer's locale, so a Polish install of GWENT reports a Polish
   title. `GamePieces.title` from Galaxy is canonical.
 
-**Built-in storefront client credentials.** Epic's launcher client id and secret ship with
-Winnow, at the lowest priority in the credential chain, so a user-supplied pair always wins.
-The reasoning is in `docs/decisions.md`.
+**Built-in storefront client credentials.** Epic authentication uses the first complete
+credential pair from saved settings, `Epic:ClientId` / `Epic:ClientSecret` configuration,
+then the bundled launcher client credentials. This lets ordinary installs link Epic while
+allowing users to supply their own client.
 
 **Anonymous storefront links and GOG changelogs** live in `Winnow.Enrich.Stores`.
 Epic's `GET https://store-content.ak.epicgames.com/api/content/productmapping` maps namespaces
@@ -644,7 +640,7 @@ graph TB
             UP[Update Signal Poller]
         end
 
-        subgraph Core["Core"]
+        subgraph ApplicationLogic["Resolution, monitoring and recommendations"]
             ER[Entity Resolver]
             PM[Process Monitor - 5s]
             SN[Snapshot Scheduler]
@@ -674,7 +670,7 @@ graph TB
     SCMD --> UP --> DB
     PM --> DB
     SN --> DB
-    DB --> RC --> DB
+    DB --> RC --> LV
 ```
 
 ### 5.1 Module boundaries
@@ -1008,9 +1004,10 @@ The hardest part of this project. Get it wrong and the dataset is untrustworthy.
 
 **Matching:**
 
-1. **Hard join, auto-merge.** IGDB `external_games` by Steam appid or GOG id. For Epic, use
-   GOG's own cross-store identity graph via `gamesdb.gog.com`, which resolves Epic titles to
-   the same `game_id` as their Steam counterparts. Merge without asking.
+1. **Exact source identity.** `ExternalIdResolver` matches `(provider, provider_id)` to an
+   existing release; a miss creates a work and release. IGDB `external_games` supplies exact
+   metadata lookups for Steam and GOG. Epic's GamesDB lookup supplies metadata only, as
+   described below; it does not join releases or confirm a merge.
 2. **Soft match, queue, never auto.** Normalised title plus release year within ±1, publisher
    match, cover perceptual hash. Produce a confidence score and write to `merge_candidates`
    with `status='pending'`.
@@ -1170,7 +1167,7 @@ works(id, igdb_id UNIQUE, igdb_mapping_revision, name, sort_name,
       first_release_year, summary, cover_url, background_url)
 releases(id, work_id FK, igdb_version_id, name, platform, edition_note)
 external_ids(release_id FK, provider, provider_id, PRIMARY KEY(provider, provider_id))
-  -- provider ∈ {steam, gog, epic, igdb}
+  -- provider ∈ {steam, gog, epic, igdb} or plugin:<id>
 
 -- Ownership and play
 ownerships(id, release_id FK, store, account_ref, acquired_at,
@@ -1369,28 +1366,23 @@ the bucket query returns. Explicit when any token reaches `AdultsOnly` on the `M
 (`Winnow.Core.Queries`): the rating codes `esrb:ao` and `acb:x18`, and the descriptor
 `adult_only_sexual_content`. The broad 18+ board ratings — `pegi:18`, `usk:18`, `cero:z`,
 `acb:r18`, `classind:18`, `grac:18` — sit at `Restricted18`, one tier below, and are not
-explicit: IGDB returns every board for a work, so a game rated PEGI 18 for violence was
-hidden under the old rule and is not now. The full scale is `Unrated`, `Everyone`,
+explicit. A PEGI 18 rating for violence alone does not hide a game. The full scale is `Unrated`, `Everyone`,
 `Preteen`, `Teen`, `Mature`, `Restricted18`, `AdultsOnly`, ascending, anchored on the
 minimum age each board states. `Unrated` is inside every cap and is never explicit.
 `MaturityRules.ExplicitTier` is `AdultsOnly`, pinned by
-`ExplicitContentTests.The_explicit_set_is_exactly_the_adults_only_signals`. The tier scale
-is the input TASK-103's rating-cap filter consumes, which is why the tiers are kept rather
-than reduced to a boolean. Retuning the vocabulary was a code change, not a migration —
-tokens are stored verbatim and the verdict is taken at read time, exactly the payoff
-0024's no-stored-verdict design was built for. Migration 0024's header comment still
-enumerates the old eight-code list; migrations are append-only, so `MaturityTiers` and
-`MaturityRules` in `Winnow.Core.Queries` are the authority on the current vocabulary.
+`ExplicitContentTests.The_explicit_set_is_exactly_the_adults_only_signals`. The tier scale is
+the input to the rating-cap filter. `MaturityTiers` and `MaturityRules` in
+`Winnow.Core.Queries` define this vocabulary; stored tokens allow classification to change
+without rewriting provider observations.
 **A work with no maturity row is never explicit.**
 An explicit successful IGDB answer with no rating tokens removes that source's old row.
 An unavailable answer retains existing evidence. Cached successful misses preserve this
 distinction, and neither case removes another provider's rating.
 Absence of data is not a rating; hiding a game because nobody has looked it up yet is the
 failure to avoid. **The same rule governs `NonGameEntries`: a row whose type no store has
-stated is not a non-game entry and stays visible either way.** There is no CHECK on
-`source` on purpose: migration 0021 had to rebuild
-`identity_links` to widen a CHECK, and a closed list in DDL pays that cost on every new
-source. The preference is `BucketThresholds.ShowExplicitContent`, settings key
+stated is not a non-game entry and stays visible either way.** `source` has no database
+CHECK constraint so another evidence provider does not require rebuilding the table.
+The preference is `BucketThresholds.ShowExplicitContent`, settings key
 `library.show_explicit_content`, default false. The filter drops the whole resolved game,
 not one entry, and takes the game's variants with it.
 
@@ -1464,8 +1456,7 @@ tables, keeping old answers around would be a second answer to the same question
 Fields tracked: `name`, `first_release_year`, `summary`, `cover_url`, `publisher`,
 `background_url`. Sources: `user`, `igdb`, `steam`, `epic`, `gog`. Both vocabularies live
 in `Winnow.Core.Queries` (`WorkFields`, `FieldSources`), stored verbatim, with no CHECK on
-`source` or `field` — the same reason migration 0021's `identity_links` rebuild gave and
-the maturity paragraph above already records for `work_maturity`.
+`source` or `field`, allowing new fields and providers without rebuilding the table.
 
 There is no backfill. Nothing can retroactively know whether a value written before 0027
 came from IGDB or the Steam store. Absence of a row means no writer has claimed the field
@@ -1481,17 +1472,16 @@ NULL for each field the user owns, so the existing COALESCE leaves the stored va
 that COALESCE means "already answered, leave it", and the first service to answer keeps the
 field. The write stamps every field it actually filled with the source that supplied it.
 
-**Read-side precedence.** `work_field_sources` answers who last wrote a value; it is not a
-read-time precedence layer. There is nothing for it to outrank: each field has one value in
-one column, and the read is that column. A work's displayed name is `works.name` on every
+**Reading metadata.** Each field has one stored value. `work_field_sources` records its
+writer and protects user-owned fields during enrichment; reads use the value directly.
+A work's displayed name is `works.name` on every
 surface — the grid tile and the list row, the details modal headline, the feed card, search
 and the title sort, the Merges queue, the hidden-games list and the hand-added list. Two
 queries COALESCE `releases.name` over `works.name` into a `Title` column, and neither is a
 display read: the bucket query in `LibraryQueryRepository`, which never leaves `BucketRow`
 and feeds `DemoConsolidation`; and the enrichment target query in `WorkRepository`, which
 feeds the demo-like prefilter. Both want the storefront's own words so that a user rename
-cannot unfold a demo. Setting a field by hand therefore needs no read-side precedence rule
-and needed no migration.
+cannot unfold a demo.
 
 Only user-visible metadata is tracked. The classification columns — `steam_app_type`,
 `epic_categories`, `steam_store_type`, `steam_parent_app_id`, `igdb_game_type`,
@@ -1516,31 +1506,23 @@ dimensions above 8192 on either axis or 32 Mi pixels total. Negative cache entri
 the source-set identity; capability refresh runs before suppressing a miss so configuring
 IGDB can reopen it in the same session. Existing positive disk art remains reusable.
 
-**List membership resolution.** `lists` and `list_items` already existed. Membership stays
-stored per release — adding a game to a list is an explicit act on the entry the user
-picked — and is now resolved per read: a list contains a game when any release of any work
+**List membership resolution.** Membership in `list_items` is stored per release: adding
+a game to a list records the entry the user picked. A list contains a game when any release of any work
 in that game's live `same_game` group is a member. `kind` is `same_game` only, so an
 expansion's membership is its own. Membership survives a link because the link model never
 deletes or repoints a `list_items` row, and the read follows the resolved game.
 
 ## 7. Export
 
-A launch feature, not an afterthought. Every incumbent in this space is a roach motel.
-
-- JSON: full fidelity, versioned schema, round-trippable through an import path
-- CSV: flattened, one row per ownership and observed acquisition account, for spreadsheet users
-- No account and no network required
-- A schema version in every export; write the importer against the version field from day one
-
-The acquisition CSV in Settings → Library is the first implemented export. It writes one
+Settings → Library exports acquisition data as CSV without an account or network access.
+Full-fidelity, versioned JSON export and import are deferred. The CSV writes one
 row per ownership and observed acquisition account, including hidden entries, with `schema_version` (2), `ownership_id`,
 `release_id`, `title`, `store`, `acquired_at`, `license_type`, `price_paid_cents` and
 `price_source`, plus `account_ref`. Legacy or unknown-account facts use a blank account field;
 accounts are kept separate even when their receipts are identical. The reported ownership count
 counts distinct ownerships, which may have several account rows. Dates are UTC, missing facts are empty cells, and a known zero price stays
 zero. Prices carry no currency because the source schema does not record one. CSV uses UTF-8,
-quoted values and CRLF records, preserving commas, quotes and newlines in titles. Full JSON
-export and import remain deferred.
+quoted values and CRLF records, preserving commas, quotes and newlines in titles.
 
 ---
 
@@ -1582,11 +1564,9 @@ answers are out of date.
 
 ## 10. The shelf view
 
-A 3D "games on a shelf" browsing view was specified and then cut. It was the sole argument for
-Electron over Avalonia. **If the shelf is ever reinstated, it does not on its own justify
-revisiting the framework choice**: Avalonia has no first-class 3D, so a reinstated shelf would
-mean Silk.NET/OpenTK by hand, SkiaSharp 2.5D, or an embedded WebView, all of which are worse
-than accepting that this is a data tool with a good list view.
+Winnow presents the library through covers, lists and recommendation shelves. A 3D
+"games on a shelf" browsing view is out of scope. Recommendation shelves are ordinary UI
+groups of cards and do not require a 3D renderer.
 
-Cover thumbnails in the library view remain in scope and come from IGDB covers and Steam's
-`library_600x900` portrait capsule.
+Automatic cover thumbnails come from IGDB covers and Steam's `library_600x900` portrait
+capsule. User artwork and provider plugins use the shared artwork pipeline in §5.1.

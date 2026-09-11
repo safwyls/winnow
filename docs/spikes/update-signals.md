@@ -1,7 +1,9 @@
 # Spike: Update signals — build push + announcement, and what a 616-game poll costs
 
-> **Evidence, not a rule.** This document records how something was measured and is
-> never the place to look up what to do. The current rule is in `game-library-design.md` §4.5.
+> **Dated evidence.** Findings describe the builds and services observed on the dates below.
+> Current implementation choices are in [the build spec](../../game-library-design.md);
+> current interactions and layout are in [the visual spec](../../design-system.md).
+> This record is optional background.
 
 Date: 2026-08-23. Resolves the `[VERIFY]` in `game-library-design.md` §4.5. Feeds M2.
 
@@ -208,16 +210,15 @@ reports say requesting more than ~5,000 changenumbers of history returns only th
 — Steam's global changenumber is already 38,253,266 and moves fast, so a daily poller would blow past
 that window between runs. Revisit only if steamcmd.net dies.
 
-## §4.5 amendments
+## Findings
 
-| §4.5 says | Reality |
-|---|---|
-| steamcmd.net demo was erroring — `[VERIFY]` | **Alive and correct.** `depots.branches.public.timeupdated` present on all 4 appids |
-| Keep local SteamCMD as fallback | **Drop it.** 250 MB + an open non-TTY output bug; degrade to "no build signal" |
-| "filtered to community announcements" | Use **`tags=patchnotes`** — 527 → 34 items vs 74 for the feeds filter |
-| — | **`GetNewsForApp` needs no API key.** M2 requires no user-supplied credentials |
-| — | Both sources are **one appid per request**; steamcmd.net's `/openapi.json` proves no batch route exists |
-| — | **403 from `GetNewsForApp` means "no feed for this appid", not throttling.** Cache it; do not back off |
-| — | Correlation window must be **±7 days** — Stardew's build landed 2 days *after* its announcement |
-| — | Store the news item `url` on the event row; design-system §5.2's badge click needs it |
-| — | Never-opened games are ineligible for the badge, so **do not poll them** — the single biggest saving |
+- The four checked steamcmd.net responses contained a public-branch update timestamp.
+- Both services used one appid per request; the mirror's OpenAPI described no batch route.
+- The keyless news query with `tags=patchnotes` reduced 527 items to 34 in the sample,
+  compared with 74 using the feeds filter.
+- The checked news 403 responses represented apps without a news feed.
+- Stardew Valley's build landed two days after its announcement, showing why matching
+  build and announcement timestamps needs a window rather than an exact date.
+
+The current poll eligibility, cache behavior and correlation window are specified in the
+build spec, section 4.5.

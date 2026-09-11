@@ -5,11 +5,8 @@ endpoint and field path the value is read from, the transformation applied, wher
 it is cached, and how often it refreshes. Field paths, not prose, so a wrong
 checkbox can be traced to a specific byte on disk.
 
-Governing documents: `game-library-design.md` §4.3 (store metadata), §4.4 (IGDB),
-§5.1 (enrichment must never block a user-facing path);
-`docs/spikes/steam-store-tags.md` (which store endpoint is actually viable);
-`src/Winnow.Data/Migrations/0007_facets.sql` (why the vocabulary is keyed on the
-name and not the provider's id).
+This is the field-mapping reference for built-in metadata and plugin facets. Background
+refresh, source separation and cache rules are stated here alongside their mappings.
 
 Validated end-to-end against the author's 946-release library on 2026-08-25 — see
 **Validation record** at the foot.
@@ -245,11 +242,8 @@ label of its own for either figure (Steam has one and IGDB does not, which is
 why `work_ratings.label` is null on both IGDB rows).
 `total_rating`/`total_rating_count` exist and are deliberately not used.
 
-Version 4 added image IDs and reception; version 5 adds source image dimensions,
-transparency, animation and artwork image type. Older compatible positives follow the
-refetch-and-fallback rule above. The measured 3-to-4 upgrade used three requests for 967
-games and grew the cached payload from 628 to 658 bytes per game (about 4.8%); that is a
-historical measurement of version 4, not a size or request measurement for version 5.
+Payload version 5 includes image IDs, dimensions, transparency, animation and artwork
+image type. Compatible older positive payloads follow the refetch-and-fallback rule above.
 
 ### Steam reception
 
@@ -274,31 +268,14 @@ Source token: `steam`.
 rather than re-derived from the percentage — the design shows Steam's own label
 with the percentage and count.
 
-**This source is NOT free the way `categories` was.** The `feature` and
-`controller` section above records that no `data_request` flag turns `categories`
-on and that every cached body already carries it. `reviews` is the opposite: it
-needs the `include_reviews: true` flag in `data_request`, so every body cached
-before this change has no `reviews` block. The figure fills in as the 7-day TTL
-turns those bodies over.
+`reviews` requires `include_reviews: true` in `data_request`. Cached bodies without that
+block gain review data when refreshed through the normal 7-day TTL.
 
-**How the field names were established, and the honest gap.** Valve's
-`webui/common.proto` from the SteamDatabase/Protobufs mirror — the same
-published file this repo already cites for `StoreItem_RelatedItems` — read
-2026-09-05. `StoreBrowseItemDataRequest.include_reviews` is a bool at field 9;
-`StoreItem.reviews` is a `StoreItem_Reviews` at field 23;
-`StoreItem_Reviews` carries `summary_filtered = 1`,
-`summary_unfiltered = 2`, `summary_language_specific = 3`;
-`StoreItem_Reviews_StoreReviewSummary` carries `uint32 review_count = 1`,
-`int32 percent_positive = 2`, `int32 review_score = 3` (an enum),
-`string review_score_label = 4`. **Unlike every other Steam field in this
-document, this one is not yet backed by a pinned fixture:**
-`tests/fixtures/steam-store/getitems-v1.json` was captured on 2026-08-23,
-before `include_reviews` was ever sent, and carries no `reviews` block. The
-reader is written from the proto and returns "no figure" for any shape it does
-not recognise, so the cost of being wrong is a missing number rather than a
-wrong one — but recapturing the fixture with `include_reviews: true` is
-outstanding work. The recapture command in `tests/fixtures/steam-store/README.md`
-does not yet carry the flag.
+The pinned fixture `tests/fixtures/steam-store/getitems-v1.json` was captured anonymously
+on 2026-09-06 with that flag. Its three successful items carry filtered and language-specific
+summaries; the failed item has no reviews. `SteamStoreContractTests` verifies that the
+production reader returns the captured count, percentage, enum and label. The fixture README
+contains the capture command. These tests use saved responses and make no live requests.
 
 **What Steam does not provide here:** no numeric score out of 100 (only a
 percent positive and a 1-9 `review_score` enum), no review text, and nothing at

@@ -1,15 +1,12 @@
 # Winnow.Recommend — the scoring core
 
-**Status:** built and tested — flat feed, shelf surface, and the feedback loop (§6b:
-verdict storage, cross-day surfacing memory, launch endorsements) wired end to end:
-verdicts, surfacing memory, undo, history screen, and a reserve topped up by backfill.
 **Module:** `src/Winnow.Recommend`, depends on `Winnow.Core` only.
-**Charter:** `.claude/agents/recommendation-engine.md`. Vocabulary: `game-library-design.md` §6.1.
+Bucket definitions: [build specification §6.1](../game-library-design.md#61-derived-buckets).
 
-This document is the argument for the model: every signal, its tier, its weight, and every
-threshold with the reason it is that number and not another. If you disagree with a number,
-this is the file to argue with — and every number here is a parameter on
-`RecommendationTuning`, so losing the argument costs a default, never a migration.
+This document defines the scoring signals, tuning defaults, evidence requirements, shelves
+and explanation contract. `RecommendationTuning` carries scoring parameters; changing a
+default does not require a database migration. Flat and shelf feeds share the scoring core,
+feedback, undo and surfacing memory. Desktop and fullscreen use their own presentation state.
 
 ---
 
@@ -32,7 +29,7 @@ a game evaluated before the verdict. Fullscreen retains the focused game when a 
 repository interfaces and returns a ranked list of **owned** games worth surfacing, each
 carrying a one-sentence human-readable reason and a full per-signal breakdown. It writes
 nothing, caches nothing, and decides no identity questions. Scores are derived values in
-exactly the §6.1 sense: computed on every read, comparable **within one feed**, never
+exactly the build specification §6.1 sense: computed on every read, comparable **within one feed**, never
 stored, never trusted by anything else.
 
 `GetShelvesAsync(request)` serves the scoring pass as themed shelves with their own pitches
@@ -66,11 +63,11 @@ copy of the author's live database, not against imagined data. The findings that
 
 | Fact | Measured value | Consequence for the model |
 |---|---|---|
-| Snapshot depth | 955 of 960 snapshot-bearing ownerships have exactly **one** snapshot; 5 have real deltas | The library is at Tier 0 *today*. Snapshot-shape signals must be bonuses, never prerequisites. |
+| Snapshot depth | 955 of 960 snapshot-bearing ownerships have exactly **one** snapshot; 5 have real deltas | This capture was Tier 0. Snapshot-shape signals must be bonuses, never prerequisites. |
 | Sessions | **Zero** rows | Every session signal is Tier 1+. Cadence gating is deferred entirely. |
-| `acquired_at` | 13 of 1,027 non-null (GOG only) | At this measurement, Steam/Epic lack acquisition dates. M5 now backfills Steam first-played dates and imports acquisition dates from the account licenses page; shelf time needs both facts for the same ownership. Dormancy remains the substitute where either date is absent. |
+| `acquired_at` | 13 of 1,027 non-null (GOG only) | At this measurement, Steam/Epic lack acquisition dates. Winnow backfills Steam first-played dates and imports acquisition dates from the account licenses page; shelf time needs both facts for the same ownership. Dormancy remains the substitute where either date is absent. |
 | `last_played_at` | 603 dated, spanning 2012–2026; 357 null; 12 null-with-minutes | Dormancy is the one longitudinal fact that IS retroactively available, because Steam's local files carry it. Lean on it. |
-| §6.1 buckets (defaults) | never_played 754, bounced 244, stale_but_patched 20, retired 9, active 0 | The candidate pool is ~1,018 rows and 74% of it is `never_played`. Ranking *within* the shelfware pile needs a tiebreaker (taste affinity + deterministic jitter); nothing about the pile itself differentiates its members. |
+| Bucket counts at capture | never_played 754, bounced 244, stale_but_patched 20, retired 9, active 0 | The candidate pool is ~1,018 rows and 74% of it is `never_played`. Ranking *within* the shelfware pile needs a tiebreaker (taste affinity + deterministic jitter); nothing about the pile itself differentiates its members. |
 | Dormancy distribution (dated, non-retired) | median **6.9 years**, p25 2.4y, p75 9.6y; 125 rows ≥10y | A dormancy score that decays after N years would suppress the older *half* of the library — the exact pile the app exists to surface. Dormancy therefore **saturates and stays flat**, and "too old to bother" is expressed only by the narrow probably-done penalty (§5). |
 | Update events | announcements on 246 releases (retroactive to 2014); build pushes only since the poller started; 28 releases have a correlated major-update pair | The patch signal is real but its *coverage* is poller-recency-bound. Bucket membership (`stale_but_patched`) is the scoring input; per-release event detail decorates reasons only. |
 | Cross-store ownership | works:releases are 1:1 (1,027:1,027) — duplicates live in `merge_candidates`, unconfirmed | The bought-it-twice signal exists in the schema but fires only after the user confirms merges. Kept, cheap, and honest about rarely firing yet. |
@@ -78,15 +75,14 @@ copy of the author's live database, not against imagined data. The findings that
 | Recently played | 13 ownerships touched in the last 14 days | The fresh-play suppression removes real rows, not hypothetical ones (Witchspire, played this morning, must not be "surfaced"). |
 
 Re-measured 2026-08-27 (1,059 ownerships: 946 Steam / 99 Epic / 14 GOG, and the first 7
-real sessions — the library is genuinely **Settling** now), while designing the shelf
-surface. Three findings reshaped the model a second time:
+real sessions, a **Settling** capture). These measurements informed taste and shelf defaults:
 
 | Fact | Measured value | Consequence |
 |---|---|---|
-| Affinity saturation | With the original metric, **266 of 427** never-opened rows scored a *perfect* taste match, because the profile's peak facets were "Action" (~⅔ of releases), "Singleplayer", "Adventure" | A max-shared-facet affinity over raw facets measures "carries a common tag", not taste. Fixed by the **prevalence cut** (§5): facets carried by >25% of the facet-carrying library stop counting as taste. The profile's peaks become Survival / Sandbox / Crafting — this user's actual, distinctive taste — and the never-opened pool at the 0.6 affinity floor becomes ~200 rows: months of rotation, not three favourites, not the whole pile. |
+| Affinity saturation | Without the prevalence cut, **266 of 427** never-opened rows scored a *perfect* taste match, because the profile's peak facets were "Action" (~⅔ of releases), "Singleplayer", "Adventure" | A max-shared-facet affinity over raw facets measures "carries a common tag", not taste. The **prevalence cut** (§5) excludes common descriptors: facets carried by >25% of the facet-carrying library stop counting as taste. The profile's peaks become Survival / Sandbox / Crafting — this user's actual, distinctive taste — and the never-opened pool at the 0.6 affinity floor becomes ~200 rows: months of rotation, not three favourites, not the whole pile. |
 | Franchise clusters | 14 unplayed "Infinity Blade" entries; 5 "Star Wars", 5 "Civilization IV", 5 "X-COM", 3 "Half-Life" among the unplayed | Rank honestly by score and a shelf becomes one franchise five times — a broken feed even when every score is right. Hence the one-per-franchise shelf cap (§6a), which is grouping for *display variety*, never an identity decision (that stays Resolve's). |
 | Mode mismatch | 261 committed games carry mode facets; **243 (93%) are single-player**. The never-opened pile holds **12 multiplayer-only** titles (Team Fortress Classic, Deathmatch Classic, H1Z1 Test Server…) | A genre-matched MMO in a solo player's feed is a false positive the facets can catch at Tier 0. Hence the mode-mismatch penalty (§3) — fired against real rows, with the sentence that says why. |
-| Facet coverage by store | Steam 861/946 releases carry genres; Epic 42/99; GOG 9/14 | Facet-driven signals (taste shelf, mode mismatch, genre caps) now reach all three stores, but Epic coverage is the thinnest — an Epic game absent from the taste shelf may be missing metadata, not missing appeal. |
+| Facet coverage by store | Steam 861/946 releases carry genres; Epic 42/99; GOG 9/14 | Facet-driven signals (taste shelf, mode mismatch, genre caps) reach all three stores, but Epic coverage is the thinnest — an Epic game absent from the taste shelf may be missing metadata, not missing appeal. |
 
 ## 3. Signal inventory
 
@@ -96,8 +92,8 @@ contributes zero and the gap is *visible*, which is the honest way to degrade).
 
 | Signal | Tier | Weight (default) | What it says in one sentence |
 |---|---|---|---|
-| **Patch after dormancy** | 0 | +0.40 | "A major update landed since you stopped playing." Bucket `stale_but_patched` — the app's headline fact, computed by the §6.1 query from the correlated build-push + announcement pair. Retroactive, so available on day one. |
-| **Commitment shape** | 0 | +0.25 | Where the playtime sits against §6.1's refund line: bounced-just-past-the-line peaks (they committed and gave up — the highest-value pile), decaying toward the retired floor; sampled (1–119 min) sits above never-opened (they showed intent); never-opened is the wide flat base. |
+| **Patch after dormancy** | 0 | +0.40 | "A major update landed since you stopped playing." Bucket `stale_but_patched` — the app's headline fact, computed by the build specification §6.1 query from the correlated build-push + announcement pair. Retroactive, so available on day one. |
+| **Commitment shape** | 0 | +0.25 | Where the playtime sits against build specification §6.1's refund line: bounced-just-past-the-line peaks (they committed and gave up — the highest-value pile), decaying toward the retired floor; sampled (1–119 min) sits above never-opened (they showed intent); never-opened is the wide flat base. |
 | **Dormancy** | 0 | +0.15 | How long since last played, ramping from the fresh window to saturation at 2 years and staying flat (see §2 for why it must not decay). Null date beside real minutes reads as "unknown, certainly ancient" = fully dormant, matching the bucket query's reasoning. |
 | **Taste affinity** | 0 | +0.10 | The candidate carries a genre/theme/tag that the user's actual hours concentrate in. Explicitly a **tiebreaker** for the 754-row shelfware pile, not the lead — genre similarity is the commodity the charter says loses to incumbents. Profile is playtime-weighted (√minutes, refund line and up — with one exception: a feed-**endorsed** release testifies below the line with whatever √minutes it has, §6b), so retired games — excluded as candidates — still testify about taste. Facets above the **prevalence cut** (carried by >25% of the facet-carrying library) are excluded from the profile entirely: measured, they saturate the metric into meaninglessness (see §2's re-measurement). |
 | **Tried to like it** | 1 | +0.10 | Distinct return episodes (snapshot rises or sessions beyond the first): 40 minutes across six evenings is a different fact from 40 minutes once. Zero until history accrues; a bonus, never a prerequisite. |
@@ -105,14 +101,13 @@ contributes zero and the gap is *visible*, which is the honest way to degrade).
 | **Bought twice** | 0 | +0.05 | The same work owned on 2+ stores is a purchase made twice — intent money can measure. Fires only after cross-store merges are confirmed (see §2). |
 | **Recently played** (penalty) | 0 | −0.60 | Played within the fresh window — not forgotten, so not this feed's business. Sized to sink anything: no combination of positives outruns it into the top of a realistic feed. |
 | **Probably done** (penalty) | 0 | −0.30 | Deep in the bounced pile (a fair shake of hours), deeply dormant, and nothing has changed since — the model's way of saying "you were right to drop this" instead of nagging. The contribution's explanation says exactly that, which is the charter's honesty requirement made concrete. |
-| **Recently surfaced** (penalty) | 0 | −0.20 | Caller-supplied set of releases the feed showed recently — the anti-"same five games forever" mechanism. Since migration 0011 the caller loads it from the `feed_surfacings` log via `FeedbackSets` (§6b); the engine still stores nothing. |
+| **Recently surfaced** (penalty) | 0 | −0.20 | Caller-supplied set of releases the feed showed recently — the anti-"same five games forever" mechanism. The caller loads it from the `feed_surfacings` log via `FeedbackSets` (§6b); the engine still stores nothing. |
 | **Mode mismatch** (penalty) | 0 | −0.10 | The candidate sits entirely on the wrong side of the single-player/online line for how this user demonstrably plays (93% single-player by committed game count, measured). Fires only under dominance (≥85% share over ≥20 mode-carrying committed games) and only against a candidate that is *exclusively* the other side; co-op without versus is a maybe, not a mistake. Sized to cancel a perfect taste match, not to bury — mode facets can be missing or wrong. |
 | **Shuffle jitter** | 0 | +0.03 max | Deterministic per (seed, release) noise, seeded by the day by default. Big enough to rotate near-ties inside the shelfware pile, small enough to never reorder games a real signal separates. |
 
 ### Update coverage: an input, not an assumption
 
-**Update coverage** is a named input (`CandidateFacts.UpdateCoverage`), added because the
-model was reading silence off rows nobody had watched. Winnow polls Steam for update
+**Update coverage** is a named input (`CandidateFacts.UpdateCoverage`). Winnow polls Steam for update
 signals, and coverage of a release begins when polling of that release begins, so an empty
 update history means one of two indistinguishable things: nothing shipped, or Winnow was
 never watching.
@@ -144,15 +139,14 @@ score = Σ (weight_s × value_s) − Σ penalties + jitter
   deeply dormant, and nothing has changed since" is three claims, and only the first two are
   computable from bulk facts. The third needs proof that Winnow has read the release's
   announcement history (§3); without it the penalty is withheld entirely and the sentence
-  never claims silence. The earlier code treated an empty update history as proof of quiet,
-  so it demoted rows nobody had ever looked at while telling the user nothing had changed.
+  never claims silence.
   `RecommendationScorer.HasProbablyDoneShape` is the coverage-free half, kept separate so
   the engine can decide which rows are worth reading update history for at all.
 
 ### Hard exclusions from play recommendations
 
-1. **Retired** (§6.1 precedence: retired outranks everything, patches included). The
-   200-hour game does not come back, ever.
+1. **Retired**, including games with a newer patch. Games above the configured retired
+   floor remain excluded from play recommendations.
 2. Releases in the caller's **not-interested** set — the user's explicit "you were right,
    drop it" verdict, permanent until they change it. Widened to the release's **work**:
    after a cross-store merge, dismissing the Steam card must not let the GOG copy
@@ -160,8 +154,8 @@ score = Σ (weight_s × value_s) − Σ penalties + jitter
    is recomputed per request.
 3. Releases in the caller's **snoozed** set — the temporary form of the same thing, same
    work-widening.
-4. Works with **provisional names** — unexplainable tiles (6 rows today).
-5. Everything the §6.1 query already dropped upstream: consolidated demos/betas, and
+4. Works with **provisional names** — unexplainable tiles (6 rows in the initial measurement).
+5. Everything the build specification §6.1 query already dropped upstream: consolidated demos/betas, and
    non-game entries (tools, soundtracks) under the default setting.
 6. **Derelict** lifecycle groups: cancelled, offline, delisted, abandoned or dead. These
    enter only the dedicated review shelf, with no recommendation score or history probe.
@@ -174,12 +168,8 @@ Scoring is cheap; history is not. Sessions and snapshots are read per ownership,
 shortlist gets probed, and the rule choosing that shortlist has to be safe or the ranking is
 a guess dressed as a ranking.
 
-The old rule took a fixed top slice (3× the feed size) and justified it by claiming history
-could only ADD to a score, so a row outside the top 3× could not reach the top 1×. Both
-halves were wrong. History can now also SUBTRACT, because revealing update coverage is what
-lets the probably-done penalty fire (§4). And even the additive case was never bounded: a
-row just outside the slice could hold enough hidden return-episode evidence to leapfrog into
-the results.
+Unprobed history can add return-episode bonuses or enable the probably-done penalty by
+establishing update coverage. Shortlisting therefore bounds both possible score changes.
 
 `ScoreBounds` bounds both directions per candidate:
 
@@ -211,19 +201,14 @@ the resulting candidate-game count after eligibility exclusions.
 own score-bound-safe shortlist; the union (`RecommendationEngine.ProbeUnion`) admits every
 shelf's best candidate before any shelf's second best, and so on until the probe limit is
 reached. Duplicates are dropped by ownership id, since one ownership can be shortlisted by
-several shelves and is only ever probed once. The previous implementation filled the union
-shelf by shelf in claim order and stopped when the budget ran out. Any flat cap applied in
-claim order has the same failure mode: it deletes whole later shelves instead of trimming
-each shelf's tail. On the real library (990 candidates, 966 works, measured 2026-09-01) the
-first two shelves consumed the entire budget of 150 and the last three were never scored; the
-user saw 2 shelves and 12 items where the design intends 5 and 28. With round-robin, all
-five shelves populate even at a budget of 5. The measured cost of the wider union: 150
-probes 57.5 ms median, 376 probes 60.4 ms median, on a pass that already runs off the UI
-thread inside `Task.Run`.
+several shelves and is only ever probed once. Interleaving shares a bounded budget across
+shelves and trims their tails rather than starving later shelves. The pass runs off the UI
+thread inside `Task.Run`. In the 2026-09-01 capture (990 candidates, 966 works), 150 probes
+cost 57.5 ms median and 376 probes cost 60.4 ms median.
 
 ## 5. Thresholds, and why each is that number
 
-All live on `RecommendationTuning` with these defaults. The §6.1 refund line
+All live on `RecommendationTuning` with these defaults. The build specification §6.1 refund line
 (120 minutes) is inherited from `BucketThresholds` and is the standard each of these tries
 to meet: a number that means something.
 
@@ -231,14 +216,14 @@ to meet: a number that means something.
 |---|---|---|
 | `FreshPlayWindowDays` | 14 | Steam's own definition of current activity: `playtime_2weeks` is the storefront's window for "playing it now". The one non-arbitrary recency number available. |
 | `DormancySaturationYears` | 2.0 | p25 of the measured dormancy distribution is 2.4 years — a ramp that saturates at 2 treats roughly the older three-quarters of the dated library as fully dormant and stops pretending finer discrimination among 5-vs-9-year-old piles means anything. |
-| `DeepDormancyYears` | 4.0 | Gate for the probably-done penalty. Past ~4 years the person who bounced is, in gaming-taste terms, a different player, and the median bounced game (5.7y dormant) sits beyond it — the penalty is *meant* to reach the middle of that pile, but only jointly with the fair-shake gate below, which is what keeps it narrow (6 rows today). |
-| `FairShakeMinutes` | 2,000 | ~33 hours: about the published aggregate main-story-plus-extras completion time for story-driven games. Past it, "abandoned" usually means "finished with it", not "forgot it". Explicitly provisional — §6.1's HowLongToBeat [VERIFY] item is the real answer, and this parameter is where per-game numbers would plug in. |
+| `DeepDormancyYears` | 4.0 | Gate for the probably-done penalty. Past ~4 years the person who bounced is, in gaming-taste terms, a different player, and the median bounced game (5.7y dormant) sits beyond it — the penalty is *meant* to reach the middle of that pile, but only jointly with the fair-shake gate below, which is what keeps it narrow (6 rows in the initial measurement). |
+| `FairShakeMinutes` | 2,000 | ~33 hours: about the published aggregate main-story-plus-extras completion time for story-driven games. Past it, "abandoned" usually means "finished with it", not "forgot it". Explicitly provisional — per-game expected-commitment data remains unverified, and this parameter is where per-game numbers would plug in. |
 | `CommitmentFloorValue` | 0.15 | The bounced curve's value as playtime approaches the retired floor: near-retired games are near-finished, not forgotten, but stay above shelfware's floor because a 90-hour game someone left IS more interesting than a game never opened. |
 | `ShelfwareBaseValue` | 0.35 | Never-opened base. Each individual shelfware row is weak evidence of intent (the pile is 412 rows of zero-and-dateless); the base keeps the pile in the feed without letting it outrank anyone with an actual history. |
-| `SampledBaseValue` / `SampledSpanValue` | 0.50 / 0.20 | 1–119 minutes ramps 0.50→0.70: launching at all shows intent shelfware lacks, but §6.1 says sub-refund-line minutes are still "never played it", so the whole ramp stays strictly below the bounced peak — and the deliberate jump at 120 (0.70→1.00) *is* the refund line's semantics: crossing it is a different fact, not more of the same one. |
+| `SampledBaseValue` / `SampledSpanValue` | 0.50 / 0.20 | 1–119 minutes ramps 0.50→0.70: launching at all shows intent shelfware lacks, while remaining below the bounced peak — and the deliberate jump at 120 (0.70→1.00) *is* the refund line's semantics: crossing it is a different fact, not more of the same one. |
 | `TriedToLikeSaturationEpisodes` | 3 | Coming back twice after the first taste is already "trying to like it"; requiring more before full credit would gate the signal on history depth the measured library will not have for months. |
 | `Tier2MinSessions` / `Tier2MinSpanDays` | 50 / 56 | "Months in" made concrete: ~50 sessions across two months is when cadence/seasonality claims stop being anecdotes. |
-| `HistoryProbeLimit` / `RecentProbeLimit` | 60 / 25 | The repository interfaces read history per-ownership, so the engine probes a shortlist rather than issuing 2,000 queries per feed. `HistoryProbeLimit` is now the cap on the shortlist's **comfort floor**, not the shortlist's justification — the shortlist itself is score-bound safe and may exceed the floor when the bound says it must (§4a). 60 is where the measured bound landed anyway. `RecentProbeLimit` is tier detection only: the most recently played rows are where history concentrates (the 5 real multi-snapshot ownerships are all recent), and what they hold is directly observed, so they floor the estimate without entering the uniform draw that would be biased by them. |
+| `HistoryProbeLimit` / `RecentProbeLimit` | 60 / 25 | The repository interfaces read history per-ownership, so the engine probes a shortlist rather than issuing 2,000 queries per feed. `HistoryProbeLimit` is the cap on the shortlist's **comfort floor**, not the shortlist's justification — the shortlist itself is score-bound safe and may exceed the floor when the bound says it must (§4a). 60 is where the measured bound landed anyway. `RecentProbeLimit` is tier detection only: the most recently played rows are where history concentrates (the 5 real multi-snapshot ownerships are all recent), and what they hold is directly observed, so they floor the estimate without entering the uniform draw that would be biased by them. |
 | `TierSampleOwnerships` | 120 | Ownerships drawn uniformly from every row that could hold history, for the sampled tier estimate (§6). Roughly a third of the measured library's history-bearing rows: enough that the scale-up is not carried by a handful of rows, and cheap at two indexed point reads apiece. Only used when no global aggregate is available. |
 | `TierSampleSeed` | `0x5715_0F5E` | Fixed salt for that draw. Deterministic so one library always samples the same rows: a tier that flickered between refreshes because the sample moved would be a worse answer than a slightly stale one, and a fixed seed makes the estimate reproducible when someone disputes it. Not the shuffle seed — the tier must not change because the day did. |
 | `ReasonCharacterBudget` | 180 | Longest reason sentence a card may carry. One sentence is the contract (§6c), and 180 is the length at which one sentence stays one sentence: it fits the longest primary/secondary pair the selection rules can produce, quoted update title included, so the honesty clauses are never truncated away. Lower it and truncation starts deciding what the user is told. |
@@ -251,7 +236,7 @@ to meet: a number that means something.
 | `OnTasteMinAffinity` | 0.6 | Floor for the "right up your alley" shelf: the candidate must carry a descriptor at least 60% as loved as the user's most-loved *distinctive* one. Measured: admits a rotating pool of ~200 of 427 never-opened rows. |
 | `ShelfFranchiseCap` | 1 | One franchise entry per shelf, hard, never relaxed — 14 unplayed Infinity Blades is the measured alternative. The rest of a franchise rotates through later days. Grouping key: title before the first colon, slugified, trailing numeral dropped (`Half-Life 2: Deathmatch` → `half_life`). Conservative on purpose: a false split costs a samey shelf; a false merge silently suppresses a valid recommendation. |
 | `ShelfGenreCap` | 3 | Entries sharing one genre per 6-card shelf — half, so no genre can majority a shelf. Coupled to how many cards a shelf shows: 4 of 6 would be a two-thirds majority, so the cap moved with the shelf size. Soft: the relaxation pass refills when the eligible pool genuinely is that narrow. |
-| `ShelfOverfetchFactor` / `ShelfProbeLimit` | 3 / 2,000 | Per-shelf shortlists are 3× the shelf size (slack for caps and cross-shelf claims). The probe union is the interleave of those shortlists (rank by rank, not shelf by shelf) capped at 2,000 ownerships. 2,000 is derived from cost, not shelf geometry: the shelf pass costs 46.6 ms median with zero probes (dominated by bulk reads) and 23 microseconds per probe (measured 2026-09-01, 990 candidates, 966 works), so 2,000 probes is where per-row history reading would equal the bulk reads, i.e. where the pass would double. What holds the union well below that on a real library is the score bound (`ScoreBounds.SafeShortlist`), not the cap; on the measured library the natural union is 376 of 966 works and the feed stops changing at ~300. The cap is the backstop for a library where the bound stops discriminating. The previous default of 150 was sized against the per-shelf comfort floors and ignored that the bound legitimately exceeds them; on the real library it starved three of five shelves entirely (§4a). |
+| `ShelfOverfetchFactor` / `ShelfProbeLimit` | 3 / 2,000 | Per-shelf shortlists are 3× the shelf size (slack for caps and cross-shelf claims). The probe union is the interleave of those shortlists (rank by rank, not shelf by shelf) capped at 2,000 ownerships. 2,000 is derived from cost, not shelf geometry: the shelf pass costs 46.6 ms median with zero probes (dominated by bulk reads) and 23 microseconds per probe (measured 2026-09-01, 990 candidates, 966 works), so 2,000 probes is where per-row history reading would equal the bulk reads, i.e. where the pass would double. What holds the union well below that on a real library is the score bound (`ScoreBounds.SafeShortlist`), not the cap; on the measured library the natural union is 376 of 966 works and the feed stops changing at ~300. The cap is the backstop for a library where the bound stops discriminating. |
 | `PenaltyRecentlyPlayed` | 0.60 | Must dominate: max realistic positive sum ≈ 0.55 for a non-stale row. A game played yesterday cannot crack the feed's top even if it is installed, twice-bought and on-taste. |
 | `PenaltyProbablyDone` | 0.30 | Sized to drop a qualifying row below the bounced midfield but not to zero — it still appears far down the feed, with a reason that says why it is far down. |
 | `PenaltyRecentlySurfaced` | 0.20 | Enough to rotate a shown item behind its unshown near-peers; not enough to bury a strong stale-but-patched hit the user keeps ignoring — if the top item is genuinely the top item, repeating it once or twice is honest. |
@@ -271,11 +256,8 @@ Tier is detected from evidence, not from install age, and the answer rides on th
 - **Tier 2 (Established):** ≥50 sessions spanning ≥8 weeks. Enables (future) cadence and
   return-latency work; today it only labels the feed.
 
-**The tier is measured over the library, not over the feed.** It used to be read off the
-candidate shortlist plus 25 recently-played rows and treated as a global total. Both samples
-are biased, in opposite directions: the shortlist excludes by design exactly the games being
-played, and the recently-played rows are the densest in sessions. A user with a hundred
-sessions spread across a hundred titles read as cold start.
+**The tier measures the whole library.** Recommendation candidates exclude many actively
+played games, so their history alone cannot establish the library tier.
 
 Where a global aggregate is available (`ILibraryHistoryStatsRepository`, §9) it is used
 verbatim. Where it is not, the fallback is a deterministic uniform draw of
@@ -288,7 +270,7 @@ scaled figure may gate behaviour but must never be shown to a user as a total.
 
 The registered aggregate makes session count and span exact, so `Tier2MinSessions` and `Tier2MinSpanDays` compare against real totals. The normal App path avoids the fallback sample cost of up to 120 ownerships × 2 point reads per feed.
 
-**M5 supplies the available cold-start backfill** (design doc §5.4): Steam Replay adds monthly playtime snapshots from 2022 onward, ClientGetLastPlayedTimes adds first-played dates, and the account licenses and purchase-history importers add acquisition facts. Real snapshot deltas can establish Tier 1 on the first run. These sources do not reconstruct sessions or session-length distributions, so they cannot establish Tier 2 from an invented session count or recover exact return latency. Winnow records those facts while it runs.
+**Cold-start backfill** (design doc §5.4): Steam Replay adds monthly playtime snapshots from 2022 onward, ClientGetLastPlayedTimes adds first-played dates, and the account licenses and purchase-history importers add acquisition facts. Real snapshot deltas can establish Tier 1 on the first run. These sources do not reconstruct sessions or session-length distributions, so they cannot establish Tier 2 from an invented session count or recover exact return latency. Winnow records those facts while it runs.
 
 ## 6a. The shelf surface
 
@@ -305,9 +287,9 @@ Shelves, in claim order (which is also presentation order — strongest story fi
 | Shelf | Membership rule (Tier-0 facts only) | The pitch |
 |---|---|---|
 | `patched_while_away` | bucket `stale_but_patched` | "Major updates landed after you stopped playing." The headline; the moat fact leads. |
-| `worth_another_look` | bucket `bounced`, probably-done NOT fired | "You committed real hours past the refund line, then drifted." The §6.1 highest-value pile as its own rail. |
+| `worth_another_look` | bucket `bounced`, probably-done NOT fired | "You committed real hours past the refund line, then drifted." The build specification §6.1 highest-value pile as its own rail. |
 | `ready_to_play` | installed, minutes < refund line, not stale | "Already on disk, nothing sunk." Install state is a Tier-0 fact and zero friction is a real argument. |
-| `barely_touched` | 1 ≤ minutes < refund line, not stale | "Under 2 hours in — you never really tried it." §6.1's *sampled* stratum, told honestly. |
+| `barely_touched` | 1 ≤ minutes < refund line, not stale | "Under 2 hours in — you never really tried it." The scorer's sampled stratum: played, but below the refund line. |
 | `on_your_taste` | never-opened, affinity ≥ 0.6, no mode mismatch | "Sealed, and it matches where your hours actually go." The only shelf the taste tiebreaker *leads*; the prevalence cut is what makes its sentence honest. |
 | `waiting_to_be_opened` | never-opened, uninstalled, not stale, without a qualifying taste match | "Already in your library, with no recorded play yet." Cold imports can populate it without invented taste or history. |
 
@@ -337,7 +319,7 @@ Rules that make it a feed:
   produce visibly different tails on the big shelves with no storage anywhere. The
   caller-fed recently-surfaced set is the *cross-day memory* for the small pools
   (twenty stale games rotating through six slots needs someone to remember yesterday) —
-  since §6b that memory is real: the `feed_surfacings` log, loaded through
+  that memory comes from the `feed_surfacings` log, loaded through
   `FeedbackSets`, and measured on the real library it rotates four of the five shelves
   **completely** day over day with the jitter seed pinned.
 - **Empty shelves are omitted**, never rendered blank. `CandidateCount` still says how big
@@ -456,13 +438,11 @@ external observations. Shared source silence, store failures and low single-play
 cannot be promoted into proof of death. Identical source reasons may repeat on Derelict
 and in its replacement reserve: varying prose must never conceal a lifecycle fact.
 
-## 6b. The feedback loop (2026-08-27)
+## 6b. The feedback loop
 
-The user can now steer the model — and the design's first commitment is that steering
-stays inspectable and reversible, because feedback is exactly where recommenders turn
-into black boxes. Everything below observes one split: **what the user said and what the
-feed showed are truth, stored** (migration `0011_feed_feedback.sql`); **everything those
-facts do to a score is derived, recomputed per request**, same as every §6.1 bucket.
+Feedback remains inspectable and reversible. Winnow stores verdicts, visible impressions
+and launch-attributed sessions, then derives exclusions, rotation and taste evidence from
+them. It does not train an opaque model from clicks.
 
 ### The vocabulary: two negatives, no explicit positive
 
@@ -533,8 +513,8 @@ at.
 - `Winnow.Recommend.FeedbackSets` is the **read-side bridge**: `LoadAsync(repo, asOf,
   tuning)` computes the four id sets (`NotInterested`, `Snoozed`, `RecentlySurfaced`,
   `Endorsed`), `Apply(request)` stamps them on. The engine still stores nothing and
-  never writes; its API is unchanged but for the new `EndorsedReleaseIds` set.
-- **The App-layer contract** (for whoever wires the UI; nothing below is built here):
+  never writes. `EndorsedReleaseIds` carries the endorsement evidence into scoring.
+- **The App-layer implementation:**
   1. Before computing: `sets = await FeedbackSets.LoadAsync(feedbackRepo, now, tuning)`,
      then `engine.GetShelvesAsync(sets.Apply(request))`.
   2. On visible viewport entry: `FeedView` checks card clipping, the active visible
@@ -574,16 +554,13 @@ at.
 
 ## 6c. The explanation contract
 
-Every card states its reason in **one sentence**. That is a charter constraint and the
-builder used to break it: it concatenated a lead, a secondary reason, a probably-done
-statement and a mode-mismatch clause into as many as four. The same concatenation was the
-mechanical cause of the sameness complaint — every card was assembled from the same
-fragments in the same order, so ten different histories produced one frame with the nouns
-swapped.
+Every card states its reason in **one sentence**, using the same evidence that produced its
+score. The scorer selects facts; the builder chooses their wording and controls repetition
+across the visible surface.
 
 ### The split
 
-The scorer now returns **structure**, not prose. `RecommendationScorer.Explain` produces a
+The scorer returns structured evidence. `RecommendationScorer.Explain` produces a
 `RecommendationReason`: one primary signal, every supporting fact that fired in
 strongest-first precedence order, and the `ReasonEvidence` both clauses may cite, read off
 the same facts the score was computed from so a sentence cannot state a figure the ranking
@@ -658,161 +635,54 @@ Real output, rendered from the live library:
 >
 > Something held your attention for 10 hours, then stopped, though 2 days is no time at all to have been away.
 
-### One grammar rule the shape forces
+### Grammar and evidence
 
-A supporting clause may not open on a bare relative pronoun. Any opening can precede it and
-most of them end on a verb, so ", which you own 2 times over" attached to the wrong word:
-"Something held your attention for 6.7 hours, then stopped, which you own 2 times over."
-Two variants shipped with that fault and were reworded. A participle, an appositive or a
-fresh coordinate clause carries its own footing; a relative pronoun borrows one that may not
-be there. The rule is recorded in the phrasebook's own contract, where the next person
-writing copy will meet it.
+A supporting clause must stand after any eligible opening. Use a participle, appositive or
+coordinate clause; a bare relative pronoun can attach to the wrong noun or verb.
 
-### What a card may claim
+A card may claim only what the engine can prove about that game. It must not claim a
+library-wide rank, maximum, minimum, uniqueness or quantified share. Taste strength uses
+normalised affinity from `ReasonEvidence`: `{strongFacet}` resolves only at or above
+`OnTasteMinAffinity` (0.6). Below that gate, the descriptor may still be named without a
+strength claim. Mode-mismatch wording must describe dominance, not pretend an 85% share
+means every recorded hour.
 
-Two adjacent cards each asserted a superlative about a different game (observed 2026-08-28).
-A superlative is true of at most one game in a library, so two cards asserting it is a plain
-contradiction, and it reads worse than the cookie-cutter phrasing the phrasebook replaced.
+`ReasonHonestyTests` checks all phrasebook variants for unsupported claims and exercises
+multiple cards sharing the same taste descriptor.
 
-The cause is structural, not a typo: the variant is chosen by hashing the release id, per
-card, with no knowledge of what any other card said or of whether the claim holds
-library-wide. Any absolute claim in the phrasebook is therefore a claim the builder will
-eventually make twice.
+### Variety across one surface
 
-The rule adopted: a card may only claim what the engine can prove about that game. No rank,
-no maximum, no minimum, no uniqueness, no quantified share of the library.
+`ShelfReasonLedger` tracks both wording and supporting facts while cards render in stable
+score, then release-ID order. It belongs to one shelf or flat-feed render.
 
-Two honest fixes were considered. First, reword absolutes into comparatives that hold for
-any qualifying game. This was taken for everything the engine cannot prove. Second, keep an
-absolute and gate it on a verified-unique computed fact. This was rejected for the taste
-clause: the only cheap library-wide proof available is the taste profile's strongest facet,
-which is a property of the facet, not of the game, so two cards carrying that facet would
-still both render the absolute. Uniqueness of the fact does not give uniqueness of the card.
+- **Wording:** the release-ID hash selects the initial variant. If that variant is already
+  used for the same signal and clause, select the next unclaimed variant. Prefer a fresh
+  generic variant over repeating a specific one. Repeat only after the available variants
+  are exhausted.
+- **Facts:** take the first eligible supporting fact that has citation capacity. If its
+  budget is spent, try the next fact that actually fired for this card. If none remains,
+  omit the support. Count a citation only after the clause is rendered.
+- **Claim identity:** taste citations use the descriptor name, so Sandbox and Roguelike
+  have separate budgets. Other supporting facts use their signal, regardless of the
+  number cited in the wording.
+- **Required disclosures:** online-only mismatch, solo-only mismatch, played recently
+  and shown recently are exempt from citation caps because they explain demotions.
 
-What was kept instead of hedging into mush: the normalised affinity already computed for the
-score now rides in the evidence, and `{strongFacet}` resolves only at or above
-`OnTasteMinAffinity` (0.6, the same bar the On Your Taste shelf uses). That licenses "one
-of your deepest piles", a comparative that is plural-tolerant and true of any facet clearing
-the bar, while a faint match keeps the descriptor's name and loses only the strength claim.
+The citation cap is `max(FactCitationFloor, visibleCards / FactCitationCards)`, using integer
+division and defaults 2 and 3. Six visible cards therefore permit two citations of each
+fact. The caller's `VisiblePerShelf` determines the budget; reserve cards do not enlarge it.
+Inputs are clamped to at least one to avoid division by zero or a silent surface.
 
-The audit found four offenders across the whole phrasebook, not just the reported clause:
-three TasteMatch secondaries ("where most of your hours already live", "which is your
-deepest pile", "more hours in it than in anything else") and one LaunchedUnmeasured opening
-whose "which is unusual" was a rarity claim, rarity being a count of the rest of the library
-that nothing counts. A fifth, the SoloOnlyMismatch clause saying the user's hours are "all"
-online, overstated a measured 85% dominance share.
-
-The guard: `ReasonHonestyTests` sweeps every variant in the phrasebook against a pattern
-list, and a feed-level test seeds several unplayed games sharing one descriptor, confirms
-the taste clause fires on more than one card, and asserts no card makes a library-wide
-claim. The next variant written with a superlative in it fails the build rather than the
-feed.
-
-### The shelf ledger (two layers of sameness)
-
-The phrasing of a card is chosen by hashing its release id. Deterministic, per card, and
-blind to its neighbours. Two consequences, found one after the other.
-
-First, the same **variant** could land on two cards of one shelf. Observed 2026-09-02 on
-"Patched while you were away": Stationeers and PEAK both read "This is not the game you
-put down, an update arrived after you left, and you have real hours in [facet] games." The
-fix was `ShelfReasonLedger`, carried down one surface's render, remembering which variant
-of which (signal, clause) has been spoken. The hash still chooses first. A card is moved
-off its own pick only when that pick is taken, and then only to the next unclaimed variant
-in the same list, so the first card on a shelf renders exactly what it rendered before the
-ledger existed and a shelf whose cards already differ is untouched. It also needed more
-variants: a signal with four token-bearing phrasings cannot fill a six-card shelf, and by
-pigeonhole must repeat. A fresh generic variant now beats a repeated specific one, which
-is the single place the specific-over-generic preference yields.
-
-Second, the same **fact** could still repeat when the variants differed. Observed 2026-09-02
-on the same shelf, six cards, real library:
-
-    Stormworks     '...landing in Sandbox, a kind of game you keep coming back to.'
-    Stationeers    '...and you have real hours in Sandbox games.'
-    Project Gorgon '...and Sandbox is one of your deepest piles.'
-
-Three of six named the same facet. Every sentence true, all three variants different, which
-is exactly why the variant ledger missed it: it tracks which variant was used, not which
-fact the variant cites.
-
-The rule adopted, and the reason it is not the obvious one: Sandbox dominating is a real
-property of this library, and suppressing the true fact to manufacture variety would be
-worse than the repetition. No card is given something else to say. Instead, a card whose
-strongest supporting fact is already spent on the surface reaches for its next-strongest,
-and a card with nothing left says less. `RecommendationScorer` now returns every supporting
-fact that fired, in the same strongest-first precedence order it always used, instead of
-discarding the ones the head beat. Reaching down that list is honest because every entry on
-it fired for that card, so nothing there is a new claim.
-
-What counts as the same claim: the taste clause is keyed on the descriptor's **name**,
-because it is the one claim naming something a reader tracks from card to card, so Sandbox
-and Roguelike are two claims and two Sandbox cards are one claim twice. Every other
-supporting fact is keyed on its signal, because the claim there is "it is on your disk" or
-"you own it twice" and the number the clause cites is colour rather than claim.
-
-Exempt, and never withheld: the demotion disclosures (online-only mismatch, solo-only
-mismatch, played recently, shown recently). Those clauses exist to say why a card ranks
-where it does. Withholding one for variety would hide ranking information rather than repeat
-it, which is the opposite failure. They also name no facet, so the facet rule loses nothing
-to the exemption.
-
-The threshold is derived per surface rather than fixed, because a shelf holds 6 cards and
-the flat feed holds 20, and a flat cap of 2 would silence eighteen of twenty.
-`FactCitationCards` (3) means one card in every three may cite a given fact;
-`FactCitationFloor` (2) keeps a short surface from being silenced, and matches the
-judgement that two cards making the same claim reads as coincidence while three reads as a
-template. A shelf of 6 therefore caps at 2, under the three-of-six that was reported.
-The cap is derived from how many cards the caller **shows**, not how many it asked for:
-when a caller holds a reserve behind the shelf (`VisiblePerShelf`, §6a), the cap is sized
-to the visible slice so that asking for a deeper shelf cannot widen the variety budget on
-the cards the reader actually sees.
-
-Measured on the reported shelf, seeded as six patched Sandbox games behind a beloved
-50-hour Sandbox anchor:
-
-    before:  6 of 6 cards named Sandbox
-    after:   2 name Sandbox, 2 fall to the dormancy clause, 2 say less
-
-Determinism survives on the same terms the variant ledger set. The surface is filled in a
-stable order (score, then release id), so the same library renders the same shelf on every
-reload. It is not stable against a card ahead of it changing position, which is the price
-of not repeating and is the right way round: a user notices two identical claims side by
-side and does not notice that a sentence differs from yesterday's.
-
-This is the third layer of one defect. TASK-58 fixed what a variant may claim, TASK-71 the
-variant repeating, TASK-76 the fact repeating. Each fix exposed the next one down, and the
-pattern is that anything chosen per card by a hash will eventually collide on a shelf.
+The same library in the same order renders the same wording. Moving a preceding card can
+change a later card's choice because the ledger describes the visible surface.
 
 ### Quoting a store-authored update title
 
-The patched card quotes the update headline, which is text Winnow did not write, so it is
-sanitised on the way to the card: quotes stripped, whitespace collapsed, length capped,
-sentence terminators removed. Removing terminators was too broad and replaced every `.`
-`!` `?` `;` with a space. Observed in the running app on 2026-09-02, on three of six cards
-on one shelf:
-
-    stored 'Dune: Awakening - 1.4.10.5 Hotfix Patch Notes'  rendered '1 4 10 5 Hotfix Patch Notes'
-    stored 'Game Update 7.9.1b Patch Notes'                 rendered 'Game Update 7 9 1b Patch Notes'
-    stored 'Patch Notes 2.03.a'                             rendered 'Patch Notes 2 03 a'
-
-The database stores every title with its periods intact; the damage was done on the way to
-the card, and it read as though the app could not handle punctuation. No test caught it
-because every fixture update title was prose with no version number in it.
-
-The guard is still needed, so the rule was narrowed rather than dropped: `"Patch 2.0. Read
-on!"` must not become two sentences inside a quoted clause. A terminator character now
-counts as a terminator only when the run of terminator characters it belongs to ends at
-whitespace or at the end of the title.
-
-The reason that beats the obvious digit-dot-digit test is worth recording: a period inside
-a version number is never followed by a space, so keying on what **follows** the period
-rather than what flanks it handles the trailing-letter shapes (`7.9.1b`, `2.03.a`) with no
-special case at all. A digit-dot-digit test gets `2.03.a` wrong, because that second period
-sits between a digit and a letter. `"Patch 2.0. Read on!"` keeps the period inside `2.0`,
-loses the one after it and loses the trailing `!`, rendering `Patch 2.0 Read on`. The rule
-now matches the contract test's own definition of a sentence: `[.!?]` followed by
-whitespace or end of string, outside quoted spans.
+Update headlines are external text. Before quoting one, strip quotes, collapse whitespace,
+cap length and remove sentence terminators. A run of `.`, `!`, `?` or `;` is a terminator
+only when followed by whitespace or the end of the title. Internal version punctuation
+survives, including `1.4.10.5`, `7.9.1b` and `2.03.a`. Thus `Patch 2.0. Read on!` becomes
+`Patch 2.0 Read on`, retaining the version while keeping the card to one sentence.
 
 ## 6d. Offline replay and evidence boundaries
 
@@ -858,10 +728,7 @@ Capture commands, fixtures and measured results live in `docs/spikes/feed-replay
   months of recorded sessions and update responses; monthly Replay snapshots cannot supply exact return times.
 - **Session-note ratings** as taste/verdict evidence: the table is empty and the journal
   prompt is opt-in; wire it into the probably-done gate when real rows exist.
-- **Genre-conditional thresholds** (2h in a roguelike vs. 2h in a CRPG): §6.1's own open
-  item; arrives with HLTB or per-genre config, lands on `FairShakeMinutes`/bucket floors.
-- ~~**Feed diversity quotas**~~ **Built** (2026-08-27): the shelf surface owns them —
-  franchise and genre caps per shelf, §6a. What remains UI territory is only styling.
+- **Genre-conditional thresholds** (2h in a roguelike vs. 2h in a CRPG): an open data-source question; arrives with HLTB or per-genre config, lands on `FairShakeMinutes`/bucket floors.
 - **"Short enough for tonight"** as a shelf: needs per-game expected-commitment data
   (HLTB, unresolved [VERIFY]) — the Steam "Short" tag is too sparse and too voted-on to
   carry a shelf's honesty. Same plug-in point as session-length fit.
@@ -872,17 +739,17 @@ Capture commands, fixtures and measured results live in `docs/spikes/feed-replay
 
 | Failure | Defence |
 |---|---|
-| Same five games forever | Recently-surfaced penalty — fed since §6b from the persisted `feed_surfacings` log, so rotation no longer depends on the jitter seed happening to change — + daily-seeded jitter inside score bands + one-work-one-shelf claims and the franchise/genre caps (§6a). |
+| Same five games forever | Recently-surfaced penalty — loaded from the persisted `feed_surfacings` log, so rotation does not depend on the jitter seed happening to change — + daily-seeded jitter inside score bands + one-work-one-shelf claims and the franchise/genre caps (§6a). |
 | Feedback becomes a black box | Feedback facts are append-and-revoke rows the user can list and undo (`GetAllVerdictsAsync` / `RevokeVerdictsAsync`); every effect is a query over them, so "what have I told it and what is that doing" always has an exact answer (§6b). |
 | Three dismissals collapse the feed into a monoculture | Dismissals are exclusion-only — they never touch the taste profile (§6b's stated non-effect) — and endorsements pay for taste testimony in √minutes, the same currency as played hours, so no handful of clicks can outvote the library's history. |
 | A shelf that is one franchise five times | `ShelfFranchiseCap` = 1, hard, measured against the 14-entry Infinity Blade pile. |
 | "Matches your taste" via a tag half the library wears | The prevalence cut: facets carried by >25% of the library cannot testify. Without it, 266 of 427 never-opened rows scored a perfect match — a metric measuring nothing. |
 | Recommending games the user will never play with strangers | Mode-mismatch demotion, evidence-gated, with the sentence said out loud where the row does surface. |
-| Resurfacing the finished 200-hour game | Retired is a hard exclusion before scoring, patches notwithstanding — same precedence §6.1 encodes. |
+| Resurfacing the finished 200-hour game | Retired is a hard exclusion before scoring, patches notwithstanding — same precedence build specification §6.1 encodes. |
 | Nagging about correctly-abandoned games | Probably-done penalty with an explanation that *says* "you were probably right"; not-interested set for the user's explicit verdict. |
 | Blank feed on day one | Every load-bearing signal is retroactive; tier detection widens confidence instead of gating output; the shelfware base value keeps the pile ranked rather than empty. |
 | Unexplainable output | Reasons are composed from the same contributions that produced the score; a signal that cannot be explained in one sentence has nowhere to hide in the API shape. |
-| The same frame with the nouns swapped | The scorer returns structure and the builder renders it, so a card is no longer a concatenation of the same fragments in the same order (§6c). Several phrasings per signal, selected from the release id. The contract test masks every number and proper noun and requires ten genuinely different histories to leave at least eight distinct sentence *skeletons* — distinct wording is not enough to pass. |
+| The same frame with the nouns swapped | The scorer returns structure and the builder renders it, so a card avoids concatenation of the same fragments in the same order (§6c). Several phrasings per signal, selected from the release id. The contract test masks every number and proper noun and requires ten genuinely different histories to leave at least eight distinct sentence *skeletons* — distinct wording is not enough to pass. |
 | Absence of evidence read as evidence of absence | Update coverage is a named input (§3): an unpolled release is `Unknown`, not quiet, and the probably-done penalty is withheld until one stored announcement proves Winnow has seen the release's history. Same rule elsewhere: `ReturnEpisodes` is null when unprobed and 0 when probed and empty, kept apart so "no evidence" is never reported as "never returned", and the tier's sampled estimate is flagged `IsEstimate` rather than passed off as a count. |
 | Silent history-shape lies | 86400/1970 sentinel handling is upstream (migration 0008, `SteamTime`); null last-played beside real minutes is read as maximally dormant, never as fresh. |
 | Score worship | No stored score column exists; the feed is recomputed per request and the request carries every threshold, so two callers can disagree and both be right. |

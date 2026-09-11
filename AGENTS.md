@@ -7,25 +7,30 @@ The product, the assembly, the binary and the mascot (a dragon) are all **Winnow
 
 ## Where to read
 
-One document owns each domain. Read the one that governs what you are about to change; none
-of them defers to another, and none of them outranks another.
+Start with `README.md` for the app and `AGENTS.md` for working in the repository. Then read
+the document for the area you are changing. Each states the current choice and any rationale
+needed to use it; there is no document precedence order or required history tour.
 
 | Domain | Document |
 |---|---|
 | How work is done here: naming, layout, build, run, test, commit, delegation, Backlog | `AGENTS.md` (this file) |
-| Product scope, phase order, exit criteria, what is excluded and what is deferred | `ROADMAP.md` |
+| Product scope, delivered capabilities, remaining validation and deferred work | `ROADMAP.md` |
 | The build spec: architecture, module boundaries, external services, entity resolution, schema, derived buckets, session detection | `game-library-design.md` |
 | The visual spec: palette, type, layout, dormancy, components, copy, accessibility, themes | `design-system.md` |
 | Token values | `src/Winnow.App/Themes/tokens.axaml` |
 | The scoring model: signals, weights, thresholds, cold start, explainability | `docs/recommendation-engine.md` |
 | Where each filter value comes from | `docs/facet-provenance.md` |
+| Plugin installation and authoring | `docs/plugins.md` |
+| Building and publishing releases | `docs/releases.md` |
 | Orientation for a new reader: what it is, how to install, run and build | `README.md` |
 | Evidence: how something was measured | `docs/spikes/` |
 | Per-domain agent charters | `.codex/agents/` (Codex), `.claude/agents/` (Claude Code) |
 
-If a document is wrong, edit it to the current truth in the same commit as the change that
-made it wrong, and append the sentence it used to say to `docs/decisions.md`. Do not leave a
-correction sitting next to the text it corrects.
+Update a document in place when behavior changes. Keep a short explanation beside a choice
+when it helps the reader make the next change. Git records previous wording and decisions;
+do not copy replaced text into a decision log or add a correction beside a false statement.
+If documents disagree, verify the implementation and intended scope, then fix the conflicting
+text together. A newer date, agent charter, plan or experiment does not establish a new rule.
 
 ## The name, and the word it is not
 
@@ -64,6 +69,8 @@ Each one is load-bearing for an install that predates the 2026-08-28 rename.
 - `src/Winnow.Resolve` — maps candidates to Work and Release. Hard external-id joins
   auto-merge; fuzzy matches queue for user confirmation and never auto-merge.
 - `src/Winnow.Enrich.*` — external metadata clients. Rate-limited, cached, soft-failing.
+- `src/Winnow.PluginSdk`, `src/Winnow.Plugins` — public provider contracts and plugin hosting.
+  `plugins/` holds separately packaged providers.
 - `src/Winnow.Covers`, `src/Winnow.Covers.Igdb` — cover fetch and disk cache.
 - `src/Winnow.Monitor` — process watching and session recording.
 - `src/Winnow.Recommend` — the scoring model. No IO beyond repositories; references
@@ -93,14 +100,15 @@ separate prose author and no prose handoff required to finish a change.
 - Desktop and fullscreen are separate presentation paths. For each user-facing feature or
   behavior change, assess both surfaces, keep shared application behavior consistent, and
   record implementation and verification for each in the same Backlog task. A desktop fix
-  does not establish fullscreen coverage. During the fullscreen design phase, record any
-  required counterpart in its design work; after both paths exist, deliver both or explicitly
-  document an agreed exception. Architecture owns the sharing boundary; the visual spec owns
+  does not establish fullscreen coverage. Deliver both or explicitly document an agreed
+  exception. Architecture owns the sharing boundary; the visual spec owns
   each surface's interaction and layout.
 - Verify behavior in the source before documenting it. State limitations and distinguish
   measured results from assumptions. Preserve an existing document's structure and voice.
-- Keep rules in the document that owns the domain, historical rationale in `docs/decisions.md`,
-  measurement methods in `docs/spikes/`, and delivery status in `ROADMAP.md` or Backlog.
+- Keep current behavior and its rationale in the relevant domain document, measurement
+  methods and dated results in `docs/spikes/`, and task status and execution history in Backlog.
+  `ROADMAP.md` summarizes capability and scope; it is not a second task queue. Completed plans,
+  review findings and mockups are evidence for their recorded version, not implementation instructions.
 - Comments explain constraints or intent that the code cannot show. Avoid narrating the next
   line or describing the history of a diff. UI copy follows `design-system.md`.
 - Report what changed, what was checked and any remaining limitation. Scale detail to the work.
@@ -122,7 +130,7 @@ report the limitation and leave Backlog files untouched.
   one another's edits. The coordinating agent owns integration and verification.
 - `Directory.Build.props` sets nullable, implicit usings and `TreatWarningsAsErrors`.
 - Build and test with `dotnet build` and `dotnet test` from the repository root.
-- CI runs Windows Release restore/build/test on pushes and pull requests, with SDK analyzers
+- CI runs Windows Release restore/build/test on pushes to `main` and pull requests, with SDK analyzers
   and direct/transitive NuGet auditing enabled; warnings fail the gate. Windows CI
   and Linux session checks are required by `main` branch protection. Changes reach `main`
   through an up-to-date pull request; this also applies to administrators. No additional

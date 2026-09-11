@@ -1,7 +1,9 @@
 # Spike: Steam store tags — which endpoint actually returns them
 
-> **Evidence, not a rule.** This document records how something was measured and is
-> never the place to look up what to do. The current rule is in `game-library-design.md` §4.3.
+> **Dated evidence.** Findings describe the builds and services observed on the dates below.
+> Current implementation choices are in [the build spec](../../game-library-design.md);
+> current interactions and layout are in [the visual spec](../../design-system.md).
+> This record is optional background.
 
 Date: 2026-08-23. Resolves the `[VERIFY]` in `game-library-design.md` §4.3.
 
@@ -134,31 +136,12 @@ Also observed while probing: `ISteamApps/GetAppList/v2` now 404s
 (`Method 'GetAppList' not found in interface 'ISteamApps'`), and `IStoreService/GetAppList` needs
 a key. Not this spike's question, but it invalidates the common keyless full-app-list recipe.
 
-## Recommendation
+## Findings
 
-**Primary: `IStoreBrowseService/GetItems` + `IStoreService/GetTagList`.** Batch ~100 appids,
-`include_tag_count: 20`, resolve names locally from a `version_hash`-cached `GetTagList` snapshot.
-Store `(tagid, weight, rank)` — keep rank, since weight is only within-app comparable. Cache per
-§4.3 (≥24 h; the 120 s `max-age` is a CDN hint, not our policy). Typed `HttpClient` + Polly
-limiter per the charter — the no-throttle result above is an 8-request sample, not a licence.
+The measured tag path is `IStoreBrowseService/GetItems` plus `IStoreService/GetTagList`.
+Both were keyless and undocumented. GetItems batched more than 100 appids; GetTagList
+provided the 446-name dictionary. Appdetails returned no user tags.
 
-Risks: undocumented, can change or close without notice (needs a fixture contract test and a
-degrade path, not a hard dependency); keyless today, and if that changes it becomes a §4.2
-endpoint with §4.2 limits; 429s unproven here, so honour `Retry-After` and back off exponentially
-from the first commit; if persistently throttled, §4.3's remedy is `webapi@valvesoftware.com`.
-
-**Fallback: IGDB `genres` + `themes` + `keywords`** when GetItems yields nothing for an appid
-(non-Steam titles, delisted apps, endpoint gone). Store the two vocabularies **separately** — do
-not blend — so the UI can prefer Steam tags and a taxonomy change cannot corrupt existing rows.
-**Store page HTML scraping is not recommended in any form.**
-
-## §4.3 amendments
-
-| §4.3 says | Reality |
-|---|---|
-| User tags not in appdetails | **Correct**, confirmed live |
-| Needs store HTML **or** `IStoreService`/`IStoreBrowseService` | It is `IStoreBrowseService/GetItems`; plain `IStoreService` has no tag method |
-| — | `GetItems` is **keyless** and batches 100+ appids — the one-appid/35-hour math does not apply |
-| — | Tag names need a second call, `IStoreService/GetTagList` (keyless, 446 tags) |
-| — | Neither method is listed in `GetSupportedAPIList`; both are undocumented |
-| IGDB genres/themes are the fallback | Add `keywords` — closest to store tags, but unweighted and unordered |
+Steam weights compare tags within one game; they do not establish popularity across games.
+IGDB genres, themes and keywords are a different vocabulary, with no equivalent weighting
+or ordering. The current caching and fallback behavior is in the build spec, section 4.3.

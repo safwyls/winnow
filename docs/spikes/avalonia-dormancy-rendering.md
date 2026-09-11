@@ -1,7 +1,9 @@
 # Spike: Dormancy rendering in Avalonia 11.x
 
-> **Evidence, not a rule.** This document records how something was measured and is
-> never the place to look up what to do. The current rule is in `design-system.md` §5.1 and §5.4.
+> **Dated evidence.** Findings describe the builds and services observed on the dates below.
+> Current implementation choices are in [the build spec](../../game-library-design.md);
+> current interactions and layout are in [the visual spec](../../design-system.md).
+> This record is optional background.
 
 **Settles:** design-system.md §5.4 [VERIFY]. Researched 2026-08-23 against Avalonia 11.3.x (current stable line).
 

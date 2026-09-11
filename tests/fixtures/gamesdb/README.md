@@ -15,9 +15,8 @@ artwork URLs, genres, developers and popularity ranks. `GamesDbClient` reads two
 things from it — `game_id` and `game.releases[].{platform_id, external_id}` — so
 the fixture keeps those verbatim and keeps a handful of the other fields
 (`title`, `summary`, `slug`, `availability`, `release_per_platform_id`)
-specifically so the parser tests prove it ignores them. Anything IGDB is the
-authority for (§4.4) must never be read from here; a second source of titles and
-covers is how two rows for one game start disagreeing about what they are called.
+specifically so the parser tests prove it ignores them. This client supplies exact
+identity joins; it does not import titles, covers or other metadata.
 
 **The fixture is a contract pin.** This service is undocumented and unversioned —
 Galaxy's backing service, not a published API — so `GamesDbContractTests` asserts

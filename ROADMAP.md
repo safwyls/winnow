@@ -1,162 +1,101 @@
 # Winnow — Roadmap
 
-Product scope, phase order, exit criteria, and what is deliberately excluded or deferred.
-Architecture and hard constraints are in `game-library-design.md`; the reasoning behind the
-choices recorded here is in `docs/decisions.md`.
-
----
+Product scope, delivered capabilities and remaining work. Backlog holds task status,
+priority and acceptance criteria; this page describes what the app supports and what is
+outside the current scope. Architecture is in [game-library-design.md](game-library-design.md),
+and interaction and appearance are in [design-system.md](design-system.md).
 
 ## 1. What Winnow is
 
-**Winnow is the library that remembers.**
+Winnow helps people play games they already own. It combines Steam, Epic and GOG libraries
+and recommends games using local play history, sessions and updates. Every recommendation
+explains why that game is worth returning to or starting.
 
-Every storefront lists your games. None of them retain the history that makes a library
-legible: how long a game sat unopened before you tried it, whether you bounced off it once or
-fought with it across six sessions, whether it has been patched three times since you gave up,
-whether you are the kind of person who ever comes back. Storefronts discard that. Winnow keeps
-it. That is the whole asset.
-
-Winnow is a launcher and a recommender, and the two halves are one loop: launching through
-Winnow accrues real session data, session data makes the feed good, and the feed is the reason
-to launch through Winnow. **The launcher is the data-acquisition strategy for the
-differentiator**, which is why session detection ranks ahead of everything visible.
+Launching games through Winnow supplies session history that improves later recommendations.
+That loop is the product: the launcher supports the recommender, and the recommender gives
+people a reason to keep using the launcher.
 
 ## 2. Standing constraints
 
-These bind every phase below and do not expire.
+- **No server, no Winnow account, no telemetry.** Inference runs locally over the user's
+  database. Optional storefront sign-in connects an account at that store.
+- **Prioritize the feed and the play-history loop.** Launcher features support finding and
+  playing owned games; matching every feature of another launcher is not the objective.
+- **Installation delegates to the owning store client.** Winnow does not implement downloads
+  or manage a store's game files itself.
+- **Every recommendation gives its reason in one sentence.**
+- **Desktop and fullscreen share application behavior.** They have separate layouts,
+  navigation and browsing state, with coverage for both surfaces.
 
-- **No server, no Winnow account, no telemetry.** All inference is local, over the user's own
-  database. Signing in to a storefront links the user's account there; it does not create one
-  here.
-- **The feed must always be further along than the launcher.** Shipping launcher parity before
-  the recommender is genuinely good spends the differentiation budget catching up to a mature
-  incumbent, with nothing left to be chosen for.
-- **The core loop is *play what you own*.** Anything that inverts that ratio is a mistake
-  regardless of how well it converts.
-- **Installation delegates, never reimplements.** Winnow hands installation to the store's own
-  client: `steam://install/`, Galaxy, the Epic launcher.
-- Every recommendation states its reason in one sentence.
+## 3. Delivered capabilities
 
-## 3. Phases
+“Implemented” describes repository behavior, not a claim of a published release or completed
+hardware validation. The remaining validation is listed in §6.
 
-M0 to M2 and M4 shipped as originally specified. Numbering after that reflects the order the
-work was taken up, not the order it was planned.
+| Area | Implemented behavior |
+|---|---|
+| Library | Local Steam, Epic and GOG discovery, optional Steam/Epic connections, manual entries, search, filters and user lists. Steam collections are not imported. |
+| Identity | Exact external IDs resolve automatically. Fuzzy matches require confirmation. Same-game, expansion and variant relations apply immediately through reversible links on desktop and fullscreen. |
+| History | Playtime snapshots, process-based session recording and restart recovery, optional journal notes, Steam history backfill and account-page imports. Unknown history remains unknown. |
+| Recommendations | Explainable owned-game shelves, cold-start recommendations, dismiss/snooze/undo, visible-card impressions, update signals and evidence-based Derelict classification. Offline replay tooling compares tuning over captured database states. |
+| Game actions | Launch, install and uninstall handoffs. Steam supports direct management routes; Epic and GOG open launcher management where direct uninstall is unavailable. |
+| Metadata and artwork | Optional IGDB, built-in store metadata, cached artwork, user corrections and artwork source preferences. Local provider plugins can add imports, metadata, artwork and shelves. SteamGridDB is bundled separately. |
+| Presentation | Desktop and fullscreen views, controller navigation and text entry, shared themes, separate layout preferences, accessibility and reduced-motion support. |
+| Setup | Optional resumable setup for providers, themes and preferences, available again from Application settings on both surfaces. GOG uses local discovery. |
+| Export | Acquisition CSV with title, store, acquisition date, licence and price paid. Missing values stay blank; recorded prices are cents without a currency. |
+| Distribution | Windows/Linux x64 packages, release checks and draft publication workflow. Update notification and installer-based Windows updating; portable Windows/Linux update recovery is deferred. |
 
-| # | Deliverable | Exit criteria | State |
-|---|---|---|---|
-| M0 | Host + SQLite + migrations + Steam local ingest + library view | Library visible; playtime and last-played correct from `localconfig.vdf` | shipped |
-| M1 | IGDB resolution + merge confirm queue | Hard joins auto-resolve; soft matches queue; no auto-merge on fuzzy title | shipped |
-| M2 | Snapshot scheduler + update signal poller + staleness scoring | Buckets query correctly against seeded data | shipped |
-| M4 | Epic + GOG local ingest | Installed titles from both appear and dedupe correctly | shipped |
-| M4.5 | Epic OAuth ownership source + local fallback | Entitlements resolve when authed; unauthed degrades silently to local files with no loss of install state | shipped |
-| M7 | Recommendation core (`Winnow.Recommend`) | Standalone scoring module, explainable output, sensible ranking on a cold library | shipped |
-| M3a | Session detection | Process watching records sessions with true start and end; poll for discovery only, events for exit | shipped |
-| M4.6 | Store sign-in UI (Epic) | A sign-in button runs an embedded-browser OAuth flow that captures the code automatically; the console flow survives as a documented fallback | shipped |
-| M11 | Appearance system | Four themes, a transparency slider with a chosen backdrop, an optional island layout, a drop-in JSON theme format, and an application icon | shipped |
-| M3b | Launch + journal prompt | Launching from Winnow records a session; the journal prompt is opt-in | shipped; the `winnow-wrap` launch-option wrapper is specified and deliberately not built |
-| M8 | The Feed | The recommender is the app's primary view; every card states its reason in one sentence | shipped with dismiss, snooze, undo and persisted visible-card impressions |
-| M5 | Historical playtime backfill | Historical playtime backfills; the feed measurably improves on a cold library | built; backfill tested, feed improvement awaiting live validation against the user's key |
-| M6 | Export (JSON + CSV) | JSON is complete and re-readable; CSV covers a defined set of views | acquisition CSV shipped; full JSON/import deferred; exit criterion to be restated |
-| M9 | Install / uninstall management | Install and uninstall delegate to the owning store client and reflect state back | shipped; Steam delegates directly, Epic and GOG expose launcher management where direct uninstall is unsupported |
-| M10 | Full-screen mode + gamepad navigation | The whole app is navigable on a controller at 10 feet | separate TV UI implemented and automated checks pass; physical-controller, seating-distance and live-provider validation remain open (TASK-4) |
+## 4. Excluded and deferred
 
-### Pre-beta hardening
+**Excluded:** PlayStation/Xbox integration, hosted or multi-user services, co-op and friend
+library matching, mobile, and a 3D shelf view. Fullscreen is a separate TV interface.
 
-The 2026-09-06 review puts security, data integrity and broken shipped behavior ahead of new
-features. PRE-BETA-HARDENING owns the release queue; task priority and ordinal record severity
-and execution order. Read Backlog for current completion status.
+**Deferred work:**
 
-TASK-148 adds Winnow's own Windows/Linux installer and release workflow, separate from
-M9's management of installed games.
+| Area | Scope and tracking |
+|---|---|
+| Portable data | Full JSON export/import and broader CSV views (TASK-2). Confirm the export and importer acceptance scope before implementation; acquisition CSV already exists. |
+| Recommendation research | Acquisition-price signals (TASK-136), achievement progress (TASK-137), expected-commitment data (TASK-138), and achievement ingestion (TASK-15). New weights need evidence. |
+| Catalogue and identity | Per-edition years (TASK-13), broader GamesDB cross-store automation (TASK-37), and group-header/row actions (TASK-109–110). |
+| Steam collections | Static/dynamic collection import, including account ownership, repeat imports and preservation of Winnow list edits (DRAFT-1). |
+| GOG sign-in | Local Galaxy discovery supplies owned games and available local play facts. Investigate sign-in only if the unverified sessions endpoint adds useful session history (TASK-49). |
+| Other data research | Steam support-export format and availability (TASK-46). |
+| Navigation and notifications | Windows post-session notification (TASK-108), user-selected destinations for links (TASK-114). |
+| App updates | Recovery for portable Windows and Linux installations (TASK-159). |
 
-TASK-176 adds optional first-run setup for metadata, platforms, appearance, application and
-library preferences on desktop and fullscreen. It resumes interrupted setup, preserves saved
-choices when steps are skipped, and can be reopened from Application settings. Provider
-capabilities retain their existing scope, including local-only GOG discovery.
+Unowned-game recommendations are outside the current feed. A later wishlist feature would
+start from titles the user has explicitly selected, rather than a general purchase feed.
 
-| Priority | Tasks in execution order | Reason |
-|---|---|---|
-| High | TASK-24, TASK-11, TASK-16, TASK-17, TASK-28, TASK-31, TASK-26, TASK-141, TASK-3, TASK-52, TASK-25 | Credential protection, atomic writes, ingest and cover safety, migration and CI gates, working install/uninstall, recoverable backfill, redacted diagnostics |
-| Medium | TASK-33, TASK-6, TASK-7, TASK-10, TASK-12, TASK-18, TASK-19, TASK-20, TASK-107, TASK-139, TASK-39, TASK-57, TASK-48, TASK-47, TASK-29, TASK-35, TASK-32, TASK-130, TASK-63, TASK-69 | Timestamp and feed correctness, responsiveness, cache behavior, readable journal notes, acquisition protection, usable auth, accessibility, platform support, contract evidence and accurate explanations |
-| Low | TASK-36, TASK-45 | Startup overhead and remaining account-page verification |
-
-TASK-3 moves from M9 into this queue: export was a sequencing dependency, not a technical
-prerequisite for store handoff. TASK-26 depends on TASK-31's migration verification.
-TASK-141 needs observed Epic launcher success before it can close; passing dispatch tests
-alone do not establish that installation works. TASK-45, TASK-47 and TASK-48 require live
-verification. TASK-32 now has passing Ubuntu smoke coverage for native discovery and
-Proton-environment attribution. Actual Wine/Proton game compatibility remains unmeasured.
-
-Unassigned tasks left outside beta are new scoring signals and evaluation research
-(TASK-136–138), achievement ingestion (TASK-15), per-edition years (TASK-13), broader
-cross-store automation (TASK-37), notification and navigation features (TASK-108–110,
-TASK-114), optional presentation work (TASK-42, TASK-43, TASK-80–82), and deferred
-import/research or test maintenance (TASK-40, TASK-41, TASK-44, TASK-46, TASK-49, TASK-65).
-These remain useful work, but do not repair the beta's existing core loop. Exact history
-aggregates (TASK-139) are included because they fix tier decisions and avoid repeated sampling
-reads; new ranking weights can wait for evidence from beta use.
-
-TASK-135 delivers offline tuning comparison over captured database states. It rejects
-backdated mutable projections and reports judged-cohort metrics with their coverage and
-limitations; it adds development tooling rather than a new app surface.
-
-TASK-14 implements the Derelict library bucket and feed shelf using dated IGDB and Steam
-lifecycle evidence. Classification is local and recomputed; missing data remains unknown.
-PCGamingWiki and Wikidata enrichment remain optional follow-up work.
-
-## 4. Excluded, and deferred
-
-TASK-186 adds a local provider plugin SDK for library imports, metadata, artwork and owned-game
-recommendation shelves, with SteamGridDB as the first separately packaged provider. Generated
-settings cover desktop and fullscreen. Custom screens, UI replacement, new launcher actions,
-an online plugin marketplace and automatic plugin updates remain outside this first contract.
-
-**Excluded outright.** PlayStation and Xbox. Any hosted service, user accounts or multi-user
-features. Co-op and friend library matching. A 3D "games on a shelf" view. Mobile. The
-grounds for each are in `game-library-design.md` §1 and §4.6.
-
-Full-screen gamepad mode (M10) is a 10-foot UI, not the 3D shelf, and is not covered by that
-exclusion.
-
-**GOG sign-in: held, not scheduled.** The local Galaxy reader already carries everything the
-authenticated endpoint returns, and more. One thing reopens it: `GET
-gameplay.gog.com/.../sessions` exists and accepts GET, but no known client reads it and its
-payload is unverified. **If it carries session history, this gets rescheduled.** Tracked as
-TASK-49.
-
-**Recommending games the user does not own: deferred to a later phase.** The version that
-survives Winnow's own premise is wishlist intelligence, acting on titles the user has already
-flagged, rather than a purchase feed.
-
-**Steam collection import: deferred.** Local ingest reads installed manifests and per-account
-play history; it does not import Steam's static or dynamic collections. Winnow's user-authored
-lists are available on desktop and fullscreen. DRAFT-1 records the future scope decision,
-including account ownership, repeated import and preservation of local list edits; it is
-outside the architecture repair and pre-beta queues.
+The initial plugin contract excludes custom screens, UI replacement, new launcher actions,
+an online marketplace and automatic plugin updates.
 
 ## 5. Carried debt
 
-Tracked so none of it silently becomes permanent. Each item is a Backlog task; read the task
-for its current state.
-
-| Debt | Task |
+| Limitation or refinement | Tracking |
 |---|---|
-| The account stats screen is a first pass; presentation cleanup is shelved | TASK-43 |
-| The fact tables cannot distinguish two identical same-day transactions | TASK-44 |
+| Zero-price purchase rows are skipped; recording them as zero needs a product choice | TASK-40 |
+| Saved licence-page import accepts one page per file; multi-file merging is deferred | TASK-41 |
+| Identical transactions on the same day cannot be distinguished | TASK-44 |
+| Single-entry rail sections and account-stat presentation need refinement | TASK-42–43 |
+| Optional-connection colour, connection copy and prose reading measure need specification | TASK-80–82 |
+| Backup-test rewind setup needs less manual migration maintenance | TASK-65 |
 
-| $0.00 purchase rows are skipped rather than recorded as zero, undecided either way | TASK-40 |
-| The saved-file licenses route captures one page per file | TASK-41 |
-| ACCOUNT and REVIEW each spend a rail section heading on a single row | TASK-42 |
+## 6. Validation and release readiness
 
-The account-scope filter deliberately errs visible (`game-library-design.md` §6.3). Linux session discovery and Proton-environment attribution passed real-process Ubuntu smoke tests under TASK-32; this does not establish compatibility across actual Wine/Proton games.
+Repair correctness, data integrity and broken existing behavior before expanding features.
+Backlog contains the active work queue; completed review reports do not impose additional
+release gates. [Release instructions](docs/releases.md) give the build, package and
+publication checks.
 
-Identity grouping is delivered through the reversible link model (TASK-70 and TASK-189).
-Confirming a proposal applies the relation immediately on desktop and fullscreen; the old
-destructive executor and separate apply queue were retired by TASK-70.7 and TASK-83.
-
-## 6. The risk
-
-This scope roughly triples Winnow's surface area, and the realistic failure mode is not
-technical. It is becoming a worse Playnite with an unfinished recommender attached. The
-mitigation is the ordering above, and the standing constraint in §2 that the feed stays ahead
-of the launcher.
+- **Fullscreen:** automated interaction and layout checks cover the implemented TV surface.
+  TASK-4 still needs a real controller and intended display at normal seating distance to
+  establish that every operation is reachable, focus is visible and no mouse or keyboard is
+  required. Record the controller, OS, display and any failing operation.
+- **Linux:** real-process tests cover native session discovery and synthetic Proton-environment
+  attribution. They do not establish compatibility across actual Wine/Proton games. Local
+  Epic/GOG discovery and embedded sign-in retain Windows-specific integration limits.
+- **Providers and recommendations:** fixtures and local tests do not establish live sign-in
+  availability or a measurable feed improvement for a particular user's backfill. Keep those
+  observations separate from implemented data ingestion.
+- **Packaging:** release smoke scripts run on disposable CI runners. A local publish or
+  passing unit tests do not establish installer behavior on a user's device.

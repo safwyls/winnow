@@ -1,5 +1,9 @@
 # Winnow architecture and code review — 2026-09-10
 
+> Historical baseline review. Findings below describe the inspected September 10 tree, not
+> current defects or instructions. [ROADMAP.md](../ROADMAP.md) states current capabilities and
+> validation; Backlog holds current task status.
+
 The correction work is documented in [the resolution record](architecture-review-resolution-2026-09-11.md)
 and [verification evidence](spikes/architecture-fixes-2026-09-10.md). This report retains the
 findings and limits of the original baseline review.
@@ -511,7 +515,7 @@ The documented workflow and PowerShell integrity verifier use Migrations/hashes.
 
 Two authorities and duplicate canonicalization invite drift. This is distinct from existing [TASK-65](<../backlog/tasks/task-65 - Derive-the-migration-list-in-DatabaseBackupTests.Rewind-instead-of-hand-maintaining-it.md>), which concerns a handwritten migration list in backup rewind tests.
 
-Source: [src/Winnow.Data/Migrations/hashes.json](../src/Winnow.Data/Migrations/hashes.json); [src/Winnow.Data/Migrations/checksums.txt](../src/Winnow.Data/Migrations/checksums.txt); [tests/Winnow.Tests/Enforcement/SchemaDisciplineTests.cs:30](../tests/Winnow.Tests/Enforcement/SchemaDisciplineTests.cs#L30); [scripts/Verify-Migrations.ps1](../scripts/Verify-Migrations.ps1).
+Source: [src/Winnow.Data/Migrations/hashes.json](../src/Winnow.Data/Migrations/hashes.json); `src/Winnow.Data/Migrations/checksums.txt` (path at the inspected baseline); [tests/Winnow.Tests/Enforcement/SchemaDisciplineTests.cs:30](../tests/Winnow.Tests/Enforcement/SchemaDisciplineTests.cs#L30); [scripts/Verify-Migrations.ps1](../scripts/Verify-Migrations.ps1).
 
 Required verification: xUnit and CI consume the same authoritative append-only hashes.json manifest; the redundant registry is removed or mechanically derived. Baseline immutability, manifest membership and canonical UTF-8/newline behavior remain enforced. Existing mutation scenarios still fail for altered, missing and unrecorded SQL; the documented migration workflow is sufficient to pass all checks.
 

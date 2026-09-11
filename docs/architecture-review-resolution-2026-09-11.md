@@ -1,5 +1,9 @@
 # Architecture review resolution — 2026-09-11
 
+> Dated delivery and verification record. The counts and results below apply to the recorded
+> commits. Current behavior is stated directly in [the architecture](../game-library-design.md),
+> and remaining scope and validation in [ROADMAP.md](../ROADMAP.md).
+
 The 38 findings in [the original review](architecture-review-2026-09-10.md) have been addressed
 through TASK-189–226. The related replay and dormancy tasks, TASK-135 and TASK-27, are also
 complete. TASK-227 coordinates delivery. The original review remains a record of the inspected

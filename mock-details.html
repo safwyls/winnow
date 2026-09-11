@@ -2,14 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Winnow — details modal, one restructuring for seven tasks</title>
+<title>Winnow — archived details prototype</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  /* ══ Tokens, taken verbatim from src/Winnow.App/Themes/tokens.axaml ══════
-     The Winnow theme. mock-library.html predates the palette decision and
-     still carries the rejected purple; these are the shipped values. */
+  /* Frozen token snapshot for this prototype. Current app values live in tokens.axaml. */
   :root{
     --well:#050D0E; --ground:#0F1C1E; --surface:#16282A; --raised:#1D3437;
     --high:#254042; --line:#2B4A4C; --line-soft:rgba(43,74,76,.6);
@@ -248,36 +246,17 @@
 </style>
 </head>
 <body>
+<aside style="padding:12px 20px;border-bottom:1px solid #2B4A4C;background:#16282A;color:#F0EDE7">
+  <strong>Archived details prototype.</strong>
+  This artifact records an exploration, including its sample data and task notes.
+  Current layout and interactions are in <a href="design-system.md#10-the-detail-view" style="color:#57A8F0">design-system.md §10</a>.
+</aside>
 
 <div class="note">
-  <h1>Details modal — one restructuring for seven tasks</h1>
-  <p>The modal has been changed five times in one day and grew by accretion; five more tasks
-  want to add to it. This mock proposes landing seven of them together — TASK-111
-  (IGDB screenshots), TASK-112 (ratings and reviews attributed to their source), TASK-113
-  (refetch metadata for one game), TASK-115 (replace the since-you-played bar), TASK-38
-  (surface acquisition facts), TASK-21 (accessibility names and control hierarchy) and
-  TASK-30 (unread counts reachable by a screen reader) — by routing each addition through
-  the taxonomy the modal already has rather than appending a section to the end.</p>
-  <p style="margin-top:10px">The modal already breaks into five regions: the object, what
-  this is, your history, get me in, the rest. Only one of the six additions becomes a new
-  thing in the scrolling band, and even that one (screenshots) rides inside an existing
-  section.</p>
-  <p style="margin-top:10px">Colours, type and geometry are the shipped values from
-  <code>src/Winnow.App/Themes/tokens.axaml</code> and <code>design-system.md</code>, Winnow
-  theme only. <code>mock-library.html</code> predates the palette decision and still carries
-  the rejected purple; this file does not. The card is drawn at 780px, between the shipped
-  <code>MinWidth 700</code> and <code>MaxWidth 860</code>, so the right column is 500px —
-  the middle of the 420 to 580 range measured in
-  <code>docs/spikes/details-action-band-width.md</code>.</p>
-  <p style="margin-top:10px">
-    <span class="new">NEW</span> marks something these tasks add.
-    <span class="moved">MOVED</span> marks something that exists and changes place.
-    Cover art is procedural gradients; publisher art is never reproduced in a mock.</p>
-  <p style="margin-top:10px"><strong style="color:var(--amber)">Every string inside a modal
-  card is a placeholder for a design conversation, not a proposal.</strong> Titles, labels,
-  buttons, menu rows, status sentences, section headings and captions are stand-ins so the
-  layout can be judged. Shipping copy is authored by the docs-writer agent at implementation
-  time.</p>
+  <h1>Details prototype states</h1>
+  <p>Three sample games explore dense, sparse and missing-art layouts. Counts, copy,
+  geometry and the NEW/MOVED annotations belong to this archived concept.
+  They do not describe the current application. Cover art uses procedural gradients.</p>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════

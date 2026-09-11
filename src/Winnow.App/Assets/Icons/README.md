@@ -1,35 +1,23 @@
 # The mark
 
-One drawing, three destinations, and they do not want the same treatment.
+Winnow's dragon head is the shared application mark.
 
-| File | Is | Read by |
-|---|---|---|
-| `dragon.svg` | the source drawing | nothing at runtime — it is the record |
-| `dragon.ico` | 7 frames, 16→256 | `<ApplicationIcon>` (the exe) and `Window.Icon` (taskbar, alt-tab, window corner) |
+| Representation | Use |
+|---|---|
+| `dragon.svg` | Source drawing; read by `FullscreenGlyphs` for the fullscreen mark |
+| `dragon.ico` | Seven frames, 16–256px; executable, taskbar, Alt-Tab and window icon |
+| `DragonMark` in `Views/MainWindow.axaml` | Desktop caption geometry, painted with `TextDim` |
 
-**The files keep the name `dragon`, and did not become `winnow` in the rename.** The
-mascot IS called Winnow, which is exactly the problem: `winnow.ico` would read as
-"the application's icon" and as "a picture of the character" at the same time, and
-this folder needs to distinguish them — the mark below is a drawing of the dragon,
-while `<ApplicationIcon>` is the app's face. `dragon` names the subject, which is
-the thing that will still be true after the next rename; `winnow` would name the
-product for the second time in a path that already sits under `Winnow.App`.
+`FullscreenGlyphs` reads the SVG paths with EvenOdd fill and applies the theme's `Text`
+brush. The desktop caption embeds the same geometry to keep the mark sharp at any DPI and
+recolour it with the theme. Keep both representations aligned when editing the drawing.
+The asset name `dragon` describes the subject; the mascot's name is Winnow.
 
-**The caption mark is neither of these.** It is a `StreamGeometry` inlined in
-`Views/MainWindow.axaml` as `DragonMark`, painted by a `Path` in `TextDim`, so it
-recolours when the theme does and stays sharp at any DPI. See the comment on that
-resource for why the fill rule is written out and why the ink is `TextDim`. The
-geometry is scoped to that window on purpose: the mark lives in the caption, and
-nothing else in the app draws it.
+## Regenerating dragon.ico
 
-## Where dragon.ico came from
-
-Generated with a throwaway SkiaSharp harness — `SKPath.ParseSvgPathData` over the
-thirteen `d` attributes, `SKCanvas` to a bitmap per size, then the ICO container
-written by hand. **No new package**: SkiaSharp is already in the tree under
-Avalonia. To regenerate after editing the SVG, rebuild it from this description
-rather than looking for a checked-in tool; it is thirty lines and keeping a
-second build system in the repo for one binary is the worse trade.
+Render the thirteen SVG paths with SkiaSharp (`SKPath.ParseSvgPathData`, then `SKCanvas`)
+at each frame size and package the bitmaps in an ICO container. SkiaSharp is already an
+Avalonia dependency. There is no checked-in icon-generation tool.
 
 - **Composition.** The artwork is scaled into a rounded tile (radius 0.1875 × size,
   the Windows 11 metric), `Ground #0F1C1E` behind, `Text #F0EDE7` in front. The
@@ -45,11 +33,8 @@ second build system in the repo for one binary is the worse trade.
   Measured rather than guessed: at 16px, 0.0 speckles into grey noise and 1.1
   merges the two horns into one lump; 0.4–0.55 keeps two distinct horns, the snout
   and the eye. 32 and up take no dilation and do not need it.
-- **16px is the honest limit.** It reads as a horned head — you can tell it is a
-  beast and you can pick it out of a taskbar — but the mane texture and the jaw
-  are gone and it does not resolve as a *dragon*. A simplified small-size mark was
-  tried and rejected: cropping to the skull loses the snout and the second horn,
-  and the result is a pale blob, which is worse than a soft dragon.
+- **At 16px the mark reads as a horned head.** The mane texture and jaw detail are not
+  distinguishable at that size.
 - **DIB below 48, PNG at 64 and above.** Windows has read PNG frames since Vista,
   but the small sizes are where the widest range of shell surfaces look, and a DIB
   is what every one of them has always understood. `System.Drawing.Icon` cannot

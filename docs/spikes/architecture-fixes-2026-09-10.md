@@ -1,5 +1,10 @@
 # Architecture review correction checks
 
+> **Dated evidence.** Findings describe the builds and services observed on the dates below.
+> Current implementation choices are in [the build spec](../../game-library-design.md);
+> current interactions and layout are in [the visual spec](../../design-system.md).
+> This record is optional background.
+
 This records verification of the corrections to the September architecture review.
 Backlog TASK-227 owns delivery status; the original review remains the finding record.
 All checks below use temporary databases or isolated build/publish directories. No
@@ -264,7 +269,7 @@ identities and temporary data; they do not claim real-game or hardware smoke cov
 
 ## Shared dormancy endpoint — TASK-27
 
-Winnow.Covers.DormancyStyle now defines the saturation, brightness and hue endpoint once. CoverCacheOptions, CoverImaging, the application ramp and procedural placeholders reference it. Avalonia token resources expose those same doubles through DormancyTokenExtension. The endpoint remains 0.22 / 0.68 / -6 degrees, so existing disk variants remain valid and appearance is preserved. The visual spec records why the former 0.60 gradient calibration was too dark on real capsules and requires a disk-variant version change with any future transform retune. TASK223 retires the older mock as a fidelity target.
+Winnow.Covers.DormancyStyle now defines the saturation, brightness and hue endpoint once. CoverCacheOptions, CoverImaging, the application ramp and procedural placeholders reference it. Avalonia token resources expose those same doubles through DormancyTokenExtension. The endpoint remains 0.22 / 0.68 / -6 degrees, so existing disk variants remain valid and appearance is preserved. The visual spec records the current endpoint and the disk-variant version requirement for transform changes.
 
 Verification: 16 CoverImaging/dormancy checks pass in dormancy-rendering.trx, including per-channel equivalence of procedural and Skia transformations. The actual tokens resource dictionary resolves all three shared values in dormancy-token.trx. The combined UI run passed 43 other history/dormancy/refresh cases; its one test-only resource lookup failure was corrected by loading the merged token dictionary explicitly, then rechecked successfully. No rendering values changed.
 
@@ -288,7 +293,7 @@ links to the governing spec and tokens. Static checks confirmed the notice's pla
 that its local links exist. Codex and Claude Avalonia charter descriptions and instruction
 bodies were compared after newline normalization and are identical. Searches found no
 remaining active visual-target, version-4, TTL-only, once-per-launch or obsolete merge-debt
-claim in the edited owning documents. Replaced wording is retained in docs/decisions.md.
+claim in the edited owning documents. Git history retains the wording replaced during that review.
 Scoped git diff --check passed. No rendering constants changed; TASK-27 owns brightness.
 
 ## Large-history reads — TASK-222
