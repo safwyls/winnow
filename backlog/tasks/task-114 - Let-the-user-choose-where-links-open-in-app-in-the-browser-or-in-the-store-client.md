@@ -7,7 +7,7 @@ status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-05 02:50'
-updated_date: '2026-09-11 19:17'
+updated_date: '2026-09-11 19:24'
 labels:
   - ui
 dependencies: []
@@ -49,6 +49,8 @@ Audit evidence: GameDetailsViewModel currently tries the embedded reader then fa
 Implemented persisted link destination controls in Application settings on desktop and fullscreen, strict shared routing, Windows registered-client detection, native-action preservation and visible fallback/failure status. Initial validation: 66 route/policy/settings tests and 3 headless UI tests pass; desktop test activates the actual More-menu item. Added 2 further refused/throwing-reader cases. Production LibraryViewModel injection is the remaining integration step, sequenced after TASK109 to keep commits isolated. Support matrix is recorded in design-system section10.8 and game-library-design section5.1.
 
 Final integration injects IGameLinkRouter through the production LibraryViewModel and registers client detection/router in Program. Verification passed: 68 backend route/policy/settings tests and 6 Avalonia headless tests, covering persisted controller/desktop choices, actual desktop More-menu activation, library-created details, visible fallback on both surfaces and preference-write failures on both settings surfaces. Read-only UI review found the missing fullscreen save-error display; fixed and regression-tested. Store-client routing is limited to canonical Steam store pages on Windows with a registered executable. Explicit native actions and reader allowlists are preserved.
+
+Full Release verification found an ineffective AutomationProperties.Name on the Links card Border. Removed that duplicate label; the actual ComboBox retains its reachable Open links in name. The accessible-name enforcement check passes after this correction and the related provider-label correction in TASK80.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

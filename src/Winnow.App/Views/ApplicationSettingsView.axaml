@@ -103,7 +103,7 @@
                 </Border>
 
                 <TextBlock Classes="label" AutomationProperties.HeadingLevel="2" Text="LINKS"/>
-                <Border Classes="card" AutomationProperties.Name="Link destination">
+                <Border Classes="card">
                     <StackPanel Spacing="10">
                         <TextBlock Classes="body-l" Text="Open links in"/>
                         <ComboBox ItemsSource="{Binding LinkDestinationOptions}"
