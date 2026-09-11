@@ -488,7 +488,7 @@
                                                    Foreground="{StaticResource TextDim}"
                                                    Text="{Binding PendingCountText}"/>
                                     </StackPanel>
-                                    <TextBlock Classes="para" MaxWidth="720"
+                                    <TextBlock Classes="para"
                                                HorizontalAlignment="Left"
                                                Text="{Binding Blurb}"/>
                                 </StackPanel>

@@ -127,22 +127,16 @@
     </Style>
 
     <!-- ══ Prose ══════════════════════════════════════════════════════════════
-         Paragraph body. 12/18 rather than §3's 13/18 default, capped at 720px by
-         whatever lays it out. The design system now owns a reading measure
-         (§3, the ProseMeasure token in tokens.axaml), but .para has not been
-         swept onto it yet: there are around 100 .para sites across the
-         settings, appearance, account-stats, merge and consent surfaces, and
-         applying a maximum plus left alignment to all of them is a sweep
-         TASK-82 still owns. The Stores panel's 720px cap is a card width
-         holding controls and rows rather than a prose measure, so the rule
-         does not simply overwrite it. TextDim keeps a paragraph part of the
-         room.
+         Paragraph body is 12/18 with the shared desktop reading measure.
+         Card and grid widths remain independent of the paragraph cap.
 
          `:is(TextBlock)` rather than `TextBlock` for tokens.axaml's reason: an
          Avalonia type selector matches the exact type, so a bare selector
          silently skips SelectableTextBlock and the failure is unstyled text in a
          system font rather than a build error. -->
     <Style Selector=":is(TextBlock).para">
+        <Setter Property="MaxWidth" Value="{DynamicResource ProseMeasure}"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
         <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="LineHeight" Value="18"/>

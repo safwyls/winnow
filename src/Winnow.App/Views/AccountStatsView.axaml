@@ -117,8 +117,7 @@
                 BorderThickness="0,0,0,1">
             <StackPanel Spacing="7">
                 <TextBlock AutomationProperties.HeadingLevel="1" Classes="display-l" Text="{Binding Title}"/>
-                <TextBlock Classes="body"
-                           MaxWidth="700"
+                <TextBlock Classes="body prose"
                            HorizontalAlignment="Left"
                            TextWrapping="Wrap"
                            LineHeight="19"

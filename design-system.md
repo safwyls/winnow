@@ -131,7 +131,7 @@ measure is drawn from, so one number serves both prose sizes. Measured against t
 repository's own font files, shaped by Skia: 66 characters at Body 13 measure 410px, 45
 characters at Body 13 measure 275px, 66 characters at Body 12 measure 379px.
 
-The `.prose` class applies it: `MaxWidth` from the token, `HorizontalAlignment="Left"` so the
+The `.prose` and `.para` classes apply it: `MaxWidth` from the token, `HorizontalAlignment="Left"` so the
 maximum does not centre the paragraph away from the column's left edge under the default
 Stretch, and `TextWrapping="Wrap"`. It governs a prose run — a paragraph the reader reads. It
 does not govern the merge card's 840px (§6), which is a two-column comparison width, and it
