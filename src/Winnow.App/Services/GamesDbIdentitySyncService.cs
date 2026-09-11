@@ -8,7 +8,7 @@ using Winnow.Enrich.GamesDb.Model;
 
 namespace Winnow.App.Services;
 
-/// <summary>Applies gamesdb's exact store joins as reversible work identities.</summary>
+/// <summary>Applies gamesdb references corroborated by release-version identity as reversible work links.</summary>
 public sealed class GamesDbIdentitySyncService(
     IReleaseRepository releases,
     IIdentityLinkRepository links,
@@ -20,11 +20,15 @@ public sealed class GamesDbIdentitySyncService(
     public async Task<int> SyncAsync(CancellationToken ct = default)
     {
         var linked = 0;
+        var observed = 0;
+        var unresolvedEdition = 0;
+        var refused = 0;
         try
         {
             var ids = await releases.GetAllExternalIdsAsync(ct);
             var identities = (await releases.GetIdentitiesAsync(ct)).ToDictionary(r => r.ReleaseId);
             var byKey = ids.ToDictionary(e => new TargetKey(e.Provider, e.ProviderId));
+            var releaseEvidence = new Dictionary<long, Release?>();
             var targets = ids.Where(e => e.Provider == ExternalIdProviders.Epic
                     && identities.ContainsKey(e.ReleaseId))
                 .Select(e => new EnrichmentTarget
@@ -55,6 +59,20 @@ public sealed class GamesDbIdentitySyncService(
                         continue;
                     }
 
+                    observed++;
+                    // Gamesdb's game-level graph may contain several incompatible
+                    // editions. Only an independently stored, exact release-version
+                    // identity can qualify a pair; metadata routing is not proof.
+                    var epicRelease = await ReadReleaseAsync(epic.ReleaseId);
+                    var otherRelease = await ReadReleaseAsync(other.ReleaseId);
+                    if (epicRelease?.IgdbVersionId is not > 0
+                        || otherRelease?.IgdbVersionId != epicRelease.IgdbVersionId
+                        || epicRelease.WorkId != epic.WorkId || otherRelease.WorkId != other.WorkId)
+                    {
+                        unresolvedEdition++;
+                        continue;
+                    }
+
                     var resolution = await links.GetResolutionAsync(ct);
                     var members = resolution.SameGame.GroupOf(epic.WorkId)
                         .Concat(resolution.SameGame.GroupOf(other.WorkId)).ToHashSet();
@@ -76,6 +94,7 @@ public sealed class GamesDbIdentitySyncService(
                             && identities.TryGetValue(c.RightReleaseId, out var right)
                             && members.Contains(left.WorkId) && members.Contains(right.WorkId)))
                     {
+                        refused++;
                         continue;
                     }
 
@@ -84,6 +103,8 @@ public sealed class GamesDbIdentitySyncService(
                         source = "gamesdb", gameId = game.GameId,
                         epicCatalogId = key.ProviderId, epicArtifactId = game.ExternalId,
                         provider = twin.Platform, providerId = twin.ExternalId,
+                        igdbVersionId = epicRelease.IgdbVersionId,
+                        epicReleaseId = epic.ReleaseId, counterpartReleaseId = other.ReleaseId,
                     });
                     var parent = resolution.SameGame.Resolve(other.WorkId);
                     var child = resolution.SameGame.Resolve(epic.WorkId);
@@ -105,29 +126,36 @@ public sealed class GamesDbIdentitySyncService(
                                     [epic.WorkId] = resolution.SameGame.Resolve(epic.WorkId),
                                     [other.WorkId] = resolution.SameGame.Resolve(other.WorkId),
                                 },
+                                ExpectedReleaseIdentities =
+                                [
+                                    new(epic.ReleaseId, epic.WorkId, epicRelease.IgdbVersionId.Value,
+                                        key.Provider, key.ProviderId),
+                                    new(other.ReleaseId, other.WorkId, otherRelease.IgdbVersionId!.Value,
+                                        twin.Platform, twin.ExternalId),
+                                ],
                                 EvidenceJson = evidence,
-                                Note = "Same game identified by gamesdb store IDs.",
+                                Note = "Gamesdb store references corroborated by matching release-version IDs.",
                             }, ct);
                         }
                         catch (IdentityLinkRefusedException ex)
                         {
+                            refused++;
                             logger.LogDebug(ex, "Identity changed while gamesdb was resolving a pair; skipped.");
                             continue;
                         }
                         linked++;
                     }
-
-                    // Close other pending pairs now answered by this group too.
-                    foreach (var pending in decisions.Where(c => c.Status == MergeCandidateStatuses.Pending))
-                    {
-                        if (identities.TryGetValue(pending.LeftReleaseId, out var left)
-                            && identities.TryGetValue(pending.RightReleaseId, out var right)
-                            && members.Contains(left.WorkId) && members.Contains(right.WorkId))
-                        {
-                            await candidates.WithdrawPendingAsync(pending.Id, ct);
-                        }
-                    }
                 }
+            }
+
+            async Task<Release?> ReadReleaseAsync(long releaseId)
+            {
+                if (!releaseEvidence.TryGetValue(releaseId, out var release))
+                {
+                    release = await releases.GetAsync(releaseId, ct);
+                    releaseEvidence.Add(releaseId, release);
+                }
+                return release;
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -135,7 +163,10 @@ public sealed class GamesDbIdentitySyncService(
             logger.LogWarning(ex, "Gamesdb identity sync stopped after {Count} links; the next pass can resume.", linked);
         }
 
-        logger.LogInformation("Gamesdb identity sync created {Count} same-game links.", linked);
+        logger.LogInformation(
+            "Gamesdb identity sync observed {Observed} store pairs, created {Count} same-game links; "
+            + "{UnresolvedEdition} lacked matching release-version evidence and {Refused} were protected or changed.",
+            observed, linked, unresolvedEdition, refused);
         return linked;
     }
 }

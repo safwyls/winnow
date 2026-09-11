@@ -1,3 +1,4 @@
+using Dapper;
 using Microsoft.Extensions.Logging.Abstractions;
 using Winnow.App.Services;
 using Winnow.Core.Domain;
@@ -14,6 +15,74 @@ namespace Winnow.Tests;
 
 public sealed class GamesDbIdentitySyncTests
 {
+    [Theory]
+    [InlineData(ExternalIdProviders.Epic, "catalog")]
+    [InlineData(ExternalIdProviders.Steam, "620")]
+    public async Task Store_id_reassigned_during_graph_lookup_cannot_link_stale_releases(string provider, string providerId)
+    {
+        using var f = new Fixture();
+        var epic = await f.AddAsync(ExternalIdProviders.Epic, "catalog", "Epic");
+        var steam = await f.AddAsync(ExternalIdProviders.Steam, "620", "Steam");
+        var replacement = await f.AddAsync(ExternalIdProviders.Gog, "123", "Replacement");
+        await f.QueueAsync(epic, steam);
+        f.Graph.ReleaseIds = [(GamesDbPlatforms.Steam, "620")];
+        f.Graph.BeforeAnswer = () => f.ReassignExternalIdAsync(provider, providerId, replacement.ReleaseId);
+
+        Assert.Equal(0, await f.Service.SyncAsync());
+
+        Assert.Empty(await f.Links.GetHistoryAsync());
+        Assert.Equal(1, await f.Candidates.CountPendingAsync());
+        Assert.Equal(replacement.ReleaseId,
+            (await f.Releases.FindByExternalIdAsync(provider, providerId))!.Id);
+    }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData(42L, null)]
+    [InlineData(null, 42L)]
+    [InlineData(42L, 43L)]
+    [InlineData(0L, 0L)]
+    [InlineData(-1L, -1L)]
+    public async Task Game_level_references_without_matching_release_versions_keep_pair_reviewable(
+        long? epicVersion, long? steamVersion)
+    {
+        using var f = new Fixture();
+        var epic = await f.AddAsync(ExternalIdProviders.Epic, "catalog", "Gold Edition",
+            fullMetadata: true, igdbVersionId: epicVersion);
+        var steam = await f.AddAsync(ExternalIdProviders.Steam, "620", "Base Game",
+            fullMetadata: true, igdbVersionId: steamVersion);
+        var candidate = await f.QueueAsync(epic, steam);
+        f.Graph.ReleaseIds = [(GamesDbPlatforms.Steam, "620")];
+
+        Assert.Equal(0, await f.Service.SyncAsync());
+        Assert.Equal(0, await f.Service.SyncAsync());
+
+        Assert.Empty(await f.Links.GetHistoryAsync());
+        Assert.Equal(MergeCandidateStatuses.Pending, (await f.Candidates.GetAsync(candidate))!.Status);
+        Assert.Equal(epicVersion, (await f.Releases.GetAsync(epic.ReleaseId))!.IgdbVersionId);
+        Assert.Equal(steamVersion, (await f.Releases.GetAsync(steam.ReleaseId))!.IgdbVersionId);
+    }
+
+    [Theory]
+    [InlineData(GamesDbPlatforms.Steam, "ArtifactName", "game-123")]
+    [InlineData(GamesDbPlatforms.Epic, "OtherArtifact", "game-123")]
+    [InlineData(GamesDbPlatforms.Epic, "ArtifactName", "")]
+    public async Task Uncorrelated_graph_answer_cannot_link_even_matching_release_versions(
+        string platform, string artifact, string gameId)
+    {
+        using var f = new Fixture();
+        var epic = await f.AddAsync(ExternalIdProviders.Epic, "catalog", "Epic");
+        var steam = await f.AddAsync(ExternalIdProviders.Steam, "620", "Steam");
+        await f.QueueAsync(epic, steam);
+        f.Graph.ReleaseIds = [(GamesDbPlatforms.Steam, "620")];
+        f.Graph.Answer = new GamesDbGame(platform, artifact, gameId,
+            [new GamesDbRelease(GamesDbPlatforms.Steam, "620")]);
+
+        Assert.Equal(0, await f.Service.SyncAsync());
+        Assert.Empty(await f.Links.GetHistoryAsync());
+        Assert.Equal(1, await f.Candidates.CountPendingAsync());
+    }
+
     [Fact]
     public async Task Repository_refuses_snapshot_when_user_moves_evidence_work_to_another_parent()
     {
@@ -103,12 +172,12 @@ public sealed class GamesDbIdentitySyncTests
     }
 
     [Fact]
-    public async Task All_exact_counterparts_form_one_identity_without_duplicate_links_on_repeat()
+    public async Task Only_counterparts_with_matching_versions_form_one_identity_without_duplicate_links_on_repeat()
     {
         using var f = new Fixture();
         var epic = await f.AddAsync(ExternalIdProviders.Epic, "catalog", "Epic");
         var steam = await f.AddAsync(ExternalIdProviders.Steam, "620", "Steam");
-        var secondSteam = await f.AddAsync(ExternalIdProviders.Steam, "621", "Steam edition");
+        var secondSteam = await f.AddAsync(ExternalIdProviders.Steam, "621", "Steam edition", igdbVersionId: 43);
         var gog = await f.AddAsync(ExternalIdProviders.Gog, "1207658924", "GOG");
         await f.QueueAsync(epic, steam);
         await f.QueueAsync(steam, gog);
@@ -116,12 +185,13 @@ public sealed class GamesDbIdentitySyncTests
         f.Graph.ReleaseIds = [(GamesDbPlatforms.Steam, "steam_620"), (GamesDbPlatforms.Steam, "620"),
             (GamesDbPlatforms.Steam, "621"), (GamesDbPlatforms.Gog, "1207658924"), (GamesDbPlatforms.Steam, "620")];
 
-        Assert.Equal(3, await f.Service.SyncAsync());
+        Assert.Equal(2, await f.Service.SyncAsync());
         var resolution = (await f.Links.GetResolutionAsync()).SameGame;
-        Assert.Single(new[] { epic, steam, secondSteam, gog }.Select(s => resolution.Resolve(s.WorkId)).Distinct());
-        Assert.Equal(0, await f.Candidates.CountPendingAsync());
+        Assert.Single(new[] { epic, steam, gog }.Select(s => resolution.Resolve(s.WorkId)).Distinct());
+        Assert.NotEqual(resolution.Resolve(epic.WorkId), resolution.Resolve(secondSteam.WorkId));
+        Assert.Equal(1, await f.Candidates.CountPendingAsync());
         Assert.Equal(0, await f.Service.SyncAsync());
-        Assert.Equal(3, (await f.Links.GetHistoryAsync()).Count);
+        Assert.Equal(2, (await f.Links.GetHistoryAsync()).Count);
     }
 
     [Fact]
@@ -137,11 +207,11 @@ public sealed class GamesDbIdentitySyncTests
     }
 
     [Fact]
-    public async Task Exact_ids_clear_queue_entries_and_preserve_both_releases_and_external_ids()
+    public async Task Corroborated_ids_clear_queue_entries_and_preserve_both_releases_and_external_ids()
     {
         using var f = new Fixture();
-        var epic = await f.AddAsync(ExternalIdProviders.Epic, "catalog", "Gold Edition", fullMetadata: true);
-        var steam = await f.AddAsync(ExternalIdProviders.Steam, "620", "Base Game", fullMetadata: true);
+        var epic = await f.AddAsync(ExternalIdProviders.Epic, "catalog", "Original title", fullMetadata: true);
+        var steam = await f.AddAsync(ExternalIdProviders.Steam, "620", "Localized title", fullMetadata: true);
         var unrelated = await f.AddAsync(ExternalIdProviders.Steam, "570", "Gold Edition");
         var candidate = await f.QueueAsync(epic, steam);
         await f.QueueAsync(epic, unrelated);
@@ -160,7 +230,7 @@ public sealed class GamesDbIdentitySyncTests
         Assert.NotEqual(resolution.Resolve(epic.WorkId), resolution.Resolve(unrelated.WorkId));
         Assert.Equal(epic.WorkId, (await f.Releases.GetAsync(epic.ReleaseId))!.WorkId);
         Assert.Equal(steam.WorkId, (await f.Releases.GetAsync(steam.ReleaseId))!.WorkId);
-        Assert.Equal("Gold Edition", (await f.Releases.GetAsync(epic.ReleaseId))!.Name);
+        Assert.Equal("Original title", (await f.Releases.GetAsync(epic.ReleaseId))!.Name);
         Assert.Equal("catalog", Assert.Single(await f.Releases.GetExternalIdsAsync(epic.ReleaseId)).ProviderId);
         Assert.Equal("620", Assert.Single(await f.Releases.GetExternalIdsAsync(steam.ReleaseId)).ProviderId);
         Assert.Equal(steam.ReleaseId, (await f.Releases.FindByExternalIdAsync(ExternalIdProviders.Steam, "620"))!.Id);
@@ -317,7 +387,8 @@ public sealed class GamesDbIdentitySyncTests
                 NullLogger<GamesDbIdentitySyncService>.Instance);
         }
 
-        public async Task<Seeded> AddAsync(string provider, string id, string name, bool fullMetadata = false)
+        public async Task<Seeded> AddAsync(string provider, string id, string name, bool fullMetadata = false,
+            long? igdbVersionId = 42)
         {
             var workId = await Works.InsertAsync(new Work
             {
@@ -327,7 +398,7 @@ public sealed class GamesDbIdentitySyncTests
                 FirstReleaseYear = fullMetadata ? 2020 : null,
                 Publisher = fullMetadata ? "Publisher" : null,
             });
-            var releaseId = await Releases.InsertAsync(new Release { WorkId = workId, Name = name });
+            var releaseId = await Releases.InsertAsync(new Release { WorkId = workId, Name = name, IgdbVersionId = igdbVersionId });
             await Releases.AddExternalIdAsync(new ExternalId { ReleaseId = releaseId, Provider = provider, ProviderId = id });
             return new(workId, releaseId);
         }
@@ -336,6 +407,15 @@ public sealed class GamesDbIdentitySyncTests
         {
             LeftReleaseId = left.ReleaseId, RightReleaseId = right.ReleaseId, Score = .9,
         });
+
+        public async Task ReassignExternalIdAsync(string provider, string providerId, long releaseId)
+        {
+            using var lease = _db.Factory.Lease();
+            await lease.Connection.ExecuteAsync("""
+                UPDATE external_ids SET release_id = @releaseId
+                WHERE provider = @provider AND provider_id = @providerId;
+                """, new { provider, providerId, releaseId });
+        }
 
         public void Dispose() => _db.Dispose();
     }
@@ -349,16 +429,19 @@ public sealed class GamesDbIdentitySyncTests
 
     private sealed class IdentityGraph : IGameIdentityGraph
     {
+        public GamesDbGame? Answer { get; set; }
+        public Func<Task>? BeforeAnswer { get; set; }
         public (string Platform, string Id)[] ReleaseIds { get; set; } = [];
         public Exception? Failure { get; set; }
         public bool Missing { get; set; }
-        public Task<GamesDbGame?> ResolveAsync(string platform, string externalId, CancellationToken ct = default)
+        public async Task<GamesDbGame?> ResolveAsync(string platform, string externalId, CancellationToken ct = default)
         {
             if (Failure is not null) throw Failure;
             Assert.Equal(GamesDbPlatforms.Epic, platform);
             Assert.Equal("ArtifactName", externalId);
-            return Task.FromResult<GamesDbGame?>(Missing ? null : new GamesDbGame(platform, externalId, "game-123",
-                ReleaseIds.Select(r => new GamesDbRelease(r.Platform, r.Id)).ToArray()));
+            if (BeforeAnswer is not null) await BeforeAnswer();
+            return Missing ? null : Answer ?? new GamesDbGame(platform, externalId, "game-123",
+                ReleaseIds.Select(r => new GamesDbRelease(r.Platform, r.Id)).ToArray());
         }
     }
 }

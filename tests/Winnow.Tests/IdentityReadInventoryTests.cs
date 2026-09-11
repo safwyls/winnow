@@ -203,7 +203,7 @@ public sealed class IdentityReadInventoryTests
             "The link machinery itself. Resolving inside the thing that defines resolution would "
             + "be circular."),
 
-        new("src/Winnow.Data/Repositories/IdentityLinkRepository.cs", "LinkAsync",
+        new("src/Winnow.Data/Repositories/IdentityLinkRepository.cs", "AssertAutomaticLinkAllowedAsync",
             Policy.DoNotResolve,
             "The hard-ID write guard checks actual work IDs and live group membership inside "
             + "the link transaction so a background plan cannot overwrite a user decision."),

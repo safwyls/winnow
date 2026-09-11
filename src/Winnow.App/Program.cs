@@ -630,6 +630,7 @@ public static class Program
         services.AddSingleton(sp => new LibraryRefreshPipeline(
         [
             new("Steam playtime history", async ct => { await sp.GetRequiredService<ISteamPlaytimeBackfill>().BackfillAsync(ct); }, PublishAfter: true),
+            new("GamesDB identity links", async ct => { await sp.GetRequiredService<GamesDbIdentitySyncService>().SyncAsync(ct); }, PublishAfter: true),
             new("Titles and metadata", async ct => { await sp.GetRequiredService<EnrichmentSyncService>().EnrichAsync(ct); }, IgdbRelevant: true),
             new("Filter facets", async ct => { await sp.GetRequiredService<FacetSyncService>().SyncAsync(ct); }, IgdbRelevant: true),
             new("Steam maturity", async ct => { await sp.GetRequiredService<SteamStoreMaturitySync>().SyncAsync(ct); }),

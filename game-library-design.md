@@ -1032,25 +1032,31 @@ collision — `works.igdb_id` is UNIQUE — is confirmed in place on the modal w
 named and shown, and the link is written without entering the `merge_candidates` queue. The
 queue is where soft matches are cleared; a hard external-id join is not a soft match.
 
-**Gamesdb hard IDs create reversible work identities.** The App's
-`GamesDbIdentitySyncService` scans every Epic external ID during the startup enrichment
-pipeline, including fully enriched works. The lookup planner retains gamesdb's exact
-Epic artifact answer alongside its metadata route. Each numeric Steam or GOG counterpart
-already in the library can join the Epic work through a `same_game` link with source
-`hard_id` and the graph's game ID and store IDs as evidence. Existing groups keep their
-representative when a singleton joins them. Cached graph answers can resolve a counterpart
-imported on a later launch; missing aliases or failed lookups leave the library unchanged.
+**Gamesdb references require edition evidence before automatic linking.** The App's
+`GamesDbIdentitySyncService` scans Epic external IDs, including fully enriched works, through
+the shared ownership-refresh pipeline used at startup, on scheduled passes and after account
+changes. The lookup planner retains a graph answer only when it matches the requested Epic
+artifact and has a game ID. A numeric Steam or GOG counterpart already in the library can
+join through a reversible `same_game` link only when both referenced releases have the same
+positive `IgdbVersionId`. Unknown or conflicting versions remain reviewable; a game-level
+reference or similar title alone cannot establish edition equivalence.
+
+The link records the graph game ID, store IDs, release IDs and version evidence. Existing
+groups keep their representative when a singleton joins them. Ordinary launcher ingestion
+does not currently populate `IgdbVersionId`, so most imported pairs remain unresolved rather
+than being automatically linked. Logs distinguish observed counterparts, unresolved edition
+evidence, refused links and created links. Broader edition-evidence acquisition remains TASK-37.
 
 `external_ids` remains globally keyed by `(provider, provider_id)`. No key is copied onto
-another release, and no work, release, ownership or history row is collapsed. Gamesdb
-identifies games rather than editions, so edition differences remain on their original
-releases. A live identity link is the affirmative answer; migration 0019 retired the
-`confirmed` candidate status. Pending pairs answered by the resulting group are withdrawn.
+another release, and no work, release, ownership or history row is collapsed. A live identity
+link is the affirmative answer; migration 0019 retired the `confirmed` candidate status.
+Pending pairs answered by the resulting group are withdrawn inside the link transaction.
 No fuzzy title evidence enters this automatic path.
 
 Rejected pairs, active metadata pins, expansion/variant membership and explicit separation
 history prevent automatic linking. A separated group's members remain available for manual
-linking. Repository checks run inside the link transaction so a user decision made while
+linking. Repository checks revalidate release IDs, version evidence, external IDs and expected
+same-game roots inside the link transaction, so a changed mapping or user decision made while
 the background lookup is running cannot be overwritten. Ordinary group reparenting is not
 a separation. Repeated passes create no extra links. Desktop and fullscreen share this
 pipeline and the identity-aware library refresh.
