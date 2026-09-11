@@ -441,6 +441,18 @@ public sealed class FullscreenLibrarySummaryPage : FullscreenPage
         {
             body.Children.Add(FullscreenUi.Text(stats.IntroMessage, 28, "TextDim"));
             if (stats.IsMixedCurrency) body.Children.Add(FullscreenUi.Text(stats.MixedCurrencyMessage, 28, "Amber"));
+            body.Children.Add(FullscreenUi.Text(stats.SummaryHeading, 40));
+            void Figure(string label, string value, string ink = "Text")
+            {
+                body.Children.Add(FullscreenUi.Text(label, 28, "TextDim"));
+                var number = FullscreenUi.Text(value, 40, ink);
+                number[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension("DataFont");
+                body.Children.Add(number);
+            }
+            Figure(stats.NetSpendLabel, stats.NetSpendValue, "Volt");
+            Figure(stats.RefundedShareLabel, stats.RefundedShare);
+            Figure(stats.BundleShareLabel, stats.BundleShare);
+            body.Children.Add(FullscreenUi.Text(stats.SummaryNote, 28, "TextDim"));
             void Group(string label, IEnumerable<AccountStatRow> rows, string note)
             {
                 var text = string.Join("\n\n", rows.Select(row => $"{row.Label}     {row.CountText}     {row.AmountText}"));

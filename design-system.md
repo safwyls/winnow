@@ -406,6 +406,21 @@ technology. Fullscreen uses a `TextDim` status line beneath the provider heading
 separate actionable attention text; it shares the state meanings without the desktop pill.
 Local-only discovery is an available source, not an unconnected account requiring repair.
 
+**Account statistics.** Desktop Steam stats and fullscreen Activity → Library summary lead
+with `From captured purchases`: net spend with recorded prices, purchases refunded, and
+kept purchases in bundles. Desktop uses 28px Data for net spend and 22px Data for percentages;
+fullscreen uses 40px Data above its breakdown actions. Counts and detailed amounts retain
+their smaller existing table or reading-page treatment.
+
+The refund percentage divides original product rows flagged refunded by all product rows
+with recorded prices. The bundle percentage divides non-refunded product rows with more
+than one item by all non-refunded product rows with recorded prices. Wallet credit and
+standalone reversals enter neither ratio. Missing-price rows are excluded from both
+populations; partial captures describe only the pages read. These are transaction percentages,
+so mixed currencies can retain them while money totals stay withheld. A zero denominator or
+overlap between identified and unknown-account captures shows `Not available`. No bundle
+price is divided among games. Both surfaces state these limits beside the primary figures.
+
 **Rail bucket.** Display S name, Data count. Selected: `ChromeRaised` fill, 2px `Volt` left
 edge. The `Patched` bucket is the only one carrying a `Flare` dot next to its count.
 Zero-count buckets render at 40% opacity rather than hiding, so the rail never reflows.

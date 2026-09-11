@@ -92,6 +92,21 @@ public partial class AccountStatsViewModel : ObservableObject
 
     public string SpendNote => AccountStatsCopy.SpendNote;
 
+    public string SummaryHeading => "From captured purchases";
+    public string SummaryNote => "Product transactions with recorded prices only. Wallet credit and standalone refund rows are excluded. Percentages count transactions, not games or money; missing-price rows and uncaptured pages are outside these figures.";
+    public string NetSpendLabel => "Net spend with recorded prices";
+    public string RefundedShareLabel => "Purchases refunded";
+    public string BundleShareLabel => "Kept purchases in bundles";
+
+    [ObservableProperty]
+    public partial string NetSpendValue { get; set; } = "Not available";
+
+    [ObservableProperty]
+    public partial string RefundedShare { get; set; } = "Not available";
+
+    [ObservableProperty]
+    public partial string BundleShare { get; set; } = "Not available";
+
     public string YearHeading => AccountStatsCopy.YearHeading;
 
     public string YearNote => AccountStatsCopy.YearNote;
@@ -246,6 +261,11 @@ public partial class AccountStatsViewModel : ObservableObject
         HasFacts = stats.HasAnything;
         IsMixedCurrency = !stats.IsSingleCurrency;
         _symbol = stats.Currencies.Count == 1 ? stats.Currencies[0].Symbol : string.Empty;
+
+        NetSpendValue = stats.GrossProductTransactionCount > 0 && Money(stats.NetProductSpendCents) is { Length: > 0 } money
+            ? money : "Not available";
+        RefundedShare = Percentage(stats.RefundedProductTransactionCount, stats.GrossProductTransactionCount);
+        BundleShare = Percentage(stats.BundlePurchases.Count, stats.NetProductTransactionCount);
 
         BuildSpend(stats);
         BuildYears(stats);
@@ -441,6 +461,11 @@ public partial class AccountStatsViewModel : ObservableObject
     /// </summary>
     private string Money(long cents)
         => IsMixedCurrency || _ambiguousAccountOverlap ? string.Empty : _symbol + Amount(cents);
+
+    private string Percentage(int numerator, int denominator)
+        => _ambiguousAccountOverlap || denominator <= 0 || numerator < 0 || numerator > denominator
+            ? "Not available"
+            : (100m * numerator / denominator).ToString("0.#", CultureInfo.CurrentCulture) + "%";
 
     private static string Amount(long cents)
         => (cents / 100m).ToString("N2", CultureInfo.InvariantCulture);

@@ -160,6 +160,25 @@
                         </StackPanel>
                     </Border>
 
+                    <Border Classes="card">
+                        <StackPanel Spacing="12">
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding SummaryHeading}"/>
+                            <TextBlock Classes="body" Text="{Binding NetSpendLabel}"/>
+                            <TextBlock Classes="data" FontSize="28" Foreground="{StaticResource Volt}" Text="{Binding NetSpendValue}"/>
+                            <Grid ColumnDefinitions="*,16,*" Margin="0,8,0,0">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding RefundedShareLabel}"/>
+                                    <TextBlock Classes="data" FontSize="22" Text="{Binding RefundedShare}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="6">
+                                    <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding BundleShareLabel}"/>
+                                    <TextBlock Classes="data" FontSize="22" Text="{Binding BundleShare}"/>
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock Classes="para" Text="{Binding SummaryNote}"/>
+                        </StackPanel>
+                    </Border>
+
                     <!-- ══ SPEND ════════════════════════════════════════════ -->
                     <Border Classes="card">
                         <StackPanel Spacing="14">
