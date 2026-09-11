@@ -41,20 +41,25 @@ public sealed class JournalNotificationTests
         using var journal = new SessionJournalService(sessions);
         var notifications = new Notifications { Delivery = delivery };
         using var prompt = new JournalPromptViewModel(journal, post: action => action(), notifications: notifications);
-        var library = new LibraryViewModel(new LibraryQueryRepository(db.Factory), new OwnershipRepository(db.Factory),
+        using var library = new LibraryViewModel(new LibraryQueryRepository(db.Factory), new OwnershipRepository(db.Factory),
             new ReleaseRepository(db.Factory), new WorkRepository(db.Factory), new UpdateEventRepository(db.Factory), journal: prompt);
+        await library.LoadCommand.ExecuteAsync(null);
         var feed = new FeedViewModel(new PreviewFeedService(), library);
         var preview = PreviewData.Shell;
         var shell = new MainWindowViewModel(library, preview.MergeQueue, preview.Stores, preview.Appearance, feed, preview.AccountStats, preview.LibrarySettings);
         using var context = new FullscreenContext(library, feed, shell);
         using var tv = new FullscreenView(context);
         var window = fullscreen ? new Window { Width = 1920, Height = 1080, Content = tv }
-            : new MainWindow { Width = 1200, Height = 900, DataContext = shell };
+            : new MainWindow { Width = 1200, Height = 900 };
         var activations = 0;
         prompt.ActivationRequested += () => activations++;
         try
         {
-            window.Show(); Dispatcher.UIThread.RunJobs();
+            // Startup belongs to separate tests. Attach the preloaded library after
+            // opening so MainWindow's async startup cannot outlive this database.
+            window.Show();
+            if (!fullscreen) window.DataContext = shell;
+            Dispatcher.UIThread.RunJobs();
             var ended = new EndedSession(first, 1, 3600);
             prompt.Offer(ended, "Finished game");
             prompt.Offer(ended, "Duplicate");
