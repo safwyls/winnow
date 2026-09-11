@@ -356,8 +356,7 @@
                                     Classes.attention="{Binding SteamStatusNeedsAttention}">
                                 <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
                                            VerticalAlignment="Center"
-                                           Text="{Binding SteamStatusLabel}"
-                                           AutomationProperties.Name="{Binding SteamStatusLabel}"/>
+                                           Text="{Binding SteamStatusLabel}"/>
                             </Border>
                         </Grid>
 
@@ -930,8 +929,7 @@
                                     Classes.live="{Binding EpicStatusIsLive}"
                                     Classes.attention="{Binding EpicStatusNeedsAttention}">
                                 <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                           Text="{Binding EpicStatusLabel}"
-                                           AutomationProperties.Name="{Binding EpicStatusLabel}"/>
+                                           Text="{Binding EpicStatusLabel}"/>
                             </Border>
                         </Grid>
 
@@ -1097,8 +1095,7 @@
                             <!-- Volt: this source is complete. -->
                             <Border Grid.Column="1" Classes="provider-status live">
                                 <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                           Text="{Binding GogStatusLabel}"
-                                           AutomationProperties.Name="{Binding GogStatusLabel}"/>
+                                           Text="{Binding GogStatusLabel}"/>
                             </Border>
                         </Grid>
 

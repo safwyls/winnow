@@ -1,4 +1,5 @@
 using Avalonia.Automation;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
@@ -75,7 +76,7 @@ public sealed class StoresAccountContextTests
             window.Show(); await page.PendingRefresh; Dispatcher.UIThread.RunJobs();
             var label = platform switch { "Steam" => stores.SteamStatusLabel, "Epic" => stores.EpicStatusLabel, _ => stores.GogStatusLabel };
             var status = Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(), text => text.IsEffectivelyVisible && text.Text == label);
-            Assert.Equal(label, AutomationProperties.GetName(status));
+            Assert.Equal(label, ControlAutomationPeer.CreatePeerForElement(status)!.GetName());
             Assert.True(status.Bounds.Width > 0);
             Assert.False(stores.SteamStatusNeedsAttention);
             Assert.False(stores.EpicStatusNeedsAttention);

@@ -25,7 +25,6 @@ public sealed class FullscreenPlatformPage : FullscreenPage
         {
             var text = FullscreenUi.Text("", 28, resource);
             Bind(text, TextBlock.TextProperty, property);
-            Bind(text, Avalonia.Automation.AutomationProperties.NameProperty, property);
             if (visible is not null) Bind(text, IsVisibleProperty, visible);
             body.Children.Add(text);
         }

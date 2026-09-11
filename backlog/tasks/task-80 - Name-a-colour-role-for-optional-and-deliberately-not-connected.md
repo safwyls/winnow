@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@codex-ui'
 created_date: '2026-09-03 00:58'
-updated_date: '2026-09-11 18:46'
+updated_date: '2026-09-11 19:24'
 labels: []
 dependencies: []
 documentation:
@@ -39,6 +39,10 @@ Document a shared semantic treatment for optional providers that are deliberatel
 Audit evidence: StoresView.axaml contains a local neutral status-pill style, while StoresViewModel and FullscreenPlatformTools expose connection state. The named shared semantic/component contract remains unspecified.
 
 Named optional/unconnected as neutral Line/TextDim and moved provider-status component states into controls.axaml. Desktop uses the shared component; fullscreen shows accessible status text including local-only GOG. Six headless provider/surface cases passed, checking visible accessible labels and neutral versus live desktop states.
+
+Accessibility follow-up: provider status TextBlock peers expose their Text and ignore AutomationProperties.Name. Removed ineffective Name bindings from desktop status text and fullscreen platform prose. The six provider/surface cases now assert the real automation peer name instead of merely reading the attached property.
+
+Follow-up validation: all thirty Release StoresAccountContextTests and JournalNotificationTests passed together, including real peer-name assertions for all three provider states on desktop and fullscreen. The coordinator also verified the source accessibility reachability rule with these changes.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
