@@ -9,8 +9,12 @@ public sealed record MatchSubject
     /// <summary>Raw title, exactly as the source supplied it.</summary>
     public required string Title { get; init; }
 
-    /// <summary>First release year, if known. Falls back to a parenthesised year in the title.</summary>
+    /// <summary>Edition year when observed, otherwise the Work first-release year.</summary>
     public int? ReleaseYear { get; init; }
+    public string? ReleaseYearSource { get; init; }
+    public bool SuppressTitleYearFallback { get; init; }
+
+    public int? EffectiveYear(int? titleYear) => ReleaseYear ?? (SuppressTitleYearFallback ? null : titleYear);
 
     /// <summary>Publisher as the source names it; normalised before comparison.</summary>
     public string? Publisher { get; init; }

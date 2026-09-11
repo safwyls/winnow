@@ -1214,6 +1214,8 @@ is not repaired automatically.
 works(id, igdb_id UNIQUE, igdb_mapping_revision, name, sort_name,
       first_release_year, summary, cover_url, background_url)
 releases(id, work_id FK, igdb_version_id, name, platform, edition_note)
+release_year_evidence(release_id FK, source, source_id, year,
+                      PRIMARY KEY(release_id, source, source_id))
 external_ids(release_id FK, provider, provider_id, PRIMARY KEY(provider, provider_id))
   -- provider ∈ {steam, gog, epic, igdb} or plugin:<id>
 
@@ -1286,6 +1288,27 @@ merge_candidates(id, left_release_id, right_release_id, score, signals_json, sta
 metadata_cache(provider, provider_id, payload_json, fetched_at, PRIMARY KEY(provider, provider_id))
 settings(key, value)
 ```
+
+`works.first_release_year` remains the shared display and filter year for desktop and
+fullscreen, with its existing field-source and IGDB-pin rules. Edition matching uses
+separate `release_year_evidence` observations (migration 0039), never a backfill of Work
+dates. Each year is in 1–9999. The initial source is `steam_original_release_date`, keyed
+by the exact Steam app ID and read from `release.original_release_date` on that listing.
+Only positive Unix timestamps within the supported date range qualify; absent, zero or
+malformed dates remain unknown. `steam_release_date` is a store arrival date and is not a
+substitute. The library-wide reception pass reads this field from existing Steam caches,
+including fully enriched works. Repeated identical observations do not rewrite rows.
+
+Evidence is applicable only while its release owns that exact external ID. Conflicting
+applicable years supply no edition year. Soft matching and expansion detection prefer an
+applicable edition year, then the Work year, then a parsed title year. A user-owned Work
+year takes precedence over those sources, including a deliberately cleared value that
+disables all year fallback. Soft-match snapshots retain the selected year's source;
+inherited Work dates are labeled `work_first_release_year`, never edition evidence.
+Provider observations do not change Work fields, their provenance, or IGDB pins. A pin
+still replaces the Work metadata the user selected; independent Steam evidence remains
+available for matching. A release year alone does not establish edition equivalence for
+automatic cross-store links.
 
 The three rating sources in `work_ratings` are stored apart and never blended; a source with
 no figure gets no row. `label` is Steam's own words ("Very Positive"), stored verbatim rather

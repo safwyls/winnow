@@ -112,6 +112,9 @@ public sealed class ReleaseRepository : IReleaseRepository
                    r.name                AS ReleaseName,
                    w.name                AS WorkName,
                    w.first_release_year  AS FirstReleaseYear,
+                   ys.source             AS FirstReleaseYearSource,
+                   ey.year               AS EditionReleaseYear,
+                   ey.source             AS EditionYearSource,
                    w.publisher           AS Publisher,
                    w.name_is_provisional AS NameIsProvisional,
                    w.steam_app_type      AS SteamAppType,
@@ -138,6 +141,16 @@ public sealed class ReleaseRepository : IReleaseRepository
                    EXISTS (SELECT 1 FROM ownerships o WHERE o.release_id = r.id) AS IsOwned
             FROM releases r
             JOIN works w ON w.id = r.work_id
+            LEFT JOIN work_field_sources ys ON ys.work_id = w.id AND ys.field = 'first_release_year'
+            LEFT JOIN (
+                SELECT evidence.release_id, MIN(evidence.year) AS year, MIN(evidence.source) AS source
+                FROM release_year_evidence evidence
+                JOIN external_ids e ON e.release_id = evidence.release_id
+                    AND e.provider = 'steam' AND e.provider_id = evidence.source_id
+                WHERE evidence.source = 'steam_original_release_date'
+                GROUP BY evidence.release_id
+                HAVING COUNT(DISTINCT evidence.year) = 1
+            ) ey ON ey.release_id = r.id
             ORDER BY r.id;
             """, transaction: lease.Transaction, cancellationToken: ct));
         return rows.AsList();

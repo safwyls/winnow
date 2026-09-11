@@ -242,7 +242,9 @@ public sealed class LibrarySoftMatchSweep
                 {
                     ReleaseId = identity.ReleaseId,
                     Title = identity.MatchTitle,
-                    ReleaseYear = identity.FirstReleaseYear,
+                    ReleaseYear = identity.MatchYear,
+                    ReleaseYearSource = identity.MatchYearSource,
+                    SuppressTitleYearFallback = identity.YearIsUserOwned,
                     Publisher = identity.Publisher,
 
                     // No cover-hash pipeline yet; left null so the signal does not fire.

@@ -16,8 +16,10 @@ public sealed record ExpansionSubject
     /// <summary>The title the library shows for this work, raw. Normalised here.</summary>
     public required string Title { get; init; }
 
-    /// <summary>First release year, or null when enrichment has not reached this work.</summary>
+    /// <summary>Applicable edition year, otherwise the Work first-release year.</summary>
     public int? ReleaseYear { get; init; }
+    public bool SuppressTitleYearFallback { get; init; }
+    public int? EffectiveYear(int? titleYear) => ReleaseYear ?? (SuppressTitleYearFallback ? null : titleYear);
 
     /// <summary>Publisher, or null when unknown. Unknown never vetoes; a known mismatch does.</summary>
     public string? Publisher { get; init; }
@@ -453,8 +455,8 @@ public static class ExpansionDetector
             return false;
         }
 
-        var baseYear = baseGame.Subject.ReleaseYear ?? baseGame.Title.ParsedYear;
-        var childYear = child.Subject.ReleaseYear ?? child.Title.ParsedYear;
+        var baseYear = baseGame.Subject.EffectiveYear(baseGame.Title.ParsedYear);
+        var childYear = child.Subject.EffectiveYear(child.Title.ParsedYear);
         int? yearDelta = baseYear is not null && childYear is not null
             ? childYear.Value - baseYear.Value
             : null;
@@ -649,8 +651,8 @@ public static class ExpansionDetector
             ? string.Equals(basePublisher, childPublisher, StringComparison.Ordinal)
             : null;
 
-        var baseYear = baseGame.Subject.ReleaseYear ?? baseGame.Title.ParsedYear;
-        var childYear = child.Subject.ReleaseYear ?? child.Title.ParsedYear;
+        var baseYear = baseGame.Subject.EffectiveYear(baseGame.Title.ParsedYear);
+        var childYear = child.Subject.EffectiveYear(child.Title.ParsedYear);
 
         return new ExpansionEvidence(
             baseGame.Title.Core,

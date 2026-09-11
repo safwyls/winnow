@@ -30,19 +30,22 @@ public sealed class ReceptionSyncService
     private readonly IIgdbClient _igdb;
     private readonly ISteamStoreClient _steamStore;
     private readonly ILogger<ReceptionSyncService> _logger;
+    private readonly IReleaseYearEvidenceRepository? _releaseYears;
 
     public ReceptionSyncService(
         ILibraryQueryRepository libraryQueries,
         WorkReceptionWriter writer,
         IIgdbClient igdb,
         ISteamStoreClient steamStore,
-        ILogger<ReceptionSyncService> logger)
+        ILogger<ReceptionSyncService> logger,
+        IReleaseYearEvidenceRepository? releaseYears = null)
     {
         _libraryQueries = libraryQueries;
         _writer = writer;
         _igdb = igdb;
         _steamStore = steamStore;
         _logger = logger;
+        _releaseYears = releaseYears;
     }
 
     public async Task<ReceptionSyncReport> SyncAsync(CancellationToken ct = default)
@@ -84,6 +87,13 @@ public sealed class ReceptionSyncService
             ct.ThrowIfCancellationRequested();
 
             var changed = 0;
+
+            if (_releaseYears is not null && target.SteamAppId is { } editionAppId
+                && items.TryGetValue(editionAppId, out var editionItem)
+                && editionItem.AppId == editionAppId && editionItem.OriginalReleaseYear is { } editionYear)
+            {
+                await _releaseYears.ObserveSteamAsync(target.ReleaseId, editionAppId, editionYear, ct);
+            }
 
             if (target.IgdbId is { } igdbId
                 && games.TryGetValue(igdbId, out var game)

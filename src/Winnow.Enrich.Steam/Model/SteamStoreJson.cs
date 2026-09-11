@@ -178,6 +178,7 @@ internal static class SteamStoreJson
                 Related = ReadRelatedItems(item),
                 ContentDescriptorIds = ReadContentDescriptorIds(item),
                 Reviews = ReadReviews(item),
+                OriginalReleaseYear = ReadOriginalReleaseYear(item),
             };
         }
         catch (JsonException)
@@ -272,6 +273,17 @@ internal static class SteamStoreJson
         return players.Count == 0 && features.Count == 0 && controllers.Count == 0
             ? SteamStoreCategories.None
             : new SteamStoreCategories(players, features, controllers);
+    }
+
+    private static int? ReadOriginalReleaseYear(JsonElement item)
+    {
+        if (!item.TryGetProperty("release", out var release) || release.ValueKind != JsonValueKind.Object
+            || !release.TryGetProperty("original_release_date", out var date)
+            || date.ValueKind != JsonValueKind.Number || !date.TryGetInt64(out var timestamp)
+            || timestamp <= 0 || timestamp > 253402300799)
+            return null;
+
+        return DateTimeOffset.FromUnixTimeSeconds(timestamp).Year;
     }
 
     /// <summary>
