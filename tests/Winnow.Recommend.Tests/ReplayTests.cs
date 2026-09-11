@@ -35,6 +35,76 @@ public sealed class ReplayTests
         Assert.Equal(0, source.ExecuteScalar<int>("SELECT installed FROM ownerships WHERE id=@Id;", new { Id = game.OwnershipId }));
     }
 
+    [Fact]
+    public async Task Achievement_evidence_keeps_baseline_ranking_accounts_platforms_and_retirement_separate()
+    {
+        using var fixture = new ReplayFixture();
+        var zero = await fixture.Seed("Known zero unlocks", minutes: 300);
+        var partial = await fixture.Seed("Partial achievements", minutes: 300);
+        var complete = await fixture.Seed("All achievements but below retirement", minutes: 300);
+        var unavailable = await fixture.Seed("Private achievements", minutes: 300);
+        var noSchema = await fixture.Seed("Confirmed no schema");
+        var unknown = await fixture.Seed("Not fetched");
+        var retired = await fixture.Seed("Retired by playtime", minutes: 6000);
+        var epic = await new ReleaseRepository(fixture.Database.Factory).InsertAsync(new Release
+            { WorkId = partial.WorkId, Name = "Epic copy" });
+        await new OwnershipRepository(fixture.Database.Factory).InsertAsync(new Ownership { ReleaseId = epic, Store = "epic" });
+        await new SettingsRepository(fixture.Database.Factory).SetAsync(SteamOwnedAccount.RefSettingKey, "12345");
+        var without = Path.Combine(fixture.Root, "without-achievements");
+        SnapshotBundle.Capture(fixture.Database.DatabasePath, without, new FixedClock(AsOf));
+
+        var repository = new AchievementRepository(fixture.Database.Factory);
+        var evidence = new AchievementFetch
+        {
+            AttemptedAt = AsOf.AddHours(-1), Schema = [new("A", "First", null, false), new("B", "Second", null, false)],
+            Unlocks = new Dictionary<string, DateTime?>(), GlobalPercentages = new Dictionary<string, double> { ["A"] = 99, ["B"] = 1 },
+        };
+        await repository.SaveAsync(zero.ReleaseId, "12345", evidence);
+        await repository.SaveAsync(partial.ReleaseId, "12345", evidence with { Unlocks = new Dictionary<string, DateTime?> { ["A"] = null } });
+        var all = evidence with { Unlocks = new Dictionary<string, DateTime?> { ["A"] = null, ["B"] = null } };
+        await repository.SaveAsync(complete.ReleaseId, "12345", all);
+        await repository.SaveAsync(retired.ReleaseId, "12345", all);
+        await repository.SaveAsync(partial.ReleaseId, "67890", all);
+        await repository.SaveAsync(noSchema.ReleaseId, "12345", new AchievementFetch { AttemptedAt = evidence.AttemptedAt, Schema = [] });
+        await repository.SaveAsync(unavailable.ReleaseId, "12345", new AchievementFetch { AttemptedAt = evidence.AttemptedAt });
+        fixture.Capture();
+        using (var captured = SnapshotBundle.Open(fixture.CapturePath))
+        {
+            var ids = new[] { zero.ReleaseId, partial.ReleaseId, complete.ReleaseId, retired.ReleaseId,
+                noSchema.ReleaseId, unavailable.ReleaseId, unknown.ReleaseId, epic };
+            var scoped = await new AchievementRepository(captured.Factory).GetForAccountAsync(ids, "12345", AsOf);
+            Assert.Equal(8, scoped.Count);
+            Assert.Equal(4, scoped.Count(row => row.HasKnownProgress));
+            Assert.Equal(2, scoped.Count(row => row.Availability == AchievementAvailability.Unknown));
+            Assert.Single(scoped, row => row.Availability == AchievementAvailability.Unavailable);
+            Assert.Single(scoped, row => row.Availability == AchievementAvailability.NoSchema);
+            Assert.Equal(0, scoped.Single(row => row.ReleaseId == zero.ReleaseId).PercentComplete);
+            Assert.Null(scoped.Single(row => row.ReleaseId == unknown.ReleaseId).PercentComplete);
+            Assert.Equal(50, scoped.Single(row => row.ReleaseId == partial.ReleaseId).PercentComplete);
+            Assert.Null(scoped.Single(row => row.ReleaseId == epic).PercentComplete);
+            var other = Assert.Single(await new AchievementRepository(captured.Factory).GetForAccountAsync([partial.ReleaseId], "67890", AsOf));
+            Assert.Equal(100, other.PercentComplete);
+        }
+        await fixture.Surface(partial, 1);
+        await fixture.Launch(partial, 2);
+        await fixture.Surface(zero, 1);
+        await fixture.Verdict(zero, 2);
+        await fixture.Surface(noSchema, 1);
+        fixture.CaptureOutcomes();
+        NamedTuning[] policy = [new("baseline", RecommendationTuning.Default), new("no-achievement-contribution", RecommendationTuning.Default)];
+        var before = await ReplayEvaluation.CompareAsync(without, fixture.OutcomePath, policy, new ReplayOptions { K = 1 });
+        var after = await ReplayEvaluation.CompareAsync(fixture.CapturePath, fixture.OutcomePath, policy, new ReplayOptions { K = 1 });
+        Assert.NotEqual(before.SnapshotSha256, after.SnapshotSha256);
+        Assert.Equal(before.Tunings[0].Ranking.ToArray(), after.Tunings[0].Ranking.ToArray());
+        Assert.Equal(after.Tunings[0].Ranking.ToArray(), after.Tunings[1].Ranking.ToArray());
+        Assert.Equal(6, after.Tunings[0].Ranking.Count);
+        Assert.Equal(2, after.Tunings[0].JudgedCount);
+        Assert.Equal(1d / 3, after.Tunings[0].JudgedCoverage);
+        Assert.Single(after.Tunings[0].Ranking, item => item.WorkId == partial.WorkId);
+        Assert.Contains(after.Tunings[0].Ranking, item => item.WorkId == complete.WorkId);
+        Assert.DoesNotContain(after.Tunings[0].Ranking, item => item.WorkId == retired.WorkId);
+    }
+
     [Theory]
     [InlineData(-1)]
     [InlineData(1)]

@@ -750,9 +750,12 @@ Steam achievement ingestion supplies per-release, account-keyed availability and
 dates through the shared Core repository contract. Unknown, unavailable, no-schema and known
 zero progress are distinct. A failed refresh retains dated prior progress; legacy unlocks
 without an account never fill a named account's history. Achievement completion is not game
-completion, and global unlock percentages are not a general progress scale. TASK-137 must
-evaluate this evidence before it can change a contribution or retirement rule; the current
-scorer consumes no achievement signal. Provider details are in build specification §6.2.
+completion, and global unlock percentages are not a general progress scale. The
+[2026-09-11 evaluation](spikes/achievement-evidence-2026-09-11.md) retains baseline scoring
+and retirement: captured fixtures verify account/platform separation and unchanged rankings,
+but provide no outcome evidence for a contribution. The scorer consumes no achievement
+signal and defines no grouped achievement percentage. Real coverage and recommendation
+quality remain unmeasured. Provider details are in build specification §6.2.
 
 - **Session-length fit:** needs evidence about playable sittings and the user's cadence
   (Tier 2). Whole-game completion averages cannot determine where a player can stop.
