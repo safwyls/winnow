@@ -285,14 +285,9 @@ public sealed class IdentityReadInventoryTests
             + "the row they did claim still user-owned, so the field they were trying to "
             + "release would never come back."),
 
-        new("src/Winnow.Data/Repositories/ManualEntryRepository.cs", "GetAsync",
+        new("src/Winnow.Data/Repositories/ManualEntryRepository.cs", "From",
             Policy.DoNotResolve,
-            "One hand-added entry by its ownership id, for the edit form. The form edits the "
-            + "row the user created, not the group it may have been linked into."),
-
-        new("src/Winnow.Data/Repositories/ManualEntryRepository.cs", "GetAllAsync",
-            Policy.DoNotResolve,
-            "The manage-entries list. Each row is the hand-added entry the user created; "
+            "The shared form and manage-entries projection reads each entry the user created; "
             + "resolving would fold it into a linked partner and lose the row's own identity."),
 
         new("src/Winnow.Data/Repositories/ManualEntryRepository.cs", "UpdateAsync",
@@ -305,18 +300,21 @@ public sealed class IdentityReadInventoryTests
             "Deletes exactly the rows the user created, narrowed by what other ownerships are "
             + "left behind. Resolving would delete a linked partner's game."),
 
-        new("src/Winnow.Data/Repositories/ManualEntryRepository.cs", "AssertIdentifiersAreFreeAsync",
+        new("src/Winnow.Data/Repositories/ManualIdentifierWrites.cs", "AssertAvailableAsync",
             Policy.DoNotResolve,
             "Asks whether an external id is already claimed anywhere in the library. The "
             + "question is about stored rows, and a resolved answer would let a duplicate id "
             + "through."),
 
-        new("src/Winnow.App/ViewModels/LibrarySettingsViewModel.cs", "BeginEditAsync",
+        new("src/Winnow.Data/Repositories/ManualIdentifierWrites.cs", "ReplaceAsync",
             Policy.DoNotResolve,
-            "The edit form reads back the IGDB id stored on the hand-added entry's own work, "
-            + "because ManualEntryRepository.UpdateAsync writes that column as given and a form "
-            + "that opened with it blank would clear the id that got the game its cover art. "
-            + "Resolving would prefill a linked parent's id and then write it onto the child."),
+            "Independent storefront observations protect the exact release's identifier from "
+            + "manual retraction. A linked partner cannot supply that observation's origin."),
+
+        new("src/Winnow.Data/Repositories/WorkIgdbMappingWrites.cs", "TransitionAsync",
+            Policy.DoNotResolve,
+            "A mapping transition checks the exact work's current revision and updates only "
+            + "its own manual identifier assertions; group identity is a separate user decision."),
 
         new("src/Winnow.App/Services/IgdbAssignmentService.cs", "FindClaimingGameAsync",
             Policy.DoNotResolve,

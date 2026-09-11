@@ -15,7 +15,8 @@ public interface IManualEntryRepository
     /// Creates a work, a release, an ownership with store <c>manual</c>,
     /// and a <c>manual_entries</c> row from the draft. Throws
     /// <see cref="ManualEntryConflictException"/> when the IGDB id or Steam
-    /// appid already belongs to another work.
+    /// appid already belongs to another work. The user metadata, identifier
+    /// assertions and optional IGDB pin commit atomically.
     /// </summary>
     Task<ManualEntry> CreateAsync(ManualGameDraft draft, CancellationToken ct = default);
 
@@ -27,7 +28,13 @@ public interface IManualEntryRepository
 
     /// <summary>
     /// Updates the work, release, ownership and <c>manual_entries</c> row from
-    /// the draft. Returns false when the ownership id is not a hand-added entry.
+    /// the draft atomically. Tracked manual identifiers can be retracted only
+    /// when no independent storefront observation relies on them. Untracked
+    /// legacy identifiers cannot be corrected speculatively. Both cases raise
+    /// <see cref="ManualEntryConflictException"/> with an actionable reason;
+    /// unchanged identifiers still allow metadata edits. A supplied mapping
+    /// revision refuses intervening mapping changes. Returns false when the
+    /// ownership id is not a hand-added entry.
     /// </summary>
     Task<bool> UpdateAsync(long ownershipId, ManualGameDraft draft, CancellationToken ct = default);
 

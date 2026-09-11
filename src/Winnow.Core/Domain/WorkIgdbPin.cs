@@ -27,6 +27,9 @@ public sealed record WorkIgdbPinAssignment
 
     public required long IgdbId { get; init; }
 
+    /// <summary>Mapping revision captured before loading the chosen record; null uses current intent.</summary>
+    public long? ExpectedIgdbMappingRevision { get; init; }
+
     /// <summary>
     /// COALESCE'd over blank rather than written unconditionally, because
     /// <c>works.name</c> is NOT NULL and a game must keep a title.

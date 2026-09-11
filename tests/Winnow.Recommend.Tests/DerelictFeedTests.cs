@@ -131,12 +131,12 @@ public sealed class DerelictFeedTests
             }
         });
         var request = RecommendHarness.Request() with { MaxPerShelf = 6, VisiblePerShelf = 6 };
-        var shallow = Assert.Single((await harness.Engine.GetShelvesAsync(request)).Shelves);
-        var deep = Assert.Single((await harness.Engine.GetShelvesAsync(request with { MaxPerShelf = 10 })).Shelves);
+        var shallow = Assert.Single((await harness.Engine.GetShelvesAsync(request)).Shelves, shelf => shelf.Id == ShelfIds.Derelict);
+        var deep = Assert.Single((await harness.Engine.GetShelvesAsync(request with { MaxPerShelf = 10 })).Shelves, shelf => shelf.Id == ShelfIds.Derelict);
         Assert.Equal(shallow.Items.Select(i => i.ReleaseId), deep.Items.Take(6).Select(i => i.ReleaseId));
         Assert.Equal(10, deep.Items.Count);
         var seen = deep.Items.Select(i => i.ReleaseId).ToHashSet();
-        var rotated = Assert.Single((await harness.Engine.GetShelvesAsync(request with { RecentlySurfacedReleaseIds = seen })).Shelves);
+        var rotated = Assert.Single((await harness.Engine.GetShelvesAsync(request with { RecentlySurfacedReleaseIds = seen })).Shelves, shelf => shelf.Id == ShelfIds.Derelict);
         Assert.DoesNotContain(rotated.Items, i => seen.Contains(i.ReleaseId));
     }
 }

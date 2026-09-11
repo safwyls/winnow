@@ -189,6 +189,16 @@ stored locally.
   exponential backoff and 429 handling from the first commit. Polly policies applied at the
   `HttpClient` level, never per call site.
 - Nominal budget is 100,000 calls/day. Cache aggressively.
+- History caches carry the fetching credential's nonsecret identity. Last-played entries
+  are scoped to the key fingerprint or session account; Replay entries additionally name
+  the requested account and year. Legacy entries with unknown credential provenance are
+  ignored. Fresh and stale cache reads remain within that scope and retain their original
+  observation time. A credential change during a fetch invalidates its returned result.
+  Backfill joins Replay and cumulative anchors only when their credential identities agree
+  and an account disclosure or matching existing confirmation identifies the anchor's owner.
+  Cached disclosure can support history but cannot create a new account confirmation.
+  Confirmation records the captured identity, validates that it is still present, and writes
+  its account and fingerprint together. A session confirmation cannot attest another API key.
 
 ### 4.3 Steam store metadata
 
@@ -463,7 +473,14 @@ account's lifetime. The rules that follow govern what may be shown and what must
 The authenticated Epic library cache is stored in the selected data directory's
 `metadata_cache`, under a separate provider namespace and an account-specific key.
 A restart reuses a fresh answer for `EpicWebOptions.CacheTtl` (six hours by default);
-stale answers refetch through the existing authenticated client. The ingest module
+the currently signed-in account must match the versioned payload and cache key. Legacy
+unscoped entries are ignored. Stale answers refetch through the authenticated client and
+remain usable on transient failure only for the same account. Each operation captures its
+account, OAuth client and sign-in generation before looking in the cache. Authentication,
+pagination, playtime and result publication retain that context; sign-out or another sign-in
+discards the in-flight result, including a new sign-in to the same account. Routine token
+renewal preserves the generation and cannot change account. Emitted ownership candidates
+carry the captured account reference. The ingest module
 keeps its cache interface free of a Data reference; the App supplies SQLite storage.
 
 **Epic:**
@@ -482,8 +499,12 @@ resolver gate and a library reload, including actions in an already-open Details
 The reload retains the selected or flipped card when it is still visible and updates the
 Details action state in place, preserving unsaved editor drafts.
 Completion requires an explicit `bIsIncompleteInstall: false`; missing or malformed flags
-never imply installation, and `Pending` files are ignored. Locked or malformed manifests
-defer the refresh until a later stable read. Normal completion appears within two to four
+leave install state unknown, and `Pending` files are ignored. One manifest reader owns both
+the watcher fingerprint and scan completeness. Missing directories, failed enumeration,
+unreadable, malformed or oversized files withhold absence authority: readable positive facts
+may refresh, but an absent manifest clears stored install state only after a complete scan.
+The watcher defers incomplete reads until a later stable read; startup, scheduled and remote
+passes preserve existing install state through the same candidate contract. Normal completion appears within two to four
 seconds plus local scan time; this follows the launcher's written state, not download progress.
 The service is disabled with local sync for sample-data and `--no-sync` runs.
 Both local and remote ownership passes reread Steam and Epic candidates after acquiring that gate,
@@ -499,7 +520,16 @@ refresh described above.
 
 - `galaxy-2.0.db` is a WAL database. `immutable=1` silently returns stale data, and `mode=ro`
   writes `-wal` and `-shm` files into the store's directory. **Copy the file first, then read
-  the copy.**
+  the copy.** On Windows, keep read-only handles that deny write and delete access to the
+  main database and existing WAL throughout the copy. Existing write-capable handles,
+  unreadable files or a rollback journal defer the database read; the next local scan retries,
+  and closing Galaxy may be necessary. The guards exclude checkpoints and WAL rollover;
+  `quick_check` only validates the resulting copy's structure. Never copy SHM: SQLite rebuilds
+  it in Winnow's private directory. Live Galaxy copying is unsupported on other platforms,
+  where file sharing does not exclude native SQLite writers. The separate `CopyImmutable`
+  entry point accepts only caller-owned database/WAL pairs that cannot change during copying.
+  Deferred reads preserve prior Galaxy observations; independent registry install facts may
+  still refresh through the normal ingest path.
 - Galaxy's library contains **other stores' releases marked owned**. Filter
   `substr(releaseKey,1,4)='gog_'` or the Steam library is double-counted.
 - GOG **does** carry playtime in minutes and last-played in UTC, including for uninstalled
@@ -963,6 +993,12 @@ immediately and queues a metadata refresh; wizard completion itself does not lau
 SQLite. Migrations are embedded resources, checked into the repository, applied on startup by
 DbUp, and **append-only: never edit a shipped migration.**
 
+Before opening an existing database for writes, startup checks its applied migration names
+against this binary's embedded scripts through a read-only connection. Unknown histories are
+refused before changing journal mode, renaming legacy entries or running migrations. Known
+legacy migration names are compared as their Winnow equivalents; missing known scripts remain eligible
+for the normal backed-up upgrade, including an interrupted upgrade.
+
 Timestamp parameters use `DateTime` with an explicit kind. Winnow.Data rejects
 `DateTimeKind.Unspecified` before executing a write, converts Local values to UTC, and stores
 UTC text as `yyyy-MM-dd HH:mm:ss.FFFFFFF`, retaining fractional seconds when present.
@@ -972,18 +1008,34 @@ timestamp text is read as UTC. `DateTimeOffset` resolve-state timestamps retain 
 UTC round-trip format.
 
 `Migrations/hashes.json` records SHA-256 for each SQL script, normalizing CRLF to LF.
-CI verifies file membership and content, and checks existing entries against the previous
-revision so changing a script and its hash together still fails. New migrations append entries.
+Both xUnit and CI verify file membership and content against this one manifest. CI also checks
+existing entries against the previous revision so changing a script and its hash together
+still fails. New migrations append entries.
 
-Facet replacement, list reordering and feed surfacing batches are atomic repository calls.
+Facet replacement, list reordering, feed surfacing, field set/reset, IGDB pinning and
+enrichment value/provenance batches are atomic repository calls.
 Each opens a local transaction when called alone, or a savepoint inside the caller's unit
 of work. A failed batch rolls back its own writes even when the caller catches the failure;
 a successful batch never commits the caller's transaction. Facet vocabulary creation and
 assignment replacement belong to the same batch.
 
+Identity links have depth one across `same_game`, `expansion_of` and `variant_of`: a live
+child cannot also hold children. A same-game command may move its child's existing links
+onto the chosen parent, preserving each link's kind; an expansion or variant command refuses
+a child that already holds links. Proposals use the same structural admission rules, and the
+repository checks again in its write transaction.
+
+Undo retracts only the selected act's still-standing links. It preserves later membership
+decisions and restores each prior link only if neither endpoint would violate depth one or
+replace a standing membership. Otherwise the affected child stays separate. Single-child
+separation follows the same rule without changing siblings. Retractions and restorations are
+one atomic repository batch, and history remains append-and-stamp; ambiguous legacy history
+is not repaired automatically.
+
 ```sql
 -- Canonical identity
-works(id, igdb_id UNIQUE, name, sort_name, first_release_year, summary, cover_url, background_url)
+works(id, igdb_id UNIQUE, igdb_mapping_revision, name, sort_name,
+      first_release_year, summary, cover_url, background_url)
 releases(id, work_id FK, igdb_version_id, name, platform, edition_note)
 external_ids(release_id FK, provider, provider_id, PRIMARY KEY(provider, provider_id))
   -- provider ∈ {steam, gog, epic, igdb}
@@ -998,6 +1050,8 @@ sessions(id, ownership_id FK, started_at, ended_at, duration_s, detection_method
 session_notes(session_id FK, note TEXT, rating INT)
 manual_entries(ownership_id PK FK ownerships ON DELETE CASCADE,
               executable_path, platform_label, added_at, updated_at)
+manual_entry_identifiers(id, ownership_id FK manual_entries ON DELETE CASCADE,
+                         provider, provider_id, owns_mapping BOOL, asserted_at, retracted_at)
 
 -- Achievements: per-release, never merged across platforms
 achievements(release_id FK, provider_key, name, description, hidden, global_pct)
@@ -1181,16 +1235,34 @@ not one entry, and takes the game's variants with it.
 
 **Hand-added entries.** A hand-added game is an ordinary work + release + ownership whose
 `ownerships.store` is `manual` and whose `manual_entries` row exists. That row's presence is
-the origin marker — one mechanism, not two, and a table no ingest path writes. The guarantee
-that an ingest pass never deletes or overwrites a hand-added entry rests on facts that were
-already true: `OwnershipRepository.UpsertAsync` conflicts on `(release_id, store)` and no
-reader emits the store `manual`; the work is created with `name_is_provisional = 0`, and the
-resolver's name promotion fires only while that flag is set while the enrichment patch is
-fill-only; and nothing in the runtime deletes a `works`, `releases` or `ownerships` row.
+the origin marker — one mechanism, not two, and a table no ingest path writes. Ingest does
+not delete or overwrite that manual ownership: ownership upsert conflicts on `(release_id,
+store)`, and no reader emits `manual`. Creation marks the name non-provisional and writes
+the title and any supplied year through the user field-ownership operation. An omitted year
+on creation is unknown; clearing a year during an edit is an explicit user-owned null.
 Session monitoring needs no change: `GameExecutableIndexBuilder` reads
 `ownerships.installed` and `install_path`, so naming an executable stores its directory and
 sets `installed = 1`. Deleting a hand-added entry removes the ownership, then the release
 only when no other ownership hangs off it, then the work only when it has no releases left.
+
+`manual_entry_identifiers` (migration 0033) records each manual Steam and IGDB assertion,
+including explicit absence, whether it created the hard external-ID mapping, and when it
+was retracted. Correcting a tracked ID retracts its old mapping within the same transaction
+as the new assertion, metadata and pin. An independent storefront ownership that relies on
+the mapping prevents retraction. A mapping reused from another origin also cannot be
+retracted as a manual assertion. Legacy identifiers receive no speculative origin backfill:
+the form explains that an ambiguous ID must stay to edit this entry, or the corrected game
+can be added separately. Keeping those IDs unchanged permits ordinary metadata edits, and
+editing a manual entry never rewrites an independently attached store release's title.
+
+The work's `igdb_mapping_revision` advances on a user mapping transition, including re-pin
+and pin clear. Both forms read the current identifiers and revision together when opening;
+an intervening mapping change requires reopening before saving. A typed IGDB correction
+uses the same mapping transition as a full metadata pin: work, live pin and tracked manual
+IGDB assertion agree. It clears scalar values explicitly sourced from the old IGDB mapping
+while preserving user fields and unknown legacy sources; the title and year submitted in
+that correction become user-owned. The full metadata pin still replaces fields with the
+chosen record as described below.
 
 **User-pinned IGDB mappings.** `work_igdb_pins` (migration 0026) records a user-chosen
 work-to-IGDB mapping in the same append-and-stamp shape: pinning inserts a row, clearing

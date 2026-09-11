@@ -82,6 +82,16 @@ public sealed class SteamCredentialProvider : ISteamCredentialProvider
             SessionAccount: session?.SteamId);
     }
 
+    public async ValueTask<SteamCredential?> GetCurrentAsync(
+        SteamCredentialPurpose purpose, CancellationToken ct = default)
+    {
+        var key = SteamCredential.FromApiKey(await _keys.GetAsync(ct));
+        var session = _session is null || purpose == SteamCredentialPurpose.Unattended && key is not null
+            ? null
+            : await _session.TryGetAsync(SteamSessionRenewalMode.None, ct);
+        return SteamCredentialSelector.Choose(purpose, key, session, _clock.GetUtcNow());
+    }
+
     public ValueTask<SteamCredential?> RenewAfterUnauthorizedAsync(
         SteamCredential rejected, CancellationToken ct = default)
     {

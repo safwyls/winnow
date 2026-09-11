@@ -37,15 +37,7 @@ public sealed partial class GameJournalViewModel : ObservableObject
         ? GameDetailsCopy.JournalEmptyPromptOn
         : GameDetailsCopy.JournalEmptyPromptOff;
 
-    internal async Task SaveAsync(JournalEntryViewModel entry, string? note, int? rating, CancellationToken ct)
-    {
-        await _sessions.SetNoteAsync(new SessionNote
-        {
-            SessionId = entry.SessionId,
-            Note = note,
-            Rating = rating,
-        }, ct);
-    }
+    internal ISessionRepository Sessions => _sessions;
 
     internal async Task DeleteAsync(JournalEntryViewModel entry, CancellationToken ct)
     {
@@ -58,20 +50,29 @@ public sealed partial class GameJournalViewModel : ObservableObject
 /// <summary>One session note, with an inline draft so cancelling an edit leaves the saved text alone.</summary>
 public sealed partial class JournalEntryViewModel : ObservableObject
 {
-    private readonly GameJournalViewModel _journal;
+    private readonly GameJournalViewModel? _journal;
+    private readonly ISessionRepository _sessions;
 
     internal JournalEntryViewModel(SessionJournalEntry entry, GameJournalViewModel journal)
+        : this(entry.SessionId, new SessionNote { SessionId = entry.SessionId, Note = entry.Note, Rating = entry.Rating }, journal.Sessions)
     {
         _journal = journal;
-        SessionId = entry.SessionId;
         DateText = UpdateEventViewModel.LocalDateText(entry.SessionAt);
-        Note = entry.Note;
-        Rating = entry.Rating;
+    }
+
+    /// <summary>Creates a session-note draft when the parent surface already presents the session's date.</summary>
+    public JournalEntryViewModel(long sessionId, SessionNote? original, ISessionRepository sessions)
+    {
+        ArgumentNullException.ThrowIfNull(sessions);
+        _sessions = sessions;
+        SessionId = sessionId;
+        Note = original?.Note;
+        Rating = original?.Rating;
     }
 
     public long SessionId { get; }
 
-    public string DateText { get; }
+    public string DateText { get; } = string.Empty;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasNote))]
@@ -100,7 +101,7 @@ public sealed partial class JournalEntryViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsDraftRated1), nameof(IsDraftRated2), nameof(IsDraftRated3),
-        nameof(IsDraftRated4), nameof(IsDraftRated5))]
+        nameof(IsDraftRated4), nameof(IsDraftRated5), nameof(DraftRatingText))]
     public partial int DraftRating { get; set; }
 
     public bool IsDraftRated1 => DraftRating >= 1;
@@ -108,6 +109,7 @@ public sealed partial class JournalEntryViewModel : ObservableObject
     public bool IsDraftRated3 => DraftRating >= 3;
     public bool IsDraftRated4 => DraftRating >= 4;
     public bool IsDraftRated5 => DraftRating >= 5;
+    public string DraftRatingText => DraftRating is >= 1 and <= 5 ? $"Rating: {DraftRating} / 5" : "No rating";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanEdit))]
@@ -124,7 +126,7 @@ public sealed partial class JournalEntryViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsConfirmingDelete { get; set; }
 
-    public string AutomationName => $"Journal entry from {DateText}";
+    public string AutomationName => DateText.Length == 0 ? "Journal entry" : $"Journal entry from {DateText}";
 
     [RelayCommand]
     private void Edit()
@@ -163,6 +165,9 @@ public sealed partial class JournalEntryViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void ClearRating() { if (!IsSaving) DraftRating = 0; }
+
+    [RelayCommand]
     private async Task SaveAsync(CancellationToken ct)
     {
         if (IsSaving)
@@ -182,14 +187,10 @@ public sealed partial class JournalEntryViewModel : ObservableObject
         Problem = null;
         try
         {
-            await _journal.SaveAsync(this, note, rating, ct);
+            await _sessions.SetNoteAsync(new SessionNote { SessionId = SessionId, Note = note, Rating = rating }, ct);
             Note = note;
             Rating = rating;
             IsEditing = false;
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
         }
         catch
         {
@@ -226,7 +227,8 @@ public sealed partial class JournalEntryViewModel : ObservableObject
         Problem = null;
         try
         {
-            await _journal.DeleteAsync(this, ct);
+            if (_journal is not null) await _journal.DeleteAsync(this, ct);
+            else await _sessions.DeleteNoteAsync(SessionId, ct);
         }
         catch (OperationCanceledException)
         {

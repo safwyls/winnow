@@ -16,6 +16,11 @@ namespace Winnow.Core.Queries;
 /// </summary>
 public static class WorkFields
 {
+    public const int MinimumReleaseYear = 1900;
+    public const int MaximumReleaseYear = 2200;
+
+    public static bool IsValidReleaseYear(int year) => year is >= MinimumReleaseYear and <= MaximumReleaseYear;
+
     public const string Name = "name";
 
     public const string FirstReleaseYear = "first_release_year";

@@ -339,6 +339,8 @@
                                      Text="{Binding YearToText, Mode=TwoWay}"
                                      ToolTip.Tip="Up to this year"/>
                         </StackPanel>
+                        <TextBlock Classes="body" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                                   IsVisible="{Binding HasYearProblem}" Text="{Binding YearProblem}"/>
                     </StackPanel>
 
                     <!-- Enrichment fills genre, theme, tag and mode in over

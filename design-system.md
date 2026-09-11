@@ -236,12 +236,22 @@ the alert clear of the top-right Details fold.
 Present only when a major update landed after the user's last session — both signals from
 `game-library-design.md` §4.5, build push *and* announcement.
 
-**Never on a game with zero recorded playtime; an unplayed game has nothing to be behind on.**
-The line is drawn on *playtime*, not on a bucket name. `game-library-design.md` §6.1's
-`Never played` bucket happens to be the same set today, because that bucket means never
-opened, but the two are separate claims and the badge must not start reading a bucket. The
-update poller's eligibility filter draws the same line, for the same reason, on the same
-field.
+**Never on a game with no recorded play: zero minutes and no last-played date.** A real
+last-played date remains evidence of play when a source did not measure minutes. Measured
+play without a date is unknown, old play; it is not a never-played game.
+
+An unread patch is a correlated build push strictly after the visible game's effective last
+play and strictly after that release's standing acknowledgement watermark. The count is the
+maximum across contributing releases, not their sum: copies can carry the same patch. A
+push and its announcement count as one patch, and unrelated announcements remain neutral.
+The Patched bucket also applies the shared dormancy and playtime eligibility rules. Details
+uses the same patch count and release watermarks on desktop and fullscreen.
+
+**Mark as read** acknowledges the latest qualifying push actually displayed for each
+contributing release. It never reads a newer push into the operation. **Show it again**
+revokes those releases' standing acknowledgements. Each event row retains its release's
+reading state; one copy's watermark cannot quiet another copy. If only part of a grouped
+operation saves, the successful changes remain visible and the remaining failure is reported.
 
 Clicking the badge opens the patch notes for the updates you missed, from the `url` stored on
 the event row. This is the feature that closes the loop: notice → context → launch.
@@ -1042,6 +1052,12 @@ newest first with session date, optional rating out of five and note. Editing st
 including the existing five-dot rating control. Deletion asks “Delete this note?” and uses
 Danger only on confirmation. Switching tabs preserves an unfinished journal edit. With no
 notes, the prompt-enabled and prompt-disabled sentences remain distinct.
+Desktop Details, fullscreen Details and fullscreen Activity share the same note draft:
+Save trims surrounding whitespace and requires a note or a rating from one to five.
+Fullscreen editors show the current rating beside the rating action. While saving, note,
+rating, delete and cancel actions are unavailable. A failed save keeps the draft and displays
+the shared retry message; only a successful save leaves the editor. Finishing a save after
+the fullscreen page has closed cannot navigate or announce success on another page.
 
 **Library keeps each copy's facts together.** The copy rows retain per-entry hours and
 last-played dates. Linked-title rows keep their Separate action; any composite total is
@@ -1901,6 +1917,11 @@ columns away (§1). The watermarks are the real bounds of the library, so an emp
 says what there is. **A release with no year does not match a bounded range** — an absent fact
 is not evidence.
 
+Both surfaces accept four-digit years from 1000 through 9999, inclusive, and the lower bound
+must not exceed the upper bound. Empty fields remove their bounds. Invalid or incomplete
+text keeps the last valid range active on desktop and prevents fullscreen Apply; both show
+the same correction message. Correcting the text or clearing the fields resumes filtering.
+
 ---
 
 ## 12. Lists and live lists
@@ -1995,7 +2016,11 @@ creation. Long names truncate with their full name in a tooltip. Cancel / confir
 Focus stays within the modal and returns to its invoking control when it closes. Adding to
 an existing or new list preserves the current view, scroll position and selection.
 
-`Enter` confirms, `Escape` cancels, and focus follows the prompt into its field. The save
+`Enter` confirms, `Escape` cancels, and focus follows the prompt into its field. While a save
+is pending, input, choices, confirmation and cancellation pause together. An error retains
+the prompt and its draft with actionable feedback; successful completion closes it. Both
+desktop and fullscreen offer the new-list confirmation alongside existing-list choices.
+Leaving a fullscreen page prevents a late completion from navigating another page. The save
 prompt opens with the rules read out as a suggested name ("Started · RPG"), because a rail
 full of "Live list 3" is a rail nobody reads.
 

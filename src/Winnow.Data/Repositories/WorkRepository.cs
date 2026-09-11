@@ -10,6 +10,7 @@ public sealed class WorkRepository : IWorkRepository
     internal const string Columns = """
         id                 AS Id,
         igdb_id            AS IgdbId,
+        igdb_mapping_revision AS IgdbMappingRevision,
         name               AS Name,
         sort_name          AS SortName,
         first_release_year AS FirstReleaseYear,
@@ -230,7 +231,8 @@ public sealed class WorkRepository : IWorkRepository
     {
         ArgumentNullException.ThrowIfNull(enrichment);
 
-        using var lease = _factory.Lease();
+        using var batch = new RepositoryWriteBatch(_factory);
+        var lease = batch.Lease;
 
         // Defence in depth: a pinned work returns NULL here, so
         // promoteName stays false and the UPDATE below is a no-op. The
@@ -384,6 +386,7 @@ public sealed class WorkRepository : IWorkRepository
             _clock.GetUtcNow().UtcDateTime,
             ct);
 
+        batch.Commit();
         return promoteName;
     }
 

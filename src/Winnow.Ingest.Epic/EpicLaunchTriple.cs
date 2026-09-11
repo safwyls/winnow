@@ -35,4 +35,8 @@ public sealed record EpicLaunchTriple(
 /// </param>
 public readonly record struct EpicScanResult(
     IReadOnlyList<CandidateOwnership> Candidates,
-    IReadOnlyList<EpicLaunchTriple> LaunchTriples);
+    IReadOnlyList<EpicLaunchTriple> LaunchTriples)
+{
+    /// <summary>Only a complete manifest scan can establish that an absent title is uninstalled.</summary>
+    public bool ManifestScanComplete { get; init; }
+}

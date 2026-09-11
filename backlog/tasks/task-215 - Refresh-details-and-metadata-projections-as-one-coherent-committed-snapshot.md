@@ -1,10 +1,11 @@
 ---
 id: TASK-215
 title: Refresh details and metadata projections as one coherent committed snapshot
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@avalonia-ui'
 created_date: '2026-09-11 05:00'
-updated_date: '2026-09-11 05:06'
+updated_date: '2026-09-11 06:40'
 labels:
   - architecture
   - review
@@ -34,3 +35,9 @@ Architecture review 2026-09-10, R27. Evidence: Source verified. After metadata s
 - [ ] #2 Open details refresh dependent update/history/art/rating projections coherently after background changes while preserving navigation, focus and active drafts.
 - [ ] #3 Desktop/fullscreen regressions cover non-name edits and new patches/sessions during open details; misleading governing text is corrected with its previous wording recorded in decisions.
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+Keep the open details instance and its editing/navigation state while publishing refreshed tile facts, update history, tracker, reception, acquisition, artwork and journal projections as one completed detail refresh. Route every saved metadata field through the same library invalidation path and preserve journal/metadata drafts. Update fullscreen presentation on committed detail refresh while retaining focus. Cover non-name saves, new patch/session evidence, drafts and artwork with database and headless desktop/fullscreen regressions; correct the governing metadata refresh text and record displaced wording.
+<!-- SECTION:PLAN:END -->

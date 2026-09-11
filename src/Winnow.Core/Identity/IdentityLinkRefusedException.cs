@@ -37,7 +37,7 @@ public enum IdentityLinkRefusal
     ActNotFound,
 
     /// <summary>
-    /// An <c>expansion_of</c> act named a child that is itself a live parent.
+    /// An <c>expansion_of</c> or <c>variant_of</c> act named a child that is itself a live parent.
     /// Refused rather than repaired.
     ///
     /// <para>Depth one normally re-parents the children of a work that is

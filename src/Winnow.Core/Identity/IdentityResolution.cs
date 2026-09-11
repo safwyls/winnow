@@ -198,6 +198,14 @@ public sealed class IdentityResolution
     /// <summary>Same-game links. <see cref="SameGameResolution.Resolve"/> is total.</summary>
     public SameGameResolution SameGame { get; }
 
+    /// <summary>Whether a work has a live parent of any relationship kind.</summary>
+    public bool IsChild(long workId)
+        => SameGame.IsChild(workId) || Expansions.IsExpansion(workId) || Variants.IsVariant(workId);
+
+    /// <summary>Whether a work has live children of any relationship kind.</summary>
+    public bool IsParent(long workId)
+        => SameGame.IsParent(workId) || Expansions.HasExpansions(workId) || Variants.HasVariants(workId);
+
     /// <summary>Expansion links. <see cref="ExpansionGrouping.BaseOf"/> returns null for non-expansions.</summary>
     public ExpansionGrouping Expansions { get; }
 

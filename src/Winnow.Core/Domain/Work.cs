@@ -8,6 +8,9 @@ public sealed record Work
 {
     public long Id { get; init; }
     public long? IgdbId { get; init; }
+
+    /// <summary>Revision of user mapping intent, for rejecting observations captured before a correction.</summary>
+    public long IgdbMappingRevision { get; init; }
     public required string Name { get; init; }
 
     /// <summary>True when <see cref="Name"/> is a machine-minted placeholder (e.g. "App 1203620"), not a real title.</summary>

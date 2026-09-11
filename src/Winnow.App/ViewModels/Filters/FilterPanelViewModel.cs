@@ -114,9 +114,17 @@ public partial class FilterPanelViewModel : ObservableObject
 
     public string ActiveCountText => ActiveCount.ToString("N0");
 
-    public int? YearFrom => ParseYear(YearFromText);
+    private ReleaseYearRange _appliedYears;
 
-    public int? YearTo => ParseYear(YearToText);
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasYearProblem))]
+    public partial string? YearProblem { get; private set; }
+
+    public bool HasYearProblem => YearProblem is not null;
+
+    public int? YearFrom => _appliedYears.From;
+
+    public int? YearTo => _appliedYears.To;
 
     /// <summary>Rebuilds every group's options from the current tiles. Selections survive by key.</summary>
     public void Rebuild(IReadOnlyList<GameTileViewModel> tiles, FacetSnapshot snapshot)
@@ -320,6 +328,7 @@ public partial class FilterPanelViewModel : ObservableObject
 
             YearFromText = filter.YearFrom?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
             YearToText = filter.YearTo?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
+            UpdateYearRange();
         }
         finally
         {
@@ -344,6 +353,7 @@ public partial class FilterPanelViewModel : ObservableObject
 
             YearFromText = string.Empty;
             YearToText = string.Empty;
+            UpdateYearRange();
         }
         finally
         {
@@ -462,14 +472,16 @@ public partial class FilterPanelViewModel : ObservableObject
     /// </summary>
     private static string StoreLabel(string store) => StoreNaming.Label(store);
 
-    private static int? ParseYear(string text)
+    private void UpdateYearRange()
     {
-        var trimmed = text.Trim();
-        return trimmed.Length == 4
-            && int.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out var year)
-            && year is >= 1000 and <= 9999
-                ? year
-                : null;
+        if (ReleaseYearRange.TryParse(YearFromText, YearToText, out var range))
+        {
+            _appliedYears = range;
+            YearProblem = null;
+            OnPropertyChanged(nameof(YearFrom));
+            OnPropertyChanged(nameof(YearTo));
+        }
+        else YearProblem = ReleaseYearRange.ValidationMessage;
     }
 
     partial void OnYearFromTextChanged(string value)
@@ -477,6 +489,7 @@ public partial class FilterPanelViewModel : ObservableObject
         _ = value;
         if (!_applying)
         {
+            UpdateYearRange();
             _onChanged();
         }
     }
@@ -486,6 +499,7 @@ public partial class FilterPanelViewModel : ObservableObject
         _ = value;
         if (!_applying)
         {
+            UpdateYearRange();
             _onChanged();
         }
     }

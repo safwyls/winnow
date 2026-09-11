@@ -1,4 +1,4 @@
-﻿using Winnow.Core.Queries;
+using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
 
 namespace Winnow.Recommend;
@@ -18,8 +18,6 @@ namespace Winnow.Recommend;
 public sealed class RecommendationEngine : IRecommendationEngine
 {
     private readonly ILibraryQueryRepository _library;
-    private readonly IReleaseRepository _releases;
-    private readonly IOwnershipRepository _ownerships;
     private readonly IPlaytimeSnapshotRepository _snapshots;
     private readonly ISessionRepository _sessions;
     private readonly IUpdateEventRepository _updateEvents;
@@ -28,8 +26,6 @@ public sealed class RecommendationEngine : IRecommendationEngine
 
     public RecommendationEngine(
         ILibraryQueryRepository library,
-        IReleaseRepository releases,
-        IOwnershipRepository ownerships,
         IPlaytimeSnapshotRepository snapshots,
         ISessionRepository sessions,
         IUpdateEventRepository updateEvents,
@@ -37,8 +33,6 @@ public sealed class RecommendationEngine : IRecommendationEngine
         ILibraryHistoryStatsRepository? historyStats = null)
     {
         _library = library;
-        _releases = releases;
-        _ownerships = ownerships;
         _snapshots = snapshots;
         _sessions = sessions;
         _updateEvents = updateEvents;
@@ -275,233 +269,72 @@ public sealed class RecommendationEngine : IRecommendationEngine
         var seed = request.ShuffleSeed
             ?? DateOnly.FromDateTime(request.AsOfUtc).DayNumber;
 
-        var bucketRows = await _library.GetOwnershipBucketsAsync(request.Thresholds, ct);
-        var identities = (await _releases.GetIdentitiesAsync(ct))
-            .ToDictionary(i => i.ReleaseId);
-        var ownershipsById = (await _ownerships.GetAllAsync(ct))
-            .ToDictionary(o => o.Id);
+        var snapshot = await _library.GetSnapshotAsync(request.Thresholds, ct);
+        var bucketRows = snapshot.Buckets;
         var facetSnapshot = await _facets.GetSnapshotAsync(ct);
+        var games = RecommendationGame.Build(snapshot, facetSnapshot);
+        var taste = TasteProfile.Build(games, facetSnapshot, request.Thresholds, tuning, request.EndorsedReleaseIds);
+        var excludedWorks = RecommendationGame.ResolveFeedback(snapshot,
+            request.NotInterestedReleaseIds.Concat(request.SnoozedReleaseIds));
+        var surfacedWorks = RecommendationGame.ResolveFeedback(snapshot, request.RecentlySurfacedReleaseIds);
 
-        // Resolution is taken from the bucket rows rather than read a second
-        // time — one source, and the feed cannot disagree with the grid about
-        // what one game is. A work the bucket query did not return is absent
-        // from this map and resolves to itself, which is the pre-link answer
-        // and never a wrong one.
-        var resolvedWork = new Dictionary<long, long>();
-        foreach (var row in bucketRows)
-        {
-            resolvedWork[row.WorkId] = row.ResolvedWorkId;
-        }
-
-        long Resolve(long workId) => resolvedWork.GetValueOrDefault(workId, workId);
-
-        // Stores per WORK, over every ownership in the library (not just the
-        // candidates): the bought-twice signal is about the work, and the
-        // second copy may sit on a row the bucket query filtered from view.
-        // This is also why collapsing duplicates costs the signal nothing.
-        //
-        // Keyed by the RESOLVED work, because a same-game link is the statement
-        // that these two store entries are one game — which is exactly what the
-        // destructive merge used to say by putting both releases under one work.
-        // Resolving here keeps the signal the merge gave it.
-        var storesByWork = new Dictionary<long, HashSet<string>>();
-        foreach (var ownership in ownershipsById.Values)
-        {
-            if (identities.TryGetValue(ownership.ReleaseId, out var identity))
-            {
-                var work = Resolve(identity.WorkId);
-                if (!storesByWork.TryGetValue(work, out var stores))
-                {
-                    storesByWork[work] = stores = new HashSet<string>(StringComparer.Ordinal);
-                }
-
-                stores.Add(ownership.Store);
-            }
-        }
-
-        var taste = TasteProfile.Build(
-            bucketRows, facetSnapshot, request.Thresholds, tuning, request.EndorsedReleaseIds);
-
-        // A verdict is about the GAME, not the row whose card the user
-        // happened to click: after a confirmed cross-store merge one work
-        // holds two releases, and dismissing the Steam card must not let the
-        // GOG copy resurface the same game tomorrow. The stored fact stays
-        // the clicked release; this widening to the work is a query,
-        // recomputed per request — exactly the derived/truth split.
-        //
-        // Feed suppression. feed_verdicts is keyed by release, and dismissing
-        // the Steam entry of a linked game must suppress its Epic entry or the
-        // feed offers the same game twice under two store badges. Widening to
-        // the RESOLVED work is what makes one dismissal cover the group.
-        // Nothing is written: the stored fact stays the clicked release.
-        var excludedWorks = new HashSet<long>();
-        foreach (var releaseId in request.NotInterestedReleaseIds.Concat(request.SnoozedReleaseIds))
-        {
-            if (identities.TryGetValue(releaseId, out var excluded))
-            {
-                excludedWorks.Add(Resolve(excluded.WorkId));
-            }
-        }
-
-        // ── Candidate assembly and hard exclusions ─────────────────────────
-        //
-        // One candidate per game, not per ownership (TASK-70.6). The grid
-        // draws one tile per resolved work, and a feed that offered the
-        // Steam copy and the Epic copy of one game as two cards would
-        // recommend the same evening twice. The row kept is the primary
-        // work's own entry (lowest ownership id), so the card and the tile
-        // it opens are the same game entry; its facts come from the game
-        // grouping so the two screens cannot disagree about a bucket or a
-        // playtime.
-        var primaryRows = new Dictionary<long, Core.Queries.OwnershipBucket>();
-        foreach (var row in bucketRows)
-        {
-            if (!primaryRows.TryGetValue(row.ResolvedWorkId, out var kept)
-                || Precedes(row, kept))
-            {
-                primaryRows[row.ResolvedWorkId] = row;
-            }
-        }
-
-        static bool Precedes(Core.Queries.OwnershipBucket a, Core.Queries.OwnershipBucket b)
-        {
-            // A viable sibling keeps the game recommendable, but must also be
-            // the copy the card launches; identity precedence cannot select a
-            // known closed release over that sibling.
-            var aDerelict = a.Lifecycle?.IsDerelict == true;
-            var bDerelict = b.Lifecycle?.IsDerelict == true;
-            if (aDerelict != bDerelict)
-            {
-                return !aDerelict;
-            }
-
-            var aOwn = a.WorkId == a.ResolvedWorkId ? 0 : 1;
-            var bOwn = b.WorkId == b.ResolvedWorkId ? 0 : 1;
-            if (aOwn != bOwn)
-            {
-                return aOwn < bOwn;
-            }
-
-            return a.WorkId == b.WorkId
-                ? a.OwnershipId < b.OwnershipId
-                : a.WorkId < b.WorkId;
-        }
-
-        var candidates = new List<CandidateFacts>(primaryRows.Count);
+        var candidates = new List<CandidateFacts>(games.Count);
         var derelict = new List<Recommendation>();
-        foreach (var row in bucketRows)
+        foreach (var game in games)
         {
-            if (!ReferenceEquals(primaryRows[row.ResolvedWorkId], row))
-            {
-                // A second store entry of a game already represented above.
-                continue;
-            }
+            var row = game.Action;
+            if (row.Game.Bucket == LibraryBuckets.Retired || game.NameIsProvisional
+                || excludedWorks.Contains(game.WorkId)) continue;
 
-            if (row.Game.Bucket == LibraryBuckets.Retired)
-            {
-                // §6.1 precedence made concrete: the 200-hour game never comes
-                // back, patches notwithstanding. It still testified to the
-                // taste profile above — being finished with a game is the
-                // strongest taste evidence there is.
-                continue;
-            }
-
-            if (request.NotInterestedReleaseIds.Contains(row.ReleaseId)
-                || request.SnoozedReleaseIds.Contains(row.ReleaseId))
-            {
-                continue;
-            }
-
-            if (!identities.TryGetValue(row.ReleaseId, out var identity)
-                || identity.NameIsProvisional
-                || excludedWorks.Contains(row.ResolvedWorkId))
-            {
-                // A tile named "App 1203620" cannot carry an explainable
-                // recommendation; enrichment clears the flag and the game
-                // joins the pool on the next request.
-                continue;
-            }
-
-            ownershipsById.TryGetValue(row.OwnershipId, out var ownership);
             if (row.Game.Bucket == LibraryBuckets.Derelict)
             {
-                var lifecycle = row.Game.Lifecycle;
                 var explanation = new RecommendationReason
                 {
                     Primary = ReasonSignal.Lifecycle,
                     Evidence = new ReasonEvidence
                     {
                         ReleaseId = row.ReleaseId,
-                        Title = identity.MatchTitle,
-                        Store = ownership?.Store ?? string.Empty,
-                        Lifecycle = lifecycle,
+                        Title = game.Title,
+                        Store = game.Store,
+                        Lifecycle = row.Game.Lifecycle,
+                        EvidenceReleaseIds = game.ReleaseIds,
                     },
                 };
                 derelict.Add(new Recommendation
                 {
-                    OwnershipId = row.OwnershipId,
-                    ReleaseId = row.ReleaseId,
-                    WorkId = identity.WorkId,
-                    Title = identity.MatchTitle,
-                    Store = ownership?.Store ?? string.Empty,
-                    Bucket = LibraryBuckets.Derelict,
-                    Score = 0,
-                    Signals = [],
-                    Explanation = explanation,
+                    OwnershipId = row.OwnershipId, ReleaseId = row.ReleaseId, WorkId = game.WorkId,
+                    Title = game.Title, Store = game.Store, Bucket = LibraryBuckets.Derelict,
+                    Score = 0, Signals = [], Explanation = explanation,
                     Reason = ReasonBuilder.Build(explanation, tuning),
                 });
                 continue;
             }
 
             var (affinity, facetName) = taste.AffinityFor(row.ReleaseId);
-
             candidates.Add(new CandidateFacts
             {
                 OwnershipId = row.OwnershipId,
                 ReleaseId = row.ReleaseId,
-                WorkId = identity.WorkId,
-                Title = identity.MatchTitle,
-                Store = ownership?.Store ?? string.Empty,
-                // The GAME's figures, which is what the grid tile shows.
+                WorkId = game.WorkId,
+                Title = game.Title,
+                Store = game.Store,
+                EvidenceOwnershipIds = game.OwnershipIds,
+                EvidenceReleaseIds = game.ReleaseIds,
                 Bucket = row.Game.Bucket,
                 PlaytimeMinutes = row.Game.PlaytimeMinutes,
                 LastPlayedAt = row.Game.LastPlayedAt,
-                Installed = ownership?.Installed ?? false,
-                StoreCount = storesByWork.TryGetValue(row.ResolvedWorkId, out var stores) ? stores.Count : 1,
+                Installed = game.Installed,
+                StoreCount = game.StoreCount,
                 TasteAffinity = affinity,
                 TasteFacetName = facetName,
-                RecentlySurfaced = request.RecentlySurfacedReleaseIds.Contains(row.ReleaseId),
-                ModeMismatch = taste.ClassifyModes(
-                    row.ReleaseId, tuning.ModeEvidenceMinGames, tuning.ModeDominanceShare),
-                GenreFacetIds = GenreIdsFor(facetSnapshot, row.ReleaseId),
+                RecentlySurfaced = surfacedWorks.Contains(game.WorkId),
+                ModeMismatch = taste.ClassifyModes(row.ReleaseId, tuning.ModeEvidenceMinGames, tuning.ModeDominanceShare),
+                GenreFacetIds = game.Facets.FacetIds.Where(id => facetSnapshot.ById.TryGetValue(id, out var facet)
+                    && facet.Kind == FacetKinds.Genre).ToArray(),
             });
         }
-
         return new CandidatePool(candidates, bucketRows, seed, derelict);
     }
-
-    /// <summary>Genre-kind facet ids for one release — the shelf diversity cap's raw material.</summary>
-    private static IReadOnlyList<long> GenreIdsFor(
-        Core.Queries.FacetSnapshot snapshot, long releaseId)
-    {
-        if (!snapshot.ByRelease.TryGetValue(releaseId, out var facets))
-        {
-            return [];
-        }
-
-        List<long>? genres = null;
-        foreach (var facetId in facets.FacetIds)
-        {
-            if (snapshot.ById.TryGetValue(facetId, out var facet)
-                && facet.Kind == Core.Queries.FacetKinds.Genre)
-            {
-                (genres ??= []).Add(facetId);
-            }
-        }
-
-        return genres is null ? [] : genres;
-    }
-
     /// <summary>
     /// Reads one shortlisted row's own history: return episodes, and — where a
     /// negative claim depends on it — whether Winnow has ever observed this
@@ -513,7 +346,8 @@ public sealed class RecommendationEngine : IRecommendationEngine
         HistoryReader history,
         CancellationToken ct)
     {
-        var enriched = facts with { ReturnEpisodes = await history.EpisodesAsync(facts.OwnershipId, ct) };
+        var ownershipIds = facts.EvidenceOwnershipIds.Count > 0 ? facts.EvidenceOwnershipIds : [facts.OwnershipId];
+        var enriched = facts with { ReturnEpisodes = await history.EpisodesAsync(ownershipIds, ct) };
 
         var patched = facts.Bucket == LibraryBuckets.StaleButPatched;
         var maybeDone = RecommendationScorer.HasProbablyDoneShape(
@@ -524,38 +358,34 @@ public sealed class RecommendationEngine : IRecommendationEngine
             return enriched;
         }
 
-        var events = await _updateEvents.GetByReleaseAsync(facts.ReleaseId, ct);
-
-        // Announcements, not build pushes: an announcement has a title a human
-        // can read, the count answers "how much did I miss", and — because
-        // ISteamNews serves a release's whole history rather than a window —
-        // ONE recorded announcement proves Winnow has seen this release's
-        // update history and would have recorded anything later. That proof is
-        // what licenses the probably-done penalty to claim silence (F15);
-        // without it the row simply keeps quiet on the subject.
-        var announcements = events
-            .Where(e => e.Kind == Core.Domain.UpdateEventKinds.Announcement)
-            .OrderBy(e => e.OccurredAt)
-            .ToList();
-
-        if (announcements.Count > 0)
+        var releaseIds = facts.EvidenceReleaseIds.Count > 0 ? facts.EvidenceReleaseIds : [facts.ReleaseId];
+        var observed = true;
+        var updateCount = 0;
+        Core.Domain.UpdateEvent? latestNews = null;
+        foreach (var releaseId in releaseIds.Distinct())
         {
-            enriched = enriched with { UpdateCoverage = UpdateCoverage.Observed };
+            var events = (await _updateEvents.GetByReleaseAsync(releaseId, ct))
+                .Where(item => item.OccurredAt <= request.AsOfUtc).ToArray();
+            var announcements = events.Where(item => item.Kind == Core.Domain.UpdateEventKinds.Announcement).ToArray();
+            observed &= announcements.Length > 0;
+            var pushes = UpdateReading.CorrelatedPushes(events, request.Thresholds.UpdateCorrelationWindowDays)
+                .Where(push => UpdateReading.SincePlay(push.OccurredAt, facts.LastPlayedAt, facts.PlaytimeMinutes)).ToArray();
+            // Storefronts often report the same patch. Match the library's maximum-per-release
+            // count rather than adding copies of a game's update history.
+            updateCount = Math.Max(updateCount, pushes.Length);
+            var news = announcements.Where(item => pushes.Any(push => UpdateReading.Correlates(
+                    push.OccurredAt, item.OccurredAt, request.Thresholds.UpdateCorrelationWindowDays)))
+                .OrderByDescending(item => item.OccurredAt).ThenBy(item => item.ReleaseId).FirstOrDefault();
+            if (news is not null && (latestNews is null || news.OccurredAt > latestNews.OccurredAt)) latestNews = news;
         }
-
-        if (patched)
-        {
-            var since = facts.LastPlayedAt ?? DateTime.MinValue;
-            var newer = announcements.Where(e => e.OccurredAt > since).ToList();
-            if (newer.Count > 0)
+        if (observed) enriched = enriched with { UpdateCoverage = UpdateCoverage.Observed };
+        if (patched && updateCount > 0)
+            enriched = enriched with
             {
-                enriched = enriched with
-                {
-                    UpdatesSinceLastPlayed = newer.Count,
-                    LatestUpdateTitle = newer[^1].Title,
-                };
-            }
-        }
+                UpdatesSinceLastPlayed = updateCount,
+                LatestUpdateTitle = latestNews?.Title,
+                LatestUpdateReleaseId = latestNews?.ReleaseId,
+            };
 
         return enriched;
     }
@@ -630,8 +460,11 @@ public sealed class RecommendationEngine : IRecommendationEngine
 
         async Task ObserveAsync(long ownershipId, bool inSample)
         {
-            var (episodes, sessions, first, last, hadRise) = await history.ReadAsync(ownershipId, ct);
-            _ = episodes;
+            var observed = await history.ReadAsync(ownershipId, ct);
+            var sessions = observed.SessionCount;
+            var first = observed.FirstSessionAt;
+            var last = observed.LastSessionAt;
+            var hadRise = observed.HadSnapshotRise;
 
             observedSessions += sessions;
             risesSeen += hadRise ? 1 : 0;
@@ -699,8 +532,22 @@ public sealed class RecommendationEngine : IRecommendationEngine
             _sessions = sessions;
         }
 
-        public async Task<int> EpisodesAsync(long ownershipId, CancellationToken ct)
-            => (await ReadAsync(ownershipId, ct)).Episodes;
+        public async Task<int> EpisodesAsync(IReadOnlyList<long> ownershipIds, CancellationToken ct)
+        {
+            var histories = new List<OwnershipHistory>();
+            foreach (var id in ownershipIds.Distinct()) histories.Add(await ReadAsync(id, ct));
+            // Overlapping sessions across copies describe one play episode. Coarse snapshot
+            // rises cannot be aligned safely, so retain their largest observed lower bound.
+            var episodes = 0;
+            DateTime? end = null;
+            foreach (var session in histories.SelectMany(item => item.Sessions).OrderBy(item => item.StartedAt))
+            {
+                if (end is null || session.StartedAt > end) episodes++;
+                var nextEnd = session.EndedAt ?? session.StartedAt;
+                if (end is null || nextEnd > end) end = nextEnd;
+            }
+            return Math.Max(episodes, histories.Count == 0 ? 0 : histories.Max(item => item.SnapshotRises));
+        }
 
         public async Task<OwnershipHistory> ReadAsync(long ownershipId, CancellationToken ct)
         {
@@ -744,7 +591,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
             // are the coarse fallback. Max, not sum — they are two observations
             // of the same episodes, and adding them would count each twice.
             var history = new OwnershipHistory(
-                Math.Max(rises, sessions.Count), sessions.Count, first, last, rises > 0);
+                Math.Max(rises, sessions.Count), sessions.Count, first, last, rises > 0, rises, sessions);
             _cache[ownershipId] = history;
             return history;
         }
@@ -755,5 +602,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
         int SessionCount,
         DateTime? FirstSessionAt,
         DateTime? LastSessionAt,
-        bool HadSnapshotRise);
+        bool HadSnapshotRise,
+        int SnapshotRises,
+        IReadOnlyList<Core.Domain.Session> Sessions);
 }

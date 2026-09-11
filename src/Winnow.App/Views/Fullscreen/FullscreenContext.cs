@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.ComponentModel;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Data;
 using Microsoft.Extensions.DependencyInjection;
 using Winnow.App.Services;
 using Winnow.App.Themes;
@@ -241,6 +243,7 @@ internal sealed class FullscreenActionsPage : FullscreenPage
 internal sealed class FullscreenPromptPage : FullscreenPage
 {
     private readonly ActionPromptViewModel _prompt;
+    private bool _disposed;
     public FullscreenPromptPage(FullscreenContext context, ActionPromptViewModel prompt) : base(context)
     {
         _prompt = prompt;
@@ -250,26 +253,50 @@ internal sealed class FullscreenPromptPage : FullscreenPage
         if (prompt.HasInput)
         {
             var text = new TextBox { Text = prompt.Text, Watermark = prompt.InputWatermark, FontSize = 32 };
+            Avalonia.Automation.AutomationProperties.SetName(text, prompt.InputWatermark);
+            text.Bind(IsEnabledProperty, new Binding(nameof(prompt.CanInteract)) { Source = prompt });
             text.TextChanged += (_, _) => prompt.Text = text.Text ?? string.Empty;
             panel.Children.Add(text); rows.Add([text]);
         }
         foreach (var choice in prompt.Choices)
         {
-            var button = FullscreenUi.Button(choice.Name, async () => { await prompt.ChooseCommand.ExecuteAsync(choice); Context.Back(); });
+            var button = FullscreenUi.Button(choice.Name, async () => await RunAsync(() => prompt.ChooseCommand.ExecuteAsync(choice)));
+            button.Bind(IsEnabledProperty, new Binding(nameof(prompt.CanInteract)) { Source = prompt });
             panel.Children.Add(button); rows.Add([button]);
         }
-        if (!prompt.HasChoices)
+        var problem = FullscreenUi.Text("", 24, "TextDim");
+        problem.Bind(TextBlock.TextProperty, new Binding(nameof(prompt.Problem)) { Source = prompt });
+        problem.Bind(IsVisibleProperty, new Binding(nameof(prompt.HasProblem)) { Source = prompt });
+        panel.Children.Add(problem);
+        var confirm = FullscreenUi.Button(prompt.ConfirmLabel, async () => await RunAsync(() => prompt.ConfirmCommand.ExecuteAsync(null)));
+        confirm.Bind(IsEnabledProperty, new Binding(nameof(prompt.CanConfirm)) { Source = prompt });
+        panel.Children.Add(confirm); rows.Add([confirm]);
+        var cancel = FullscreenUi.Button("Cancel", () =>
         {
-            var confirm = FullscreenUi.Button(prompt.ConfirmLabel, async () => { if (!prompt.CanConfirm) return; await prompt.ConfirmCommand.ExecuteAsync(null); Context.Back(); });
-            panel.Children.Add(confirm); rows.Add([confirm]);
-        }
-        var cancel = FullscreenUi.Button("Cancel", () => { prompt.CancelCommand.Execute(null); Context.Back(); });
+            if (!prompt.CanInteract) return;
+            prompt.CancelCommand.Execute(null);
+            Context.Back();
+        });
+        cancel.Bind(IsEnabledProperty, new Binding(nameof(prompt.CanInteract)) { Source = prompt });
         panel.Children.Add(cancel); rows.Add([cancel]);
         Content = FullscreenUi.Scroll(panel); SetFocusRows(rows.ToArray());
     }
     public override bool Handle(GamepadButtons buttons)
     {
-        if (buttons.HasFlag(GamepadButtons.Back)) _prompt.CancelCommand.Execute(null);
+        if (buttons.HasFlag(GamepadButtons.Back))
+        {
+            if (!_prompt.CanInteract) return true;
+            _prompt.CancelCommand.Execute(null);
+        }
         return base.Handle(buttons);
     }
+
+    private async Task RunAsync(Func<Task> command)
+    {
+        if (_disposed || !_prompt.CanInteract) return;
+        await command();
+        if (!_disposed && _prompt.IsCompleted) Context.Back();
+    }
+
+    public override void Dispose() { _disposed = true; base.Dispose(); }
 }

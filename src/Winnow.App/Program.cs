@@ -66,6 +66,26 @@ public static class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        try
+        {
+            Run(args);
+        }
+        catch (Exception fault)
+        {
+            Environment.ExitCode = StartupFailure.Report(
+                fault, DataLocation.Root, AppHost is { } host ? LoggerFactoryOrNull(host) : null);
+        }
+        finally
+        {
+            AppHost = null;
+            SingleInstance?.Dispose();
+            SingleInstance = null;
+            Shutdown.Dispose();
+        }
+    }
+
+    private static void Run(string[] args)
+    {
         var builder = Host.CreateApplicationBuilder(args);
 
         // Credentials that must not go in the repo, for people who would rather
@@ -469,8 +489,6 @@ public static class Program
             }
 
             host.StopAsync().GetAwaiter().GetResult();
-            Shutdown.Dispose();
-            AppHost = null;
         }
     }
 

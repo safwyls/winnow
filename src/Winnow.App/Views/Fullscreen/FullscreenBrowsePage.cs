@@ -959,6 +959,7 @@ public sealed class FullscreenBrowseFiltersPage : FullscreenPage
     {
         _draft.Filters.YearFromText = _from.Text ?? string.Empty;
         _draft.Filters.YearToText = _to.Text ?? string.Empty;
+        _problem.Text = _draft.Filters.YearProblem ?? string.Empty;
         if (_fromButton is not null)
         {
             var label = $"Release year from · {(_from.Text is { Length: > 0 } ? _from.Text : "Any")}";
@@ -987,10 +988,8 @@ public sealed class FullscreenBrowseFiltersPage : FullscreenPage
     private void Add(StackPanel panel, Button button) { panel.Children.Add(button); _rows.Add([button]); }
     private void Apply()
     {
-        bool Valid(string? value) => string.IsNullOrWhiteSpace(value) || int.TryParse(value, out var year) && year is >= 1 and <= 9999;
-        if (!Valid(_from.Text) || !Valid(_to.Text) || _draft.Filters.YearFrom > _draft.Filters.YearTo)
-        { _problem.Text = "Enter years from 1 to 9999, with the earlier year first."; return; }
-        _draft.Apply(Context.Library);
+        if (!_draft.Apply(Context.Library))
+        { _problem.Text = _draft.Filters.YearProblem; return; }
         Context.Back();
     }
 }

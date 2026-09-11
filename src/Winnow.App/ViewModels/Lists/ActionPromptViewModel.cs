@@ -66,16 +66,61 @@ public partial class ActionPromptViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ConfirmCommand))]
     public partial string Text { get; set; }
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanConfirm))]
+    [NotifyPropertyChangedFor(nameof(CanInteract))]
+    [NotifyCanExecuteChangedFor(nameof(ConfirmCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ChooseCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CancelCommand))]
+    public partial bool IsBusy { get; private set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasProblem))]
+    public partial string? Problem { get; set; }
+
+    public bool HasProblem => Problem is not null;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanConfirm))]
+    [NotifyPropertyChangedFor(nameof(CanInteract))]
+    [NotifyCanExecuteChangedFor(nameof(ConfirmCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ChooseCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CancelCommand))]
+    public partial bool IsCompleted { get; private set; }
+
+    public bool CanInteract => !IsBusy && !IsCompleted;
+
     /// <summary>A prompt with a field needs something in it; one without is always ready.</summary>
-    public bool CanConfirm => !HasInput || Text.Trim().Length > 0;
+    public bool CanConfirm => CanInteract && (!HasInput || Text.Trim().Length > 0);
 
     [RelayCommand(CanExecute = nameof(CanConfirm))]
-    private Task Confirm() => _confirm(this);
+    private Task Confirm() => CanConfirm ? RunAsync(() => _confirm(this)) : Task.CompletedTask;
 
-    [RelayCommand]
-    private void Cancel() => _cancel();
+    [RelayCommand(CanExecute = nameof(CanInteract))]
+    private void Cancel()
+    {
+        if (!CanInteract) return;
+        IsCompleted = true;
+        _cancel();
+    }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanInteract))]
     private Task Choose(GameListViewModel? list)
-        => list is null || _choose is null ? Task.CompletedTask : _choose(list);
+        => !CanInteract || list is null || _choose is null ? Task.CompletedTask : RunAsync(() => _choose(list));
+
+    private async Task RunAsync(Func<Task> action)
+    {
+        IsBusy = true;
+        Problem = null;
+        try
+        {
+            await action();
+            IsCompleted = Problem is null;
+        }
+        catch (Exception)
+        {
+            Problem = "Couldn't complete that. Try again.";
+        }
+        finally { IsBusy = false; }
+    }
 }

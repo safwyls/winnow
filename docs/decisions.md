@@ -3846,3 +3846,131 @@ The plugin guide previously said:
 > an empty list means a confirmed empty result. The host never infers unownership from absence.
 > Artwork refresh replaces only that plugin's images. Saved user backgrounds take precedence
 > over automatic source ordering. Screenshot results use the existing gallery/lightbox.
+
+### 2026-09-11 — Schema compatibility and one migration manifest (TASK-199, TASK-200)
+
+An older binary now checks the applied journal through a read-only connection before its
+normal connection can change WAL mode or rename legacy entries. Unsupported histories are
+refused; known Hoard names and interrupted upgrades remain supported. The xUnit integrity
+checks now consume the same hashes.json manifest as CI, eliminating the second checksum list.
+
+The governing documents previously said:
+
+> CI verifies file membership and content, and checks existing entries against the previous revision so changing a script and its hash together still fails. New migrations append entries.
+> There is no automatic binary or database rollback: an older binary must not be reopened against a database a newer build may have migrated.
+
+### 2026-09-11 — Bootstrap coverage and bundled package checks (TASK-214, TASK-224)
+
+The outer application boundary now includes configuration, registration, host construction
+and cleanup. Startup diagnostics redact exception text even before logging is available and
+no longer promise that a failure after initialization left all data unchanged. Process tests
+use isolated libraries with the actual persisted desktop/fullscreen startup preference.
+
+Bundled plugin changes now trigger release packaging. Both platform publish paths verify the
+manifest, assembly identity and declared entry type without loading provider code, and run
+failure fixtures before packaging. The release guide previously said:
+
+> Pushes to `main` and `codex/**`, and pull requests, build packages when application, packaging, version, SDK, dependency configuration, or workflow files change.
+
+### 2026-09-11 — Undo preserves later identity decisions (TASK-189)
+
+Interleaved link history showed that unconditional restoration could recreate depth two or
+collide with a later membership. Undo now removes only the selected standing effects and
+restores prior membership only when it remains structurally valid. A child stays separate
+when restoring its old parent would move another decision. This conservatively preserves
+the user's later choices without repairing ambiguous legacy data. Creation and expansion or
+variant proposals share structural admission; writes recheck within the transaction. The
+governing data model did not previously state the restoration policy explicitly.
+
+### 2026-09-11 — Metadata operations own their transactions (TASK-190)
+
+A field value and its source stamp, and a chosen mapping and its pin history, now commit as
+one repository operation. Automatic and plugin enrichment use the same boundary. Standalone
+calls open a transaction; ambient calls use a savepoint so a caught failure cannot later be
+committed by the caller. The policy preserves the caller's decision to commit successful work.
+The data model previously limited its explicit atomic-call contract to:
+
+> Facet replacement, list reordering and feed surfacing batches are atomic repository calls.
+
+### 2026-09-11 — Reading state follows displayed release evidence (TASK-197)
+
+Production details now receives the acknowledgement service and one watermark per contributing
+release. Patch counts exclude pushes at or before effective grouped last play, count correlated
+pushes rather than their announcement rows, and retain the maximum-per-release group policy.
+Dismissal uses only the events the panel displayed; a later unseen push survives. Both surfaces
+use the same operation and disclose a partially saved group rather than claiming nothing changed.
+The visual spec previously said:
+
+> Never on a game with zero recorded playtime; an unplayed game has nothing to be behind on.
+> The line is drawn on playtime, not on a bucket name.
+> game-library-design.md §6.1's Never played bucket happens to be the same set today, because that bucket means never opened, but the two are separate claims and the badge must not start reading a bucket.
+> The update poller's eligibility filter draws the same line, for the same reason, on the same field.
+
+### 2026-09-11 — Steam history carries its credential identity (TASK-192)
+
+History caches now name the credential that fetched their contents. An API key is scoped by
+its existing one-way fingerprint; a session is scoped by its account so routine token renewal
+preserves useful cached history. Legacy unscoped payloads remain unread rather than being
+assigned to whichever account signs in next. Cached Replay can identify history within its
+captured scope, but only fresh disclosure can establish a new account confirmation. Backfill
+checks that monthly evidence and cumulative anchors share that identity before importing.
+Confirmation writes the captured fingerprint and account together instead of stamping the key
+currently in settings. The build spec previously stated no history-cache provenance rule.
+
+### 2026-09-11 — Epic ownership stays with its captured account (TASK-193)
+
+A library operation now captures its account, OAuth client and sign-in generation before
+reading cached data. Every page and its playtime request must retain that context. Signing
+out or signing in again retires in-flight work; ordinary renewal keeps the same generation.
+The durable cache carries a version and account in both its key and payload, and emitted
+candidates retain that account. Old global entries cannot be assigned to a new session.
+The build spec previously said:
+
+> A restart reuses a fresh answer for `EpicWebOptions.CacheTtl` (six hours by default);
+> stale answers refetch through the existing authenticated client.
+
+### 2026-09-11 — Epic absence requires a complete manifest scan (TASK-195)
+
+The build spec previously said: 'Completion requires an explicit bIsIncompleteInstall: false; missing or malformed flags never imply installation, and Pending files are ignored. Locked or malformed manifests defer the refresh until a later stable read.' The watcher already withheld unreadable fingerprints, while direct scans treated directory existence as enough evidence for uninstall. Both now consume the same parsing and completeness result; an invalid completion bit is unknown, and partial scans retain positive facts without inventing absence.
+
+
+### 2026-09-11 — Recommendations use resolved-game evidence (TASK-207–209)
+
+Built-in and plugin recommendations now share a Core projection over visible resolved games.
+Complete identity state widens feedback independently of visibility. The kept title and the
+viable installed action subject remain explicit; card feedback uses the surfaced release.
+Game-level taste evidence and conservative session/update folds avoid multiplying repeated
+store observations. No score weights or thresholds changed. A final Waiting to be opened
+shelf admits uninstalled never-opened games without a taste profile, using the existing
+shelfware reason and scores. The scoring document previously said:
+
+> **The shelf pass unions five shortlists, interleaved rank by rank.**
+> pool, each stating its pitch in one line, and *every one of them fully populated at Tier 0*.
+> This is deliberate strategy, not scope creep: some of these shelves overlap what a storefront could show (a taste-matched backlog rail), and that is fine — ours runs on the same feed that keeps getting better with history the storefronts never keep, so parity on day one compounds into a lead.
+> Rules that make it a feed rather than five lists:
+
+### 2026-09-11 — Manual corrections retain identifier origins (TASK-191)
+
+Hand-added identifiers now carry explicit assertion history. A correction removes an old
+hard join only when its manual origin is recorded and no independent store observation
+relies on it. Unknown legacy origins receive an actionable refusal instead of speculative
+deletion; unchanged IDs still permit metadata edits. Work mapping, pin, identifier history
+and user field ownership commit together. A mapping revision prevents an old form from
+overwriting a later choice. Both desktop and fullscreen use the same fresh edit snapshot and
+conflict messages. The hand-added-entry paragraph previously said:
+
+> The guarantee that an ingest pass never deletes or overwrites a hand-added entry rests on facts that were already true: `OwnershipRepository.UpsertAsync` conflicts on `(release_id, store)` and no reader emits the store `manual`; the work is created with `name_is_provisional = 0`, and the resolver's name promotion fires only while that flag is set while the enrichment patch is fill-only; and nothing in the runtime deletes a `works`, `releases` or `ownerships` row.
+
+### 2026-09-11 — Guard Galaxy copies against writers (TASK-194)
+
+The build spec previously said: 'galaxy-2.0.db is a WAL database. immutable=1 silently returns stale data, and mode=ro writes -wal and -shm files into the store''s directory. Copy the file first, then read the copy.' Copy order alone did not establish coherence. Windows copies now hold read-only main/WAL handles that deny write/delete access; an existing writer or rollback journal defers the read until another local scan. SHM is rebuilt only in the private directory. quick_check establishes structural validity, not transaction consistency. Unsupported platforms decline live copying, with a separate explicit API for caller-owned immutable inputs. Native SQLite fixture tests verify writer/checkpoint exclusion and later WAL rollover. This deliberately trades reads while Galaxy holds a writer for a supported consistency guarantee.
+
+### 2026-09-11 — Name compatibility behavior without reviving the old brand
+
+The schema guard and review refer to legacy compatibility in prose; exact historical
+identifiers remain in the compatibility implementation. Repository naming enforcement
+caught three prose references. The affected text previously said:
+
+> Preserve the Hoard data/journal/theme shims.
+> Legacy Hoard journal renaming, supported old/current histories and valid interrupted upgrades continue to work.
+> Hoard names are compared as their Winnow equivalents; missing known scripts remain eligible for normal upgrades and pre-upgrade backups.

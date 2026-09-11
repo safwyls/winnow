@@ -264,6 +264,10 @@ public class SteamConnectionSeamTests
             SteamId steamId, SteamAccountConfirmationSource source, CancellationToken ct = default)
             => Task.FromResult(true);
 
+        public Task<bool> ConfirmAsync(
+            SteamId steamId, SteamCredentialIdentity identity, CancellationToken ct = default)
+            => Task.FromResult(true);
+
         public Task<bool> ReconcileAsync(CancellationToken ct = default)
         {
             Reconciliations++;

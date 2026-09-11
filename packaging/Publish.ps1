@@ -47,6 +47,8 @@ if (Get-ChildItem -LiteralPath $output -Recurse -File | Where-Object { $_.Name -
     throw 'Publish output contains a local configuration, secret file, or database; refusing to package it.'
 }
 
+& "$PSScriptRoot/Verify-BundledPlugin.ps1" -PublishDirectory $output
+
 $binary = if ($Runtime -eq 'win-x64') { 'Winnow.exe' } else { 'Winnow' }
 foreach ($required in @($binary, 'Winnow.dll', 'Winnow.runtimeconfig.json', 'Winnow.deps.json')) {
     if (!(Test-Path -LiteralPath (Join-Path $output $required) -PathType Leaf)) { throw "Missing $required." }

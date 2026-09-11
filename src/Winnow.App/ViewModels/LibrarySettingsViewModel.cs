@@ -36,10 +36,6 @@ public partial class LibrarySettingsViewModel : ObservableObject
     /// ManualEntry does not carry them, so they are fetched from the work and
     /// the release.
     /// </summary>
-    private readonly IWorkRepository? _works;
-
-    private readonly IReleaseRepository? _releases;
-
     // The executable route. All four optional for the same reason every other
     // dependency here is: a host that omits them gets the typed form and not a
     // screen that will not open.
@@ -81,8 +77,6 @@ public partial class LibrarySettingsViewModel : ObservableObject
         _manual = manual;
         _libraryQueries = libraryQueries;
         _settings = settings;
-        _works = works;
-        _releases = releases;
         _executables = executables;
         _inspector = inspector;
         _igdb = igdb;
@@ -704,30 +698,24 @@ public partial class LibrarySettingsViewModel : ObservableObject
             return;
         }
 
+        var entry = _manual is null ? row.Entry : await _manual.GetAsync(row.OwnershipId);
+        if (entry is null)
+        {
+            Problem = LibrarySettingsCopy.SaveProblem;
+            return;
+        }
+
         ClearForm();
-        Editing = row;
+        Editing = new ManualEntryRowViewModel(entry);
         FormTitle = string.Format(
-            CultureInfo.CurrentCulture, LibrarySettingsCopy.FormEditTitleFormat, row.Title);
+            CultureInfo.CurrentCulture, LibrarySettingsCopy.FormEditTitleFormat, entry.Title);
 
-        DraftTitle = row.Title;
-        DraftYear = row.Entry.FirstReleaseYear?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
-        DraftPlatform = row.Entry.PlatformLabel ?? string.Empty;
-        DraftExecutable = row.Entry.ExecutablePath ?? string.Empty;
-
-        // Both ids are written as given on save, so an edit that opened with
-        // them empty would clear them.
-        if (_works is not null && await _works.GetAsync(row.Entry.WorkId) is { IgdbId: { } igdbId })
-        {
-            DraftIgdbId = igdbId.ToString(CultureInfo.InvariantCulture);
-        }
-
-        if (_releases is not null)
-        {
-            var externalIds = await _releases.GetExternalIdsAsync(row.Entry.ReleaseId);
-            DraftSteamAppId = externalIds
-                .FirstOrDefault(x => x.Provider == ExternalIdProviders.Steam)?.ProviderId
-                ?? string.Empty;
-        }
+        DraftTitle = entry.Title;
+        DraftYear = entry.FirstReleaseYear?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
+        DraftPlatform = entry.PlatformLabel ?? string.Empty;
+        DraftExecutable = entry.ExecutablePath ?? string.Empty;
+        DraftIgdbId = entry.IgdbId?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
+        DraftSteamAppId = entry.SteamAppId ?? string.Empty;
 
         IsFormOpen = true;
     }
@@ -771,7 +759,7 @@ public partial class LibrarySettingsViewModel : ObservableObject
         {
             if (!int.TryParse(
                     DraftYear.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var parsed)
-                || parsed is < 1000 or > 9999)
+                || !WorkFields.IsValidReleaseYear(parsed))
             {
                 YearError = LibrarySettingsCopy.YearInvalidError;
                 return;
@@ -784,7 +772,8 @@ public partial class LibrarySettingsViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(DraftIgdbId))
         {
             if (!long.TryParse(
-                    DraftIgdbId.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var parsed))
+                    DraftIgdbId.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var parsed)
+                || parsed <= 0)
             {
                 IgdbIdError = LibrarySettingsCopy.NumberInvalidError;
                 return;
@@ -794,7 +783,9 @@ public partial class LibrarySettingsViewModel : ObservableObject
         }
 
         var appId = DraftSteamAppId.Trim();
-        if (appId.Length > 0 && !appId.All(char.IsAsciiDigit))
+        if (appId.Length > 0
+            && (!uint.TryParse(appId, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedAppId)
+                || parsedAppId == 0))
         {
             SteamAppIdError = LibrarySettingsCopy.NumberInvalidError;
             return;
@@ -808,13 +799,18 @@ public partial class LibrarySettingsViewModel : ObservableObject
             ExecutablePath = Nullable(DraftExecutable),
             IgdbId = igdbId,
             SteamAppId = appId.Length == 0 ? null : appId,
+            ExpectedIgdbMappingRevision = Editing?.Entry.IgdbMappingRevision,
         };
 
         try
         {
             if (Editing is { } editing)
             {
-                await _manual.UpdateAsync(editing.OwnershipId, draft);
+                if (!await _manual.UpdateAsync(editing.OwnershipId, draft))
+                {
+                    Problem = LibrarySettingsCopy.SaveProblem;
+                    return;
+                }
             }
             else
             {
@@ -828,11 +824,11 @@ public partial class LibrarySettingsViewModel : ObservableObject
             switch (conflict.Field)
             {
                 case nameof(ManualGameDraft.IgdbId):
-                    IgdbIdError = LibrarySettingsCopy.IdConflictError;
+                    IgdbIdError = LibrarySettingsCopy.IdentifierConflict(conflict.Reason);
                     break;
 
                 case nameof(ManualGameDraft.SteamAppId):
-                    SteamAppIdError = LibrarySettingsCopy.IdConflictError;
+                    SteamAppIdError = LibrarySettingsCopy.IdentifierConflict(conflict.Reason);
                     break;
 
                 default:
@@ -842,9 +838,24 @@ public partial class LibrarySettingsViewModel : ObservableObject
 
             return;
         }
-        catch (ArgumentException)
+        catch (ArgumentException invalid)
         {
-            TitleError = LibrarySettingsCopy.TitleRequiredError;
+            switch (invalid.ParamName)
+            {
+                case nameof(ManualGameDraft.FirstReleaseYear):
+                case WorkFields.FirstReleaseYear:
+                    YearError = LibrarySettingsCopy.YearInvalidError;
+                    break;
+                case nameof(ManualGameDraft.IgdbId):
+                    IgdbIdError = LibrarySettingsCopy.NumberInvalidError;
+                    break;
+                case nameof(ManualGameDraft.SteamAppId):
+                    SteamAppIdError = LibrarySettingsCopy.NumberInvalidError;
+                    break;
+                default:
+                    TitleError = LibrarySettingsCopy.TitleRequiredError;
+                    break;
+            }
             return;
         }
         catch (InvalidOperationException)

@@ -29,6 +29,31 @@ internal sealed class TasteProfile
     }
 
     public static TasteProfile Build(
+        IReadOnlyList<RecommendationGame> games,
+        FacetSnapshot snapshot,
+        BucketThresholds thresholds,
+        RecommendationTuning tuning,
+        IReadOnlySet<long>? endorsedReleaseIds = null)
+    {
+        // Each visible resolved game contributes once, even when several stores
+        // repeat its descriptors or play counters. The action id is only a key.
+        var groupedFacets = new FacetSnapshot
+        {
+            Facets = snapshot.Facets,
+            Releases = games.Where(game => game.Facets.FacetIds.Count > 0 || game.Facets.GameModes.Count > 0)
+                .Select(game => game.Facets).ToArray(),
+        };
+        var rows = games.Select(game => game.Action with
+        {
+            PlaytimeMinutes = game.Action.Game.PlaytimeMinutes,
+            LastPlayedAt = game.Action.Game.LastPlayedAt,
+        }).ToArray();
+        var endorsed = games.Where(game => game.ReleaseIds.Any(id => endorsedReleaseIds?.Contains(id) == true))
+            .Select(game => game.Action.ReleaseId).ToHashSet();
+        return Build(rows, groupedFacets, thresholds, tuning, endorsed);
+    }
+
+    public static TasteProfile Build(
         IReadOnlyList<OwnershipBucket> bucketRows,
         FacetSnapshot snapshot,
         BucketThresholds thresholds,

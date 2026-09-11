@@ -8,17 +8,18 @@ namespace Winnow.Data.Repositories;
 /// Reads and writes identity links over migration 0018's two tables. Every
 /// write is one transaction and one act. Depth is fixed at one: a parent may
 /// not itself be a child (refused), and a child that already has children is
-/// re-parented rather than refused, inside the same act so one retraction
-/// puts them all back.
+/// re-parented rather than refused. Undo restores prior membership only where
+/// it remains valid without changing later decisions.
 ///
 /// <para>Retraction stamps the act's live rows with <c>retracted_at</c> and
 /// <c>retracted_by_act_id</c>, then re-inserts the links it displaced as
-/// fresh rows under the unlink act. A retracted row is never un-retracted:
+/// fresh rows under the unlink act when the child still belongs to the selected
+/// act and the prior membership is structurally valid. A retracted row is never un-retracted:
 /// append-only means the table is the journal.</para>
 /// </summary>
 public sealed class IdentityLinkRepository : IIdentityLinkRepository
 {
-    private const string LinkColumns = """
+    internal const string LinkColumns = """
         l.id                  AS Id,
                l.act_id              AS ActId,
                l.child_work_id       AS ChildWorkId,
@@ -47,14 +48,7 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
     {
         using var lease = _factory.Lease();
 
-        var rows = await lease.Connection.QueryAsync<IdentityLink>(new CommandDefinition($"""
-            SELECT {LinkColumns}
-            FROM identity_links l
-            WHERE l.retracted_at IS NULL
-            ORDER BY l.id;
-            """, transaction: lease.Transaction, cancellationToken: ct));
-
-        return IdentityResolution.FromLiveLinks(rows);
+        return IdentityResolution.FromLiveLinks(await LiveLinksAsync(lease, ct));
     }
 
     /// <inheritdoc />
@@ -99,22 +93,25 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
 
         var children = Validate(request);
 
-        using var scope = _factory.Begin();
-        using var lease = _factory.Lease();
+        using var scope = new RepositoryWriteBatch(_factory);
+        var lease = scope.Lease;
 
         List<long> everyWork = [request.ParentWorkId, .. children];
         await AssertWorksExistAsync(lease, everyWork, ct);
 
-        // Depth one, half one: the chosen parent may not itself be a live child.
-        // Re-parenting the whole group under its grandparent would be a decision
-        // nobody made, so this is refused rather than repaired.
-        var parentsParent = await LiveParentOfAsync(lease, request.ParentWorkId, ct);
-        if (parentsParent is not null)
+        var live = await LiveLinksAsync(lease, ct);
+        var resolution = IdentityResolution.FromLiveLinks(live);
+        foreach (var childWorkId in children)
         {
-            throw new IdentityLinkRefusedException(
-                IdentityLinkRefusal.ParentIsAlreadyAChild,
-                $"Work {request.ParentWorkId} is already linked under work {parentsParent}. "
-                + "A parent may not itself be a child.");
+            var refusal = IdentityLinkRules.GetRefusal(
+                request.Kind, request.ParentWorkId, childWorkId, resolution);
+            if (refusal != IdentityLinkRefusal.None)
+            {
+                throw new IdentityLinkRefusedException(refusal,
+                    refusal == IdentityLinkRefusal.ParentIsAlreadyAChild
+                        ? $"Work {request.ParentWorkId} already has a parent and cannot hold children."
+                        : $"Work {childWorkId} has children and cannot be grouped as an expansion or variant.");
+            }
         }
 
         var actId = await InsertActAsync(lease, IdentityActKinds.Link, request.Note, ct);
@@ -123,25 +120,8 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
         // a work that is becoming a child is re-parented onto the new parent
         // inside this same act, so retracting the act puts every one of them
         // back where it was.
-        var displaced = await LiveLinksUnderAsync(lease, children, ct);
-
-        // Re-parenting displaced children is right for same_game and wrong for
-        // every other kind. A same-game link says "these are one game", so
-        // pulling the group's other entries onto the new parent keeps one
-        // statement true. An expansion link says "this extends that" and a
-        // variant link says "this samples that"; re-parenting either one's own
-        // same-game children onto the parent would move their playtime into
-        // it, the one thing the user's decision of 2026-08-31 says an
-        // expansion link must never do, and the one thing a demo must never do
-        // to the game it is a demo of. Refused, not repaired: the user can
-        // separate the entry first and group it after.
-        if (request.Kind != IdentityLinkKinds.SameGame && displaced.Count > 0)
-        {
-            throw new IdentityLinkRefusedException(
-                IdentityLinkRefusal.ExpansionChildIsAlreadyAParent,
-                $"Work {displaced[0].ParentWorkId} has links of its own and cannot be "
-                + "grouped as an expansion.");
-        }
+        var childSet = children.ToHashSet();
+        var displaced = live.Where(link => childSet.Contains(link.ParentWorkId)).ToList();
 
         // Each target carries the KIND it must be written back under. The
         // children the request names take the request's kind. A displaced
@@ -184,8 +164,8 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
     public async Task<bool> RetractActAsync(
         long actId, string? note = null, CancellationToken ct = default)
     {
-        using var scope = _factory.Begin();
-        using var lease = _factory.Lease();
+        using var scope = new RepositoryWriteBatch(_factory);
+        var lease = scope.Lease;
 
         var exists = await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition(
             "SELECT COUNT(*) FROM identity_acts WHERE id = @actId;",
@@ -197,11 +177,11 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
                 IdentityLinkRefusal.ActNotFound, $"No identity act with id {actId}.");
         }
 
-        var liveCount = await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition(
-            "SELECT COUNT(*) FROM identity_links WHERE act_id = @actId AND retracted_at IS NULL;",
-            new { actId }, lease.Transaction, cancellationToken: ct));
+        var children = (await lease.Connection.QueryAsync<long>(new CommandDefinition(
+            "SELECT child_work_id FROM identity_links WHERE act_id = @actId AND retracted_at IS NULL;",
+            new { actId }, lease.Transaction, cancellationToken: ct))).AsList();
 
-        if (liveCount == 0)
+        if (children.Count == 0)
         {
             return false;
         }
@@ -215,39 +195,7 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
             WHERE act_id = @actId AND retracted_at IS NULL;
             """, new { now, undoActId, actId }, lease.Transaction, cancellationToken: ct));
 
-        // Every link this act displaced, restored under the unlink act as a
-        // fresh row. Append-only: a retracted row is never un-retracted, so the
-        // journal of what happened stays the table itself.
-        var displaced = (await lease.Connection.QueryAsync<IdentityLink>(new CommandDefinition($"""
-            SELECT {LinkColumns}
-            FROM identity_links l
-            WHERE l.retracted_by_act_id = @actId
-            ORDER BY l.id;
-            """, new { actId }, lease.Transaction, cancellationToken: ct))).AsList();
-
-        foreach (var prior in displaced)
-        {
-            await lease.Connection.ExecuteAsync(new CommandDefinition("""
-                INSERT INTO identity_links (
-                    act_id, child_work_id, parent_work_id, kind, source,
-                    relation_label, evidence_json, applied_at)
-                VALUES (@undoActId, @childWorkId, @parentWorkId, @kind, @source,
-                        @relationLabel, @evidenceJson, @now);
-                """,
-                new
-                {
-                    undoActId,
-                    childWorkId = prior.ChildWorkId,
-                    parentWorkId = prior.ParentWorkId,
-                    kind = prior.Kind,
-                    source = prior.Source,
-                    relationLabel = prior.RelationLabel,
-                    evidenceJson = prior.EvidenceJson,
-                    now,
-                },
-                lease.Transaction,
-                cancellationToken: ct));
-        }
+        await RestoreDisplacedLinksAsync(lease, actId, undoActId, children, now, ct);
 
         scope.Commit();
         return true;
@@ -256,8 +204,8 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
     public async Task<bool> RetractLinkAsync(
         long childWorkId, string? note = null, CancellationToken ct = default)
     {
-        using var scope = _factory.Begin();
-        using var lease = _factory.Lease();
+        using var scope = new RepositoryWriteBatch(_factory);
+        var lease = scope.Lease;
 
         // The act retraction narrowed to one child, not a different mechanism.
         // The rest of the act stays standing — the user is separating the one
@@ -288,28 +236,45 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
             WHERE id = @linkId;
             """, new { now, undoActId, linkId = live.Id }, lease.Transaction, cancellationToken: ct));
 
-        // The link this one displaced FOR THIS CHILD, restored — the same
-        // promise act retraction makes, kept at the grain of one child. Other
-        // children the same act displaced are left alone, because their links
-        // are still standing and restoring them would put a work under two
-        // parents at once.
+        await RestoreDisplacedLinksAsync(lease, live.ActId, undoActId, [childWorkId], now, ct);
+
+        scope.Commit();
+        return true;
+    }
+
+    private static async Task RestoreDisplacedLinksAsync(
+        DbLease lease, long actId, long undoActId, List<long> children, DateTime now, CancellationToken ct)
+    {
+        // Only children whose current link was just removed belong to this undo.
+        // A child moved by a later act keeps that later decision, even when the
+        // selected act once displaced an older link for it.
         var displaced = (await lease.Connection.QueryAsync<IdentityLink>(new CommandDefinition($"""
             SELECT {LinkColumns}
             FROM identity_links l
-            WHERE l.retracted_by_act_id = @actId AND l.child_work_id = @childWorkId
+            WHERE l.retracted_by_act_id = @actId AND l.child_work_id IN @children
             ORDER BY l.id;
             """,
-            new { actId = live.ActId, childWorkId },
+            new { actId, children },
             lease.Transaction, cancellationToken: ct))).AsList();
 
         foreach (var prior in displaced)
         {
+            // Restoration must not reparent anyone. If the old parent now has
+            // a parent, or the child now holds children, leave it separate. The
+            // conditional insert also protects against ambiguous old history;
+            // it never overrides a standing membership to make the past fit.
             await lease.Connection.ExecuteAsync(new CommandDefinition("""
                 INSERT INTO identity_links (
                     act_id, child_work_id, parent_work_id, kind, source,
                     relation_label, evidence_json, applied_at)
-                VALUES (@undoActId, @childWorkId, @parentWorkId, @kind, @source,
-                        @relationLabel, @evidenceJson, @now);
+                SELECT @undoActId, @childWorkId, @parentWorkId, @kind, @source,
+                       @relationLabel, @evidenceJson, @now
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM identity_links
+                    WHERE retracted_at IS NULL
+                      AND (child_work_id IN (@childWorkId, @parentWorkId)
+                           OR parent_work_id = @childWorkId)
+                );
                 """,
                 new
                 {
@@ -326,8 +291,6 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
                 cancellationToken: ct));
         }
 
-        scope.Commit();
-        return true;
     }
 
     // ── Validation ───────────────────────────────────────────────────────────
@@ -409,24 +372,14 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
             lease.Transaction,
             cancellationToken: ct));
 
-    private static async Task<long?> LiveParentOfAsync(
-        DbLease lease, long workId, CancellationToken ct)
-        => await lease.Connection.ExecuteScalarAsync<long?>(new CommandDefinition("""
-            SELECT parent_work_id
-            FROM identity_links
-            WHERE child_work_id = @workId AND retracted_at IS NULL;
-            """, new { workId }, lease.Transaction, cancellationToken: ct));
-
-    private static async Task<List<IdentityLink>> LiveLinksUnderAsync(
-        DbLease lease, List<long> parentWorkIds, CancellationToken ct)
+    private static async Task<List<IdentityLink>> LiveLinksAsync(DbLease lease, CancellationToken ct)
     {
         var rows = await lease.Connection.QueryAsync<IdentityLink>(new CommandDefinition($"""
             SELECT {LinkColumns}
             FROM identity_links l
-            WHERE l.parent_work_id IN @parentWorkIds
-              AND l.retracted_at IS NULL
+            WHERE l.retracted_at IS NULL
             ORDER BY l.id;
-            """, new { parentWorkIds }, lease.Transaction, cancellationToken: ct));
+            """, transaction: lease.Transaction, cancellationToken: ct));
 
         return rows.AsList();
     }

@@ -34,14 +34,15 @@ public sealed class WorkIgdbPinRepository : IWorkIgdbPinRepository
     {
         ArgumentNullException.ThrowIfNull(assignment);
 
-        using var lease = _factory.Lease();
+        using var batch = new RepositoryWriteBatch(_factory);
+        var lease = batch.Lease;
 
         // The work must exist: a pin is meaningless without the row it pins.
-        var exists = await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition(
-            "SELECT COUNT(*) FROM works WHERE id = @WorkId;",
+        var revision = await lease.Connection.ExecuteScalarAsync<long?>(new CommandDefinition(
+            "SELECT igdb_mapping_revision FROM works WHERE id = @WorkId;",
             new { assignment.WorkId }, transaction: lease.Transaction, cancellationToken: ct));
 
-        if (exists == 0)
+        if (revision is null)
         {
             return WorkIgdbPinOutcome.WorkNotFound;
         }
@@ -61,22 +62,15 @@ public sealed class WorkIgdbPinRepository : IWorkIgdbPinRepository
 
         var now = _clock.GetUtcNow().UtcDateTime;
 
-        // Stamp-then-insert: any previous live pin is cleared before the new
-        // one is written, so ux_work_igdb_pins_live is never contested.
-        await lease.Connection.ExecuteAsync(new CommandDefinition("""
-            UPDATE work_igdb_pins
-            SET cleared_at = @now
-            WHERE work_id = @WorkId AND cleared_at IS NULL;
-            """,
-            new { assignment.WorkId, now },
-            transaction: lease.Transaction, cancellationToken: ct));
-
-        await lease.Connection.ExecuteAsync(new CommandDefinition("""
-            INSERT INTO work_igdb_pins (work_id, igdb_id, pinned_at, cleared_at)
-            VALUES (@WorkId, @IgdbId, @now, NULL);
-            """,
-            new { assignment.WorkId, assignment.IgdbId, now },
-            transaction: lease.Transaction, cancellationToken: ct));
+        try
+        {
+            await WorkIgdbMappingWrites.TransitionAsync(lease, assignment.WorkId, assignment.IgdbId,
+                pin: true, assignment.ExpectedIgdbMappingRevision ?? revision.Value, now, ct);
+        }
+        catch (ManualEntryConflictException conflict) when (conflict.Reason == ManualEntryConflictReason.ClaimedByAnotherGame)
+        {
+            return WorkIgdbPinOutcome.IgdbIdClaimedByAnotherWork;
+        }
 
         // COALESCE/NULLIF on the name: works.name is NOT NULL, so a blank
         // name keeps the existing title. A real name also clears
@@ -86,9 +80,7 @@ public sealed class WorkIgdbPinRepository : IWorkIgdbPinRepository
         // values belonged to the wrong IGDB game.
         await lease.Connection.ExecuteAsync(new CommandDefinition("""
             UPDATE works
-            SET igdb_id = @IgdbId,
-
-                name = COALESCE(NULLIF(TRIM(@Name), ''), name),
+            SET name = COALESCE(NULLIF(TRIM(@Name), ''), name),
                 name_is_provisional = CASE
                         WHEN NULLIF(TRIM(@Name), '') IS NOT NULL THEN 0
                         ELSE name_is_provisional
@@ -140,12 +132,14 @@ public sealed class WorkIgdbPinRepository : IWorkIgdbPinRepository
         await WorkFieldSourceWrites.StampAsync(
             lease.Connection, lease.Transaction, assignment.WorkId, stamps, now, ct);
 
+        batch.Commit();
         return WorkIgdbPinOutcome.Pinned;
     }
 
     public async Task<bool> ClearAsync(long workId, CancellationToken ct = default)
     {
-        using var lease = _factory.Lease();
+        using var batch = new RepositoryWriteBatch(_factory);
+        var lease = batch.Lease;
         var rows = await lease.Connection.ExecuteAsync(new CommandDefinition("""
             UPDATE work_igdb_pins
             SET cleared_at = @now
@@ -154,6 +148,14 @@ public sealed class WorkIgdbPinRepository : IWorkIgdbPinRepository
             new { workId, now = _clock.GetUtcNow().UtcDateTime },
             transaction: lease.Transaction, cancellationToken: ct));
 
+        if (rows > 0)
+        {
+            await lease.Connection.ExecuteAsync(new CommandDefinition(
+                "UPDATE works SET igdb_mapping_revision = igdb_mapping_revision + 1 WHERE id = @workId;",
+                new { workId }, lease.Transaction, cancellationToken: ct));
+        }
+
+        batch.Commit();
         return rows > 0;
     }
 

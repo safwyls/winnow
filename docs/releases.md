@@ -83,7 +83,9 @@ relaunch leave `failure.txt` and, if Setup ran, `installer.log` under
 `<data directory>/updates/handoff-*`. Run the latest official installer manually into the same
 installation directory to recover, then start Winnow normally. Keep the data directory.
 There is no automatic binary or database rollback: an older binary must not be reopened
-against a database a newer build may have migrated.
+against a database a newer build may have migrated. Startup refuses applied migration names
+that its binary does not recognize before changing the database journal or schema. Install
+the same or a newer release, or restore a pre-upgrade backup into a separate data directory.
 
 Release CI fetches a digest-verified earlier published Windows installer and exercises an
 upgrade in a disposable custom directory. It also checks bad checksums, cancellation,
@@ -95,9 +97,14 @@ tracked in TASK-159.
 ## Build without publishing
 
 Pushes to `main` and `codex/**`, and pull requests, build packages when application,
-packaging, version, SDK, dependency configuration, or workflow files change. Their version is
+bundled plugin, packaging, version, SDK, dependency configuration, or workflow files change. Their version is
 `<version base>-ci.<run number>`. Download
 `packages-win-x64` and `packages-linux-x64` from the workflow's artifacts, retained for 14 days.
+
+Publishing verifies the bundled plugin's source manifest, assembly identity and entry type
+before either platform package is built. The entry type is inspected from metadata without
+loading provider code. Run `packaging/Test-BundledPlugin.ps1 -BuildDirectory <build output>`
+to exercise missing/mismatched package failures against a built application.
 
 Once the workflow is on the default branch, **Actions → Release builds → Run workflow**
 accepts a version such as `0.1.0-beta.1`. This path runs verification and creates artifacts

@@ -85,6 +85,7 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
     internal long Generation { get; init; }
 
     internal long SurfacingReleaseId { get; init; }
+    internal long FeedbackReleaseId => SurfacingReleaseId > 0 ? SurfacingReleaseId : Tile.ReleaseId;
 
     /// <summary>
     /// Whether the shelf behind this card is holding something to put in its
@@ -276,7 +277,7 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
             // False here is not necessarily a failure — a snooze can lapse
             // under the user's finger, and it had already undone itself. Either
             // way the honest thing to draw is the card back as it was.
-            await _feed.RevokeVerdictAsync(Tile.ReleaseId, kind, ct);
+            await _feed.RevokeVerdictAsync(FeedbackReleaseId, kind, ct);
             Restore();
             VerdictChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -396,7 +397,7 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
         {
             Problem = null;
 
-            var outcome = await _feed.RecordVerdictAsync(Tile.ReleaseId, kind, ct);
+            var outcome = await _feed.RecordVerdictAsync(FeedbackReleaseId, kind, ct);
             if (!outcome.Saved)
             {
                 // Both controls stay put and the card says why. See the class

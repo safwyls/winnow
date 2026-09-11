@@ -40,6 +40,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     private readonly IReleaseRepository _releases;
     private readonly IWorkRepository _works;
     private readonly IUpdateEventRepository _updateEvents;
+    private readonly Services.IUpdateFlagService? _updateFlags;
 
     /// <summary>
     /// The details modal's journal read/write seam. Optional like the other
@@ -232,7 +233,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         Services.IGameRefetch? refetch = null,
         Winnow.Core.Repositories.IStorefrontRepository? storefrontCache = null,
         ISessionRepository? sessions = null,
-        ArtworkPreferences? artworkPreferences = null)
+        ArtworkPreferences? artworkPreferences = null,
+        Services.IUpdateFlagService? updateFlags = null)
     {
         _storefrontCache = storefrontCache;
         _workRatings = workRatings;
@@ -251,6 +253,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         _releases = releases;
         _works = works;
         _updateEvents = updateEvents;
+        _updateFlags = updateFlags;
         _sessions = sessions;
         _leases = leases;
         _snapshots = snapshots;
@@ -1374,8 +1377,18 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         var updates = events
             .OrderByDescending(e => e.OccurredAt)
             .ThenByDescending(e => e.Id)
-            .Select(e => UpdateEventViewModel.Create(e, target.LastPlayedUtc))
+            .Select(e => UpdateEventViewModel.Create(e, target.LastPlayedUtc, target.PlaytimeMinutes))
             .ToList();
+
+        var acknowledgements = new Dictionary<long, DateTime>();
+        if (_updateFlags is not null)
+        {
+            foreach (var releaseId in target.ReleaseIds.Distinct())
+            {
+                if (await _updateFlags.GetStandingAsync(releaseId) is { } through)
+                    acknowledgements[releaseId] = through;
+            }
+        }
 
         IReadOnlyList<PlaytimeSnapshot> history = _snapshots is null
             ? []
@@ -1401,6 +1414,10 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             updates,
             DateTime.UtcNow,
             snapshots: history,
+            updateEvents: events,
+            acknowledgedByRelease: acknowledgements,
+            updateFlags: _updateFlags,
+            reloadLibrary: () => LoadLibraryAsync(preserveViewport: true),
             covers: _leases,
             coverage: await BuildCoverageAsync(target),
             expansions: BuildExpansions(target),
@@ -2130,7 +2147,11 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             confirmLabel: "New list",
             confirm: async prompt =>
             {
-                await Lists.CreateListAsync(prompt.Text, picked);
+                if (await Lists.CreateListAsync(prompt.Text, picked) is null)
+                {
+                    prompt.Problem = "Couldn't create that list. Try again.";
+                    return;
+                }
                 Prompt = null;
                 if (Details is { } details)
                     details.Lists = await BuildListsAsync(details.Tile);

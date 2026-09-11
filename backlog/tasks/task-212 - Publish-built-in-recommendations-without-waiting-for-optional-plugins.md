@@ -1,10 +1,11 @@
 ---
 id: TASK-212
 title: Publish built-in recommendations without waiting for optional plugins
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@codex'
 created_date: '2026-09-11 05:00'
-updated_date: '2026-09-11 05:06'
+updated_date: '2026-09-11 06:40'
 labels:
   - architecture
   - review
@@ -33,3 +34,9 @@ Architecture review 2026-09-10, R24. Evidence: Source-verified blocking path; la
 - [ ] #2 An explicit aggregate latency/cancellation budget includes queued work and prevents stale provider results from replacing a newer feed generation.
 - [ ] #3 Tests use slow, failing and cancellation-ignoring providers to verify baseline availability, bounded host waiting and stable desktop/fullscreen focus/impression behavior.
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+Return built-in shelves immediately with an optional bounded supplemental result. Run provider requests concurrently under a shared five-second aggregate deadline that starts before queue acquisition. Append supplements within the current feed generation without replacing existing cards, and verify slow/cancellation-ignoring providers plus focus/impression stability on desktop and fullscreen.
+<!-- SECTION:PLAN:END -->

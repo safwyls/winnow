@@ -23,6 +23,11 @@ public interface ISteamHistoryClient
     /// </summary>
     ValueTask<bool> IsConfiguredAsync(CancellationToken ct = default);
 
+    /// <summary>Whether evidence still names the credential selected for this operation.</summary>
+    ValueTask<bool> IsCurrentAsync(SteamCredentialIdentity identity,
+        SteamCredentialPurpose purpose = SteamCredentialPurpose.Unattended,
+        CancellationToken ct = default);
+
     /// <summary>
     /// Per-app cumulative playtime and first/last played times for the account
     /// the API key belongs to.

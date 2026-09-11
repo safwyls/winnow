@@ -1,9 +1,14 @@
 using Winnow.Core.Ingest;
 using System.Text.Json;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Winnow.Ingest.Epic;
+
+/// <summary>A partial read can establish positive facts, but cannot establish absence.</summary>
+public sealed record EpicManifestScan(IReadOnlyList<EpicManifest> Manifests, bool IsComplete, string? Fingerprint);
 
 /// <summary>
 /// Reads <c>Data\Manifests\*.item</c> -- the authoritative source for which Epic
@@ -13,13 +18,16 @@ public sealed class EpicManifestReader
 {
     private readonly ILogger<EpicManifestReader> _logger;
     private readonly StorefrontParserLimits _limits;
+    private readonly Func<string, IEnumerable<string>> _enumerateFiles;
 
     /// <param name="logger">Optional logger.</param>
-    public EpicManifestReader(ILogger<EpicManifestReader>? logger = null, StorefrontParserLimits? limits = null)
+    public EpicManifestReader(ILogger<EpicManifestReader>? logger = null, StorefrontParserLimits? limits = null,
+        Func<string, IEnumerable<string>>? enumerateFiles = null)
     {
         _logger = logger ?? NullLogger<EpicManifestReader>.Instance;
         _limits = limits ?? new StorefrontParserLimits();
         _limits.Validate();
+        _enumerateFiles = enumerateFiles ?? (directory => Directory.EnumerateFiles(directory, "*.item", SearchOption.TopDirectoryOnly));
     }
 
     /// <summary>
@@ -29,45 +37,49 @@ public sealed class EpicManifestReader
     /// committed.
     /// </summary>
     public IReadOnlyList<EpicManifest> ReadDirectory(string manifestsDirectory)
+        => ScanDirectory(manifestsDirectory).Manifests;
+
+    /// <summary>Reads manifests and reports whether their absence is authoritative for this pass.</summary>
+    public EpicManifestScan ScanDirectory(string manifestsDirectory)
     {
         ArgumentNullException.ThrowIfNull(manifestsDirectory);
 
         if (!Directory.Exists(manifestsDirectory))
         {
             _logger.LogDebug("Epic manifests directory {Path} does not exist", manifestsDirectory);
-            return [];
+            return new([], false, null);
         }
 
         var manifests = new List<EpicManifest>();
-        IEnumerable<string> files;
+        var complete = true;
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         try
         {
-            // Top-level only: Pending\ holds queued installs, not completed ones.
-            files = Directory.EnumerateFiles(manifestsDirectory, "*.item", SearchOption.TopDirectoryOnly);
+            // Materialization is inside the catch: enumeration can fail during MoveNext.
+            var files = _enumerateFiles(manifestsDirectory)
+                .Where(file => file.EndsWith(".item", StringComparison.OrdinalIgnoreCase))
+                .Order(StringComparer.OrdinalIgnoreCase).ToArray();
+            foreach (var file in files)
+            {
+                var (manifest, bytes) = ReadWithBytes(file);
+                if (manifest is null)
+                {
+                    complete = false;
+                    continue;
+                }
+                manifests.Add(manifest);
+                if (!manifest.HasInstallState) complete = false;
+                hash.AppendData(Encoding.UTF8.GetBytes(Path.GetFileName(file)));
+                hash.AppendData(bytes!);
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             _logger.LogWarning(ex, "Could not enumerate Epic manifests under {Path}", manifestsDirectory);
-            return [];
+            complete = false;
         }
 
-        foreach (var file in files)
-        {
-            // On Windows a glob with a short extension also matches longer ones
-            // (the 8.3 short-name rule), so "*.item" can return "*.itemx".
-            if (!file.EndsWith(".item", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            var manifest = Read(file);
-            if (manifest is not null)
-            {
-                manifests.Add(manifest);
-            }
-        }
-
-        return manifests;
+        return new(manifests, complete, complete ? Convert.ToHexString(hash.GetHashAndReset()) : null);
     }
 
     /// <summary>
@@ -75,6 +87,9 @@ public sealed class EpicManifestReader
     /// a manifest (no <c>CatalogItemId</c>).
     /// </summary>
     public EpicManifest? Read(string manifestPath)
+        => ReadWithBytes(manifestPath).Manifest;
+
+    private (EpicManifest? Manifest, byte[]? Bytes) ReadWithBytes(string manifestPath)
     {
         ArgumentNullException.ThrowIfNull(manifestPath);
 
@@ -85,17 +100,19 @@ public sealed class EpicManifestReader
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object)
             {
-                return null;
+                return (null, null);
             }
 
             var catalogItemId = EpicJson.String(root, "CatalogItemId");
-            if (catalogItemId.Length == 0)
+            if (string.IsNullOrWhiteSpace(catalogItemId))
             {
                 _logger.LogWarning("Epic manifest {Path} has no CatalogItemId; skipping", manifestPath);
-                return null;
+                return (null, null);
             }
 
-            return new EpicManifest(
+            var hasInstallState = root.TryGetProperty("bIsIncompleteInstall", out var incomplete)
+                && incomplete.ValueKind is JsonValueKind.True or JsonValueKind.False;
+            return (new EpicManifest(
                 CatalogItemId: catalogItemId,
                 CatalogNamespace: EpicJson.String(root, "CatalogNamespace"),
                 AppName: EpicJson.String(root, "AppName"),
@@ -105,20 +122,18 @@ public sealed class EpicManifestReader
                 AppVersionString: EpicJson.String(root, "AppVersionString"),
                 InstallSize: EpicJson.Int64(root, "InstallSize"),
                 // Only an explicit completion bit may turn Install into Play.
-                IsIncompleteInstall: !root.TryGetProperty("bIsIncompleteInstall", out var incomplete)
-                    || incomplete.ValueKind != JsonValueKind.False,
+                IsIncompleteInstall: !hasInstallState || incomplete.ValueKind != JsonValueKind.False,
                 MainGameCatalogItemId: EpicJson.String(root, "MainGameCatalogItemId"),
                 MainGameAppName: EpicJson.String(root, "MainGameAppName"),
                 AppCategories: EpicJson.StringArray(root, "AppCategories"),
                 InstallationGuid: EpicJson.String(root, "InstallationGuid"),
-                ManifestPath: manifestPath);
+                ManifestPath: manifestPath) { HasInstallState = hasInstallState }, bytes);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
-            // A manifest being rewritten under us, or a truncated file, costs one
-            // game — never the whole scan.
+            // Keep positive rows from other files, but withhold absence authority.
             _logger.LogWarning(ex, "Could not read Epic manifest {Path}; skipping", manifestPath);
-            return null;
+            return (null, null);
         }
     }
 }

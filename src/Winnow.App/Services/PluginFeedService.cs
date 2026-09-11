@@ -26,42 +26,30 @@ public sealed class PluginFeedService(
         var verdicts = await feedback.GetActiveVerdictsAsync(now, ct).ConfigureAwait(false);
         var facetSnapshot = await facets.GetSnapshotAsync(ct).ConfigureAwait(false);
         var works = snapshot.Works.ToDictionary(work => work.Id);
-        var releases = snapshot.Releases.ToDictionary(release => release.Id);
-        var ownerships = snapshot.Ownerships.ToDictionary(ownership => ownership.Id);
         var externalIds = snapshot.ExternalIds.ToLookup(externalId => externalId.ReleaseId);
-        var resolvedWorks = snapshot.Buckets.GroupBy(row => row.WorkId)
-            .ToDictionary(group => group.Key, group => group.First().ResolvedWorkId);
-        var suppressed = verdicts.Where(verdict => verdict.Kind is FeedVerdictKinds.NotInterested or FeedVerdictKinds.Snoozed)
-            .Select(verdict => releases.GetValueOrDefault(verdict.ReleaseId))
-            .OfType<Release>().Select(release => resolvedWorks.GetValueOrDefault(release.WorkId, release.WorkId)).ToHashSet();
-
+        var suppressed = RecommendationGame.ResolveFeedback(snapshot,
+            verdicts.Where(verdict => verdict.Kind is FeedVerdictKinds.NotInterested or FeedVerdictKinds.Snoozed)
+                .Select(verdict => verdict.ReleaseId));
         var candidates = new Dictionary<string, Candidate>(StringComparer.Ordinal);
-        foreach (var group in snapshot.Buckets.GroupBy(row => row.ResolvedWorkId))
+        foreach (var resolved in RecommendationGame.Build(snapshot, facetSnapshot))
         {
-            // Pick a viable store copy before identity precedence, as the built-in engine does.
-            var primary = group.OrderBy(row => row.Lifecycle?.IsDerelict == true)
-                .ThenBy(row => row.WorkId != row.ResolvedWorkId).ThenBy(row => row.WorkId).ThenBy(row => row.OwnershipId).First();
+            var primary = resolved.Action;
             if (primary.Game.Bucket is LibraryBuckets.Retired or LibraryBuckets.Derelict
-                || suppressed.Contains(group.Key) || !ownerships.ContainsKey(primary.OwnershipId)
-                || !releases.TryGetValue(primary.ReleaseId, out var release)
-                || !works.TryGetValue(primary.WorkId, out var work) || work.NameIsProvisional) continue;
+                || suppressed.Contains(resolved.WorkId) || resolved.NameIsProvisional) continue;
 
-            var title = string.IsNullOrWhiteSpace(release.Name) ? work.Name : release.Name;
             var id = primary.OwnershipId.ToString(CultureInfo.InvariantCulture);
-            var orderedMembers = group.OrderBy(row => row.OwnershipId != primary.OwnershipId).ThenBy(row => row.OwnershipId).ToArray();
             var identifiers = new Dictionary<string, string>(StringComparer.Ordinal);
-            foreach (var member in orderedMembers)
+            foreach (var member in resolved.Members)
             {
                 foreach (var external in externalIds[member.ReleaseId]) identifiers.TryAdd(external.Provider, external.ProviderId);
                 if (works.TryGetValue(member.WorkId, out var memberWork) && memberWork.IgdbId is { } igdbId)
                     identifiers.TryAdd("igdb", igdbId.ToString(CultureInfo.InvariantCulture));
             }
-            var descriptors = group.SelectMany(row => facetSnapshot.ByRelease.TryGetValue(row.ReleaseId, out var assigned)
-                    ? assigned.FacetIds : [])
-                .Distinct().Select(facetId => facetSnapshot.ById.GetValueOrDefault(facetId)).OfType<Facet>().ToArray();
-            var game = new PluginGame(id, title, new ReadOnlyDictionary<string, string>(identifiers))
+            var descriptors = resolved.Facets.FacetIds.Select(facetId => facetSnapshot.ById.GetValueOrDefault(facetId))
+                .OfType<Facet>().ToArray();
+            var game = new PluginGame(id, resolved.Title, new ReadOnlyDictionary<string, string>(identifiers))
             {
-                Installed = group.Any(row => ownerships.TryGetValue(row.OwnershipId, out var ownership) && ownership.Installed),
+                Installed = resolved.Installed,
                 PlaytimeMinutes = primary.Game.PlaytimeMinutes,
                 LastPlayedAt = primary.Game.LastPlayedAt is { } date ? new DateTimeOffset(DateTime.SpecifyKind(date, DateTimeKind.Utc)) : null,
                 Genres = Array.AsReadOnly(descriptors.Where(facet => facet.Kind == FacetKinds.Genre).Select(facet => facet.Name).Distinct(StringComparer.Ordinal).ToArray()),
@@ -69,7 +57,6 @@ public sealed class PluginFeedService(
             };
             candidates[id] = new(game, primary.ReleaseId);
         }
-
         if (candidates.Count == 0) return new([], 0);
         var games = Array.AsReadOnly(candidates.Values.Select(candidate => candidate.Game).ToArray());
         var shelves = new List<FeedShelf>();

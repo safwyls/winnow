@@ -51,8 +51,6 @@ public sealed class RecommendHarness : IDisposable
 
         Engine = new RecommendationEngine(
             new LibraryQueryRepository(_db.Factory),
-            Releases,
-            Ownerships,
             Snapshots,
             Sessions,
             UpdateEvents,
@@ -102,8 +100,6 @@ public sealed class RecommendHarness : IDisposable
         ISessionRepository? sessions = null)
         => new(
             new LibraryQueryRepository(_db.Factory),
-            Releases,
-            Ownerships,
             snapshots ?? Snapshots,
             sessions ?? Sessions,
             UpdateEvents,

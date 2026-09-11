@@ -166,7 +166,7 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
         _gate = gate;
         _options = options;
         _clock = clock;
-        _confirmation = confirmation ?? new SteamAccountConfirmation(settings, apiKeys);
+        _confirmation = confirmation ?? new SteamAccountConfirmation(settings, apiKeys, unitOfWork: unitOfWork);
         _logger = logger;
     }
 
@@ -319,12 +319,11 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
         var yearFirstPlayed = new Dictionary<string, DateTime>(StringComparer.Ordinal);
         var completed = new List<(int Year, int Games)>();
 
-        // Kept separate from `confirmed`, which a marker written on some earlier
-        // launch can satisfy. Only a disclosure THIS PASS proves the key in
-        // force belongs to this account, and only that may name the account the
-        // visibility filter keeps — otherwise a stale marker would let a
-        // stranger's key inherit the previous owner's identity.
-        var disclosedThisPass = false;
+        // Completion, cached account evidence and fresh disclosure are separate.
+        // A cache may support history without attesting a new confirmation.
+        SteamCredentialIdentity? passIdentity = null;
+        SteamCredentialIdentity? accountEvidence = null;
+        SteamCredentialIdentity? freshDisclosure = null;
 
         foreach (var year in pending)
         {
@@ -354,10 +353,19 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
                 continue;
             }
 
+            // Unknown provenance is not evidence, including from legacy caches.
+            if (review.CredentialIdentity is not { } identity
+                || passIdentity is not null && passIdentity != identity)
+            {
+                return;
+            }
+            passIdentity = identity;
+
             if (review.AccountId is not null)
             {
                 confirmed = true;
-                disclosedThisPass = true;
+                accountEvidence = identity;
+                if (!review.FromCache) freshDisclosure = identity;
             }
 
             foreach (var game in review.Games)
@@ -377,52 +385,21 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
             completed.Add((year, review.Games.Count));
         }
 
-        // ── The disclosure the ordinary path can no longer reach ─────────────
-        //
-        // Every year but the current one is asked about exactly once per install,
-        // so an account that finished its backfill refetches only the current
-        // year — and an uncompiled current-year Replay answers empty, with no
-        // account id in it. Nothing else in Winnow discloses which account the
-        // key belongs to, so on precisely the accounts that HAVE backfilled, the
-        // disclosure could never fire again and the visibility toggle stayed
-        // disabled for good. Found live 2026-08-30.
-        //
-        // The remedy is one extra read, only when it is the only thing standing
-        // between the user and a working toggle.
-        //
-        // ── KEPT, UNCHANGED, AND ON PURPOSE (TASK-55 S4) ────────────────────
-        //
-        // A signed-in user never needs this: the sign-in writes the account out
-        // of the token's own subject claim the moment the window closes, so the
-        // reference is already set and NeedsDisclosureRefetchAsync's first
-        // condition returns false for one settings read. That makes the refetch a
-        // natural no-op for them rather than something switched off for them, and
-        // SteamAccountIdentityTests pins that it really is one.
-        //
-        // For a key-only user it is still the ONLY route to the fact. Nothing
-        // else in Winnow discloses which account a key belongs to, so removing
-        // this — or gating it on a session that a key-only user will never have —
-        // would put TASK-54's bug straight back for exactly the users TASK-54 was
-        // written for.
-        if (!disclosedThisPass && await NeedsDisclosureRefetchAsync(steamId, ct))
+        // An uncompiled current-year Replay carries no account id. Re-read a
+        // populated completed year when the credential selected for this pass
+        // has no matching confirmation. A session's confirmation cannot attest
+        // a separately configured API key, even when both are present.
+        if (freshDisclosure is null && await NeedsDisclosureRefetchAsync(steamId, passIdentity, ct))
         {
-            switch (await DiscloseFromCompletedYearAsync(steamId, totals, ct))
+            var disclosed = await DiscloseFromCompletedYearAsync(steamId, totals, ct);
+            if (disclosed is not null)
             {
-                case DisclosureOutcome.Mismatch:
-                    // Same response as the main loop: the key is somebody
-                    // else's, so this account is abandoned for the pass.
-                    return;
-
-                case DisclosureOutcome.Disclosed:
-                    confirmed = true;
-                    disclosedThisPass = true;
-                    break;
-
-                case DisclosureOutcome.NothingToDiscloseFrom:
-                default:
-                    // No populated year to ask about, or it did not answer. The
-                    // toggle stays disabled and says why; nothing is written.
-                    break;
+                if (disclosed.AccountMismatch || disclosed.CredentialIdentity is not { } identity
+                    || passIdentity is not null && passIdentity != identity) return;
+                passIdentity = identity;
+                accountEvidence = identity;
+                confirmed = true;
+                if (!disclosed.FromCache) freshDisclosure = identity;
             }
         }
 
@@ -440,14 +417,12 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
             return;
         }
 
-        await ConfirmAccountAsync(steamId, disclosedThisPass, ct);
-
         // The anchor: cumulative playtime as it stands right now. Everything the
         // reconstruction produces is derived by subtraction from these figures,
         // so without them there is nothing to import even when the months
         // arrived.
         var anchors = await _history.GetLastPlayedTimesAsync(ct: ct);
-        if (!anchors.Answered)
+        if (!anchors.Answered || anchors.CredentialIdentity is not { } anchorIdentity)
         {
             _logger.LogWarning(
                 "Steam last-played times did not answer; the year data fetched for account {Account} "
@@ -456,10 +431,24 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
             return;
         }
 
+        // The anchor endpoint identifies no account. A matching Replay disclosure
+        // or a confirmation earned by this exact credential supplies that join.
+        // Historical completion markers alone say nothing about today's key.
+        if (passIdentity is not null && passIdentity != anchorIdentity
+            || anchorIdentity.Account is { } sessionAccount && sessionAccount != steamId)
+            return;
+        if (accountEvidence != anchorIdentity
+            && (await _confirmation.GetConfirmedAccountRefAsync(ct) != steamId.AccountRef
+                || await _confirmation.GetRecordedFingerprintAsync(ct) != anchorIdentity.Fingerprint))
+            return;
+
         // ── Write phase. One transaction for the whole account, under the same
         // gate the resolver passes take, so a backfill and a sync never open
         // concurrent write transactions on SQLite's single writer.
         using var lease = await _gate.EnterAsync(ct).ConfigureAwait(false);
+        if (!await _history.IsCurrentAsync(anchorIdentity, ct: ct)) return;
+
+        await ConfirmAccountAsync(steamId, freshDisclosure, ct);
         var written = await WriteAsync(months, yearFirstPlayed, anchors, totals, ct);
 
         await RecordCompletionAsync(steamId, completed, written, totals, ct);
@@ -689,14 +678,14 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
     /// would be hiding games at random.</para>
     /// </summary>
     private async Task ConfirmAccountAsync(
-        SteamId steamId, bool disclosedThisPass, CancellationToken ct)
+        SteamId steamId, SteamCredentialIdentity? freshDisclosure, CancellationToken ct)
     {
         await _settings.SetAsync(
             ConfirmedKey(steamId),
             _clock.GetUtcNow().UtcDateTime.ToString("O", CultureInfo.InvariantCulture),
             ct);
 
-        if (!disclosedThisPass)
+        if (freshDisclosure is null)
         {
             // The marker above was earned on an earlier launch and is enough to
             // let the import proceed. It is NOT enough to name the user's
@@ -706,50 +695,26 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
             return;
         }
 
-        // Through the shared writer, stamped as key-earned so a later pass can
-        // tell whether the confirmation still describes the key in force. The
-        // marker above stays here: it is this job's own bookkeeping about which
-        // years it has imported, not a statement about whose library this is.
-        await _confirmation.ConfirmAsync(steamId, SteamAccountConfirmationSource.WebApiKey, ct);
-    }
-
-    /// <summary>What one disclosure refetch established.</summary>
-    private enum DisclosureOutcome
-    {
-        /// <summary>No populated year to ask about, or the request did not answer.</summary>
-        NothingToDiscloseFrom = 0,
-
-        /// <summary>Steam named the account. The key in force belongs to it.</summary>
-        Disclosed,
-
-        /// <summary>Steam answered for a different account. The key is somebody else's.</summary>
-        Mismatch,
+        await _confirmation.ConfirmAsync(steamId, freshDisclosure, ct);
     }
 
     /// <summary>
     /// Whether this pass should spend one read establishing which account the
     /// key belongs to.
     ///
-    /// <para>Four conditions, and the point of all four is that this must be a
-    /// repair and never a routine cost. It runs only when the ordinary
-    /// disclosure did not happen (checked by the caller), only when the answer
-    /// is actually missing, only for an account that has already proved itself
-    /// once, and only when the key in force is the one that proof was earned
-    /// with — or when nothing records which key that was.</para>
-    ///
     /// <para>The confirmed marker is what makes this safe to attempt at all. It
     /// says a Year in Review has already answered for this account, so there is
     /// something to re-read; without it there is no reason to think a refetch
     /// would disclose anything the current year did not.</para>
     /// </summary>
-    private async Task<bool> NeedsDisclosureRefetchAsync(SteamId steamId, CancellationToken ct)
+    private async Task<bool> NeedsDisclosureRefetchAsync(
+        SteamId steamId, SteamCredentialIdentity? identity, CancellationToken ct)
     {
-        if (await _confirmation.GetConfirmedAccountRefAsync(ct) is not null)
+        if (await _confirmation.GetConfirmedAccountRefAsync(ct) == steamId.AccountRef
+            && identity is not null
+            && await _confirmation.GetRecordedFingerprintAsync(ct) == identity.Fingerprint)
         {
-            // Already known. This is the state every launch after the repair is
-            // in, and it costs one settings read to establish — and it is also
-            // the state a signed-in user is in from the moment the sign-in window
-            // closes, which is what makes this whole repair free for them.
+            // This exact credential already proved this account.
             return false;
         }
 
@@ -758,16 +723,7 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
             return false;
         }
 
-        // Matches a credential in force, or nothing records which credential
-        // earned the confirmation. A MISMATCH cannot occur here:
-        // ISteamAccountConfirmation.ReconcileAsync runs at the top of the pass
-        // and clears both halves, which is what stops a new key inheriting the
-        // previous owner's identity. The check is still made rather than assumed,
-        // because that ordering is the whole of the guarantee and a future caller
-        // could move it.
-        var recorded = await _confirmation.GetRecordedFingerprintAsync(ct);
-
-        return recorded is null || await _confirmation.IsInForceAsync(recorded, ct);
+        return true;
     }
 
     /// <summary>
@@ -789,15 +745,10 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
     /// have a path, and the attempts are bounded so a run of unanswered years
     /// cannot turn a repair into a fetch storm.</para>
     ///
-    /// <para><b>Cache.</b> The ordinary 6-hour client cache is used when the
-    /// stored fingerprint matches the key in force — that is the live case, an
-    /// account whose ref went missing while its key never changed. When nothing
-    /// records which key the cached bodies were fetched with, the read is forced
-    /// fresh: a cached response fetched with a PREVIOUS key would disclose the
-    /// previous account and hand back exactly the identity the fingerprint clear
-    /// had just removed.</para>
+    /// <para>A confirmation requires a fresh response. Same-credential cache
+    /// fallback can support the history join but cannot earn confirmation.</para>
     /// </summary>
-    private async Task<DisclosureOutcome> DiscloseFromCompletedYearAsync(
+    private async Task<SteamYearInReview?> DiscloseFromCompletedYearAsync(
         SteamId steamId, Totals totals, CancellationToken ct)
     {
         var candidates = await DisclosureCandidateYearsAsync(steamId, ct);
@@ -807,11 +758,13 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
                 "No populated Year in Review is recorded for account {Account}, so which account "
                 + "the API key belongs to cannot be established; the visibility toggle stays off.",
                 steamId.AccountId);
-            return DisclosureOutcome.NothingToDiscloseFrom;
+            return null;
         }
 
-        var recorded = await _confirmation.GetRecordedFingerprintAsync(ct);
-        var cacheTtl = recorded is null ? TimeSpan.Zero : (TimeSpan?)null;
+        // Confirmation is an attestation of fresh disclosure. A forced request
+        // may still soft-fail to a cache, whose provenance permits history use
+        // but whose FromCache flag prevents a new confirmation.
+        var cacheTtl = TimeSpan.Zero;
 
         foreach (var year in candidates)
         {
@@ -826,7 +779,7 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
                     "Steam Year in Review answered for a different account than {Account}; "
                     + "the playtime backfill is skipped for this account until the API key matches.",
                     steamId.AccountId);
-                return DisclosureOutcome.Mismatch;
+                return review;
             }
 
             if (review.AccountId is not null)
@@ -835,7 +788,7 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
                     "Re-read Steam Year in Review {Year} for account {Account} to establish which "
                     + "account the API key belongs to. Nothing was imported.",
                     year, steamId.AccountId);
-                return DisclosureOutcome.Disclosed;
+                return review;
             }
 
             if (!review.Answered)
@@ -844,7 +797,7 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
             }
         }
 
-        return DisclosureOutcome.NothingToDiscloseFrom;
+        return null;
     }
 
     /// <summary>

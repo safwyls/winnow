@@ -22,10 +22,12 @@ public sealed class FullscreenBrowseFilterDraft
         Bucket = library.SelectedBucket;
     }
 
-    public void Apply(LibraryViewModel library)
+    public bool Apply(LibraryViewModel library)
     {
+        if (Filters.HasYearProblem) return false;
         library.Filters.Apply(Filters.ToFilter());
         library.Sort = Sort;
         library.SelectedBucket = Bucket;
+        return true;
     }
 }

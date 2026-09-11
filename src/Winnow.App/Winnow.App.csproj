@@ -115,7 +115,9 @@
   </ItemGroup>
 
   <Target Name="CopyBundledPlugins" AfterTargets="Build">
-    <MSBuild Projects="..\..\plugins\Winnow.Plugin.SteamGridDb\Winnow.Plugin.SteamGridDb.csproj" Targets="GetTargetPath" BuildInParallel="false">
+    <!-- The SDK builds this managed library reference without the app's RID.
+         Query that same target path during self-contained publishing. -->
+    <MSBuild Projects="..\..\plugins\Winnow.Plugin.SteamGridDb\Winnow.Plugin.SteamGridDb.csproj" Targets="GetTargetPath" BuildInParallel="false" RemoveProperties="RuntimeIdentifier;SelfContained;PublishReadyToRun">
       <Output TaskParameter="TargetOutputs" ItemName="BundledPluginAssembly" />
     </MSBuild>
     <Copy SourceFiles="@(BundledPluginAssembly)" DestinationFolder="$(OutDir)plugins\steamgriddb" SkipUnchangedFiles="true" />

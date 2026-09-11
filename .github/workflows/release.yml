@@ -9,6 +9,7 @@ on:
       - '.github/workflows/ci.yml'
       - 'packaging/**'
       - 'src/**'
+      - 'plugins/**'
       - 'Directory.Build.props'
       - 'Version.props'
       - 'global.json'
@@ -19,6 +20,7 @@ on:
       - '.github/workflows/ci.yml'
       - 'packaging/**'
       - 'src/**'
+      - 'plugins/**'
       - 'Directory.Build.props'
       - 'Version.props'
       - 'global.json'
@@ -102,7 +104,9 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Publish self-contained application
         shell: pwsh
-        run: ./packaging/Publish.ps1 -Runtime $env:RELEASE_RUNTIME -Version $env:RELEASE_VERSION -Commit $env:GITHUB_SHA -OutputDirectory artifacts/publish
+        run: |
+          ./packaging/Publish.ps1 -Runtime $env:RELEASE_RUNTIME -Version $env:RELEASE_VERSION -Commit $env:GITHUB_SHA -OutputDirectory artifacts/publish
+          ./packaging/Test-BundledPlugin.ps1 -BuildDirectory artifacts/publish
       - name: Package Windows installer and archive
         if: runner.os == 'Windows'
         shell: pwsh

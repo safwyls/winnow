@@ -50,6 +50,10 @@ public sealed record CandidateFacts
     public required string Title { get; init; }
     public required string Store { get; init; }
 
+    /// <summary>Visible entries supplying game evidence; action and feedback still use OwnershipId/ReleaseId.</summary>
+    public IReadOnlyList<long> EvidenceOwnershipIds { get; init; } = [];
+    public IReadOnlyList<long> EvidenceReleaseIds { get; init; } = [];
+
     /// <summary>The §6.1 bucket (LibraryBuckets vocabulary). Retired never reaches the scorer.</summary>
     public required string Bucket { get; init; }
 
@@ -114,6 +118,7 @@ public sealed record CandidateFacts
     /// </summary>
     public int? UpdatesSinceLastPlayed { get; init; }
     public string? LatestUpdateTitle { get; init; }
+    public long? LatestUpdateReleaseId { get; init; }
 
     /// <summary>
     /// Whether Winnow has ever observed this release's update history. Gates

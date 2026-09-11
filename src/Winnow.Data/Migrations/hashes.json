@@ -30,5 +30,6 @@
   "0029_lifecycle_observations.sql": "7dd4f20b90d7404899ab5368bb65dd9becf4f61a7ff5e7ba1db0348b2bc47f9b",
   "0030_work_image_metadata.sql": "3db4695f0ac8f01cae2138ae2f38b9ec5232fe01e65993e4402535b6bcfc27f9",
   "0031_plugin_facets.sql": "3434bad6521fd06eacaa1d3ae581f8675c65c2ee63c17a06a0f1209fe6e071a4",
-  "0032_plugin_external_ids.sql": "f263e5e90731fd04d6c4f182b8a6a916084698923dbd8f11d9dec82a94b0c83f"
+  "0032_plugin_external_ids.sql": "f263e5e90731fd04d6c4f182b8a6a916084698923dbd8f11d9dec82a94b0c83f",
+  "0033_manual_identifier_assertions.sql": "b5fbe4d97816bda559a37b93966fad20a7ea57121eb9d0fd1b46bc9e14ebcd42"
 }

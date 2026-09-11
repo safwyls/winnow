@@ -133,14 +133,22 @@ public partial class FeedViewModel : ObservableObject, IDisposable
                 try
                 {
                     var created = await _lists.CreateListAsync(prompt.Text, [tile.ReleaseId]);
-                    if (created is null || !ReferenceEquals(ListPrompt, activePrompt)) return;
+                    if (created is null)
+                    {
+                        prompt.Problem = "Couldn't save that list. Try again.";
+                        return;
+                    }
+                    if (!ReferenceEquals(ListPrompt, activePrompt)) return;
                     ListStatus = $"Added {tile.Title} to {created.Name}.";
                     ListPrompt = null;
                 }
                 catch
                 {
                     if (ReferenceEquals(ListPrompt, activePrompt))
+                    {
                         ListStatus = "Couldn't save that list. Try again.";
+                        prompt.Problem = ListStatus;
+                    }
                 }
             },
             cancel: () => ListPrompt = null,
@@ -158,7 +166,10 @@ public partial class FeedViewModel : ObservableObject, IDisposable
                 catch
                 {
                     if (ReferenceEquals(ListPrompt, activePrompt))
+                    {
                         ListStatus = "Couldn't add that game. Try again.";
+                        activePrompt!.Problem = ListStatus;
+                    }
                 }
             });
         ListPrompt = activePrompt;
@@ -830,7 +841,7 @@ public partial class FeedViewModel : ObservableObject, IDisposable
         {
             foreach (var card in shelf.Cards)
             {
-                if (card.Tile.ReleaseId == releaseId)
+                if (card.FeedbackReleaseId == releaseId)
                 {
                     card.Restore();
                 }

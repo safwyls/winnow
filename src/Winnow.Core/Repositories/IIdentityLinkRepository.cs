@@ -20,7 +20,10 @@ public interface IIdentityLinkRepository
     Task<long> LinkAsync(IdentityLinkRequest request, CancellationToken ct = default);
 
     /// <summary>
-    /// Retracts a whole act. Returns false when the act has no live links left
+    /// Retracts the links still standing from an act and restores their prior
+    /// membership where it remains structurally valid. Later acts are preserved;
+    /// a child whose old membership is no longer valid stays separate.
+    /// Returns false when the act has no live links left
     /// (already retracted), which is a no-op rather than an error: retracting
     /// twice is safe because idempotent undo is the fix for the user's complaint
     /// that undo made a pair permanently unmergeable.
@@ -31,8 +34,9 @@ public interface IIdentityLinkRepository
     /// Retracts ONE child's live link, leaving the rest of its act standing.
     /// This is what "Separate" on the details modal calls, so the user can
     /// undo the one link they noticed from the place they noticed it. It
-    /// restores the link that this child's link displaced — the same promise
-    /// <see cref="RetractActAsync"/> makes, narrowed to one child. Returns
+    /// restores the link that this child's link displaced only if that membership
+    /// remains structurally valid without moving other links. Otherwise the child
+    /// stays separate. Returns
     /// false when the child has no live link, which is a no-op rather than
     /// an error.
     /// </summary>

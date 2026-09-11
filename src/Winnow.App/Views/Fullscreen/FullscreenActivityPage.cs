@@ -1,3 +1,5 @@
+using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
@@ -245,29 +247,63 @@ internal static class FullscreenHistoryTypography
 
 public sealed class FullscreenSessionNotePage : FullscreenPage
 {
+    private readonly JournalEntryViewModel? _entry;
+    private bool _disposed;
     public override string Title => "Your note";
     public FullscreenSessionNotePage(FullscreenContext context, long sessionId, string title, SessionNote? original, Action<SessionNote> saved) : base(context)
     {
-        var field = new TextBox { Text = original?.Note ?? "", AcceptsReturn = true, FontSize = 28, MinHeight = 180, TextWrapping = Avalonia.Media.TextWrapping.Wrap };
-        var rating = original?.Rating;
+        if (context.Services?.GetService<ISessionRepository>() is not { } repository)
+        {
+            var back = FullscreenUi.Button("Back", context.Back);
+            Content = FullscreenUi.Stack(FullscreenUi.Text("Journal is unavailable."), back);
+            SetFocusRows([back]);
+            return;
+        }
+        _entry = new JournalEntryViewModel(sessionId, original, repository);
+        _entry.EditCommand.Execute(null);
+        DataContext = _entry;
+        var field = new TextBox { AcceptsReturn = true, FontSize = 28, MinHeight = 180, TextWrapping = Avalonia.Media.TextWrapping.Wrap };
+        field.Bind(TextBox.TextProperty, new Avalonia.Data.Binding(nameof(JournalEntryViewModel.DraftNote)) { Source = _entry, Mode = Avalonia.Data.BindingMode.TwoWay });
+        field.Bind(IsEnabledProperty, new Avalonia.Data.Binding(nameof(JournalEntryViewModel.CanEdit)) { Source = _entry });
+        AutomationProperties.SetName(field, "Journal note");
         var edit = FullscreenUi.Button("Edit note", () => context.EditText(field));
-        var rate = FullscreenUi.Button("How was that?", () => context.ShowActions("How was that?", Enumerable.Range(1, 5).Select(n => new FullscreenAction($"{n} / 5", () => rating = n)).Append(new("No rating", () => rating = null)).ToArray()));
+        var rate = FullscreenUi.Button("How was that?", () => context.ShowActions("How was that?", Enumerable.Range(1, 5)
+            .Select(n => new FullscreenAction($"{n} / 5", () => _entry.RateCommand.Execute(n.ToString(System.Globalization.CultureInfo.InvariantCulture))))
+            .Append(new("No rating", () => _entry.ClearRatingCommand.Execute(null))).ToArray()));
+        var rating = FullscreenUi.Text("", 28, "TextDim");
+        rating.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding(nameof(JournalEntryViewModel.DraftRatingText)) { Source = _entry });
         var status = FullscreenUi.Text("", 24, "TextDim");
+        status.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding(nameof(JournalEntryViewModel.Problem)) { Source = _entry });
         var save = FullscreenUi.Button("Save", async () =>
         {
-            var repository = context.Services?.GetService<ISessionRepository>();
-            if (repository is null) { status.Text = "Journal is unavailable."; return; }
-            try
+            await _entry.SaveCommand.ExecuteAsync(null);
+            if (!_disposed && !_entry.IsEditing)
             {
-                var note = new SessionNote { SessionId = sessionId, Note = field.Text, Rating = rating };
-                await repository.SetNoteAsync(note); saved(note); context.Back();
+                saved(new SessionNote { SessionId = sessionId, Note = _entry.Note, Rating = _entry.Rating });
+                context.Back();
             }
-            catch (Exception) { status.Text = "Couldn't save your note. Try again."; }
         });
-        var cancel = FullscreenUi.Button("Cancel", context.Back);
-        Content = FullscreenUi.Scroll(FullscreenUi.Stack(FullscreenUi.Text(title, 64), field, edit, rate, status, save, cancel));
+        var cancel = FullscreenUi.Button("Cancel", Cancel);
+        foreach (var button in new[] { edit, rate, save, cancel })
+            button.Bind(IsEnabledProperty, new Avalonia.Data.Binding(nameof(JournalEntryViewModel.CanEdit)) { Source = _entry });
+        Content = FullscreenUi.Scroll(FullscreenUi.Stack(FullscreenUi.Text(title, 64), field, edit, rate, rating, status, save, cancel));
         SetFocusRows([edit], [rate], [save, cancel]);
     }
+
+    public override bool Handle(GamepadButtons buttons)
+    {
+        if (buttons.HasFlag(GamepadButtons.Back)) { Cancel(); return true; }
+        return base.Handle(buttons);
+    }
+
+    private void Cancel()
+    {
+        if (_entry?.IsSaving == true) return;
+        _entry?.CancelEditCommand.Execute(null);
+        Context.Back();
+    }
+
+    public override void Dispose() { _disposed = true; base.Dispose(); }
 }
 
 public sealed class FullscreenLibrarySummaryPage : FullscreenPage

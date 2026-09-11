@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Winnow.App.Services;
 using Winnow.Core.Domain;
+using Winnow.Core.Queries;
 using Winnow.Covers;
 
 namespace Winnow.App.ViewModels;
@@ -48,8 +49,10 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     /// </summary>
     private readonly Core.Reading.IPatchNotesReader? _patchNotes;
 
-    /// <summary>Raw update events for this release, passed to <see cref="IUpdateFlagService.DismissAsync"/>.</summary>
+    /// <summary>Only the events shown when this panel opened may be acknowledged.</summary>
     private readonly IReadOnlyList<UpdateEvent> _events;
+    private readonly IReadOnlyList<UpdateEvent> _pushes;
+    private readonly Dictionary<long, DateTime> _acknowledgedByRelease;
 
     /// <summary>Re-runs the library query after a dismissal changes bucket membership.</summary>
     private readonly Func<Task>? _reloadLibrary;
@@ -87,7 +90,8 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         System.Windows.Input.ICommand? addToList = null,
         IReadOnlyList<Session>? sessions = null,
         string? backgroundUrl = null,
-        ArtworkPreferences? artworkPreferences = null)
+        ArtworkPreferences? artworkPreferences = null,
+        IReadOnlyDictionary<long, DateTime>? acknowledgedByRelease = null)
     {
         Reception = GameReceptionViewModel.From(ratings);
         Screenshots = GameScreenshotsViewModel.From(images, covers, lightbox);
@@ -112,7 +116,12 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         BucketLabel = bucketLabel;
         Updates = updates;
         _nowUtc = nowUtc;
-        _events = updateEvents ?? [];
+        _events = updateEvents?.Where(item => tile.ReleaseIds.Contains(item.ReleaseId)).ToArray() ?? [];
+        _pushes = UpdateReading.CorrelatedPushes(_events, BucketThresholds.Default.UpdateCorrelationWindowDays);
+        _acknowledgedByRelease = acknowledgedByRelease?.Where(pair => tile.ReleaseIds.Contains(pair.Key))
+            .ToDictionary(pair => pair.Key, pair => pair.Value) ?? [];
+        if (acknowledgedThrough is { } legacyWatermark)
+            _acknowledgedByRelease.TryAdd(tile.ReleaseId, legacyWatermark);
         _flags = updateFlags;
         _reloadLibrary = reloadLibrary;
 
@@ -122,7 +131,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
 
         // Unread flag = bucket membership; dismissal standing is separate.
         FlagIsRaised = tile.HasUnread;
-        DismissalStands = acknowledgedThrough is not null;
+        DismissalStands = _acknowledgedByRelease.Count > 0;
 
         _snapshots = snapshots ?? [];
         Tracker = new ActivityTrackerViewModel(_snapshots, sessions ?? [],
@@ -134,7 +143,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         GogPatchNotes = tile.PlayableEntry.Store == "gog" ? tile.PlayableEntry.Storefront?.PatchNotes : null;
 
         // Derives acknowledged state, rail marks, and caption.
-        ApplyWatermark(acknowledgedThrough);
+        ApplyWatermarks();
         if (IgdbMatch is not null) IgdbMatch.PropertyChanged += OnToolPropertyChanged;
         if (MetadataEditor is not null) MetadataEditor.PropertyChanged += OnToolPropertyChanged;
     }
@@ -178,7 +187,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         ? $"Last played {LastPlayedText} · {IdleText} ago"
         : NoGapText;
 
-    public int UnreadUpdateCount => Updates.Count(update => update.IsUnread);
+    public int UnreadUpdateCount => CountPatches(unreadOnly: true);
     public bool HasUnreadUpdates => UnreadUpdateCount > 0;
     public string UpdatesShortcutText => GameDetailsCopy.UpdatesSincePlayed(UnreadUpdateCount);
     public string UpdatesTabAutomationName => HasUnreadUpdates
@@ -205,6 +214,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         // A changed identity group needs the normal explicit reopen path.
         if (!Tile.OwnershipIds.ToHashSet().SetEquals(tile.OwnershipIds)) return;
         Tile = tile;
+        FlagIsRaised = tile.HasUnread;
         (PrimaryAction, Links, NoWayInSentence) = BuildLinks(tile);
         GogPatchNotes = tile.PlayableEntry.Store == "gog" ? tile.PlayableEntry.Storefront?.PatchNotes : null;
         // Install labels, paths, accessibility copy and command parameters all derive from Tile.
@@ -414,14 +424,14 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     public string AxisLastSessionLine => PlayAxisCopy.LastSessionLine(
         LastPlayedText,
         IdleText,
-        Updates.Count(u => u.IsSinceYouPlayed));
+        CountPatches(unreadOnly: false));
 
     /// <summary>Gap rail caption: counts updates since last play, distinguishing unread from read.</summary>
     public string GapCaption
     {
         get
         {
-            var missed = Updates.Count(u => u.IsUnread);
+            var missed = UnreadUpdateCount;
             if (missed > 0)
             {
                 return missed == 1
@@ -430,7 +440,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
             }
 
             // No unread marks: either nothing was recorded, or user marked them read.
-            var read = Updates.Count(u => u.IsSinceYouPlayed);
+            var read = CountPatches(unreadOnly: false);
             return read switch
             {
                 0 => "No updates recorded in that stretch.",
@@ -493,11 +503,13 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowDismissFlag))]
     [NotifyPropertyChangedFor(nameof(ShowRestoreFlag))]
+    [NotifyPropertyChangedFor(nameof(ShowFlagControl))]
     public partial bool FlagIsRaised { get; set; }
 
     /// <summary>Whether an acknowledgement is standing. Can be true alongside FlagIsRaised if a newer push outranked the watermark.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowRestoreFlag))]
+    [NotifyPropertyChangedFor(nameof(ShowFlagControl))]
     public partial bool DismissalStands { get; set; }
 
     /// <summary>Offered while the flag is up: the way to say you have read it.</summary>
@@ -542,21 +554,30 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         {
             FlagProblem = null;
 
-            var outcome = await _flags.DismissAsync(Tile.ReleaseId, _events, ct);
-            if (!outcome.Saved)
+            var releases = UnreadPushes().Select(push => push.ReleaseId).Distinct().ToArray();
+            if (releases.Length == 0)
             {
-                // Both refusals leave the badge in place.
-                FlagProblem = outcome.Result == UpdateFlagResult.NothingToDo
-                    ? "There's no patch here to mark read."
-                    : "Couldn't save that — nothing changed.";
+                FlagProblem = "There's no patch here to mark read.";
                 return;
             }
-
-            ApplyWatermark(outcome.AcknowledgedThrough);
-            FlagIsRaised = false;
-            DismissalStands = true;
-
-            await ReloadLibraryAsync();
+            var saved = 0;
+            foreach (var releaseId in releases)
+            {
+                var outcome = await _flags.DismissAsync(releaseId, _events, ct);
+                if (outcome is { Saved: true, AcknowledgedThrough: { } through })
+                {
+                    _acknowledgedByRelease[releaseId] = through;
+                    saved++;
+                }
+            }
+            ApplyWatermarks();
+            if (saved != releases.Length)
+                FlagProblem = saved == 0 ? "Couldn't save that — nothing changed." : "Couldn't mark every patch read. Try again.";
+            if (saved > 0)
+            {
+                FlagIsRaised = UnreadPushes().Any();
+                await ReloadLibraryAsync();
+            }
         }
         catch (OperationCanceledException)
         {
@@ -587,19 +608,24 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         {
             FlagProblem = null;
 
-            var outcome = await _flags.RestoreAsync(Tile.ReleaseId, ct);
-            if (outcome.Result == UpdateFlagResult.NotStored)
+            var changed = false;
+            foreach (var releaseId in _acknowledgedByRelease.Keys.ToArray())
             {
-                FlagProblem = "Couldn't undo that just now.";
-                return;
+                var outcome = await _flags.RestoreAsync(releaseId, ct);
+                if (outcome.Result == UpdateFlagResult.NotStored)
+                    FlagProblem = "Couldn't undo that just now.";
+                else
+                {
+                    _acknowledgedByRelease.Remove(releaseId);
+                    changed = true;
+                }
             }
-
-            // Both Stored and NothingToDo mean no acknowledgement stands.
-            ApplyWatermark(null);
-            DismissalStands = false;
-            FlagIsRaised = true;
-
-            await ReloadLibraryAsync();
+            ApplyWatermarks();
+            if (changed)
+            {
+                FlagIsRaised = UnreadPushes().Any();
+                await ReloadLibraryAsync();
+            }
         }
         catch (OperationCanceledException)
         {
@@ -615,18 +641,43 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         }
     }
 
-    /// <summary>Applies the watermark to rows and re-derives rail marks and caption.</summary>
-    private void ApplyWatermark(DateTime? acknowledgedThrough)
-    {
-        // The service extends the watermark to cover correlated announcements.
-        var readThrough = _flags is null
-            ? acknowledgedThrough
-            : _flags.ReadThrough(Tile.ReleaseId, _events, acknowledgedThrough);
+    private IEnumerable<UpdateEvent> UnreadPushes() => _pushes.Where(push =>
+        UpdateReading.SincePlay(push.OccurredAt, LastPlayedUtc, Tile.PlaytimeMinutes)
+        && UpdateReading.AfterWatermark(push.OccurredAt,
+            _acknowledgedByRelease.TryGetValue(push.ReleaseId, out var through) ? through : null));
 
+    private int CountPatches(bool unreadOnly)
+    {
+        // Preview callers can supply rendered rows without repository events.
+        if (_events.Count == 0) return Updates.Count(row => unreadOnly ? row.IsUnread : row.IsSinceYouPlayed);
+        var pushes = unreadOnly ? UnreadPushes() : _pushes.Where(push =>
+            UpdateReading.SincePlay(push.OccurredAt, LastPlayedUtc, Tile.PlaytimeMinutes));
+        return pushes.GroupBy(push => push.ReleaseId).Select(group => group.Count()).DefaultIfEmpty().Max();
+    }
+
+    /// <summary>Each row keeps its own release's watermark; announcements cannot acknowledge a newer push.</summary>
+    private void ApplyWatermarks()
+    {
         foreach (var update in Updates)
         {
-            update.IsAcknowledged = readThrough is { } through && update.OccurredAtUtc <= through;
+            DateTime? through = _acknowledgedByRelease.TryGetValue(update.ReleaseId, out var standing) ? standing : null;
+            if (_events.Count == 0)
+            {
+                update.IsAcknowledged = !UpdateReading.AfterWatermark(update.OccurredAtUtc, through);
+                continue;
+            }
+            var pushes = _pushes.Where(push => push.ReleaseId == update.ReleaseId
+                && UpdateReading.SincePlay(push.OccurredAt, LastPlayedUtc, Tile.PlaytimeMinutes)
+                && (update.IsAnnouncement
+                    ? UpdateReading.Correlates(push.OccurredAt, update.OccurredAtUtc, BucketThresholds.Default.UpdateCorrelationWindowDays)
+                    : UpdateReading.AsUtc(push.OccurredAt) == update.OccurredAtUtc)).ToArray();
+            update.IsCorrelatedUpdate = pushes.Length > 0;
+            update.IsAcknowledged = pushes.Length > 0
+                ? pushes.All(push => !UpdateReading.AfterWatermark(push.OccurredAt, through))
+                : !UpdateReading.AfterWatermark(update.OccurredAtUtc, through);
         }
+
+        DismissalStands = _acknowledgedByRelease.Count > 0;
 
         Tracker.RefreshUpdates(Updates);
 

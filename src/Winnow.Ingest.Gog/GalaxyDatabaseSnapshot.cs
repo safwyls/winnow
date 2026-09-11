@@ -6,8 +6,9 @@ namespace Winnow.Ingest.Gog;
 
 /// <summary>
 /// A private, disposable copy of Galaxy's client database, opened read-only.
-/// Copies <c>.db</c> + <c>-wal</c> + <c>-shm</c> to avoid writing into the
-/// store-owned directory. <see cref="Dispose"/> deletes the copy.
+/// Copies guarded <c>.db</c> + <c>-wal</c> files without opening SQLite in the
+/// store-owned directory. SQLite rebuilds SHM only beside the private copy.
+/// <see cref="Dispose"/> deletes the copy.
 /// </summary>
 public sealed class GalaxyDatabaseSnapshot : IDisposable
 {
@@ -26,50 +27,47 @@ public sealed class GalaxyDatabaseSnapshot : IDisposable
     public string DatabasePath { get; }
 
     /// <summary>
-    /// Copies the database and its write-ahead log into a Winnow-owned temporary
-    /// directory and verifies the copy. Returns null — never throws — when the
-    /// source is absent or the snapshot could not be taken.
-    ///
-    /// <para><c>PRAGMA quick_check</c> runs on the copy (0.02 s on the live 11 MB
-    /// database). A result other than <c>ok</c> means the snapshot was torn by a
-    /// concurrent checkpoint: the copy is discarded and taken again once, and if
-    /// that also fails the scan reports rather than importing partial data.</para>
+    /// On Windows, copies while read-only file handles deny writes and deletion.
+    /// A writer already holding the source makes the read fail conservatively;
+    /// the caller can retry on its next scan. Other platforms decline live files
+    /// because FileShare cannot exclude native SQLite writers there. Structural
+    /// validation runs only after a coherent copy has been established.
     /// </summary>
     /// <param name="sourceDatabasePath">Path of the live <c>galaxy-2.0.db</c>.</param>
     /// <param name="logger">Optional logger.</param>
     public static GalaxyDatabaseSnapshot? Take(string sourceDatabasePath, ILogger? logger = null)
+        => TakeGuarded(sourceDatabasePath, logger, afterMainCopied: null);
+
+    /// <summary>
+    /// Copies a caller-owned, immutable database and its matching WAL on any
+    /// platform. The caller must ensure neither file can change during the call.
+    /// Never use this entry point for a launcher's live files.
+    /// </summary>
+    public static GalaxyDatabaseSnapshot? CopyImmutable(string sourceDatabasePath, ILogger? logger = null)
+        => TakeCore(sourceDatabasePath, logger ?? NullLogger.Instance, afterMainCopied: null);
+
+    internal static GalaxyDatabaseSnapshot? TakeGuarded(string sourceDatabasePath, ILogger? logger,
+        Action? afterMainCopied)
     {
         ArgumentNullException.ThrowIfNull(sourceDatabasePath);
         logger ??= NullLogger.Instance;
-
-        if (!File.Exists(sourceDatabasePath))
+        if (!OperatingSystem.IsWindows())
         {
-            logger.LogDebug("GOG Galaxy database {Path} does not exist", sourceDatabasePath);
+            logger.LogWarning("Live GOG Galaxy snapshots require Windows file sharing guards; skipping this pass");
             return null;
         }
+        return TakeCore(sourceDatabasePath, logger, afterMainCopied);
+    }
 
-        for (var attempt = 1; attempt <= 2; attempt++)
-        {
-            var snapshot = TryCopy(sourceDatabasePath, logger);
-            if (snapshot is null)
-            {
-                return null;
-            }
-
-            if (snapshot.QuickCheckPasses(logger))
-            {
-                return snapshot;
-            }
-
-            logger.LogWarning(
-                "GOG Galaxy database snapshot failed quick_check (attempt {Attempt} of 2); "
-                + "a checkpoint probably tore the copy", attempt);
-            snapshot.Dispose();
-        }
-
-        logger.LogWarning(
-            "Could not take a consistent snapshot of {Path}; skipping the Galaxy database this pass",
-            sourceDatabasePath);
+    private static GalaxyDatabaseSnapshot? TakeCore(string sourceDatabasePath, ILogger logger,
+        Action? afterMainCopied)
+    {
+        ArgumentNullException.ThrowIfNull(sourceDatabasePath);
+        var snapshot = TryCopy(sourceDatabasePath, logger, afterMainCopied);
+        if (snapshot is null) return null;
+        if (snapshot.QuickCheckPasses(logger)) return snapshot;
+        logger.LogWarning("GOG Galaxy snapshot failed structural validation; skipping this pass");
+        snapshot.Dispose();
         return null;
     }
 
@@ -127,27 +125,30 @@ public sealed class GalaxyDatabaseSnapshot : IDisposable
         }
     }
 
-    private static GalaxyDatabaseSnapshot? TryCopy(string sourceDatabasePath, ILogger logger)
+    private static GalaxyDatabaseSnapshot? TryCopy(string sourceDatabasePath, ILogger logger,
+        Action? afterMainCopied)
     {
         var directory = Path.Combine(
             Path.GetTempPath(), "winnow-gog-" + Guid.NewGuid().ToString("N"));
 
         try
         {
+            // Windows checks sharing against existing handles as well as future
+            // opens. Holding the main handle excludes native SQLite writers and
+            // checkpoints before we inspect or copy either generation-bearing file.
+            using var main = OpenGuard(sourceDatabasePath);
+            using var wal = OpenOptionalGuard(sourceDatabasePath + "-wal");
+            using var journal = OpenOptionalGuard(sourceDatabasePath + "-journal");
+            if (journal is not null)
+                throw new IOException("Galaxy has a rollback journal; recovery may be required.");
+
             Directory.CreateDirectory(directory);
             var destination = Path.Combine(directory, GogPaths.ClientDatabaseFileName);
-
-            // Main file FIRST: a WAL copied afterwards is a superset of what this
-            // copy of the main file needs, never a subset.
-            File.Copy(sourceDatabasePath, destination, overwrite: true);
-
-            foreach (var suffix in new[] { "-wal", "-shm" })
+            Copy(main, destination);
+            afterMainCopied?.Invoke();
+            if (wal is not null)
             {
-                var sidecar = sourceDatabasePath + suffix;
-                if (File.Exists(sidecar))
-                {
-                    File.Copy(sidecar, destination + suffix, overwrite: true);
-                }
+                Copy(wal, destination + "-wal");
             }
 
             return new GalaxyDatabaseSnapshot(directory, destination, logger);
@@ -158,6 +159,21 @@ public sealed class GalaxyDatabaseSnapshot : IDisposable
             TryDelete(directory);
             return null;
         }
+    }
+
+    private static FileStream OpenGuard(string path)
+        => new(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+    private static FileStream? OpenOptionalGuard(string path)
+    {
+        try { return OpenGuard(path); }
+        catch (FileNotFoundException) { return null; }
+    }
+
+    private static void Copy(Stream source, string destination)
+    {
+        using var target = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+        source.CopyTo(target);
     }
 
     private bool QuickCheckPasses(ILogger logger)

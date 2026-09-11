@@ -256,15 +256,12 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                 -- retuned" still holds — the acknowledgement is a separate fact
                 -- layered over untouched rows, which is also why the detail
                 -- view can still list every update the user missed.
-                -- The count rides in the same aggregate as the timestamp, under
-                -- the same watermark and the same correlation EXISTS, so it can
-                -- never stand for more patches than the badge does. Counting it
-                -- anywhere else would be a second reading of update_events with
-                -- its own chance of drifting from this one; here it is another
-                -- aggregate over rows already grouped, and costs no extra scan.
+                -- Retain the qualifying instants for Fold: only the surviving
+                -- group knows its effective last play, including another store's
+                -- newer session. Counting before that fold includes already-played patches.
                 SELECT push.release_id,
                        MAX(push.occurred_at) AS occurred_at,
-                       COUNT(*)              AS update_count
+                       json_group_array(strftime('%Y-%m-%dT%H:%M:%fZ', push.occurred_at)) AS push_times
                 FROM update_events push
                 LEFT JOIN acknowledged ack ON ack.release_id = push.release_id
                 WHERE push.kind = 'build_push'
@@ -578,11 +575,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                    -- LibraryBucketRules.Classify so it can run at two grains
                    -- (per row and per game) without two implementations.
                    mu.occurred_at                      AS MajorUpdateAt,
-                   -- The count beside the timestamp it was aggregated with, so
-                   -- the tile's words and its dot come off one row. Zero when
-                   -- the join found nothing, which is the same case as a null
-                   -- MajorUpdateAt: no qualifying push, no badge, no count.
-                   COALESCE(mu.update_count, 0)        AS UnreadUpdateCount,
+                   mu.push_times                       AS UnreadPushTimesJson,
                    -- The stored maturity EVIDENCE, verbatim, never a verdict.
                    -- Carried on the row so Consolidate can evaluate
                    -- MaturityRules.IsExplicit in C# over the same rows the
@@ -664,6 +657,8 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             SELECT {GameListRepository.Columns} FROM lists ORDER BY id;
             SELECT list_id AS ListId, release_id AS ReleaseId, position AS Position
             FROM list_items ORDER BY list_id, position, release_id;
+            SELECT {IdentityLinkRepository.LinkColumns} FROM identity_links l
+            WHERE l.retracted_at IS NULL ORDER BY l.id;
             """, Parameters(thresholds, null), transaction: lease.Transaction ?? snapshot, cancellationToken: ct));
         var buckets = Consolidate((await results.ReadAsync<BucketRow>()).AsList(), thresholds);
         var works = (await results.ReadAsync<Work>()).AsList();
@@ -672,7 +667,11 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         var ids = (await results.ReadAsync<ExternalId>()).AsList();
         var lists = (await results.ReadAsync<GameList>()).AsList();
         var items = (await results.ReadAsync<ListItem>()).AsList();
-        return new LibrarySnapshot(buckets, works, ownerships, releases, ids, lists, items);
+        var links = (await results.ReadAsync<Winnow.Core.Identity.IdentityLink>()).AsList();
+        return new LibrarySnapshot(buckets, works, ownerships, releases, ids, lists, items)
+        {
+            IdentityResolution = Winnow.Core.Identity.IdentityResolution.FromLiveLinks(links),
+        };
     }
 
     public async Task<IReadOnlyList<FacetTarget>> GetFacetTargetsAsync(CancellationToken ct = default)
@@ -922,9 +921,15 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         var lifecycles = survivors.DistinctBy(r => r.ReleaseId).ToDictionary(r => r.ReleaseId,
             r => LifecycleClassifier.Classify(JsonSerializer.Deserialize(
                 r.LifecycleJson ?? "[]", LifecycleJsonContext.Default.LifecycleObservationArray) ?? [], now));
+        var pushTimes = survivors.DistinctBy(r => r.ReleaseId).ToDictionary(r => r.ReleaseId, r =>
+        {
+            using var document = JsonDocument.Parse(r.UnreadPushTimesJson ?? "[]");
+            return document.RootElement.EnumerateArray().Select(value => value.GetDateTime()).ToArray();
+        });
         foreach (var (resolvedWorkId, rows) in members)
         {
             DateTime? update = null;
+            var play = CoveragePlaytime.Across(rows);
 
             // The game's figure is the MAXIMUM across its releases, never the
             // sum. Two store copies of one game carry the same patches, so
@@ -938,10 +943,8 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                     update = at;
                 }
 
-                if (row.UnreadUpdateCount > unread)
-                {
-                    unread = row.UnreadUpdateCount;
-                }
+                unread = Math.Max(unread, pushTimes[row.ReleaseId].Count(at =>
+                    UpdateReading.SincePlay(at, play.LastPlayedAt, play.PlaytimeMinutes)));
             }
 
             // A healthy or unknown sibling is not made derelict by another store edition.
@@ -994,7 +997,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         public long PlaytimeMinutes { get; init; }
         public DateTime? LastPlayedAt { get; init; }
         public DateTime? MajorUpdateAt { get; init; }
-        public int UnreadUpdateCount { get; init; }
+        public string? UnreadPushTimesJson { get; init; }
         public string? Title { get; init; }
         public bool NameIsProvisional { get; init; }
         public int? FirstReleaseYear { get; init; }

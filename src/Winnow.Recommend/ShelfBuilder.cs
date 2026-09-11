@@ -74,6 +74,15 @@ internal static class ShelfBuilder
                     && facts.ModeMismatch == ModeMismatch.None
                     && facts.TasteAffinity is { } affinity
                     && affinity >= tuning.OnTasteMinAffinity),
+
+            new ShelfDefinition(
+                ShelfIds.WaitingToBeOpened,
+                "Waiting to be opened",
+                "Already in your library, with no recorded play yet.",
+                (facts, _) => facts.PlaytimeMinutes <= 0 && facts.LastPlayedAt is null
+                    && !facts.Installed && facts.Bucket != LibraryBuckets.StaleButPatched
+                    && (facts.ModeMismatch != ModeMismatch.None
+                        || facts.TasteAffinity is not { } affinity || affinity < tuning.OnTasteMinAffinity)),
         ];
     }
 

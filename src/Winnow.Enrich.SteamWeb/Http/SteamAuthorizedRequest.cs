@@ -12,7 +12,8 @@ namespace Winnow.Enrich.SteamWeb.Http;
 /// about the same status code.
 /// </summary>
 internal readonly record struct SteamAuthorizedOutcome(
-    string? Body, HttpStatusCode? Status, string? FailureType, bool Renewed);
+    string? Body, HttpStatusCode? Status, string? FailureType, bool Renewed,
+    SteamCredentialIdentity? CredentialIdentity = null);
 
 /// <summary>
 /// The send path both Steam Web API clients share, and the only place the
@@ -67,7 +68,8 @@ internal static class SteamAuthorizedRequest
 
                 return response.IsSuccessStatusCode
                     ? new SteamAuthorizedOutcome(
-                        await response.Content.ReadAsStringAsync(ct), response.StatusCode, null, renewed)
+                        await response.Content.ReadAsStringAsync(ct), response.StatusCode, null, renewed,
+                        SteamCredentialIdentity.From(attempt))
                     : new SteamAuthorizedOutcome(null, response.StatusCode, null, renewed);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)

@@ -1,10 +1,11 @@
 ---
 id: TASK-209
 title: Resolve recommendation feedback identity independently of visible candidates
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - '@codex'
 created_date: '2026-09-11 04:59'
-updated_date: '2026-09-11 05:06'
+updated_date: '2026-09-11 06:44'
 labels:
   - architecture
   - review
@@ -28,7 +29,25 @@ Architecture review 2026-09-10, R21. Evidence: Reproduced. RecommendationEngine 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Feedback resolution uses complete relevant identity state independent of candidate visibility and account filtering in built-in and plugin feed paths.
-- [ ] #2 Dismissals and other work-level feedback remain effective when their originating sibling is filtered, hidden or otherwise ineligible.
-- [ ] #3 Tests cover all-account/own-account transitions, link creation/retraction and grouped release changes; undo and impressions remain coherent on both surfaces.
+- [x] #1 Feedback resolution uses complete relevant identity state independent of candidate visibility and account filtering in built-in and plugin feed paths.
+- [x] #2 Dismissals and other work-level feedback remain effective when their originating sibling is filtered, hidden or otherwise ineligible.
+- [x] #3 Tests cover all-account/own-account transitions, link creation/retraction and grouped release changes; undo and impressions remain coherent on both surfaces.
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+Load complete identity resolution independently of visible candidate rows, inside the library snapshot where practical. Apply shared suppression to built-in and plugin feeds, including hidden child verdicts and undo. Verify persisted facts remain release-scoped.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+LibrarySnapshot now includes complete live identity links in its existing read transaction, independently of filtered bucket rows. RecommendationGame.ResolveFeedback is shared by built-in/plugin feeds. Hidden-child dismissal/snooze, own/all scope transitions, unlink and original-release undo/impression regressions pass.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Visibility changes no longer erase feedback on linked games. Complete identity state resolves release-scoped stored feedback for both feed providers, and UI cards record/revoke the same release they surfaced.
+<!-- SECTION:FINAL_SUMMARY:END -->

@@ -103,6 +103,10 @@ public sealed record ReasonEvidence
 
     /// <summary>Title of the newest such update, sanitised for inline quoting.</summary>
     public string? LatestUpdateTitle { get; init; }
+    public long? LatestUpdateReleaseId { get; init; }
+
+    /// <summary>Release provenance for the grouped facts; ReleaseId remains the action and feedback subject.</summary>
+    public IReadOnlyList<long> EvidenceReleaseIds { get; init; } = [];
 
     /// <summary>Distinct play episodes the history shows.</summary>
     public int? ReturnEpisodes { get; init; }

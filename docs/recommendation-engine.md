@@ -34,6 +34,23 @@ stored, never trusted by anything else.
 and membership rules available at Tier 0. It also adds a separate Derelict shelf when
 external lifecycle evidence warrants review (§6a); this shelf does not recommend playing.
 
+Both built-in and plugin feeds use Core's `RecommendationGame` projection. The library
+snapshot carries complete live identity state separately from its visible bucket rows:
+changing account scope cannot erase a verdict on a hidden linked copy. Visible resolved
+games are the population for installation, store counts, taste and mode evidence. Hidden
+copies do not contribute those facts. Each game testifies once about taste and facet
+prevalence, using its grouped playtime and the union of its visible descriptors.
+
+The kept entry supplies the title. A viable installed copy supplies the action subject,
+with the existing identity order breaking ties. Impressions, verdicts and undo retain that
+explicit release even when the library tile's header names another copy. Explanations also
+carry the contributing release ids and the release behind their quoted patch title.
+History probes read all visible members. Overlapping session intervals count as one play
+episode; snapshot rises contribute their largest per-ownership lower bound, since their
+coarse intervals cannot safely be added across storefronts. Patch counts use correlated
+pushes and the largest per-release count, matching the library's duplicate-store policy.
+An unobserved sibling prevents a claim that the whole game's update history is quiet.
+
 Unowned/store recommendations are explicitly out of scope (charter: priority 1 is
 owned-but-unplayed; catalog data for anything else does not exist yet).
 
@@ -182,7 +199,7 @@ won once history was read. The bought-twice signal is unaffected: store counts a
 per work over every ownership in the library, before candidates are assembled.
 `RecommendationFeed.WorkCount` reports what the pool collapsed to.
 
-**The shelf pass unions five shortlists, interleaved rank by rank.** Each shelf produces its
+**The shelf pass unions the shelf shortlists, interleaved rank by rank.** Each shelf produces its
 own score-bound-safe shortlist; the union (`RecommendationEngine.ProbeUnion`) admits every
 shelf's best candidate before any shelf's second best, and so on until the probe limit is
 reached. Duplicates are dropped by ownership id, since one ownership can be shortlisted by
@@ -269,8 +286,8 @@ The registered aggregate makes session count and span exact, so `Tier2MinSession
 
 One ranked list is not a feed: it buries every story below the first. The product surface
 is **several shelves with different reasons** — each a different query over the same scored
-pool, each stating its pitch in one line, and *every one of them fully populated at
-Tier 0*. This is deliberate strategy, not scope creep: some of these shelves overlap what a
+pool, each stating its pitch in one line. Shelf membership is available at Tier 0;
+each shelf appears only when the library has evidence for its pitch. Some overlap what a
 storefront could show (a taste-matched backlog rail), and that is fine — ours runs on the
 same feed that keeps getting better with history the storefronts never keep, so parity on
 day one compounds into a lead.
@@ -284,8 +301,13 @@ Shelves, in claim order (which is also presentation order — strongest story fi
 | `ready_to_play` | installed, minutes < refund line, not stale | "Already on disk, nothing sunk." Install state is a Tier-0 fact and zero friction is a real argument. |
 | `barely_touched` | 1 ≤ minutes < refund line, not stale | "Under 2 hours in — you never really tried it." §6.1's *sampled* stratum, told honestly. |
 | `on_your_taste` | never-opened, affinity ≥ 0.6, no mode mismatch | "Sealed, and it matches where your hours actually go." The only shelf the taste tiebreaker *leads*; the prevalence cut is what makes its sentence honest. |
+| `waiting_to_be_opened` | never-opened, uninstalled, not stale, without a qualifying taste match | "Already in your library, with no recorded play yet." Cold imports can populate it without invented taste or history. |
 
-Rules that make it a feed rather than five lists:
+The final shelf adds no score or threshold. Existing shelfware scores and daily rotation
+order it. Installed and taste-qualified games retain their stronger shelf stories, and
+the normal visibility, feedback, diversity and reserve rules still apply.
+
+Rules that make it a feed:
 
 - **One work, one shelf, reserves included.** A work is claimed by the earliest shelf whose
   rule it meets and cannot appear again that day, whether it is on screen or held as a

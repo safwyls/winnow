@@ -1,4 +1,5 @@
 using Winnow.App.Services;
+using Winnow.Core.Domain;
 
 namespace Winnow.App.ViewModels;
 
@@ -197,14 +198,25 @@ public static class LibrarySettingsCopy
     public const string TitleRequiredError = "A title is needed.";
 
     /// <summary>Field-level error when the year is not four digits.</summary>
-    public const string YearInvalidError = "Four digits.";
+    public const string YearInvalidError = "A year from 1900 to 2200.";
 
     /// <summary>Field-level error when a numeric id field contains non-digits.</summary>
-    public const string NumberInvalidError = "Digits only.";
+    public const string NumberInvalidError = "A positive numeric ID.";
 
     /// <summary>Field-level error when the id already belongs to another game
     /// in the library. Raised before anything is written.</summary>
     public const string IdConflictError = "Another game in your library already has this.";
+
+    public static string IdentifierConflict(ManualEntryConflictReason reason) => reason switch
+    {
+        ManualEntryConflictReason.LegacyIdentifierHistory =>
+            "The origin of the old ID is unknown. Keep it to edit details, or add a separate game with the corrected ID.",
+        ManualEntryConflictReason.StorefrontObservation =>
+            "A store entry uses this ID. Keep it to edit details, or add the corrected game separately.",
+        ManualEntryConflictReason.MappingChanged =>
+            "The game's IGDB match changed. Cancel and reopen this form before saving.",
+        _ => IdConflictError,
+    };
 
     // ══ From a file (TASK-104) ═════════════════════════════════════════════
 

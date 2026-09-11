@@ -1,6 +1,7 @@
 
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Data.Sqlite;
 using Winnow.Core.Queries;
@@ -19,7 +20,7 @@ public sealed class SchemaDisciplineTests
 
     /// <summary>
     /// The checked-in hash of every migration that has shipped. Adding a
-    /// migration appends a line; editing one fails this test.
+    /// migration appends a manifest entry; editing one fails this test.
     ///
     /// <para>DbUp keys applied scripts by embedded-resource name and records
     /// the name in <c>SchemaVersions</c>, so an edited migration is a script
@@ -27,7 +28,7 @@ public sealed class SchemaDisciplineTests
     /// user's schema and the repository's then differ permanently, with nothing
     /// to say so.</para>
     /// </summary>
-    private const string ChecksumFile = "src/Winnow.Data/Migrations/checksums.txt";
+    private const string ChecksumFile = "src/Winnow.Data/Migrations/hashes.json";
 
     [Fact]
     public void No_shipped_migration_has_been_edited()
@@ -41,8 +42,8 @@ public sealed class SchemaDisciplineTests
             if (!recorded.TryGetValue(name, out var expected))
             {
                 failures.Add(
-                    $"{name} has no line in {ChecksumFile}. A new migration appends one: "
-                    + $"\"{name}  {hash}\".");
+                    $"{name} has no entry in {ChecksumFile}. A new migration appends one: "
+                    + $"\"{name}\": \"{hash}\".");
                 continue;
             }
 
@@ -186,7 +187,9 @@ public sealed class SchemaDisciplineTests
             // with autocrlf on and one with it off agree.
             var text = File.ReadAllText(path).Replace("\r\n", "\n");
             var digest = SHA256.HashData(Encoding.UTF8.GetBytes(text));
-            hashes[Path.GetFileName(path)] = Convert.ToHexStringLower(digest);
+            var relative = Path.GetRelativePath(RepositoryTree.Path("src/Winnow.Data/Migrations"), path)
+                .Replace('\\', '/');
+            hashes[relative] = Convert.ToHexStringLower(digest);
         }
 
         return hashes;
@@ -201,11 +204,18 @@ public sealed class SchemaDisciplineTests
             $"{ChecksumFile} is missing. It carries one SHA-256 per shipped migration and is "
             + "what makes an edit to one detectable.");
 
-        return File.ReadAllLines(path)
-            .Select(l => l.Trim())
-            .Where(l => l.Length > 0 && !l.StartsWith('#'))
-            .Select(l => l.Split((char[])[' ', '\t'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-            .Where(parts => parts.Length == 2)
-            .ToDictionary(parts => parts[0], parts => parts[1], StringComparer.Ordinal);
+        using var document = JsonDocument.Parse(File.ReadAllText(path));
+        Assert.Equal(JsonValueKind.Object, document.RootElement.ValueKind);
+        var recorded = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var entry in document.RootElement.EnumerateObject())
+        {
+            var hash = entry.Value.GetString();
+            Assert.NotNull(hash);
+            Assert.Matches("^[0-9a-f]{64}$", hash);
+            Assert.True(recorded.TryAdd(entry.Name, hash), $"Duplicate migration hash: {entry.Name}");
+        }
+
+        Assert.NotEmpty(recorded);
+        return recorded;
     }
 }

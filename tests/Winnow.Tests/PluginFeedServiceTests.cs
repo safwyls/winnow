@@ -54,13 +54,13 @@ public sealed class PluginFeedServiceTests
         var result = await host.Service.GetShelvesAsync(Now);
         Assert.Equal(5, result.CandidateCount);
         var supplied = host.SuppliedGames();
-        Assert.Equal(["1", "8", "9", "10", "12"], supplied.Select(game => game.Id));
-        var linked = Assert.Single(supplied, game => game.Id == "10");
+        Assert.Equal(["1", "8", "9", "11", "12"], supplied.Select(game => game.Id));
+        var linked = Assert.Single(supplied, game => game.Id == "11");
         Assert.Equal(130, linked.PlaytimeMinutes);
         Assert.True(linked.Installed);
         Assert.Equal(["Adventure"], linked.Genres);
         Assert.Equal(["Exploration"], linked.Tags);
-        Assert.Equal("10", linked.ExternalIds["steam"]);
+        Assert.Equal("11", linked.ExternalIds["steam"]);
         var shelf = Assert.Single(result.Shelves);
         Assert.Equal("plugin:fixture-feed", shelf.Id);
         Assert.Equal("Fixture feed", shelf.Title);
@@ -96,6 +96,28 @@ public sealed class PluginFeedServiceTests
         await settings.SetAsync(AccountScope.SettingKey, AccountScope.Own);
         Assert.Single((await host.Service.GetShelvesAsync(Now)).Shelves);
         Assert.Equal("1", Assert.Single(host.SuppliedGames()).Id);
+    }
+
+    [Fact]
+    public async Task Hidden_child_verdict_uses_complete_identity_before_plugin_disclosure()
+    {
+        await using var host = await Host.CreateAsync(3);
+        var links = new IdentityLinkRepository(host.Database.Factory);
+        await links.LinkAsync(new IdentityLinkRequest { ParentWorkId = 1, ChildWorkIds = [2] });
+        using (var connection = host.Database.Factory.Open())
+            await connection.ExecuteAsync("UPDATE ownerships SET store='epic' WHERE id=1;");
+        var accounts = new OwnershipAccountRepository(host.Database.Factory);
+        await accounts.UpsertAsync(new(2, "22222", 0, null, "steam_web", Now));
+        var settings = new SettingsRepository(host.Database.Factory);
+        await settings.SetAsync(SteamOwnedAccount.RefSettingKey, "11111");
+        await settings.SetAsync(AccountScope.SettingKey, AccountScope.Own);
+        await host.VerdictAsync(2, FeedVerdictKinds.NotInterested);
+        await host.Service.GetShelvesAsync(Now);
+        Assert.DoesNotContain(host.SuppliedGames(), game => game.Id is "1" or "2");
+        await links.RetractLinkAsync(2);
+        await host.Service.GetShelvesAsync(Now);
+        Assert.Contains(host.SuppliedGames(), game => game.Id == "1");
+        Assert.DoesNotContain(host.SuppliedGames(), game => game.Id == "2");
     }
 
     [Fact]
