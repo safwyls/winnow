@@ -124,7 +124,7 @@ public static partial class SteamLicensesPageParser
             });
         }
 
-        var (total, hasNext) = ReadPaginator(document);
+        var (total, hasNext, start, end) = ReadPaginator(document);
 
         return new SteamLicensesPageResult
         {
@@ -134,6 +134,8 @@ public static partial class SteamLicensesPageParser
             RowsWithUnmappedAcquisition = unmapped,
             RowsWithUnparsedDate = unparsedDate,
             TotalLicensesReported = total,
+            RangeStart = start,
+            RangeEnd = end,
             HasNextPage = hasNext,
         };
     }
@@ -171,7 +173,7 @@ public static partial class SteamLicensesPageParser
         return SteamPageValues.Collapse(clone.TextContent);
     }
 
-    private static (int? Total, bool HasNext) ReadPaginator(IHtmlDocument document)
+    private static (int? Total, bool HasNext, int? Start, int? End) ReadPaginator(IHtmlDocument document)
     {
         var hasNext = document.QuerySelector("a.license_paginator_next") is not null;
 
@@ -184,12 +186,14 @@ public static partial class SteamLicensesPageParser
             }
 
             var digits = match.Groups[3].Value.Replace(",", string.Empty, StringComparison.Ordinal);
-            if (int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out var total))
+            if (int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out var total)
+                && int.TryParse(match.Groups[1].Value.Replace(",", "", StringComparison.Ordinal), NumberStyles.None, CultureInfo.InvariantCulture, out var start)
+                && int.TryParse(match.Groups[2].Value.Replace(",", "", StringComparison.Ordinal), NumberStyles.None, CultureInfo.InvariantCulture, out var end))
             {
-                return (total, hasNext);
+                return (total, hasNext, start, end);
             }
         }
 
-        return (null, hasNext);
+        return (null, hasNext, null, null);
     }
 }

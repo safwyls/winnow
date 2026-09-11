@@ -109,7 +109,7 @@ public class SteamAccountPageFileLoaderTests : IDisposable
     }
 
     [Fact]
-    public async Task A_second_file_of_the_same_kind_is_reported_rather_than_silently_replacing_the_first()
+    public async Task Different_licence_pages_combine_and_gaps_remain_incomplete()
     {
         var first = CopyFixture(SteamAccountPageFixtures.LicensesPage1, "first.html");
         var second = CopyFixture(SteamAccountPageFixtures.LicensesFinalPage, "second.html");
@@ -117,12 +117,79 @@ public class SteamAccountPageFileLoaderTests : IDisposable
         var result = await new SteamAccountPageFileLoader().LoadAsync([first, second]);
 
         Assert.Equal(
-            SteamAccountPageFileOutcome.Duplicate,
+            SteamAccountPageFileOutcome.Loaded,
             Assert.Single(result.Files, f => f.Path == second).Outcome);
 
-        // The first one won and is still the document that gets parsed.
-        Assert.Equal(979, SteamLicensesPageParser.Parse(result.Pages.LicensesHtml).TotalLicensesReported);
-        Assert.True(SteamLicensesPageParser.Parse(result.Pages.LicensesHtml).HasNextPage);
+        var parsed = SteamAccountPageReader.Read(result.Pages).Licenses;
+        Assert.Single(result.Pages.AdditionalLicensesHtml);
+        Assert.Equal(979, parsed.TotalLicensesReported);
+        Assert.True(parsed.IsTruncated);
+        var expected = new[] { SteamAccountPageFixtures.LicensesPage1, SteamAccountPageFixtures.LicensesFinalPage }
+            .SelectMany(f => SteamLicensesPageParser.Parse(SteamAccountPageFixtures.Read(f)).Rows)
+            .Select(r => (r.ItemName, r.AcquiredAtUtc, r.PackageId)).Distinct().Count();
+        Assert.Equal(expected, parsed.Rows.Count);
+    }
+
+    [Fact]
+    public async Task Overlapping_pages_and_duplicate_files_preserve_unique_licences()
+    {
+        var first = CopyFixture(SteamAccountPageFixtures.LicensesPage1, "first.html");
+        var second = Path.Combine(_dir, "overlap.html");
+        await File.WriteAllTextAsync(second, (await File.ReadAllTextAsync(first))
+            .Replace("Lantern Hollow", "Unique licence", StringComparison.Ordinal));
+        var result = await new SteamAccountPageFileLoader().LoadAsync([first, second, first]);
+        Assert.Equal(SteamAccountPageFileOutcome.Duplicate, result.Files[2].Outcome);
+        var rows = SteamAccountPageReader.Read(result.Pages).Licenses.Rows;
+        Assert.Equal(14, rows.Count);
+        Assert.Single(rows, r => r.ItemName == "Lantern Hollow");
+        Assert.Single(rows, r => r.ItemName == "Unique licence");
+        Assert.Null(result.Pages.SteamId);
+    }
+
+    [Fact]
+    public async Task Contiguous_ranges_establish_coverage_even_when_Steam_renders_fewer_rows()
+    {
+        var first = Path.Combine(_dir, "first.html");
+        var last = Path.Combine(_dir, "last.html");
+        await File.WriteAllTextAsync(first, SteamAccountPageFixtures.Read(SteamAccountPageFixtures.LicensesPage1)
+            .Replace("1-100 of 979", "1-100 of 200", StringComparison.Ordinal));
+        await File.WriteAllTextAsync(last, SteamAccountPageFixtures.Read(SteamAccountPageFixtures.LicensesFinalPage)
+            .Replace("901-979 of 979", "101-200 of 200", StringComparison.Ordinal));
+        var loader = new SteamAccountPageFileLoader();
+        var complete = SteamAccountPageReader.Read((await loader.LoadAsync([last, first])).Pages).Licenses;
+        Assert.False(complete.IsTruncated);
+        Assert.True(complete.ReportedTotalDiffersFromRowsSeen);
+        var failed = await loader.LoadAsync([first, last, Path.Combine(_dir, "missing.html")]);
+        Assert.True(SteamAccountPageReader.Read(failed.Pages).Licenses.IsTruncated);
+        Assert.True(SteamAccountPageReader.Read((await loader.LoadAsync([last])).Pages).Licenses.IsTruncated);
+    }
+
+    [Fact]
+    public async Task Conflicting_saved_account_markers_are_reported_without_assigning_provenance()
+    {
+        var first = Path.Combine(_dir, "account-a.html");
+        var second = Path.Combine(_dir, "account-b.html");
+        var html = SteamAccountPageFixtures.Read(SteamAccountPageFixtures.LicensesPage1);
+        await File.WriteAllTextAsync(first, html + "<script>var g_steamID = '76561197960275729';</script>");
+        await File.WriteAllTextAsync(second, html + "<script>var g_steamID = '76561197960275730';</script>");
+        var result = await new SteamAccountPageFileLoader().LoadAsync([first, second]);
+        Assert.Equal(SteamAccountPageFileOutcome.AccountMismatch, result.Files[1].Outcome);
+        Assert.Empty(result.Pages.AdditionalLicensesHtml);
+        Assert.Null(result.Pages.SteamId);
+        Assert.True(result.Pages.HasFailedSavedInputs);
+    }
+
+    [Fact]
+    public async Task Unreadable_file_does_not_discard_good_licence_and_history_files()
+    {
+        var first = CopyFixture(SteamAccountPageFixtures.LicensesPage1, "first.html");
+        var history = CopyFixture(SteamAccountPageFixtures.PurchaseHistory, "history.html");
+        var locked = CopyFixture(SteamAccountPageFixtures.LicensesFinalPage, "locked.html");
+        using var held = new FileStream(locked, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        var result = await new SteamAccountPageFileLoader().LoadAsync([first, locked, history]);
+        Assert.Equal(SteamAccountPageFileOutcome.Unreadable, result.Files[1].Outcome);
+        Assert.True(result.Pages.IsComplete);
+        Assert.True(SteamAccountPageReader.Read(result.Pages).Licenses.IsTruncated);
     }
 
     [Fact]

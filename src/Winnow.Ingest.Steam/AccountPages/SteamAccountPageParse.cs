@@ -46,6 +46,9 @@ public sealed record SteamLicensesPageResult
     /// <summary>The total licence count reported by the paginator ("Showing X-Y of Z"), or null when no paginator was found.</summary>
     public int? TotalLicensesReported { get; init; }
 
+    public int? RangeStart { get; init; }
+    public int? RangeEnd { get; init; }
+
     /// <summary>Whether a next-page link exists in the paginator.</summary>
     public bool HasNextPage { get; init; }
 

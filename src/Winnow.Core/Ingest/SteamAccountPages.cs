@@ -43,6 +43,12 @@ public sealed record SteamAccountPages
     /// <summary>The rendered licenses page, or null when it was not captured.</summary>
     public string? LicensesHtml { get; init; }
 
+    /// <summary>Additional saved licence pages from the same import, kept separate for pagination evidence.</summary>
+    public IReadOnlyList<string> AdditionalLicensesHtml { get; init; } = [];
+
+    /// <summary>At least one selected file failed; saved-page coverage cannot be certified complete.</summary>
+    public bool HasFailedSavedInputs { get; init; }
+
     /// <summary>The rendered purchase-history page, or null when it was not captured.</summary>
     public string? HistoryHtml { get; init; }
 
@@ -81,14 +87,15 @@ public sealed record SteamAccountPages
     /// <summary>This set with one page replaced. Records are immutable; capture happens one page at a time.</summary>
     public SteamAccountPages With(SteamAccountPageKind kind, string? html) => kind switch
     {
-        SteamAccountPageKind.Licenses => this with { LicensesHtml = html },
+        SteamAccountPageKind.Licenses => this with { LicensesHtml = html, AdditionalLicensesHtml = [] },
         SteamAccountPageKind.PurchaseHistory => this with { HistoryHtml = html },
         _ => this,
     };
 
     /// <summary>UTF-8 size of one page. The only measure of a document that is safe to log.</summary>
     public int ByteCount(SteamAccountPageKind kind)
-        => Html(kind) is { } html ? Encoding.UTF8.GetByteCount(html) : 0;
+        => (Html(kind) is { } html ? Encoding.UTF8.GetByteCount(html) : 0)
+            + (kind == SteamAccountPageKind.Licenses ? AdditionalLicensesHtml.Sum(Encoding.UTF8.GetByteCount) : 0);
 
     /// <summary>UTF-8 size of everything held here.</summary>
     public int TotalByteCount

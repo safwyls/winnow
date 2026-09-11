@@ -960,13 +960,10 @@ public class SteamAccountImportViewModelTests
     }
 
     /// <summary>
-    /// The likeliest way to produce a second file of one page kind is saving
-    /// licences pages 1 and 2 and picking both — in which case page 2 was not
-    /// read, and the user's whole reason for picking two files went unmet. It
-    /// gets a sentence, not just a label in a narrow column.
+    /// Different licence pages are accepted together by the shared import flow.
     /// </summary>
     [Fact]
-    public async Task A_second_file_of_a_page_kind_already_read_says_what_happened()
+    public async Task Different_licence_pages_are_both_reported_loaded()
     {
         var vm = Create(picker: new FakeSteamPageFilePicker(
             SteamAccountPageFixtures.PathOf(SteamAccountPageFixtures.LicensesPage1),
@@ -974,11 +971,11 @@ public class SteamAccountImportViewModelTests
 
         await vm.ImportFromSavedPagesCommand.ExecuteAsync(null);
 
-        Assert.True(vm.ShowDuplicatePages);
+        Assert.False(vm.ShowDuplicatePages);
         Assert.Equal(2, vm.PickedFiles.Count);
         Assert.Equal(SteamAccountImportCopy.FileLoaded, vm.PickedFiles[0].Outcome);
-        Assert.Equal(SteamAccountImportCopy.FileDuplicate, vm.PickedFiles[1].Outcome);
-        Assert.True(vm.PickedFiles[1].IsProblem);
+        Assert.Equal(SteamAccountImportCopy.FileLoaded, vm.PickedFiles[1].Outcome);
+        Assert.False(vm.PickedFiles[1].IsProblem);
     }
 
     /// <summary>One file of each kind is the ordinary case and says nothing.</summary>

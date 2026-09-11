@@ -81,7 +81,8 @@ public static class SteamAccountImportCopy
     /// <summary>Tip for Route B: the licenses page paginates at 100, so each
     /// page needs its own file.</summary>
     public const string SavedPagesLicensesHint =
-        "The licenses page paginates at 100. Each page needs its own saved file.";
+        "Save each licenses page, then select them together. Choose files from the same account; "
+        + "saved files retain unknown account provenance.";
 
     /// <summary>Shown while the picked files are being read.</summary>
     public const string SavedPagesBusy = "Reading the saved files.";
@@ -156,9 +157,9 @@ public static class SteamAccountImportCopy
         "This file holds only the first page of purchase history. "
         + "Click \"load more transactions\" before saving to capture the rest.";
 
-    /// <summary>The saved licenses file held one page of a paginated list.</summary>
+    /// <summary>The selected saved pages do not establish complete licence coverage.</summary>
     public const string LicensesTruncatedNotice =
-        "This file holds one page of the licenses list.";
+        "These files may not cover the whole licenses list. Choose all saved pages together.";
 
     /// <summary>
     /// The sign-in route hit its own safety ceiling on "load more transactions"
@@ -294,12 +295,13 @@ public static class SteamAccountImportCopy
     /// <summary>The file was read but is not one of the two account pages.</summary>
     public const string FileNotRecognized = "NOT RECOGNIZED";
 
-    /// <summary>A file of this page kind was already read from an earlier pick.</summary>
+    /// <summary>A duplicate licence document or second history file was skipped.</summary>
     public const string FileDuplicate = "ALREADY READ";
 
+    public const string FileAccountMismatch = "DIFFERENT ACCOUNT";
+
     /// <summary>Shown when at least one picked file was labelled
-    /// <see cref="FileDuplicate"/>. Only the first file of each page kind
-    /// is read.</summary>
+    /// <see cref="FileDuplicate"/>.</summary>
     public const string DuplicatePagesNotice =
-        "Only the first file of each page kind was read.";
+        "Duplicate licenses pages were skipped. Purchase history uses the first file selected.";
 }

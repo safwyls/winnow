@@ -445,6 +445,21 @@ The shared acquisition reader uses only matching account observations in the fil
 aggregate presentation uses the earliest acquisition date and withholds conflicting licence or
 price values. Legacy ownership acquisition columns cannot supply a known account's facts.
 
+Saved-file imports combine all selected licence pages and deduplicate identical observations
+across overlapping pages; purchase history uses the first selected history file. Per-file
+results distinguish loaded, duplicate, unreadable and conflicting-account inputs. A saved
+`g_steamID` marker can refuse a visibly mixed-account selection but never authenticates or
+assigns the saved facts: account provenance remains unknown, and files without such markers
+cannot establish that they came from the same account. The picker explains that files must
+come from one account. Both desktop and fullscreen use this loader and importer.
+
+For saved licence pages, complete coverage requires contiguous advertised ranges from 1
+through a consistent total, with no failed inputs. Overlaps do not fill gaps. A single page
+without pagination retains the existing page-size caution; several pages without usable
+ranges remain unverified. Rendered row counts may differ from Steam's advertised licence
+count, so row counts never prove completion. Embedded-session captures retain their observed
+paginator-walk contract.
+
 The minted token lives about a day. The refresh token lasts roughly 207 days when the user
 chose remember-me, and is spent against `/jwt/finalizelogin`. A bad token returns a hard 401,
 where a bad API key returns a silent 200 with an empty envelope.

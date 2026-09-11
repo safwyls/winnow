@@ -446,7 +446,7 @@ public partial class SteamAccountImportViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Route B. Picks one or both saved files, reads them, and hands the same
+    /// Route B. Picks saved files, reads them, and hands the same
     /// <see cref="SteamAccountPages"/> to the same importer route A uses.
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanImport))]
@@ -619,6 +619,7 @@ public partial class SteamAccountImportViewModel : ObservableObject
         SteamAccountPageFileOutcome.NotFound => SteamAccountImportCopy.FileNotFound,
         SteamAccountPageFileOutcome.Unreadable => SteamAccountImportCopy.FileUnreadable,
         SteamAccountPageFileOutcome.Duplicate => SteamAccountImportCopy.FileDuplicate,
+        SteamAccountPageFileOutcome.AccountMismatch => SteamAccountImportCopy.FileAccountMismatch,
         _ => SteamAccountImportCopy.FileNotRecognized,
     };
 
