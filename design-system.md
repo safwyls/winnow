@@ -455,8 +455,10 @@ that arrived with one wrong member is answered without refusing the rest. A row 
 recedes (title in `TextFaint`, cover at 40%) and its proposals with the linked rows are recorded
 as answered no. Neither control is drawn where it would assert nothing: no radio on an
 expansion card, whose base is the header by the shape of the relation, and no checkbox on the
-header. Clicking the row itself opens the game's details, the library's own modal over the
-pane, so the entries can be compared before answering. A row is a work, so an entry already
+header. Clicking an eligible pending row body makes it the header; a separate `Details`
+button opens the game's modal over the pane so entries can be compared before answering.
+Ineligible rows keep their fixed header. Fullscreen offers `Open game` and eligible
+`Make header` actions separately. A row is a work, so an entry already
 owned on two stores is one row wearing two chips. Resolved, the card collapses to a 44px strip:
 `Volt` edge, the header title, `N entries · Nh · nested, nothing deleted`, and `Separate
 again`. The strip stays in place so the list never reflows under the pointer.
@@ -477,7 +479,7 @@ the notice has no Undo because no link act was written.
 
 Keyboard: Up and Down walk the candidate rows across every pending card, Space makes the row
 the header, `S`/`Enter` answers Same game, `D` answers Different games, and `Escape` returns to
-the library. The radio and the checkbox are Tab stops of their own.
+the library. The radio, Details button and checkbox are Tab stops of their own.
 
 **Session journal prompt.** 400×220 frameless, bottom-right, `SurfaceRaised`, with the game's
 cover at 60×90 on the left. Title, duration in Data, one text field, 5-dot rating in `Volt`.

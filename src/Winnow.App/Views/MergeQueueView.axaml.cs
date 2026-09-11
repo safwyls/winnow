@@ -114,9 +114,7 @@ public partial class MergeQueueView : UserControl
     }
 
     /// <summary>
-    /// A click on the row opens the game's details and takes the keyboard
-    /// cursor with it. The radio and the checkbox handle their own presses,
-    /// so a click on either never reaches here.
+    /// The row body chooses the pending header. Child controls keep their own actions.
     /// </summary>
     private void OnRowPressed(object? sender, PointerPressedEventArgs e)
     {
@@ -125,8 +123,15 @@ public partial class MergeQueueView : UserControl
             return;
         }
 
+        if (!e.GetCurrentPoint(control).Properties.IsLeftButtonPressed
+            || (e.Source as Control)?.FindAncestorOfType<Button>(includeSelf: true) is not null)
+        {
+            return;
+        }
+
         control.Focus();
-        _queue.OpenDetailsCommand.Execute(row);
+        _queue.CardOf(row)?.Promote(row);
+        e.Handled = true;
     }
 
     /// <summary>

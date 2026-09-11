@@ -628,11 +628,12 @@
                                                                             PointerExited="OnRowExited"
                                                                             PointerPressed="OnRowPressed"
                                                                             GotFocus="OnRowFocus"
-                                                                            ToolTip.Tip="{Binding DetailsTip}"
-                                                                            AutomationProperties.Name="{Binding DetailsAutomationName}"
+                                                                            ToolTip.Tip="{Binding RowTip}"
+                                                                            AutomationProperties.Name="{Binding Label}"
+                                                                            AutomationProperties.ItemStatus="{Binding HeaderMark}"
                                                                             AutomationProperties.AccessibilityView="Control"
                                                                             AutomationProperties.ControlTypeOverride="ListItem">
-                                                                        <Grid ColumnDefinitions="2,36,44,*,Auto,94,78,26,36">
+                                                                        <Grid ColumnDefinitions="2,36,44,*,Auto,70,64,20,Auto,36">
 
                                                                             <!-- The selection edge: Volt on the header only. -->
                                                                             <Border Grid.Column="0"
@@ -730,7 +731,13 @@
                                                                             <!-- Who joins: none, some or all. Not
                                                                                  offered on the header, which is
                                                                                  always in. -->
-                                                                            <CheckBox Grid.Column="8" Classes="pick"
+                                                                            <Button Grid.Column="8" Classes="ctl" Content="Details"
+                                                                                    VerticalAlignment="Center"
+                                                                                    Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).OpenDetailsCommand}"
+                                                                                    CommandParameter="{Binding}"
+                                                                                    ToolTip.Tip="{Binding DetailsTip}"
+                                                                                    AutomationProperties.Name="{Binding DetailsAutomationName}"/>
+                                                                            <CheckBox Grid.Column="9" Classes="pick"
                                                                                       HorizontalAlignment="Center"
                                                                                       VerticalAlignment="Center"
                                                                                       IsVisible="{Binding CanExclude}"

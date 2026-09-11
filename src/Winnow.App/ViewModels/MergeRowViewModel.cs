@@ -15,8 +15,8 @@ namespace Winnow.App.ViewModels;
 /// <para>Two controls hang off it. The radio makes the row the header, the
 /// title the library keeps. The checkbox decides whether the row joins the
 /// roll-up at all, so a group that arrived with one wrong member can be
-/// answered without refusing the rest. Clicking the row itself opens the
-/// game's details, so the entries can be compared before answering.</para>
+/// answered without refusing the rest. The row body also chooses the header;
+/// a separate Details action opens the game for comparison.</para>
 /// </summary>
 public partial class MergeRowViewModel : ObservableObject, IPlayedEntry
 {
@@ -115,8 +115,10 @@ public partial class MergeRowViewModel : ObservableObject, IPlayedEntry
     /// <summary>Tooltip on the unread dot.</summary>
     public string UnreadTip => MergeCopy.RowUnreadTip;
 
-    /// <summary>Tooltip on the row: a click opens the game's details.</summary>
+    /// <summary>Tooltip on the separate Details action.</summary>
     public string DetailsTip => MergeCopy.DetailsTip;
+
+    public string? RowTip => CanPromote ? PromoteTip : null;
 
     /// <summary>Tooltip on the header radio.</summary>
     public string PromoteTip => MergeCopy.PromoteTip;
@@ -179,7 +181,7 @@ public partial class MergeRowViewModel : ObservableObject, IPlayedEntry
     public string IncludeAutomationName => string.Format(
         CultureInfo.CurrentCulture, MergeCopy.IncludeAutomationFormat, Label);
 
-    /// <summary>Names the row on the row itself, whose click opens details.</summary>
+    /// <summary>Names the game opened by the Details action.</summary>
     public string DetailsAutomationName => string.Format(
         CultureInfo.CurrentCulture, MergeCopy.DetailsAutomationFormat, Label);
 
