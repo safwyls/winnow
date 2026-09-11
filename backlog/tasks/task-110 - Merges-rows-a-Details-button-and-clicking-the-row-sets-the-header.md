@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@codex-ui'
 created_date: '2026-09-05 02:49'
-updated_date: '2026-09-11 18:44'
+updated_date: '2026-09-11 19:26'
 labels:
   - ui
 dependencies: []
@@ -43,6 +43,8 @@ On promotable pending Merges rows, separate opening Details from choosing the gr
 Audit evidence: MergeQueueView.axaml.cs dispatches row press to OpenDetailsCommand; the radio in MergeQueueView.axaml performs promotion. FullscreenLibraryToolsPage already separates Open game and eligible Make header. This task changes the desktop gesture and verifies parity, without inventing a resolved-group mutation.
 
 Desktop headless tests exercise row-body promotion, Details pointer/Enter activation, independent radio Space activation, accessible header status and hidden resolved rows. Fullscreen action-sheet tests exercise separate Open game/Make header actions and removal of promotion from the current header. MergeQueueViewModelTests: 83 passed, including ineligible expansion promotion. Five focused merge UI tests passed; updated resolved-row assertion also passed on rerun.
+
+The full-suite Merges copy contract exposed the new Details button label as a literal outside MergeCopy. Added a shared DetailsButton constant and bound the separate row action to it, preserving its existing text and behavior. This follows the separate TASK109 header-label correction; all user-facing Merges markup now uses shared copy or bindings.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

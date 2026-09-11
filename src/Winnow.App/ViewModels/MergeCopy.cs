@@ -218,6 +218,7 @@ public static class MergeCopy
 
     /// <summary>Tooltip on the row: a click opens the game's details.</summary>
     public const string DetailsTip = "Open details";
+    public const string DetailsButton = "Details";
 
     /// <summary>Tooltip on a checked include box.</summary>
     public const string LeaveOutTip = "Leave this entry out of the roll-up";

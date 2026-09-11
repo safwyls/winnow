@@ -742,7 +742,7 @@
                                                                             <!-- Who joins: none, some or all. Not
                                                                                  offered on the header, which is
                                                                                  always in. -->
-                                                                            <Button Grid.Column="8" Classes="ctl" Content="Details"
+                                                                            <Button Grid.Column="8" Classes="ctl" Content="{x:Static vm:MergeCopy.DetailsButton}"
                                                                                     VerticalAlignment="Center"
                                                                                     Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).OpenDetailsCommand}"
                                                                                     CommandParameter="{Binding}"
