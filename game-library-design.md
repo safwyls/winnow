@@ -290,7 +290,7 @@ Credential-specific failure pauses prevent a failed key from being retried for e
 Version-1 hero payloads and confirmed misses live in `metadata_cache` for 30 days. Failed or
 unauthorized requests do not write misses; older successful payloads remain usable offline.
 
-Metadata & artwork settings saves the key with current-user DPAPI and refuses plaintext
+Plugins settings saves the key with current-user DPAPI and refuses plaintext
 persistence on unsupported hosts. The editor never reloads the key. Saved keys take precedence
 over `Plugins:steamgriddb:apikey` configuration; the legacy `SteamGridDb__ApiKey` remains a
 fallback. Removing a saved key preserves configuration. Saving queues a background pass after

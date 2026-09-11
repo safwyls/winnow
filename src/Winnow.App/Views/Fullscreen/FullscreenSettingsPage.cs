@@ -17,7 +17,7 @@ namespace Winnow.App.Views.Fullscreen;
 public sealed class FullscreenSettingsPage : FullscreenPage
 {
     public override Control? Backdrop { get; } = new FullscreenAmbientBackdrop("settings");
-    private static readonly string[] Sections = ["Appearance", "Controller", "Library", "Platforms", "Metadata & artwork", "Application"];
+    private static readonly string[] Sections = ["Appearance", "Controller", "Library", "Platforms", "Metadata & artwork", "Plugins", "Application"];
     private string _section = "Appearance";
     private readonly Dictionary<Control, Action<int>> _adjustments = [];
     private readonly List<Action> _valueRefreshers = [];
@@ -93,7 +93,20 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         var tabs = Sections.Select(label =>
             FullscreenUi.Button(label, () => { _section = label; Render(); FocusInitial(); })).ToArray();
         var nav = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
-        foreach (var tab in tabs) { tab.Classes.Set("current", Equals(tab.Content, _section)); nav.Children.Add(tab); tab.GotFocus += (_, _) => _focused = tab; }
+        foreach (var tab in tabs)
+        {
+            tab.Classes.Set("current", Equals(tab.Content, _section));
+            nav.Children.Add(tab);
+            tab.GotFocus += (_, _) => { _focused = tab; tab.BringIntoView(); };
+        }
+        var tabStrip = new ScrollViewer
+        {
+            Content = nav,
+            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled
+        };
+        var selectedTab = tabs[Array.IndexOf(Sections, _section)];
+        tabStrip.Loaded += (_, _) => selectedTab.BringIntoView();
         var rows = new StackPanel { Spacing = 16 };
         var focus = new List<Control[]> { tabs };
         void Group(string label)
@@ -240,6 +253,9 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             Action("IGDB metadata", () => Context.Push(new FullscreenIgdbSettingsPage(Context)));
             Action("Artwork source order", () => Context.Push(new FullscreenArtworkOrderPage(Context)));
             rows.Children.Add(FullscreenUi.Text(ArtworkOrderViewModel.Explanation, 28, "TextDim"));
+        }
+        else if (_section == "Plugins")
+        {
             Group("Plugins");
             foreach (var plugin in Context.Shared.EnrichmentSettings.Plugins.Plugins)
                 Action(plugin.Name, () => Context.Push(new FullscreenPluginSettingsPage(Context, plugin)));
@@ -323,7 +339,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             preview.Children.Add(FullscreenUi.Text("Theme applies to both views. Other appearance settings apply to fullscreen.", 28, "TextDim"));
         }
         var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*"), RowSpacing = 24 };
-        layout.Children.Add(FullscreenUi.Text("Make yourself comfortable", 64)); Grid.SetRow(nav, 1); layout.Children.Add(nav); Grid.SetRow(main, 2); layout.Children.Add(main);
+        layout.Children.Add(FullscreenUi.Text("Make yourself comfortable", 64)); Grid.SetRow(tabStrip, 1); layout.Children.Add(tabStrip); Grid.SetRow(main, 2); layout.Children.Add(main);
         _initial ??= tabs[Array.IndexOf(Sections, _section)];
         Content = layout; SetFocusRows(focus.ToArray()); Changed();
     }
@@ -429,7 +445,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             var plugins = Context.Shared.EnrichmentSettings.Plugins;
             var before = plugins.Plugins.Select(plugin => plugin.Id).ToArray();
             await plugins.LoadAsync();
-            if (!_disposed && _section == "Metadata & artwork"
+            if (!_disposed && _section == "Plugins"
                 && !before.SequenceEqual(plugins.Plugins.Select(plugin => plugin.Id)))
             { Render(); FocusInitial(); }
         }

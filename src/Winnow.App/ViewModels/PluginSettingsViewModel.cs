@@ -8,6 +8,10 @@ namespace Winnow.App.ViewModels;
 public partial class PluginSettingsViewModel(
     IPluginSettingsBackend? backend = null, IUriDispatcher? uris = null) : ObservableObject
 {
+    public string Title => "Plugins";
+    public string SegmentLabel => "PLUGINS";
+    public string SegmentTooltip => "Install and configure provider plugins";
+    public string IntroMessage => "Manage plugins for library imports, metadata, artwork and recommendations.";
     public const string InstallationNote = "Place an unpacked plugin in the plugins folder, restart Winnow, then enable it here. Only enable plugins from authors you trust: plugins run with Winnow's access to this device.";
     public const string SecretNote = "Secrets are stored securely on this device and are never shown again. Leave a secret blank to keep its saved value.";
     public ObservableCollection<PluginCardViewModel> Plugins { get; } = [];

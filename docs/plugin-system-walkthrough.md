@@ -418,7 +418,7 @@ inside Winnow, copy that directory's contents under
 dotnet run --project "$winnowRepo\src\Winnow.App" -- --data-dir "$sampleRoot\data" --seed-sample
 ```
 
-Find the plugin in Metadata & artwork settings, enable it, and restart with the same arguments.
+Find the plugin in Plugins settings, enable it, and restart with the same arguments.
 The generated tag field should be available. Tag observations require an owned game with a
 Steam external ID in that disposable library; discovery and loading work even without one.
 Changing the field and saving requests another enrichment pass.

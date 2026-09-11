@@ -754,7 +754,7 @@ Updater actions appear only when available, matching desktop behavior. When an u
 transition removes the focused action, focus moves to another available update action,
 with the settings controls as a fallback; it never activates restart automatically.
 
-**Settings** has Appearance, Controller, Library, Platforms, Metadata & artwork and Application sections. Large
+**Settings** has Appearance, Controller, Library, Platforms, Metadata & artwork, Plugins and Application sections. Large
 rows expose a label and current value; left/right changes bounded values, A opens pickers
 or activates toggles, and B returns. Appearance has a readable live sample. Fullscreen owns
 its UI scale (80–120% in five-point steps), text scale (70–140% in ten-point steps),
@@ -2604,8 +2604,8 @@ Two, and neither is fatal:
 
 ## 16. The settings surface
 
-The gear at the foot of the rail opens `SETTINGS`, which holds five screens in this order:
-**PLATFORMS**, **LIBRARY**, **APPEARANCE**, **METADATA & ARTWORK**, **APPLICATION**. Each is drawn the same way: a
+The gear at the foot of the rail opens `SETTINGS`, which holds six screens in this order:
+**PLATFORMS**, **LIBRARY**, **APPEARANCE**, **METADATA & ARTWORK**, **PLUGINS**, **APPLICATION**. Each is drawn the same way: a
 48px header lining up with the command bar and the filter panel's header, its own scroll,
 cards on `PaneGround`.
 
@@ -2648,7 +2648,7 @@ Fullscreen Metadata & artwork opens a dedicated **IGDB metadata** page with the 
 actions, large fields and explicit controller focus rows. A opens the existing on-screen
 keyboard for either field; secret entry retains its masking.
 
-The **PLUGINS** section shows one card per discovered plugin, with its name, version,
+The separate **PLUGINS** tab shows one card per discovered plugin, with its name, version,
 description, supported features and status. **Open plugins folder** opens the installation
 directory. Explain that installing and changing enablement requires a restart and that plugins
 run with Winnow's access to the device. A malformed or incompatible package states its failure;
@@ -2664,10 +2664,11 @@ states the next launch's choice and keeps a visible restart notice while it diff
 running state. **Refresh now** is available for enabled, loaded plugins. SteamGridDB uses this
 same generated form for its API key.
 
-Fullscreen lists discovered plugins under Metadata & artwork and opens a dedicated page for
+Fullscreen lists discovered plugins under Plugins and opens a dedicated page for
 each one. The page uses the same settings model with large generated fields, explicit focus
 rows, masked controller text entry and the same commands. Saving keeps the controls in place
 so controller focus can return to the same action. Plugins do not supply arbitrary UI trees.
+The fullscreen section strip scrolls horizontally when needed and brings the focused tab into view.
 
 The backdrop preference list includes **High-resolution Steam heroes**, discovered artwork
 plugins by name, and **IGDB**, with accessible move-up and move-down actions. Changes save immediately and apply to

@@ -133,6 +133,7 @@ public partial class MainWindowViewModel : ObservableObject
         Library,
         Application,
         Enrichment,
+        Plugins,
     }
 
     public FetchStatusViewModel Fetch { get; }
@@ -164,6 +165,7 @@ public partial class MainWindowViewModel : ObservableObject
     /// <summary>SETTINGS › APPLICATION — window lifetime and Windows sign-in.</summary>
     public ApplicationSettingsViewModel ApplicationSettings { get; }
     public EnrichmentSettingsViewModel EnrichmentSettings { get; }
+    public PluginSettingsViewModel PluginSettings => EnrichmentSettings.Plugins;
     public FirstRunSetupViewModel Setup { get; }
 
     [ObservableProperty]
@@ -219,6 +221,15 @@ public partial class MainWindowViewModel : ObservableObject
         if (!value) EnrichmentSettings.ClearSecrets();
     }
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible), nameof(IsSettingsVisible))]
+    public partial bool IsPluginSettingsVisible { get; set; }
+
+    partial void OnIsPluginSettingsVisibleChanged(bool value)
+    {
+        if (!value) PluginSettings.ClearSecrets();
+    }
+
     /// <summary>The STATS screen, opened from the rail's ACCOUNT › STATS row.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
@@ -238,11 +249,11 @@ public partial class MainWindowViewModel : ObservableObject
     /// </summary>
     public bool IsSettingsVisible =>
         IsStoresVisible || IsAppearanceVisible || IsLibrarySettingsVisible
-        || IsApplicationSettingsVisible || IsEnrichmentSettingsVisible;
+        || IsApplicationSettingsVisible || IsEnrichmentSettingsVisible || IsPluginSettingsVisible;
 
     public bool IsLibraryVisible =>
         !IsMergeQueueVisible && !IsStoresVisible && !IsAppearanceVisible
-        && !IsLibrarySettingsVisible && !IsApplicationSettingsVisible && !IsEnrichmentSettingsVisible
+        && !IsLibrarySettingsVisible && !IsApplicationSettingsVisible && !IsEnrichmentSettingsVisible && !IsPluginSettingsVisible
         && !IsAccountStatsVisible && !IsFeedVisible;
 
     /// <summary>The filter panel is part of the library screen, not of the window.</summary>
@@ -324,6 +335,10 @@ public partial class MainWindowViewModel : ObservableObject
                 ShowEnrichmentSettings();
                 break;
 
+            case SettingsSection.Plugins:
+                ShowPluginSettings();
+                break;
+
             default:
                 await ShowStoresAsync();
                 break;
@@ -374,6 +389,14 @@ public partial class MainWindowViewModel : ObservableObject
         IsEnrichmentSettingsVisible = true;
     }
 
+    [RelayCommand]
+    private void ShowPluginSettings()
+    {
+        _settingsSection = SettingsSection.Plugins;
+        ShowLibraryPane();
+        IsPluginSettingsVisible = true;
+    }
+
     /// <summary>
     /// Toggles the STATS screen; recomputes the figures on open. Every stat is
     /// a query rather than a stored aggregate, and the import screen can change
@@ -422,6 +445,7 @@ public partial class MainWindowViewModel : ObservableObject
         IsLibrarySettingsVisible = false;
         IsApplicationSettingsVisible = false;
         IsEnrichmentSettingsVisible = false;
+        IsPluginSettingsVisible = false;
         IsAccountStatsVisible = false;
         IsFeedVisible = false;
 

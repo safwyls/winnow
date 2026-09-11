@@ -194,21 +194,21 @@ setx Igdb__ClientSecret "your-client-secret"
 SteamGridDB ships as an enabled provider plugin. Existing credentials and cached artwork migrate
 automatically from the earlier built-in integration.
 
-Open **Settings → Metadata & artwork** to add your own
+Open **Settings → Plugins → SteamGridDB** to add your own
 [SteamGridDB API key](https://www.steamgriddb.com/profile/preferences/api).
 Saving protects the key on supported devices and queues background hero-artwork enrichment.
 SteamGridDB matches known Steam app IDs, including Steam copies linked to other stores.
 Games without that ID continue using the existing artwork sources. Cached artwork remains
 available offline; Winnow also accepts `SteamGridDb__ApiKey` as an environment variable.
 
-The same settings tab lets you reorder **High-resolution Steam heroes**, **SteamGridDB**
+**Settings → Metadata & artwork** lets you reorder **High-resolution Steam heroes**, **SteamGridDB**
 and **IGDB**, plus additional active artwork plugins, for backdrops. Saved per-game backgrounds always take priority. The order takes
 effect on desktop and fullscreen without restarting; it does not change metadata field sources.
 
 ### Provider plugins
 
 Plugins can import game libraries, add metadata and artwork, and supply recommendation shelves.
-Open **Settings → Metadata & artwork → Open plugins folder**, copy a package into its own
+Open **Settings → Plugins → Open plugins folder**, copy a package into its own
 directory, restart, enable it and restart again. Third-party plugins run trusted code with
 Winnow's permissions; install packages from authors you trust. Settings are available on
 desktop and fullscreen. See [plugin authoring and installation](docs/plugins.md) for the SDK,

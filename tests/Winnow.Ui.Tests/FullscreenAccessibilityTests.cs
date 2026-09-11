@@ -28,6 +28,7 @@ public sealed class FullscreenAccessibilityTests
     [InlineData("Library")]
     [InlineData("Platforms")]
     [InlineData("Metadata & artwork")]
+    [InlineData("Plugins")]
     [InlineData("Application")]
     [InlineData("Steam key")]
     [InlineData("Search")]

@@ -1,5 +1,7 @@
+using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -15,6 +17,88 @@ namespace Winnow.Ui.Tests;
 
 public sealed class PluginSettingsInteractionTests
 {
+    [AvaloniaFact]
+    public async Task Desktop_tabs_separate_plugin_controls_from_metadata_and_fit_the_minimum_window()
+    {
+        var shell = await ShellAsync();
+        var window = new MainWindow { DataContext = shell, Width = 1200, Height = 688 };
+        window.Show();
+        try
+        {
+            shell.ShowEnrichmentSettingsCommand.Execute(null);
+            Dispatcher.UIThread.RunJobs();
+            var metadata = window.GetVisualDescendants().OfType<EnrichmentSettingsView>().Single();
+            Assert.NotNull(Named<TextBox>(metadata, "IGDB client ID"));
+            Assert.DoesNotContain(metadata.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "Open plugins folder"));
+            var tab = Named<Button>(window, "PLUGINS");
+            tab.Focus();
+            window.KeyPress(Avalonia.Input.Key.Enter, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Enter, null);
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(shell.IsPluginSettingsVisible);
+            Assert.False(shell.IsEnrichmentSettingsVisible);
+            var plugins = window.GetVisualDescendants().OfType<PluginSettingsView>().Single();
+            Assert.True(plugins.IsEffectivelyVisible);
+            Assert.NotNull(Named<TextBox>(plugins, "Community artwork API key"));
+            foreach (var button in window.GetVisualDescendants().OfType<Button>().Where(button => button.Classes.Contains("tab") && button.IsEffectivelyVisible))
+            {
+                var origin = button.TranslatePoint(default, window)!.Value;
+                Assert.InRange(origin.X + button.Bounds.Width, 0, window.Bounds.Width);
+            }
+            Capture(window, "desktop-plugins-shell");
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Fullscreen_triggers_navigate_between_metadata_plugins_and_application()
+    {
+        var shell = await ShellAsync();
+        using var context = new FullscreenContext(shell.Library, shell.Feed, shell);
+        using var page = new FullscreenSettingsPage(context, "Metadata & artwork");
+        var window = new Window { Width = 1920, Height = 1080, Content = page };
+        window.Show();
+        try
+        {
+            Assert.DoesNotContain(page.GetVisualDescendants().OfType<Button>(), button => AutomationProperties.GetName(button) == "Open plugins folder");
+            page.Handle(GamepadButtons.PageNext);
+            await page.PendingPluginRefresh;
+            Dispatcher.UIThread.RunJobs();
+            Assert.NotNull(Named<Button>(page, "Open plugins folder"));
+            Assert.NotNull(Named<Button>(page, "Community artwork"));
+            page.Handle(GamepadButtons.PageNext);
+            Dispatcher.UIThread.RunJobs();
+            Assert.DoesNotContain(page.GetVisualDescendants().OfType<Button>(), button => AutomationProperties.GetName(button) == "Open plugins folder");
+            page.Handle(GamepadButtons.PagePrevious);
+            await page.PendingPluginRefresh;
+            Assert.NotNull(Named<Button>(page, "Community artwork"));
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Fullscreen_overflowing_tabs_scroll_the_focused_section_into_view()
+    {
+        var shell = await ShellAsync();
+        using var context = new FullscreenContext(shell.Library, shell.Feed, shell);
+        using var page = new FullscreenSettingsPage(context, "Plugins");
+        var window = new Window { Width = 1000, Height = 800, Content = page };
+        window.Show();
+        try
+        {
+            await page.PendingPluginRefresh;
+            Dispatcher.UIThread.RunJobs();
+            var application = page.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Application"));
+            application.Focus();
+            Dispatcher.UIThread.RunJobs();
+            var strip = application.GetVisualAncestors().OfType<ScrollViewer>().First();
+            Assert.True(strip.Offset.X > 0);
+            var origin = application.TranslatePoint(default, window)!.Value;
+            Assert.InRange(origin.X, 0, window.Bounds.Width);
+            Assert.InRange(origin.X + application.Bounds.Width, 0, window.Bounds.Width);
+        }
+        finally { window.Close(); }
+    }
+
     [AvaloniaFact]
     public async Task Artwork_order_accepts_any_number_of_named_plugin_sources()
     {
@@ -38,12 +122,12 @@ public sealed class PluginSettingsInteractionTests
         var shell = await ShellAsync();
         var model = shell.EnrichmentSettings;
         var plugin = Assert.Single(model.Plugins.Plugins);
-        var view = new EnrichmentSettingsView { DataContext = model };
+        var view = new PluginSettingsView { DataContext = shell.PluginSettings };
         var window = new Window { Width = 1200, Height = 688, Content = view };
         window.Show();
         try
         {
-            shell.ShowEnrichmentSettingsCommand.Execute(null);
+            shell.ShowPluginSettingsCommand.Execute(null);
             Assert.True(shell.IsSettingsVisible);
             Assert.False(shell.IsLibraryVisible);
             var key = Named<TextBox>(view, "Community artwork API key");
@@ -58,12 +142,18 @@ public sealed class PluginSettingsInteractionTests
             await plugin.SaveCommand.ExecuteAsync(null);
             Assert.Empty(plugin.Fields[0].Value);
             plugin.Fields[0].Value = "unsaved-key";
+            shell.ShowEnrichmentSettingsCommand.Execute(null);
+            Assert.Empty(plugin.Fields[0].Value);
             model.Igdb.ClientSecret = "unsaved-secret";
+            shell.ShowPluginSettingsCommand.Execute(null);
+            Assert.Empty(model.Igdb.ClientSecret);
+            plugin.Fields[0].Value = "unsaved-key";
             shell.ShowLibraryCommand.Execute(null);
             Assert.Empty(plugin.Fields[0].Value);
             Assert.Empty(model.Igdb.ClientSecret);
             await shell.ShowSettingsCommand.ExecuteAsync(null);
-            Assert.True(shell.IsEnrichmentSettingsVisible);
+            Assert.True(shell.IsPluginSettingsVisible);
+            Capture(window, "desktop-plugins");
             plugin.Fields[0].Value = "detach-key";
             window.Content = null;
             Assert.Empty(plugin.Fields[0].Value);
@@ -100,12 +190,13 @@ public sealed class PluginSettingsInteractionTests
             window.Content = null;
             Assert.Empty(plugin.Fields[0].Value);
 
-            using var settings = new FullscreenSettingsPage(context, "Metadata & artwork");
+            using var settings = new FullscreenSettingsPage(context, "Plugins");
             window.Content = settings;
             Dispatcher.UIThread.RunJobs();
             Assert.NotNull(Named<Button>(settings, "Community artwork"));
             Assert.NotNull(Named<Button>(settings, "Open plugins folder"));
             await settings.PendingPluginRefresh;
+            Capture(window, "fullscreen-plugins");
         }
         finally { window.Close(); }
     }
@@ -136,6 +227,14 @@ public sealed class PluginSettingsInteractionTests
 
     private static T Named<T>(Control root, string name) where T : Control => root.GetVisualDescendants()
         .OfType<T>().Single(control => AutomationProperties.GetName(control) == name);
+
+    private static void Capture(Window window, string name)
+    {
+        if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is not { } directory) return;
+        Directory.CreateDirectory(directory);
+        using var frame = window.CaptureRenderedFrame();
+        frame!.Save(Path.Combine(directory, name + ".png"));
+    }
 
     private static async Task<MainWindowViewModel> ShellAsync()
     {

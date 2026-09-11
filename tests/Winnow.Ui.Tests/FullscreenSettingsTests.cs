@@ -133,7 +133,8 @@ public sealed class FullscreenSettingsTests
             Assert.InRange(outline.Data!.Bounds.Width / outline.Data.Bounds.Height, 1.4, 1.5);
             Assert.Contains(settings.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Move");
             Assert.Contains(settings.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Select");
-            Assert.Empty(settings.GetVisualDescendants().OfType<ScrollViewer>());
+            Assert.DoesNotContain(settings.GetVisualDescendants().OfType<ScrollViewer>(),
+                scroll => scroll.VerticalScrollBarVisibility != Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled);
             foreach (var text in settings.GetVisualDescendants().OfType<TextBlock>())
             {
                 var position = text.TranslatePoint(default, settings)!.Value;

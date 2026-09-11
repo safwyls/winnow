@@ -12,7 +12,7 @@ public sealed class EnrichmentSettingsViewModel(
     public string Title => "Metadata & artwork";
     public string SegmentLabel => "METADATA & ARTWORK";
     public string SegmentTooltip => "Metadata credentials and background artwork sources";
-    public string IntroMessage => "Connect metadata sources, manage plugins, and choose which background artwork to try first.";
+    public string IntroMessage => "Connect metadata sources and choose which background artwork to try first.";
     public IgdbSettingsViewModel Igdb { get; } = igdb;
     public PluginSettingsViewModel Plugins { get; } = plugins ?? new();
     public ArtworkOrderViewModel ArtworkOrder { get; } = artworkOrder ?? new();

@@ -2028,6 +2028,11 @@
                                         ToolTip.Tip="{Binding EnrichmentSettings.SegmentTooltip}">
                                     <TextBlock Classes="display-s" Text="{Binding EnrichmentSettings.SegmentLabel}"/>
                                 </Button>
+                                <Button AutomationProperties.Name="{Binding PluginSettings.SegmentLabel}" Classes="seg tab"
+                                        Classes.on="{Binding IsPluginSettingsVisible}" Command="{Binding ShowPluginSettingsCommand}"
+                                        ToolTip.Tip="{Binding PluginSettings.SegmentTooltip}">
+                                    <TextBlock Classes="display-s" Text="{Binding PluginSettings.SegmentLabel}"/>
+                                </Button>
                                 <Button AutomationProperties.Name="{Binding ApplicationSettings.SegmentLabel}"
                                         Classes="seg tab"
                                         Classes.on="{Binding IsApplicationSettingsVisible}"
@@ -2074,6 +2079,13 @@
                         <views:LazyPane.PaneTemplate>
                             <DataTemplate DataType="vm:MainWindowViewModel">
                                 <views:EnrichmentSettingsView DataContext="{Binding EnrichmentSettings}"/>
+                            </DataTemplate>
+                        </views:LazyPane.PaneTemplate>
+                    </views:LazyPane>
+                    <views:LazyPane IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsPluginSettingsVisible}">
+                        <views:LazyPane.PaneTemplate>
+                            <DataTemplate DataType="vm:MainWindowViewModel">
+                                <views:PluginSettingsView DataContext="{Binding PluginSettings}"/>
                             </DataTemplate>
                         </views:LazyPane.PaneTemplate>
                     </views:LazyPane>
