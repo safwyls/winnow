@@ -746,17 +746,24 @@ Capture commands, fixtures and measured results live in `docs/spikes/feed-replay
 
 ## 7. Deliberately deferred (and where each would plug in)
 
-- **Session-length fit** ("a 60-hour CRPG is not a Tuesday-night suggestion"): needs both
-  a session cadence (Tier 2) and per-game expected-commitment data (HLTB, unresolved
-  [VERIFY]). Would become a Tier-2 value on `RecommendationScorer`.
+- **Session-length fit:** needs evidence about playable sittings and the user's cadence
+  (Tier 2). Whole-game completion averages cannot determine where a player can stop.
+  Local session history or explicit session preferences remain possible future inputs,
+  independently of any completion-time provider.
 - **Return latency** as a scoring input (how long this user's round trips take): needs
   months of recorded sessions and update responses; monthly Replay snapshots cannot supply exact return times.
 - **Session-note ratings** as taste/verdict evidence: the table is empty and the journal
   prompt is opt-in; wire it into the probably-done gate when real rows exist.
-- **Genre-conditional thresholds** (2h in a roguelike vs. 2h in a CRPG): an open data-source question; arrives with HLTB or per-genre config, lands on `FairShakeMinutes`/bucket floors.
-- **"Short enough for tonight"** as a shelf: needs per-game expected-commitment data
-  (HLTB, unresolved [VERIFY]) — the Steam "Short" tag is too sparse and too voted-on to
-  carry a shelf's honesty. Same plug-in point as session-length fit.
+- **Genre-conditional thresholds** (2h in a roguelike vs. 2h in a CRPG): completion
+  estimates could supply research context, but cannot establish that this user finished
+  or abandoned a game. IGDB has a documented completion endpoint; edition coverage and
+  supported retention terms still need validation. No changes to `FairShakeMinutes` or
+  bucket floors are justified by the [2026-09-11 source study](spikes/expected-completion-2026-09-11.md).
+- **"Short enough for tonight"** as a shelf: finishing a whole game and finding a short
+  playable sitting are separate promises. Neither is established by a Steam "Short" tag.
+  A completion-based promise needs edition-matched estimates, uncertainty and the user's
+  remaining progress; session fit needs cadence evidence instead. The source study found
+  a candidate, not validated library coverage or a production signal.
 - **Any learned component.** One user's library is not a training set, and the
   explainability contract (§4) is load-bearing.
 
