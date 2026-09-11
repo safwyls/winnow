@@ -38,6 +38,27 @@ bundled-plugin mutation checks passed. `git diff --check` passed. The original u
 ApplicationSettingsView.axaml edit was present during the Windows workspace tests and remains
 outside the review commits; it removes duplicate toggle content while retaining accessible names.
 
+### Clean publish verification
+
+Both self-contained publish targets succeeded from a clean `git archive` of implementation
+commit `e84ba077504d96aa18a95f7b4018efd61e97da23`, using `packaging/Publish.ps1` and diagnostic
+version `0.1.0-ci.227`. Windows used the normal ReadyToRun setting without an override; Linux
+used its normal non-ReadyToRun configuration. Assembly version, commit identity, required
+runtime files and absence of local secrets/databases passed the script's checks.
+
+Each output contains the bundled SteamGridDB manifest, matching assembly and declared entry
+type. Byte comparisons use the archived source manifest; comparing it with a separate CRLF
+working-tree copy would correctly fail the byte-identity check. The clean outputs are under
+`artifacts/review-fixes/publish/win-x64-final/` and `linux-x64-final/`. No installer was run and
+these diagnostic builds were not released or installed over the user's app.
+
+Implementation milestones are `bde7ca4` and `e84ba07` on `codex/architecture-review-fixes`.
+The completion record and task dispositions follow in a documentation-only commit. All
+TASK-189–226, TASK-135 and TASK-27 are Done; TASK-4 remains at ordinal 259000 with `needs-user`
+for physical controller/TV verification. Its remaining criteria are not claimed by headless
+tests. [The resolution record](../architecture-review-resolution-2026-09-11.md) maps every
+finding to its correction and explains user-visible effects and explicitly deferred scope.
+
 ## Foundation checkpoint
 
 The first checkpoint covers identity undo, atomic metadata writes, manual corrections,

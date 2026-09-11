@@ -48,7 +48,10 @@ no production library was used for interaction during this work.
 
 The [consolidated evidence](spikes/architecture-fixes-2026-09-10.md) records Release builds,
 Windows tests, real Linux process checks, migration integrity, packaging and failure-path
-regressions. Separate records describe [large-history measurements](spikes/large-history-read-responsiveness.md)
+regressions: 5,285 Windows tests and both Linux process tests passed; all 38 migration hashes
+and clean self-contained Windows/Linux publishes passed. Windows publishing used the normal
+ReadyToRun setting. Implementation commits are `bde7ca4` and `e84ba07` on
+`codex/architecture-review-fixes`. Separate records describe [large-history measurements](spikes/large-history-read-responsiveness.md)
 and [frozen replay and its limits](spikes/feed-replay.md). Headless interaction tests exercise
 both actual presentation paths; they do not establish physical TV or controller usability.
 
