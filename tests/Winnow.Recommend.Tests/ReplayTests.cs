@@ -105,6 +105,105 @@ public sealed class ReplayTests
         Assert.DoesNotContain(after.Tunings[0].Ranking, item => item.WorkId == retired.WorkId);
     }
 
+    [Fact]
+    public async Task Acquisition_captures_preserve_account_provenance_and_baseline_without_comparing_prices()
+    {
+        using var fixture = new ReplayFixture();
+        var paid = await fixture.Seed("Attributed amount", minutes: 300);
+        var free = await fixture.Seed("Known free", minutes: 300);
+        var unknown = await fixture.Seed("Unknown amount");
+        var conflict = await fixture.Seed("Conflicting amounts", minutes: 300);
+        var bundle = await fixture.Seed("Unallocated bundle", minutes: 300);
+        var currency = await fixture.Seed("Uncomparable currency", minutes: 300);
+        var sibling = await fixture.Seed("Linked Epic copy", minutes: 300);
+        using (var connection = fixture.Database.Factory.Open())
+            connection.Execute("UPDATE ownerships SET store='epic' WHERE id=@Id;", new { Id = sibling.OwnershipId });
+        await new IdentityLinkRepository(fixture.Database.Factory).LinkAsync(new()
+            { ParentWorkId = paid.WorkId, ChildWorkIds = [sibling.WorkId] });
+        var games = new[] { paid, free, unknown, conflict, bundle, currency };
+        var memberships = new OwnershipAccountRepository(fixture.Database.Factory);
+        foreach (var game in games)
+            foreach (var account in new[] { "12345", "67890" })
+                await memberships.UpsertAsync(new(game.OwnershipId, account, 300, AsOf.AddYears(-2), "fixture", AsOf.AddDays(-1)));
+        var settings = new SettingsRepository(fixture.Database.Factory);
+        await settings.SetAsync(AccountScope.SettingKey, AccountScope.Own);
+        await settings.SetAsync(SteamOwnedAccount.RefSettingKey, "12345");
+        var baseline = Path.Combine(fixture.Root, "without-acquisitions");
+        SnapshotBundle.Capture(fixture.Database.DatabasePath, baseline, new FixedClock(AsOf));
+
+        var observations = new AccountAcquisitionRepository(fixture.Database.Factory);
+        var observation = new OwnershipAcquisitionObservation
+        {
+            OwnershipId = paid.OwnershipId, AccountRef = "12345", PricePaidCents = 500,
+            AcquiredAt = AsOf.AddYears(-3), PriceSource = "steam_account_history", Source = "steam", CapturedAt = AsOf.AddHours(-1),
+        };
+        await observations.TryAppendAsync(observation);
+        await observations.TryAppendAsync(observation with { AccountRef = "67890", PricePaidCents = 9000 });
+        await observations.TryAppendAsync(observation with { AccountRef = null, PricePaidCents = 99999 });
+        await observations.TryAppendAsync(observation with { OwnershipId = free.OwnershipId, PricePaidCents = 0 });
+        await observations.TryAppendAsync(observation with { OwnershipId = conflict.OwnershipId, PricePaidCents = 500 });
+        await observations.TryAppendAsync(observation with { OwnershipId = conflict.OwnershipId, PricePaidCents = 700 });
+        using (var connection = fixture.Database.Factory.Open())
+        {
+            connection.Execute("UPDATE ownerships SET price_paid_cents=@Price, price_source='fixture', acquired_at=@At WHERE id=@Id;",
+                new[] { new { Id = paid.OwnershipId, Price = 500, At = AsOf.AddYears(-3) },
+                    new { Id = free.OwnershipId, Price = 0, At = AsOf.AddYears(-3) },
+                    new { Id = currency.OwnershipId, Price = 99999, At = AsOf.AddYears(-3) },
+                    new { Id = sibling.OwnershipId, Price = 500, At = AsOf.AddYears(-3) } });
+        }
+        var transaction = new AccountTransactionFact
+        {
+            Source = "steam", AccountRef = "12345", Kind = "purchase", TransactionTypeRaw = "Purchase",
+            ItemNames = ["Unallocated bundle", "Uncomparable currency"], TotalCents = 1000, ListPriceCents = 10000,
+            DiscountPercent = 90, CurrencySymbol = "$", CapturedAt = AsOf.AddHours(-1), OccurredAt = AsOf.AddYears(-3),
+        };
+        var transactions = new AccountFactRepository(fixture.Database.Factory);
+        await transactions.TryAppendAsync(transaction);
+        await transactions.TryAppendAsync(transaction with { CurrencySymbol = "€", TotalCents = 3000 });
+        fixture.Capture();
+        await settings.SetAsync(SteamOwnedAccount.RefSettingKey, "67890");
+        var otherAccount = Path.Combine(fixture.Root, "other-account");
+        SnapshotBundle.Capture(fixture.Database.DatabasePath, otherAccount, new FixedClock(AsOf));
+        using (var captured = SnapshotBundle.Open(fixture.CapturePath))
+        {
+            var rows = await new AccountAcquisitionRepository(captured.Factory).GetAsync(games.Select(game => game.OwnershipId).ToArray());
+            Assert.Equal(6, rows.Count);
+            var selected = rows.Where(row => row.AccountRef == "12345").ToArray();
+            Assert.Equal(4, selected.Length);
+            Assert.Equal(3, selected.Select(row => row.OwnershipId).Distinct().Count());
+            Assert.Equal(0, Assert.Single(selected, row => row.OwnershipId == free.OwnershipId).PricePaidCents);
+            Assert.DoesNotContain(rows, row => row.OwnershipId == unknown.OwnershipId);
+            Assert.Equal(2, selected.Count(row => row.OwnershipId == conflict.OwnershipId));
+            Assert.Equal(9000, Assert.Single(rows, row => row.AccountRef == "67890").PricePaidCents);
+            Assert.Equal(99999, Assert.Single(rows, row => row.AccountRef is null).PricePaidCents);
+            var receipts = await new AccountFactRepository(captured.Factory).GetTransactionsAsync("steam");
+            Assert.Equal(2, receipts.Count);
+            Assert.Equal(2, receipts.Select(row => row.CurrencySymbol).Distinct().Count());
+            Assert.All(receipts, row => { Assert.Equal(2, row.ItemNames.Count); Assert.Null(row.AppId); });
+            Assert.Null((await new OwnershipRepository(captured.Factory).GetAsync(bundle.OwnershipId))!.PricePaidCents);
+        }
+        await fixture.Surface(paid, 1);
+        await fixture.Launch(paid, 2);
+        await fixture.Surface(free, 1);
+        await fixture.Verdict(free, 2);
+        await fixture.Surface(bundle, 1);
+        fixture.CaptureOutcomes();
+        NamedTuning[] policy = [new("baseline", RecommendationTuning.Default), new("no-acquisition-contribution", RecommendationTuning.Default)];
+        var before = await ReplayEvaluation.CompareAsync(baseline, fixture.OutcomePath, policy, new ReplayOptions { K = 1 });
+        foreach (var path in new[] { fixture.CapturePath, otherAccount })
+        {
+            var after = await ReplayEvaluation.CompareAsync(path, fixture.OutcomePath, policy, new ReplayOptions { K = 1 });
+            Assert.NotEqual(before.SnapshotSha256, after.SnapshotSha256);
+            Assert.Equal(before.Tunings[0].Ranking.ToArray(), after.Tunings[0].Ranking.ToArray());
+            Assert.Equal(after.Tunings[0].Ranking.ToArray(), after.Tunings[1].Ranking.ToArray());
+            Assert.Equal(6, after.Tunings[0].Ranking.Count);
+            Assert.Equal(2, after.Tunings[0].JudgedCount);
+            Assert.Equal(1d / 3, after.Tunings[0].JudgedCoverage);
+            Assert.Single(after.Tunings[0].Ranking, item => item.WorkId == paid.WorkId);
+            Assert.DoesNotContain(after.Tunings[0].Ranking, item => item.WorkId == sibling.WorkId);
+        }
+    }
+
     [Theory]
     [InlineData(-1)]
     [InlineData(1)]

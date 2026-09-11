@@ -140,10 +140,11 @@ discount is not a per-game amount. Even a single item needs an exact game/accoun
 trustworthy transaction provenance before it can describe that game's purchase. Current
 ownership prices do not retain a transaction link sufficient for that comparison.
 
-No new acquisition weight or tier is justified by the available evaluation. This is a
-provisional decision: source semantics establish limits, not ranking quality. The dated
-[acquisition study](spikes/acquisition-evidence-2026-09-11.md) records the source audit,
-sanitized verification and the outstanding captured-library/outcome measurement.
+No new acquisition weight or tier is justified by the available evaluation. The dated
+[acquisition study](spikes/acquisition-evidence-2026-09-11.md) verifies account and grouping
+boundaries with captured fixtures: adding prices, conflicts and unmatched bundle transactions
+leaves baseline scores and reasons unchanged. Source semantics and synthetic labels do not
+establish ranking quality. Real coverage and later-outcome performance remain unmeasured.
 
 ## 4. The model
 

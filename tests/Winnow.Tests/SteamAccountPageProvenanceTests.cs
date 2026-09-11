@@ -204,6 +204,48 @@ public sealed class SteamAccountPageProvenanceTests
     }
 
     [Fact]
+    public async Task Selected_acquisition_scope_distinguishes_zero_missing_and_same_account_conflicts()
+    {
+        using var db = new TempDatabase();
+        var ownerships = new OwnershipRepository(db.Factory);
+        var observations = new AccountAcquisitionRepository(db.Factory);
+        var settings = new SettingsRepository(db.Factory);
+        await settings.SetAsync(AccountScope.SettingKey, AccountScope.Own);
+        await settings.SetAsync(SteamOwnedAccount.RefSettingKey, "12345");
+        var ids = new List<long>();
+        foreach (var title in new[] { "Free", "Unknown", "Amount conflict", "Source conflict" })
+        {
+            var work = await new WorkRepository(db.Factory).InsertAsync(new Work { Name = title });
+            var release = await new ReleaseRepository(db.Factory).InsertAsync(new Release { WorkId = work, Name = title });
+            ids.Add(await ownerships.InsertAsync(new Ownership { ReleaseId = release, Store = "steam", PricePaidCents = 99999, PriceSource = "legacy" }));
+        }
+        var evidence = new OwnershipAcquisitionObservation
+        {
+            OwnershipId = ids[0], AccountRef = "12345", PricePaidCents = 0, PriceSource = "history", Source = "steam",
+            CapturedAt = new(2040, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+        };
+        await observations.TryAppendAsync(evidence);
+        await observations.TryAppendAsync(evidence with { OwnershipId = ids[1], AccountRef = "67890", PricePaidCents = 100 });
+        await observations.TryAppendAsync(evidence with { OwnershipId = ids[1], AccountRef = null, PricePaidCents = 100 });
+        await observations.TryAppendAsync(evidence with { OwnershipId = ids[2], PricePaidCents = 100 });
+        await observations.TryAppendAsync(evidence with { OwnershipId = ids[2], PricePaidCents = 200 });
+        await observations.TryAppendAsync(evidence with { OwnershipId = ids[3], PricePaidCents = 100 });
+        await observations.TryAppendAsync(evidence with { OwnershipId = ids[3], PricePaidCents = 100, PriceSource = "other" });
+        var reader = new AccountAcquisitionReader(observations, settings);
+        var projected = (await reader.ProjectAsync(await ownerships.GetAllAsync())).ToDictionary(row => row.Id);
+        Assert.Equal(0, projected[ids[0]].PricePaidCents);
+        foreach (var id in ids.Skip(1))
+        {
+            Assert.Null(projected[id].PricePaidCents);
+            Assert.Null(projected[id].PriceSource);
+        }
+        await settings.SetAsync(SteamOwnedAccount.RefSettingKey, "67890");
+        var other = (await reader.ProjectAsync(await ownerships.GetAllAsync())).ToDictionary(row => row.Id);
+        Assert.Equal(100, other[ids[1]].PricePaidCents);
+        Assert.Null(other[ids[0]].PricePaidCents);
+    }
+
+    [Fact]
     public async Task Migration_preserves_unknown_legacy_facts_and_scopes_future_deduplication()
     {
         using var db = new TempDatabase(migrate: false);
