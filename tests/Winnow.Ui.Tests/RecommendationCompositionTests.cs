@@ -51,6 +51,9 @@ public sealed class RecommendationCompositionTests
         var shelf = Assert.Single(feed.Shelves);
         Assert.Equal(installedSibling ? ShelfIds.ReadyToPlay : ShelfIds.WaitingToBeOpened, shelf.Id);
         var card = Assert.Single(shelf.Cards);
+        Assert.False(string.IsNullOrWhiteSpace(card.Reason));
+        Assert.DoesNotContain("bought", card.Reason, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("paid for", card.Reason, StringComparison.OrdinalIgnoreCase);
         var expectedRelease = installedSibling ? 2 : 1;
         Assert.Equal(expectedRelease, card.SurfacingReleaseId);
         Assert.Equal(expectedRelease, card.Tile.PlayableEntry.ReleaseId);
@@ -65,6 +68,10 @@ public sealed class RecommendationCompositionTests
             Dispatcher.UIThread.RunJobs();
             Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), text => text.IsEffectivelyVisible
                 && text.Text == shelf.Title);
+            var visibleText = string.Join(" ", window.GetVisualDescendants().OfType<TextBlock>()
+                .Where(text => text.IsEffectivelyVisible).Select(text => text.Text));
+            Assert.DoesNotContain("bought", visibleText, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("paid for", visibleText, StringComparison.OrdinalIgnoreCase);
             // The visual observation command and both action controls use the same release.
             await services.GetRequiredService<IFeedService>().RecordSurfacedAsync(card.SurfacingReleaseId, shelf.Id);
             await card.NotInterestedCommand.ExecuteAsync(null);

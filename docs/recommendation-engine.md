@@ -98,7 +98,7 @@ contributes zero and the gap is *visible*, which is the honest way to degrade).
 | **Taste affinity** | 0 | +0.10 | The candidate carries a genre/theme/tag that the user's actual hours concentrate in. Explicitly a **tiebreaker** for the 754-row shelfware pile, not the lead — genre similarity is the commodity the charter says loses to incumbents. Profile is playtime-weighted (√minutes, refund line and up — with one exception: a feed-**endorsed** release testifies below the line with whatever √minutes it has, §6b), so retired games — excluded as candidates — still testify about taste. Facets above the **prevalence cut** (carried by >25% of the facet-carrying library) are excluded from the profile entirely: measured, they saturate the metric into meaninglessness (see §2's re-measurement). |
 | **Tried to like it** | 1 | +0.10 | Distinct return episodes (snapshot rises or sessions beyond the first): 40 minutes across six evenings is a different fact from 40 minutes once. Zero until history accrues; a bonus, never a prerequisite. |
 | **Installed** | 0 | +0.05 | Zero friction: it is on disk right now. |
-| **Bought twice** | 0 | +0.05 | The same work owned on 2+ stores is a purchase made twice — intent money can measure. Fires only after cross-store merges are confirmed (see §2). |
+| **Owned on multiple stores** | 0 | +0.05 | The same resolved game has copies on 2+ visible stores. This existing ownership bonus does not establish payment, repeated spending or deliberate intent; gifts, free claims and bundles also qualify. Internal names remain `BoughtTwice`/`bought_twice` for tuning compatibility. |
 | **Recently played** (penalty) | 0 | −0.60 | Played within the fresh window — not forgotten, so not this feed's business. Sized to sink anything: no combination of positives outruns it into the top of a realistic feed. |
 | **Probably done** (penalty) | 0 | −0.30 | Deep in the bounced pile (a fair shake of hours), deeply dormant, and nothing has changed since — the model's way of saying "you were right to drop this" instead of nagging. The contribution's explanation says exactly that, which is the charter's honesty requirement made concrete. |
 | **Recently surfaced** (penalty) | 0 | −0.20 | Caller-supplied set of releases the feed showed recently — the anti-"same five games forever" mechanism. The caller loads it from the `feed_surfacings` log via `FeedbackSets` (§6b); the engine still stores nothing. |
@@ -119,6 +119,31 @@ later. Until that proof exists the coverage is `Unknown`, and no negative claim 
 release may be made by any signal or any sentence.
 
 Signals deliberately **not** scored, and why, are in §7.
+
+### Acquisition evidence
+
+Acquisition date and paid price currently contribute no score. Ownership alone cannot
+establish a purchase, discount, regret or willingness to play. Free, missing or conflicting
+acquisitions receive no additional penalty and no acquisition entry in the breakdown.
+The existing multiple-store contribution describes ownership only; its weight is unchanged.
+
+Any future acquisition signal must use the library's account scope and resolved game groups.
+Known Steam accounts require matching `OwnershipAcquisitionObservation` rows; legacy aggregate
+ownership fields cannot fill that account's missing facts. Aggregate presentation may use the
+earliest observed acquisition date, but conflicting prices or provenance stay unknown. Dates
+describe the recorded acquisition, not necessarily the user's first ownership or first play.
+Count each resolved game once; linked copies must not multiply acquisition contributions.
+
+Ownership prices lack currency. Do not compare their raw amounts, infer a currency from a
+symbol, or attach an unmatched transaction's list price. A multi-item transaction's total or
+discount is not a per-game amount. Even a single item needs an exact game/account match and
+trustworthy transaction provenance before it can describe that game's purchase. Current
+ownership prices do not retain a transaction link sufficient for that comparison.
+
+No new acquisition weight or tier is justified by the available evaluation. This is a
+provisional decision: source semantics establish limits, not ranking quality. The dated
+[acquisition study](spikes/acquisition-evidence-2026-09-11.md) records the source audit,
+sanitized verification and the outstanding captured-library/outcome measurement.
 
 ## 4. The model
 
@@ -619,7 +644,7 @@ skipped, which is why every list must carry at least one token-free variant; a v
 citing one of the game's own numbers is preferred over one that would be equally true of any
 game, which is what stops a feed of "it's in your library" cards.
 
-Real output, rendered from the live library:
+Example output using supported evidence:
 
 > You have not seen "Reforged Eden", which arrived after you left, and nobody has opened it in 4 years.
 >
@@ -629,7 +654,7 @@ Real output, rendered from the live library:
 >
 > A brief look, 22 minutes, and nothing after, untouched for 4 years.
 >
-> This has been waiting since you bought it, and nothing needs downloading first.
+> This has been waiting in your library, and nothing needs downloading first.
 >
 > 43 hours was your answer 7 years ago, and nothing since has argued with it.
 >

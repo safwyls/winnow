@@ -30,7 +30,7 @@ public sealed record RecommendationTuning
     /// <summary>On disk right now — zero friction to launch.</summary>
     public double WeightInstalled { get; init; } = 0.05;
 
-    /// <summary>Same work owned on two stores: a purchase made twice. Fires only after cross-store merges are confirmed.</summary>
+    /// <summary>Same work owned on two stores. A small existing ownership signal; does not establish payment.</summary>
     public double WeightBoughtTwice { get; init; } = 0.05;
 
     // ── Penalties ───────────────────────────────────────────────────────────

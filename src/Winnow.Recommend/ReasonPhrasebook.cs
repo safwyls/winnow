@@ -93,11 +93,11 @@ internal static class ReasonPhrasebook
         ],
         ReasonSignal.NeverOpened =>
         [
-            "Bought and never once launched",
+            "Owned with no recorded launch",
             "You own this and have never met it",
             "Zero minutes, no launch date, nothing recorded here at all",
             "Still sealed since the day it arrived",
-            "This has been waiting since you bought it",
+            "This has been waiting in your library",
         ],
         ReasonSignal.LaunchedUnmeasured =>
         [
@@ -136,9 +136,9 @@ internal static class ReasonPhrasebook
         ],
         ReasonSignal.BoughtTwice =>
         [
-            ", and you bought it on {stores} different stores",
-            ", paid for twice across {stores} stores",
-            ", owned {stores} times over, probably from a bundle",
+            ", and you own it on {stores} different stores",
+            ", with copies across {stores} stores",
+            ", present in {stores} of your store libraries",
             ", and you own it more than once",
         ],
         ReasonSignal.Installed =>

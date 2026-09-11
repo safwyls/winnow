@@ -13,7 +13,7 @@ public enum ReasonSignal
     /// <summary>No signal. Only ever the secondary.</summary>
     None = 0,
 
-    /// <summary>Zero minutes and no play date: bought, never opened.</summary>
+    /// <summary>Zero minutes and no play date: owned with no recorded play.</summary>
     NeverOpened,
 
     /// <summary>A play date beside zero minutes: launched, but no store measured it.</summary>

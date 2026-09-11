@@ -99,7 +99,7 @@ public static class RecommendationScorer
         if (facts.StoreCount >= 2)
         {
             Add(SignalNames.BoughtTwice, tuning.WeightBoughtTwice, 1.0,
-                $"You bought it on {facts.StoreCount} different stores.");
+                $"You own it on {facts.StoreCount} different stores.");
         }
 
         // ── Penalties ──────────────────────────────────────────────────────
