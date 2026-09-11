@@ -5,7 +5,7 @@ status: To Do
 assignee:
   - codex
 created_date: '2026-08-29 21:52'
-updated_date: '2026-09-11 14:03'
+updated_date: '2026-09-11 19:14'
 labels:
   - ui
   - accessibility
@@ -47,4 +47,6 @@ Use the intended controller and TV/display with a throwaway data directory. Reco
 
 <!-- SECTION:NOTES:BEGIN -->
 Audit evidence: docs/spikes/fullscreen-controller-verification.md and the fullscreen accessibility, navigation, details and platform tests establish automated coverage. They do not establish physical-controller or seating-distance usability. Existing clock/battery completion is retained; no hardware or live provider pass occurred in this audit. Keep needs-user and the deferred queue position.
+
+2026-09-11 boundary audit after the remaining UI backlog fixes: desktop/fullscreen headless coverage and TASK-108 native notification smoke establish application behavior, not physical controller reachability or seating-distance readability. No tested controller model, intended display/seating-distance observations, or live provider/native-window handoff results were recorded in this work. Acceptance criteria 1-3 remain open; retain needs-user and the existing hardware plan. Do not repeat synthetic interaction tests as a substitute for this evidence.
 <!-- SECTION:NOTES:END -->
