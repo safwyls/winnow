@@ -35,6 +35,9 @@ public sealed record FeedShelf(
     string Blurb,
     IReadOnlyList<FeedItem> Items)
 {
+    /// <summary>False for chronological collections that do not participate in recommendation feedback.</summary>
+    public bool SupportsFeedback { get; init; } = true;
+
     /// <summary>
     /// Additional computed items held back by desktop (fullscreen may expose them): the replacements a
     /// dismissed card is swapped for, in score order, cap-legal against

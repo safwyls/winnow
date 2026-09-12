@@ -1440,8 +1440,8 @@ gates are documented in `docs/recommendation-engine.md`.
 A release is classified independently. A same-game group enters Derelict only when every
 visible release qualifies; evidence about one store copy cannot condemn an unknown or
 active sibling. Hidden games and account scope are applied before grouping, as for the
-other buckets. Derelict games appear in their own feed shelf and are excluded from ordinary
-play recommendations. Delisted and abandoned games may still run; this classification does
+other buckets. Derelict games are excluded from the feed and remain available in the library.
+Delisted and abandoned games may still run; this classification does
 not disable launch actions. When a group has a copy without Derelict evidence, ordinary
 recommendations and the default launch/install route prefer that copy. If every copy
 qualifies, manual launch remains available.

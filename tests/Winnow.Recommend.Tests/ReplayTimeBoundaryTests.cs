@@ -46,7 +46,8 @@ public sealed class ReplayTimeBoundaryTests
         var before = await harness.Engine.GetShelvesAsync(RecommendHarness.Request());
         Assert.DoesNotContain(before.Shelves, item => item.Id == ShelfIds.Derelict);
         var after = await harness.Engine.GetShelvesAsync(RecommendHarness.Request() with { AsOfUtc = RecommendHarness.AsOf.AddDays(2) });
-        Assert.Contains(after.Shelves, item => item.Id == ShelfIds.Derelict);
+        Assert.Empty(after.Shelves);
+        Assert.Contains(before.Shelves.SelectMany(shelf => shelf.Items), item => item.ReleaseId == game.ReleaseId);
     }
 
     [Fact]

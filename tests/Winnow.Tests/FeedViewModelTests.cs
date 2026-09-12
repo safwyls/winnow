@@ -1,4 +1,4 @@
-﻿using Winnow.App.Services;
+using Winnow.App.Services;
 using Winnow.App.ViewModels;
 using Winnow.Core.Queries;
 using Winnow.Covers;
@@ -11,6 +11,37 @@ namespace Winnow.Tests;
 /// </summary>
 public sealed class FeedViewModelTests
 {
+    [Theory]
+    [InlineData(false, 6, 4)]
+    [InlineData(true, 10, 0)]
+    public async Task Recently_played_keeps_order_and_capacity_without_feedback(bool fullscreen, int visible, int reserve)
+    {
+        var tiles = new FakeTileSource();
+        var items = Enumerable.Range(1, 10).Select(id => Item(tiles, id, $"Last played {id}")).ToArray();
+        var recent = Shelf("recently_played", "Recently played", "Your latest games", items.Take(6).ToArray())
+            with { Reserve = items.Skip(6).ToArray(), SupportsFeedback = false };
+        var recommended = Shelf("recommended", "Recommended", "", items[0]);
+        var service = new FakeFeedService(Snapshot(recent, recommended));
+        using var feed = new FeedViewModel(service, tiles, includeReserve: fullscreen);
+        await feed.LoadCommand.ExecuteAsync(null);
+        var shelf = feed.Shelves[0];
+        Assert.Equal("recently_played", shelf.Id);
+        Assert.Equal(Enumerable.Range(1, visible).Select(id => (long)id), shelf.Cards.Select(card => card.Tile.ReleaseId));
+        Assert.Equal(reserve, shelf.Reserve.Count);
+        foreach (var card in shelf.Cards)
+        {
+            Assert.False(card.CanGiveFeedback);
+            Assert.False(card.CanReplace);
+            await card.NotInterestedCommand.ExecuteAsync(null);
+            await card.NotNowCommand.ExecuteAsync(null);
+            Assert.False(card.IsSetAside);
+            await feed.RecordViewportEntryAsync(card);
+        }
+        Assert.Empty(service.Surfaced);
+        await feed.RecordViewportEntryAsync(feed.Shelves[1].Cards[0]);
+        Assert.Equal("recommended", Assert.Single(service.Surfaced).ShelfId);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -112,11 +143,11 @@ public sealed class FeedViewModelTests
     }
 
     [Fact]
-    public async Task Derelict_only_feed_shows_evidence_without_playtime_confidence_claim()
+    public async Task Recently_played_only_feed_does_not_claim_scoring_confidence()
     {
         var tiles = new FakeTileSource();
-        const string reason = "IGDB reports cancellation (99% confidence).";
-        var shelf = Shelf("derelict", "Derelict", "Games with lifecycle evidence.", Item(tiles, 1, reason));
+        const string reason = "Last played on 11 September 2026.";
+        var shelf = Shelf("recently_played", "Recently played", "Your latest games.", Item(tiles, 1, reason)) with { SupportsFeedback = false };
         var snapshot = new FeedSnapshot([shelf], 0, FeedConfidence.EarlyDays, Failed: false);
         var feed = new FeedViewModel(new FakeFeedService(snapshot), tiles);
 

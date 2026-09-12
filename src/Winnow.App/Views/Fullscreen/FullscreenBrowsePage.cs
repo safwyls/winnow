@@ -530,7 +530,8 @@ public sealed class FullscreenBrowsePage : FullscreenPage
             new("Refresh recommendations", () => Context.Feed.LoadCommand.Execute(null))
         };
         if (_selected is not { } tile) { Context.ShowActions("For you", general); return; }
-        var card = Context.Feed.Shelves.SelectMany(s => s.Cards).FirstOrDefault(c => ReferenceEquals(c.Tile, tile));
+        var card = Context.Feed.Shelves.ElementAtOrDefault(_shelf)?.Cards
+            .FirstOrDefault(c => ReferenceEquals(c.Tile, tile));
         var actions = new List<FullscreenAction>
         {
             new("Open game", () => Context.OpenGame(tile)),

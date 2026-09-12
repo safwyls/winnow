@@ -27,7 +27,7 @@ public class ShelfFeedTests : IDisposable
         => Shelf(feed, shelfId)?.Items.Any(i => i.ReleaseId == game.ReleaseId) ?? false;
 
     private static bool OnAnyShelf(ShelfFeed feed, SeededGame game)
-        => feed.Shelves.Any(s => s.Items.Any(i => i.ReleaseId == game.ReleaseId));
+        => feed.Shelves.Where(s => s.SupportsFeedback).Any(s => s.Items.Any(i => i.ReleaseId == game.ReleaseId));
 
     [Fact]
     public async Task Every_shelf_populates_from_tier_zero_facts_alone()
@@ -56,7 +56,7 @@ public class ShelfFeedTests : IDisposable
 
         // Presentation order is the claim order: strongest story first.
         Assert.Equal(
-            [ShelfIds.PatchedWhileAway, ShelfIds.WorthAnotherLook, ShelfIds.ReadyToPlay, ShelfIds.BarelyTouched, ShelfIds.OnYourTaste],
+            [ShelfIds.RecentlyPlayed, ShelfIds.PatchedWhileAway, ShelfIds.WorthAnotherLook, ShelfIds.ReadyToPlay, ShelfIds.BarelyTouched, ShelfIds.OnYourTaste],
             feed.Shelves.Select(s => s.Id).ToArray());
     }
 
@@ -195,7 +195,7 @@ public class ShelfFeedTests : IDisposable
     }
 
     [Fact]
-    public async Task Recently_played_games_reach_no_shelf()
+    public async Task Recently_played_games_reach_no_recommendation_shelf()
     {
         var fresh = await _harness.SeedGameAsync("Playing It Now", minutes: 300, lastPlayed: AsOf.AddDays(-3));
         var freshInstalled = await _harness.SeedGameAsync("Installed Yesterday", minutes: 30, lastPlayed: AsOf.AddDays(-1), installed: true);
@@ -207,7 +207,7 @@ public class ShelfFeedTests : IDisposable
     }
 
     [Fact]
-    public async Task Hard_exclusions_hold_for_shelves_too()
+    public async Task Hard_exclusions_hold_for_recommendation_shelves_too()
     {
         var retired = await _harness.SeedGameAsync("Finished 200h Game", minutes: 12_000, lastPlayed: AsOf.AddYears(-2));
         await _harness.SeedMajorUpdateAsync(retired, AsOf.AddMonths(-1), "Anniversary Update");

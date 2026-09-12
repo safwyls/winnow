@@ -23,6 +23,14 @@ namespace Winnow.Tests;
 /// </summary>
 public sealed class FeedReserveTests
 {
+    [Fact]
+    public async Task Recently_played_service_ignores_surfacing()
+    {
+        var store = new FakeFeedbackStore();
+        await new FeedService(feedback: store).RecordSurfacedAsync(1, "recently_played");
+        Assert.Empty(store.Surfacings);
+    }
+
     private static readonly DateTime Now = new(2026, 8, 27, 10, 0, 0, DateTimeKind.Utc);
 
     private const string Reason = "Never opened since it joined your library.";
@@ -343,26 +351,6 @@ public sealed class FeedReserveTests
         Assert.Empty(service.Surfaced);
         await feed.RecordViewportEntryAsync(shelf.Cards[0]);
         Assert.Equal([(103L, "on_your_taste")], service.Surfaced);
-    }
-
-    [Fact]
-    public async Task Derelict_reserve_can_repeat_the_same_source_fact()
-    {
-        var tiles = new FakeTileSource();
-        const string reason = "IGDB reports offline status (98% confidence).";
-        var shelf = new FeedShelf("derelict", "Derelict", "Lifecycle evidence.",
-            [Said(tiles, 1, "Closed one", reason), Said(tiles, 2, "Closed two", reason)])
-        {
-            Reserve = [Said(tiles, 3, "Closed three", reason)],
-        };
-        var service = new FakeFeedService(new FeedSnapshot([shelf], 0, FeedConfidence.EarlyDays, Failed: false));
-        var feed = new FeedViewModel(service, tiles);
-        await feed.LoadCommand.ExecuteAsync(null);
-        await feed.Shelves[0].Cards[0].NotInterestedCommand.ExecuteAsync(null);
-
-        feed.Tick(FeedCardViewModel.Countdown);
-
-        Assert.Equal("Closed three", feed.Shelves[0].Cards[0].Tile.Title);
     }
 
     [Fact]

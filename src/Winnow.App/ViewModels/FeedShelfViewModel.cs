@@ -15,9 +15,11 @@ public sealed class FeedShelfViewModel : ObservableObject
         string title,
         string blurb,
         IEnumerable<FeedCardViewModel> cards,
-        IEnumerable<FeedItem>? reserve = null)
+        IEnumerable<FeedItem>? reserve = null,
+        bool supportsFeedback = true)
     {
         Id = id;
+        SupportsFeedback = supportsFeedback;
         Title = title;
         Blurb = blurb;
         Cards = new ObservableCollection<FeedCardViewModel>(cards);
@@ -28,6 +30,8 @@ public sealed class FeedShelfViewModel : ObservableObject
 
     /// <summary>Stable shelf id (<c>patched_while_away</c>…), never matched on prose.</summary>
     public string Id { get; }
+
+    public bool SupportsFeedback { get; }
 
     /// <summary>The engine's display title, in its own words.</summary>
     public string Title { get; }

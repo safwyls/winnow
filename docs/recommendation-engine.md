@@ -5,8 +5,9 @@ Bucket definitions: [build specification §6.1](../game-library-design.md#61-der
 
 This document defines the scoring signals, tuning defaults, evidence requirements, shelves
 and explanation contract. `RecommendationTuning` carries scoring parameters; changing a
-default does not require a database migration. Flat and shelf feeds share the scoring core,
-feedback, undo and surfacing memory. Desktop and fullscreen use their own presentation state.
+default does not require a database migration. Flat and shelf recommendations share the scoring core,
+feedback, undo and surfacing memory. Recently played is a chronological collection outside that loop.
+Desktop and fullscreen use their own presentation state.
 
 ---
 
@@ -33,8 +34,8 @@ exactly the build specification §6.1 sense: computed on every read, comparable 
 stored, never trusted by anything else.
 
 `GetShelvesAsync(request)` serves the scoring pass as themed shelves with their own pitches
-and membership rules available at Tier 0. It also adds a separate Derelict shelf when
-external lifecycle evidence warrants review (§6a); this shelf does not recommend playing.
+and membership rules available at Tier 0. Recently played comes first as a separate
+chronological collection outside scoring and feedback (§6a). Derelict stays in the library.
 
 Both built-in and plugin feeds use Core's `RecommendationGame` projection. The library
 snapshot carries complete live identity state separately from its visible bucket rows:
@@ -99,7 +100,7 @@ contributes zero and the gap is *visible*, which is the honest way to degrade).
 | **Tried to like it** | 1 | +0.10 | Distinct return episodes (snapshot rises or sessions beyond the first): 40 minutes across six evenings is a different fact from 40 minutes once. Zero until history accrues; a bonus, never a prerequisite. |
 | **Installed** | 0 | +0.05 | Zero friction: it is on disk right now. |
 | **Owned on multiple stores** | 0 | +0.05 | The same resolved game has copies on 2+ visible stores. This existing ownership bonus does not establish payment, repeated spending or deliberate intent; gifts, free claims and bundles also qualify. Internal names remain `BoughtTwice`/`bought_twice` for tuning compatibility. |
-| **Recently played** (penalty) | 0 | −0.60 | Played within the fresh window — not forgotten, so not this feed's business. Sized to sink anything: no combination of positives outruns it into the top of a realistic feed. |
+| **Recently played** (penalty) | 0 | −0.60 | Played within the fresh window — not forgotten, so excluded from recommendation shelves. The separate Recently played collection ignores this penalty. Sized to sink anything: no combination of positives outruns it into the top of a realistic ranked feed. |
 | **Probably done** (penalty) | 0 | −0.30 | Deep in the bounced pile (a fair shake of hours), deeply dormant, and nothing has changed since — the model's way of saying "you were right to drop this" instead of nagging. The contribution's explanation says exactly that, which is the charter's honesty requirement made concrete. |
 | **Recently surfaced** (penalty) | 0 | −0.20 | Caller-supplied set of releases the feed showed recently — the anti-"same five games forever" mechanism. The caller loads it from the `feed_surfacings` log via `FeedbackSets` (§6b); the engine still stores nothing. |
 | **Mode mismatch** (penalty) | 0 | −0.10 | The candidate sits entirely on the wrong side of the single-player/online line for how this user demonstrably plays (93% single-player by committed game count, measured). Fires only under dominance (≥85% share over ≥20 mode-carrying committed games) and only against a candidate that is *exclusively* the other side; co-op without versus is a maybe, not a mistake. Sized to cancel a perfect taste match, not to bury — mode facets can be missing or wrong. |
@@ -184,7 +185,7 @@ score = Σ (weight_s × value_s) − Σ penalties + jitter
 5. Everything the build specification §6.1 query already dropped upstream: consolidated demos/betas, and
    non-game entries (tools, soundtracks) under the default setting.
 6. **Derelict** lifecycle groups: cancelled, offline, delisted, abandoned or dead. These
-   enter only the dedicated review shelf, with no recommendation score or history probe.
+   stay out of the feed, with no recommendation score or history probe.
    Inactive and unknown evidence do not justify exclusion. The game's derived bucket is
    authoritative, so a viable linked store copy can keep a game in the ordinary pool.
 
@@ -308,7 +309,7 @@ storefront could show (a taste-matched backlog rail), and that is fine — ours 
 same feed that keeps getting better with history the storefronts never keep, so parity on
 day one compounds into a lead.
 
-Shelves, in claim order (which is also presentation order — strongest story first):
+Recommendation shelves follow Recently played in this claim and presentation order:
 
 | Shelf | Membership rule (Tier-0 facts only) | The pitch |
 |---|---|---|
@@ -410,31 +411,28 @@ arrives at the bottom is a game no queue has held. One backfill reads at a time;
 request waits behind it, and a backfill from a pass the feed has since replaced is
 discarded.
 
-### Derelict: lifecycle review
+### Recently played
 
-Derelict follows the five recommendation shelves when eligible evidence exists. Its
-membership comes from the same scoped, hidden-filtered, same-game bucket rows as the
-library. Dismissal and snooze widen to the resolved game before either pool is assembled.
-Each card carries the classifier's one-sentence reason and confidence, retained as
-`ReasonEvidence.Lifecycle`; no taste or playtime score pretends to explain a shutdown.
-The score is zero and the scoring-signal list is empty. Candidate, work and history-probe
-counts describe ordinary recommendations only. Library maturity still measures the whole
-library, including these games' real historical sessions.
+`recently_played` is the first shelf when the visible library has known last-played dates.
+It holds up to ten resolved games in descending last-played order, with stable identity
+ordering for ties. Linked store copies appear once, using the group's play evidence.
+Unknown and future dates, provisional names and Derelict groups are excluded.
 
-Recently surfaced entries follow unseen entries, then the existing daily deterministic
-shuffle rotates each group. No confidence cutoff is added here: classification owns its
-evidence gates, and a second cutoff would conceal cases the library already explains.
-The same `MaxPerShelf` depth holds visible cards and reserves; a deeper request leaves
-the visible prefix unchanged. Genre and franchise caps do not hide lifecycle evidence.
-Delisting and abandonment need not mean unplayability, so the shelf says some games may
-still be playable. No local launch failure or low single-player population alone can
-justify calling a game dead.
+This is a history collection: retired games, dismissals, snoozes, endorsements, surfacing
+memory and shuffle seeds do not change its membership or order. It does not claim games
+from the recommendation shelves. Items carry a last-played date, zero score and no scoring
+signals. Candidate, work and history-probe counts continue to describe recommendations.
 
-Lifecycle confidence expresses the strength of the available evidence. Its defaults are
-conservative policy choices, not probabilities calibrated against a labelled dataset;
-the percentage on the card must be read alongside its source reason. Play-history tiers
-do not increase lifecycle confidence, and the feed suppresses its playtime-confidence
-note when Derelict is the only shelf.
+Desktop shows the first six cards and holds four; fullscreen exposes all ten through its
+existing horizontal shelf. Neither surface offers verdict controls or logs feed surfacings
+for this collection. Empty collections are omitted.
+
+### Derelict: lifecycle exclusions
+
+Derelict remains a library bucket and is absent from the feed. The details view presents
+its lifecycle status, source reason and confidence. Confidence expresses evidence strength,
+not a probability calibrated against a labelled dataset. Delisting or abandonment does
+not by itself mean a game cannot launch; manual launch remains available.
 
 Lifecycle gates use `LifecycleTuning`, separate from the weighted play model. These are
 initial conservative defaults requiring later evaluation against labelled real libraries;
@@ -458,11 +456,10 @@ cannot establish silence. A newer activity signal vetoes the corresponding quiet
 | `DeadConfidence` / `AbandonedConfidence` | 0.80 / 0.75 | Corroborated behavioral inference remains below explicit status; unfinished projects have particularly uncertain schedules. |
 | `InactiveConfidence` / `ActiveConfidence` / `UnknownConfidence` | 0.55 / 0.65 / 0 | Low activity is weak negative evidence; observed activity supports a modest positive claim; absence of usable evidence contributes no confidence. |
 
-The review shelf does not vary these gates by play-history tier. A cold library can carry
+Lifecycle classification does not vary these gates by play-history tier. A cold library can carry
 explicit catalog evidence immediately, while behavioral classifications wait for dated
 external observations. Shared source silence, store failures and low single-player counts
-cannot be promoted into proof of death. Identical source reasons may repeat on Derelict
-and in its replacement reserve: varying prose must never conceal a lifecycle fact.
+cannot be promoted into proof of death.
 
 ## 6b. The feedback loop
 

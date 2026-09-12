@@ -605,9 +605,9 @@ which asks about games rather than records.
 
 **Empty states are directions, not moods.**
 
-Derelict is a library bucket and a separate feed shelf. It names lifecycle evidence, not a
-promise that a game cannot launch. Each feed card states the inferred or explicit status,
-confidence and source-based reason; the details modal repeats that information in Overview. Confidence is a heuristic estimate, not a measured probability. Delisted
+Derelict is a library bucket, excluded from the feed. It names lifecycle evidence, not a
+promise that a game cannot launch. The details modal states the inferred or explicit status,
+confidence and source-based reason in Overview. Confidence is a heuristic estimate, not a measured probability. Delisted
 games may still run. Launch actions keep their existing availability rules.
 
 - Patched, empty: *"Nothing's been patched since you last played. This fills up on its own."*
@@ -656,11 +656,16 @@ games, rather than enlarging art to fill the extra height. Available height stil
 covers when increasing scale or using large margins. The default retains the
 16:9 composition. Validate readability from the actual seating position before accepting the scale.
 
-**For you** opens on a focused recommendation in a horizontal cover shelf.
+**For you** opens on a focused game in a horizontal cover shelf.
 Fullscreen makes the complete scored shelf available: up to six primary recommendations
 plus four reserve items. Show as many as fit at the chosen scale, with left/right navigation
 to overflow games; do not enlarge covers just to fill a short shelf. Desktop retains six
 cards with a hidden replacement reserve. Only actual viewport entry records an impression.
+
+Recently played is the first shelf when play dates are available, ordered newest first.
+It holds up to ten games: six desktop cards and four additional games available in fullscreen.
+This collection has no recommendation verdict controls and records no feed impressions.
+Its order does not change with recommendation feedback or daily rotation.
 
 A large title, one-sentence reason and game artwork above the shelf follow the selection. The reason reserves
 two lines at the chosen text size and truncates overflow with an ellipsis, so description
