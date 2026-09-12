@@ -9,6 +9,11 @@ For an explanation of the design with a SteamGridDB trace and a buildable exampl
 
 ## Install and configure
 
+Desktop and fullscreen Plugins settings list the names and versions of plugins loaded in the
+current session above the configuration controls. Pending enable or disable changes do not
+change this list until restart. When none are loaded, the list says so; discovered packages
+and installation errors remain available below it.
+
 1. Open **Settings → Plugins → Open plugins folder**. The folder is `plugins`
    inside Winnow's data directory, including when using `--data-dir`. Winnow creates it
    during startup if it is missing.

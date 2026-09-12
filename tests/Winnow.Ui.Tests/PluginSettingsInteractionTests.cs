@@ -18,6 +18,39 @@ namespace Winnow.Ui.Tests;
 public sealed class PluginSettingsInteractionTests
 {
     [AvaloniaFact]
+    public async Task Loaded_plugins_show_runtime_names_and_versions_on_both_surfaces()
+    {
+        var backend = new RuntimeStateBackend();
+        var shell = await ShellAsync(backend);
+        using var context = new FullscreenContext(shell.Library, shell.Feed, shell);
+        var desktop = new PluginSettingsView { DataContext = shell.PluginSettings };
+        var window = new Window { Width = 1200, Height = 800, Content = desktop };
+        window.Show();
+        try
+        {
+            Assert.Equal("Active artwork · 2.0", Named<TextBlock>(desktop, "Loaded plugins").Text);
+            Assert.Equal(3, shell.PluginSettings.Plugins.Count);
+            Capture(window, "desktop-loaded-plugins");
+            using var fullscreen = new FullscreenSettingsPage(context, "Plugins");
+            window.Content = fullscreen;
+            await fullscreen.PendingPluginRefresh;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal("Active artwork · 2.0", Named<TextBlock>(fullscreen, "Loaded plugins").Text);
+            Assert.NotNull(Named<Button>(fullscreen, "Waiting for restart"));
+            Capture(window, "fullscreen-loaded-plugins");
+
+            backend.Loaded = false;
+            await shell.PluginSettings.LoadAsync();
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal("No plugins are loaded in this session.", Named<TextBlock>(fullscreen, "Loaded plugins").Text);
+            window.Content = desktop;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal("No plugins are loaded in this session.", Named<TextBlock>(desktop, "Loaded plugins").Text);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
     public async Task Zip_installation_help_and_archive_errors_are_visible_on_both_surfaces()
     {
         var shell = await ShellAsync(new ArchiveIssueBackend());
@@ -285,6 +318,21 @@ public sealed class PluginSettingsInteractionTests
         public Task<IReadOnlyList<PluginSettingsSnapshot>> LoadAsync(CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<PluginSettingsSnapshot>>([new("invalid:broken.zip", "broken.zip", "This plugin could not be loaded.",
                 "", "", false, false, false, Error, [], CanConfigure: false)]);
+        public Task SaveAsync(string pluginId, IReadOnlyDictionary<string, string> values, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task RemoveSecretAsync(string pluginId, string key, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task SetEnabledAsync(string pluginId, bool enabled, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task RefreshAsync(string pluginId, CancellationToken ct = default) => throw new NotSupportedException();
+    }
+
+    private sealed class RuntimeStateBackend : IPluginSettingsBackend
+    {
+        public bool Loaded { get; set; } = true;
+        public string UserPluginDirectory => "plugins";
+        public Task<IReadOnlyList<PluginSettingsSnapshot>> LoadAsync(CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<PluginSettingsSnapshot>>([
+                new("active", "Active artwork", "", "2.0", "Artwork", false, Loaded, Loaded, "", []),
+                new("pending", "Waiting for restart", "", "1.0", "Metadata", true, false, true, "", []),
+                new("failed", "Failed plugin", "", "3.0", "Metadata", true, false, true, "Could not start.", [])]);
         public Task SaveAsync(string pluginId, IReadOnlyDictionary<string, string> values, CancellationToken ct = default) => throw new NotSupportedException();
         public Task RemoveSecretAsync(string pluginId, string key, CancellationToken ct = default) => throw new NotSupportedException();
         public Task SetEnabledAsync(string pluginId, bool enabled, CancellationToken ct = default) => throw new NotSupportedException();

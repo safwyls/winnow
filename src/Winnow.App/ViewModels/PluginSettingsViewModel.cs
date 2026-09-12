@@ -18,6 +18,7 @@ public partial class PluginSettingsViewModel(
     public string UserPluginDirectory => backend?.UserPluginDirectory ?? string.Empty;
     [ObservableProperty] public partial bool IsBusy { get; private set; }
     [ObservableProperty] public partial string Status { get; private set; } = string.Empty;
+    [ObservableProperty] public partial string LoadedPluginSummary { get; private set; } = "Reading loaded plugins…";
 
     public async Task LoadAsync(CancellationToken ct = default)
     {
@@ -28,6 +29,11 @@ public partial class PluginSettingsViewModel(
         try
         {
             var snapshots = await backend.LoadAsync(ct);
+            var loaded = snapshots.Where(plugin => plugin.IsLoaded)
+                .OrderBy(plugin => plugin.Name, StringComparer.CurrentCultureIgnoreCase)
+                .Select(plugin => $"{plugin.Name} · {plugin.Version}").ToArray();
+            LoadedPluginSummary = loaded.Length == 0 ? "No plugins are loaded in this session."
+                : string.Join(Environment.NewLine, loaded);
             foreach (var snapshot in snapshots)
             {
                 var existing = Plugins.FirstOrDefault(plugin => plugin.Id == snapshot.Id);
@@ -39,7 +45,10 @@ public partial class PluginSettingsViewModel(
             Status = Plugins.Count == 0 ? "No plugins found. Open the plugins folder to add one, then restart Winnow." : string.Empty;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
-        { Status = "Could not read plugins. Restart Winnow to try again."; }
+        {
+            LoadedPluginSummary = "Loaded plugins could not be read.";
+            Status = "Could not read plugins. Restart Winnow to try again.";
+        }
         finally { IsBusy = false; }
     }
 

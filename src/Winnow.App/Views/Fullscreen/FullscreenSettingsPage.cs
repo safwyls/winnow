@@ -256,6 +256,12 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         }
         else if (_section == "Plugins")
         {
+            Group("Loaded plugins");
+            var loadedPlugins = FullscreenUi.Text("", 28, "TextDim");
+            loadedPlugins.Bind(TextBlock.TextProperty, new Binding(nameof(PluginSettingsViewModel.LoadedPluginSummary)) { Source = Context.Shared.EnrichmentSettings.Plugins });
+            AutomationProperties.SetName(loadedPlugins, "Loaded plugins");
+            AutomationProperties.SetLiveSetting(loadedPlugins, AutomationLiveSetting.Polite);
+            rows.Children.Add(loadedPlugins);
             Group("Plugins");
             foreach (var plugin in Context.Shared.EnrichmentSettings.Plugins.Plugins)
                 Action(plugin.Name, () => Context.Push(new FullscreenPluginSettingsPage(Context, plugin)));

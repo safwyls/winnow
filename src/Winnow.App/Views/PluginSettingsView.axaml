@@ -23,7 +23,10 @@
         </Border>
         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="24,16,24,28" MaxWidth="920" HorizontalAlignment="Left" Spacing="14">
-                <TextBlock Classes="label section" AutomationProperties.HeadingLevel="2" Text="PLUGINS"/>
+                <TextBlock Classes="label section" AutomationProperties.HeadingLevel="2" Text="LOADED PLUGINS"/>
+                <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding LoadedPluginSummary}"
+                           AutomationProperties.Name="Loaded plugins" AutomationProperties.LiveSetting="Polite"/>
+                <TextBlock Classes="label section" AutomationProperties.HeadingLevel="2" Text="INSTALL AND CONFIGURE"/>
                 <Border Classes="card">
                     <StackPanel Spacing="12">
                         <TextBlock Classes="body prose" Text="{x:Static vm:PluginSettingsViewModel.InstallationNote}"/>

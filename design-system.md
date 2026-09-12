@@ -2728,7 +2728,10 @@ Fullscreen Metadata & artwork opens a dedicated **IGDB metadata** page with the 
 actions, large fields and explicit controller focus rows. A opens the existing on-screen
 keyboard for either field; secret entry retains its masking.
 
-The separate **PLUGINS** tab shows one card per discovered plugin, with its name, version,
+The separate **PLUGINS** tab starts with a list of names and versions loaded in the current
+session, or an explicit empty state. Desktop and fullscreen use the runtime loaded state,
+so pending enable or disable changes do not change the list until restart.
+The tab shows one card per discovered plugin, with its name, version,
 description, supported features and status. **Open plugins folder** opens the installation
 directory. ZIP packages unpack automatically at startup; users may also place unpacked packages
 there. Failed ZIP imports appear alongside other package diagnostics. Explain that installing and changing enablement requires a restart and that plugins
