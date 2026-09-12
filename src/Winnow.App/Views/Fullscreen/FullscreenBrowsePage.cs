@@ -337,7 +337,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*") };
         var heading = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         var title = FullscreenUi.Text(library.Lists.Open?.Name ?? library.SelectedBucket?.Name
-            ?? (library.Filters.ToFilter().Installed == true ? "Installed games" : "Your library"), 48);
+            ?? (library.Filters.ToFilter().Installed == true ? "Installed games" : "Your library"), 64);
         title.MaxLines = 1;
         title.TextTrimming = TextTrimming.WordEllipsis;
         heading.Children.Add(title);

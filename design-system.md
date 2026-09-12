@@ -794,7 +794,8 @@ canvases fit the whole image within the height and center it horizontally. Fade 
 layer keeps its own image geometry. Desktop detail backdrops continue to fill their card
 with a crop and request enough source pixels for that crop.
 
-**Library** uses two rows of complete portrait covers. The column count responds to available
+**Library** uses the same 64px page title as Activity and Settings, with two rows of complete
+portrait covers below it. The column count responds to available
 width, row height and text size; wider displays show more games instead of stretching or
 cropping artwork. Stable 2:3 frames use uniform fitting so user-supplied art keeps its whole
 image even when its proportions differ. Padding takes the average color of the adjoining
