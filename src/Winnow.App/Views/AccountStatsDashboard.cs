@@ -40,35 +40,12 @@ public sealed class AccountStatsDashboard : UserControl
     {
         if (e.PropertyName == nameof(AccountStatsViewModel.DashboardVersion)) RenderDashboard();
     }
-    private TextBlock Text(string text, double size = 13, string ink = "TextDim", bool data = false)
-    {
-        var block = new TextBlock { Text = text, FontSize = Fullscreen ? Math.Max(24, size * Scale) : size * Scale, TextWrapping = TextWrapping.Wrap };
-        block[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(ink);
-        block[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension(data ? "DataFont" : "BodyFont");
-        if (data) block.FontFeatures = new FontFeatureCollection { FontFeature.Parse("tnum") };
-        return block;
-    }
-    private TextBlock Heading(string text)
-    {
-        var block = Text(text, 20, "Text");
-        block[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension("DisplayFont");
-        block.FontWeight = FontWeight.Bold;
-        AutomationProperties.SetHeadingLevel(block, 2);
-        return block;
-    }
-    private StackPanel Stack(params Control[] children)
-    {
-        var stack = new StackPanel { Spacing = 12 * Scale };
-        foreach (var child in children) stack.Children.Add(child);
-        return stack;
-    }
-    private Border Card(Control content)
-    {
-        var card = new Border { Padding = new Thickness(20 * Scale), Child = content };
-        card[!Border.CornerRadiusProperty] = new DynamicResourceExtension("RadiusTile");
-        card[!Border.BackgroundProperty] = new DynamicResourceExtension("Surface");
-        return card;
-    }
+    private StatsChartVisuals Visuals => new(Fullscreen);
+    private TextBlock Text(string text, double size = 13, string ink = "TextDim", bool data = false) => Visuals.Text(text, size, ink, data);
+    private TextBlock Heading(string text) => Visuals.Heading(text);
+    private StackPanel Stack(params Control[] children) => Visuals.Stack(children);
+    private Border Card(Control content) => Visuals.Card(content);
+    private Control Bars(IReadOnlyList<AccountChartItem> items) => Visuals.Bars(items);
     private void RenderDashboard()
     {
         if (_model is not { } model) { Content = null; return; }
@@ -113,36 +90,6 @@ public sealed class AccountStatsDashboard : UserControl
         else { body.Children.Add(years); body.Children.Add(kinds); body.Children.Add(licences); }
         Content = body;
         if (restorePickerFocus && currencyPicker is { } target) Avalonia.Threading.Dispatcher.UIThread.Post(() => target.Focus());
-    }
-    private Control Bars(IReadOnlyList<AccountChartItem> items)
-    {
-        if (items.Count == 0) return Text("No recorded values to chart yet.");
-        var max = Math.Max(0, items.Max(x => x.Value));
-        var negativeMax = Math.Max(0, -items.Min(x => x.Value));
-        var body = Stack();
-        foreach (var item in items)
-        {
-            var labels = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 12 };
-            labels.Children.Add(Text(item.Label, 12, "Text", true));
-            var amount = Text(item.ValueText, 12, "Text", true); Grid.SetColumn(amount, 1); labels.Children.Add(amount);
-            var positive = Math.Max(0, item.Value);
-            var negative = Math.Max(0, -item.Value);
-            var track = new Grid { Height = 9 * Scale };
-            track[!Panel.BackgroundProperty] = new DynamicResourceExtension("Well");
-            foreach (var weight in new[] { negativeMax - negative, negative, positive, max - positive })
-                track.ColumnDefinitions.Add(new ColumnDefinition(new GridLength((double)weight, GridUnitType.Star)));
-            var bar = new Border { IsVisible = item.Value != 0 };
-            Grid.SetColumn(bar, item.Value < 0 ? 1 : 2);
-            bar[!Border.BackgroundProperty] = new DynamicResourceExtension(item.Ink); track.Children.Add(bar);
-            if (negativeMax > 0 && max > 0)
-            {
-                var baseline = new Border { Width = 1, HorizontalAlignment = HorizontalAlignment.Left };
-                baseline[!Border.BackgroundProperty] = new DynamicResourceExtension("TextDim");
-                Grid.SetColumn(baseline, 2); track.Children.Add(baseline);
-            }
-            body.Children.Add(Stack(labels, track));
-        }
-        return body;
     }
     private Control Composition(IReadOnlyList<AccountChartItem> items, string emptyNote)
     {

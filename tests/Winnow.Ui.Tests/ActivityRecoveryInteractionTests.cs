@@ -154,6 +154,7 @@ public sealed class ActivityRecoveryInteractionTests
         });
         using var fixture = new Fixture(new Reader((_, _, _, _) => Task.FromResult(new ActivityPage([], null))), stats);
         using var summary = new FullscreenLibrarySummaryPage(fixture.Context);
+        summary.Stats.IsSpending = true;
         var window = Show(summary);
         try
         {
@@ -166,7 +167,7 @@ public sealed class ActivityRecoveryInteractionTests
             if (dispose) Assert.Same(originalContent, summary.Content);
             else
             {
-                Assert.Contains(summary.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "Couldn't read account statistics. Try again.");
+                Assert.Contains(summary.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "Couldn't read Steam spending. Try again.");
                 Assert.Equal("Back", AutomationProperties.GetName(Assert.IsAssignableFrom<Control>(window.FocusManager!.GetFocusedElement())));
                 Click(summary, "Try again"); await summary.PendingRefresh; Dispatcher.UIThread.RunJobs();
                 Assert.Equal(2, calls);

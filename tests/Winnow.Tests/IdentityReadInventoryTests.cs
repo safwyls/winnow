@@ -58,6 +58,8 @@ public sealed class IdentityReadInventoryTests
     private static readonly Entry[] Inventory =
     [
         // ── RESOLVE ────────────────────────────────────────────────────────
+        new("src/Winnow.Data/Repositories/GameplayStatsRepository.cs", "SessionCte", Policy.Resolve,
+            "The caller supplies visible ownerships and resolved game IDs from AllTiles. Store filtering retains exact session attribution before totals and rankings fold by that resolved game ID."),
         new("src/Winnow.Data/Repositories/GroupHeaderPreferenceRepository.cs", "SetAsync", Policy.Resolve,
             "Validates the current same-game root and the chosen store's ownership in that group; presentation preferences never reparent identity links."),
         new("src/Winnow.Data/Repositories/LibraryQueryRepository.cs", "BucketSql", Policy.Resolve,

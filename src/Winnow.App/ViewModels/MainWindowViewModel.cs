@@ -39,7 +39,8 @@ public partial class MainWindowViewModel : ObservableObject
         ILibraryQueryRepository? libraryQueries = null,
         ApplicationSettingsViewModel? applicationSettings = null,
         FirstRunSetupViewModel? setup = null,
-        EnrichmentSettingsViewModel? enrichmentSettings = null)
+        EnrichmentSettingsViewModel? enrichmentSettings = null,
+        StatsViewModel? stats = null)
     {
         Fetch = fetch ?? new FetchStatusViewModel();
         Library = library;
@@ -48,6 +49,7 @@ public partial class MainWindowViewModel : ObservableObject
         Appearance = appearance;
         Feed = feed;
         AccountStats = accountStats;
+        Stats = stats ?? new StatsViewModel(accountStats, new GameplayStatsViewModel(new GameplayStatsUnavailableRepository(), library));
         LibrarySettings = librarySettings;
         ApplicationSettings = applicationSettings ?? new ApplicationSettingsViewModel();
         EnrichmentSettings = enrichmentSettings ?? new(ApplicationSettings.Igdb);
@@ -158,6 +160,8 @@ public partial class MainWindowViewModel : ObservableObject
     /// behind the gear beside the import screen that feeds it.
     /// </summary>
     public AccountStatsViewModel AccountStats { get; }
+    public StatsViewModel Stats { get; }
+    partial void OnIsAccountStatsVisibleChanged(bool value) { if (!value) Stats.Deactivate(); }
 
     /// <summary>SETTINGS › LIBRARY — hidden games, explicit content, hand-added games.</summary>
     public LibrarySettingsViewModel LibrarySettings { get; }
@@ -412,7 +416,7 @@ public partial class MainWindowViewModel : ObservableObject
 
         if (open)
         {
-            await AccountStats.RefreshCommand.ExecuteAsync(null);
+            await Stats.ActivateAsync();
         }
     }
 

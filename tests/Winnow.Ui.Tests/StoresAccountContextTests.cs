@@ -275,6 +275,7 @@ public sealed class StoresAccountContextTests
         using var services = new ServiceCollection().AddSingleton<IAccountStatsRepository>(repository).BuildServiceProvider();
         using var context = Context(new StoresViewModel(new Connections()), services: services);
         using var page = new FullscreenLibrarySummaryPage(context);
+        page.Stats.IsSpending = true;
         var window = new Window { Width = 1920, Height = 1080,
             Content = fullscreen ? page : new AccountStatsView { DataContext = model } };
         try

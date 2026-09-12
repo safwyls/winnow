@@ -406,9 +406,20 @@ technology. Fullscreen uses a `TextDim` status line beneath the provider heading
 separate actionable attention text; it shares the state meanings without the desktop pill.
 Local-only discovery is an available source, not an unconnected account requiring repair.
 
-**Account statistics.** Desktop Stats and fullscreen Activity → Library summary share
-a dashboard for captured purchases. Stats names the destination without tying it to a store;
-the current desktop content remains labeled Steam account to identify its actual source.
+**Statistics.** Desktop Stats and fullscreen Activity → Library summary offer Gameplay and
+Spending with independent navigation and filter state on each surface. Gameplay opens first.
+Its store choices come from the visible library's ownership sources; All stores counts each
+resolved game once. The period choices are 30 days, 90 days and custom inclusive local dates.
+Recorded hours use completed Winnow sessions, with bars over the period, the ten games with
+the most recorded time, and session-length bands with a median. Visible values accompany
+every chart. Coverage copy distinguishes recorded game time from complete play history.
+
+Your library today shows the current shared library buckets for games owned on the selected
+store. These counts do not describe the library at an earlier date. Store ownership counts
+can overlap across games; Never played means no recorded play evidence, and Retired does
+not mean completed. Changing the period does not change this current composition.
+
+Spending identifies Steam as its supported source. Other stores have no spending importer.
 Each currency has its own net, gross and refunded
 amounts. Currency selection changes the money charts and detailed breakdowns together;
 amounts in different currencies are never combined or ranked against one another.
@@ -817,9 +828,10 @@ left/right changes the Monday-based week from the event region and cannot advanc
 week. Sessions and Journal have distinct empty-state copy: Journal requires a saved note or
 rating. Activity uses a quiet open-journal vector with page contours and a bookmark; Settings
 uses contour art. Both use theme-colored paths. The note editor offers deliberate Save and
-Cancel actions and an optional one-to-five rating. Library summary provides the current
-visible game count and separate reading pages for captured Steam account statistics; it
-retains the shared rules for mixed currencies and wallet credit.
+Cancel actions and an optional one-to-five rating. Library summary provides Gameplay and
+Spending sections, with its own store, period and currency selection. Gameplay uses the
+shared recorded-session charts and current library composition. Spending retains reading
+pages for captured Steam account figures and the shared currency and wallet-credit rules.
 
 Activity initially reads up to 50 events for the selected week. **Load more** appends older
 events while preserving selection. A failed read says “Couldn't read your activity. Try again.”
@@ -827,10 +839,9 @@ and offers **Try again** beside any retained events. Returning from a note edito
 pages and selection, and updates the saved note's badge and preview. Completing a delayed read
 preserves focus on the section controls or reading actions.
 
-Account summary says “Reading your account statistics…” while its background read is pending.
-A failed read says “Couldn't read account statistics. Try again.” and offers **Try again**;
-an unavailable repository says “Account statistics are unavailable.” Existing results remain
-available during a retry. These states do not present an empty account as a completed read.
+Statistics distinguish pending reads, unavailable sources and failed reads from a completed
+empty result. Gameplay labels its date and store scope beside the figures. Changing scope
+removes obsolete figures while the new read is pending, and failed reads offer a retry.
 
 Settings content uses subdued uppercase group headings, separate from focusable rows.
 Navigation and picker rows end in **Open ›**; immediate commands end in **Run** with an

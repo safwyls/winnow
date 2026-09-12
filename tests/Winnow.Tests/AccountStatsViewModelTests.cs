@@ -371,6 +371,7 @@ public sealed class AccountStatsViewModelTests
         };
         var stats = new AccountStatsViewModel(repository);
         var shell = Shell(db, stats);
+        shell.Stats.IsSpending = true;
 
         Assert.Equal(0, repository.Reads);
 

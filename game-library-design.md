@@ -928,7 +928,22 @@ visible release. Changing week or section cancels obsolete reads; loading older 
 selection, and failed reads offer retry without dropping committed rows. Returning from a
 note editor retains loaded pages and refreshes the saved note through `ISessionRepository`.
 Desktop and fullscreen details capture identity context on the dispatcher, read their history
-snapshot on a worker, and publish only for the current uncancelled request. Account summaries
+snapshot on a worker, and publish only for the current uncancelled request. Gameplay statistics
+capture ownership IDs and resolved game IDs from `LibraryViewModel.AllTiles`, which already
+applies library visibility and identity rules. Temporary search and facet selections do not
+silently change this population. `IGameplayStatsRepository` returns bounded aggregates for
+the selected store and half-open UTC interval. Local date boundaries define the period bins.
+Completed valid sessions contribute their stored duration in proportion to overlap with each
+bin; exact duplicate evidence counts once per ownership. Top games fold the selected store's
+sessions by the supplied resolved game ID. Session-length bands and the median use full
+durations of completed sessions that started within the period. Open, invalid and future-ended
+sessions do not contribute hours. Cumulative store counters are never added to these totals.
+Concurrent games contribute independent game-hours, and stored sessions do not identify the
+player account. Current library composition comes from the same scoped tiles and is labeled
+as current rather than historical. Each surface owns its `StatsViewModel` and gameplay filter
+state, reads on a worker, and cancels or ignores obsolete requests.
+
+Account summaries
 reuse the currency-safe `AccountStatsViewModel` with independent presentation state and worker
 reads. `AccountStatsDashboard` renders the shared chart projections with separate desktop and
 fullscreen sizing; selecting a currency updates the money charts and detailed figures together.

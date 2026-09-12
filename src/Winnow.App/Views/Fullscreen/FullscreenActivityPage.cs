@@ -381,62 +381,77 @@ public sealed class FullscreenSessionNotePage : FullscreenPage
 public sealed class FullscreenLibrarySummaryPage : FullscreenPage
 {
     private readonly AccountStatsViewModel? _model;
+    private readonly StatsViewModel _stats;
     private bool _disposed;
-    private bool _loading;
-    private bool _loaded;
-    private string? _problem;
-    public Task PendingRefresh { get; private set; } = Task.CompletedTask;
+    private bool _renderedSpending;
+    private Vector _gameplayOffset, _spendingOffset;
+    private Action? _restoreFocus;
+    public StatsViewModel Stats => _stats;
+    public Task PendingRefresh => _stats.IsSpending ? _stats.PendingRefresh : _stats.Gameplay.PendingRefresh;
     public override string Title => "Library summary";
+    public override string Hints => "A  Select / edit     LT / RT  Section     B  Back";
     public FullscreenLibrarySummaryPage(FullscreenContext context) : base(context)
     {
         _model = context.Services?.GetService<IAccountStatsRepository>() is { } repository ? new AccountStatsViewModel(repository) : null;
+        _stats = new StatsViewModel(_model ?? new AccountStatsViewModel(new UnavailableSpendingRepository()),
+            new GameplayStatsViewModel(context.Services?.GetService<IGameplayStatsRepository>() ?? new GameplayStatsUnavailableRepository(), context.Library));
+        _stats.PropertyChanged += StatsChanged;
+        _stats.Gameplay.PropertyChanged += GameplayChanged;
         Render();
-        AttachedToVisualTree += (_, _) => _ = RefreshAsync();
+        AttachedToVisualTree += (_, _) => _ = _stats.ActivateAsync();
+        DetachedFromVisualTree += (_, _) => _stats.Deactivate();
+        SizeChanged += (_, _) => { if (!_disposed) Render(); };
     }
 
-    private Task RefreshAsync()
+    private void StatsChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (_disposed || _loading || _model is null) return PendingRefresh;
-        _loading = true; _problem = null;
-        var recoverFocus = IsKeyboardFocusWithin;
-        Render();
-        return PendingRefresh = RefreshCoreAsync(recoverFocus);
+        if (!_disposed && e.PropertyName is nameof(StatsViewModel.IsSpending) or nameof(StatsViewModel.IsSpendingLoading) or nameof(StatsViewModel.SpendingProblem)) Render();
     }
-
-    private async Task RefreshCoreAsync(bool recoverFocus)
+    private void GameplayChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        try { await _model!.RefreshCommand.ExecuteAsync(null); _loaded = true; }
-        catch (OperationCanceledException) when (_disposed) { }
-        catch (Exception) { _problem = "Couldn't read account statistics. Try again."; }
-        finally
-        {
-            _loading = false;
-            if (!_disposed)
-            {
-                var hadCurrentFocus = IsKeyboardFocusWithin;
-                Render();
-                // A fast retry can replace its temporary focus target before the
-                // queued layout restoration runs. The completed page still needs a target.
-                if (recoverFocus && !hadCurrentFocus) FocusInitial();
-            }
-        }
+        if (!_disposed && !_stats.IsSpending && e.PropertyName == nameof(GameplayStatsViewModel.DashboardVersion)) Render();
+    }
+    public override bool Handle(GamepadButtons buttons)
+    {
+        if ((buttons & (GamepadButtons.PagePrevious | GamepadButtons.PageNext)) != 0)
+        { _stats.IsSpending = buttons.HasFlag(GamepadButtons.PageNext); return true; }
+        return base.Handle(buttons);
     }
 
     private void Render()
     {
-        var restoreFocus = PreserveFocus();
+        if (IsKeyboardFocusWithin) _restoreFocus = PreserveFocus();
+        if (Content is ScrollViewer { Viewport.Height: > 0 } previousScroll)
+        {
+            if (_renderedSpending) _spendingOffset = previousScroll.Offset;
+            else _gameplayOffset = previousScroll.Offset;
+        }
+        _renderedSpending = _stats.IsSpending;
         var context = Context;
         var back = FullscreenUi.Button("Back", context.Back);
         var body = FullscreenUi.Stack(FullscreenUi.Text("Library summary", 64), FullscreenUi.Text($"{context.Library.AllGames.Count:N0} games in your library", 32));
         var focus = new List<Control[]>();
-        if (_problem is { } problem)
+        var sections = new WrapPanel();
+        var gameplay = FullscreenUi.Button("Gameplay", () => _stats.IsSpending = false);
+        var spending = FullscreenUi.Button("Spending", () => _stats.IsSpending = true);
+        gameplay.Classes.Set("current", !_stats.IsSpending); spending.Classes.Set("current", _stats.IsSpending);
+        AutomationProperties.SetName(gameplay, _stats.GameplaySectionName);
+        AutomationProperties.SetName(spending, _stats.SpendingSectionName);
+        AutomationProperties.SetAutomationId(gameplay, "stats-gameplay");
+        AutomationProperties.SetAutomationId(spending, "stats-spending");
+        gameplay.Margin = new Thickness(0, 0, 16, 12); spending.Margin = new Thickness(0, 0, 16, 12);
+        sections.Children.Add(gameplay); sections.Children.Add(spending); body.Children.Add(sections); focus.Add([gameplay, spending]);
+        if (!_stats.IsSpending) AddGameplay(body, focus);
+        else
         {
+        body.Children.Add(FullscreenUi.Text("Source: Steam account pages. Spending imports for other stores are not available.", 28, "TextDim"));
+        if (_stats.SpendingProblem is { } problem)
             body.Children.Add(FullscreenUi.Text(problem, 28, "Amber"));
-            var retry = FullscreenUi.Button("Try again", () => _ = RefreshAsync());
-            body.Children.Add(retry); focus.Add([retry]);
-        }
-        else if (_model is not null && (_loading || !_loaded))
+        if (_stats.IsSpendingLoading)
             body.Children.Add(FullscreenUi.Text("Reading your account statistics…", 28, "TextDim"));
+        var refresh = FullscreenUi.Button(_stats.SpendingProblem is null ? "Refresh Steam spending" : "Try again", () => _ = _stats.ActivateAsync());
+        refresh.HorizontalAlignment = HorizontalAlignment.Left;
+        body.Children.Add(refresh); focus.Add([refresh]);
         if (_model is { HasFacts: true } stats)
         {
             body.Children.Add(FullscreenUi.Text(stats.IntroMessage, 28, "TextDim"));
@@ -476,11 +491,79 @@ public sealed class FullscreenLibrarySummaryPage : FullscreenPage
             Group(stats.CurrencyHeading, stats.CurrencyRows, stats.CurrencyNote, false);
             Group(stats.CaptureHeading, stats.CaptureRows, stats.CaptureNote, false);
         }
-        else if (_problem is null && !_loading && (_loaded || _model is null))
+        else if (_stats.SpendingProblem is null && !_stats.IsSpendingLoading)
             body.Children.Add(FullscreenUi.Text(_model?.EmptyMessage ?? "Account statistics are unavailable.", 28, "TextDim"));
-        body.Children.Add(back); focus.Add([back]); Content = FullscreenUi.Scroll(body); SetFocusRows(focus.ToArray());
-        restoreFocus();
+        }
+        body.Children.Add(back); focus.Add([back]);
+        var scroll = FullscreenUi.Scroll(body);
+        Content = scroll; SetFocusRows(focus.ToArray());
+        var offset = _stats.IsSpending ? _spendingOffset : _gameplayOffset;
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (_disposed || !ReferenceEquals(Content, scroll)) return;
+            scroll.Offset = offset;
+            var restore = _restoreFocus; _restoreFocus = null;
+            restore?.Invoke();
+        }, Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
-    public override void Dispose() { _disposed = true; _model?.RefreshCommand.Cancel(); base.Dispose(); }
+    private void AddGameplay(StackPanel body, List<Control[]> focus)
+    {
+        var model = _stats.Gameplay;
+        var filters = new WrapPanel();
+        body.Children.Add(filters);
+        void Choices(string label, IEnumerable<(string Label, bool Selected, Action Select)> options)
+        {
+            var panel = new WrapPanel(); var buttons = new List<Control>();
+            foreach (var option in options)
+            {
+                var button = FullscreenUi.Button(option.Label, option.Select);
+                button.Classes.Set("current", option.Selected);
+                AutomationProperties.SetName(button, option.Label + (option.Selected ? ", selected" : ""));
+                AutomationProperties.SetAutomationId(button, $"gameplay-{label}-{option.Label}");
+                button.Margin = new Thickness(0, 0, 16, 12); panel.Children.Add(button); buttons.Add(button);
+            }
+            var group = FullscreenUi.Stack(FullscreenUi.Text(label, 28, "TextDim"), panel);
+            group.Margin = new Thickness(0, 0, 40, 0);
+            group.MaxWidth = Math.Max(260, Bounds.Width - 40);
+            filters.Children.Add(group); focus.Add(buttons.ToArray());
+        }
+        Choices("Store", model.StoreOptions.Select(option => (option.Label, option.Key == model.SelectedStore.Key, (Action)(() => model.SelectedStore = option))));
+        Choices("Period", model.PeriodOptions.Select(option => (option, option == model.SelectedPeriod, (Action)(() => model.SelectedPeriod = option))));
+        if (model.IsCustom)
+        {
+            void DateField(string label, string property)
+            {
+                var field = new TextBox { FontSize = 28, MinWidth = 260, MaxWidth = 450, HorizontalAlignment = HorizontalAlignment.Left };
+                field.Bind(TextBox.TextProperty, new Avalonia.Data.Binding(property) { Source = model, Mode = Avalonia.Data.BindingMode.TwoWay });
+                AutomationProperties.SetName(field, label);
+                AutomationProperties.SetAutomationId(field, property);
+                body.Children.Add(FullscreenUi.Text(label, 28, "TextDim")); body.Children.Add(field); focus.Add([field]);
+            }
+            DateField("From · YYYY-MM-DD", nameof(GameplayStatsViewModel.CustomFrom));
+            DateField("Through · YYYY-MM-DD", nameof(GameplayStatsViewModel.CustomUntil));
+            var apply = FullscreenUi.Button("Apply dates", () => model.ApplyDatesCommand.Execute(null));
+            body.Children.Add(apply); focus.Add([apply]);
+        }
+        if (model.IsLoading) body.Children.Add(FullscreenUi.Text("Reading gameplay statistics…", 28, "TextDim"));
+        if (model.Problem is { } problem) body.Children.Add(FullscreenUi.Text(problem, 28, "Amber"));
+        var refresh = FullscreenUi.Button(model.Problem is null ? "Refresh gameplay" : "Try again", () => _ = model.RefreshAsync());
+        refresh.HorizontalAlignment = HorizontalAlignment.Left;
+        body.Children.Add(refresh); focus.Add([refresh]);
+        if (model.IsLoading)
+        {
+            var cancel = FullscreenUi.Button("Cancel", () => model.CancelCommand.Execute(null));
+            body.Children.Add(cancel); focus.Add([cancel]);
+        }
+        body.Children.Add(new GameplayStatsDashboard { Fullscreen = true, DataContext = model });
+    }
+    private sealed class UnavailableSpendingRepository : IAccountStatsRepository
+    {
+        public Task<AccountStats> GetAsync(string source, CancellationToken ct = default) => throw new InvalidOperationException("Account statistics are unavailable.");
+    }
+    public override void Dispose()
+    {
+        _disposed = true; _stats.PropertyChanged -= StatsChanged; _stats.Gameplay.PropertyChanged -= GameplayChanged;
+        _stats.Dispose(); base.Dispose();
+    }
 }

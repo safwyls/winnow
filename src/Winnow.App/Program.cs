@@ -558,6 +558,7 @@ public static class Program
         // so the UI reading it can never see a stale aggregate.
         services.AddSingleton<IAccountFactRepository, AccountFactRepository>();
         services.AddSingleton<IAccountStatsRepository, AccountStatsRepository>();
+        services.AddSingleton<IGameplayStatsRepository, GameplayStatsRepository>();
 
         // M8's feedback loop (recommendation-engine.md §6b), over migration
         // 0011. It is registered beside the other repositories rather than with
@@ -870,12 +871,11 @@ public static class Program
         services.AddSingleton<ISteamAccountPageFilePicker, TopLevelSteamAccountPageFilePicker>();
         services.AddSingleton<SteamAccountImportViewModel>();
 
-        // The STATS screen. It reads IAccountStatsRepository (registered above)
-        // and nothing else — no importer, no harvester, no parser — which is
-        // §5.1's rule that the UI reads the database and raises commands. The
-        // screen refreshes on open rather than caching, so a singleton holds no
-        // stale figures; it is one only because the shell is.
+        // Desktop Stats shares the shell's lifetime and refreshes on open.
+        // Fullscreen constructs its own presentation state over the same query repositories.
         services.AddSingleton<AccountStatsViewModel>();
+        services.AddSingleton<GameplayStatsViewModel>();
+        services.AddSingleton<StatsViewModel>();
 
         // Appearance. The service is a singleton because it owns the ONE live
         // resource dictionary; a second instance would be a second opinion

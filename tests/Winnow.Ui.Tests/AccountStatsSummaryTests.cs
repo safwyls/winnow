@@ -51,6 +51,7 @@ public sealed class AccountStatsSummaryTests
         using var services = new ServiceCollection().AddSingleton<IAccountStatsRepository>(repository).BuildServiceProvider();
         using var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell, services);
         using var page = new FullscreenLibrarySummaryPage(context);
+        page.Stats.IsSpending = true;
         var window = new Window { Width = fullscreen ? 1920 : 700, Height = 1080,
             Content = fullscreen ? page : new AccountStatsView { DataContext = model } };
         try
@@ -131,6 +132,7 @@ public sealed class AccountStatsSummaryTests
         using var services = new ServiceCollection().AddSingleton<IAccountStatsRepository>(repository).BuildServiceProvider();
         using var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell, services);
         using var page = new FullscreenLibrarySummaryPage(context);
+        page.Stats.IsSpending = true;
         var content = fullscreen ? (Control)page : new AccountStatsView { DataContext = model };
         var window = new Window { Width = width, Height = fullscreen ? 1080 : 900, Content = content,
             Background = (IBrush)content.FindResource("Ground")! };
@@ -144,7 +146,8 @@ public sealed class AccountStatsSummaryTests
             var actual = (AccountStatsViewModel)dashboard.DataContext!;
             if (fullscreen)
             {
-                page.FocusInitial(); page.Handle(GamepadButtons.Right); page.Handle(GamepadButtons.Accept);
+                var dollars = page.GetVisualDescendants().OfType<Button>().Single(button => button.Content?.ToString() == "$ · selected");
+                Assert.True(dollars.Focus()); page.Handle(GamepadButtons.Right); page.Handle(GamepadButtons.Accept);
             }
             else
             {

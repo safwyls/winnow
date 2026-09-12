@@ -1932,8 +1932,8 @@
                 <DataTemplate DataType="vm:MainWindowViewModel">
                     <Border Classes="screenpane"
                             BorderBrush="{StaticResource Line}">
-                        <views:AccountStatsView Name="AccountStatsPanel"
-                                                DataContext="{Binding AccountStats}"/>
+                        <views:StatsView Name="AccountStatsPanel"
+                                                DataContext="{Binding Stats}"/>
                     </Border>
                 </DataTemplate>
             </views:LazyPane.PaneTemplate>

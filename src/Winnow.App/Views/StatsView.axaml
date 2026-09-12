@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Winnow.App.ViewModels" xmlns:views="using:Winnow.App.Views"
+             x:Class="Winnow.App.Views.StatsView" x:DataType="vm:StatsViewModel" AutomationProperties.Name="Statistics">
+  <UserControl.Styles>
+    <Style Selector="Button.stats-section">
+      <Setter Property="Padding" Value="18,10"/>
+      <Setter Property="BorderThickness" Value="0,0,0,2"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
+    </Style>
+    <Style Selector="Button.stats-section.selected">
+      <Setter Property="BorderBrush" Value="{DynamicResource Volt}"/>
+      <Setter Property="Background" Value="{DynamicResource SurfaceRaised}"/>
+    </Style>
+  </UserControl.Styles>
+  <Grid RowDefinitions="Auto,*">
+    <StackPanel Margin="24,20,24,12" Spacing="12">
+      <TextBlock Classes="display-l" Text="Stats" AutomationProperties.HeadingLevel="1"/>
+      <StackPanel Orientation="Horizontal" Spacing="12">
+        <Button Name="GameplaySection" Classes="stats-section" AutomationProperties.Name="{Binding GameplaySectionName}" Content="Gameplay" Command="{Binding ShowGameplayCommand}" Classes.selected="{Binding !IsSpending}"/>
+        <Button Name="SpendingSection" Classes="stats-section" AutomationProperties.Name="{Binding SpendingSectionName}" Content="Spending" Command="{Binding ShowSpendingCommand}" Classes.selected="{Binding IsSpending}"/>
+      </StackPanel>
+    </StackPanel>
+    <Grid Grid.Row="1" IsVisible="{Binding !IsSpending}"><views:GameplayStatsView DataContext="{Binding Gameplay}"/></Grid>
+    <Grid Grid.Row="1" RowDefinitions="Auto,Auto,*" IsVisible="{Binding IsSpending}">
+      <TextBlock Margin="24,4,24,12" Classes="body" TextWrapping="Wrap" Text="Source: Steam account pages. Spending imports for other stores are not available."/>
+      <StackPanel Grid.Row="1" Margin="24,0,24,12" Spacing="10">
+        <TextBlock Classes="body" Text="Reading Steam spending…" IsVisible="{Binding IsSpendingLoading}"/>
+        <TextBlock Classes="body" Foreground="{DynamicResource Amber}" Text="{Binding SpendingProblem}"/>
+        <Button Content="Refresh Steam spending" Command="{Binding RefreshSpendingCommand}"/>
+      </StackPanel>
+      <views:AccountStatsView Grid.Row="2" DataContext="{Binding Spending}"/>
+    </Grid>
+  </Grid>
+</UserControl>
