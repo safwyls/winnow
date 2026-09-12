@@ -119,7 +119,7 @@ public sealed class FullscreenActionOverlayTests
         using var fixture = new Fixture(textScale, reducedMotion);
         fixture.Open([
             new("Choose artwork", () => { }), new("Edit game details", () => { }),
-            new("Choose the version used when you launch this game", () => { }),
+            new("Choose launch version", () => { }),
             new("Open installation folder", () => { }, false), new("View recorded sessions", () => { }),
             new("Manage store links", () => { }), new("Add to a collection", () => { }),
             new("Hide this game", () => { }), new("Open store page", () => { }),

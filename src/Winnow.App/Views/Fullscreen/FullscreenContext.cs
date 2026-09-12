@@ -204,7 +204,7 @@ public sealed class FullscreenContext : IDisposable
     }
     public void ChooseVersion(GameTileViewModel tile)
     {
-        ShowActions("Choose version", tile.Entries.Select(entry => new FullscreenAction(
+        ShowActions("Choose launch version", tile.Entries.Select(entry => new FullscreenAction(
             $"{entry.StoreName} · {(entry.Installed is true ? "Installed" : entry.Installed is false ? "Not installed" : "Install state unknown")} · {entry.PrimaryAction?.Label ?? "Unavailable"}",
             () => Play(new GameTileViewModel([entry], tile.Game, tile.Title, DateTime.UtcNow, ramp: Library.Ramp)),
             entry.PrimaryAction is not null)).Append(new FullscreenAction("Cancel", () => { })).ToArray());

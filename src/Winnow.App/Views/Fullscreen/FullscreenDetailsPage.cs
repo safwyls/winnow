@@ -85,7 +85,7 @@ public sealed class FullscreenDetailsPage : FullscreenPage
             _actions.Children.Add(primary);
         }
         if (_details.Tile.Entries.Count > 1)
-            _actions.Children.Add(FullscreenUi.Button("Choose version", () => Context.ChooseVersion(_details.Tile)));
+            _actions.Children.Add(FullscreenUi.Button("Choose launch version", () => Context.ChooseVersion(_details.Tile)));
         _actions.Children.Add(FullscreenUi.Button("More", ShowMore));
         _identity.Text = string.Join(" · ", new[] { _details.HasInstallState ? _details.InstallText : null, _details.StoreNames }
             .Where(value => !string.IsNullOrWhiteSpace(value)));
