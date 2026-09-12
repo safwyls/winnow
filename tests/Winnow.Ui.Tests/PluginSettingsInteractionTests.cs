@@ -29,6 +29,14 @@ public sealed class PluginSettingsInteractionTests
         {
             var card = Named<Border>(view, "Community artwork");
             Assert.True(card.Bounds.Width > 900);
+            window.Width = 3456;
+            Dispatcher.UIThread.RunJobs();
+            Assert.InRange(card.Bounds.Width, 1099, 1101);
+            Assert.Equal(24, card.TranslatePoint(default, view)!.Value.X);
+            Capture(window, "desktop-plugin-width-cap");
+            window.Width = 1000;
+            Dispatcher.UIThread.RunJobs();
+            Assert.InRange(card.Bounds.Width, 900, 1000);
             var title = card.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == "Community artwork");
             var version = card.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == "1.0.0");
             Assert.True(version.TranslatePoint(default, card)!.Value.Y >= title.TranslatePoint(default, card)!.Value.Y + title.Bounds.Height);

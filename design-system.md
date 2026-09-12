@@ -2731,7 +2731,8 @@ keyboard for either field; secret entry retains its masking.
 The separate **PLUGINS** tab starts with a list of names and versions loaded in the current
 session, or an explicit empty state. Desktop and fullscreen use the runtime loaded state,
 so pending enable or disable changes do not change the list until restart.
-Desktop cards stretch across the available pane width, with the version beneath the name
+Desktop cards stretch across the available pane width up to 1,100 logical pixels and remain
+left-aligned on wider displays, with the version beneath the name
 and an Enabled/Disabled switch at the upper right. The tab shows one card per discovered plugin, with its name, version,
 description, supported features and status. **Open plugins folder** opens the installation
 directory. ZIP packages unpack automatically at startup; users may also place unpacked packages
