@@ -373,8 +373,8 @@ public sealed class FullscreenDetailsPage : FullscreenPage
     {
         var actions = new List<FullscreenAction>();
         if (_details.AddToListCommand is { } add) actions.Add(new("Add to list", () => add.Execute(_details.Tile)));
-        foreach (var link in _details.Links) actions.Add(new(link.Label, () => Context.OpenLink(link)));
-        if (_details.ManagementAction is { } management) actions.Add(new(management.Label, () => Context.OpenLink(management)));
+        foreach (var link in _details.Links) actions.Add(new(link.Label, () => Context.OpenLink(link), IconLabel: "Open website"));
+        if (_details.ManagementAction is { } management) actions.Add(new(management.Label, () => Context.OpenLink(management), IconLabel: "Manage installation"));
         if (_details.OpenableFolder is { } folder)
             actions.Add(new("Browse install folder", () => Context.BrowseFolder(folder)));
         if (_details.MetadataEditor is { } editor)

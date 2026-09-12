@@ -749,6 +749,9 @@ use a right-edge panel over a dimmed, retained page. The panel slides in over 18
 appears immediately with reduced motion. Actions wrap and scroll within the panel; Close,
 B, Escape or clicking outside dismisses it and restores the invoking control. Background
 controls cannot receive input while it is open. Desktop More retains its existing popup.
+Both menus pair action labels with theme-colored outline icons in a consistent left column.
+Icons are decorative; the text remains the accessible action name. Fullscreen icons scale
+with the text size, and disabled rows dim the icon together with the label.
 Nested sheets trap focus and restore it on
 close. Destructive actions require confirmation; unplugging a controller preserves position
 and provides a reconnect message with keyboard fallback. Reduced motion removes travel and

@@ -131,7 +131,7 @@ public partial class GameDetailsView : UserControl
         if (DataContext is not GameDetailsViewModel details) return;
         foreach (var link in details.Links)
         {
-            var row = new MenuItem { Header = link.Label, DataContext = link };
+            var row = new MenuItem { Header = link.Label, DataContext = link, Icon = ActionIcons.Create("Open website") };
             ToolTip.SetTip(row, link.Tooltip);
             row.AddHandler(MenuItem.ClickEvent, OnLinkPressed, handledEventsToo: true);
             menu.Items.Insert(_linkRows.Count, row);
@@ -158,6 +158,16 @@ public partial class GameDetailsView : UserControl
 
         foreach (var row in menu.Items.OfType<MenuItem>())
         {
+            row.Icon = ActionIcons.Create(row.Name switch
+            {
+                "OpenFolderItem" => "Open folder",
+                "ManageInstallationItem" => "Manage installation",
+                "RefetchItem" => "Refetch",
+                "WrongGameItem" => "Wrong game",
+                "EditDetailsItem" => "Edit details",
+                "HideItem" => "Hide game",
+                _ => "Open website"
+            });
             switch (row.Name)
             {
                 case "OpenFolderItem":

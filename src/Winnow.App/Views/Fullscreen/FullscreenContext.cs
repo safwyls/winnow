@@ -243,7 +243,14 @@ internal sealed class FullscreenActionsPage : FullscreenPage
         var buttons = actions.Select(action =>
         {
             var button = FullscreenUi.Button(action.Label, () => { Context.Back(); action.Invoke(); });
-            button.ContentTemplate = new Avalonia.Controls.Templates.FuncDataTemplate<string>((label, _) => FullscreenUi.Text(label, 28));
+            button.ContentTemplate = new Avalonia.Controls.Templates.FuncDataTemplate<string>((label, _) =>
+            {
+                var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), ColumnSpacing = 16 };
+                row.Children.Add(ActionIcons.Create(action.IconLabel ?? action.Label, 28 * context.TextScale));
+                var text = FullscreenUi.Text(label, 28);
+                Grid.SetColumn(text, 1); row.Children.Add(text);
+                return row;
+            });
             button.IsEnabled = action.IsEnabled;
             button.Opacity = action.IsEnabled ? 1 : .45;
             return button;
