@@ -1,6 +1,9 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Winnow.App.Services;
+using Avalonia.Media.Imaging;
+using Avalonia.Threading;
+using Winnow.Core.Domain;
 
 namespace Winnow.App.ViewModels;
 
@@ -22,6 +25,12 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
     private readonly Action<GameTileViewModel>? _addToList;
 
     private bool _busy;
+    private bool _disposed;
+    private LeasedBackdrop? _backdrop;
+    private CancellationTokenSource? _backdropLoading;
+    private IReadOnlyList<WorkImages>? _backdropImages;
+    private double _backdropWidth;
+    private double _backdropHeight;
 
     /// <summary>Unheld time this receipt has been standing.</summary>
     private TimeSpan _counted;
@@ -38,6 +47,66 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
     }
 
     public bool CanAddToList => _addToList is not null;
+    public bool HasSecondaryActions => CanAddToList || CanGiveFeedback;
+
+    [ObservableProperty]
+    public partial Bitmap? Backdrop { get; set; }
+
+    public void RequestBackdrop(double widthPixels, double heightPixels)
+    {
+        if (_disposed || !double.IsFinite(widthPixels) || !double.IsFinite(heightPixels)
+            || widthPixels <= 0 || heightPixels <= 0) return;
+        _backdropWidth = widthPixels;
+        _backdropHeight = heightPixels;
+        if (_backdrop is null)
+        {
+            _backdrop = new LeasedBackdrop(Tile.Leases, art => Backdrop = art?.Vivid);
+            if (Tile.BackdropPreferences is { } preferences) preferences.Changed += BackdropPreferencesChanged;
+            if (_backdropImages is null && Tile.LoadBackdropImages is { } load)
+            {
+                _backdropLoading = new CancellationTokenSource();
+                _ = LoadBackdropAsync(load, _backdropLoading);
+            }
+        }
+        UpdateBackdrop();
+    }
+
+    private async Task LoadBackdropAsync(Func<CancellationToken, Task<IReadOnlyList<WorkImages>>> load,
+        CancellationTokenSource request)
+    {
+        IReadOnlyList<WorkImages> images;
+        try { images = await load(request.Token).ConfigureAwait(false); }
+        catch (Exception) { images = []; }
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_disposed || !ReferenceEquals(_backdropLoading, request)) return;
+            _backdropLoading = null;
+            request.Dispose();
+            _backdropImages = images;
+            UpdateBackdrop();
+        });
+    }
+
+    private void BackdropPreferencesChanged() => Dispatcher.UIThread.Post(UpdateBackdrop);
+
+    private void UpdateBackdrop()
+    {
+        if (_disposed || _backdrop is null) return;
+        var keys = BackdropSelection.Candidates(Tile.BackgroundUrl, _backdropImages,
+            _backdropWidth / _backdropHeight, Tile.SteamBackdropAppIds, Tile.BackdropPreferences?.SourceOrder);
+        _backdrop.Request(keys, key => BackdropSelection.DecodeWidth(key, _backdropImages,
+            _backdropWidth, _backdropHeight));
+    }
+
+    public void ReleaseBackdrop()
+    {
+        if (Tile.BackdropPreferences is { } preferences) preferences.Changed -= BackdropPreferencesChanged;
+        _backdropLoading?.Cancel();
+        _backdropLoading?.Dispose();
+        _backdropLoading = null;
+        _backdrop?.Dispose();
+        _backdrop = null;
+    }
 
     [RelayCommand(CanExecute = nameof(CanAddToList))]
     private void AddToList() => _addToList?.Invoke(Tile);
@@ -55,7 +124,12 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
     public CoverPresenter Cover { get; }
 
     /// <summary>Drops this card's cover state when the shelf it belongs to is replaced.</summary>
-    public void Dispose() => Cover.Dispose();
+    public void Dispose()
+    {
+        _disposed = true;
+        ReleaseBackdrop();
+        Cover.Dispose();
+    }
 
     /// <summary>
     /// The engine's sentence, verbatim, for the accessible name and for any

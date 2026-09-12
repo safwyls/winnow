@@ -2184,9 +2184,15 @@ returns to the saved membership and shows **Couldn't save list changes. Try agai
 the control. List actions use the same error copy beside the library actions, while modal
 actions keep their prompt and draft. Refreshing the library preserves a pending choice.
 
-Feed feedback occupies a dedicated right-hand column: bookmark-plus **Add to list** in Azure,
-clock **Not now** in Amber, and circle-minus **Not interested** in TextDim. Each 32px icon
-button has a tooltip and accessible name. Install / Play has its own line below the card text.
+Desktop feed cards group feedback beside Install / Play beneath the card text, separated
+by a quiet vertical divider: bookmark-plus **Add to list** in Azure, clock **Not now** in
+Amber, and circle-minus **Not interested** in TextDim. Each 32px icon button has a tooltip
+and accessible name. The secondary group wraps together when space is tight; no divider
+appears without a primary action. Recently played offers only Add to list.
+Hero artwork sits behind the card at 22% opacity, fading from transparent on the left to
+its strongest point on the right. Rounded clipping contains the art; missing artwork leaves
+the ordinary Surface background. Artwork uses the shared source preferences and leased cache.
+Fullscreen retains its existing page hero and controller action panel.
 The bookmark and its inset plus use a 1px optical correction to share the apparent centerline
 of the circular feedback icons.
 

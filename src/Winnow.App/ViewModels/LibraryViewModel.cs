@@ -1111,7 +1111,15 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                 ramp: Ramp,
                 // The §7 name, shared with the detail view rather than storing a
                 // second copy of the rail's vocabulary.
-                bucketLabel: BucketLabelFor(primaryRow.Game.Bucket));
+                bucketLabel: BucketLabelFor(primaryRow.Game.Bucket))
+            {
+                BackgroundUrl = display?.BackgroundUrl,
+                BackdropPreferences = _artworkPreferences,
+                LoadBackdropImages = _workImages is { } imageRepository
+                    ? ct => BackdropImages.LoadAsync(imageRepository, resolvedWorkId,
+                        entries.Select(entry => entry.WorkId), ct)
+                    : null,
+            };
 
             // The compact grid actions raise library-owned commands; the tile
             // remains a projection and never reaches into repositories itself.

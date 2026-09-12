@@ -1,11 +1,11 @@
 ---
 id: TASK-250
 title: Compare feed card action layouts
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-12 23:09'
-updated_date: '2026-09-12 23:11'
+updated_date: '2026-09-12 23:20'
 labels: []
 dependencies: []
 ordinal: 282000
@@ -19,8 +19,8 @@ Preview a sliding edge reveal and grouped actions beside Play using current feed
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Interactive comparison shows both proposals with recent and recommendation card actions
-- [ ] #2 Keyboard focus and reduced motion are considered; fullscreen implications are stated
+- [x] #1 Interactive comparison shows both proposals with recent and recommendation card actions
+- [x] #2 Keyboard focus and reduced motion are considered; fullscreen implications are stated
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -33,4 +33,12 @@ Build a standalone interactive comparison using the supplied card art and Winnow
 
 <!-- SECTION:NOTES:BEGIN -->
 Created standalone feed-card-actions.html in the task visualization directory, comparing hover/focus edge reveal with grouped actions beside Play. Includes recommendation toggle, held-open state and reduced-motion toggle. Fullscreen recommendation retains controller action panel. Browser URL security policy blocked local file inspection; visual verification remains pending. No production app changes made.
+
+User selected actions beside Play after viewing comparison. Implemented and rendered in TASK-251; exploratory preview work concluded.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Compared edge reveal and inline actions; user selected inline actions with divider. Production implementation and visual checks completed in TASK-251.
+<!-- SECTION:FINAL_SUMMARY:END -->

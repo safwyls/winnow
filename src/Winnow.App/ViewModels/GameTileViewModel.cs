@@ -556,6 +556,10 @@ public partial class GameTileViewModel : ObservableObject
     /// </summary>
     internal ICoverLeases? Leases { get; }
 
+    internal string? BackgroundUrl { get; init; }
+    internal ArtworkPreferences? BackdropPreferences { get; init; }
+    internal Func<CancellationToken, Task<IReadOnlyList<WorkImages>>>? LoadBackdropImages { get; init; }
+
     /// <summary>
     /// The ramp every surface showing this game resolves dormancy through.
     /// Surfaces hand it to their own <see cref="CoverPresenter"/>, which needs
