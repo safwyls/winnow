@@ -38,11 +38,11 @@ public static class AccountStatsCopy
     // ══ Mixed currency ════════════════════════════════════════════════════
 
     /// <summary>Heading for the mixed-currency notice. Sentence case.</summary>
-    public const string MixedCurrencyHeading = "Mixed currencies";
+    public const string MixedCurrencyHeading = "Spending by currency";
 
     /// <summary>Shown when currency totals cannot be combined.</summary>
     public const string MixedCurrencyMessage =
-        "Money totals are withheld. Only counts are shown.";
+        "Each currency is shown separately. Nothing is converted. Transactions without a currency are counted in capture details.";
 
     // ══ Spend ═════════════════════════════════════════════════════════════
 

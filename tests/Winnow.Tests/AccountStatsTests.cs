@@ -307,6 +307,142 @@ public sealed class AccountStatsTests : IDisposable
         Assert.False(stats.IsSingleCurrency);
     }
 
+    [Theory]
+    [InlineData("$19.99 credit", "$credit")]
+    [InlineData("$19.99 CREDIT", "$CREDIT")]
+    [InlineData("$19.99\u00a0credit", "$credit")]
+    public async Task Dollar_credit_shares_dollars_without_changing_stored_facts(string text, string rawSymbol)
+    {
+        var parsed = Assert.IsType<SteamMoney>(SteamPageValues.TryParseMoney(text));
+        Assert.Equal(rawSymbol, parsed.CurrencySymbol);
+        var purchase = Transaction("$", 1999) with { Refunded = true };
+        var refund = Transaction(parsed.CurrencySymbol, parsed.Cents) with
+        {
+            Kind = AccountTransactionKinds.Refund, TransactionTypeRaw = "Refund",
+        };
+        await _facts.TryAppendAsync(purchase);
+        await _facts.TryAppendAsync(refund);
+        var stats = await _stats.GetAsync(Steam);
+        var dollars = Assert.Single(stats.CurrencyGroups);
+        Assert.True(stats.IsSingleCurrency);
+        Assert.Equal("$", dollars.CurrencySymbol);
+        Assert.Equal(new[] { new AccountCurrencyUse("$", 2) }, stats.Currencies);
+        Assert.Equal(1999, dollars.GrossProductSpendCents);
+        Assert.Equal(1999, dollars.RefundedProductSpendCents);
+        Assert.Equal(0, dollars.NetProductSpendCents);
+        Assert.Equal(new AccountSpendSlice(1, 1999), dollars.RefundTransactions);
+        Assert.Null(await _facts.TryAppendAsync(refund));
+        Assert.Equal(rawSymbol, Assert.Single(await _facts.GetTransactionsAsync(Steam),
+            f => f.Kind == AccountTransactionKinds.Refund).CurrencySymbol);
+    }
+
+    [Fact]
+    public async Task Every_monetary_breakdown_and_biggest_purchase_is_scoped_to_its_currency()
+    {
+        await Service().ImportAsync(Pages());
+        var dollarBaseline = await _stats.GetAsync(Steam);
+        await _facts.TryAppendAsync(Transaction("GBP", 2000) with
+        {
+            ItemNames = ["Bundle one", "Bundle two"], ListPriceCents = 3000,
+        });
+        await _facts.TryAppendAsync(Transaction("GBP", 400) with { Kind = AccountTransactionKinds.GiftPurchase });
+        await _facts.TryAppendAsync(Transaction("GBP", 300) with { Kind = AccountTransactionKinds.InGamePurchase });
+        await _facts.TryAppendAsync(Transaction("GBP", 500) with { Refunded = true });
+        await _facts.TryAppendAsync(Transaction("GBP", 500) with { Kind = AccountTransactionKinds.Refund });
+        await _facts.TryAppendAsync(Transaction("GBP", 600) with { Kind = AccountTransactionKinds.WalletCreditPurchase });
+        await _facts.TryAppendAsync(Transaction("GBP", null) with
+        {
+            Kind = AccountTransactionKinds.WalletCreditRedemption, WalletChangeCents = 700,
+        });
+        await _facts.TryAppendAsync(Transaction("GBP", 100) with { OccurredAt = null });
+        var stats = await _stats.GetAsync(Steam);
+        Assert.False(stats.IsSingleCurrency);
+        Assert.Null(stats.BiggestPurchase);
+        var dollars = Assert.Single(stats.CurrencyGroups, g => g.CurrencySymbol == "$");
+        AssertSameStats(dollarBaseline, dollars);
+        var pounds = Assert.Single(stats.CurrencyGroups, g => g.CurrencySymbol == "GBP");
+        Assert.Equal(3300, pounds.GrossProductSpendCents);
+        Assert.Equal(500, pounds.RefundedProductSpendCents);
+        Assert.Equal(2800, pounds.NetProductSpendCents);
+        Assert.Equal(new[] { new AccountSpendYear(2024, 3, 2700) }, pounds.SpendByYear);
+        Assert.Equal(100, pounds.UndatedNetSpendCents);
+        Assert.Equal(1, pounds.UndatedNetTransactionCount);
+        Assert.Equal(new AccountSpendSlice(2, 2100), pounds.Purchases);
+        Assert.Equal(new AccountSpendSlice(1, 400), pounds.GiftPurchases);
+        Assert.Equal(new AccountSpendSlice(1, 300), pounds.InGamePurchases);
+        Assert.Equal(new AccountSpendSlice(1, 500), pounds.RefundTransactions);
+        Assert.Equal(new AccountSpendSlice(1, 600), pounds.WalletCreditPurchases);
+        Assert.Equal(new AccountSpendSlice(1, 700), pounds.WalletCreditRedemptions);
+        Assert.Equal(new AccountSpendSlice(1, 2000), pounds.BundlePurchases);
+        Assert.Equal(new AccountSpendSlice(1, 2000), pounds.DiscountedPurchases);
+        Assert.Equal(3000, pounds.DiscountedPurchaseListCents);
+        Assert.Equal(2000, pounds.BiggestPurchase?.Cents);
+        Assert.Equal("GBP", pounds.BiggestPurchase?.CurrencySymbol);
+        Assert.True(pounds.BiggestPurchase?.IsBundle);
+        Assert.All(stats.CurrencyGroups, g => Assert.Empty(g.CurrencyGroups));
+    }
+
+    [Fact]
+    public async Task Unknown_currency_keeps_its_counts_without_polluting_known_currency_totals()
+    {
+        await _facts.TryAppendAsync(Transaction("$", 1000));
+        await _facts.TryAppendAsync(Transaction(null, 900000));
+        await _facts.TryAppendAsync(Transaction("", 800000));
+        await _facts.TryAppendAsync(Transaction("CDN$", 2000));
+        var stats = await _stats.GetAsync(Steam);
+        Assert.Equal(4, stats.TransactionCount);
+        Assert.Equal(2, stats.TransactionsWithoutCurrency);
+        Assert.False(stats.IsSingleCurrency);
+        Assert.Null(stats.BiggestPurchase);
+        Assert.Equal(2, stats.CurrencyGroups.Count);
+        Assert.Equal(1000, Assert.Single(stats.CurrencyGroups, g => g.CurrencySymbol == "$").NetProductSpendCents);
+        Assert.Equal(2000, Assert.Single(stats.CurrencyGroups, g => g.CurrencySymbol == "CDN$").NetProductSpendCents);
+    }
+
+    [Fact]
+    public async Task Currency_groups_retain_global_account_overlap_evidence()
+    {
+        await _facts.TryAppendAsync(Transaction("$", 1000) with { AccountRef = "76561198000000001" });
+        await _facts.TryAppendAsync(Transaction("GBP", 2000));
+        var stats = await _stats.GetAsync(Steam);
+        Assert.All(stats.CurrencyGroups, group =>
+        {
+            Assert.Equal(1, group.KnownAccountCount);
+            Assert.Equal(1, group.UnknownAccountFactCount);
+        });
+    }
+
+    [Fact]
+    public async Task Unknown_product_total_does_not_use_partial_wallet_payment_as_the_price()
+    {
+        await _facts.TryAppendAsync(Transaction("$", 1000));
+        await _facts.TryAppendAsync(Transaction("$", null) with { WalletChangeCents = -300 });
+        var dollars = Assert.Single((await _stats.GetAsync(Steam)).CurrencyGroups);
+        Assert.Equal(1000, dollars.NetProductSpendCents);
+        Assert.Equal(new AccountSpendSlice(2, 1000), dollars.Purchases);
+    }
+
+    [Fact]
+    public async Task Currency_read_enlists_without_committing_or_disposing_the_callers_transaction()
+    {
+        using (var scope = _db.Factory.Begin())
+        {
+            await _facts.TryAppendAsync(Transaction("$", 1000));
+            var stats = await _stats.GetAsync(Steam);
+            Assert.Equal(1000, Assert.Single(stats.CurrencyGroups).NetProductSpendCents);
+            await _facts.TryAppendAsync(Transaction("GBP", 2000));
+            Assert.Equal(2, (await _stats.GetAsync(Steam)).CurrencyGroups.Count);
+        }
+        Assert.False((await _stats.GetAsync(Steam)).HasAnything);
+    }
+
+    private static AccountTransactionFact Transaction(string? currency, long? cents) => new()
+    {
+        Source = Steam, Kind = AccountTransactionKinds.Purchase, TransactionTypeRaw = "Purchase",
+        OccurredAt = Utc(2024, 4, 4), ItemNames = ["Example game"], TotalCents = cents,
+        CurrencySymbol = currency, CapturedAt = Utc(2026, 8, 29),
+    };
+
     // ── licences ─────────────────────────────────────────────────────────────
 
     [Fact]

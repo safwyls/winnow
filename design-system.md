@@ -406,18 +406,32 @@ technology. Fullscreen uses a `TextDim` status line beneath the provider heading
 separate actionable attention text; it shares the state meanings without the desktop pill.
 Local-only discovery is an available source, not an unconnected account requiring repair.
 
-**Account statistics.** Desktop Steam stats and fullscreen Activity → Library summary lead
-with `From captured purchases`: net spend with recorded prices, purchases refunded, and
-kept purchases in bundles. Desktop uses 28px Data for net spend and 22px Data for percentages;
-fullscreen uses 40px Data above its breakdown actions. Counts and detailed amounts retain
-their smaller existing table or reading-page treatment.
+**Account statistics.** Desktop Steam stats and fullscreen Activity → Library summary share
+a dashboard for captured purchases. Each currency has its own net, gross and refunded
+amounts. Currency selection changes the money charts and detailed breakdowns together;
+amounts in different currencies are never combined or ranked against one another.
+Steam's `$credit` annotation belongs to the dollar total. Missing-currency records retain
+their counts without hiding totals for currencies that are known.
+
+Yearly spending uses bars from a zero baseline, with exact amounts beside them; negative
+values extend to the left. The spend
+composition donut separates purchases, gifts bought for others and in-game purchases;
+each segment has a text label, amount and share. Negative category totals replace the donut
+with an explanation and retain their signed amounts in the breakdown. Licence acquisition uses count bars and
+states that licences are packages, not games. Charts use the theme's existing inks, never
+Flare, and carry visible text equivalents so color and pointer hover are not required.
+The highest recorded spending year describes captured history, not a complete lifetime.
+Average kept transaction value divides net spend by kept product transactions with recorded
+prices in the selected currency; a bundle counts once, and no per-game price is inferred.
+Desktop keeps detailed tables behind a disclosure; fullscreen retains its reading actions
+and controller-accessible currency choices.
 
 The refund percentage divides original product rows flagged refunded by all product rows
 with recorded prices. The bundle percentage divides non-refunded product rows with more
 than one item by all non-refunded product rows with recorded prices. Wallet credit and
 standalone reversals enter neither ratio. Missing-price rows are excluded from both
 populations; partial captures describe only the pages read. These are transaction percentages,
-so mixed currencies can retain them while money totals stay withheld. A zero denominator or
+so they describe captured purchases across currencies. A zero denominator or
 overlap between identified and unknown-account captures shows `Not available`. No bundle
 price is divided among games. Both surfaces state these limits beside the primary figures.
 

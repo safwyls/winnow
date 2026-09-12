@@ -1,4 +1,5 @@
 using Dapper;
+using Microsoft.Data.Sqlite;
 using Winnow.Core.Domain;
 using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
@@ -27,11 +28,44 @@ public sealed class AccountStatsRepository : IAccountStatsRepository
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(source);
 
-        var kinds = AccountTransactionKinds.ProductSpend;
-
         using var lease = _factory.Lease();
-        var conn = lease.Connection;
-        var tx = lease.Transaction;
+        // All groups and capture counts must describe the same database snapshot.
+        using var readTransaction = lease.Transaction is null
+            ? lease.Connection.BeginTransaction(deferred: true)
+            : null;
+        var tx = lease.Transaction ?? readTransaction!;
+        var stats = await ReadAsync(source, null, lease.Connection, tx, ct).ConfigureAwait(false);
+        var groups = new List<AccountStats>();
+        foreach (var currency in stats.Currencies)
+        {
+            groups.Add(await ReadAsync(source, currency.Symbol, lease.Connection, tx, ct).ConfigureAwait(false));
+        }
+        return stats with
+        {
+            CurrencyGroups = groups,
+            BiggestPurchase = stats.IsSingleCurrency ? stats.BiggestPurchase : null,
+        };
+    }
+
+    // Keep source facts and fingerprints intact. Steam's credit annotation is
+    // a payment direction, not a second dollar currency.
+    private const string CurrencyTransactions = """
+        WITH normalized_transactions AS (
+            SELECT *, CASE WHEN source = 'steam'
+                                AND lower(replace(trim(currency_symbol), ' ', '')) = '$credit'
+                           THEN '$'
+                           ELSE NULLIF(trim(currency_symbol), '') END AS stats_currency
+            FROM account_transactions
+        ), transactions AS (
+            SELECT * FROM normalized_transactions
+            WHERE @currency IS NULL OR stats_currency = @currency
+        )
+        """;
+
+    private static async Task<AccountStats> ReadAsync(
+        string source, string? currency, SqliteConnection conn, SqliteTransaction tx, CancellationToken ct)
+    {
+        var kinds = AccountTransactionKinds.ProductSpend;
 
         var accounts = await conn.QuerySingleAsync<AccountShapeRow>(new CommandDefinition("""
             SELECT COUNT(DISTINCT account_ref) AS KnownAccounts,
@@ -43,20 +77,22 @@ public sealed class AccountStatsRepository : IAccountStatsRepository
             );
             """, new { source }, transaction: tx, cancellationToken: ct)).ConfigureAwait(false);
 
-        var shape = await conn.QuerySingleAsync<ShapeRow>(new CommandDefinition("""
+        var shape = await conn.QuerySingleAsync<ShapeRow>(new CommandDefinition($"""
+            {CurrencyTransactions}
             SELECT COUNT(*)                                                          AS TransactionCount,
                    COALESCE(SUM(CASE WHEN occurred_at IS NULL THEN 1 END), 0)        AS TransactionsWithoutDate,
-                   COALESCE(SUM(CASE WHEN currency_symbol IS NULL THEN 1 END), 0)    AS TransactionsWithoutCurrency,
+                   COALESCE(SUM(CASE WHEN stats_currency IS NULL THEN 1 END), 0)    AS TransactionsWithoutCurrency,
                    MIN(occurred_at)                                                  AS FirstTransactionAt,
                    MAX(occurred_at)                                                  AS LastTransactionAt
-            FROM account_transactions
+            FROM transactions
             WHERE source = @source;
-            """, new { source }, transaction: tx, cancellationToken: ct)).ConfigureAwait(false);
+            """, new { source, currency }, transaction: tx, cancellationToken: ct)).ConfigureAwait(false);
 
         // Gross is every product transaction the pages reported; refunded is the
         // subset Steam marked reversed. Net is the subtraction, never a stored
         // number.
-        var spend = await conn.QuerySingleAsync<SpendRow>(new CommandDefinition("""
+        var spend = await conn.QuerySingleAsync<SpendRow>(new CommandDefinition($"""
+            {CurrencyTransactions}
             SELECT COUNT(*)                                                                AS GrossCount,
                    COALESCE(SUM(total_cents), 0)                                           AS GrossCents,
                    COALESCE(SUM(CASE WHEN refunded = 1 THEN 1 END), 0)                     AS RefundedCount,
@@ -65,17 +101,18 @@ public sealed class AccountStatsRepository : IAccountStatsRepository
                                                                                            AS UndatedCount,
                    COALESCE(SUM(CASE WHEN refunded = 0 AND occurred_at IS NULL THEN total_cents END), 0)
                                                                                            AS UndatedCents
-            FROM account_transactions
+            FROM transactions
             WHERE source = @source
               AND kind IN @kinds
               AND total_cents IS NOT NULL;
-            """, new { source, kinds }, transaction: tx, cancellationToken: ct)).ConfigureAwait(false);
+            """, new { source, kinds, currency }, transaction: tx, cancellationToken: ct)).ConfigureAwait(false);
 
-        var byYear = await conn.QueryAsync<YearRow>(new CommandDefinition("""
+        var byYear = await conn.QueryAsync<YearRow>(new CommandDefinition($"""
+            {CurrencyTransactions}
             SELECT CAST(strftime('%Y', occurred_at) AS INTEGER) AS Year,
                    COUNT(*)                                     AS TransactionCount,
                    SUM(total_cents)                             AS Cents
-            FROM account_transactions
+            FROM transactions
             WHERE source = @source
               AND kind IN @kinds
               AND total_cents IS NOT NULL
@@ -83,73 +120,80 @@ public sealed class AccountStatsRepository : IAccountStatsRepository
               AND occurred_at IS NOT NULL
             GROUP BY CAST(strftime('%Y', occurred_at) AS INTEGER)
             ORDER BY CAST(strftime('%Y', occurred_at) AS INTEGER);
-            """, new { source, kinds }, transaction: tx, cancellationToken: ct)).ConfigureAwait(false);
+            """, new { source, kinds, currency }, transaction: tx, cancellationToken: ct)).ConfigureAwait(false);
 
         // A wallet-credit redemption carries no total — the page reports only the
         // balance change — so the value falls back to that change. Every other
         // kind is valued at its total.
-        var slices = await conn.QueryAsync<SliceRow>(new CommandDefinition("""
+        var slices = await conn.QueryAsync<SliceRow>(new CommandDefinition($"""
+            {CurrencyTransactions}
             SELECT kind                                                       AS Kind,
                    COUNT(*)                                                   AS Count,
-                   COALESCE(SUM(COALESCE(total_cents, wallet_change_cents)), 0) AS Cents
-            FROM account_transactions
+                   COALESCE(SUM(CASE WHEN kind = 'wallet_credit_redemption'
+                                     THEN COALESCE(total_cents, wallet_change_cents)
+                                     ELSE total_cents END), 0) AS Cents
+            FROM transactions
             WHERE source = @source
               AND refunded = 0
             GROUP BY kind;
-            """, new { source }, transaction: tx, cancellationToken: ct)).ConfigureAwait(false);
+            """, new { source, currency }, transaction: tx, cancellationToken: ct)).ConfigureAwait(false);
 
         var byKind = slices.ToDictionary(
             s => s.Kind, s => new AccountSpendSlice((int)s.Count, s.Cents), StringComparer.Ordinal);
 
         // A bundle's total is a real fact; its per-item split is not, and is
         // never computed. This is the total, exposed as its own fact (§4.7).
-        var bundles = await conn.QuerySingleAsync<SliceTotalsRow>(new CommandDefinition("""
+        var bundles = await conn.QuerySingleAsync<SliceTotalsRow>(new CommandDefinition($"""
+            {CurrencyTransactions}
             SELECT COUNT(*)                      AS Count,
                    COALESCE(SUM(total_cents), 0) AS Cents
-            FROM account_transactions
+            FROM transactions
             WHERE source = @source
               AND kind IN @kinds
               AND total_cents IS NOT NULL
               AND refunded = 0
               AND item_count > 1;
-            """, new { source, kinds }, transaction: tx, cancellationToken: ct)).ConfigureAwait(false);
+            """, new { source, kinds, currency }, transaction: tx, cancellationToken: ct)).ConfigureAwait(false);
 
-        var discounted = await conn.QuerySingleAsync<DiscountRow>(new CommandDefinition("""
+        var discounted = await conn.QuerySingleAsync<DiscountRow>(new CommandDefinition($"""
+            {CurrencyTransactions}
             SELECT COUNT(*)                           AS Count,
                    COALESCE(SUM(total_cents), 0)      AS Cents,
                    COALESCE(SUM(list_price_cents), 0) AS ListCents
-            FROM account_transactions
+            FROM transactions
             WHERE source = @source
               AND kind IN @kinds
               AND total_cents IS NOT NULL
               AND list_price_cents IS NOT NULL
               AND refunded = 0;
-            """, new { source, kinds }, transaction: tx, cancellationToken: ct)).ConfigureAwait(false);
+            """, new { source, kinds, currency }, transaction: tx, cancellationToken: ct)).ConfigureAwait(false);
 
-        var biggest = await conn.QuerySingleOrDefaultAsync<BiggestRow>(new CommandDefinition("""
+        var biggest = await conn.QuerySingleOrDefaultAsync<BiggestRow>(new CommandDefinition($"""
+            {CurrencyTransactions}
             SELECT total_cents     AS Cents,
                    occurred_at     AS OccurredAt,
                    item_names_json AS ItemNamesJson,
                    item_count      AS ItemCount,
-                   currency_symbol AS CurrencySymbol
-            FROM account_transactions
+                   stats_currency AS CurrencySymbol
+            FROM transactions
             WHERE source = @source
               AND kind IN @kinds
               AND total_cents IS NOT NULL
               AND refunded = 0
             ORDER BY total_cents DESC, occurred_at DESC, id DESC
             LIMIT 1;
-            """, new { source, kinds }, transaction: tx, cancellationToken: ct)).ConfigureAwait(false);
+            """, new { source, kinds, currency }, transaction: tx, cancellationToken: ct)).ConfigureAwait(false);
 
-        var currencies = await conn.QueryAsync<CurrencyRow>(new CommandDefinition("""
-            SELECT currency_symbol AS Symbol,
+        var currencies = await conn.QueryAsync<CurrencyRow>(new CommandDefinition($"""
+            {CurrencyTransactions}
+            SELECT stats_currency AS Symbol,
                    COUNT(*)        AS TransactionCount
-            FROM account_transactions
+            FROM transactions
             WHERE source = @source
-              AND currency_symbol IS NOT NULL
-            GROUP BY currency_symbol
-            ORDER BY COUNT(*) DESC, currency_symbol;
-            """, new { source }, transaction: tx, cancellationToken: ct)).ConfigureAwait(false);
+              AND stats_currency IS NOT NULL
+            GROUP BY stats_currency
+            ORDER BY COUNT(*) DESC, stats_currency;
+            """, new { source, currency }, transaction: tx, cancellationToken: ct)).ConfigureAwait(false);
 
         var licenses = await conn.QuerySingleAsync<LicenseShapeRow>(new CommandDefinition("""
             SELECT COUNT(*)                                                        AS LicenseCount,

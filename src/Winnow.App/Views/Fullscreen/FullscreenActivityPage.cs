@@ -440,23 +440,29 @@ public sealed class FullscreenLibrarySummaryPage : FullscreenPage
         if (_model is { HasFacts: true } stats)
         {
             body.Children.Add(FullscreenUi.Text(stats.IntroMessage, 28, "TextDim"));
-            if (stats.IsMixedCurrency) body.Children.Add(FullscreenUi.Text(stats.MixedCurrencyMessage, 28, "Amber"));
-            body.Children.Add(FullscreenUi.Text(stats.SummaryHeading, 40));
-            void Figure(string label, string value, string ink = "Text")
+            if (stats.IsMixedCurrency) body.Children.Add(FullscreenUi.Text(stats.MixedCurrencyMessage, 28, "TextDim"));
+            if (stats.CurrencyOptions.Count > 1)
             {
-                body.Children.Add(FullscreenUi.Text(label, 28, "TextDim"));
-                var number = FullscreenUi.Text(value, 40, ink);
-                number[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension("DataFont");
-                body.Children.Add(number);
+                var currencies = new WrapPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
+                var buttons = new List<Control>();
+                foreach (var symbol in stats.CurrencyOptions)
+                {
+                    var button = FullscreenUi.Button($"{symbol} · {(symbol == stats.SelectedCurrency ? "selected" : "show charts")}", () =>
+                    {
+                        stats.SelectedCurrency = symbol;
+                        Render();
+                    });
+                    button.Margin = new Thickness(0, 0, 16, 12);
+                    currencies.Children.Add(button); buttons.Add(button);
+                }
+                body.Children.Add(currencies); focus.Add(buttons.ToArray());
             }
-            Figure(stats.NetSpendLabel, stats.NetSpendValue, "Volt");
-            Figure(stats.RefundedShareLabel, stats.RefundedShare);
-            Figure(stats.BundleShareLabel, stats.BundleShare);
-            body.Children.Add(FullscreenUi.Text(stats.SummaryNote, 28, "TextDim"));
-            void Group(string label, IEnumerable<AccountStatRow> rows, string note)
+            body.Children.Add(new AccountStatsDashboard { DataContext = stats, Fullscreen = true, ShowCurrencyPicker = false });
+            void Group(string label, IEnumerable<AccountStatRow> rows, string note, bool currencyScoped = true)
             {
+                var currencyNote = currencyScoped ? $"Currency: {stats.SelectedCurrency ?? "not recorded"}. " : string.Empty;
                 var text = string.Join("\n\n", rows.Select(row => $"{row.Label}     {row.CountText}     {row.AmountText}"));
-                var button = FullscreenUi.Button(label, () => context.Push(new FullscreenDetailsReadingPage(context, label, $"{note}\n\n{text}")));
+                var button = FullscreenUi.Button(label, () => context.Push(new FullscreenDetailsReadingPage(context, label, $"{currencyNote}{note}\n\n{text}")));
                 body.Children.Add(button); focus.Add([button]);
             }
             Group(stats.SpendHeading, stats.SpendRows, stats.SpendNote);
@@ -466,9 +472,9 @@ public sealed class FullscreenLibrarySummaryPage : FullscreenPage
             Group(stats.BundleHeading, stats.BundleRows, stats.BundleNote);
             Group(stats.DiscountHeading, stats.DiscountRows, stats.DiscountNote);
             Group(stats.WalletHeading, stats.WalletRows, stats.WalletNote);
-            Group(stats.LicenceHeading, stats.LicenceRows, stats.LicenceNote);
-            Group(stats.CurrencyHeading, stats.CurrencyRows, stats.CurrencyNote);
-            Group(stats.CaptureHeading, stats.CaptureRows, stats.CaptureNote);
+            Group(stats.LicenceHeading, stats.LicenceRows, stats.LicenceNote, false);
+            Group(stats.CurrencyHeading, stats.CurrencyRows, stats.CurrencyNote, false);
+            Group(stats.CaptureHeading, stats.CaptureRows, stats.CaptureNote, false);
         }
         else if (_problem is null && !_loading && (_loaded || _model is null))
             body.Children.Add(FullscreenUi.Text(_model?.EmptyMessage ?? "Account statistics are unavailable.", 28, "TextDim"));

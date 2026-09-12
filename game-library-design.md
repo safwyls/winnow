@@ -496,20 +496,24 @@ Unknown-account records remain a separate provenance group. When known and unkno
 coexist, they may describe the same transactions: money totals are withheld and counts describe
 captured records. Records are never reassigned or deleted by guessing which account supplied them.
 
-- When a capture holds more than one currency, or transactions with no currency symbol,
-  money totals are withheld and only counts are shown. Amounts are stored exactly as the page
-  displayed them; nothing is converted or added across currencies.
+- Money totals are grouped by currency, never converted or added across currencies. Steam's
+  `$credit` annotation is dollar credit, so the statistics query groups it with `$`, including
+  previously imported records. Stored source labels and import fingerprints remain unchanged.
+  Transactions without a currency remain in captured-record counts; they do not suppress
+  totals for known currencies or contribute to a known currency's money totals.
 - Wallet top-ups are not spend. Money reaches Steam either as a direct payment or as a
   top-up that later pays for products, and counting both would count the same money twice.
   Wallet credit is reported as its own fact and never as part of spend. What a redeemed code
-  cost is not on the page.
+  cost is not on the page. A wallet balance change supplies the redemption figure only;
+  a partial wallet payment never substitutes for a missing product total.
 - A bundle's total price is a real fact; the per-game split is not. Dividing by item count
   and weighting by market price are both defensible and both wrong, so no per-game price is
   computed or shown.
 - Only rows that rendered a discount carry a list price, and most purchases carry none. The
   discount figure is the difference on those rows and is never a total-savings figure.
-- The biggest transaction is the largest single transaction by price, not the most ever paid
-  for one game; a bundle is one transaction covering several items.
+- The biggest transaction is the largest single transaction within the selected currency,
+  not the most ever paid for one game; a bundle is one transaction covering several items.
+  Amounts in different currencies are never ranked against each other.
 - A refund and the purchase it reverses are two different rows, and a capture may hold either
   or both. The two figures are reported side by side and are never added together; reversal
   rows are never subtracted twice.
@@ -926,7 +930,9 @@ note editor retains loaded pages and refreshes the saved note through `ISessionR
 Desktop and fullscreen details capture identity context on the dispatcher, read their history
 snapshot on a worker, and publish only for the current uncancelled request. Account summaries
 reuse the currency-safe `AccountStatsViewModel` with independent presentation state and worker
-reads. The measured bounds and remaining layout costs are recorded in
+reads. `AccountStatsDashboard` renders the shared chart projections with separate desktop and
+fullscreen sizing; selecting a currency updates the money charts and detailed figures together.
+The measured bounds and remaining layout costs are recorded in
 `docs/spikes/large-history-read-responsiveness.md`. Manual-game and identity tools construct their own
 `LibrarySettingsViewModel` and `MergeQueueViewModel` from DI; editor state and focus do not
 leak into desktop tools. Shared settings remain common application state. Both surfaces use
