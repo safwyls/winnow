@@ -150,8 +150,8 @@ public sealed class FullscreenAccessibilityTests
             Dispatcher.UIThread.RunJobs();
             Assert.NotSame(settings, shell.CurrentPage);
             AssertNamesAndStates(shell.CurrentPage);
-            AssertControllerReachability(window, shell.CurrentPage);
             Assert.Equal("Cancel", ControlAutomationPeer.CreatePeerForElement(Assert.IsAssignableFrom<Control>(window.FocusManager.GetFocusedElement()))!.GetName());
+            AssertControllerReachability(window, shell.CurrentPage);
             shell.Handle(GamepadButtons.Back); Dispatcher.UIThread.RunJobs();
             Assert.Same(settings, shell.CurrentPage);
             Assert.Same(invoking, window.FocusManager.GetFocusedElement());

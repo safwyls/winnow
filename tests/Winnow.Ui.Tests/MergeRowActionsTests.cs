@@ -37,11 +37,12 @@ public sealed class MergeRowActionsTests
         var library = new LibraryViewModel(services.GetRequiredService<ILibraryQueryRepository>(), services.GetRequiredService<IOwnershipRepository>(),
             services.GetRequiredService<IReleaseRepository>(), services.GetRequiredService<IWorkRepository>(), new UpdateEventRepository(db.Factory));
         await library.LoadCommand.ExecuteAsync(null);
-        using var context = new FullscreenContext(library, PreviewData.Feed, PreviewData.Shell, services);
+        using var context = new FullscreenContext(library, PreviewData.Feed, PreviewData.Shell, services) { ReducedMotion = true };
         using var television = new FullscreenView(context);
         var page = new FullscreenIdentityPage(context);
         var window = new Window { Width = width, Height = width * 9 / 16, Content = television };
-        Button Find(string text) => window.GetVisualDescendants().OfType<Button>().First(button => button.Content?.ToString()?.Contains(text, StringComparison.Ordinal) == true);
+        Button Find(string text) => window.GetVisualDescendants().OfType<Button>().First(button => button.IsEffectivelyEnabled
+            && AutomationProperties.GetName(button)?.Contains(text, StringComparison.Ordinal) == true);
         void Click(Button button) { button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs(); }
         try
         {
@@ -66,7 +67,7 @@ public sealed class MergeRowActionsTests
             Dispatcher.UIThread.RunJobs();
             Click(Find("· Header"));
             Assert.NotNull(Find("Open game"));
-            Assert.DoesNotContain(window.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "Make header"));
+            Assert.DoesNotContain(window.GetVisualDescendants().OfType<Button>(), button => button.IsEffectivelyEnabled && AutomationProperties.GetName(button) == "Make header");
         }
         finally { window.Close(); }
     }

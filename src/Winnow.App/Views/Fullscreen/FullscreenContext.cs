@@ -240,9 +240,24 @@ internal sealed class FullscreenActionsPage : FullscreenPage
     public FullscreenActionsPage(FullscreenContext context, string title, IReadOnlyList<FullscreenAction> actions) : base(context)
     {
         _title = title;
-        var buttons = actions.Select(action => { var button = FullscreenUi.Button(action.Label, () => { Context.Back(); action.Invoke(); }); button.IsEnabled = action.IsEnabled; return button; }).ToArray();
-        Content = FullscreenUi.Scroll(FullscreenUi.Stack([FullscreenUi.Text(title, 64), .. buttons]));
-        SetFocusRows(buttons.Select(b => new Control[] { b }).ToArray());
+        var buttons = actions.Select(action =>
+        {
+            var button = FullscreenUi.Button(action.Label, () => { Context.Back(); action.Invoke(); });
+            button.ContentTemplate = new Avalonia.Controls.Templates.FuncDataTemplate<string>((label, _) => FullscreenUi.Text(label, 28));
+            button.IsEnabled = action.IsEnabled;
+            button.Opacity = action.IsEnabled ? 1 : .45;
+            return button;
+        }).ToArray();
+        var close = FullscreenUi.Button("Close", Context.Back);
+        close.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
+        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 16 };
+        header.Children.Add(FullscreenUi.Text(title, 40)); Grid.SetColumn(close, 1); header.Children.Add(close);
+        var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto"), RowSpacing = 24 };
+        layout.Children.Add(header);
+        var scroll = FullscreenUi.Scroll(FullscreenUi.Stack(buttons)); Grid.SetRow(scroll, 1); layout.Children.Add(scroll);
+        var hints = FullscreenGlyphs.Hints("A  Select     B  Close"); Grid.SetRow(hints, 2); layout.Children.Add(hints);
+        Content = layout;
+        SetFocusRows([.. buttons.Select(b => new Control[] { b }), [close]]);
     }
 }
 

@@ -914,6 +914,10 @@ HTTP 404 records a missing asset; transport and service failures do not record a
 Downloads happen on demand, without changing stored game metadata or requiring an API key.
 
 Controller input lives in `Winnow.App.Services`, independent of ingest and process monitoring.
+Fullscreen action pages retain their navigation-stack identity but render in the shell's
+edge overlay. The underlying page stays attached with input disabled, preserving its loaded
+state and scroll position. Dismissal removes the overlay and restores the invoking control;
+choosing an action dismisses before invoking it so a nested tool follows the normal page stack.
 The window polls a read-only source at 33 ms while open. Windows loads XInput from the system
 directory; Linux reads nonblocking joydev events using kernel-reported button and axis maps.
 Discovery retries every two seconds. Battery readings are optional and queried every thirty

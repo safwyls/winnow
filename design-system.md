@@ -744,7 +744,12 @@ LB and RB flank the root menu; Settings keeps them outside its scrolling tab str
 Other local section and paging prompts sit at the right edge. The current input sources use Xbox-style
 button shapes; device-specific glyph families are not detected. The dragon mark sits beside
 the Winnow title. Controller input hides the mouse cursor; mouse movement or a click restores it. Clock and optional battery status sit in a quiet
-top corner. Unknown battery state is omitted. Nested sheets trap focus and restore it on
+top corner. Unknown battery state is omitted. Fullscreen action menus, including More,
+use a right-edge panel over a dimmed, retained page. The panel slides in over 180 ms and
+appears immediately with reduced motion. Actions wrap and scroll within the panel; Close,
+B, Escape or clicking outside dismisses it and restores the invoking control. Background
+controls cannot receive input while it is open. Desktop More retains its existing popup.
+Nested sheets trap focus and restore it on
 close. Destructive actions require confirmation; unplugging a controller preserves position
 and provides a reconnect message with keyboard fallback. Reduced motion removes travel and
 zoom while retaining immediate selection feedback.
