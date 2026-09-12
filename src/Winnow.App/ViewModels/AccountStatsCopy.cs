@@ -12,11 +12,11 @@ public static class AccountStatsCopy
 
     /// <summary>Rail row label. Uppercase, matching the other Display S caps
     /// rows in the rail.</summary>
-    public const string RailRow = "STEAM STATS";
+    public const string RailRow = "STATS";
 
     /// <summary>Rail row tooltip. No trailing period.</summary>
     public const string RailTooltip =
-        "Spending and licence totals from Steam";
+        "Spending and licence statistics";
 
     /// <summary>Screen title, rendered in Display L. Sentence case, matching
     /// the settings surface's screen titles. Names the user's Steam account,

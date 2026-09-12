@@ -406,8 +406,10 @@ technology. Fullscreen uses a `TextDim` status line beneath the provider heading
 separate actionable attention text; it shares the state meanings without the desktop pill.
 Local-only discovery is an available source, not an unconnected account requiring repair.
 
-**Account statistics.** Desktop Steam stats and fullscreen Activity → Library summary share
-a dashboard for captured purchases. Each currency has its own net, gross and refunded
+**Account statistics.** Desktop Stats and fullscreen Activity → Library summary share
+a dashboard for captured purchases. Stats names the destination without tying it to a store;
+the current desktop content remains labeled Steam account to identify its actual source.
+Each currency has its own net, gross and refunded
 amounts. Currency selection changes the money charts and detailed breakdowns together;
 amounts in different currencies are never combined or ranked against one another.
 Steam's `$credit` annotation belongs to the dollar total. Missing-currency records retain
@@ -591,7 +593,7 @@ carries one fact wrapped in reasoning, the fact stays and the reasoning moves he
 | Bucket: refund line to retired | `Started` | `Barely played`, `Bounced off` |
 | Bucket: high playtime | `Played out` | `Completed` |
 | Bucket: lifecycle evidence of closure, delisting or abandonment | `Derelict` | `Won't run`, `Dead` |
-| Steam account statistics rail row | `STEAM STATS` | `STATS` |
+| Statistics rail row | `STATS` | `STEAM STATS` |
 | Badge tooltip | `3 updates since you played` | `New content available!` |
 | Journal prompt | `How was that?` | `Rate your session!` |
 | Card answer | `Same game` / `Different games` | `Merge records` / `Cancel` |
@@ -2064,7 +2066,7 @@ or live list."* The footer keeps **New list** on the left and the settings cog o
 New list pairs its label with a vector list-plus icon and offers **Static list** (choose games yourself) and **Live list** (save the current
 library filters, with membership updating automatically), with a tooltip explaining each.
 
-**The desktop rail distinguishes screens from library subsets.** FEED, MERGES and STEAM STATS
+**The desktop rail distinguishes screens from library subsets.** FEED, MERGES and STATS
 open screens in that order, followed by ALL GAMES above the divider. Buckets below it narrow
 the library, followed by LISTS and LIVE LISTS. Statistics sits with the other screens, so it
 needs no single-entry ACCOUNT heading. Creation and configuration actions sit in the footer.

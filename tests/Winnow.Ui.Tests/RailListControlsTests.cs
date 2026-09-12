@@ -41,7 +41,8 @@ public sealed class RailListControlsTests
             if (shell.ToggleAccountStatsCommand.ExecutionTask is { } load) await load;
             Flush();
             Assert.True(shell.IsAccountStatsVisible);
-            Assert.Equal(shell.AccountStats.RailRow, AutomationProperties.GetName(stats));
+            Assert.Equal("STATS", AutomationProperties.GetName(stats));
+            Assert.Contains(stats.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "STATS");
             Activate(window, all); Flush();
             Assert.False(shell.IsAccountStatsVisible);
         }
