@@ -746,8 +746,10 @@ button shapes; device-specific glyph families are not detected. The dragon mark 
 the Winnow title. Controller input hides the mouse cursor; mouse movement or a click restores it. Clock and optional battery status sit in a quiet
 top corner. Unknown battery state is omitted. Fullscreen action menus, including More,
 use a right-edge panel over a dimmed, retained page. The panel slides in over 180 ms and
-appears immediately with reduced motion. Actions wrap and scroll within the panel; Close,
-B, Escape or clicking outside dismisses it and restores the invoking control. Background
+appears immediately with reduced motion. Actions wrap and scroll within the panel; B,
+Escape, right-click or clicking outside dismisses it and restores the invoking control.
+The panel header has no Close button. Throughout fullscreen, right-click and Escape use
+the same Back handling as controller B, including page-specific cancellation. Background
 controls cannot receive input while it is open. Desktop More retains its existing popup.
 Both menus pair action labels with theme-colored outline icons in a consistent left column.
 Icons are decorative; the text remains the accessible action name. Fullscreen icons scale

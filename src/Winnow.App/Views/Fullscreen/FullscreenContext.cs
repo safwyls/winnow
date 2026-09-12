@@ -255,16 +255,12 @@ internal sealed class FullscreenActionsPage : FullscreenPage
             button.Opacity = action.IsEnabled ? 1 : .45;
             return button;
         }).ToArray();
-        var close = FullscreenUi.Button("Close", Context.Back);
-        close.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
-        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 16 };
-        header.Children.Add(FullscreenUi.Text(title, 40)); Grid.SetColumn(close, 1); header.Children.Add(close);
         var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto"), RowSpacing = 24 };
-        layout.Children.Add(header);
+        layout.Children.Add(FullscreenUi.Text(title, 40));
         var scroll = FullscreenUi.Scroll(FullscreenUi.Stack(buttons)); Grid.SetRow(scroll, 1); layout.Children.Add(scroll);
         var hints = FullscreenGlyphs.Hints("A  Select     B  Close"); Grid.SetRow(hints, 2); layout.Children.Add(hints);
         Content = layout;
-        SetFocusRows([.. buttons.Select(b => new Control[] { b }), [close]]);
+        SetFocusRows([.. buttons.Select(b => new Control[] { b })]);
     }
 }
 

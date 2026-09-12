@@ -20,6 +20,7 @@ public sealed class FullscreenActionOverlayTests
     [InlineData("controller")]
     [InlineData("keyboard")]
     [InlineData("pointer")]
+    [InlineData("right-click")]
     public void Dismissal_keeps_the_origin_attached_traps_focus_and_restores_its_trigger(string input)
     {
         using var fixture = new Fixture();
@@ -40,6 +41,12 @@ public sealed class FullscreenActionOverlayTests
         }
         if (input == "controller") fixture.Shell.Handle(GamepadButtons.Back);
         else if (input == "keyboard") Assert.True(fixture.Shell.HandleKey(new KeyEventArgs { Key = Key.Escape }));
+        else if (input == "right-click")
+        {
+            var button = fixture.Button("Choose artwork");
+            var point = button.TranslatePoint(new Point(10, 10), fixture.Window)!.Value;
+            fixture.Window.MouseDown(point, MouseButton.Right); fixture.Window.MouseUp(point, MouseButton.Right);
+        }
         else
         {
             var veil = fixture.Overlay;
@@ -79,6 +86,21 @@ public sealed class FullscreenActionOverlayTests
         fixture.Flush(); Assert.Equal(1, invoked); Assert.Equal(0, disabledInvoked);
         Assert.Same(fixture.Origin, fixture.Shell.CurrentPage);
         Assert.Same(fixture.Origin.More, fixture.Window.FocusManager!.GetFocusedElement());
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Right_click_on_a_page_respects_page_back_handling(bool handlesBack)
+    {
+        using var fixture = new Fixture();
+        var child = new ProbePage(fixture.Context, "Edit game details") { HandlesBack = handlesBack };
+        fixture.Context.Push(child); fixture.Flush();
+        var point = child.More.TranslatePoint(new Point(10, 10), fixture.Window)!.Value;
+        fixture.Window.MouseDown(point, MouseButton.Right); fixture.Window.MouseUp(point, MouseButton.Right);
+        fixture.Flush();
+        Assert.Equal(1, child.BackCalls);
+        Assert.Same(handlesBack ? child : fixture.Origin, fixture.Shell.CurrentPage);
     }
 
     [AvaloniaFact]
@@ -158,13 +180,12 @@ public sealed class FullscreenActionOverlayTests
         using var fixture = new Fixture(1.4, true, 10, interfaceScale);
         fixture.Open([new("Choose artwork", () => { })]);
         var title = fixture.Shell.CurrentPage.GetVisualDescendants().OfType<TextBlock>().Single(x => x.Text == "More actions");
-        var close = fixture.Button("Close");
+        Assert.DoesNotContain(fixture.Shell.CurrentPage.GetVisualDescendants().OfType<Button>(),
+            x => AutomationProperties.GetName(x) == "Close");
         var titleTop = title.TranslatePoint(default, fixture.Window)!.Value.Y;
-        var closeRight = close.TranslatePoint(new Point(close.Bounds.Width, 0), fixture.Window)!.Value.X;
-        var closeTop = close.TranslatePoint(default, fixture.Window)!.Value.Y;
+        var titleRight = title.TranslatePoint(new Point(title.Bounds.Width, 0), fixture.Window)!.Value.X;
         Assert.True(titleTop >= fixture.Window.ClientSize.Height * .1 - 1);
-        Assert.True(closeTop >= fixture.Window.ClientSize.Height * .1 - 1);
-        Assert.True(closeRight <= fixture.Window.ClientSize.Width * .9 + 1);
+        Assert.True(titleRight <= fixture.Window.ClientSize.Width * .9 + 1);
         var footer = fixture.Shell.CurrentPage.GetVisualDescendants().OfType<TextBlock>().Last(x => x.Text?.Contains("Close") == true);
         var footerBottom = footer.TranslatePoint(new Point(0, footer.Bounds.Height), fixture.Window)!.Value.Y;
         Assert.True(footerBottom <= fixture.Window.ClientSize.Height * .9 + 1);
@@ -208,6 +229,8 @@ public sealed class FullscreenActionOverlayTests
         public int Attaches { get; private set; }
         public int Detaches { get; private set; }
         public int LeakedActions { get; private set; }
+        public bool HandlesBack { get; init; }
+        public int BackCalls { get; private set; }
         public ProbePage(FullscreenContext context, string title) : base(context)
         {
             _title = title;
@@ -221,6 +244,11 @@ public sealed class FullscreenActionOverlayTests
         }
         public override bool Handle(GamepadButtons buttons)
         {
+            if (buttons.HasFlag(GamepadButtons.Back))
+            {
+                BackCalls++;
+                if (HandlesBack) return true;
+            }
             if ((buttons & (GamepadButtons.Play | GamepadButtons.Search)) != 0) { LeakedActions++; return true; }
             return base.Handle(buttons);
         }

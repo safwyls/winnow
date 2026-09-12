@@ -58,6 +58,12 @@ public sealed class FullscreenView : UserControl, IDisposable
     public FullscreenView(FullscreenContext context)
     {
         _context = context;
+        AddHandler(PointerPressedEvent, (_, e) =>
+        {
+            if (e.GetCurrentPoint(this).Properties.PointerUpdateKind != PointerUpdateKind.RightButtonPressed) return;
+            e.Handled = true;
+            Handle(GamepadButtons.Back);
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         _body.LayoutUpdated += (_, _) => ApplyTextSize();
         _overlay.LayoutUpdated += (_, _) => ApplyTextSize();
         Styles.Add(new Style(s => s.OfType<Button>().Class("tv-action"))
