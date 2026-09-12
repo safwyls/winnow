@@ -40,8 +40,6 @@ public sealed class GameLaunchTests
     private static readonly GameLink Play = GameLink.Create(
         "Play", "steam://run/620", "Launch through Steam", GameLinkKind.Play)!;
 
-    private static readonly GameLink Install = GameLink.Create(
-        "Install", "steam://install/620", "Start the download in Steam", GameLinkKind.Install)!;
 
     /// <summary>
     /// The happy path, and the ordering that is the whole milestone: the intent
@@ -126,16 +124,23 @@ public sealed class GameLaunchTests
     /// hours. Declaring an attribution window across that would be a window in
     /// which anything the user starts becomes this game.
     /// </summary>
-    [Fact]
-    public async Task An_install_dispatches_and_declares_nothing()
+    [Theory]
+    [InlineData("steam")]
+    [InlineData("epic")]
+    [InlineData("gog")]
+    public async Task An_install_dispatches_and_declares_nothing(string store)
     {
         var intents = new LaunchIntents();
         var dispatcher = new RecordingDispatcher();
         var service = new GameLaunchService(dispatcher, intents, new FakeTimeProvider(T0));
 
-        Assert.Equal(LaunchDispatch.HandedOff, await service.LaunchAsync(7, Install));
+        var install = StoreActions.PrimaryFor(store, false, "620", "123",
+            EpicLaunchKey.Create("namespace", "catalog", "artifact"))!;
+        Assert.Equal(GameLinkKind.Install, install.Kind);
+        Assert.False(install.StartsGame);
+        Assert.Equal(LaunchDispatch.HandedOff, await service.LaunchAsync(7, install));
 
-        Assert.Equal(["steam://install/620"], dispatcher.Opened);
+        Assert.Equal([install.Uri], dispatcher.Opened);
         Assert.Equal(0, intents.PendingCount(T0));
     }
 

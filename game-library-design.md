@@ -1011,6 +1011,12 @@ but not built.
 
 Two tiers. **Polling is for discovery only, never for exit detection.**
 
+Install actions dispatch to the store without declaring a gameplay launch intent. Known
+installers, prerequisite tools and other non-game helpers are excluded both during executable
+indexing and before process attribution, including launch-intent and Proton compatibility
+fallbacks. Installation alone must not create a session or advance Last played; desktop and
+fullscreen share this boundary. Store-imported play dates remain separate evidence.
+
 *Tier 1 — discovery, polled at 5s.* Enumerate pids and image names, and nothing else. On Windows
 that is one `NtQuerySystemInformation(SystemProcessInformation)` snapshot walked into a reusable
 pinned buffer. `Process.GetProcesses()` reads the same snapshot but materialises a `Process`, a

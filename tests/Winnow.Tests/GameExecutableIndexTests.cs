@@ -16,6 +16,24 @@ namespace Winnow.Tests;
 /// </summary>
 public sealed class GameExecutableIndexTests
 {
+    [Theory]
+    [InlineData("setup.exe")]
+    [InlineData("INSTALL.exe")]
+    [InlineData("EasyAntiCheat_EOS_Setup.exe")]
+    [InlineData("__Installer/Custom.exe")]
+    public async Task Installer_paths_are_excluded_from_scans_and_root_attribution(string executable)
+    {
+        using var harness = new SessionWatcherHarness();
+        var game = await harness.AddGameAsync("Installable", "Game.exe", executable);
+        var index = await harness.IndexBuilder.BuildAsync();
+        Assert.Null(index.Match(Path.Combine(game.InstallPath, executable.Replace('/', Path.DirectorySeparatorChar)), "unknown"));
+        Assert.Equal(game.OwnershipId, index.Match(game.Exe("Game.exe"), "Game"));
+        Assert.Single(index.ProcessNames);
+        var names = await harness.IndexBuilder.ScanLaunchNamesAsync(Path.GetDirectoryName(game.Exe("Game.exe")));
+        Assert.Single(names);
+        Assert.Contains("Game", names);
+    }
+
     [Fact]
     public void Native_unix_launchers_are_recognised_from_their_execute_bit()
     {
