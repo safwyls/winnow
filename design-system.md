@@ -2731,7 +2731,8 @@ keyboard for either field; secret entry retains its masking.
 The separate **PLUGINS** tab starts with a list of names and versions loaded in the current
 session, or an explicit empty state. Desktop and fullscreen use the runtime loaded state,
 so pending enable or disable changes do not change the list until restart.
-The tab shows one card per discovered plugin, with its name, version,
+Desktop cards stretch across the available pane width, with the version beneath the name
+and an Enabled/Disabled switch at the upper right. The tab shows one card per discovered plugin, with its name, version,
 description, supported features and status. **Open plugins folder** opens the installation
 directory. ZIP packages unpack automatically at startup; users may also place unpacked packages
 there. Failed ZIP imports appear alongside other package diagnostics. Explain that installing and changing enablement requires a restart and that plugins
@@ -2743,7 +2744,7 @@ Optional **Get** links open the provider's HTTPS setup page. **Save settings** p
 fields and clears secret drafts; a blank secret keeps the saved value. Each secret has a
 **Remove saved secret** action, available only when a secret is stored. A polite status line
 reports failures without exposing credentials or claiming that the provider validated them.
-Secrets also clear when leaving the settings surface. **Enable plugin** / **Disable plugin**
+Secrets also clear when leaving the settings surface. The activation switch on desktop and fullscreen
 states the next launch's choice and keeps a visible restart notice while it differs from the
 running state. **Refresh now** is available for enabled, loaded plugins. SteamGridDB uses this
 same generated form for its API key.

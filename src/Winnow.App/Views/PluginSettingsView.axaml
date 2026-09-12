@@ -22,14 +22,14 @@
             </StackPanel>
         </Border>
         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="24,16,24,28" MaxWidth="920" HorizontalAlignment="Left" Spacing="14">
+            <StackPanel Margin="24,16,24,28" HorizontalAlignment="Stretch" Spacing="14">
                 <TextBlock Classes="label section" AutomationProperties.HeadingLevel="2" Text="LOADED PLUGINS"/>
                 <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding LoadedPluginSummary}"
                            AutomationProperties.Name="Loaded plugins" AutomationProperties.LiveSetting="Polite"/>
                 <TextBlock Classes="label section" AutomationProperties.HeadingLevel="2" Text="INSTALL AND CONFIGURE"/>
                 <Border Classes="card">
                     <StackPanel Spacing="12">
-                        <TextBlock Classes="body prose" Text="{x:Static vm:PluginSettingsViewModel.InstallationNote}"/>
+                        <TextBlock Classes="body" TextWrapping="Wrap" Text="{x:Static vm:PluginSettingsViewModel.InstallationNote}"/>
                         <Button Classes="act" HorizontalAlignment="Left" Content="Open plugins folder" Click="OnOpenPluginsFolder"/>
                         <SelectableTextBlock Classes="data-s" Text="{Binding UserPluginDirectory}" TextWrapping="Wrap" Focusable="False"/>
                         <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Status}"
@@ -43,15 +43,18 @@
                                     AutomationProperties.AccessibilityView="Control">
                                 <StackPanel Spacing="12">
                                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
-                                        <TextBlock Classes="display-l" Text="{Binding Name}" TextWrapping="Wrap" AutomationProperties.HeadingLevel="2"/>
-                                        <TextBlock Grid.Column="1" Classes="data" Text="{Binding Version}" VerticalAlignment="Center"/>
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Classes="display-l" Text="{Binding Name}" TextWrapping="Wrap" AutomationProperties.HeadingLevel="2"/>
+                                            <TextBlock Classes="data" Text="{Binding Version}" Foreground="{StaticResource TextDim}"/>
+                                        </StackPanel>
+                                        <ToggleSwitch Grid.Column="1" VerticalAlignment="Top" IsChecked="{Binding ActivationSelected, Mode=TwoWay}"
+                                                      OnContent="Enabled" OffContent="Disabled" IsVisible="{Binding CanConfigure}"
+                                                      Command="{Binding ToggleEnabledCommand}" AutomationProperties.Name="{Binding ToggleAccessibleName}"
+                                                      AutomationProperties.ItemStatus="{Binding EnabledStatus}"/>
                                     </Grid>
                                     <TextBlock Classes="body prose" Text="{Binding Description}"/>
                                     <TextBlock Classes="body" Foreground="{StaticResource TextDim}" TextWrapping="Wrap" Text="{Binding Capabilities}"/>
                                     <WrapPanel>
-                                        <Button Classes="act" Margin="0,0,8,0" Content="{Binding EnabledLabel}" IsVisible="{Binding CanConfigure}"
-                                                Command="{Binding ToggleEnabledCommand}" AutomationProperties.Name="{Binding ToggleAccessibleName}"
-                                                AutomationProperties.ItemStatus="{Binding EnabledStatus}"/>
                                         <Button Classes="act" Content="Provider website" IsVisible="{Binding HasWebsite}"
                                                 Command="{Binding OpenWebsiteCommand}" AutomationProperties.Name="{Binding WebsiteAccessibleName}"/>
                                     </WrapPanel>

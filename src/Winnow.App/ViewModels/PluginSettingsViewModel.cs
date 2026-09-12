@@ -72,6 +72,7 @@ public partial class PluginCardViewModel : ObservableObject
     public bool HasSecrets => Fields.Any(candidate => candidate.IsSecret);
     public ObservableCollection<PluginSettingFieldViewModel> Fields { get; } = [];
     [ObservableProperty] public partial bool Enabled { get; private set; }
+    [ObservableProperty] public partial bool ActivationSelected { get; set; }
     [ObservableProperty] public partial bool IsLoaded { get; private set; }
     [ObservableProperty] public partial bool RestartRequired { get; private set; }
     [ObservableProperty] public partial string Status { get; private set; } = string.Empty;
@@ -96,6 +97,7 @@ public partial class PluginCardViewModel : ObservableObject
     internal void Apply(PluginSettingsSnapshot snapshot, IReadOnlyDictionary<PluginSettingFieldViewModel, int>? drafts = null)
     {
         Enabled = snapshot.Enabled; IsLoaded = snapshot.IsLoaded; RestartRequired = snapshot.RestartRequired;
+        ActivationSelected = Enabled;
         Status = snapshot.Status;
         foreach (var field in Fields)
         {
@@ -147,7 +149,12 @@ public partial class PluginCardViewModel : ObservableObject
             Status = success;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) { Status = failure; }
-        finally { IsBusy = false; }
+        finally
+        {
+            IsBusy = false;
+            // Restore the persisted state if an activation toggle could not be saved.
+            ActivationSelected = Enabled;
+        }
     }
 
     [RelayCommand] private Task OpenWebsiteAsync() => OpenWebAsync(WebsiteUrl);
