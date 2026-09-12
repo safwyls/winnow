@@ -122,8 +122,26 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             var name = FullscreenUi.Text(label, 28);
             var cue = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12,
                 VerticalAlignment = VerticalAlignment.Center };
-            cue.Children.Add(FullscreenUi.Text(kind, 24, "TextDim"));
-            cue.Children.Add(kind == "Run" ? FullscreenGlyphs.Icon("A", 28) : FullscreenUi.Text(kind == "Browser" ? "↗" : "›", 32, "TextDim"));
+            var cueLabel = FullscreenUi.Text(kind, 24, "TextDim");
+            cueLabel.VerticalAlignment = VerticalAlignment.Center;
+            cue.Children.Add(cueLabel);
+            if (kind == "Open")
+            {
+                var chevron = new Avalonia.Controls.Shapes.Path
+                {
+                    Data = Avalonia.Media.Geometry.Parse("M 1,1 L 7,7 L 1,13"),
+                    Width = 8, Height = 14, StrokeThickness = 2,
+                    VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false
+                };
+                chevron[!Avalonia.Controls.Shapes.Shape.StrokeProperty] = new DynamicResourceExtension("TextDim");
+                cue.Children.Add(chevron);
+            }
+            else
+            {
+                var icon = kind == "Run" ? FullscreenGlyphs.Icon("A", 28) : FullscreenUi.Text("↗", 24, "TextDim");
+                icon.VerticalAlignment = VerticalAlignment.Center;
+                cue.Children.Add(icon);
+            }
             var content = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 24 };
             content.Children.Add(name); Grid.SetColumn(cue, 1); content.Children.Add(cue);
             button.Content = content;
