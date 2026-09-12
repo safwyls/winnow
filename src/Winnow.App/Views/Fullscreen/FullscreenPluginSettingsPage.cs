@@ -57,6 +57,8 @@ public sealed class FullscreenPluginSettingsPage : FullscreenPage
         if (model.CanConfigure) Action("Refresh now     Run", model.RefreshCommand, model.RefreshAccessibleName);
         var status = FullscreenUi.Text("", 28, "TextDim");
         status.Bind(TextBlock.TextProperty, new Binding(nameof(model.Status)) { Source = model });
+        status.Bind(IsVisibleProperty, new Binding(nameof(model.Status)) { Source = model,
+            Converter = Avalonia.Data.Converters.StringConverters.IsNotNullOrEmpty });
         AutomationProperties.SetLiveSetting(status, AutomationLiveSetting.Polite);
         controls.Children.Add(status);
         var back = FullscreenUi.Button("Back", context.Back);

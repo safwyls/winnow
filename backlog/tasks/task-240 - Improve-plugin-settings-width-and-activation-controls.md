@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-12 04:55'
-updated_date: '2026-09-12 05:04'
+updated_date: '2026-09-12 05:05'
 labels: []
 dependencies: []
 type: enhancement
@@ -37,6 +37,8 @@ Stretch desktop content, stack title and version, add state-bound activation tog
 Desktop cards and installation text now span the available pane width; versions sit beneath titles and activation switches occupy the upper right. Fullscreen uses an activation switch and retains its existing version placement below the title. Separate editable switch state restores persisted enablement after a failed save. Added headless bounds and title/version placement assertions, keyboard activation with save-failure rollback, and controller activation coverage. All 23 PluginSettingsInteractionTests and FullscreenSettingsTests passed using scratch output. Inspected desktop shell and fullscreen provider renders; git diff --check passed. No production library or running app was changed.
 
 Follow-up screenshot: capped the desktop settings content column at 1,100 logical pixels, left-aligned, while preserving stretch in narrower panes. Updated the visual specification. Existing layout/interaction test now verifies a 3,456-pixel window cap and left alignment, then shrinking back to 1,000 pixels; it passed and the wide rendered capture was inspected. Fullscreen uses a separate provider page rather than these desktop cards and is unaffected by this desktop width correction.
+
+Removed redundant Enabled/Disabled footer status supplied by the backend; activation switches already show that state. Empty footer status collapses on desktop and fullscreen, while restart notices, diagnostics and command confirmations remain. Focused plugin interaction suite verified after the change.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

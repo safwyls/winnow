@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
+             xmlns:conv="using:Avalonia.Data.Converters"
              x:Class="Winnow.App.Views.PluginSettingsView"
              x:DataType="vm:PluginSettingsViewModel"
              AutomationProperties.Name="Plugin settings">
@@ -90,7 +91,8 @@
                                             <Button Classes="act" Content="Refresh now" Command="{Binding RefreshCommand}" IsVisible="{Binding CanConfigure}"
                                                     AutomationProperties.Name="{Binding RefreshAccessibleName}"/>
                                         </WrapPanel>
-                                        <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Status}" AutomationProperties.LiveSetting="Polite"/>
+                                        <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Status}" AutomationProperties.LiveSetting="Polite"
+                                                   IsVisible="{Binding Status, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"/>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
