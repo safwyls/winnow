@@ -5,6 +5,10 @@ namespace Winnow.App.Views;
 /// <summary>Desktop statistics with a shared chart projection and expandable details.</summary>
 public partial class AccountStatsView : UserControl
 {
+    public static readonly Avalonia.StyledProperty<bool> ShowHeaderProperty =
+        Avalonia.AvaloniaProperty.Register<AccountStatsView, bool>(nameof(ShowHeader), true);
+    public bool ShowHeader { get => GetValue(ShowHeaderProperty); set => SetValue(ShowHeaderProperty, value); }
+
     public AccountStatsView()
     {
         InitializeComponent();

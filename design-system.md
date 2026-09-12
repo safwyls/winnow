@@ -408,6 +408,10 @@ Local-only discovery is an available source, not an unconnected account requirin
 
 **Statistics.** Desktop Stats and fullscreen Activity → Library summary offer Gameplay and
 Spending with independent navigation and filter state on each surface. Gameplay opens first.
+The heading, section choices and Spending refresh share a wrapping toolbar. Desktop Spending
+shows its source and coverage across the available width, without a second account heading;
+absent loading and error messages reserve no space. Fullscreen keeps its readable control
+sizes while sharing the heading row and omitting the repeated library count above the charts.
 Its store choices come from the visible library's ownership sources; All stores counts each
 resolved game once. The period choices are 30 days, 90 days and custom inclusive local dates.
 Recorded hours use completed Winnow sessions, with bars over the period, the ten games with

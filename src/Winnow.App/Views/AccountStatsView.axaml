@@ -67,6 +67,7 @@
 
     <Grid RowDefinitions="Auto,*">
         <Border Grid.Row="0"
+                IsVisible="{Binding ShowHeader, RelativeSource={RelativeSource AncestorType=views:AccountStatsView}}"
                 Padding="24,20,24,18"
                 BorderBrush="{StaticResource Line}"
                 BorderThickness="0,0,0,1">
@@ -84,7 +85,7 @@
         <ScrollViewer Grid.Row="1"
                       HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="24,20,24,28"
+            <StackPanel Margin="24,12,24,28"
                         MaxWidth="1040"
                         HorizontalAlignment="Left"
                         Spacing="16">

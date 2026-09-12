@@ -245,6 +245,33 @@ public sealed class GameplayStatsInteractionTests
         finally { window.Close(); }
     }
 
+    [AvaloniaTheory]
+    [InlineData(1024)]
+    [InlineData(600)]
+    public async Task Spending_header_keeps_figures_above_the_fold(int width)
+    {
+        using var library = CreateLibrary();
+        using var state = new StatsViewModel(new AccountStatsViewModel(new SpendingRepository()), new GameplayStatsViewModel(new RecordingRepository(), library)) { IsSpending = true };
+        var view = new StatsView { DataContext = state };
+        var window = new Window { Width = width, Height = 760, Content = view, Background = (IBrush)view.FindResource("Ground")! };
+        try
+        {
+            window.Show(); await state.ActivateAsync(); Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
+            var dashboard = window.GetVisualDescendants().OfType<AccountStatsDashboard>().Single();
+            Assert.InRange(dashboard.TranslatePoint(default, view)!.Value.Y, 0, width == 1024 ? 170 : 220);
+            Assert.DoesNotContain(window.GetVisualDescendants().OfType<TextBlock>(), x => x.IsEffectivelyVisible && x.Text == "Steam account");
+            Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), x => x.IsEffectivelyVisible && x.Text == state.Spending.IntroMessage);
+            var refresh = window.GetVisualDescendants().OfType<Button>().Single(x => x.Content as string == "Refresh Steam spending");
+            Assert.True(refresh.Focus());
+            if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
+            {
+                Directory.CreateDirectory(directory);
+                using var frame = window.CaptureRenderedFrame(); frame?.Save(Path.Combine(directory, $"stats-compact-spending-{width}.png"));
+            }
+        }
+        finally { window.Close(); }
+    }
+
     private static LibraryViewModel CreateLibrary() => new(new PreviewLibraryQueryRepository(), new PreviewOwnershipRepository(),
         new PreviewReleaseRepository(), new PreviewWorkRepository(), new PreviewUpdateEventRepository());
     private sealed class RecordingRepository : IGameplayStatsRepository

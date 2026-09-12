@@ -13,22 +13,25 @@
     </Style>
   </UserControl.Styles>
   <Grid RowDefinitions="Auto,*">
-    <StackPanel Margin="24,20,24,12" Spacing="12">
-      <TextBlock Classes="display-l" Text="Stats" AutomationProperties.HeadingLevel="1"/>
-      <StackPanel Orientation="Horizontal" Spacing="12">
+    <WrapPanel Margin="24,12,24,4">
+      <TextBlock Classes="display-l" Text="Stats" AutomationProperties.HeadingLevel="1" VerticalAlignment="Center" Margin="0,0,24,8"/>
+      <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,0,20,8">
         <Button Name="GameplaySection" Classes="stats-section" AutomationProperties.Name="{Binding GameplaySectionName}" Content="Gameplay" Command="{Binding ShowGameplayCommand}" Classes.selected="{Binding !IsSpending}"/>
         <Button Name="SpendingSection" Classes="stats-section" AutomationProperties.Name="{Binding SpendingSectionName}" Content="Spending" Command="{Binding ShowSpendingCommand}" Classes.selected="{Binding IsSpending}"/>
       </StackPanel>
-    </StackPanel>
+      <Button Content="Refresh Steam spending" Command="{Binding RefreshSpendingCommand}" IsVisible="{Binding IsSpending}" VerticalAlignment="Center" Margin="0,0,0,8"/>
+    </WrapPanel>
     <Grid Grid.Row="1" IsVisible="{Binding !IsSpending}"><views:GameplayStatsView DataContext="{Binding Gameplay}"/></Grid>
     <Grid Grid.Row="1" RowDefinitions="Auto,Auto,*" IsVisible="{Binding IsSpending}">
-      <TextBlock Margin="24,4,24,12" Classes="body" TextWrapping="Wrap" Text="Source: Steam account pages. Spending imports for other stores are not available."/>
-      <StackPanel Grid.Row="1" Margin="24,0,24,12" Spacing="10">
-        <TextBlock Classes="body" Text="Reading Steam spending…" IsVisible="{Binding IsSpendingLoading}"/>
-        <TextBlock Classes="body" Foreground="{DynamicResource Amber}" Text="{Binding SpendingProblem}"/>
-        <Button Content="Refresh Steam spending" Command="{Binding RefreshSpendingCommand}"/>
+      <StackPanel Margin="24,0,24,4" Spacing="4">
+        <TextBlock Classes="body" Foreground="{DynamicResource TextDim}" TextWrapping="Wrap" Text="Source: Steam account pages. Spending imports for other stores are not available."/>
+        <TextBlock Classes="body" Foreground="{DynamicResource TextDim}" TextWrapping="Wrap" Text="{Binding Spending.IntroMessage}"/>
       </StackPanel>
-      <views:AccountStatsView Grid.Row="2" DataContext="{Binding Spending}"/>
+      <StackPanel Grid.Row="1" Margin="24,0,24,0" Spacing="4">
+        <TextBlock Classes="body" Text="Reading Steam spending…" IsVisible="{Binding IsSpendingLoading}"/>
+        <TextBlock Classes="body" Foreground="{DynamicResource Amber}" TextWrapping="Wrap" Text="{Binding SpendingProblem}" IsVisible="{Binding SpendingProblem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+      </StackPanel>
+      <views:AccountStatsView Grid.Row="2" DataContext="{Binding Spending}" ShowHeader="False"/>
     </Grid>
   </Grid>
 </UserControl>

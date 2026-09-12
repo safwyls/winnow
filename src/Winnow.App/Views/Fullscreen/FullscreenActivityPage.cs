@@ -429,9 +429,12 @@ public sealed class FullscreenLibrarySummaryPage : FullscreenPage
         _renderedSpending = _stats.IsSpending;
         var context = Context;
         var back = FullscreenUi.Button("Back", context.Back);
-        var body = FullscreenUi.Stack(FullscreenUi.Text("Library summary", 64), FullscreenUi.Text($"{context.Library.AllGames.Count:N0} games in your library", 32));
+        var body = FullscreenUi.Stack();
         var focus = new List<Control[]>();
         var sections = new WrapPanel();
+        var heading = FullscreenUi.Text("Library summary", 64);
+        heading.Margin = new Thickness(0, 0, 32, 12);
+        sections.Children.Add(heading);
         var gameplay = FullscreenUi.Button("Gameplay", () => _stats.IsSpending = false);
         var spending = FullscreenUi.Button("Spending", () => _stats.IsSpending = true);
         gameplay.Classes.Set("current", !_stats.IsSpending); spending.Classes.Set("current", _stats.IsSpending);
@@ -451,7 +454,8 @@ public sealed class FullscreenLibrarySummaryPage : FullscreenPage
             body.Children.Add(FullscreenUi.Text("Reading your account statistics…", 28, "TextDim"));
         var refresh = FullscreenUi.Button(_stats.SpendingProblem is null ? "Refresh Steam spending" : "Try again", () => _ = _stats.ActivateAsync());
         refresh.HorizontalAlignment = HorizontalAlignment.Left;
-        body.Children.Add(refresh); focus.Add([refresh]);
+        refresh.Margin = new Thickness(16, 0, 0, 12);
+        sections.Children.Add(refresh); focus[0] = [gameplay, spending, refresh];
         if (_model is { HasFacts: true } stats)
         {
             body.Children.Add(FullscreenUi.Text(stats.IntroMessage, 28, "TextDim"));
