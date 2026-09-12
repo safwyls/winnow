@@ -18,6 +18,48 @@ namespace Winnow.Ui.Tests;
 public sealed class PluginSettingsInteractionTests
 {
     [AvaloniaFact]
+    public async Task Desktop_lazy_tab_loads_plugins_on_first_open_and_refreshes_when_reopened()
+    {
+        var backend = new RuntimeStateBackend();
+        var shell = await ShellAsync(backend, preload: false);
+        var window = new MainWindow { DataContext = shell, Width = 1200, Height = 800 };
+        window.Show();
+        try
+        {
+            Assert.Empty(shell.PluginSettings.Plugins);
+            shell.ShowPluginSettingsCommand.Execute(null);
+            Dispatcher.UIThread.RunJobs();
+            var view = Assert.Single(window.GetVisualDescendants().OfType<PluginSettingsView>());
+            Assert.Equal(3, shell.PluginSettings.Plugins.Count);
+            Assert.Equal("Active artwork · 2.0", Named<TextBlock>(view, "Loaded plugins").Text);
+            shell.ShowEnrichmentSettingsCommand.Execute(null);
+            backend.Loaded = false;
+            shell.ShowPluginSettingsCommand.Execute(null);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal("No plugins are loaded in this session.", Named<TextBlock>(view, "Loaded plugins").Text);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Fullscreen_loads_plugins_without_desktop_preloading()
+    {
+        var shell = await ShellAsync(new RuntimeStateBackend(), preload: false);
+        using var context = new FullscreenContext(shell.Library, shell.Feed, shell);
+        using var page = new FullscreenSettingsPage(context, "Plugins");
+        var window = new Window { Content = page, Width = 1920, Height = 1080 };
+        window.Show();
+        try
+        {
+            await page.PendingPluginRefresh;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal("Active artwork · 2.0", Named<TextBlock>(page, "Loaded plugins").Text);
+            Assert.NotNull(Named<Button>(page, "Active artwork"));
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
     public async Task Loaded_plugins_show_runtime_names_and_versions_on_both_surfaces()
     {
         var backend = new RuntimeStateBackend();
@@ -301,11 +343,11 @@ public sealed class PluginSettingsInteractionTests
         frame!.Save(Path.Combine(directory, name + ".png"));
     }
 
-    private static async Task<MainWindowViewModel> ShellAsync(IPluginSettingsBackend? backend = null)
+    private static async Task<MainWindowViewModel> ShellAsync(IPluginSettingsBackend? backend = null, bool preload = true)
     {
         var preview = PreviewData.Shell;
         var plugins = new PluginSettingsViewModel(backend ?? new Backend());
-        await plugins.LoadAsync();
+        if (preload) await plugins.LoadAsync();
         return new(preview.Library, preview.MergeQueue, preview.Stores, preview.Appearance,
             preview.Feed, preview.AccountStats, preview.LibrarySettings,
             enrichmentSettings: new EnrichmentSettingsViewModel(new(), plugins));
