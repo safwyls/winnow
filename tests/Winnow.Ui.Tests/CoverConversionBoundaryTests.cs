@@ -3,11 +3,32 @@ using Avalonia.Media.Imaging;
 using SkiaSharp;
 using Winnow.Covers;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Winnow.Ui.Tests;
 
-public sealed class CoverConversionBoundaryTests
+public sealed class CoverConversionBoundaryTests(ITestOutputHelper output)
 {
+    [AvaloniaFact]
+    public async Task A_disk_hit_does_not_wait_for_an_unrelated_network_fetch()
+    {
+        var source = new GatedSource();
+        await using var fixture = new Fixture(_ => new TrackingBitmap(Bytes()), source);
+        fixture.Disk.WriteSource(CoverKey.Steam("43"), Bytes());
+        var slow = fixture.Cache.GetAsync(CoverKey.Steam("42"), 160, CoverLayers.Vivid);
+        try
+        {
+            await source.Entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            var elapsed = System.Diagnostics.Stopwatch.StartNew();
+            var cached = fixture.Cache.GetAsync(CoverKey.Steam("43"), 160, CoverLayers.Vivid);
+            Assert.NotNull(await cached.WaitAsync(TimeSpan.FromSeconds(1)));
+            output.WriteLine($"Disk hit completed in {elapsed.Elapsed.TotalMilliseconds:F1} ms while network was blocked.");
+            Assert.False(slow.IsCompleted);
+        }
+        finally { source.Release.TrySetResult(); }
+        Assert.NotNull(await slow.WaitAsync(TimeSpan.FromSeconds(3)));
+    }
+
     [AvaloniaFact]
     public async Task A_failed_floor_conversion_releases_the_already_converted_vivid_layer()
     {
@@ -74,10 +95,12 @@ public sealed class CoverConversionBoundaryTests
     {
         private readonly string _root = Path.Combine(Path.GetTempPath(), "winnow-cover-conversion-" + Guid.NewGuid().ToString("N"));
         public CoverCache Cache { get; }
-        public Fixture(Func<SKBitmap, Bitmap> convert)
+        public CoverDiskCache Disk { get; }
+        public Fixture(Func<SKBitmap, Bitmap> convert, ICoverSource? source = null)
         {
             var options = new CoverCacheOptions { CacheDirectory = _root, MaxConcurrentDecodes = 1 };
-            Cache = new CoverCache(new CoverPipeline([new Source()], new CoverDiskCache(options), options),
+            Disk = new CoverDiskCache(options);
+            Cache = new CoverCache(new CoverPipeline([source ?? new Source()], Disk, options),
                 options, null, action => action(), convert);
         }
         public async ValueTask DisposeAsync()
@@ -87,6 +110,20 @@ public sealed class CoverConversionBoundaryTests
             if (!resolved.StartsWith(Path.GetFullPath(Path.GetTempPath()), StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("Fixture directory escaped the temporary directory.");
             if (Directory.Exists(resolved)) Directory.Delete(resolved, recursive: true);
+        }
+    }
+
+    private sealed class GatedSource : ICoverSource
+    {
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public string Name => "gated-fixture";
+        public bool CanHandle(CoverKey key) => true;
+        public async Task<byte[]?> TryFetchAsync(CoverKey key, CancellationToken ct = default)
+        {
+            Entered.TrySetResult();
+            await Release.Task.WaitAsync(ct);
+            return Bytes();
         }
     }
 

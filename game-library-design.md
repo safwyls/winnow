@@ -852,7 +852,9 @@ Shutdown refuses new admissions, cancels and drains work, then clears the LRU an
 the pipeline. Outstanding leases keep their pixels valid until released; cancelled work
 cannot publish new decoded art after shutdown begins.
 The decode concurrency bound includes conversion into Avalonia bitmaps, so native and UI
-pixel allocations cannot outgrow it while waiting for publication. A failed second layer
+pixel allocations cannot outgrow it while waiting for publication. Network waits do not
+hold decode slots: artwork already on disk can load while other games await downloads.
+A failed second layer
 releases the first layer at either stage. Cancellation callbacks run outside the cache lock;
 their exceptions are logged and cannot interrupt cleanup or replace a caller's cancellation.
 A lease returns the exact art retained by its slot, including when another waiter replaces

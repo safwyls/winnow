@@ -86,7 +86,7 @@ public sealed class FeedCardActionTests
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Hero_art_does_not_resize_the_card_or_cover_its_actions(bool feedback)
+    public async Task Hero_art_does_not_resize_the_card_or_cover_its_actions(bool feedback)
     {
         var tile = TileFixture.Tile(DateTime.UtcNow, title: "Aloft", steamAppId: "123",
             ownership: new Ownership { ReleaseId = 1, Store = "steam" });
@@ -106,6 +106,9 @@ public sealed class FeedCardActionTests
             window.Show(); Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
             var before = view.Bounds.Size;
             model.Backdrop = art; Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
+            // Let the compositor publish the new window before testing pointer hits.
+            await Task.Delay(40);
+            Dispatcher.UIThread.RunJobs();
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Assert.Equal(before, view.Bounds.Size);
             var bookmark = view.FindControl<Button>("AddToList")!;
