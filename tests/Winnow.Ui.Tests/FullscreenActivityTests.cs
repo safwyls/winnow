@@ -43,7 +43,7 @@ public sealed class FullscreenActivityTests
             await page.PendingRefresh; Dispatcher.UIThread.RunJobs();
             Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "No journal entries this week");
             Assert.DoesNotContain(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "No sessions this week");
-            Assert.Equal("LT / RT  Section", page.RightHints);
+            Assert.Empty(page.RightHints);
             Assert.DoesNotContain("LT", page.Hints);
             page.Handle(GamepadButtons.PageNext); await page.PendingRefresh; Dispatcher.UIThread.RunJobs();
             Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "No sessions this week");

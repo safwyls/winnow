@@ -43,7 +43,6 @@ public sealed class FullscreenActivityPage : FullscreenPage
     private string _status = "Reading your activity…";
     public override string Title => "Activity";
     public override string Hints => (_selected is null ? "A  Select" : $"A  Open event{(_selected.Session is null ? "" : "     X  Edit note")}{(string.IsNullOrWhiteSpace(_selected.Note?.Note) ? "" : "     Y  Read note")}") + "     ← / →  Change week";
-    public override string RightHints => "LT / RT  Section";
 
     public FullscreenActivityPage(FullscreenContext context) : base(context)
     {
@@ -225,7 +224,8 @@ public sealed class FullscreenActivityPage : FullscreenPage
         var previewScroll = FullscreenUi.Scroll(_preview);
         Grid.SetColumn(previewScroll, 1); columns.Children.Add(previewScroll);
         var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*"), RowSpacing = 24 };
-        layout.Children.Add(FullscreenUi.Text("Your activity", 64)); Grid.SetRow(tabBar, 1); layout.Children.Add(tabBar);
+        var navigation = FullscreenUi.TriggerNavigation(tabBar);
+        layout.Children.Add(FullscreenUi.Text("Your activity", 64)); Grid.SetRow(navigation, 1); layout.Children.Add(navigation);
         Grid.SetRow(columns, 2); layout.Children.Add(columns); Content = layout;
         SetFocusRows(buttons.ToArray());
         Select(rows.FirstOrDefault(r => r == _selected) ?? rows.FirstOrDefault());

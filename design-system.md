@@ -739,7 +739,9 @@ position; Back restores the exact origin, including after viewing details.
 | Menu | Open a quick menu with Settings and Exit fullscreen; controller help is in Settings |
 
 The footer shows actions available in the current state using bundled Kenney vector controller
-glyphs. Local section and paging prompts sit at the right edge. The current input sources use Xbox-style
+glyphs. In Library, Activity and Settings, LT and RT flank the local section choices like
+LB and RB flank the root menu; Settings keeps them outside its scrolling tab strip.
+Other local section and paging prompts sit at the right edge. The current input sources use Xbox-style
 button shapes; device-specific glyph families are not detected. The dragon mark sits beside
 the Winnow title. Controller input hides the mouse cursor; mouse movement or a click restores it. Clock and optional battery status sit in a quiet
 top corner. Unknown battery state is omitted. Nested sheets trap focus and restore it on

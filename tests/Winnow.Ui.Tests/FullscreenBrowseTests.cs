@@ -142,7 +142,7 @@ public sealed class FullscreenBrowseTests
             Assert.Null(library.Filters.ToFilter().Installed);
             page.Handle(GamepadButtons.PagePrevious); Dispatcher.UIThread.RunJobs();
             Assert.Equal(LibraryBuckets.StaleButPatched, library.SelectedBucket?.Key);
-            Assert.Equal("LT / RT  Collection", page.RightHints);
+            Assert.Empty(page.RightHints);
             Assert.Null(desktop.SelectedBucket);
             Assert.Null(desktop.Filters.ToFilter().Installed);
         }

@@ -119,6 +119,18 @@ public sealed record FullscreenAction(string Label, Action Invoke, bool IsEnable
 
 public static class FullscreenUi
 {
+    public static Control TriggerNavigation(Control choices, bool stretch = false)
+    {
+        var row = new Grid { Name = "FullscreenSectionNavigation", ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"),
+            ColumnSpacing = 16, HorizontalAlignment = stretch ? HorizontalAlignment.Stretch : HorizontalAlignment.Left };
+        var previous = FullscreenGlyphs.Icon("LT"); previous.Name = "SectionPreviousTrigger";
+        var next = FullscreenGlyphs.Icon("RT"); next.Name = "SectionNextTrigger";
+        row.Children.Add(previous);
+        Grid.SetColumn(choices, 1); row.Children.Add(choices);
+        Grid.SetColumn(next, 2); row.Children.Add(next);
+        return row;
+    }
+
     public static TextBlock Text(string text, double size = 28, string resource = "Text")
     {
         var block = new TextBlock { Text = text, FontSize = size, TextWrapping = TextWrapping.Wrap };

@@ -87,7 +87,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     public override string Hints => _feed
         ? $"A  {(_selected is null ? "Choose" : "Open game")}{PlayHint}    Y  More    View  Search    ↑ ↓  Change shelf"
         : $"A  Open game{PlayHint}    Y  Filter & sort    View  Search";
-    public override string RightHints => _feed ? "LT / RT  Shelf" : "LT / RT  Collection";
+    public override string RightHints => _feed ? "LT / RT  Shelf" : string.Empty;
     private string PlayHint => _selected is { IsOnDisk: true, IsPlayAction: true } ? "    X  Play" : string.Empty;
 
     public override void FocusInitial()
@@ -356,7 +356,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
             Margin = new Thickness(0, 4, 0, 8) };
         var shelves = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
         var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
-        collections.Children.Add(shelves);
+        collections.Children.Add(FullscreenUi.TriggerNavigation(shelves));
         Grid.SetColumn(tools, 2); collections.Children.Add(tools);
         Grid.SetRow(collections, 1);
         var all = FullscreenUi.Button("All games", () => ChooseCollection("all"));
