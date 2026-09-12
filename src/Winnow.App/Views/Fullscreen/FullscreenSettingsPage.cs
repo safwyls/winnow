@@ -370,7 +370,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             preview.Children.Add(FullscreenUi.Text("Theme applies to both views. Other appearance settings apply to fullscreen.", 28, "TextDim"));
         }
         var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*"), RowSpacing = 24 };
-        var navigation = FullscreenUi.TriggerNavigation(tabStrip, stretch: true);
+        var navigation = FullscreenUi.TriggerNavigation(tabStrip);
         layout.Children.Add(FullscreenUi.Text("Make yourself comfortable", 64)); Grid.SetRow(navigation, 1); layout.Children.Add(navigation); Grid.SetRow(main, 2); layout.Children.Add(main);
         _initial ??= tabs[Array.IndexOf(Sections, _section)];
         Content = layout; SetFocusRows(focus.ToArray()); Changed();
