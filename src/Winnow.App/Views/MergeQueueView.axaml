@@ -462,13 +462,13 @@
         </Border>
 
         <!-- ══ Band 3: the queue ════════════════════════════════════════════
-             Right padding 10 rather than 16: the scrollbar steps in off the
+             Right inset 10 rather than 16: the scrollbar steps in off the
              pane edge. -->
         <ScrollViewer Grid.Row="2"
                       HorizontalScrollBarVisibility="Disabled"
-                      VerticalScrollBarVisibility="Auto"
-                      Padding="16,16,10,24">
-            <ItemsControl ItemsSource="{Binding Sections}">
+                      VerticalScrollBarVisibility="Auto">
+            <!-- The inset belongs to the content so it reduces the width used to measure cards. -->
+            <ItemsControl ItemsSource="{Binding Sections}" Margin="16,16,10,24">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <StackPanel Spacing="16"/>
@@ -561,23 +561,24 @@
                                                                       AutomationProperties.Name="{Binding SelectAutomationName}"/>
 
                                                             <StackPanel Grid.Column="1" Spacing="2" Margin="12,0,12,0">
-                                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                <Grid ColumnDefinitions="*,Auto,Auto" HorizontalAlignment="Left">
                                                                     <TextBlock Classes="headline"
                                                                                VerticalAlignment="Center"
                                                                                Text="{Binding HeaderTitle}"/>
                                                                     <!-- Flare: unread and nothing else. -->
-                                                                    <Border Width="8" Height="8" CornerRadius="4"
+                                                                    <Border Grid.Column="1" Width="8" Height="8" CornerRadius="4"
+                                                                            Margin="8,0,0,0"
                                                                             VerticalAlignment="Center"
                                                                             Background="{StaticResource Flare}"
                                                                             BoxShadow="{DynamicResource PipGlow}"
                                                                             IsVisible="{Binding HasUnread}"
                                                                             ToolTip.Tip="{Binding UnreadTip}"/>
-                                                                    <Border Classes="badge"
+                                                                    <Border Grid.Column="2" Classes="badge" Margin="8,0,0,0"
                                                                             Classes.likely="{Binding IsLikely}"
                                                                             Classes.look="{Binding IsWorthALook}">
                                                                         <TextBlock Text="{Binding ConfidenceLabel}"/>
                                                                     </Border>
-                                                                </StackPanel>
+                                                                </Grid>
                                                                 <TextBlock Classes="data"
                                                                            Foreground="{StaticResource TextDim}"
                                                                            TextTrimming="CharacterEllipsis"
@@ -690,16 +691,17 @@
                                                                                 </Panel>
                                                                             </Border>
 
-                                                                            <StackPanel Grid.Column="3" Orientation="Horizontal"
-                                                                                        Spacing="8" Margin="10,0,0,0"
-                                                                                        VerticalAlignment="Center">
+                                                                            <Grid Grid.Column="3" ColumnDefinitions="*,Auto"
+                                                                                  Margin="10,0,0,0"
+                                                                                  HorizontalAlignment="Left"
+                                                                                  VerticalAlignment="Center">
                                                                                 <TextBlock Classes="rowtitle"
                                                                                            VerticalAlignment="Center"
                                                                                            Text="{Binding Title}"/>
-                                                                                <TextBlock Classes="mark"
+                                                                                <TextBlock Grid.Column="1" Classes="mark" Margin="8,0,0,0"
                                                                                            VerticalAlignment="Center"
                                                                                            Text="{Binding HeaderMark}"/>
-                                                                            </StackPanel>
+                                                                            </Grid>
 
                                                                             <ItemsControl Grid.Column="4"
                                                                                           ItemsSource="{Binding StoreChips}"

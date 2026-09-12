@@ -487,6 +487,11 @@ owned on two stores is one row wearing two chips. Resolved, the card collapses t
 `Volt` edge, the header title, `N entries · Nh · nested, nothing deleted`, and `Separate
 again`. The strip stays in place so the list never reflows under the pointer.
 
+On desktop, queue insets reduce the width available when cards are measured. Long proposal
+and row titles ellipsize in the remaining space; confidence badges, header marks, store chips
+and trailing actions keep their space. The card edge and inclusion checkbox stay inside the
+pane at the 1200px minimum window width, including after resizing from a wider window.
+
 Already linked same-game groups also offer `Header store` with `Automatic` and their owned
 stores. Desktop places a named selector beside the resolved strip; fullscreen offers the
 same choices in the group's action sheet. The selected store is saved for that group and
