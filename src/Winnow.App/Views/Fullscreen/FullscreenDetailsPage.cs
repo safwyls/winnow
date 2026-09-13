@@ -21,6 +21,12 @@ public sealed class FullscreenDetailsPage : FullscreenPage
     private readonly List<Control[]> _rows = [];
     private readonly Button[] _tabs;
     private readonly FullscreenBackdrop? _backdrop;
+    private readonly LinearGradientBrush _dividerMask = new()
+    {
+        StartPoint = new RelativePoint(0, 0, RelativeUnit.Absolute),
+        EndPoint = new RelativePoint(120, 0, RelativeUnit.Absolute),
+        GradientStops = [new GradientStop(Colors.White, 0), new GradientStop(Colors.Transparent, 1)]
+    };
     private readonly StackPanel _actions = new() { Orientation = Orientation.Horizontal, Spacing = 24 };
     private readonly TextBlock _identity = FullscreenUi.Text("", 24, "TextDim");
     private int _tab;
@@ -87,19 +93,13 @@ public sealed class FullscreenDetailsPage : FullscreenPage
         layout.Children.Add(hero);
         var tabRegion = new Border { Child = tabRow, BorderThickness = new Thickness(0, 0, 0, 1) };
         tabRegion[!Border.BorderBrushProperty] = new DynamicResourceExtension("Line");
-        var dividerMask = new LinearGradientBrush
-        {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Absolute),
-            EndPoint = new RelativePoint(120, 0, RelativeUnit.Absolute),
-            GradientStops = [new GradientStop(Colors.White, 0), new GradientStop(Colors.Transparent, 1)]
-        };
         // Keep the tabs opaque; only the rule beyond the final trigger fades into the artwork.
         tabRow.SizeChanged += (_, _) =>
         {
-            dividerMask.StartPoint = new RelativePoint(tabRow.Bounds.Width + 24, 0, RelativeUnit.Absolute);
-            dividerMask.EndPoint = new RelativePoint(tabRow.Bounds.Width + 120, 0, RelativeUnit.Absolute);
+            _dividerMask.StartPoint = new RelativePoint(tabRow.Bounds.Width + 24, 0, RelativeUnit.Absolute);
+            _dividerMask.EndPoint = new RelativePoint(tabRow.Bounds.Width + 120, 0, RelativeUnit.Absolute);
         };
-        tabRegion.OpacityMask = dividerMask;
+        tabRegion.OpacityMask = _dividerMask;
         Grid.SetRow(tabRegion, 1);
         layout.Children.Add(tabRegion);
         Grid.SetRow(_body, 2);
@@ -363,11 +363,11 @@ public sealed class FullscreenDetailsPage : FullscreenPage
         Children = { DetailText(value, 60, weight: FontWeight.Bold), DetailText(caption, 22, "TextDim") }
     };
 
-    private static Border Rule(bool horizontal, double length = double.NaN)
+    private Border Rule(bool horizontal, double length = double.NaN)
     {
         var rule = new Border { Name = horizontal ? "FullscreenDetailsHorizontalRule" : "FullscreenDetailsMetricRule" };
         rule[!Border.BackgroundProperty] = new DynamicResourceExtension("Line");
-        if (horizontal) { rule.Height = 1; rule.Width = length; }
+        if (horizontal) { rule.Height = 1; rule.Width = length; rule.OpacityMask = _dividerMask; }
         else { rule.Width = 1; rule.Height = length; rule.VerticalAlignment = VerticalAlignment.Center; }
         return rule;
     }
@@ -585,14 +585,14 @@ public sealed class FullscreenDetailsPage : FullscreenPage
         return content;
     }
 
-    private static void AddDivider(StackPanel content)
+    private void AddDivider(StackPanel content)
     {
         var divider = Rule(true);
         divider.Margin = new Thickness(0, 12);
         content.Children.Add(divider);
     }
 
-    private static void AddSection(StackPanel content, string heading)
+    private void AddSection(StackPanel content, string heading)
     {
         AddDivider(content);
         content.Children.Add(DetailText(heading, 18, "TextDim"));
