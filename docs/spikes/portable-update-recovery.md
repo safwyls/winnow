@@ -61,7 +61,7 @@ installed-package smoke checks. Ubuntu's portable upgrade failed at staging with
 `Unsafe or duplicate archive entry`: the case-insensitive entry set treated the packaged
 `Winnow` apphost and `winnow` launcher as the same file. The extractor now uses platform
 case sensitivity. ZIP and tar regression cases cover case-distinct filenames and exact
-duplicate rejection. All 37 engine tests pass on Windows; Linux execution awaits CI.
+duplicate rejection. All 37 engine tests pass on Windows and Ubuntu.
 
 Both Windows release runs stalled in the portable upgrade smoke step. The helper was
 invoked through a captured PowerShell pipeline; its persistent Winnow child inherits the
@@ -70,6 +70,22 @@ child took 5.50 seconds to return, despite the launcher exiting immediately. The
 script now waits for the helper process itself with a timeout rather than waiting for
 pipeline EOF. This changes test orchestration, not application startup or recovery policy.
 
-These fixes require a new Windows/Ubuntu release run before platform upgrade success can
-be claimed. Desktop and fullscreen continue to use the same portable update engine;
+The next Ubuntu run exposed a second case-sensitivity issue: default PowerShell JSON
+conversion rejected the journal's `Winnow` and `winnow` hash keys. Smoke journal reads now
+use `ConvertFrom-Json -AsHashtable`. A local roundtrip preserved both keys and a changed
+phase value.
+
+At commit `382ec6c`, Ubuntu job `103680250659` in release run `34740857716` passed all
+four portable scenarios from `v0.1.0-beta.6` to `0.1.0-ci.64`: external data, internal
+data, failed startup with explicit paired restore, and interrupted replacement with
+internal data. The engine suite passed 37 tests and the Debian/startup smoke also passed.
+
+Windows in that run failed earlier in installed-update smoke: the helper's immediate
+exclusive-open check found `Avalonia.Controls.dll` still locked after its parent process
+exited. The other run failed on `Avalonia.Base.dll`. The installed helper and its smoke
+script had not changed since the earlier passing runs; the logs do not identify the
+remaining lock holder. The installed helper now retries sharing violations for at most
+five seconds and checks cancellation during the wait. Windows PowerShell 5.1 regression
+checks passed for writable files, a released lock, a persistent lock and cancellation.
+Windows release verification remains pending a rerun. Desktop and fullscreen use the same update helpers;
 no presentation behavior changed in this follow-up.

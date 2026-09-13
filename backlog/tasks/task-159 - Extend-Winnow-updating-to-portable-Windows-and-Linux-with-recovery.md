@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-08 04:59'
-updated_date: '2026-09-13 05:39'
+updated_date: '2026-09-13 05:48'
 labels:
   - app-updates
 dependencies:
@@ -43,6 +43,8 @@ Extend the existing release checks and installed-Windows update flow to supporte
 Retain ZIP, tar.gz and Debian layouts. Bundle a separate self-contained portable helper for Windows x64 and Ubuntu 24.04 x64; registered Windows keeps Inno and managed Linux keeps its package manager. Stage verified archives beside the installation and preserve selected internal/external data. After explicit restart, wait for the exact parent process and installation/library leases, create a checked pre-migration SQLite backup, and durably journal replacement while retaining previous binaries. Record possible migration before database access and require readiness after migrations, host and framework initialization. Recover interrupted replacement before migration; require explicit paired database restore after migration may have started, or same/newer reinstall followed by resume. Share progress, recovery state and an Update and restart action across the title bar, desktop settings and fullscreen. Verify local engine/UI/integration tests and disposable published older-to-newer Windows/Ubuntu release-runner tests; retain measured evidence and update release/architecture documentation. User approval recorded on 2026-09-12; local implementation and checks completed, platform release-runner evidence remains pending.
 
 Release-runner follow-up: fix Linux archive name comparison with packaged-layout regressions, investigate Windows portable smoke completion, then rerun both platform release jobs and record observed evidence.
+
+Installed Windows runner follow-up: tolerate brief sharing violations after exact parent exit with a bounded, cancellation-aware retry; retain refusal for persistent locks and validate under Windows PowerShell before rerunning release smoke.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -57,4 +59,8 @@ Implemented portable staging and independently packaged helper; verified digest/
 2026-09-13 release failure repair: Ubuntu staging rejected distinct Winnow/winnow filenames because archive duplicate detection was case-insensitive. Use platform comparison and add ZIP/tar case-distinct and exact-duplicate regressions; 37 engine tests pass on Windows. Windows smoke invocation also waited for persistent child output EOF; reproduced 5.50-second delay with a five-second child. Process-based helper wait now returns in 0.508 seconds while a 15-second child stays alive, with five-minute timeout and unchanged exit-code assertions. PowerShell parse and diff checks passed. Shared engine applies to desktop/fullscreen; presentation unchanged. Cancelled obsolete stalled release runs; rerun platform evidence pending.
 
 First repaired Ubuntu run passed archive staging and reached post-apply journal inspection, then exposed PowerShell ConvertFrom-Json rejecting case-distinct PayloadHashes keys. All smoke journal reads now use AsHashtable; case-distinct payload hashes and phase mutation survive a verified JSON roundtrip.
+
+Ubuntu release job 103680250659 at 382ec6c passed 37 engine tests, package/startup checks and all four portable upgrade/recovery scenarios from beta.6. Windows jobs instead exposed a latent installed-helper timing failure on Avalonia DLL exclusive-open after parent exit; no changes to installed helper or smoke occurred since earlier passing runs. Investigating bounded sharing retry without weakening persistent-lock refusal.
+
+Installed helper now retries only Windows sharing/lock violations (32/33) for a total five-second window after parent exit, checks cancellation each attempt, and immediately propagates other failures. Four standalone regression checks passed under production Windows PowerShell 5.1: writable files, transient release, persistent-lock refusal, cancellation during wait. Smoke invokes these checks before installer work. No installer was run locally.
 <!-- SECTION:NOTES:END -->

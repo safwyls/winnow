@@ -56,6 +56,10 @@ show an error in settings and leave the library usable. There are no repeated po
 | Portable Windows x64 with the bundled update helper and writable local directories | Download and stage in the background, then **Update and restart** |
 | Linux x64 Debian package | Release check and browser link to the `.deb`; close and install with the package manager |
 | Portable Ubuntu 24.04 x64 with the bundled update helper and writable local directories | Download and stage in the background, then **Update and restart** |
+
+The installed Windows helper waits up to five seconds for transient binary sharing locks
+after Winnow exits. Cancellation interrupts that wait. Persistent locks and permission
+failures stop the update before running the installer.
 | Other portable environments, linked paths or read-only media | Release check and browser link; close and replace manually |
 
 When a supported update is detected, the desktop title bar shows **Update and restart**.
