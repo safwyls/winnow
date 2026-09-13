@@ -279,6 +279,7 @@ internal static class UpdateSignalJson
 
             var name = ReadString(common, "name");
             var type = ReadString(common, "type");
+            var assets = ReadLibraryAssets(common);
 
             // `parent` arrives as a stringified integer, like every other number
             // this host sends.
@@ -288,7 +289,8 @@ internal static class UpdateSignalJson
 
             if (string.IsNullOrWhiteSpace(name)
                 && string.IsNullOrWhiteSpace(type)
-                && parent is null)
+                && parent is null
+                && assets is null)
             {
                 // A `common` block with nothing in it that this reader wants is
                 // indistinguishable, to every caller, from no block at all.
@@ -301,12 +303,63 @@ internal static class UpdateSignalJson
                 Type: string.IsNullOrWhiteSpace(type) ? null : type.Trim(),
                 ParentAppId: parent is { } p && p > 0
                     ? p.ToString(CultureInfo.InvariantCulture)
-                    : null);
+                    : null) { LibraryAssets = assets };
         }
         catch (JsonException)
         {
             return null;
         }
+    }
+
+    private static SteamLibraryAssets? ReadLibraryAssets(JsonElement common)
+    {
+        if (!common.TryGetProperty("library_assets_full", out var assets))
+            return null;
+        if (assets.ValueKind != JsonValueKind.Object)
+            return new SteamLibraryAssets(null, null, IsMalformed: true);
+
+        var malformed = false;
+        var capsule = ReadLibraryImage(assets, "library_capsule", ref malformed);
+        var hero = ReadLibraryImage(assets, "library_hero", ref malformed);
+        return new SteamLibraryAssets(capsule, hero, malformed);
+    }
+
+    private static SteamLibraryImage? ReadLibraryImage(JsonElement assets, string name, ref bool malformed)
+    {
+        if (!assets.TryGetProperty(name, out var image))
+            return null;
+        if (image.ValueKind != JsonValueKind.Object)
+        {
+            malformed = true;
+            return null;
+        }
+
+        return new SteamLibraryImage(ReadLocalizedPaths(image, "image", ref malformed),
+            ReadLocalizedPaths(image, "image2x", ref malformed));
+    }
+
+    private static IReadOnlyDictionary<string, string> ReadLocalizedPaths(JsonElement image, string rendition, ref bool malformed)
+    {
+        var paths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (!image.TryGetProperty(rendition, out var locales))
+            return paths;
+        if (locales.ValueKind != JsonValueKind.Object)
+        {
+            malformed = true;
+            return paths;
+        }
+
+        foreach (var locale in locales.EnumerateObject())
+        {
+            if (locale.Value.ValueKind == JsonValueKind.String
+                && locale.Value.GetString() is { Length: > 0 and <= 512 } path
+                && !string.IsNullOrWhiteSpace(path))
+                paths.TryAdd(locale.Name, path);
+            else
+                malformed = true;
+        }
+
+        return paths;
     }
 
     private static string? ReadString(JsonElement parent, string name)

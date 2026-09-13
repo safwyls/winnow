@@ -141,7 +141,17 @@ public sealed record SteamAppInfo(
     string AppId,
     string? Name,
     string? Type,
-    string? ParentAppId);
+    string? ParentAppId)
+{
+    public SteamLibraryAssets? LibraryAssets { get; init; }
+}
+
+/// <summary>Localized relative paths published in <c>common.library_assets_full</c>.</summary>
+public sealed record SteamLibraryAssets(SteamLibraryImage? Capsule, SteamLibraryImage? Hero, bool IsMalformed = false);
+
+public sealed record SteamLibraryImage(
+    IReadOnlyDictionary<string, string> Image,
+    IReadOnlyDictionary<string, string> Image2x);
 
 /// <summary>How a <c>common</c> read ended. Mirrors <see cref="BuildInfoOutcome"/>.</summary>
 public enum AppInfoOutcome

@@ -1764,6 +1764,27 @@ dimensions above 8192 on either axis or 32 Mi pixels total. Negative cache entri
 the source-set identity; capability refresh runs before suppressing a miss so configuring
 IGDB can reopen it in the same session. Existing positive disk art remains reusable.
 
+Steam portrait and hero lookups first try their legacy app-ID filenames. If those
+return 404, `SteamLibraryAssetLookup` reads `common.library_assets_full` through the
+existing cached, rate-limited appinfo client with a seven-day artwork TTL. It selects published relative paths,
+preferring English within each rendition. Capsules reserve up to four candidates per
+rendition and try 2x then standard; high-resolution
+and standard heroes remain separate keys. Paths stay beneath the configured Steam asset
+CDN root: absolute URLs, traversal, encoded path components and query strings are rejected.
+Metadata outages and CDN failures do not become missing-art markers. The expanded
+source capability invalidates older negative markers on demand.
+
+Cached Steam-keyed portraits with a nonstandard ratio are eligible for a bounded
+background upgrade, with one active request and at most sixteen queued keys. A cached
+image still answers immediately, and a failed check leaves
+its bytes intact. A validated 2:3 replacement invalidates the old derived floor before
+publication. Refresh outcome sidecars suppress repeated checks for seven days after a
+definite miss and one hour after a failure. No startup cache sweep is required. Existing
+decoded images and leases remain stable; replacements appear on a later disk load after
+memory eviction or restart. Explicit IGDB pins and user-art keys are excluded. Desktop
+and fullscreen share this selection/cache policy; desktop crops nonstandard art while
+fullscreen fits it and fills the remaining space with edge colors.
+
 **List membership resolution.** Membership in `list_items` is stored per release: adding
 a game to a list records the entry the user picked. A list contains a game when any release of any work
 in that game's live `same_game` group is a member. `kind` is `same_game` only, so an
@@ -1826,5 +1847,6 @@ Winnow presents the library through covers, lists and recommendation shelves. A 
 "games on a shelf" browsing view is out of scope. Recommendation shelves are ordinary UI
 groups of cards and do not require a 3D renderer.
 
-Automatic cover thumbnails come from IGDB covers and Steam's `library_600x900` portrait
-capsule. User artwork and provider plugins use the shared artwork pipeline in §5.1.
+Automatic cover thumbnails come from IGDB covers and Steam library portrait capsules,
+including published hashed asset paths. User artwork and provider plugins use the shared
+artwork pipeline in §5.1.

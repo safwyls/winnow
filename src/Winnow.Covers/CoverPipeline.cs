@@ -35,6 +35,12 @@ public sealed class CoverPipeline : IDisposable
     private readonly ILogger<CoverPipeline> _log;
     private readonly SemaphoreSlim _fetchGate;
     private readonly Func<byte[], int, SKBitmap?> _decode;
+    private readonly CancellationTokenSource _refreshCancellation = new();
+    private readonly object _refreshLock = new();
+    private Task _refreshTask = Task.CompletedTask;
+    private readonly Queue<CoverKey> _refreshQueue = new();
+    private readonly HashSet<CoverKey> _refreshPending = [];
+    private bool _refreshRunning;
 
     // Negative results are remembered in memory as well as on disk so a grid of
     // 616 tiles, most of which will miss, costs no file stat per scroll frame.
@@ -153,14 +159,16 @@ public sealed class CoverPipeline : IDisposable
                 }
 
                 _knownMissing.TryRemove(key, out _);
-                _disk.WriteSource(key, bytes);
-
                 return await WithDecodePermitAsync(() =>
                 {
-                    // Floor generation allocates transient pixels too and belongs
-                    // inside the decode bound, only for callers needing that layer.
-                    if (layers == CoverLayers.VividAndFloor) WriteFloorVariant(key, bytes);
-                    return Decode(bytes, key, width, layers);
+                    lock (_disk.EntryLock(key))
+                    {
+                        _disk.WriteSource(key, bytes);
+                        // Floor generation allocates transient pixels too and belongs
+                        // inside the decode bound, only for callers needing that layer.
+                        if (layers == CoverLayers.VividAndFloor) WriteFloorVariant(key, bytes);
+                        return Decode(bytes, key, width, layers);
+                    }
                 }).ConfigureAwait(false);
             }
             finally { _fetchGate.Release(); }
@@ -211,20 +219,158 @@ public sealed class CoverPipeline : IDisposable
 
     private CoverBitmaps? TryDecodeFromDisk(CoverKey key, int width, CoverLayers layers)
     {
-        if (!_disk.TryReadSource(key, out var source))
+        lock (_disk.EntryLock(key))
         {
-            return null;
-        }
+            if (!_disk.TryReadSource(key, out var source))
+            {
+                return null;
+            }
 
-        // HasFloor, not TryReadFloor: this is an existence check, and reading
-        // the whole variant here only to read it again in Decode was two file
-        // reads per cover per display size.
-        if (layers == CoverLayers.VividAndFloor && !_disk.HasFloor(key))
+            // HasFloor, not TryReadFloor: this is an existence check, and reading
+            // the whole variant here only to read it again in Decode was two file
+            // reads per cover per display size.
+            if (layers == CoverLayers.VividAndFloor && !_disk.HasFloor(key))
+            {
+                WriteFloorVariant(key, source);
+            }
+
+            var decoded = Decode(source, key, width, layers);
+            if (decoded is not null) TryRefreshFallback(key, source);
+            return decoded;
+        }
+    }
+
+    private void TryRefreshFallback(CoverKey key, byte[] cachedSource)
+    {
+        if (key.Provider != CoverProviders.Steam) return;
+        var steam = _sources.OfType<SteamCapsuleSource>()
+            .FirstOrDefault(source => source.CanRefreshCachedFallback && source.CanHandle(key));
+        if (steam is null) return;
+        lock (_refreshLock)
         {
-            WriteFloorVariant(key, source);
+            // Keep only keys in a small queue, never encoded or decoded art.
+            // One worker has its own bound and consumes no foreground permits.
+            if (_disposed != 0 || _refreshQueue.Count >= 16 || _refreshPending.Contains(key) || IsPortrait(cachedSource) ||
+                !_disk.CanRefresh(key, steam.SourceSetId)) return;
+            _refreshPending.Add(key);
+            _refreshQueue.Enqueue(key);
+            if (_refreshRunning) return;
+            _refreshRunning = true;
+            var ct = _refreshCancellation.Token;
+            _refreshTask = Task.Run(() => DrainRefreshesAsync(steam, ct));
         }
+    }
 
-        return Decode(source, key, width, layers);
+    private async Task DrainRefreshesAsync(SteamCapsuleSource steam, CancellationToken ct)
+    {
+        while (true)
+        {
+            CoverKey key;
+            lock (_refreshLock)
+            {
+                if (_disposed != 0 || _refreshQueue.Count == 0)
+                {
+                    _refreshQueue.Clear();
+                    _refreshPending.Clear();
+                    _refreshRunning = false;
+                    return;
+                }
+                key = _refreshQueue.Dequeue();
+            }
+            try
+            {
+                byte[] cachedSource;
+                lock (_disk.EntryLock(key))
+                {
+                    if (!_disk.TryReadSource(key, out cachedSource) || IsPortrait(cachedSource) ||
+                        !_disk.CanRefresh(key, steam.SourceSetId)) continue;
+                }
+                await RefreshFallbackAsync(key, cachedSource, steam, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _log.LogDebug(ex, "Steam cover upgrade could not read {Key}", key);
+            }
+            finally
+            {
+                lock (_refreshLock) _refreshPending.Remove(key);
+            }
+        }
+    }
+
+    private async Task RefreshFallbackAsync(CoverKey key, byte[] cachedSource, SteamCapsuleSource steam,
+        CancellationToken ct)
+    {
+        try
+        {
+            var bytes = await steam.TryFetchAsync(key, ct).ConfigureAwait(false);
+            ct.ThrowIfCancellationRequested();
+            if (bytes is null)
+            {
+                _disk.MarkRefresh(key, steam.SourceSetId, "no-portrait", TimeSpan.FromDays(7));
+                return;
+            }
+
+            if (!IsPortrait(bytes))
+            {
+                _disk.MarkRefresh(key, steam.SourceSetId, "invalid-portrait", TimeSpan.FromHours(1));
+                return;
+            }
+
+            // Normal rendering tolerates incomplete input; replacing retained
+            // art requires a complete decode, using codec subsampling when available.
+            if (!IsCompleteImage(bytes))
+            {
+                _disk.MarkRefresh(key, steam.SourceSetId, "invalid-image", TimeSpan.FromHours(1));
+                return;
+            }
+            ct.ThrowIfCancellationRequested();
+
+            lock (_disk.EntryLock(key))
+            lock (_refreshLock)
+            {
+                if (_disposed != 0) return;
+                var replaced = _disk.ReplaceSource(key, cachedSource, bytes);
+                _disk.MarkRefresh(key, steam.SourceSetId, replaced ? "steam-portrait" : "replacement-deferred",
+                    replaced ? TimeSpan.FromDays(7) : TimeSpan.FromHours(1));
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _disk.MarkRefresh(key, steam.SourceSetId, "cancelled", TimeSpan.FromHours(1));
+        }
+        catch (Exception ex)
+        {
+            _disk.MarkRefresh(key, steam.SourceSetId, "error", TimeSpan.FromHours(1));
+            _log.LogDebug(ex, "Steam cover upgrade deferred for {Key}", key);
+        }
+    }
+
+    private static bool IsPortrait(byte[] bytes)
+    {
+        using var data = SKData.CreateCopy(bytes);
+        using var codec = SKCodec.Create(data);
+        return codec is not null && codec.Info.Height > 0 &&
+               Math.Abs((double)codec.Info.Width / codec.Info.Height - 2d / 3) < .01;
+    }
+
+    private static bool IsCompleteImage(byte[] bytes)
+    {
+        if (bytes.Length > CoverDownload.MaxBytes) return false;
+        using var data = SKData.CreateCopy(bytes);
+        using var codec = SKCodec.Create(data);
+        if (codec is null || codec.Info.Width is <= 0 or > CoverImaging.MaxDimension ||
+            codec.Info.Height is <= 0 or > CoverImaging.MaxDimension ||
+            (long)codec.Info.Width * codec.Info.Height > CoverImaging.MaxPixels) return false;
+        var size = codec.GetScaledDimensions(Math.Min(1, 64f / codec.Info.Width));
+        var info = new SKImageInfo(size.Width, size.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+        using var bitmap = new SKBitmap(info);
+        return codec.GetPixels(info, bitmap.GetPixels()) == SKCodecResult.Success;
+    }
+
+    internal Task WaitForRefreshesAsync()
+    {
+        lock (_refreshLock) return _refreshTask;
     }
 
     /// <summary>
@@ -280,7 +426,16 @@ public sealed class CoverPipeline : IDisposable
 
     public void Dispose()
     {
-        if (Interlocked.Exchange(ref _disposed, 1) == 0) _fetchGate.Dispose();
+        lock (_refreshLock)
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+            _refreshCancellation.Cancel();
+            // Sources may complete cancellation asynchronously. Keep their
+            // token source alive until the tracked operation has unwound.
+            _ = _refreshTask.ContinueWith(_ => _refreshCancellation.Dispose(),
+                CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        }
+        _fetchGate.Dispose();
     }
 
     private sealed record Missing(string Identity, DateTimeOffset ExpiresAt);

@@ -24,6 +24,7 @@ public sealed class CoverDiskCache
 {
     private readonly CoverCacheOptions _options;
     private readonly TimeProvider _clock;
+    private readonly object[] _entryLocks = Enumerable.Range(0, 64).Select(_ => new object()).ToArray();
 
     public CoverDiskCache(CoverCacheOptions options, TimeProvider? clock = null)
     {
@@ -34,6 +35,53 @@ public sealed class CoverDiskCache
 
     public string Root { get; }
     internal DateTimeOffset UtcNow => _clock.GetUtcNow();
+
+    // Keep source reads, derived-floor writes and source upgrades together.
+    internal object EntryLock(CoverKey key) => _entryLocks[(uint)key.GetHashCode() % (uint)_entryLocks.Length];
+
+    internal bool CanRefresh(CoverKey key, string identity)
+    {
+        var path = RefreshPath(key);
+        try
+        {
+            var info = new FileInfo(path);
+            if (!info.Exists || info.Length is 0 or > 1024) return true;
+        }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
+        if (!TryRead(path, out var bytes)) return true;
+        var fields = System.Text.Encoding.UTF8.GetString(bytes).Split('\n');
+        return fields.Length != 3 || fields[0] != identity ||
+               !long.TryParse(fields[1], out var ticks) || UtcNow.UtcTicks >= ticks;
+    }
+
+    internal void MarkRefresh(CoverKey key, string identity, string outcome, TimeSpan cooldown)
+    {
+        try
+        {
+            EnsureRoot();
+            WriteAtomic(RefreshPath(key), System.Text.Encoding.UTF8.GetBytes(
+                $"{identity}\n{(UtcNow + cooldown).UtcTicks}\n{outcome}"));
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+    }
+
+    private string RefreshPath(CoverKey key) => Path.Combine(Root, key.CacheStem + ".steam-refresh");
+
+    internal bool ReplaceSource(CoverKey key, byte[] expectedSource, byte[] replacement)
+    {
+        lock (EntryLock(key))
+        {
+            if (!TryReadSource(key, out var current) || !current.AsSpan().SequenceEqual(expectedSource)) return false;
+            // Delete first: even an interrupted replacement can only leave a
+            // missing, regenerable floor, never one belonging to the old art.
+            TryDelete(FloorPath(key));
+            if (HasFloor(key) || !WriteAtomic(SourcePath(key), replacement)) return false;
+            TryDelete(NegativePath(key));
+            return true;
+        }
+    }
 
     public string SourcePath(CoverKey key) => Path.Combine(Root, key.CacheStem + ".src.jpg");
 
@@ -177,7 +225,7 @@ public sealed class CoverDiskCache
         return false;
     }
 
-    private static void WriteAtomic(string path, byte[] bytes)
+    private static bool WriteAtomic(string path, byte[] bytes)
     {
         // A managed thread id is unique within one process and nowhere else.
         // Two Winnow processes over the same cache directory — a second launch
@@ -192,6 +240,7 @@ public sealed class CoverDiskCache
         {
             File.WriteAllBytes(temp, bytes);
             File.Move(temp, path, overwrite: true);
+            return true;
         }
         catch (IOException)
         {
@@ -201,6 +250,7 @@ public sealed class CoverDiskCache
         {
             TryDelete(temp);
         }
+        return false;
     }
 
     private static void TryDelete(string path)

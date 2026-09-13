@@ -749,6 +749,7 @@ public static class Program
         // procedural placeholder art — the grid still works, which is exactly
         // what makes the omission easy to miss.
         services.AddCoverCache(o => o.CacheDirectory = Path.Combine(data.Root, "covers"));
+        services.AddSingleton<ISteamLibraryAssetLookup, SteamLibraryAssetLookup>();
 
         // MUST come after AddCoverCache(): CoverPipeline takes the first source
         // that answers, in registration order. Steam's 600x900 portrait capsule

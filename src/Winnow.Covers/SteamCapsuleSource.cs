@@ -5,10 +5,8 @@ namespace Winnow.Covers;
 
 /// <summary>
 /// Steam's portrait capsule from the public CDN. No authentication, no API key,
-/// no rate-limit contract beyond politeness — verified 2026-08-23 against real
-/// appids: <c>library_600x900_2x.jpg</c> is 200 for games, a clean 404 for
-/// tools and redistributables. The 1x file is the fallback for the handful of
-/// apps that never got a 2x asset.
+/// no rate-limit contract beyond politeness. Legacy 2x/1x paths are tried first;
+/// a 404 can also mean Steam moved the image to a published hashed asset path.
 /// </summary>
 public sealed class SteamCapsuleSource : ICoverSource
 {
@@ -20,18 +18,23 @@ public sealed class SteamCapsuleSource : ICoverSource
     private readonly IHttpClientFactory _clients;
     private readonly CoverCacheOptions _options;
     private readonly ILogger<SteamCapsuleSource> _log;
+    private readonly ISteamLibraryAssetLookup? _assets;
 
     public SteamCapsuleSource(
         IHttpClientFactory clients,
         CoverCacheOptions options,
-        ILogger<SteamCapsuleSource>? log = null)
+        ILogger<SteamCapsuleSource>? log = null,
+        ISteamLibraryAssetLookup? assets = null)
     {
         _clients = clients;
         _options = options;
         _log = log ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<SteamCapsuleSource>.Instance;
+        _assets = assets;
     }
 
     public string Name => "steam-capsule";
+    public string SourceSetId => _assets is null ? Name : "steam-capsule-published-v1";
+    public bool CanRefreshCachedFallback => _assets is not null;
 
     public bool CanHandle(CoverKey key)
         => key.Provider == CoverProviders.Steam
@@ -45,15 +48,13 @@ public sealed class SteamCapsuleSource : ICoverSource
             return null;
         }
 
-        var client = _clients.CreateClient(HttpClientName);
+        using var client = _clients.CreateClient(HttpClientName);
         foreach (var file in CapsuleFiles)
         {
             var url = $"{_options.SteamCdnBaseUrl.TrimEnd('/')}/{key.Id}/{file}";
             using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
 
-            // 404 = this app has no capsule of this shape. That is an answer
-            // about existence — normal, not an error — and the caller records it
-            // so we never ask again this month.
+            // A missing legacy filename does not rule out a published asset path.
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
                 continue;
@@ -75,6 +76,9 @@ public sealed class SteamCapsuleSource : ICoverSource
                 return bytes;
             }
         }
+
+        if (await SteamPublishedAssets.TryFetchAsync(client, _assets, _options, key, ct).ConfigureAwait(false) is { } published)
+            return published;
 
         _log.LogDebug("No Steam capsule for {Key}", key);
         return null;

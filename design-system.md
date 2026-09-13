@@ -187,7 +187,9 @@ button with the standard visible focus treatment.
 
 4px base unit. Spacing: `4 · 8 · 12 · 16 · 24 · 32 · 48`.
 
-**Tile geometry.** 2:3 portrait, matching Steam's `library_600x900` capsule and IGDB covers.
+**Tile geometry.** 2:3 portrait, matching Steam's library capsule. IGDB and user artwork
+can have other proportions: desktop tiles crop to fill; fullscreen fits the whole image
+and extends its edge colors into the remaining space.
 Default 148×222, gutter 16px. The density slider spans 108×162 → 200×300; the grid reflows on
 available width and does not use fixed column counts.
 

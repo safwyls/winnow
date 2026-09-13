@@ -87,4 +87,7 @@ public sealed class CoverCacheOptions
     /// apps and a clean 404 for tools/redistributables.
     /// </summary>
     public string SteamCdnBaseUrl { get; set; } = "https://cdn.cloudflare.steamstatic.com/steam/apps";
+
+    /// <summary>Root for relative library asset paths published in Steam appinfo.</summary>
+    public string SteamAssetCdnBaseUrl { get; set; } = "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps";
 }

@@ -7,9 +7,11 @@ namespace Winnow.Covers;
 /// so a missing high-resolution asset cannot hide a standard hero or cache it
 /// under a key whose resolution the backdrop selector relies on.
 /// </summary>
-public sealed class SteamHeroSource(IHttpClientFactory clients, CoverCacheOptions options) : ICoverSource
+public sealed class SteamHeroSource(IHttpClientFactory clients, CoverCacheOptions options,
+    ISteamLibraryAssetLookup? assets = null) : ICoverSource
 {
     public string Name => "steam-library-hero";
+    public string SourceSetId => assets is null ? Name : "steam-library-hero-published-v1";
 
     public bool CanHandle(CoverKey key)
         => key.Provider is CoverProviders.SteamHero or CoverProviders.SteamHeroStandard
@@ -27,7 +29,8 @@ public sealed class SteamHeroSource(IHttpClientFactory clients, CoverCacheOption
         using var http = clients.CreateClient(SteamCapsuleSource.HttpClientName);
         using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct)
             .ConfigureAwait(false);
-        if (response.StatusCode == HttpStatusCode.NotFound) return null;
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return await SteamPublishedAssets.TryFetchAsync(http, assets, options, key, ct).ConfigureAwait(false);
 
         // A blocked or unavailable CDN must not create a 30-day missing marker.
         response.EnsureSuccessStatusCode();
