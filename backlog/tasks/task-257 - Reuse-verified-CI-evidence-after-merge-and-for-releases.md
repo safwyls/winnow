@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-13 16:06'
-updated_date: '2026-09-13 16:13'
+updated_date: '2026-09-13 16:17'
 labels: []
 dependencies: []
 type: enhancement
@@ -36,4 +36,6 @@ Record immutable per-platform full-test evidence. Compare complete Git tree, res
 
 <!-- SECTION:NOTES:BEGIN -->
 Implemented per-platform full-only artifacts and provenance checks with 24-hour age. Reuse requires exact target commit or GitHub-verified merged PR checkout tree/parents, same SDK/image/dependency fingerprint, trusted same-repository workflow and both successful platform jobs in the same attempt. Reused runs never refresh evidence. Fresh restore/audit and Windows migration checks remain; release version gates verification. Local policy tests: 47 passed; real repository dependency hash and PR resolver entrypoint passed; actionlint 1.7.12 passed both workflows. No desktop/fullscreen application behavior changes.
+
+Added entrypoint integration fixtures: valid ZIP enables reuse, original run is linked, reused evidence is not regenerated, and traversal names/invalid JSON/oversized records fall back. All 53 checks pass. Independent reviewer found no remaining blocker. Hosted Linux full fallback passed on initial commit; final hosted runs pending.
 <!-- SECTION:NOTES:END -->

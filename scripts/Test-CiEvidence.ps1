@@ -148,6 +148,73 @@ try {
     $assets.libraries['A/1.0'].sha512 = 'hash-a'; $assets.targets.net10['A/1.0'].compile = @{ 'lib/b.dll' = @{} }
     $assets | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $path
     Assert-Policy ($hash -cne (Get-CiDependencyHash $temp)) 'Selected runtime/compile asset change did not change dependency hash.'
+
+    # Exercise the entrypoint, ZIP parser and Actions outputs with API responses
+    # supplied locally. No external requests or production credentials are used.
+    & git -C $temp -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m fixture
+    if ($LASTEXITCODE -ne 0) { throw 'Could not commit fingerprint fixture.' }
+    $f = New-Fixture
+    $f.Current.commit = & git -C $temp rev-parse HEAD
+    $f.Current.tree = & git -C $temp rev-parse 'HEAD^{tree}'
+    $f.Current.sdk = & dotnet --version
+    $f.Current.dependencies = Get-CiDependencyHash $temp
+    $f.Evidence = $f.Current.Clone()
+    $f.Evidence.schema = 1; $f.Evidence.kind = 'full'; $f.Evidence.runId = 100; $f.Evidence.runAttempt = 1
+    $f.Run.head_sha = $f.Current.commit
+    $testZip = Join-Path $temp 'evidence.zip'
+    function Write-TestArchive([string] $Name, [string] $Content) {
+        $file = [IO.File]::Create($testZip)
+        $zip = [IO.Compression.ZipArchive]::new($file, [IO.Compression.ZipArchiveMode]::Create)
+        try {
+            $writer = [IO.StreamWriter]::new($zip.CreateEntry($Name).Open())
+            try { $writer.Write($Content) } finally { $writer.Dispose() }
+        }
+        finally { $zip.Dispose(); $file.Dispose() }
+    }
+    function Invoke-RestMethod {
+        param($Uri, $Headers, $TimeoutSec)
+        return & $fixtureApi ([string]$Uri).Split('/repos/fixture/winnow/')[1]
+    }
+    function Invoke-WebRequest {
+        param($Uri, $Headers, $OutFile, $TimeoutSec)
+        if ($Uri -cne 'https://fixture.invalid/repos/fixture/winnow/actions/artifacts/123/zip') { throw 'Unexpected download URL.' }
+        Copy-Item -LiteralPath $testZip -Destination $OutFile
+    }
+    $envValues = @{
+        GITHUB_EVENT_NAME = 'push'; GITHUB_EVENT_PATH = (Join-Path $temp 'event.json')
+        GITHUB_OUTPUT = (Join-Path $temp 'output.txt'); GITHUB_STEP_SUMMARY = (Join-Path $temp 'summary.txt')
+        GITHUB_REPOSITORY = 'fixture/winnow'; GITHUB_RUN_ID = '200'; GITHUB_RUN_ATTEMPT = '1'
+        GITHUB_API_URL = 'https://fixture.invalid'; GH_TOKEN = 'fixture'; CI_FORCE_FULL = 'false'
+        ImageOS = $f.Current.imageOS; ImageVersion = $f.Current.imageVersion
+    }
+    $previousEnv = @{}
+    $fixtureApi = $api
+    try {
+        foreach ($key in $envValues.Keys) {
+            $previousEnv[$key] = [Environment]::GetEnvironmentVariable($key)
+            [Environment]::SetEnvironmentVariable($key, $envValues[$key])
+        }
+        '{}' | Set-Content -LiteralPath $env:GITHUB_EVENT_PATH
+        Write-TestArchive 'windows.json' ($f.Evidence | ConvertTo-Json -Depth 10)
+        & (Join-Path $PSScriptRoot 'Resolve-CiEvidence.ps1') -Platform windows -RepositoryRoot $temp
+        Assert-Policy ((Get-Content -LiteralPath $env:GITHUB_OUTPUT -Raw).Trim() -ceq 'reused=true') 'Entrypoint did not enable verified reuse.'
+        Assert-Policy (!(Test-Path -LiteralPath (Join-Path $temp 'ci-evidence/windows.json'))) 'Reuse generated renewed evidence.'
+        Assert-Policy ((Get-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Raw).Contains($f.Run.html_url)) 'Reuse summary did not link original run.'
+        foreach ($badArchive in @(
+            @{ name = '../windows.json'; content = '{}' },
+            @{ name = 'windows.json'; content = 'invalid json' },
+            @{ name = 'windows.json'; content = ('x' * 17000) }
+        )) {
+            Write-TestArchive $badArchive.name $badArchive.content
+            Clear-Content -LiteralPath $env:GITHUB_OUTPUT
+            & (Join-Path $PSScriptRoot 'Resolve-CiEvidence.ps1') -Platform windows -RepositoryRoot $temp
+            Assert-Policy ((Get-Content -LiteralPath $env:GITHUB_OUTPUT -Raw).Trim() -ceq 'reused=false') 'Invalid archive did not fall back to full tests.'
+        }
+    }
+    finally {
+        foreach ($key in $previousEnv.Keys) { [Environment]::SetEnvironmentVariable($key, $previousEnv[$key]) }
+        Remove-Item Function:Invoke-RestMethod, Function:Invoke-WebRequest
+    }
 }
 finally {
     $resolved = [IO.Path]::GetFullPath($temp)

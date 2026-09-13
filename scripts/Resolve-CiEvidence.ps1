@@ -1,8 +1,11 @@
 [CmdletBinding()]
-param([Parameter(Mandatory)][ValidateSet('windows', 'linux')][string] $Platform)
+param(
+    [Parameter(Mandatory)][ValidateSet('windows', 'linux')][string] $Platform,
+    [string] $RepositoryRoot = (Split-Path $PSScriptRoot -Parent)
+)
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'CiEvidence.psm1') -Force
-$root = Split-Path $PSScriptRoot -Parent
+$root = $RepositoryRoot
 $commit = & git -C $root rev-parse HEAD
 if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve checked out commit.' }
 $tree = & git -C $root rev-parse 'HEAD^{tree}'
