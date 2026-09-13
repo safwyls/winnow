@@ -43,7 +43,7 @@ public sealed class GamesDbIdentitySyncTests
     [InlineData(42L, 43L)]
     [InlineData(0L, 0L)]
     [InlineData(-1L, -1L)]
-    public async Task Game_level_references_without_matching_release_versions_keep_pair_reviewable(
+    public async Task Game_level_references_without_matching_acquired_editions_keep_pair_reviewable(
         long? epicVersion, long? steamVersion)
     {
         using var f = new Fixture();
@@ -61,6 +61,20 @@ public sealed class GamesDbIdentitySyncTests
         Assert.Equal(MergeCandidateStatuses.Pending, (await f.Candidates.GetAsync(candidate))!.Status);
         Assert.Equal(epicVersion, (await f.Releases.GetAsync(epic.ReleaseId))!.IgdbVersionId);
         Assert.Equal(steamVersion, (await f.Releases.GetAsync(steam.ReleaseId))!.IgdbVersionId);
+    }
+
+    [Fact]
+    public async Task Legacy_version_columns_without_native_source_evidence_cannot_link()
+    {
+        using var fixture = new Fixture();
+        var epic = await fixture.AddAsync("epic", "catalog", "Epic", igdbVersionId: 42);
+        var steam = await fixture.AddAsync("steam", "620", "Steam", igdbVersionId: 42);
+        await fixture.QueueAsync(epic, steam);
+        fixture.AcquiredVersions.Clear();
+        fixture.Graph.ReleaseIds = [("steam", "620")];
+        Assert.Equal(0, await fixture.Service.SyncAsync());
+        Assert.Empty(await fixture.Links.GetHistoryAsync());
+        Assert.Equal(1, await fixture.Candidates.CountPendingAsync());
     }
 
     [Theory]
@@ -359,7 +373,7 @@ public sealed class GamesDbIdentitySyncTests
 
     private sealed record Seeded(long WorkId, long ReleaseId);
 
-    private sealed class Fixture : IDisposable
+    private sealed class Fixture : IDisposable, IReleaseEditionEvidenceAcquirer
     {
         private readonly TempDatabase _db = new();
         public WorkRepository Works { get; }
@@ -372,6 +386,7 @@ public sealed class GamesDbIdentitySyncTests
         public AliasSource Aliases { get; } = new();
         public IdentityGraph Graph { get; } = new();
         public GamesDbIdentitySyncService Service { get; }
+        public Dictionary<long, long?> AcquiredVersions { get; } = new();
 
         public Fixture()
         {
@@ -384,7 +399,7 @@ public sealed class GamesDbIdentitySyncTests
             Queries = new(_db.Factory);
             Service = new(Releases, Links, Candidates, Pins,
                 new EnrichmentLookupPlanner(new IgdbOptions(), [Aliases], Graph),
-                NullLogger<GamesDbIdentitySyncService>.Instance);
+                NullLogger<GamesDbIdentitySyncService>.Instance, this);
         }
 
         public async Task<Seeded> AddAsync(string provider, string id, string name, bool fullMetadata = false,
@@ -400,7 +415,35 @@ public sealed class GamesDbIdentitySyncTests
             });
             var releaseId = await Releases.InsertAsync(new Release { WorkId = workId, Name = name, IgdbVersionId = igdbVersionId });
             await Releases.AddExternalIdAsync(new ExternalId { ReleaseId = releaseId, Provider = provider, ProviderId = id });
+            AcquiredVersions[releaseId] = igdbVersionId;
             return new(workId, releaseId);
+        }
+
+        public async Task<IReadOnlyDictionary<TargetKey, EditionAcquisition>> AcquireAsync(
+            IReadOnlyList<EnrichmentTarget> targets, CancellationToken ct = default)
+        {
+            var result = new Dictionary<TargetKey, EditionAcquisition>();
+            foreach (var target in targets)
+            {
+                if (AcquiredVersions.GetValueOrDefault(target.ReleaseId) is not > 0) continue;
+                var version = AcquiredVersions[target.ReleaseId]!.Value;
+                var key = target.Provider + ":" + target.ProviderId;
+                const string payload = "{\"nativeFixtureEvidence\":true}";
+                using (var lease = _db.Factory.Lease())
+                    await lease.Connection.ExecuteAsync("""
+                        INSERT INTO metadata_cache(provider, provider_id, payload_json, fetched_at)
+                        VALUES('edition-test', @key, @payload, @now)
+                        ON CONFLICT(provider,provider_id) DO NOTHING;
+                        """, new { key, payload, now = DateTime.UtcNow });
+                var evidence = await new ReleaseEditionEvidenceRepository(_db.Factory).RecordAsync(new()
+                {
+                    ReleaseId = target.ReleaseId, WorkId = target.WorkId, Provider = target.Provider, ProviderId = target.ProviderId,
+                    EditionGameId = version, VersionParentId = 1, VersionTitle = "Gold Edition",
+                    ValidUntilUtc = DateTime.UtcNow.AddDays(1), Sources = [CachedEvidenceSource.FromPayload("edition-test", key, payload)],
+                }, ct);
+                result[new(target.Provider, target.ProviderId)] = new(evidence);
+            }
+            return result;
         }
 
         public Task<long> QueueAsync(Seeded left, Seeded right) => Candidates.InsertAsync(new MergeCandidate

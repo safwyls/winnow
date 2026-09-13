@@ -43,6 +43,15 @@ if ($Runtime -eq 'win-x64') { $readyToRun = @('-p:PublishReadyToRun=true') }
     -p:ContinuousIntegrationBuild=true `
     @readyToRun @ExtraProperties -warnaserror
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed ($LASTEXITCODE)." }
+# The replacement process runs outside the directory it replaces. Keep its own
+# runtime together so it can be copied to the durable handoff directory.
+& dotnet publish "$repo/src/Winnow.Update.Helper/Winnow.Update.Helper.csproj" --configuration Release --runtime $Runtime `
+    --self-contained true --output (Join-Path $output 'update-helper') `
+    "-p:BaseOutputPath=$buildOutput" "-p:Version=$Version" "-p:SourceRevisionId=$Commit" `
+    -p:PublishTrimmed=false -p:PublishSingleFile=false -p:ContinuousIntegrationBuild=true -warnaserror
+if ($LASTEXITCODE -ne 0) { throw "Update helper publish failed ($LASTEXITCODE)." }
+$helperHost = if ($Runtime -eq 'win-x64') { 'Winnow.Update.Helper.exe' } else { 'Winnow.Update.Helper' }
+if (!(Test-Path -LiteralPath (Join-Path $output "update-helper/$helperHost") -PathType Leaf)) { throw 'Missing portable update helper.' }
 if (Get-ChildItem -LiteralPath $output -Recurse -File | Where-Object { $_.Name -eq 'appsettings.local.json' -or $_.Name -like '*.secrets.json' -or $_.Extension -eq '.db' }) {
     throw 'Publish output contains a local configuration, secret file, or database; refusing to package it.'
 }

@@ -7,7 +7,7 @@ using Winnow.Core.Repositories;
 namespace Winnow.Enrich.Stores;
 
 /// <summary>Anonymous storefront metadata. All calls belong to background sync.</summary>
-public sealed class StorefrontClient(HttpClient http, StorefrontCache cache, TimeProvider time)
+public sealed partial class StorefrontClient(HttpClient http, StorefrontCache cache, TimeProvider time)
 {
     public const string EpicMappingUrl = "https://store-content.ak.epicgames.com/api/content/productmapping";
 

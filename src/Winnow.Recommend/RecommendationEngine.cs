@@ -45,7 +45,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
         List<CandidateFacts> Candidates,
         IReadOnlyList<Core.Queries.OwnershipBucket> BucketRows,
         int Seed,
-        List<Recommendation> Derelict);
+        IReadOnlyList<RecommendationGame> Games);
 
     public async Task<RecommendationFeed> GetFeedAsync(
         RecommendationRequest request, CancellationToken ct = default)
@@ -109,7 +109,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
         RecommendationRequest request, CancellationToken ct = default)
     {
         var tuning = request.Tuning;
-        var (candidates, bucketRows, seed, derelict) = await AssemblePoolAsync(request, ct);
+        var (candidates, bucketRows, seed, games) = await AssemblePoolAsync(request, ct);
         var history = new HistoryReader(_snapshots, _sessions, request.AsOfUtc);
 
         IReadOnlyList<SignalContribution> Score(CandidateFacts facts)
@@ -152,21 +152,8 @@ public sealed class RecommendationEngine : IRecommendationEngine
         }
 
         var shelves = ShelfBuilder.Build(definitions, scored, request, request.MaxPerShelf).ToList();
-        if (derelict.Count > 0)
-        {
-            shelves.Add(new RecommendationShelf
-            {
-                Id = ShelfIds.Derelict,
-                Title = "Derelict",
-                Blurb = "Games with evidence of closure, delisting or abandonment; some may still be playable.",
-                Items = derelict
-                    .OrderBy(item => request.RecentlySurfacedReleaseIds.Contains(item.ReleaseId))
-                    .ThenBy(item => RecommendationScorer.JitterValue(seed, item.ReleaseId))
-                    .ThenBy(item => item.ReleaseId)
-                    .Take(Math.Max(1, request.MaxPerShelf))
-                    .ToList(),
-            });
-        }
+        var recent = RecentlyPlayedShelf.Build(games, request.AsOfUtc);
+        if (recent is not null) shelves.Insert(0, recent);
 
         return new ShelfFeed
         {
@@ -279,36 +266,11 @@ public sealed class RecommendationEngine : IRecommendationEngine
         var surfacedWorks = RecommendationGame.ResolveFeedback(snapshot, request.RecentlySurfacedReleaseIds);
 
         var candidates = new List<CandidateFacts>(games.Count);
-        var derelict = new List<Recommendation>();
         foreach (var game in games)
         {
             var row = game.Action;
-            if (row.Game.Bucket == LibraryBuckets.Retired || game.NameIsProvisional
-                || excludedWorks.Contains(game.WorkId)) continue;
-
-            if (row.Game.Bucket == LibraryBuckets.Derelict)
-            {
-                var explanation = new RecommendationReason
-                {
-                    Primary = ReasonSignal.Lifecycle,
-                    Evidence = new ReasonEvidence
-                    {
-                        ReleaseId = row.ReleaseId,
-                        Title = game.Title,
-                        Store = game.Store,
-                        Lifecycle = row.Game.Lifecycle,
-                        EvidenceReleaseIds = game.ReleaseIds,
-                    },
-                };
-                derelict.Add(new Recommendation
-                {
-                    OwnershipId = row.OwnershipId, ReleaseId = row.ReleaseId, WorkId = game.WorkId,
-                    Title = game.Title, Store = game.Store, Bucket = LibraryBuckets.Derelict,
-                    Score = 0, Signals = [], Explanation = explanation,
-                    Reason = ReasonBuilder.Build(explanation, tuning),
-                });
-                continue;
-            }
+            if (row.Game.Bucket is LibraryBuckets.Retired or LibraryBuckets.Derelict
+                || game.NameIsProvisional || excludedWorks.Contains(game.WorkId)) continue;
 
             var (affinity, facetName) = taste.AffinityFor(row.ReleaseId);
             candidates.Add(new CandidateFacts
@@ -333,7 +295,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
                     && facet.Kind == FacetKinds.Genre).ToArray(),
             });
         }
-        return new CandidatePool(candidates, bucketRows, seed, derelict);
+        return new CandidatePool(candidates, bucketRows, seed, games);
     }
     /// <summary>
     /// Reads one shortlisted row's own history: return episodes, and — where a

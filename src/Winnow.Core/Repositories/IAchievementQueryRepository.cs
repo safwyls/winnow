@@ -13,9 +13,8 @@ namespace Winnow.Core.Repositories;
 public interface IAchievementQueryRepository
 {
     /// <summary>
-    /// One summary per release that defines any achievements. Releases with
-    /// none are absent from the result rather than present at zero, because
-    /// "no achievements" and "none unlocked" are different facts.
+    /// One summary per release for the selected account. Availability distinguishes
+    /// unanswered, unavailable, no schema and known progress; platforms are never blended.
     /// </summary>
     Task<IReadOnlyList<ReleaseAchievementSummary>> GetSummariesAsync(
         IReadOnlyList<long> releaseIds, CancellationToken ct = default);

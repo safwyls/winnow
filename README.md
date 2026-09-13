@@ -38,6 +38,12 @@ from [GitHub Releases](https://github.com/safwyls/winnow/releases):
   or run `winnow`. The `.tar.gz` is a portable alternative: extract it and run `./winnow`.
   Portable builds need the native libraries listed in [release instructions](docs/releases.md).
 
+Supported Windows and portable Ubuntu copies can download updates in the background.
+When an update is available, choose **Update and restart** in the title bar or fullscreen
+interface. Debian installations use the package manager. See the
+[update and recovery instructions](docs/releases.md#in-app-updates) for portable support,
+backups and recovery after an interrupted upgrade.
+
 To run from source, install the [.NET 10 SDK](https://dotnet.microsoft.com/download):
 
 ```powershell
@@ -261,6 +267,7 @@ Winnow.Covers[.Igdb]  Cover art pipeline and disk cache.
 Winnow.Monitor        Process watching and session recording.
 Winnow.Recommend      The scoring model and the shelves.
 Winnow.Auth.WebView   WebView2 host for embedded sign-in.
+Winnow.Update[.Helper] Portable staging, database backup, replacement and recovery.
 Winnow.App            Avalonia UI and the composition root. Assembly name `Winnow`.
 ```
 

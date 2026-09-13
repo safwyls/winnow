@@ -2,6 +2,8 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Winnow.App.Design;
@@ -15,6 +17,103 @@ namespace Winnow.Ui.Tests;
 
 public sealed class ApplicationUpdaterUiTests
 {
+    [AvaloniaFact]
+    public async Task Caption_and_fullscreen_detect_update_and_only_explicit_click_downloads_then_restarts()
+    {
+        var updater = new FakeUpdater { CompleteDownload = true };
+        var settings = new ApplicationSettingsViewModel(updater: updater);
+        var shell = Shell(settings);
+        using var context = new FullscreenContext(shell.Library, shell.Feed, shell);
+        using var fullscreen = new FullscreenView(context);
+        var television = new Window { Width = 1920, Height = 1080, Content = fullscreen };
+        var window = new MainWindow { DataContext = shell };
+        try
+        {
+            window.Show(); television.Show(); Dispatcher.UIThread.RunJobs();
+            var button = window.FindControl<Button>("TitleBarUpdateButton")!;
+            var notice = fullscreen.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == "FullscreenUpdateNotice");
+            Assert.False(button.IsVisible);
+            Assert.False(notice.IsVisible);
+            await Task.Run(() => updater.Publish(updater.Snapshot with { CanDownload = true, AvailableVersion = "2.0.0" }));
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(button.IsVisible);
+            Assert.True(notice.IsVisible);
+            Assert.Equal(0, updater.Restarts);
+            Assert.Equal(0, updater.Downloads);
+            Assert.Same(settings.UpdateAndRestartCommand, button.Command);
+            if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
+            {
+                Directory.CreateDirectory(directory);
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick(); Dispatcher.UIThread.RunJobs();
+                using var desktopFrame = window.CaptureRenderedFrame();
+                desktopFrame!.Save(Path.Combine(directory, "update-titlebar.png"));
+                using var fullscreenFrame = television.CaptureRenderedFrame();
+                fullscreenFrame!.Save(Path.Combine(directory, "update-fullscreen.png"));
+            }
+            button.Focus(); window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+            await settings.UpdateAndRestartCommand.ExecutionTask!;
+            Assert.Equal(1, updater.Downloads);
+            Assert.Equal(1, updater.Restarts);
+
+            fullscreen.Handle(GamepadButtons.Menu); Dispatcher.UIThread.RunJobs();
+            fullscreen.CurrentPage.FocusInitial();
+            fullscreen.Handle(GamepadButtons.Down);
+            Assert.Equal("Update and restart", AutomationProperties.GetName((Control)television.FocusManager!.GetFocusedElement()!));
+            fullscreen.Handle(GamepadButtons.Accept);
+            await settings.UpdateAndRestartCommand.ExecutionTask!;
+            Assert.Equal(1, updater.Downloads);
+            Assert.Equal(2, updater.Restarts);
+
+            updater.Publish(updater.Snapshot with { Busy = true, CanRestart = false, CanCancel = true });
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(button.IsVisible);
+            Assert.False(button.IsEnabled);
+            Assert.False(settings.UpdateAndRestartCommand.CanExecute(null));
+        }
+        finally { window.Close(); television.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Update_and_restart_does_not_restart_when_download_does_not_become_ready()
+    {
+        var updater = new FakeUpdater();
+        updater.Publish(updater.Snapshot with { CanDownload = true });
+        var settings = new ApplicationSettingsViewModel(updater: updater);
+        await settings.UpdateAndRestartCommand.ExecuteAsync(null);
+        Assert.Equal(1, updater.Downloads);
+        Assert.Equal(0, updater.Restarts);
+    }
+
+    [AvaloniaFact]
+    public void Recovery_guidance_stays_visible_on_both_surfaces_during_later_checks()
+    {
+        var updater = new FakeUpdater();
+        var settings = new ApplicationSettingsViewModel(updater: updater);
+        var shell = Shell(settings);
+        using var context = new FullscreenContext(shell.Library, shell.Feed, shell);
+        using var page = new FullscreenSettingsPage(context);
+        var desktop = new ApplicationSettingsView { DataContext = settings };
+        var window = new Window { Content = desktop, Width = 1000, Height = 900 };
+        var television = new Window { Content = page, Width = 1920, Height = 1080 };
+        try
+        {
+            window.Show(); television.Show();
+            FindButton(page, "Application").Focus(); page.Handle(GamepadButtons.Accept);
+            updater.Publish(updater.Snapshot with { RecoveryStatus = "Previous installation restored. Library data was preserved." });
+            updater.Publish(updater.Snapshot with { Status = "Checking for updates…", Busy = true });
+            Dispatcher.UIThread.RunJobs();
+            foreach (var view in new Control[] { desktop, page })
+            {
+                var notice = view.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == "UpdateRecoveryStatus");
+                Assert.True(notice.IsVisible);
+                Assert.Equal(updater.Snapshot.RecoveryStatus, notice.Text);
+                Assert.Equal(Avalonia.Media.TextWrapping.Wrap, notice.TextWrapping);
+                Assert.Equal(AutomationLiveSetting.Polite, AutomationProperties.GetLiveSetting(notice));
+            }
+        }
+        finally { window.Close(); television.Close(); }
+    }
+
     [AvaloniaFact]
     public async Task Beta_and_automatic_preferences_stay_shared_in_both_presentations()
     {
@@ -111,7 +210,7 @@ public sealed class ApplicationUpdaterUiTests
             });
             Dispatcher.UIThread.RunJobs();
             FindButton(page, "Check for updates").Focus();
-            foreach (var label in new[] { "Download update", "Release notes", "Download in browser" })
+            foreach (var label in new[] { "Download update", "Update and restart", "Release notes", "Download in browser" })
             {
                 page.Handle(GamepadButtons.Down);
                 Dispatcher.UIThread.RunJobs();
@@ -124,7 +223,7 @@ public sealed class ApplicationUpdaterUiTests
                 Assert.InRange(position.Y, -1, scroll.Viewport.Height - action.Bounds.Height + 1);
             }
             Assert.Contains(page.GetVisualDescendants().OfType<ScrollViewer>(), scroll => scroll.Offset.Y > 0);
-            foreach (var label in new[] { "Release notes", "Download update", "Check for updates" })
+            foreach (var label in new[] { "Release notes", "Update and restart", "Download update", "Check for updates" })
             {
                 page.Handle(GamepadButtons.Up);
                 Dispatcher.UIThread.RunJobs();
@@ -245,9 +344,16 @@ public sealed class ApplicationUpdaterUiTests
         public int Restarts { get; private set; }
         public int Downloads { get; private set; }
         public int Checks { get; private set; }
+        public bool CompleteDownload { get; init; }
         public void Publish(UpdateSnapshot snapshot) { Snapshot = snapshot; Changed?.Invoke(this, EventArgs.Empty); }
         public Task CheckAsync(CancellationToken ct = default) { Checks++; Publish(Snapshot with { CanDownload = true }); return Task.CompletedTask; }
-        public Task DownloadAsync(CancellationToken ct = default) { Downloads++; Publish(Snapshot with { Busy = true, CanCancel = true, Status = "Downloading update: 25%", Progress = 25 }); return Task.CompletedTask; }
+        public Task DownloadAsync(CancellationToken ct = default)
+        {
+            Downloads++;
+            Publish(Snapshot with { Busy = true, CanCancel = true, Status = "Downloading update: 25%", Progress = 25 });
+            if (CompleteDownload) Publish(Snapshot with { Busy = false, CanCancel = false, CanDownload = false, CanRestart = true });
+            return Task.CompletedTask;
+        }
         public void CancelDownload() => Publish(Snapshot with { Busy = false, CanCancel = false, CanDownload = true, Status = "Download cancelled. Try again when you are ready." });
         public Task RestartAsync(CancellationToken ct = default) { Restarts++; return Task.CompletedTask; }
         public Task SetAutomaticAsync(bool value, CancellationToken ct = default) { Publish(Snapshot with { Automatic = value }); return Task.CompletedTask; }

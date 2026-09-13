@@ -13,7 +13,7 @@ public enum ReasonSignal
     /// <summary>No signal. Only ever the secondary.</summary>
     None = 0,
 
-    /// <summary>Zero minutes and no play date: bought, never opened.</summary>
+    /// <summary>Zero minutes and no play date: owned with no recorded play.</summary>
     NeverOpened,
 
     /// <summary>A play date beside zero minutes: launched, but no store measured it.</summary>
@@ -66,6 +66,9 @@ public enum ReasonSignal
 
     /// <summary>External lifecycle evidence, independent of recommendation scores.</summary>
     Lifecycle,
+
+    /// <summary>A recorded last-played instant, without a freshness threshold or recommendation.</summary>
+    LastPlayed,
 }
 
 /// <summary>
@@ -77,7 +80,7 @@ public enum ReasonSignal
 /// </summary>
 public sealed record ReasonEvidence
 {
-    /// <summary>Derived lifecycle and its source explanation for the Derelict shelf.</summary>
+    /// <summary>Derived lifecycle and its source explanation for lifecycle inspection.</summary>
     public Core.Lifecycle.GameLifecycle? Lifecycle { get; init; }
 
     /// <summary>The release whose card this is. Also the deterministic variant selector.</summary>
@@ -94,6 +97,9 @@ public sealed record ReasonEvidence
 
     /// <summary>Calendar year of the last recorded play, when one is known.</summary>
     public int? LastPlayedYear { get; init; }
+
+    /// <summary>Recorded last play used to order the history collection.</summary>
+    public DateTime? LastPlayedAt { get; init; }
 
     /// <summary>Days since last played, when a date is known.</summary>
     public double? DormancyDays { get; init; }

@@ -58,6 +58,10 @@ public sealed class IdentityReadInventoryTests
     private static readonly Entry[] Inventory =
     [
         // ── RESOLVE ────────────────────────────────────────────────────────
+        new("src/Winnow.Data/Repositories/GameplayStatsRepository.cs", "SessionCte", Policy.Resolve,
+            "The caller supplies visible ownerships and resolved game IDs from AllTiles. Store filtering retains exact session attribution before totals and rankings fold by that resolved game ID."),
+        new("src/Winnow.Data/Repositories/GroupHeaderPreferenceRepository.cs", "SetAsync", Policy.Resolve,
+            "Validates the current same-game root and the chosen store's ownership in that group; presentation preferences never reparent identity links."),
         new("src/Winnow.Data/Repositories/LibraryQueryRepository.cs", "BucketSql", Policy.Resolve,
             "The chokepoint. One LEFT JOIN over live same_game links, in the same pass as demo "
             + "consolidation, and every surface it feeds inherits it: the grid, the rail bucket "
@@ -85,11 +89,19 @@ public sealed class IdentityReadInventoryTests
             + "grouping resolves both ends of every proposal and drops the ones that resolve to "
             + "one work before a card exists."),
 
+        new("src/Winnow.App/ViewModels/MergeQueueViewModel.cs", "RefreshGroupHeadersAsync", Policy.Resolve,
+            "Reads current ownerships and same-game resolution to choose a group's header presentation; act membership and canonical root remain unchanged."),
+
+        new("src/Winnow.App/ViewModels/MergeQueueViewModel.cs", "ConfigureGroupHeaders", Policy.Resolve,
+            "Selects header metadata from a current member of the resolved group while retaining the group's canonical identity root."),
+
         // ── DO NOT RESOLVE ─────────────────────────────────────────────────
         new("src/Winnow.Data/Repositories/ActivityRepository.cs", "GetPageAsync", Policy.DoNotResolve,
             "Sessions and notes retain their exact ownership. The caller supplies visible ownership ids from its resolved tile snapshot and renders each result through that same tile map; updates are deduplicated per release."),
         new("src/Winnow.App/Services/EnrichmentSyncService.cs", "EnrichSliceAsync", Policy.DoNotResolve,
             "Rejects delayed metadata when the exact target work mapping changed; linked games keep independent provider identities."),
+        new("src/Winnow.Data/Repositories/AchievementRepository.cs", "GetDueSteamAsync", Policy.DoNotResolve,
+            "Fetches each Steam release for an explicitly confirmed owning account; linked games cannot share provider schemas or account unlocks."),
         new("src/Winnow.Data/Repositories/AccountAcquisitionRepository.cs", "GetSteamOwnershipIdsAsync", Policy.DoNotResolve,
             "Acquisition observations belong to the captured account's exact store ownership; links do not combine receipts or account membership."),
         new("src/Winnow.App/Services/PluginSyncService.cs", "SyncAsync", Policy.DoNotResolve,

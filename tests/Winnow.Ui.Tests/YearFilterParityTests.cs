@@ -38,11 +38,16 @@ public sealed class YearFilterParityTests
         using var db = new TempDatabase();
         LibraryReadFixtures.Seed(db, 3);
         using (var connection = db.Factory.Open()) connection.Execute("UPDATE works SET first_release_year = CASE id WHEN 1 THEN 2015 WHEN 2 THEN 2025 END;");
+        var editionYears = new ReleaseYearEvidenceRepository(db.Factory);
+        await editionYears.ObserveSteamAsync(1, "1", 1980);
+        await editionYears.ObserveSteamAsync(2, "2", 1981);
+        await editionYears.ObserveSteamAsync(3, "3", 1982);
         var library = new LibraryViewModel(new LibraryQueryRepository(db.Factory), new OwnershipRepository(db.Factory),
             new ReleaseRepository(db.Factory), new WorkRepository(db.Factory), new UpdateEventRepository(db.Factory));
         await library.LoadCommand.ExecuteAsync(null);
         library.Filters.Apply(new LibraryFilter { YearFrom = 2010, YearTo = 2020 });
         Assert.Single(library.VisibleTiles);
+        Assert.Equal(2015, library.VisibleTiles[0].ReleaseYear);
         using var feed = new FeedViewModel(new PreviewFeedService(), library);
         using var context = new FullscreenContext(library, feed, PreviewData.Shell);
         using var page = new FullscreenBrowseFiltersPage(context);

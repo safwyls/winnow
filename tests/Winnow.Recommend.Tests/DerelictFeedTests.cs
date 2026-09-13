@@ -9,7 +9,7 @@ namespace Winnow.Recommend.Tests;
 public sealed class DerelictFeedTests
 {
     [Fact]
-    public async Task Review_obeys_hidden_games_and_account_scope()
+    public async Task Derelict_games_stay_out_of_the_feed_under_account_scope()
     {
         using var harness = new RecommendHarness();
         var mine = await harness.SeedGameAsync("My closed game");
@@ -25,7 +25,7 @@ public sealed class DerelictFeedTests
         await harness.CompleteSteamInventoryAsync("11111", 1);
         await harness.Settings.SetAsync(AccountScope.SettingKey, AccountScope.Own);
         var visible = await harness.Engine.GetShelvesAsync(RecommendHarness.Request());
-        Assert.Equal(mine.ReleaseId, Assert.Single(Assert.Single(visible.Shelves).Items).ReleaseId);
+        Assert.Empty(visible.Shelves);
         await harness.HiddenGames.HideAsync(mine.WorkId);
         Assert.Empty((await harness.Engine.GetShelvesAsync(RecommendHarness.Request())).Shelves);
     }
@@ -44,23 +44,16 @@ public sealed class DerelictFeedTests
     }
 
     [Fact]
-    public async Task Lifecycle_review_is_separate_from_play_scores_and_flat_feed()
+    public async Task Derelict_games_have_no_shelf_and_stay_out_of_the_flat_feed()
     {
         using var harness = new RecommendHarness();
         var playable = await harness.SeedGameAsync("Waiting", installed: true);
-        var closed = await harness.SeedGameAsync("Closed", installed: true);
+        var closed = await harness.SeedGameAsync("Closed", minutes: 30,
+            lastPlayed: RecommendHarness.AsOf, installed: true);
         await Observe(harness, closed, "offline");
 
         var shelves = await harness.Engine.GetShelvesAsync(RecommendHarness.Request());
-        var review = Assert.Single(shelves.Shelves, s => s.Id == ShelfIds.Derelict);
-        var item = Assert.Single(review.Items);
-        Assert.Equal(closed.ReleaseId, item.ReleaseId);
-        Assert.Equal(LibraryBuckets.Derelict, item.Bucket);
-        Assert.Equal(GameLifecycleStatus.Offline, item.Explanation.Evidence.Lifecycle!.Status);
-        Assert.Contains("confidence", item.Reason);
-        Assert.Contains("offline", item.Reason);
-        Assert.Equal(0, item.Score);
-        Assert.Empty(item.Signals);
+        Assert.DoesNotContain(shelves.Shelves, shelf => shelf.Id == ShelfIds.Derelict);
         Assert.Equal(1, shelves.CandidateCount);
         Assert.Equal(1, shelves.WorkCount);
         Assert.Equal(1, shelves.HistoryProbeCount);
@@ -71,7 +64,7 @@ public sealed class DerelictFeedTests
     }
 
     [Fact]
-    public async Task Linked_review_entries_collapse_and_either_copy_feedback_suppresses_them()
+    public async Task Linked_derelict_games_stay_out_of_the_feed_regardless_of_feedback()
     {
         using var harness = new RecommendHarness();
         var steam = await harness.SeedGameAsync("Closed Steam");
@@ -85,7 +78,7 @@ public sealed class DerelictFeedTests
         });
         var request = RecommendHarness.Request();
         var initial = await harness.Engine.GetShelvesAsync(request);
-        Assert.Single(Assert.Single(initial.Shelves).Items);
+        Assert.Empty(initial.Shelves);
         var dismissed = await harness.Engine.GetShelvesAsync(request with { NotInterestedReleaseIds = new HashSet<long> { gog.ReleaseId } });
         Assert.Empty(dismissed.Shelves);
         var snoozed = await harness.Engine.GetShelvesAsync(request with { SnoozedReleaseIds = new HashSet<long> { steam.ReleaseId } });
@@ -118,26 +111,4 @@ public sealed class DerelictFeedTests
         Assert.Empty(dismissed.Items);
     }
 
-    [Fact]
-    public async Task Review_reserves_preserve_visible_prefix_and_recent_cards_rotate_behind_unseen()
-    {
-        using var harness = new RecommendHarness();
-        await harness.SeedBatchAsync(async () =>
-        {
-            // A library-sized pool verifies the separate shelf never consumes history capacity.
-            for (var i = 0; i < 1000; i++)
-            {
-                var game = await harness.SeedGameAsync($"Library entry {i}", store: i < 919 ? "steam" : i < 986 ? "epic" : "gog");
-                if (i < 30) await Observe(harness, game, "delisted");
-            }
-        });
-        var request = RecommendHarness.Request() with { MaxPerShelf = 6, VisiblePerShelf = 6 };
-        var shallow = Assert.Single((await harness.Engine.GetShelvesAsync(request)).Shelves, shelf => shelf.Id == ShelfIds.Derelict);
-        var deep = Assert.Single((await harness.Engine.GetShelvesAsync(request with { MaxPerShelf = 10 })).Shelves, shelf => shelf.Id == ShelfIds.Derelict);
-        Assert.Equal(shallow.Items.Select(i => i.ReleaseId), deep.Items.Take(6).Select(i => i.ReleaseId));
-        Assert.Equal(10, deep.Items.Count);
-        var seen = deep.Items.Select(i => i.ReleaseId).ToHashSet();
-        var rotated = Assert.Single((await harness.Engine.GetShelvesAsync(request with { RecentlySurfacedReleaseIds = seen })).Shelves, shelf => shelf.Id == ShelfIds.Derelict);
-        Assert.DoesNotContain(rotated.Items, i => seen.Contains(i.ReleaseId));
-    }
 }

@@ -195,6 +195,17 @@ public static class ServiceCollectionExtensions
             .AddHttpMessageHandler<SteamWebResilienceHandler>()
             .AddHttpMessageHandler<SteamWebRateLimitingHandler>();
 
+        services.AddHttpClient<ISteamAchievementClient, SteamAchievementClient>(client =>
+            {
+                client.BaseAddress = options.BaseAddress;
+                Winnow.Http.ProviderHttpTransport.Configure(client, options.MaxResponseBytes, options.OverallTimeout);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
+            })
+            .ConfigurePrimaryHttpMessageHandler(static () => new HttpClientHandler { UseCookies = false, AllowAutoRedirect = false })
+            .RemoveAllLoggers()
+            .AddHttpMessageHandler<SteamWebResilienceHandler>()
+            .AddHttpMessageHandler<SteamWebRateLimitingHandler>();
+
         return services;
     }
 

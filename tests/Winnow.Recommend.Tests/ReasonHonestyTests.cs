@@ -63,6 +63,28 @@ public class ReasonHonestyTests : IDisposable
     // ── The phrasebook itself ──────────────────────────────────────────────
 
     [Fact]
+    public void Ownership_only_reasons_do_not_infer_payment_or_a_bundle()
+    {
+        var unsupported = new Regex(@"\b(bought|paid|purchase|bundle|discount|spent)\b", RegexOptions.IgnoreCase);
+        foreach (var signal in new[] { ReasonSignal.NeverOpened, ReasonSignal.BoughtTwice })
+            foreach (var clause in new[] { ReasonClause.Primary, ReasonClause.Secondary })
+                foreach (var variant in ReasonPhrasebook.Variants(signal, clause))
+                    Assert.False(unsupported.IsMatch(variant), variant);
+
+        var facts = new CandidateFacts
+        {
+            OwnershipId = 1, ReleaseId = 1, WorkId = 1, Title = "Free or unknown acquisition",
+            Store = "steam", Bucket = Winnow.Core.Queries.LibraryBuckets.NeverPlayed,
+            PlaytimeMinutes = 0, StoreCount = 2,
+        };
+        var contribution = Assert.Single(RecommendationScorer.Score(facts,
+            Winnow.Core.Queries.BucketThresholds.Default, Tuning, AsOf, 1),
+            item => item.Signal == SignalNames.BoughtTwice);
+        Assert.False(unsupported.IsMatch(contribution.Explanation), contribution.Explanation);
+        Assert.Equal(Tuning.WeightBoughtTwice, contribution.Contribution);
+    }
+
+    [Fact]
     public void No_variant_anywhere_in_the_phrasebook_claims_a_rank_it_cannot_prove()
     {
         var offences = new List<string>();

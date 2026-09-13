@@ -87,7 +87,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     public override string Hints => _feed
         ? $"A  {(_selected is null ? "Choose" : "Open game")}{PlayHint}    Y  More    View  Search    ↑ ↓  Change shelf"
         : $"A  Open game{PlayHint}    Y  Filter & sort    View  Search";
-    public override string RightHints => _feed ? "LT / RT  Shelf" : "LT / RT  Collection";
+    public override string RightHints => _feed ? "LT / RT  Shelf" : string.Empty;
     private string PlayHint => _selected is { IsOnDisk: true, IsPlayAction: true } ? "    X  Play" : string.Empty;
 
     public override void FocusInitial()
@@ -337,7 +337,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*") };
         var heading = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         var title = FullscreenUi.Text(library.Lists.Open?.Name ?? library.SelectedBucket?.Name
-            ?? (library.Filters.ToFilter().Installed == true ? "Installed games" : "Your library"), 48);
+            ?? (library.Filters.ToFilter().Installed == true ? "Installed games" : "Your library"), 64);
         title.MaxLines = 1;
         title.TextTrimming = TextTrimming.WordEllipsis;
         heading.Children.Add(title);
@@ -356,7 +356,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
             Margin = new Thickness(0, 4, 0, 8) };
         var shelves = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
         var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
-        collections.Children.Add(shelves);
+        collections.Children.Add(FullscreenUi.TriggerNavigation(shelves));
         Grid.SetColumn(tools, 2); collections.Children.Add(tools);
         Grid.SetRow(collections, 1);
         var all = FullscreenUi.Button("All games", () => ChooseCollection("all"));
@@ -530,7 +530,8 @@ public sealed class FullscreenBrowsePage : FullscreenPage
             new("Refresh recommendations", () => Context.Feed.LoadCommand.Execute(null))
         };
         if (_selected is not { } tile) { Context.ShowActions("For you", general); return; }
-        var card = Context.Feed.Shelves.SelectMany(s => s.Cards).FirstOrDefault(c => ReferenceEquals(c.Tile, tile));
+        var card = Context.Feed.Shelves.ElementAtOrDefault(_shelf)?.Cards
+            .FirstOrDefault(c => ReferenceEquals(c.Tile, tile));
         var actions = new List<FullscreenAction>
         {
             new("Open game", () => Context.OpenGame(tile)),

@@ -462,13 +462,13 @@
         </Border>
 
         <!-- ══ Band 3: the queue ════════════════════════════════════════════
-             Right padding 10 rather than 16: the scrollbar steps in off the
+             Right inset 10 rather than 16: the scrollbar steps in off the
              pane edge. -->
         <ScrollViewer Grid.Row="2"
                       HorizontalScrollBarVisibility="Disabled"
-                      VerticalScrollBarVisibility="Auto"
-                      Padding="16,16,10,24">
-            <ItemsControl ItemsSource="{Binding Sections}">
+                      VerticalScrollBarVisibility="Auto">
+            <!-- The inset belongs to the content so it reduces the width used to measure cards. -->
+            <ItemsControl ItemsSource="{Binding Sections}" Margin="16,16,10,24">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <StackPanel Spacing="16"/>
@@ -488,7 +488,7 @@
                                                    Foreground="{StaticResource TextDim}"
                                                    Text="{Binding PendingCountText}"/>
                                     </StackPanel>
-                                    <TextBlock Classes="para" MaxWidth="720"
+                                    <TextBlock Classes="para"
                                                HorizontalAlignment="Left"
                                                Text="{Binding Blurb}"/>
                                 </StackPanel>
@@ -518,20 +518,31 @@
 
                                                     <!-- ── Resolved: the strip ───────────── -->
                                                     <Grid IsVisible="{Binding IsResolved}"
-                                                          ColumnDefinitions="2,Auto,Auto,*,Auto"
+                                                          ColumnDefinitions="2,*,Auto,Auto"
                                                           MinHeight="44"
                                                           Margin="12,8,12,8">
                                                         <Border Grid.Column="0" Background="{StaticResource Volt}"/>
-                                                        <TextBlock Grid.Column="1" Classes="headline"
-                                                                   Margin="12,0,0,0"
-                                                                   VerticalAlignment="Center"
-                                                                   Text="{Binding HeaderTitle}"/>
-                                                        <TextBlock Grid.Column="2" Classes="data"
-                                                                   Margin="12,0,0,0"
-                                                                   VerticalAlignment="Center"
-                                                                   Foreground="{StaticResource TextDim}"
-                                                                   Text="{Binding ResolvedMeta}"/>
-                                                        <Button Grid.Column="4" Classes="act quiet sm"
+                                                        <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                                                            <TextBlock Classes="headline" Text="{Binding HeaderTitle}" TextTrimming="CharacterEllipsis"/>
+                                                            <TextBlock Classes="data" Foreground="{StaticResource TextDim}" Text="{Binding ResolvedMeta}"/>
+                                                            <TextBlock Text="{Binding HeaderStoreProblem}" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"/>
+                                                        </StackPanel>
+                                                        <ComboBox Grid.Column="2" Width="180" Margin="0,0,12,0"
+                                                                  VerticalAlignment="Center"
+                                                                  IsVisible="{Binding CanChooseHeaderStore}"
+                                                                  IsEnabled="{Binding !IsSavingHeader}"
+                                                                  AutomationProperties.Name="{Binding HeaderStoreAutomationName}"
+                                                                  ToolTip.Tip="{x:Static vm:MergeCopy.GroupHeaderTooltip}"
+                                                                  ItemsSource="{Binding HeaderStoreOptions}"
+                                                                  SelectedItem="{Binding SelectedHeaderStore, Mode=OneWay}"
+                                                                  SelectionChanged="OnHeaderStoreChanged">
+                                                            <ComboBox.ItemTemplate>
+                                                                <DataTemplate x:DataType="vm:GroupHeaderOption">
+                                                                    <TextBlock Text="{Binding Label}"/>
+                                                                </DataTemplate>
+                                                            </ComboBox.ItemTemplate>
+                                                        </ComboBox>
+                                                        <Button Grid.Column="3" Classes="act quiet sm"
                                                                 VerticalAlignment="Center"
                                                                 Content="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).SeparateButtonText}"
                                                                 ToolTip.Tip="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).SeparateTooltip}"
@@ -550,23 +561,24 @@
                                                                       AutomationProperties.Name="{Binding SelectAutomationName}"/>
 
                                                             <StackPanel Grid.Column="1" Spacing="2" Margin="12,0,12,0">
-                                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                <Grid ColumnDefinitions="*,Auto,Auto" HorizontalAlignment="Left">
                                                                     <TextBlock Classes="headline"
                                                                                VerticalAlignment="Center"
                                                                                Text="{Binding HeaderTitle}"/>
                                                                     <!-- Flare: unread and nothing else. -->
-                                                                    <Border Width="8" Height="8" CornerRadius="4"
+                                                                    <Border Grid.Column="1" Width="8" Height="8" CornerRadius="4"
+                                                                            Margin="8,0,0,0"
                                                                             VerticalAlignment="Center"
                                                                             Background="{StaticResource Flare}"
                                                                             BoxShadow="{DynamicResource PipGlow}"
                                                                             IsVisible="{Binding HasUnread}"
                                                                             ToolTip.Tip="{Binding UnreadTip}"/>
-                                                                    <Border Classes="badge"
+                                                                    <Border Grid.Column="2" Classes="badge" Margin="8,0,0,0"
                                                                             Classes.likely="{Binding IsLikely}"
                                                                             Classes.look="{Binding IsWorthALook}">
                                                                         <TextBlock Text="{Binding ConfidenceLabel}"/>
                                                                     </Border>
-                                                                </StackPanel>
+                                                                </Grid>
                                                                 <TextBlock Classes="data"
                                                                            Foreground="{StaticResource TextDim}"
                                                                            TextTrimming="CharacterEllipsis"
@@ -628,11 +640,12 @@
                                                                             PointerExited="OnRowExited"
                                                                             PointerPressed="OnRowPressed"
                                                                             GotFocus="OnRowFocus"
-                                                                            ToolTip.Tip="{Binding DetailsTip}"
-                                                                            AutomationProperties.Name="{Binding DetailsAutomationName}"
+                                                                            ToolTip.Tip="{Binding RowTip}"
+                                                                            AutomationProperties.Name="{Binding Label}"
+                                                                            AutomationProperties.ItemStatus="{Binding HeaderMark}"
                                                                             AutomationProperties.AccessibilityView="Control"
                                                                             AutomationProperties.ControlTypeOverride="ListItem">
-                                                                        <Grid ColumnDefinitions="2,36,44,*,Auto,94,78,26,36">
+                                                                        <Grid ColumnDefinitions="2,36,44,*,Auto,70,64,20,Auto,36">
 
                                                                             <!-- The selection edge: Volt on the header only. -->
                                                                             <Border Grid.Column="0"
@@ -678,16 +691,17 @@
                                                                                 </Panel>
                                                                             </Border>
 
-                                                                            <StackPanel Grid.Column="3" Orientation="Horizontal"
-                                                                                        Spacing="8" Margin="10,0,0,0"
-                                                                                        VerticalAlignment="Center">
+                                                                            <Grid Grid.Column="3" ColumnDefinitions="*,Auto"
+                                                                                  Margin="10,0,0,0"
+                                                                                  HorizontalAlignment="Left"
+                                                                                  VerticalAlignment="Center">
                                                                                 <TextBlock Classes="rowtitle"
                                                                                            VerticalAlignment="Center"
                                                                                            Text="{Binding Title}"/>
-                                                                                <TextBlock Classes="mark"
+                                                                                <TextBlock Grid.Column="1" Classes="mark" Margin="8,0,0,0"
                                                                                            VerticalAlignment="Center"
                                                                                            Text="{Binding HeaderMark}"/>
-                                                                            </StackPanel>
+                                                                            </Grid>
 
                                                                             <ItemsControl Grid.Column="4"
                                                                                           ItemsSource="{Binding StoreChips}"
@@ -730,7 +744,13 @@
                                                                             <!-- Who joins: none, some or all. Not
                                                                                  offered on the header, which is
                                                                                  always in. -->
-                                                                            <CheckBox Grid.Column="8" Classes="pick"
+                                                                            <Button Grid.Column="8" Classes="ctl" Content="{x:Static vm:MergeCopy.DetailsButton}"
+                                                                                    VerticalAlignment="Center"
+                                                                                    Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).OpenDetailsCommand}"
+                                                                                    CommandParameter="{Binding}"
+                                                                                    ToolTip.Tip="{Binding DetailsTip}"
+                                                                                    AutomationProperties.Name="{Binding DetailsAutomationName}"/>
+                                                                            <CheckBox Grid.Column="9" Classes="pick"
                                                                                       HorizontalAlignment="Center"
                                                                                       VerticalAlignment="Center"
                                                                                       IsVisible="{Binding CanExclude}"

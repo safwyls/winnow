@@ -173,6 +173,11 @@ public sealed class GameExecutableIndex
     /// </summary>
     public long? Match(string? executablePath, string processName)
     {
+        if (NonGameProcess.IsExcluded(executablePath, processName))
+        {
+            return null;
+        }
+
         if (!string.IsNullOrEmpty(executablePath))
         {
             var normalized = Normalize(executablePath);

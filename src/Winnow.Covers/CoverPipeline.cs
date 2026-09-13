@@ -100,8 +100,14 @@ public sealed class CoverPipeline : IDisposable
     /// de-duplication of concurrent requests belongs to <see cref="CoverCache"/>,
     /// which shares one immutable result rather than one disposable one.</para>
     /// </summary>
-    public async Task<CoverBitmaps?> GetAsync(
+    public Task<CoverBitmaps?> GetAsync(
         CoverKey key, int width, CoverLayers layers = CoverLayers.VividAndFloor, CancellationToken ct = default)
+        => GetAsync(key, width, layers, null, static bitmaps => bitmaps, ct);
+
+    // The callback consumes the decoded layers while the permit is held, so
+    // native pixels and their Avalonia conversion share the same memory bound.
+    internal async Task<T?> GetAsync<T>(CoverKey key, int width, CoverLayers layers,
+        SemaphoreSlim? decodeGate, Func<CoverBitmaps, T> convert, CancellationToken ct) where T : class
     {
         // Callers are responsible for getting off the UI thread before they get
         // here — CoverCache does it with Task.Run. Task.Yield() would NOT be
@@ -111,7 +117,7 @@ public sealed class CoverPipeline : IDisposable
         try
         {
             ct.ThrowIfCancellationRequested();
-            if (TryDecodeFromDisk(key, width, layers) is { } cached)
+            if (await WithDecodePermitAsync(() => TryDecodeFromDisk(key, width, layers)).ConfigureAwait(false) is { } cached)
             {
                 return cached;
             }
@@ -130,29 +136,34 @@ public sealed class CoverPipeline : IDisposable
             }
 
             var identity = SourceSetIdFor(key);
-            var bytes = await FetchAsync(key, ct).ConfigureAwait(false);
-            ct.ThrowIfCancellationRequested();
-            if (bytes is null)
+            // Keep this permit until the fetched bytes have been decoded. This
+            // bounds encoded payloads waiting for a decode slot without making
+            // disk hits wait for any network request.
+            await _fetchGate.WaitAsync(ct).ConfigureAwait(false);
+            try
             {
-                _disk.MarkMissing(key, identity);
-                if (_disk.TryGetMissingUntil(key, identity, out var expiresAt))
-                    _knownMissing[key] = new(identity, expiresAt);
-                return null;
+                var bytes = await FetchAsync(key, ct).ConfigureAwait(false);
+                ct.ThrowIfCancellationRequested();
+                if (bytes is null)
+                {
+                    _disk.MarkMissing(key, identity);
+                    if (_disk.TryGetMissingUntil(key, identity, out var expiresAt))
+                        _knownMissing[key] = new(identity, expiresAt);
+                    return null;
+                }
+
+                _knownMissing.TryRemove(key, out _);
+                _disk.WriteSource(key, bytes);
+
+                return await WithDecodePermitAsync(() =>
+                {
+                    // Floor generation allocates transient pixels too and belongs
+                    // inside the decode bound, only for callers needing that layer.
+                    if (layers == CoverLayers.VividAndFloor) WriteFloorVariant(key, bytes);
+                    return Decode(bytes, key, width, layers);
+                }).ConfigureAwait(false);
             }
-
-            _knownMissing.TryRemove(key, out _);
-            _disk.WriteSource(key, bytes);
-
-            // The stored floor variant is written only for a request that needs
-            // the floor. A key that is only ever drawn at full saturation — an
-            // IGDB screenshot, say — costs no colour-matrix pass and no second
-            // file, and the first two-layer request for it writes one then.
-            if (layers == CoverLayers.VividAndFloor)
-            {
-                WriteFloorVariant(key, bytes);
-            }
-
-            return Decode(bytes, key, width, layers);
+            finally { _fetchGate.Release(); }
         }
         catch (OperationCanceledException)
         {
@@ -165,33 +176,37 @@ public sealed class CoverPipeline : IDisposable
             _log.LogWarning(ex, "Cover fetch failed for {Key}", key);
             return null;
         }
+
+        async Task<T?> WithDecodePermitAsync(Func<CoverBitmaps?> decode)
+        {
+            if (decodeGate is not null) await decodeGate.WaitAsync(ct).ConfigureAwait(false);
+            try
+            {
+                ct.ThrowIfCancellationRequested();
+                var bitmaps = decode();
+                return bitmaps is null ? null : convert(bitmaps);
+            }
+            finally { decodeGate?.Release(); }
+        }
     }
 
     private async Task<byte[]?> FetchAsync(CoverKey key, CancellationToken ct)
     {
-        await _fetchGate.WaitAsync(ct).ConfigureAwait(false);
-        try
+        foreach (var source in _sources)
         {
-            foreach (var source in _sources)
+            if (!source.CanHandle(key))
             {
-                if (!source.CanHandle(key))
-                {
-                    continue;
-                }
-
-                var bytes = await source.TryFetchAsync(key, ct).ConfigureAwait(false);
-                if (bytes is { Length: > 0 })
-                {
-                    return bytes;
-                }
+                continue;
             }
 
-            return null;
+            var bytes = await source.TryFetchAsync(key, ct).ConfigureAwait(false);
+            if (bytes is { Length: > 0 })
+            {
+                return bytes;
+            }
         }
-        finally
-        {
-            _fetchGate.Release();
-        }
+
+        return null;
     }
 
     private CoverBitmaps? TryDecodeFromDisk(CoverKey key, int width, CoverLayers layers)

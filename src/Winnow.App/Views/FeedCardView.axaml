@@ -1,4 +1,4 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
              x:Class="Winnow.App.Views.FeedCardView"
@@ -118,7 +118,7 @@
             <Setter Property="MinWidth" Value="0"/>
         </Style>
 
-        <!-- Feedback has its own lane so install labels never compete for width. -->
+        <!-- Secondary actions keep a separate group beside Play and wrap together when needed. -->
         <Style Selector="Button.cardaside">
             <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -172,7 +172,7 @@
             <Setter Property="Opacity" Value="0.42"/>
         </Style>
         <!-- Keep the action geometry measured while its receipt is shown. -->
-        <Style Selector="Panel.cardactions.setaside, StackPanel.cardactions.setaside">
+        <Style Selector="Panel.cardactions.setaside, StackPanel.cardactions.setaside, WrapPanel.cardactions.setaside">
             <Setter Property="Opacity" Value="0"/>
         </Style>
 
@@ -197,7 +197,19 @@
         <!-- No tooltip; hovering is the resting state of reading this
              screen, so a tooltip would cover adjacent cards' sentences. -->
         <Panel>
-        <Grid Margin="14" ColumnDefinitions="108,14,*,8,32">
+        <Border CornerRadius="{StaticResource RadiusTile}" ClipToBounds="True" IsHitTestVisible="False">
+            <Border Name="HeroBackdrop" Opacity="0.22"><Border.Background><ImageBrush Source="{Binding Backdrop}" Stretch="UniformToFill"/></Border.Background>
+                <Border.OpacityMask>
+                    <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+                        <GradientStop Color="Transparent" Offset="0"/>
+                        <GradientStop Color="#20000000" Offset="0.35"/>
+                        <GradientStop Color="#B0000000" Offset="0.7"/>
+                        <GradientStop Color="Black" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.OpacityMask>
+            </Border>
+        </Border>
+        <Grid Margin="14" ColumnDefinitions="108,14,*">
 
             <!-- ══ The art ══════════════════════════════════════════════════
                  Two-layer dormancy cross-fade and unread badge, same as the
@@ -270,13 +282,12 @@
             <DockPanel Grid.Column="2" LastChildFill="True">
 
                 <!-- ══ The action line ═════════════════════════
-                     Pinned to the bottom so rows of cards align. Holds Play
-                     alone. On act, swaps for a
+                     Pinned to the bottom so rows of cards align. Groups Play and secondary actions. On act, swaps for a
                      receipt with Undo (same height, no reflow). -->
                 <Panel DockPanel.Dock="Bottom" Margin="0,10,0,0">
 
                     <!-- The unanswered state. -->
-                    <Panel Classes="cardactions"
+                    <WrapPanel Classes="cardactions" Orientation="Horizontal" ItemSpacing="8" LineSpacing="8"
                                Classes.setaside="{Binding IsSetAside}"
                                IsEnabled="{Binding ShowActions}"
                                IsHitTestVisible="{Binding ShowActions}">
@@ -291,8 +302,45 @@
                                 IsVisible="{Binding Tile.HasPrimaryAction}"
                                 Command="{Binding Tile.PrimaryActionCommand}"
                                 CommandParameter="{Binding Tile}"/>
-
-                    </Panel>
+                        <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasSecondaryActions}">
+                            <Border Width="1" Height="24" Background="{StaticResource LineSoft}"
+                                    VerticalAlignment="Center" IsVisible="{Binding Tile.HasPrimaryAction}"/>
+                            <StackPanel Name="FeedbackActions" Spacing="4" Orientation="Horizontal"
+                                        VerticalAlignment="Center" Classes="cardactions"
+                                        Classes.setaside="{Binding IsSetAside}"
+                                        IsEnabled="{Binding ShowActions}"
+                                        IsHitTestVisible="{Binding ShowActions}">
+                                <Button Name="AddToList" Classes="cardaside cardfeedback"
+                                        ToolTip.Tip="Add to list" AutomationProperties.Name="Add to list"
+                                        IsVisible="{Binding CanAddToList}"
+                                        Command="{Binding AddToListCommand}">
+                                    <!-- The pointed bookmark carries more weight on its left edge
+                                         than the circular feedback glyphs. A one-pixel optical
+                                         correction aligns its visible center with their centers. -->
+                                    <Path Name="AddToListIcon" Width="16" Height="16" Stretch="Uniform"
+                                          RenderTransform="translateX(1px)"
+                                          Stroke="{StaticResource Azure}" StrokeThickness="1.6"
+                                          Data="M 3,1 L 13,1 L 13,15 L 8,12 L 3,15 Z M 8,4 L 8,9 M 5.5,6.5 L 10.5,6.5"/>
+                                </Button>
+                                <Button Name="NotNow" Classes="cardaside cardfeedback"
+                                        ToolTip.Tip="Not now" AutomationProperties.Name="Not now"
+                                        IsVisible="{Binding CanGiveFeedback}"
+                                        Command="{Binding NotNowCommand}">
+                                    <Path Width="16" Height="16" Stretch="Uniform"
+                                          Stroke="{StaticResource Amber}" StrokeThickness="1.6"
+                                          Data="M 8,1 A 7,7 0 1 1 7.99,1 Z M 8,4 L 8,8 L 11,10"/>
+                                </Button>
+                                <Button Name="NotInterested" Classes="cardaside cardfeedback"
+                                        ToolTip.Tip="Not interested" AutomationProperties.Name="Not interested"
+                                        IsVisible="{Binding CanGiveFeedback}"
+                                        Command="{Binding NotInterestedCommand}">
+                                    <Path Width="16" Height="16" Stretch="Uniform"
+                                          Stroke="{StaticResource TextDim}" StrokeThickness="1.6"
+                                          Data="M 8,1 A 7,7 0 1 1 7.99,1 Z M 4,8 L 12,8"/>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+                    </WrapPanel>
 
                     <!-- The receipt. Date in Plex Mono, prose in body face. -->
                     <Grid ColumnDefinitions="*,Auto"
@@ -371,40 +419,7 @@
 
             </DockPanel>
 
-            <StackPanel Grid.Column="4" Name="FeedbackActions" Spacing="8"
-                        VerticalAlignment="Center" Classes="cardactions"
-                        Classes.setaside="{Binding IsSetAside}"
-                        IsEnabled="{Binding ShowActions}"
-                        IsHitTestVisible="{Binding ShowActions}">
-                <Button Name="AddToList" Classes="cardaside cardfeedback"
-                        ToolTip.Tip="Add to list" AutomationProperties.Name="Add to list"
-                        IsVisible="{Binding CanAddToList}"
-                        Command="{Binding AddToListCommand}">
-                    <!-- The pointed bookmark carries more weight on its left edge
-                         than the circular feedback glyphs. A one-pixel optical
-                         correction aligns its visible center with their centers. -->
-                    <Path Name="AddToListIcon" Width="16" Height="16" Stretch="Uniform"
-                          RenderTransform="translateX(1px)"
-                          Stroke="{StaticResource Azure}" StrokeThickness="1.6"
-                          Data="M 3,1 L 13,1 L 13,15 L 8,12 L 3,15 Z M 8,4 L 8,9 M 5.5,6.5 L 10.5,6.5"/>
-                </Button>
-                <Button Name="NotNow" Classes="cardaside cardfeedback"
-                        ToolTip.Tip="Not now" AutomationProperties.Name="Not now"
-                        IsVisible="{Binding CanGiveFeedback}"
-                        Command="{Binding NotNowCommand}">
-                    <Path Width="16" Height="16" Stretch="Uniform"
-                          Stroke="{StaticResource Amber}" StrokeThickness="1.6"
-                          Data="M 8,1 A 7,7 0 1 1 7.99,1 Z M 8,4 L 8,8 L 11,10"/>
-                </Button>
-                <Button Name="NotInterested" Classes="cardaside cardfeedback"
-                        ToolTip.Tip="Not interested" AutomationProperties.Name="Not interested"
-                        IsVisible="{Binding CanGiveFeedback}"
-                        Command="{Binding NotInterestedCommand}">
-                    <Path Width="16" Height="16" Stretch="Uniform"
-                          Stroke="{StaticResource TextDim}" StrokeThickness="1.6"
-                          Data="M 8,1 A 7,7 0 1 1 7.99,1 Z M 4,8 L 12,8"/>
-                </Button>
-            </StackPanel>
+
         </Grid>
 
         <!-- Determinate countdown ring (§8). Azure sweep on a LineSoft

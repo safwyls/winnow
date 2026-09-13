@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using Avalonia.Controls;
@@ -33,6 +34,10 @@ public sealed class FullscreenView : UserControl, IDisposable
     private readonly Button _back;
     private readonly TextBlock _backLabel = FullscreenUi.Text("", 28);
     private readonly Panel _overlay = new();
+    private Border? _actionOverlay;
+    private Border? _actionPanel;
+    private FullscreenPage? _shownPage;
+    private readonly Dictionary<FullscreenPage, Control?> _actionReturnFocus = [];
     private readonly Grid _safe = new() { RowDefinitions = new RowDefinitions("80,*,64") };
     private readonly Grid _canvas = new() { Width = 1920, Height = 1080 };
     private readonly TextBlock _clock = FullscreenUi.Text("", 24);
@@ -54,7 +59,14 @@ public sealed class FullscreenView : UserControl, IDisposable
     public FullscreenView(FullscreenContext context)
     {
         _context = context;
+        AddHandler(PointerPressedEvent, (_, e) =>
+        {
+            if (e.GetCurrentPoint(this).Properties.PointerUpdateKind != PointerUpdateKind.RightButtonPressed) return;
+            e.Handled = true;
+            Handle(GamepadButtons.Back);
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         _body.LayoutUpdated += (_, _) => ApplyTextSize();
+        _overlay.LayoutUpdated += (_, _) => ApplyTextSize();
         Styles.Add(new Style(s => s.OfType<Button>().Class("tv-action"))
         {
             Setters = {
@@ -72,6 +84,7 @@ public sealed class FullscreenView : UserControl, IDisposable
                     border.Bind(Border.PaddingProperty, new Binding(nameof(Button.Padding)) { Source = button });
                     var presenter = new ContentPresenter { VerticalContentAlignment = VerticalAlignment.Center };
                     presenter.Bind(ContentPresenter.ContentProperty, new Binding(nameof(Button.Content)) { Source = button });
+                    presenter.Bind(ContentPresenter.ContentTemplateProperty, new Binding(nameof(Button.ContentTemplate)) { Source = button });
                     border.Child = presenter; return border;
                 }))
             }
@@ -126,7 +139,15 @@ public sealed class FullscreenView : UserControl, IDisposable
         _status.TextTrimming = TextTrimming.CharacterEllipsis;
         status.Children.Add(_status);
         Grid.SetColumn(_clock, 1); status.Children.Add(_clock);
-        Grid.SetColumn(status, 2); header.Children.Add(status);
+        var statusGroup = new StackPanel { Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
+        statusGroup.Children.Add(status);
+        var updateNotice = FullscreenUi.Text("Update available · Menu", 24, "TextDim");
+        updateNotice.Name = "FullscreenUpdateNotice";
+        updateNotice.HorizontalAlignment = HorizontalAlignment.Right;
+        updateNotice.Bind(IsVisibleProperty, new Binding(nameof(ApplicationSettingsViewModel.HasUpdateAction)) { Source = context.Shared.ApplicationSettings });
+        updateNotice.Bind(AutomationProperties.ItemStatusProperty, new Binding(nameof(ApplicationSettingsViewModel.UpdateStatus)) { Source = context.Shared.ApplicationSettings });
+        statusGroup.Children.Add(updateNotice);
+        Grid.SetColumn(statusGroup, 2); header.Children.Add(statusGroup);
         _safe.Children.Add(header); Grid.SetRow(_body, 1); _safe.Children.Add(_body);
         var footer = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), VerticalAlignment = VerticalAlignment.Bottom };
         footer.Children.Add(_hints);
@@ -165,6 +186,8 @@ public sealed class FullscreenView : UserControl, IDisposable
         var theme = _context.Themes.FirstOrDefault(t => t.Id == _context.ThemeId) ?? _context.Themes.First();
         foreach (var (key, color) in theme.Tokens(0)) Resources[key] = new SolidColorBrush(color);
         FitCanvas();
+        if (_context.ReducedMotion && _actionPanel?.RenderTransform is TranslateTransform slide)
+        { slide.Transitions = null; slide.X = 0; }
         ApplyTextSize();
     }
     private void FitCanvas()
@@ -175,11 +198,12 @@ public sealed class FullscreenView : UserControl, IDisposable
         _canvas.Width = referenceWidth / _context.UiScale;
         _canvas.Height = 1080 / _context.UiScale;
         _safe.Margin = new Thickness(_canvas.Width * _context.SafeMarginPercent / 100, _canvas.Height * _context.SafeMarginPercent / 100);
+        if (_actionPanel is not null) { _actionPanel.Width = ActionPanelWidth; _actionPanel.Padding = ActionPanelPadding; }
     }
     private void ApplyTextSize()
     {
         // Typography grows inside the page; stable chrome and safe margins keep navigation reachable.
-        foreach (var control in _body.GetVisualDescendants().OfType<Control>())
+        foreach (var control in _body.GetVisualDescendants().Concat(_actionPanel?.GetVisualDescendants() ?? []).OfType<Control>())
         {
             if (control is TextBlock block && block.IsSet(TextBlock.FontSizeProperty))
             {
@@ -194,6 +218,8 @@ public sealed class FullscreenView : UserControl, IDisposable
     {
         if (_disposed) { page.Dispose(); return; }
         _keyboard?.Close();
+        if (page is FullscreenActionsPage)
+            _actionReturnFocus[page] = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() as Control;
         if (page is FullscreenDetailsPage)
         {
             var previous = _stack.FindIndex(item => item is FullscreenDetailsPage);
@@ -268,8 +294,15 @@ public sealed class FullscreenView : UserControl, IDisposable
         }
         if (_stack.Count == 0) { QuickMenu(); return; }
         var page = _stack[^1]; _stack.RemoveAt(_stack.Count - 1); page.Dispose();
+        _actionReturnFocus.Remove(page, out var returnFocus);
         if (page is FullscreenDetailsPage) _context.Library.CloseDetailsCommand.Execute(null);
         ShowPage();
+        var destination = CurrentPage;
+        if (returnFocus is not null) Dispatcher.UIThread.Post(() =>
+        {
+            if (!_disposed && ReferenceEquals(CurrentPage, destination) && returnFocus.IsEffectivelyVisible && returnFocus.IsEffectivelyEnabled)
+                returnFocus.Focus(NavigationMethod.Directional);
+        }, DispatcherPriority.Loaded);
     }
     private void SelectSection(int section)
     {
@@ -280,10 +313,18 @@ public sealed class FullscreenView : UserControl, IDisposable
     }
     private void ShowPage()
     {
-        if (_body.Content is FullscreenPage old) old.PageChanged -= PageChanged;
-        var page = CurrentPage; _body.Content = page; page.PageChanged += PageChanged;
-        _backdrop.Content = page.Backdrop;
-        var details = page is FullscreenDetailsPage;
+        foreach (var stale in _actionReturnFocus.Keys.Where(item => !_stack.Contains(item)).ToArray()) _actionReturnFocus.Remove(stale);
+        if (_shownPage is { } old) old.PageChanged -= PageChanged;
+        var page = CurrentPage; _shownPage = page; page.PageChanged += PageChanged;
+        var underneath = page is FullscreenActionsPage
+            ? _stack.LastOrDefault(item => item is not FullscreenActionsPage) ?? (_context.Shared.Setup.IsOpen ? _setup : _roots[_section])
+            : page;
+        if (!ReferenceEquals(_body.Content, underneath)) _body.Content = underneath;
+        RemoveActionOverlay();
+        if (page is FullscreenActionsPage) ShowActionOverlay(page);
+        _safe.IsEnabled = page is not FullscreenActionsPage;
+        _backdrop.Content = underneath.Backdrop;
+        var details = underneath is FullscreenDetailsPage;
         _brand.IsVisible = !details;
         _navigation.IsVisible = !details && !_context.Shared.Setup.IsOpen;
         _back.IsVisible = details;
@@ -296,6 +337,43 @@ public sealed class FullscreenView : UserControl, IDisposable
             _tabs[i].Classes.Set("current", i == _section);
         }
         PageChanged(this, EventArgs.Empty); FocusPage();
+    }
+    private double ActionPanelWidth => Math.Min(_canvas.Width * .65, 620 * _context.TextScale);
+    private Thickness ActionPanelPadding => new(32, Math.Max(40, _canvas.Height * _context.SafeMarginPercent / 100),
+        Math.Max(32, _canvas.Width * _context.SafeMarginPercent / 100), Math.Max(40, _canvas.Height * _context.SafeMarginPercent / 100));
+    private void RemoveActionOverlay()
+    {
+        if (_actionOverlay is null) return;
+        if (_actionPanel is not null) _actionPanel.Child = null;
+        _overlay.Children.Remove(_actionOverlay); _actionOverlay = null; _actionPanel = null;
+    }
+    private void ShowActionOverlay(FullscreenPage page)
+    {
+        var panel = new Border { Name = "FullscreenActionPanel", Width = ActionPanelWidth,
+            HorizontalAlignment = HorizontalAlignment.Right, Padding = ActionPanelPadding, Child = page,
+            BorderThickness = new Thickness(1, 0, 0, 0) };
+        panel[!Border.BackgroundProperty] = new DynamicResourceExtension("Surface");
+        panel[!Border.BorderBrushProperty] = new DynamicResourceExtension("Line");
+        KeyboardNavigation.SetTabNavigation(panel, KeyboardNavigationMode.Cycle);
+        var veil = new Border { Name = "FullscreenActionOverlay", ClipToBounds = true,
+            Background = new SolidColorBrush(Color.FromArgb(150, 0, 0, 0)), Child = panel };
+        veil.PointerPressed += (_, e) =>
+        {
+            if (e.GetPosition(panel).X < 0 && e.GetCurrentPoint(veil).Properties.IsLeftButtonPressed)
+            { e.Handled = true; Back(); }
+        };
+        _actionOverlay = veil; _actionPanel = panel; _overlay.Children.Add(veil);
+        if (!_context.ReducedMotion)
+        {
+            var slide = new TranslateTransform(panel.Width, 0);
+            panel.RenderTransform = slide;
+            slide.Transitions = new Avalonia.Animation.Transitions
+            {
+                new Avalonia.Animation.DoubleTransition { Property = TranslateTransform.XProperty,
+                    Duration = TimeSpan.FromMilliseconds(180), Easing = new Avalonia.Animation.Easings.CubicEaseOut() }
+            };
+            Dispatcher.UIThread.Post(() => { if (ReferenceEquals(_actionPanel, panel)) slide.X = 0; }, DispatcherPriority.Loaded);
+        }
     }
     private void PageChanged(object? sender, EventArgs e)
     {
@@ -332,6 +410,12 @@ public sealed class FullscreenView : UserControl, IDisposable
     {
         if (_context.Shared.Setup.IsOpen) return;
         var actions = new List<FullscreenAction> { new("Resume", () => { }) };
+        var updates = _context.Shared.ApplicationSettings;
+        if (updates.HasUpdateAction)
+            actions.Add(new("Update and restart", () =>
+            {
+                if (updates.UpdateAndRestartCommand.CanExecute(null)) updates.UpdateAndRestartCommand.Execute(null);
+            }, updates.CanUpdateAndRestart));
         if (_stack.Count == 0) actions.Add(new("Settings", () => SelectSection(3)));
         actions.Add(new("Exit fullscreen", () => ExitRequested?.Invoke()));
         actions.Add(new("Quit Winnow", () => _context.ShowActions("Quit Winnow? Unsaved edits will be lost.",
@@ -372,6 +456,7 @@ public sealed class FullscreenView : UserControl, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        RemoveActionOverlay(); _actionReturnFocus.Clear();
         _timer.Stop(); _keyboard?.Close();
         _context.PageRequested -= Push; _context.BackRequested -= Back; _context.TextRequested -= EditText;
         _context.Notice -= Notice; _context.PreferencesChanged -= Preferences; _context.FilePicker = null; _context.SaveFilePicker = null;

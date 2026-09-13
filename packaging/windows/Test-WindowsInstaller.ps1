@@ -49,6 +49,8 @@ function Remove-VerifiedSmokeRoot {
 if ($env:GITHUB_ACTIONS -cne 'true') {
     throw 'The installer smoke test runs only on a fresh GitHub Actions runner to avoid changing a local installer registration.'
 }
+& "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'Test-UpdateBinaryLocks.ps1')
+if ($LASTEXITCODE -ne 0) { throw 'The Windows updater binary-lock regression checks failed.' }
 if (-not (Test-Path -LiteralPath $InstallerPath -PathType Leaf)) {
     throw "Installer does not exist: $InstallerPath"
 }

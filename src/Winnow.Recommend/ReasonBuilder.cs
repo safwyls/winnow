@@ -30,6 +30,11 @@ internal static class ReasonBuilder
         RecommendationTuning tuning,
         ShelfReasonLedger? ledger = null)
     {
+        if (reason.Primary == ReasonSignal.LastPlayed && reason.Evidence.LastPlayedAt is { } lastPlayed)
+        {
+            return $"Last played on {lastPlayed.ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture)}.";
+        }
+
         if (reason.Primary == ReasonSignal.Lifecycle && reason.Evidence.Lifecycle is { } lifecycle)
         {
             return $"{lifecycle.Reason.TrimEnd('.', '!', '?')} ({lifecycle.Confidence.ToString("P0", System.Globalization.CultureInfo.InvariantCulture)} confidence).";

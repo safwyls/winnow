@@ -33,7 +33,7 @@ public sealed class FullscreenPlatformTests
             var labels = epic.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToArray();
             Assert.Contains("Epic     NOT SIGNED IN", labels);
             Assert.Contains("Open", labels);
-            Assert.Contains("›", labels);
+            Assert.Single(epic.GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Path>());
             Assert.Same(epic, window.FocusManager!.GetFocusedElement());
             context.Shared.Stores.SteamSessionState = SteamSessionHealth.Expired;
             Dispatcher.UIThread.RunJobs();

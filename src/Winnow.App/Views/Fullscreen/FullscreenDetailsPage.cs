@@ -85,7 +85,7 @@ public sealed class FullscreenDetailsPage : FullscreenPage
             _actions.Children.Add(primary);
         }
         if (_details.Tile.Entries.Count > 1)
-            _actions.Children.Add(FullscreenUi.Button("Choose version", () => Context.ChooseVersion(_details.Tile)));
+            _actions.Children.Add(FullscreenUi.Button("Choose launch version", () => Context.ChooseVersion(_details.Tile)));
         _actions.Children.Add(FullscreenUi.Button("More", ShowMore));
         _identity.Text = string.Join(" · ", new[] { _details.HasInstallState ? _details.InstallText : null, _details.StoreNames }
             .Where(value => !string.IsNullOrWhiteSpace(value)));
@@ -291,7 +291,7 @@ public sealed class FullscreenDetailsPage : FullscreenPage
             {
                 content.Children.Add(FullscreenUi.Text($"{row.Title} · {row.StoreBadge}\n{row.PlaytimeText} · {row.LastPlayedText}"));
                 if (row.Achievements is { } achievements)
-                    content.Children.Add(FullscreenUi.Text($"Achievements: {achievements.CountText} · {achievements.PercentText}", 24, "TextDim"));
+                    content.Children.Add(FullscreenUi.Text($"Achievements: {achievements.SummaryText}", 24, "TextDim"));
                 if (row.IsCovered)
                     content.Children.Add(Action(row.SeparateAutomationName, () => Context.ShowActions($"Separate {row.Title}?",
                         [new("Cancel", () => { }), new(row.SeparateLabel, async () =>
@@ -373,8 +373,8 @@ public sealed class FullscreenDetailsPage : FullscreenPage
     {
         var actions = new List<FullscreenAction>();
         if (_details.AddToListCommand is { } add) actions.Add(new("Add to list", () => add.Execute(_details.Tile)));
-        foreach (var link in _details.Links) actions.Add(new(link.Label, () => Context.OpenLink(link)));
-        if (_details.ManagementAction is { } management) actions.Add(new(management.Label, () => Context.OpenLink(management)));
+        foreach (var link in _details.Links) actions.Add(new(link.Label, () => Context.OpenLink(link), IconLabel: "Open website"));
+        if (_details.ManagementAction is { } management) actions.Add(new(management.Label, () => Context.OpenLink(management), IconLabel: "Manage installation"));
         if (_details.OpenableFolder is { } folder)
             actions.Add(new("Browse install folder", () => Context.BrowseFolder(folder)));
         if (_details.MetadataEditor is { } editor)

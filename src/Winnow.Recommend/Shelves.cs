@@ -7,7 +7,10 @@ namespace Winnow.Recommend;
 /// </summary>
 public static class ShelfIds
 {
-    /// <summary>Lifecycle evidence for review, excluded from play recommendations.</summary>
+    /// <summary>Recorded play history in descending recency, independent of recommendations.</summary>
+    public const string RecentlyPlayed = "recently_played";
+
+    /// <summary>Former lifecycle review shelf identifier; no longer emitted by the engine.</summary>
     public const string Derelict = "derelict";
 
     /// <summary>Bucket stale_but_patched: a major update landed after the user walked away. The headline shelf.</summary>
@@ -33,10 +36,13 @@ public static class ShelfIds
 /// One shelf of the feed: a themed slice of the same scored candidates, with
 /// its own one-line pitch. A Netflix-style surface is several shelves with
 /// different reasons, not one ranked list. Play shelves query the same scores;
-/// Derelict carries lifecycle evidence separately without scoring.
+/// Recently played carries recorded history separately without scoring.
 /// </summary>
 public sealed record RecommendationShelf
 {
+    /// <summary>History collections do not collect recommendation verdicts or impressions.</summary>
+    public bool SupportsFeedback { get; init; } = true;
+
     /// <summary>One of <see cref="ShelfIds"/>.</summary>
     public required string Id { get; init; }
 

@@ -96,6 +96,9 @@ public sealed record IdentityLinkRequest
     /// </summary>
     public IReadOnlyList<ExpectedIdentityRelease>? ExpectedReleaseIdentities { get; init; }
 
+    /// <summary>Independent native-store edition observations, revalidated in the link transaction.</summary>
+    public IReadOnlyList<ReleaseEditionEvidence>? ExpectedEditionEvidence { get; init; }
+
     /// <summary>The work that will represent the identity or group.</summary>
     public required long ParentWorkId { get; init; }
 

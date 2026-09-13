@@ -18,6 +18,60 @@ public sealed class SupplementalFeedTests
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task Recently_played_hides_verdict_actions_and_does_not_record_impressions(bool fullscreen)
+    {
+        var tiles = new Tiles();
+        FeedItem item = new(1, 1, "First game", "Last played today.");
+        var service = new Service(new([
+            new("recently_played", "Recently played", "Your latest games", [item]) { SupportsFeedback = false },
+            new("recommended", "Recommended", "", [item])], 1, FeedConfidence.Established, false));
+        using var feed = new FeedViewModel(service, tiles, includeReserve: fullscreen);
+        await feed.LoadCommand.ExecuteAsync(null);
+        using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell);
+        var page = fullscreen ? new FullscreenBrowsePage(context, feed: true) : null;
+        var window = new Window { Width = 1920, Height = 1080,
+            Content = page as Control ?? new FeedView { DataContext = feed } };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            await feed.RecordViewportEntryAsync(feed.Shelves[0].Cards[0]);
+            if (fullscreen)
+            {
+                Assert.Empty(service.Surfaced);
+                FullscreenPage? actions = null;
+                context.PageRequested += value => actions = value;
+                page!.FocusInitial();
+                Assert.True(page.Handle(GamepadButtons.Keyboard));
+                window.Content = actions;
+                Dispatcher.UIThread.RunJobs();
+                Assert.DoesNotContain(window.GetVisualDescendants().OfType<Button>(), b => Equals(b.Content, "Not now") || Equals(b.Content, "Not interested"));
+                Assert.Contains(window.GetVisualDescendants().OfType<Button>(), b => Equals(b.Content, "Open game"));
+                window.Content = page;
+                page.Handle(GamepadButtons.Down);
+                page.Handle(GamepadButtons.Keyboard);
+                window.Content = actions;
+                Dispatcher.UIThread.RunJobs();
+                Assert.Contains(window.GetVisualDescendants().OfType<Button>(), b => Equals(b.Content, "Not interested"));
+            }
+            else
+            {
+                var cards = window.GetVisualDescendants().OfType<FeedCardView>().ToArray();
+                var recent = Assert.Single(cards, c => ReferenceEquals(c.DataContext, feed.Shelves[0].Cards[0]));
+                Assert.False(recent.FindControl<Button>("NotNow")!.IsEffectivelyVisible);
+                Assert.False(recent.FindControl<Button>("NotInterested")!.IsEffectivelyVisible);
+                var open = Assert.Single(recent.GetVisualDescendants().OfType<Button>(), b => b.Classes.Contains("feedcard"));
+                Assert.True(open.Focus());
+                Assert.True(open.Command!.CanExecute(open.CommandParameter));
+                var recommended = Assert.Single(cards, c => ReferenceEquals(c.DataContext, feed.Shelves[1].Cards[0]));
+                Assert.True(recommended.FindControl<Button>("NotInterested")!.IsEffectivelyVisible);
+            }
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task Arriving_optional_shelves_preserve_the_focused_game_and_existing_card(bool fullscreen)
     {
         var tiles = new Tiles();

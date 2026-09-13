@@ -148,6 +148,11 @@ public sealed class LaunchIntents
     /// </summary>
     public long? Attribute(string? executablePath, string processName, DateTime nowUtc)
     {
+        if (NonGameProcess.IsExcluded(executablePath, processName))
+        {
+            return null;
+        }
+
         lock (_gate)
         {
             DropExpiredLocked(nowUtc);

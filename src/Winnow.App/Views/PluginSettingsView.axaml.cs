@@ -8,20 +8,35 @@ namespace Winnow.App.Views;
 
 public partial class PluginSettingsView : UserControl
 {
+    private bool _attached;
+
     public PluginSettingsView()
     {
         InitializeComponent();
-        AttachedToVisualTree += async (_, _) =>
+        AttachedToVisualTree += (_, _) =>
         {
-            if (DataContext is PluginSettingsViewModel model) await model.LoadAsync();
+            _attached = true;
+            LoadIfVisible();
         };
-        DetachedFromVisualTree += (_, _) => ClearSecrets();
+        DataContextChanged += (_, _) => LoadIfVisible();
+        DetachedFromVisualTree += (_, _) => { _attached = false; ClearSecrets(); };
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == IsVisibleProperty && !change.GetNewValue<bool>()) ClearSecrets();
+        if (change.Property == IsVisibleProperty)
+        {
+            if (change.GetNewValue<bool>()) LoadIfVisible();
+            else ClearSecrets();
+        }
+    }
+
+    private async void LoadIfVisible()
+    {
+        // LazyPane can attach this view before its DataContext binding resolves.
+        if (_attached && IsVisible && DataContext is PluginSettingsViewModel model)
+            await model.LoadAsync();
     }
 
     private void ClearSecrets()

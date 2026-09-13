@@ -235,6 +235,32 @@ public class SteamAccountPageImportTests : IDisposable
     // ── fill-only ────────────────────────────────────────────────────────────
 
     [Fact]
+    public async Task A_known_zero_purchase_is_retained_and_fills_only_unknown_price()
+    {
+        var id = await OwnAsync("Lantern Hollow");
+        var unknown = await OwnAsync("No purchase evidence");
+        var pages = Pages(licenses: false) with
+        {
+            HistoryHtml = Pages().HistoryHtml!.Replace("$13.49", "$0.00", StringComparison.Ordinal),
+        };
+
+        await Service().ImportAsync(pages);
+
+        var stored = (await _ownerships.GetAsync(id))!;
+        Assert.Equal(0, stored.PricePaidCents);
+        Assert.Equal(PriceSources.SteamAccountHistory, stored.PriceSource);
+        Assert.Equal(Utc(2026, 8, 24), stored.AcquiredAt);
+        Assert.Null((await _ownerships.GetAsync(unknown))!.PricePaidCents);
+        var transaction = Assert.Single(await _facts.GetTransactionsAsync("steam"),
+            row => row.ItemNames.SequenceEqual(["Lantern Hollow"]));
+        Assert.Equal(0, transaction.TotalCents);
+
+        Assert.False((await Service().ImportAsync(pages)).WroteAnything);
+        await Service().ImportAsync(Pages(licenses: false));
+        Assert.Equal(0, (await _ownerships.GetAsync(id))!.PricePaidCents);
+    }
+
+    [Fact]
     public async Task An_existing_acquired_at_is_never_overwritten()
     {
         var existing = Utc(2020, 1, 1);

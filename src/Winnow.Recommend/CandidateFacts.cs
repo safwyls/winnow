@@ -71,7 +71,7 @@ public sealed record CandidateFacts
 
     public bool Installed { get; init; }
 
-    /// <summary>Distinct stores this candidate's WORK is owned on. 2+ is a purchase made twice.</summary>
+    /// <summary>Distinct stores this candidate's WORK is owned on; ownership does not establish payment.</summary>
     public int StoreCount { get; init; } = 1;
 
     /// <summary>

@@ -87,6 +87,8 @@ public sealed class DesignTimePreviewTests
     [InlineData(nameof(AppearanceView))]
     [InlineData(nameof(MergeQueueView))]
     [InlineData(nameof(AccountStatsView))]
+    [InlineData(nameof(StatsView))]
+    [InlineData(nameof(GameplayStatsView))]
     [InlineData(nameof(LibrarySettingsView))]
     [InlineData(nameof(ApplicationSettingsView))]
     public void Preview_surface_attaches_and_renders(string surface)
@@ -104,6 +106,8 @@ public sealed class DesignTimePreviewTests
             nameof(AppearanceView) => (new AppearanceView(), PreviewData.Appearance),
             nameof(MergeQueueView) => (new MergeQueueView(), PreviewData.MergeQueue),
             nameof(AccountStatsView) => (new AccountStatsView(), PreviewData.AccountStats),
+            nameof(StatsView) => (new StatsView(), PreviewData.Stats),
+            nameof(GameplayStatsView) => (new GameplayStatsView(), PreviewData.Gameplay),
             nameof(LibrarySettingsView) => (new LibrarySettingsView(), PreviewData.LibrarySettings),
             nameof(ApplicationSettingsView) => (new ApplicationSettingsView(), PreviewData.ApplicationSettings),
             _ => throw new ArgumentOutOfRangeException(nameof(surface), surface, null),

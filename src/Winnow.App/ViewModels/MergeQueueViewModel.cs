@@ -43,6 +43,8 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     public const string PreferredPlatformSettingKey = "merges.preferred_platform";
 
     private readonly ISettingsRepository? _settings;
+    private readonly IGroupHeaderPreferenceRepository? _groupHeaders;
+    private readonly LibraryViewModel? _library;
     private readonly Services.DormancyRamp _ramp;
     private string? _preferredPlatform;
 
@@ -110,10 +112,14 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         Action<Action>? post = null,
         ISettingsRepository? settings = null,
         Services.DormancyRamp? ramp = null,
-        Services.ArtworkPreferences? artworkPreferences = null)
+        Services.ArtworkPreferences? artworkPreferences = null,
+        IGroupHeaderPreferenceRepository? groupHeaders = null,
+        LibraryViewModel? library = null)
     {
         _candidates = candidates;
         _settings = settings;
+        _groupHeaders = groupHeaders;
+        _library = library;
         _ramp = ramp ?? new Services.DormancyRamp();
         _ramp.PropertyChanged += OnRampChanged;
         _releases = releases;
@@ -686,7 +692,8 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             cards.AddRange(await BuildSameGameCardsAsync(pending, library, resolution, now, ct));
             cards.AddRange(await BuildExpansionCardsAsync(scan, library, now, ct));
             cards.AddRange(await BuildStandingCardsAsync(standing, releasesOfWork, library, now, ct));
-            return (hasCompletedSweep, cards, pendingCount: pending.Count);
+            var headers = _groupHeaders is null ? new Dictionary<long, string?>() : await _groupHeaders.GetAllAsync(ct);
+            return (hasCompletedSweep, cards, pendingCount: pending.Count, snapshot, resolution, headers);
         }, ct);
 
         await ReadPreferredPlatformAsync(ct);
@@ -694,6 +701,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         _pendingAtLoad = loaded.pendingCount;
         _stale = false;
         _loaded = true;
+        ConfigureGroupHeaders(loaded.cards, loaded.snapshot, loaded.resolution.SameGame, loaded.headers);
         ApplyPreferredPlatform(loaded.cards);
         Place(loaded.cards);
 
@@ -815,6 +823,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         }
 
         card.MarkResolved(linked.ActId);
+        await RefreshGroupHeadersAsync(ct);
 
         RefreshCounts();
         AdvanceFocusFrom(card);
@@ -857,6 +866,64 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
 
     /// <summary>Raised when a row asks for the game's details.</summary>
     public event Action<MergeRowViewModel>? DetailsRequested;
+
+    public async Task SetGroupHeaderAsync(MergeCardViewModel card, GroupHeaderOption option, CancellationToken ct = default)
+    {
+        if (_groupHeaders is null || !card.CanChooseHeaderStore || card.IsSavingHeader
+            || !_sectionOfCard.ContainsKey(card) || !card.HeaderStoreOptions.Contains(option)
+            || card.SelectedHeaderStore?.Store == option.Store) return;
+
+        card.IsSavingHeader = true;
+        card.HeaderStoreProblem = null;
+        try
+        {
+            if (!await _groupHeaders.SetAsync(card.HeaderGroupWorkId, option.Store, ct))
+                card.HeaderStoreProblem = MergeCopy.GroupHeaderChanged;
+            else
+            {
+                await RefreshGroupHeadersAsync(ct);
+                if (_library is not null) await _library.RefreshCommittedAsync(ct);
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception)
+        {
+            card.HeaderStoreProblem = MergeCopy.GroupHeaderSaveFailed;
+        }
+        finally { card.IsSavingHeader = false; card.RestoreHeaderStoreSelection(); }
+    }
+
+    private async Task RefreshGroupHeadersAsync(CancellationToken ct)
+    {
+        if (_groupHeaders is null) return;
+        var snapshot = await _libraryQueries.GetSnapshotAsync(BucketThresholds.Default with { ShowNonGameEntries = true }, ct);
+        var resolution = (await _links.GetResolutionAsync(ct)).SameGame;
+        ConfigureGroupHeaders(_sectionOfCard.Keys, snapshot, resolution, await _groupHeaders.GetAllAsync(ct));
+    }
+
+    private void ConfigureGroupHeaders(IEnumerable<MergeCardViewModel> cards, Winnow.Core.Queries.LibrarySnapshot snapshot,
+        SameGameResolution resolution, IReadOnlyDictionary<long, string?> preferences)
+    {
+        if (_groupHeaders is null) return;
+        var workByRelease = snapshot.Releases.ToDictionary(release => release.Id, release => release.WorkId);
+        var works = snapshot.Works.ToDictionary(work => work.Id);
+        foreach (var card in cards.Where(card => card.IsResolved && card.LinkKind == IdentityLinkKinds.SameGame))
+        {
+            var root = resolution.Resolve(card.ParentWorkId);
+            if (!resolution.IsParent(root)) continue;
+            var available = snapshot.Ownerships.Where(ownership => workByRelease.ContainsKey(ownership.ReleaseId))
+                .Select(ownership => (WorkId: workByRelease[ownership.ReleaseId], ownership.Store))
+                .Where(row => resolution.Resolve(row.WorkId) == root).ToArray();
+            var preferred = preferences.GetValueOrDefault(root);
+            var stores = available.Select(row => row.Store).Distinct().Order(StringComparer.Ordinal).ToArray();
+            List<GroupHeaderOption> options = [new(null, MergeCopy.GroupHeaderAutomatic)];
+            options.AddRange(stores.Select(store => new GroupHeaderOption(store, StoreNaming.Label(store))));
+            if (preferred is not null && !stores.Contains(preferred))
+                options.Add(new(preferred, string.Format(MergeCopy.UnavailableStoreFormat, StoreNaming.Label(preferred))));
+            var selectedWork = GroupHeaderSelection.SelectWork(root, preferred, available);
+            card.ConfigureHeaderStore(root, options, preferred, works.GetValueOrDefault(selectedWork)?.Name);
+        }
+    }
 
     /// <summary>
     /// Records every proposal on the card as answered no, and removes the
@@ -1015,6 +1082,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         RefreshCounts();
         if (linked.Count > 0)
         {
+            await RefreshGroupHeadersAsync(ct);
             AdvanceFocusFrom(linked[0].Card);
         }
 

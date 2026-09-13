@@ -1,4 +1,7 @@
 using System.Text;
+using System.Security.Cryptography;
+using System.Text.RegularExpressions;
+using AngleSharp.Html.Parser;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Winnow.Core.Ingest;
@@ -20,7 +23,7 @@ namespace Winnow.Ingest.Steam.AccountPages;
 /// <para>The contract and its result types live in Winnow.Core so the import
 /// screen can offer this route without naming an ingest type (§5.1).</para>
 /// </summary>
-public sealed class SteamAccountPageFileLoader : ISteamAccountPageFileLoader
+public sealed partial class SteamAccountPageFileLoader : ISteamAccountPageFileLoader
 {
     private const long MaxFileBytes = 64L * 1024 * 1024;
 
@@ -37,9 +40,8 @@ public sealed class SteamAccountPageFileLoader : ISteamAccountPageFileLoader
 
     /// <summary>
     /// Reads each path, identifies it, and assembles the pages. Per-file outcomes
-    /// so one bad path does not fail the rest. The first successfully identified
-    /// file of each kind wins; a second file of the same kind is
-    /// <see cref="SteamAccountPageFileOutcome.Duplicate"/>.
+    /// so one bad path does not fail the rest. Licence documents combine;
+    /// purchase history still takes the first successfully identified file.
     /// </summary>
     public async Task<SteamAccountPageLoadResult> LoadAsync(
         IEnumerable<string> paths, CancellationToken ct = default)
@@ -53,6 +55,8 @@ public sealed class SteamAccountPageFileLoader : ISteamAccountPageFileLoader
         };
 
         var files = new List<SteamAccountPageFile>();
+        var licenseHashes = new HashSet<string>(StringComparer.Ordinal);
+        string? accountMarker = null;
 
         foreach (var path in paths)
         {
@@ -85,21 +89,50 @@ public sealed class SteamAccountPageFileLoader : ISteamAccountPageFileLoader
                 continue;
             }
 
-            if (pages.Html(kind.Value) is not null)
+            var marker = ReadAccountMarker(html!);
+            if (marker == string.Empty || (marker is not null && accountMarker is not null && marker != accountMarker))
+            {
+                files.Add(new(path, SteamAccountPageFileOutcome.AccountMismatch, kind,
+                    "the saved pages identify different accounts"));
+                continue;
+            }
+
+            if ((kind == SteamAccountPageKind.PurchaseHistory && pages.HasHistory)
+                || (kind == SteamAccountPageKind.Licenses
+                    && !licenseHashes.Add(Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(html!))))))
             {
                 files.Add(new SteamAccountPageFile(
                     path,
                     SteamAccountPageFileOutcome.Duplicate,
                     kind,
-                    "a file of this kind was already loaded"));
+                    "this licence document or a purchase-history file was already loaded"));
                 continue;
             }
 
-            pages = pages.With(kind.Value, html);
+            accountMarker ??= marker;
+            pages = kind == SteamAccountPageKind.Licenses && pages.HasLicenses
+                ? pages with { AdditionalLicensesHtml = [.. pages.AdditionalLicensesHtml, html!] }
+                : pages.With(kind.Value, html);
             files.Add(new SteamAccountPageFile(path, SteamAccountPageFileOutcome.Loaded, kind, null));
         }
 
-        return new SteamAccountPageLoadResult(pages, files);
+        return new SteamAccountPageLoadResult(pages with
+        {
+            HasFailedSavedInputs = files.Any(f => f.Outcome is not (SteamAccountPageFileOutcome.Loaded or SteamAccountPageFileOutcome.Duplicate)),
+        }, files);
+    }
+
+    [GeneratedRegex("(?:var\\s+)?g_steamID\\s*=\\s*['\\\"]([0-9]{17})['\\\"]", RegexOptions.CultureInvariant)]
+    private static partial Regex AccountMarkerRegex { get; }
+
+    private static string? ReadAccountMarker(string html)
+    {
+        // A saved marker can veto a mixed-account batch, but cannot authenticate
+        // an account or assign these files to the currently connected account.
+        var document = new HtmlParser().ParseDocument(html);
+        var markers = document.QuerySelectorAll("script").SelectMany(s => AccountMarkerRegex.Matches(s.TextContent))
+            .Select(m => m.Groups[1].Value).Distinct(StringComparer.Ordinal).ToArray();
+        return markers.Length switch { 0 => null, 1 => markers[0], _ => string.Empty };
     }
 
     private async Task<(string? Html, SteamAccountPageFile? Failure)> TryReadAsync(

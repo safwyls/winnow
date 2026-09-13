@@ -275,6 +275,32 @@ public sealed class ApplicationUpdaterTests
         Assert.Empty(Directory.GetFiles(scope.Directory));
     }
 
+    [Fact]
+    public async Task Archive_staging_failure_never_offers_restart_and_removes_download()
+    {
+        using var scope = new Scope(PackageHttp());
+        scope.Installer.FailStage = true;
+        await scope.Updater.CheckAsync();
+        Assert.False(scope.Updater.Snapshot.CanRestart);
+        Assert.True(scope.Updater.Snapshot.CanDownload);
+        Assert.Empty(Directory.GetFiles(scope.Directory));
+        Assert.False(scope.Shutdown);
+        scope.Installer.FailStage = false;
+        await scope.Updater.DownloadAsync();
+        Assert.True(scope.Updater.Snapshot.CanRestart);
+    }
+
+    [Fact]
+    public async Task Channel_change_discards_installer_owned_staging()
+    {
+        using var scope = new Scope(PackageHttp());
+        await scope.Updater.CheckAsync();
+        await scope.Updater.SetAutomaticAsync(false);
+        await scope.Updater.SetIncludeBetaAsync(true);
+        Assert.Equal(1, scope.Installer.Discards);
+        Assert.False(scope.Updater.Snapshot.CanRestart);
+    }
+
     private sealed class AsyncHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> action) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) => action(request, ct);
@@ -331,6 +357,11 @@ public sealed class ApplicationUpdaterTests
         public bool IsSupported => supported;
         public string? Path { get; private set; }
         public bool Fail { get; set; }
+        public bool FailStage { get; set; }
+        public int Discards { get; private set; }
+        public Task<string> StageAsync(string path, string sha256, string version, CancellationToken ct = default) =>
+            FailStage ? throw new InvalidDataException("Archive cannot be staged.") : Task.FromResult(path);
+        public void Discard(string staged) { Discards++; File.Delete(staged); }
         public int Preparations { get; private set; }
         public Task PrepareAsync(string installerPath, string sha256, CancellationToken ct = default)
         {

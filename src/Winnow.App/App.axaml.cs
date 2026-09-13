@@ -77,10 +77,13 @@ public partial class App : Application
             };
 
             desktop.MainWindow = _mainWindow;
+            services.GetRequiredService<WindowsJournalNotification>().Attach(_mainWindow);
+            services.GetRequiredService<JournalPromptViewModel>().ActivationRequested += RestoreMainWindow;
             UpdateTrayVisibility();
         }
 
         base.OnFrameworkInitializationCompleted();
+        Program.CompleteUpdateStartup();
     }
 
     private void OnTrayClicked(object? sender, EventArgs e) => RestoreMainWindow();

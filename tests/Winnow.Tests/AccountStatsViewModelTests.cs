@@ -371,6 +371,7 @@ public sealed class AccountStatsViewModelTests
         };
         var stats = new AccountStatsViewModel(repository);
         var shell = Shell(db, stats);
+        shell.Stats.IsSpending = true;
 
         Assert.Equal(0, repository.Reads);
 
@@ -404,7 +405,7 @@ public sealed class AccountStatsViewModelTests
         using var db = new TempDatabase();
         var shell = Shell(db, DetachedAccountStats.Create());
 
-        Assert.Equal("STEAM STATS", shell.AccountStats.RailRow);
+        Assert.Equal("STATS", shell.AccountStats.RailRow);
         Assert.Contains(shell.Library.Buckets, bucket => bucket.Key == LibraryViewModel.DerelictKey && bucket.Name == "Derelict");
 
         await shell.ToggleAccountStatsCommand.ExecuteAsync(null);

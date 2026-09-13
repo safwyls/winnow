@@ -92,6 +92,7 @@ public sealed class ActivityPagingInteractionTests
         using var services = new ServiceCollection().AddSingleton<IAccountStatsRepository>(repository).BuildServiceProvider();
         using var context = await CreateContextAsync(services);
         using var page = new FullscreenLibrarySummaryPage(context);
+        page.Stats.IsSpending = true;
         var model = new AccountStatsViewModel(repository);
         var window = new Window { Width=1920, Height=1080, Content=fullscreen ? page : null };
         Task pending = Task.CompletedTask;

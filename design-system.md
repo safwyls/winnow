@@ -131,7 +131,7 @@ measure is drawn from, so one number serves both prose sizes. Measured against t
 repository's own font files, shaped by Skia: 66 characters at Body 13 measure 410px, 45
 characters at Body 13 measure 275px, 66 characters at Body 12 measure 379px.
 
-The `.prose` class applies it: `MaxWidth` from the token, `HorizontalAlignment="Left"` so the
+The `.prose` and `.para` classes apply it: `MaxWidth` from the token, `HorizontalAlignment="Left"` so the
 maximum does not centre the paragraph away from the column's left edge under the default
 Stretch, and `TextWrapping="Wrap"`. It governs a prose run — a paragraph the reader reads. It
 does not govern the merge card's 840px (§6), which is a two-column comparison width, and it
@@ -397,6 +397,61 @@ how much art gets through. It warns and never refuses, like every other check th
 
 ## 6. Components
 
+**Provider status.** Optional and unconnected means no stored connection was chosen; it
+does not imply a failure or reduced service. The shared desktop `provider-status` component
+uses a `Line` border and `TextDim` label for this neutral state. Its `live` state uses `Volt`
+for a working credential or complete local source; `attention` uses `Amber` for a failed
+renewal or expired session. Every state is named in text and accessible to assistive
+technology. Fullscreen uses a `TextDim` status line beneath the provider heading, with
+separate actionable attention text; it shares the state meanings without the desktop pill.
+Local-only discovery is an available source, not an unconnected account requiring repair.
+
+**Statistics.** Desktop Stats and fullscreen Activity → Library summary offer Gameplay and
+Spending with independent navigation and filter state on each surface. Gameplay opens first.
+The heading, section choices and Spending refresh share a wrapping toolbar. Desktop Spending
+shows its source and coverage across the available width, without a second account heading;
+absent loading and error messages reserve no space. Fullscreen keeps its readable control
+sizes while sharing the heading row and omitting the repeated library count above the charts.
+Its store choices come from the visible library's ownership sources; All stores counts each
+resolved game once. The period choices are 30 days, 90 days and custom inclusive local dates.
+Recorded hours use completed Winnow sessions, with bars over the period, the ten games with
+the most recorded time, and session-length bands with a median. Visible values accompany
+every chart. Coverage copy distinguishes recorded game time from complete play history.
+
+Your library today shows the current shared library buckets for games owned on the selected
+store. These counts do not describe the library at an earlier date. Store ownership counts
+can overlap across games; Never played means no recorded play evidence, and Retired does
+not mean completed. Changing the period does not change this current composition.
+
+Spending identifies Steam as its supported source. Other stores have no spending importer.
+Each currency has its own net, gross and refunded
+amounts. Currency selection changes the money charts and detailed breakdowns together;
+amounts in different currencies are never combined or ranked against one another.
+Steam's `$credit` annotation belongs to the dollar total. Missing-currency records retain
+their counts without hiding totals for currencies that are known.
+
+Yearly spending uses bars from a zero baseline, with exact amounts beside them; negative
+values extend to the left. The spend
+composition donut separates purchases, gifts bought for others and in-game purchases;
+each segment has a text label, amount and share. Negative category totals replace the donut
+with an explanation and retain their signed amounts in the breakdown. Licence acquisition uses count bars and
+states that licences are packages, not games. Charts use the theme's existing inks, never
+Flare, and carry visible text equivalents so color and pointer hover are not required.
+The highest recorded spending year describes captured history, not a complete lifetime.
+Average kept transaction value divides net spend by kept product transactions with recorded
+prices in the selected currency; a bundle counts once, and no per-game price is inferred.
+Desktop keeps detailed tables behind a disclosure; fullscreen retains its reading actions
+and controller-accessible currency choices.
+
+The refund percentage divides original product rows flagged refunded by all product rows
+with recorded prices. The bundle percentage divides non-refunded product rows with more
+than one item by all non-refunded product rows with recorded prices. Wallet credit and
+standalone reversals enter neither ratio. Missing-price rows are excluded from both
+populations; partial captures describe only the pages read. These are transaction percentages,
+so they describe captured purchases across currencies. A zero denominator or
+overlap between identified and unknown-account captures shows `Not available`. No bundle
+price is divided among games. Both surfaces state these limits beside the primary figures.
+
 **Rail bucket.** Display S name, Data count. Selected: `ChromeRaised` fill, 2px `Volt` left
 edge. The `Patched` bucket is the only one carrying a `Flare` dot next to its count.
 Zero-count buckets render at 40% opacity rather than hiding, so the rail never reflows.
@@ -455,11 +510,27 @@ that arrived with one wrong member is answered without refusing the rest. A row 
 recedes (title in `TextFaint`, cover at 40%) and its proposals with the linked rows are recorded
 as answered no. Neither control is drawn where it would assert nothing: no radio on an
 expansion card, whose base is the header by the shape of the relation, and no checkbox on the
-header. Clicking the row itself opens the game's details, the library's own modal over the
-pane, so the entries can be compared before answering. A row is a work, so an entry already
+header. Clicking an eligible pending row body makes it the header; a separate `Details`
+button opens the game's modal over the pane so entries can be compared before answering.
+Ineligible rows keep their fixed header. Fullscreen offers `Open game` and eligible
+`Make header` actions separately. A row is a work, so an entry already
 owned on two stores is one row wearing two chips. Resolved, the card collapses to a 44px strip:
 `Volt` edge, the header title, `N entries · Nh · nested, nothing deleted`, and `Separate
 again`. The strip stays in place so the list never reflows under the pointer.
+
+On desktop, queue insets reduce the width available when cards are measured. Long proposal
+and row titles ellipsize in the remaining space; confidence badges, header marks, store chips
+and trailing actions keep their space. The card edge and inclusion checkbox stay inside the
+pane at the 1200px minimum window width, including after resizing from a wider window.
+
+Already linked same-game groups also offer `Header store` with `Automatic` and their owned
+stores. Desktop places a named selector beside the resolved strip; fullscreen offers the
+same choices in the group's action sheet. The selected store is saved for that group and
+supplies the header title, cover and primary store entry. `Automatic` restores the canonical
+root's header, falling back to an available member. An unavailable saved store is labeled
+`(unavailable)` and uses Automatic until that store returns. This changes presentation only:
+the canonical identity, Work metadata and editing, and `Separate again` remain unchanged.
+The pending-proposal `Prefer` setting remains a separate queue default.
 
 Confidence is a word, never a score: EXACT MATCH in `Text`, LIKELY in `TextDim`, WORTH A LOOK in
 `Amber`, the one Amber on the screen. Flare marks only the unread dots. The screen's two
@@ -477,11 +548,21 @@ the notice has no Undo because no link act was written.
 
 Keyboard: Up and Down walk the candidate rows across every pending card, Space makes the row
 the header, `S`/`Enter` answers Same game, `D` answers Different games, and `Escape` returns to
-the library. The radio and the checkbox are Tab stops of their own.
+the library. The radio, Details button and checkbox are Tab stops of their own.
 
-**Session journal prompt.** 400×220 frameless, bottom-right, `SurfaceRaised`, with the game's
-cover at 60×90 on the left. Title, duration in Data, one text field, 5-dot rating in `Volt`.
-Appears at most once per session, never steals focus.
+**Session journal prompt.** Off by default through `journal.prompt_after_play`. After a
+qualifying finished session, Windows offers a silent notification naming the game and
+inviting a note or rating. Activating it restores Winnow and opens that session's existing
+desktop dock or fullscreen journal editor. Save records the note and optional one-to-five
+rating; dismissing or ignoring the notification records nothing.
+
+Unavailable or suppressed notifications use the in-window prompt. Windows accepting a
+request is not proof it appeared: if no display callback arrives within five seconds, the
+prompt falls back in the current surface. Desktop keeps its dock with title, duration in
+Data, note field and rating dots in `Volt`; fullscreen uses its TV editor. Automatic offers
+do not activate a hidden window. A session is offered once, stale notification callbacks
+cannot replace a newer session, and a draft or pending save is preserved. Notifications
+belong to the running process and do not launch a second Winnow instance after exit.
 
 **Fetch status field.** In the desktop titlebar, before the window controls, a compact
 single line shows the label, a separator and the remaining-title count. It uses the existing
@@ -527,20 +608,37 @@ carries one fact wrapped in reasoning, the fact stays and the reasoning moves he
 | Bucket: refund line to retired | `Started` | `Barely played`, `Bounced off` |
 | Bucket: high playtime | `Played out` | `Completed` |
 | Bucket: lifecycle evidence of closure, delisting or abandonment | `Derelict` | `Won't run`, `Dead` |
-| Steam account statistics rail row | `STEAM STATS` | `STATS` |
+| Statistics rail row | `STATS` | `STEAM STATS` |
 | Badge tooltip | `3 updates since you played` | `New content available!` |
 | Journal prompt | `How was that?` | `Rate your session!` |
 | Card answer | `Same game` / `Different games` | `Merge records` / `Cancel` |
 | Merges header | `Merge 3 selected`, `Rolled up under Hades.` | `Confirm identity link` |
+| Steam with neither credential stored | `NO CONNECTION`; `No sign-in session is stored.` when explaining session state | `Connection failed` without a failed attempt |
+| Epic with no stored session | `NOT SIGNED IN` | `Session expired` before a session existed |
+| Steam renewal due | `SIGN-IN NEEDS RENEWING`; `Renews automatically.` | Asking the user to repair a renewal that has not failed |
+| Steam renewal failed | `Renewal was attempted and did not succeed. Signing in again will restore it. An API key, if set, keeps scheduled updates running regardless.` | Implying the independent API key stopped working |
+| Steam session expired | `SIGN-IN EXPIRED`; `The sign-in has expired and cannot be used. Only a fresh sign-in can recover it. An API key, if set, is unaffected.` | An unexplained warning |
+| Epic session expired | `SESSION EXPIRED`; `Sign in again` | A generic connection error with no recovery action |
+| GOG local-only discovery | `LOCAL FILES`; `Not needed. Winnow reads the local Galaxy database.` | `The local database has everything.` |
+| Steam consent, before opening sign-in | `Before you sign in`; `Identifies your account and can read your purchase history.`; `Continue` / `Cancel` | Treating sign-in as consent to read purchases |
+| Steam credential lifetime in consent | `Lasts about a day. Winnow renews it automatically, but this may not work against live servers. An API key does not expire.` | Promising successful renewal |
+| Separate optional purchase permission | `Also read my purchase history`, initially off; fullscreen announces `Off` / `On` | Preselected consent or a hidden state |
+| Epic credential consent | `You'll see what Winnow is requesting before anything connects. The credential is stored encrypted on this machine.` | Connecting before the request is explained |
+
+These meanings apply to desktop and fullscreen. Provider-specific capability text stays
+specific: Epic sign-in adds playtime and acquisition dates; GOG uses local discovery without
+a sign-in action. Optional states use the neutral provider treatment (§6). Expiry and failed
+attempts retain a recovery action, and machine-local credential persistence failures say
+that another sign-in will be needed after restart.
 
 `Merge` is the screen's name and its bulk verb. The answer on a card is still `Same game`,
 which asks about games rather than records.
 
 **Empty states are directions, not moods.**
 
-Derelict is a library bucket and a separate feed shelf. It names lifecycle evidence, not a
-promise that a game cannot launch. Each feed card states the inferred or explicit status,
-confidence and source-based reason; the details modal repeats that information in Overview. Confidence is a heuristic estimate, not a measured probability. Delisted
+Derelict is a library bucket, excluded from the feed. It names lifecycle evidence, not a
+promise that a game cannot launch. The details modal states the inferred or explicit status,
+confidence and source-based reason in Overview. Confidence is a heuristic estimate, not a measured probability. Delisted
 games may still run. Launch actions keep their existing availability rules.
 
 - Patched, empty: *"Nothing's been patched since you last played. This fills up on its own."*
@@ -589,11 +687,16 @@ games, rather than enlarging art to fill the extra height. Available height stil
 covers when increasing scale or using large margins. The default retains the
 16:9 composition. Validate readability from the actual seating position before accepting the scale.
 
-**For you** opens on a focused recommendation in a horizontal cover shelf.
+**For you** opens on a focused game in a horizontal cover shelf.
 Fullscreen makes the complete scored shelf available: up to six primary recommendations
 plus four reserve items. Show as many as fit at the chosen scale, with left/right navigation
 to overflow games; do not enlarge covers just to fill a short shelf. Desktop retains six
 cards with a hidden replacement reserve. Only actual viewport entry records an impression.
+
+Recently played is the first shelf when play dates are available, ordered newest first.
+It holds up to ten games: six desktop cards and four additional games available in fullscreen.
+This collection has no recommendation verdict controls and records no feed impressions.
+Its order does not change with recommendation feedback or daily rotation.
 
 A large title, one-sentence reason and game artwork above the shelf follow the selection. The reason reserves
 two lines at the chosen text size and truncates overflow with an ellipsis, so description
@@ -636,10 +739,22 @@ position; Back restores the exact origin, including after viewing details.
 | Menu | Open a quick menu with Settings and Exit fullscreen; controller help is in Settings |
 
 The footer shows actions available in the current state using bundled Kenney vector controller
-glyphs. Local section and paging prompts sit at the right edge. The current input sources use Xbox-style
+glyphs. In Library, Activity and Settings, LT and RT flank the local section choices like
+LB and RB flank the root menu; Settings keeps them outside its scrolling tab strip.
+Other local section and paging prompts sit at the right edge. The current input sources use Xbox-style
 button shapes; device-specific glyph families are not detected. The dragon mark sits beside
 the Winnow title. Controller input hides the mouse cursor; mouse movement or a click restores it. Clock and optional battery status sit in a quiet
-top corner. Unknown battery state is omitted. Nested sheets trap focus and restore it on
+top corner. Unknown battery state is omitted. Fullscreen action menus, including More,
+use a right-edge panel over a dimmed, retained page. The panel slides in over 180 ms and
+appears immediately with reduced motion. Actions wrap and scroll within the panel; B,
+Escape, right-click or clicking outside dismisses it and restores the invoking control.
+The panel header has no Close button. Throughout fullscreen, right-click and Escape use
+the same Back handling as controller B, including page-specific cancellation. Background
+controls cannot receive input while it is open. Desktop More retains its existing popup.
+Both menus pair action labels with theme-colored outline icons in a consistent left column.
+Icons are decorative; the text remains the accessible action name. Fullscreen icons scale
+with the text size, and disabled rows dim the icon together with the label.
+Nested sheets trap focus and restore it on
 close. Destructive actions require confirmation; unplugging a controller preserves position
 and provides a reconnect message with keyboard fallback. Reduced motion removes travel and
 zoom while retaining immediate selection feedback.
@@ -679,7 +794,8 @@ canvases fit the whole image within the height and center it horizontally. Fade 
 layer keeps its own image geometry. Desktop detail backdrops continue to fill their card
 with a crop and request enough source pixels for that crop.
 
-**Library** uses two rows of complete portrait covers. The column count responds to available
+**Library** uses the same 64px page title as Activity and Settings, with two rows of complete
+portrait covers below it. The column count responds to available
 width, row height and text size; wider displays show more games instead of stretching or
 cropping artwork. Stable 2:3 frames use uniform fitting so user-supplied art keeps its whole
 image even when its proportions differ. Padding takes the average color of the adjoining
@@ -729,9 +845,10 @@ left/right changes the Monday-based week from the event region and cannot advanc
 week. Sessions and Journal have distinct empty-state copy: Journal requires a saved note or
 rating. Activity uses a quiet open-journal vector with page contours and a bookmark; Settings
 uses contour art. Both use theme-colored paths. The note editor offers deliberate Save and
-Cancel actions and an optional one-to-five rating. Library summary provides the current
-visible game count and separate reading pages for captured Steam account statistics; it
-retains the shared rules for mixed currencies and wallet credit.
+Cancel actions and an optional one-to-five rating. Library summary provides Gameplay and
+Spending sections, with its own store, period and currency selection. Gameplay uses the
+shared recorded-session charts and current library composition. Spending retains reading
+pages for captured Steam account figures and the shared currency and wallet-credit rules.
 
 Activity initially reads up to 50 events for the selected week. **Load more** appends older
 events while preserving selection. A failed read says “Couldn't read your activity. Try again.”
@@ -739,10 +856,9 @@ and offers **Try again** beside any retained events. Returning from a note edito
 pages and selection, and updates the saved note's badge and preview. Completing a delayed read
 preserves focus on the section controls or reading actions.
 
-Account summary says “Reading your account statistics…” while its background read is pending.
-A failed read says “Couldn't read account statistics. Try again.” and offers **Try again**;
-an unavailable repository says “Account statistics are unavailable.” Existing results remain
-available during a retry. These states do not present an empty account as a completed read.
+Statistics distinguish pending reads, unavailable sources and failed reads from a completed
+empty result. Gameplay labels its date and store scope beside the figures. Changing scope
+removes obsolete figures while the new read is pending, and failed reads offer a retry.
 
 Settings content uses subdued uppercase group headings, separate from focusable rows.
 Navigation and picker rows end in **Open ›**; immediate commands end in **Run** with an
@@ -993,6 +1109,12 @@ back by taking away edge-resize down the whole right side of the window.
 ---
 
 ## 10. The detail view
+
+Achievement rows describe one store release and the selected account. Both surfaces show
+Not fetched, Unavailable or No achievements when a percentage would invent progress; known
+progress shows unlocked/total and its percentage. Retained progress adds "last known" after
+a failed refresh or freshness expiry. Unsupported stores say Not supported. The desktop
+Library tab also shows these rows for a single copy, without requiring a linked game.
 
 §5.3 caps the tile's hover overlay at four facts. Details expands that view in a **modal
 over the library**, opened from a tile's Details control or the library's details command.
@@ -1504,8 +1626,14 @@ identifiers are inside the Library tab's collapsed disclosure.
 ### 10.8 The patch notes panel
 
 A patched game's `Patch notes` button on an Activity update row, and the `All patch notes`
-row in More, open the notes in an embedded browser window rather than in the system browser.
-The host uses Winnow's WebView2 browser with a policy limited to reading patch notes.
+row in More, follow **Settings → Application → Links → Open links in** on desktop and
+fullscreen. The default, **In Winnow**, uses Winnow's WebView2 window for permitted patch
+notes. **System browser** opens web links externally. **Store client** is offered when a
+registered Steam executable exists on Windows; it opens Steam store pages in that client.
+Other web pages, unavailable readers and refused client routes fall back to the system
+browser, with a status line in desktop details or a fullscreen notice. Failed browser opens
+report failure. Play, Install, Uninstall and explicit client-management actions keep their
+native targets. The preference never broadens the reader's origin gate.
 
 **It is a separate top-level window, not an overlay.** The reason is the airspace problem the
 sign-in window already records: a hosted native browser HWND paints over Avalonia content
@@ -1966,11 +2094,12 @@ or live list."* The footer keeps **New list** on the left and the settings cog o
 New list pairs its label with a vector list-plus icon and offers **Static list** (choose games yourself) and **Live list** (save the current
 library filters, with membership updating automatically), with a tooltip explaining each.
 
-**The desktop rail distinguishes screens from library subsets.** FEED and MERGES open screens;
-ALL GAMES opens the whole library above the divider. Buckets below it narrow the library.
-ACCOUNT contains the statistics destination, followed by LISTS and LIVE LISTS. Creation and
-configuration actions sit in the footer. Keep these roles clear when changing the grouping;
-fullscreen uses its own navigation hierarchy.
+**The desktop rail distinguishes screens from library subsets.** FEED, MERGES and STATS
+open screens in that order, followed by ALL GAMES above the divider. Buckets below it narrow
+the library, followed by LISTS and LIVE LISTS. Statistics sits with the other screens, so it
+needs no single-entry ACCOUNT heading. Creation and configuration actions sit in the footer.
+Fullscreen retains Activity → Library summary for statistics and its own root destinations;
+the desktop rail order does not govern controller navigation.
 
 ### 12.2 A list composes, a live list restores
 
@@ -2055,9 +2184,15 @@ returns to the saved membership and shows **Couldn't save list changes. Try agai
 the control. List actions use the same error copy beside the library actions, while modal
 actions keep their prompt and draft. Refreshing the library preserves a pending choice.
 
-Feed feedback occupies a dedicated right-hand column: bookmark-plus **Add to list** in Azure,
-clock **Not now** in Amber, and circle-minus **Not interested** in TextDim. Each 32px icon
-button has a tooltip and accessible name. Install / Play has its own line below the card text.
+Desktop feed cards group feedback beside Install / Play beneath the card text, separated
+by a quiet vertical divider: bookmark-plus **Add to list** in Azure, clock **Not now** in
+Amber, and circle-minus **Not interested** in TextDim. Each 32px icon button has a tooltip
+and accessible name. The secondary group wraps together when space is tight; no divider
+appears without a primary action. Recently played offers only Add to list.
+Hero artwork sits behind the card at 22% opacity, fading from transparent on the left to
+its strongest point on the right. Rounded clipping contains the art; missing artwork leaves
+the ordinary Surface background. Artwork uses the shared source preferences and leased cache.
+Fullscreen retains its existing page hero and controller action panel.
 The bookmark and its inset plus use a 1px optical correction to share the apparent centerline
 of the circular feedback icons.
 
@@ -2648,7 +2783,12 @@ Fullscreen Metadata & artwork opens a dedicated **IGDB metadata** page with the 
 actions, large fields and explicit controller focus rows. A opens the existing on-screen
 keyboard for either field; secret entry retains its masking.
 
-The separate **PLUGINS** tab shows one card per discovered plugin, with its name, version,
+The separate **PLUGINS** tab starts with a list of names and versions loaded in the current
+session, or an explicit empty state. Desktop and fullscreen use the runtime loaded state,
+so pending enable or disable changes do not change the list until restart.
+Desktop cards stretch across the available pane width up to 1,100 logical pixels and remain
+left-aligned on wider displays, with the version beneath the name
+and an Enabled/Disabled switch at the upper right. The tab shows one card per discovered plugin, with its name, version,
 description, supported features and status. **Open plugins folder** opens the installation
 directory. ZIP packages unpack automatically at startup; users may also place unpacked packages
 there. Failed ZIP imports appear alongside other package diagnostics. Explain that installing and changing enablement requires a restart and that plugins
@@ -2660,7 +2800,7 @@ Optional **Get** links open the provider's HTTPS setup page. **Save settings** p
 fields and clears secret drafts; a blank secret keeps the saved value. Each secret has a
 **Remove saved secret** action, available only when a secret is stored. A polite status line
 reports failures without exposing credentials or claiming that the provider validated them.
-Secrets also clear when leaving the settings surface. **Enable plugin** / **Disable plugin**
+Secrets also clear when leaving the settings surface. The activation switch on desktop and fullscreen
 states the next launch's choice and keeps a visible restart notice while it differs from the
 running state. **Refresh now** is available for enabled, loaded plugins. SteamGridDB uses this
 same generated form for its API key.
@@ -2687,6 +2827,15 @@ off to receive stable releases only.” Both preferences are shared with fullscr
 settings. A polite status line explains checking, download progress, readiness or failure;
 available versions use Data typography. **Check for updates**, **Download update**, **Cancel
 download** and **Restart to update** expose the current operation. Restart is always explicit.
+When a supported update is detected, the desktop title bar shows **Update and restart** in
+neutral chrome, with the shared update status in its tooltip and accessible item status.
+The button stays visible but disabled during download. Activating it downloads and verifies
+the update if needed, then restarts only when preparation succeeds; cancellation or failure
+leaves Winnow open. Fullscreen shows **Update available · Menu** in its header and
+offers the same action in the controller quick menu and Application settings. Both surfaces
+read one shared state and command; background checks never restart the app or move focus.
+Recovery guidance remains in a separate wrapping, polite status line on both Application
+settings surfaces so a later release check cannot replace it with routine download status.
 **Release notes** and **Download in browser** open the official release destinations in the
 system browser; unsupported installations use the browser download path. Fullscreen presents
 the same controls as large ordered rows with its switch tracks, On/Off state and explicit

@@ -2,6 +2,10 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.Headless;
+using Avalonia.Input;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Winnow.App.Design;
@@ -39,7 +43,7 @@ public sealed class FeedCardActionTests
     [AvaloniaTheory]
     [InlineData(420)]
     [InlineData(560)]
-    public void Install_card_keeps_feedback_in_a_separate_vertical_lane(double width)
+    public void Install_card_groups_feedback_beside_primary_action(double width)
     {
         var tile = TileFixture.Tile(DateTime.UtcNow, title: "A long game title that needs installing",
             steamAppId: "123", ownership: new Ownership { ReleaseId = 1, Store = "steam" });
@@ -70,11 +74,60 @@ public sealed class FeedCardActionTests
                 Assert.False(bounds.Intersects(primaryRect));
                 if (previous is { } earlier)
                 {
-                    Assert.Equal(earlier.Left, bounds.Left);
-                    Assert.True(bounds.Top >= earlier.Bottom);
+                    Assert.Equal(earlier.Top, bounds.Top);
+                    Assert.True(bounds.Left >= earlier.Right);
                 }
                 previous = bounds;
             }
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Hero_art_does_not_resize_the_card_or_cover_its_actions(bool feedback)
+    {
+        var tile = TileFixture.Tile(DateTime.UtcNow, title: "Aloft", steamAppId: "123",
+            ownership: new Ownership { ReleaseId = 1, Store = "steam" });
+        var added = 0;
+        tile.OpenDetailsCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() => { });
+        using var model = new FeedCardViewModel(tile, "Last played on 7 Sep 2026.",
+            feedback ? new FeedbackService() : null, _ => added++);
+        var view = new FeedCardView { DataContext = model, Width = 470, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top };
+        var window = new Window { Width = 510, Height = 240, Content = new Border { Padding = new Thickness(16), Child = view } };
+        using var art = new RenderTargetBitmap(new PixelSize(1600, 700));
+        var scene = new Canvas { Width = 1600, Height = 700, Background = Brushes.SteelBlue };
+        scene.Children.Add(new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse("M0,600 L450,170 L800,510 L1200,80 L1600,500 L1600,700 L0,700 Z"), Fill = Brushes.LightSeaGreen });
+        scene.Children.Add(new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse("M0,700 L620,420 L960,610 L1500,300 L1600,700 Z"), Fill = Brushes.DarkSlateGray });
+        scene.Measure(new Size(1600, 700)); scene.Arrange(new Rect(0, 0, 1600, 700)); art.Render(scene);
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
+            var before = view.Bounds.Size;
+            model.Backdrop = art; Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
+            // Let the compositor publish the new window before testing pointer hits.
+            await Task.Delay(40);
+            Dispatcher.UIThread.RunJobs();
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Assert.Equal(before, view.Bounds.Size);
+            var bookmark = view.FindControl<Button>("AddToList")!;
+            var point = bookmark.TranslatePoint(new Point(16, 16), window)!.Value;
+            Assert.True(bookmark.IsEffectivelyVisible);
+            Assert.True(bookmark.IsEffectivelyEnabled);
+            Assert.True(window.InputHitTest(point) is Control hit &&
+                (ReferenceEquals(hit, bookmark) || hit.GetVisualAncestors().Contains(bookmark)),
+                $"Hit {window.InputHitTest(point)} at {point}");
+            window.MouseDown(point, MouseButton.Left); window.MouseUp(point, MouseButton.Left);
+
+            Assert.False(model.IsSetAside);
+            if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
+            {
+                Directory.CreateDirectory(directory); AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                using var frame = window.CaptureRenderedFrame();
+                frame?.Save(Path.Combine(directory, $"feed-card-hero-{(feedback ? "recommendation" : "recent")}.png"));
+            }
+            Assert.Equal(1, added);
         }
         finally { window.Close(); }
     }

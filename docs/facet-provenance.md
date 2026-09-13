@@ -196,6 +196,26 @@ ever be populated from IGDB.
 
 ---
 
+## Release years
+
+Desktop and fullscreen display and filter the primary Work's `first_release_year` through
+the shared `GameTileViewModel`. User edits, explicitly cleared values and IGDB pinning keep
+their existing field provenance. Edition evidence does not rewrite that displayed year.
+
+Matching separately reads `release_year_evidence` (migration 0039). The initial source,
+`steam_original_release_date`, projects the UTC year from a positive numeric
+`release.original_release_date` in the exact Steam listing's cached GetItems body.
+The pinned fixture has 2007 for Team Fortress 2, zero for Dota 2 and no field for Elden Ring;
+the latter two remain unknown. `release.steam_release_date` is never substituted.
+No new endpoint or cache shape is needed because the existing query includes `release`.
+
+`ReceptionSyncService` records these observations for all Steam release targets. Persistence
+and matching both require the recorded app ID to remain attached to the release. Multiple
+applicable observations must agree. Missing or conflicting edition evidence falls back to
+the Work year, then a parsed title year; a user-owned Work year wins, including explicit null.
+The shared desktop/fullscreen review queue receives frozen matching years with their source.
+Existing Work years and unclaimed legacy provenance are preserved without speculative backfill.
+
 ## Reception — ratings, review summaries and screenshots
 
 These are **not facets**: nothing here is a filter value, and none of it reaches

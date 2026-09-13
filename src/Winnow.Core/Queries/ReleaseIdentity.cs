@@ -22,8 +22,19 @@ public sealed record ReleaseIdentity
     /// <summary>The work's title, used when the release row has nothing usable.</summary>
     public required string WorkName { get; init; }
 
-    /// <summary><c>works.first_release_year</c>, or null. Feeds the +/-1-year signal.</summary>
+    /// <summary><c>works.first_release_year</c>, or null. The display/filter value and matching fallback.</summary>
     public int? FirstReleaseYear { get; init; }
+
+    public int? EditionReleaseYear { get; init; }
+    public string? EditionYearSource { get; init; }
+    public string? FirstReleaseYearSource { get; init; }
+
+    /// <summary>User corrections, including an explicit unknown, take precedence over provider evidence.</summary>
+    public bool YearIsUserOwned => FirstReleaseYearSource == FieldSources.User;
+    public int? MatchYear => YearIsUserOwned ? FirstReleaseYear : EditionReleaseYear ?? FirstReleaseYear;
+    public string? MatchYearSource => YearIsUserOwned ? FieldSources.User
+        : EditionReleaseYear is not null ? EditionYearSource
+        : FirstReleaseYear is not null ? "work_first_release_year" : null;
 
     /// <summary><c>works.publisher</c>, or null. Feeds the publisher match signal.</summary>
     public string? Publisher { get; init; }

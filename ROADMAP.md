@@ -37,13 +37,14 @@ hardware validation. The remaining validation is listed in §6.
 | Library | Local Steam, Epic and GOG discovery, optional Steam/Epic connections, manual entries, search, filters and user lists. Steam collections are not imported. |
 | Identity | Exact external IDs resolve automatically. Fuzzy matches require confirmation. Same-game, expansion and variant relations apply immediately through reversible links on desktop and fullscreen. |
 | History | Playtime snapshots, process-based session recording and restart recovery, optional journal notes, Steam history backfill and account-page imports. Unknown history remains unknown. |
-| Recommendations | Explainable owned-game shelves, cold-start recommendations, dismiss/snooze/undo, visible-card impressions, update signals and evidence-based Derelict classification. Offline replay tooling compares tuning over captured database states. |
+| Statistics | Gameplay and Spending views on desktop and fullscreen. Gameplay shows recorded hours, top games, session lengths and current library composition, with store and date controls. Spending shows captured Steam purchases by currency, yearly bars, purchase composition, licence acquisition and transaction insights. Dollar credits share the dollar total; currencies are never converted or combined. |
+| Recommendations | Recently played leads with ten games ordered by recency, outside feedback. Explainable owned-game shelves support cold-start recommendations, dismiss/snooze/undo, visible-card impressions and update signals. Derelict classification remains in the library and is excluded from the feed. Offline replay tooling compares tuning over captured database states. |
 | Game actions | Launch, install and uninstall handoffs. Steam supports direct management routes; Epic and GOG open launcher management where direct uninstall is unavailable. |
 | Metadata and artwork | Optional IGDB, built-in store metadata, cached artwork, user corrections and artwork source preferences. Local provider plugins can add imports, metadata, artwork and shelves. SteamGridDB is bundled separately. |
 | Presentation | Desktop and fullscreen views, controller navigation and text entry, shared themes, separate layout preferences, accessibility and reduced-motion support. |
 | Setup | Optional resumable setup for providers, themes and preferences, available again from Application settings on both surfaces. GOG uses local discovery. |
 | Export | Acquisition CSV with title, store, acquisition date, licence and price paid. Missing values stay blank; recorded prices are cents without a currency. |
-| Distribution | Windows/Linux x64 packages, release checks and draft publication workflow. Update notification and installer-based Windows updating; portable Windows/Linux update recovery is deferred. |
+| Distribution | Windows/Linux x64 packages, release checks and draft publication workflow. Installed Windows updating and portable Windows/Ubuntu update staging, paired backup and journal recovery; shared desktop/fullscreen update-and-restart action. |
 
 ## 4. Excluded and deferred
 
@@ -58,10 +59,10 @@ library matching, mobile, and a 3D shelf view. Fullscreen is a separate TV inter
 | Recommendation research | Acquisition-evidence evaluation (TASK-136), achievement progress (TASK-137), expected-commitment data (TASK-138), and achievement ingestion (TASK-15). New weights need evidence. |
 | Catalogue and identity | Per-edition years (TASK-13), broader GamesDB cross-store automation (TASK-37), and group-header/row actions (TASK-109–110). |
 | Steam collections | Static/dynamic collection import, including account ownership, repeat imports and preservation of Winnow list edits (DRAFT-1). |
-| GOG sign-in | Local Galaxy discovery supplies owned games and available local play facts. Investigate sign-in only if the unverified sessions endpoint adds useful session history (TASK-49). |
+| GOG sign-in | Local Galaxy discovery supplies owned games and available local play facts. The authorized sessions probe returned only aggregates, without dates; sign-in remains deferred unless additional dated history is demonstrated ([evidence](docs/spikes/gog-session-history.md), TASK-49). |
 | Other data research | Steam support-export format and availability (TASK-46). |
 | Navigation and notifications | Windows post-session notification (TASK-108), user-selected destinations for links (TASK-114). |
-| App updates | Recovery for portable Windows and Linux installations (TASK-159). |
+| App updates | Disposable Windows/Ubuntu release-upgrade CI evidence for portable recovery (TASK-159); local Windows engine and presentation tests cover the implementation. |
 
 Unowned-game recommendations are outside the current feed. A later wishlist feature would
 start from titles the user has explicitly selected, rather than a general purchase feed.

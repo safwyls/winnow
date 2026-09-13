@@ -19,18 +19,22 @@ public partial class ApplicationSettingsViewModel : ObservableObject
     private readonly IUriDispatcher? _uris;
     private bool _refreshingUpdate;
     private bool _loading;
+    private Task _linkWrite = Task.CompletedTask;
 
     public ApplicationSettingsViewModel(
         ISettingsRepository? settings = null,
         IStartupRegistration? startup = null,
         IApplicationUpdater? updater = null,
         IUriDispatcher? uris = null,
-        IgdbSettingsViewModel? igdb = null)
+        IgdbSettingsViewModel? igdb = null,
+        IStoreClientAvailability? storeClients = null)
     {
         _settings = settings;
         _startup = startup;
         _updater = updater;
         _uris = uris;
+        LinkDestinationOptions = storeClients?.IsAvailable(GameLink.SteamScheme) == true
+            ? ["In Winnow", "System browser", "Store client"] : ["In Winnow", "System browser"];
         Igdb = igdb ?? new IgdbSettingsViewModel();
         if (_updater is not null)
         {
@@ -51,9 +55,28 @@ public partial class ApplicationSettingsViewModel : ObservableObject
     public string ApplicationVersion => ApplicationBuildInfo.Current.Version;
     public string BuildCommit => ApplicationBuildInfo.Current.Commit;
     public string IntroMessage =>
-        "Manage startup and updates.";
+        "Manage startup, links and updates.";
     public string SegmentLabel => "APPLICATION";
-    public string SegmentTooltip => "Startup, metadata and updates";
+    public string SegmentTooltip => "Startup, links, metadata and updates";
+
+    public IReadOnlyList<string> LinkDestinationOptions { get; }
+    public string LinkDestinationNote => LinkDestinationOptions.Count == 3
+        ? "Winnow reads supported patch notes. Store client opens Steam store pages. Other pages use your browser."
+        : "Winnow reads supported patch notes. Other pages use your browser. Store client is available when Steam is installed on Windows.";
+    [ObservableProperty]
+    public partial int LinkDestinationIndex { get; set; }
+    partial void OnLinkDestinationIndexChanged(int value)
+    {
+        if (_loading || _settings is null || value < 0 || value >= LinkDestinationOptions.Count) return;
+        _linkWrite = SaveLinkDestinationAsync(_linkWrite, (LinkDestination)value);
+        PendingSave = _linkWrite;
+    }
+    private async Task SaveLinkDestinationAsync(Task previous, LinkDestination destination)
+    {
+        await previous;
+        try { await _settings!.SetAsync(GameLinkRouter.SettingKey, GameLinkRouter.Serialize(destination)); Problem = null; }
+        catch { Problem = "Couldn't save the link destination. Try again."; }
+    }
 
     public bool HasUpdater => _updater is not null;
     public string AutomaticUpdatesNote => "Check GitHub Releases and download updates in the background. Restart when you are ready.";
@@ -61,6 +84,10 @@ public partial class ApplicationSettingsViewModel : ObservableObject
     [ObservableProperty] public partial bool AutomaticUpdates { get; set; }
     [ObservableProperty] public partial bool IncludeBetaReleases { get; set; }
     [ObservableProperty] public partial string UpdateStatus { get; private set; } = "Updates are unavailable in this build.";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasUpdateRecoveryStatus))]
+    public partial string? UpdateRecoveryStatus { get; private set; }
+    public bool HasUpdateRecoveryStatus => !string.IsNullOrWhiteSpace(UpdateRecoveryStatus);
     [ObservableProperty] public partial string? AvailableVersion { get; private set; }
     [ObservableProperty] public partial double UpdateProgress { get; private set; }
     [ObservableProperty] public partial bool UpdateBusy { get; private set; }
@@ -68,6 +95,10 @@ public partial class ApplicationSettingsViewModel : ObservableObject
     [ObservableProperty] public partial bool CanCheckUpdate { get; private set; }
     [ObservableProperty] public partial bool CanDownloadUpdate { get; private set; }
     [ObservableProperty] public partial bool CanRestartUpdate { get; private set; }
+    [ObservableProperty] public partial bool HasUpdateAction { get; private set; }
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(UpdateAndRestartCommand))]
+    public partial bool CanUpdateAndRestart { get; private set; }
     [ObservableProperty] public partial bool HasReleaseNotes { get; private set; }
     [ObservableProperty] public partial bool HasManualDownload { get; private set; }
 
@@ -79,6 +110,7 @@ public partial class ApplicationSettingsViewModel : ObservableObject
         try { AutomaticUpdates = snapshot.Automatic; IncludeBetaReleases = snapshot.IncludeBeta; }
         finally { _refreshingUpdate = false; }
         UpdateStatus = snapshot.Status;
+        UpdateRecoveryStatus = snapshot.RecoveryStatus;
         AvailableVersion = snapshot.AvailableVersion;
         UpdateProgress = snapshot.Progress;
         UpdateBusy = snapshot.Busy;
@@ -86,6 +118,8 @@ public partial class ApplicationSettingsViewModel : ObservableObject
         CanCheckUpdate = !snapshot.Busy;
         CanDownloadUpdate = snapshot.CanDownload && !snapshot.Busy;
         CanRestartUpdate = snapshot.CanRestart && !snapshot.Busy;
+        HasUpdateAction = snapshot.CanDownload || snapshot.CanRestart || snapshot.CanCancel;
+        CanUpdateAndRestart = HasUpdateAction && !snapshot.Busy;
         HasReleaseNotes = snapshot.ReleaseUrl is not null;
         HasManualDownload = snapshot.DownloadUrl is not null;
     }
@@ -104,6 +138,15 @@ public partial class ApplicationSettingsViewModel : ObservableObject
     [RelayCommand] private Task CheckUpdateAsync() => RunUpdateAsync(() => _updater?.CheckAsync() ?? Task.CompletedTask);
     [RelayCommand] private Task DownloadUpdateAsync() => RunUpdateAsync(() => _updater?.DownloadAsync() ?? Task.CompletedTask);
     [RelayCommand] private Task RestartUpdateAsync() => RunUpdateAsync(() => _updater?.RestartAsync() ?? Task.CompletedTask);
+    [RelayCommand(CanExecute = nameof(CanUpdateAndRestart))]
+    private Task UpdateAndRestartAsync() => RunUpdateAsync(async () =>
+    {
+        if (_updater is null || _updater.Snapshot.Busy) return;
+        if (_updater.Snapshot.CanDownload) await _updater.DownloadAsync();
+        // A cancelled or failed download must never turn this click into a restart.
+        if (_updater.Snapshot is { CanRestart: true, Busy: false })
+            await _updater.RestartAsync();
+    });
     [RelayCommand] private void CancelUpdate() => _updater?.CancelDownload();
     [RelayCommand] private Task OpenReleaseNotesAsync() => OpenUpdateLinkAsync(_updater?.Snapshot.ReleaseUrl);
     [RelayCommand] private Task OpenManualDownloadAsync() => OpenUpdateLinkAsync(_updater?.Snapshot.DownloadUrl);
@@ -171,7 +214,8 @@ public partial class ApplicationSettingsViewModel : ObservableObject
             var fullscreen = _settings is null
                 ? null
                 : await _settings.GetAsync(StartInFullscreenSettingKey, ct);
-            return (minimize, close, startup, fullscreen);
+            var links = _settings is null ? null : await _settings.GetAsync(GameLinkRouter.SettingKey, ct);
+            return (minimize, close, startup, fullscreen, links);
         }, ct);
 
         _loading = true;
@@ -181,6 +225,8 @@ public partial class ApplicationSettingsViewModel : ObservableObject
             CloseToTray = Parse(stored.close);
             StartWithWindows = stored.startup;
             StartInFullscreen = Parse(stored.fullscreen);
+            var linkIndex = (int)GameLinkRouter.Parse(stored.links);
+            LinkDestinationIndex = linkIndex < LinkDestinationOptions.Count ? linkIndex : 1;
             Problem = null;
         }
         finally

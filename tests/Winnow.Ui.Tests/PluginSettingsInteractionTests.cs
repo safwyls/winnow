@@ -18,6 +18,148 @@ namespace Winnow.Ui.Tests;
 public sealed class PluginSettingsInteractionTests
 {
     [AvaloniaFact]
+    public async Task Desktop_cards_fill_the_pane_and_activation_switch_handles_keyboard_and_save_failure()
+    {
+        var backend = new Backend();
+        var shell = await ShellAsync(backend);
+        var view = new PluginSettingsView { DataContext = shell.PluginSettings };
+        var window = new Window { Width = 1000, Height = 900, Content = view };
+        window.Show();
+        try
+        {
+            var card = Named<Border>(view, "Community artwork");
+            Assert.True(card.Bounds.Width > 900);
+            window.Width = 3456;
+            Dispatcher.UIThread.RunJobs();
+            Assert.InRange(card.Bounds.Width, 1099, 1101);
+            Assert.Equal(24, card.TranslatePoint(default, view)!.Value.X);
+            Capture(window, "desktop-plugin-width-cap");
+            window.Width = 1000;
+            Dispatcher.UIThread.RunJobs();
+            Assert.InRange(card.Bounds.Width, 900, 1000);
+            var title = card.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == "Community artwork");
+            var version = card.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == "1.0.0");
+            Assert.True(version.TranslatePoint(default, card)!.Value.Y >= title.TranslatePoint(default, card)!.Value.Y + title.Bounds.Height);
+            var toggle = Named<ToggleSwitch>(view, "Disable plugin: Community artwork");
+            Assert.True(toggle.IsChecked);
+            toggle.Focus();
+            window.KeyPress(Avalonia.Input.Key.Space, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Space, null);
+            window.KeyRelease(Avalonia.Input.Key.Space, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Space, null);
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(toggle.IsChecked);
+            Assert.False(shell.PluginSettings.Plugins[0].Enabled);
+            Assert.True(shell.PluginSettings.Plugins[0].RestartRequired);
+            backend.FailActivation = true;
+            toggle.Focus();
+            window.KeyPress(Avalonia.Input.Key.Space, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Space, null);
+            window.KeyRelease(Avalonia.Input.Key.Space, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Space, null);
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(toggle.IsChecked);
+            Assert.StartsWith("Could not change this plugin", shell.PluginSettings.Plugins[0].Status);
+            Capture(window, "desktop-plugin-layout");
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Fullscreen_activation_switch_handles_controller_accept()
+    {
+        var shell = await ShellAsync();
+        var plugin = shell.PluginSettings.Plugins[0];
+        using var context = new FullscreenContext(shell.Library, shell.Feed, shell);
+        using var page = new FullscreenPluginSettingsPage(context, plugin);
+        var window = new Window { Content = page, Width = 1920, Height = 1080 };
+        window.Show();
+        try
+        {
+            var toggle = Named<ToggleSwitch>(page, "Disable plugin: Community artwork");
+            toggle.Focus();
+            page.Handle(GamepadButtons.Accept);
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(toggle.IsChecked);
+            Assert.False(plugin.Enabled);
+            Assert.True(plugin.RestartRequired);
+            Capture(window, "fullscreen-plugin-toggle");
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Desktop_lazy_tab_loads_plugins_on_first_open_and_refreshes_when_reopened()
+    {
+        var backend = new RuntimeStateBackend();
+        var shell = await ShellAsync(backend, preload: false);
+        var window = new MainWindow { DataContext = shell, Width = 1200, Height = 800 };
+        window.Show();
+        try
+        {
+            Assert.Empty(shell.PluginSettings.Plugins);
+            shell.ShowPluginSettingsCommand.Execute(null);
+            Dispatcher.UIThread.RunJobs();
+            var view = Assert.Single(window.GetVisualDescendants().OfType<PluginSettingsView>());
+            Assert.Equal(3, shell.PluginSettings.Plugins.Count);
+            Assert.Equal("Active artwork · 2.0", LoadedPluginSummary(view));
+            shell.ShowEnrichmentSettingsCommand.Execute(null);
+            backend.Loaded = false;
+            shell.ShowPluginSettingsCommand.Execute(null);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal("No plugins are loaded in this session.", LoadedPluginSummary(view));
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Fullscreen_loads_plugins_without_desktop_preloading()
+    {
+        var shell = await ShellAsync(new RuntimeStateBackend(), preload: false);
+        using var context = new FullscreenContext(shell.Library, shell.Feed, shell);
+        using var page = new FullscreenSettingsPage(context, "Plugins");
+        var window = new Window { Content = page, Width = 1920, Height = 1080 };
+        window.Show();
+        try
+        {
+            await page.PendingPluginRefresh;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal("Active artwork · 2.0", LoadedPluginSummary(page));
+            Assert.NotNull(Named<Button>(page, "Active artwork"));
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Loaded_plugins_show_runtime_names_and_versions_on_both_surfaces()
+    {
+        var backend = new RuntimeStateBackend();
+        var shell = await ShellAsync(backend);
+        using var context = new FullscreenContext(shell.Library, shell.Feed, shell);
+        var desktop = new PluginSettingsView { DataContext = shell.PluginSettings };
+        var window = new Window { Width = 1200, Height = 800, Content = desktop };
+        window.Show();
+        try
+        {
+            Assert.Equal("Active artwork · 2.0", LoadedPluginSummary(desktop));
+            Assert.Equal(3, shell.PluginSettings.Plugins.Count);
+            Capture(window, "desktop-loaded-plugins");
+            using var fullscreen = new FullscreenSettingsPage(context, "Plugins");
+            window.Content = fullscreen;
+            await fullscreen.PendingPluginRefresh;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal("Active artwork · 2.0", LoadedPluginSummary(fullscreen));
+            Assert.NotNull(Named<Button>(fullscreen, "Waiting for restart"));
+            Capture(window, "fullscreen-loaded-plugins");
+
+            backend.Loaded = false;
+            await shell.PluginSettings.LoadAsync();
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal("No plugins are loaded in this session.", LoadedPluginSummary(fullscreen));
+            window.Content = desktop;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal("No plugins are loaded in this session.", LoadedPluginSummary(desktop));
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
     public async Task Zip_installation_help_and_archive_errors_are_visible_on_both_surfaces()
     {
         var shell = await ShellAsync(new ArchiveIssueBackend());
@@ -257,6 +399,17 @@ public sealed class PluginSettingsInteractionTests
         finally { window.Close(); }
     }
 
+    private static string? LoadedPluginSummary(Control root)
+    {
+        var summary = root.GetVisualDescendants().OfType<TextBlock>()
+            .Single(control => AutomationProperties.GetAutomationId(control) == "LoadedPluginsSummary");
+        var peer = Avalonia.Automation.Peers.ControlAutomationPeer.CreatePeerForElement(summary);
+        Assert.NotNull(peer);
+        Assert.Equal(summary.Text, peer.GetName());
+        Assert.Equal(AutomationLiveSetting.Polite, AutomationProperties.GetLiveSetting(summary));
+        return summary.Text;
+    }
+
     private static T Named<T>(Control root, string name) where T : Control => root.GetVisualDescendants()
         .OfType<T>().Single(control => AutomationProperties.GetName(control) == name);
 
@@ -268,11 +421,11 @@ public sealed class PluginSettingsInteractionTests
         frame!.Save(Path.Combine(directory, name + ".png"));
     }
 
-    private static async Task<MainWindowViewModel> ShellAsync(IPluginSettingsBackend? backend = null)
+    private static async Task<MainWindowViewModel> ShellAsync(IPluginSettingsBackend? backend = null, bool preload = true)
     {
         var preview = PreviewData.Shell;
         var plugins = new PluginSettingsViewModel(backend ?? new Backend());
-        await plugins.LoadAsync();
+        if (preload) await plugins.LoadAsync();
         return new(preview.Library, preview.MergeQueue, preview.Stores, preview.Appearance,
             preview.Feed, preview.AccountStats, preview.LibrarySettings,
             enrichmentSettings: new EnrichmentSettingsViewModel(new(), plugins));
@@ -291,8 +444,24 @@ public sealed class PluginSettingsInteractionTests
         public Task RefreshAsync(string pluginId, CancellationToken ct = default) => throw new NotSupportedException();
     }
 
+    private sealed class RuntimeStateBackend : IPluginSettingsBackend
+    {
+        public bool Loaded { get; set; } = true;
+        public string UserPluginDirectory => "plugins";
+        public Task<IReadOnlyList<PluginSettingsSnapshot>> LoadAsync(CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<PluginSettingsSnapshot>>([
+                new("active", "Active artwork", "", "2.0", "Artwork", false, Loaded, Loaded, "", []),
+                new("pending", "Waiting for restart", "", "1.0", "Metadata", true, false, true, "", []),
+                new("failed", "Failed plugin", "", "3.0", "Metadata", true, false, true, "Could not start.", [])]);
+        public Task SaveAsync(string pluginId, IReadOnlyDictionary<string, string> values, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task RemoveSecretAsync(string pluginId, string key, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task SetEnabledAsync(string pluginId, bool enabled, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task RefreshAsync(string pluginId, CancellationToken ct = default) => throw new NotSupportedException();
+    }
+
     private sealed class Backend : IPluginSettingsBackend
     {
+        public bool FailActivation { get; set; }
         public string UserPluginDirectory => "plugins";
         private bool _enabled = true;
         private bool _stored = true;
@@ -306,7 +475,7 @@ public sealed class PluginSettingsInteractionTests
         public Task RemoveSecretAsync(string pluginId, string key, CancellationToken ct = default)
         { _stored = false; return Task.CompletedTask; }
         public Task SetEnabledAsync(string pluginId, bool enabled, CancellationToken ct = default)
-        { _enabled = enabled; return Task.CompletedTask; }
+        { if (FailActivation) throw new IOException(); _enabled = enabled; return Task.CompletedTask; }
         public Task RefreshAsync(string pluginId, CancellationToken ct = default) => Task.CompletedTask;
     }
 

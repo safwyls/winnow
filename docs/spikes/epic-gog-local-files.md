@@ -14,6 +14,9 @@ credentials.
 This study records local paths, formats and identity coverage observed on the capture date.
 Sanitized fixtures live in `tests/fixtures/epic/` and `tests/fixtures/gog/`.
 
+The later [authenticated GOG session-history probe](gog-session-history.md) compares
+the remote route with these local play facts; it found aggregates without dated sessions.
+
 **Read-only, both stores.** §4.1's "v1 is read-only against all store files" applies in
 full. Section 11 below documents a case where an apparently read-only SQLite open **writes** to
 the store's directory — do not skip it.

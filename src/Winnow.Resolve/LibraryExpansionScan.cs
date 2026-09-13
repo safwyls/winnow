@@ -421,7 +421,8 @@ public sealed class LibraryExpansionScan
             {
                 WorkId = WorkId,
                 Title = title,
-                ReleaseYear = source.FirstReleaseYear,
+                ReleaseYear = source.MatchYear,
+                SuppressTitleYearFallback = source.YearIsUserOwned,
                 Publisher = source.Publisher,
             };
 

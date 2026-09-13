@@ -163,7 +163,7 @@ public sealed class FeedService : IFeedService
     public async Task RecordSurfacedAsync(
         long releaseId, string shelfId, CancellationToken ct = default)
     {
-        if (_feedback is null)
+        if (_feedback is null || shelfId == ShelfIds.RecentlyPlayed)
         {
             return;
         }
@@ -349,6 +349,7 @@ public sealed class FeedService : IFeedService
             shelf.Items.Take(VisiblePerShelf).Select(Translate).ToList())
         {
             Reserve = shelf.Items.Skip(VisiblePerShelf).Select(Translate).ToList(),
+            SupportsFeedback = shelf.SupportsFeedback,
         };
 
     private static FeedItem Translate(Recommendation item)

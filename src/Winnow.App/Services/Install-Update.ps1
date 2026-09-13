@@ -9,6 +9,26 @@ function Quote-NativeArgument([string]$value) {
     return '"' + [regex]::Replace([regex]::Replace($value, '(\\*)"', '$1$1\"'), '(\\+)$', '$1$1') + '"'
 }
 
+function Wait-UpdateBinariesUnlocked([string]$Directory, [string]$CancelPath, [int]$TimeoutMilliseconds = 5000) {
+    # Process exit can precede release of transient Windows sharing locks. Persistent
+    # locks still stop installation; permission and other IO errors are not retried.
+    $timer = [Diagnostics.Stopwatch]::StartNew()
+    foreach ($file in (Get-ChildItem -LiteralPath $Directory -Recurse -File | Where-Object { $_.Extension -in '.exe', '.dll' })) {
+        while ($true) {
+            if (Test-Path -LiteralPath $CancelPath) { throw 'Update cancelled.' }
+            try {
+                $probe = [IO.File]::Open($file.FullName, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+                $probe.Dispose()
+                break
+            } catch [IO.IOException] {
+                $code = $_.Exception.HResult -band 0xffff
+                if ($code -notin 32, 33 -or $timer.ElapsedMilliseconds -ge $TimeoutMilliseconds) { throw }
+                Start-Sleep -Milliseconds 100
+            }
+        }
+    }
+}
+
 try {
     $handoff = Get-Content -LiteralPath $ManifestPath -Raw | ConvertFrom-Json
     $parent = Get-Process -Id $handoff.ProcessId -ErrorAction Stop
@@ -40,10 +60,7 @@ try {
     }
     if (Test-Path -LiteralPath (Join-Path $workDirectory 'cancel')) { throw 'Update cancelled.' }
     # Refuse a second copy or locked binary; do not ask Restart Manager to close applications.
-    Get-ChildItem -LiteralPath $handoff.InstallDirectory -Recurse -File | Where-Object { $_.Extension -in '.exe', '.dll' } | ForEach-Object {
-        $probe = [IO.File]::Open($_.FullName, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
-        $probe.Dispose()
-    }
+    Wait-UpdateBinariesUnlocked $handoff.InstallDirectory (Join-Path $workDirectory 'cancel')
     $setupArgs = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/NOCLOSEAPPLICATIONS', '/NOFORCECLOSEAPPLICATIONS', '/NORESTARTAPPLICATIONS', '/RESTARTEXITCODE=3010',
         ('/DIR=' + (Quote-NativeArgument $handoff.InstallDirectory)), ('/LOG=' + (Quote-NativeArgument (Join-Path $workDirectory 'installer.log'))))
     $setup = Start-Process -FilePath $handoff.Installer -ArgumentList $setupArgs -WindowStyle Hidden -PassThru -Wait

@@ -15,8 +15,11 @@ public enum SteamAccountPageFileOutcome
     /// <summary>The file was read but its content is not a recognisable account page.</summary>
     NotRecognized = 3,
 
-    /// <summary>A file of this page kind was already loaded from an earlier path.</summary>
+    /// <summary>The same licence document or a second purchase-history document was already loaded.</summary>
     Duplicate = 4,
+
+    /// <summary>A saved page identifies a different account from other selected pages.</summary>
+    AccountMismatch = 5,
 }
 
 /// <summary>The outcome of loading one user-picked file.</summary>
@@ -62,7 +65,7 @@ public interface ISteamAccountPageFileLoader
     /// <summary>
     /// Reads each path, identifies which account page it is from its content,
     /// and assembles the set. Per-file outcomes, so one bad path does not fail
-    /// the rest, and the first successfully identified file of each kind wins.
+    /// the rest. Licence pages combine; the first purchase-history file wins.
     /// </summary>
     Task<SteamAccountPageLoadResult> LoadAsync(
         IEnumerable<string> paths, CancellationToken ct = default);

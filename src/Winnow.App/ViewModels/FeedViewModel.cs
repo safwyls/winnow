@@ -347,7 +347,7 @@ public partial class FeedViewModel : ObservableObject, IDisposable
 
         CandidateCountText = snapshot.CandidateCount.ToString("N0");
         HasCandidates = !snapshot.Failed && snapshot.CandidateCount > 0;
-        ConfidenceNote = snapshot.Shelves.Count > 0 && snapshot.Shelves.All(s => s.Id == "derelict")
+        ConfidenceNote = snapshot.Shelves.Count > 0 && snapshot.Shelves.All(s => !s.SupportsFeedback)
             ? null
             : NoteFor(snapshot.Confidence, snapshot.Failed);
 
@@ -384,7 +384,7 @@ public partial class FeedViewModel : ObservableObject, IDisposable
                 // Drop items with no matching tile (no cover to draw).
                 if (_tiles?.TileForOwnership(item.OwnershipId) is { } tile)
                 {
-                    cards.Add(NewCard(tile, item.Reason, generation, item.ReleaseId));
+                    cards.Add(NewCard(tile, item.Reason, generation, item.ReleaseId, shelf.SupportsFeedback));
                 }
             }
 
@@ -405,10 +405,10 @@ public partial class FeedViewModel : ObservableObject, IDisposable
             // spoken for.
             foreach (var item in shown.Concat(reserve))
             {
-                _spent.Add(item.ReleaseId);
+                if (shelf.SupportsFeedback) _spent.Add(item.ReleaseId);
             }
 
-            var built = new FeedShelfViewModel(shelf.Id, shelf.Title, shelf.Blurb, cards, reserve);
+            var built = new FeedShelfViewModel(shelf.Id, shelf.Title, shelf.Blurb, cards, reserve, shelf.SupportsFeedback);
             Offer(built);
             Shelves.Add(built);
         }
@@ -453,7 +453,7 @@ public partial class FeedViewModel : ObservableObject, IDisposable
     {
         if (!ShowShelves || card.Generation != _generation) return;
         var shelf = Shelves.FirstOrDefault(s => s.Cards.Contains(card));
-        if (shelf is null) return;
+        if (shelf is null || !shelf.SupportsFeedback) return;
         var day = DateOnly.FromDateTime(_clock.GetUtcNow().UtcDateTime);
         if (_observedDay != day)
         {
@@ -474,9 +474,10 @@ public partial class FeedViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>Builds one card, stamped with its pass and wired to this screen.</summary>
-    private FeedCardViewModel NewCard(GameTileViewModel tile, string reason, long generation, long releaseId)
+    private FeedCardViewModel NewCard(GameTileViewModel tile, string reason, long generation, long releaseId,
+        bool supportsFeedback = true)
     {
-        var card = new FeedCardViewModel(tile, reason, _feed, _lists is null ? null : BeginAddToList)
+        var card = new FeedCardViewModel(tile, reason, supportsFeedback ? _feed : null, _lists is null ? null : BeginAddToList)
             { Generation = generation, SurfacingReleaseId = releaseId };
 
         card.VerdictChanged += OnCardVerdictChanged;
@@ -493,7 +494,7 @@ public partial class FeedViewModel : ObservableObject, IDisposable
     /// <summary>Tells a shelf's cards whether the shelf can still answer a dismissal.</summary>
     private static void Offer(FeedShelfViewModel shelf)
     {
-        var available = shelf.HasReserve;
+        var available = shelf.SupportsFeedback && shelf.HasReserve;
         foreach (var card in shelf.Cards)
         {
             card.CanReplace = available;
@@ -709,9 +710,7 @@ public partial class FeedViewModel : ObservableObject, IDisposable
                 continue;
             }
 
-            // Lifecycle facts may legitimately repeat across games; holding them back
-            // for prose variety would prevent a review shelf from replenishing.
-            if (shelf.Id != "derelict" && Spoken(shelf, item.Reason))
+            if (Spoken(shelf, item.Reason))
             {
                 continue;
             }
@@ -842,7 +841,7 @@ public partial class FeedViewModel : ObservableObject, IDisposable
         foreach (var shelf in Shelves)
         {
             var incoming = snapshot.Shelves.FirstOrDefault(s => s.Id == shelf.Id);
-            if (incoming is null)
+            if (!shelf.SupportsFeedback || incoming is null || !incoming.SupportsFeedback)
             {
                 continue;
             }

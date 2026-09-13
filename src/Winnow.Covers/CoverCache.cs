@@ -164,12 +164,9 @@ public sealed class CoverCache : ICoverCache, IDisposable, IAsyncDisposable
         var ct = load.Cancellation.Token;
         try
         {
-            CoverArt art;
-            await _decodeGate.WaitAsync(ct).ConfigureAwait(false);
-            try
+            var art = await _pipeline.GetAsync(slot.Key, slot.Width, slot.Layers, _decodeGate, bitmaps =>
             {
-                using var bitmaps = await _pipeline.GetAsync(slot.Key, slot.Width, slot.Layers, ct).ConfigureAwait(false);
-                if (bitmaps is null) return null;
+                using var owned = bitmaps;
                 ct.ThrowIfCancellationRequested();
                 Bitmap? vivid = null;
                 Bitmap? floor = null;
@@ -177,15 +174,13 @@ public sealed class CoverCache : ICoverCache, IDisposable, IAsyncDisposable
                 {
                     vivid = _convert(bitmaps.Vivid);
                     floor = bitmaps.Floor is null ? null : _convert(bitmaps.Floor);
-                    art = new CoverArt(vivid, floor, _post);
+                    var converted = new CoverArt(vivid, floor, _post);
                     vivid = floor = null;
+                    return converted;
                 }
                 finally { vivid?.Dispose(); floor?.Dispose(); }
-            }
-            finally
-            {
-                _decodeGate.Release();
-            }
+            }, ct).ConfigureAwait(false);
+            if (art is null) return null;
 
             // Four bytes a pixel, once per layer this slot asked for. The
             // decoded height is read off the bitmap rather than derived from

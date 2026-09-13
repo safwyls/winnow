@@ -34,8 +34,8 @@ public sealed class SoftMatcher
 
         var titleSimilarity = Similarity(leftTitle, rightTitle);
 
-        var leftYear = left.ReleaseYear ?? leftTitle.ParsedYear;
-        var rightYear = right.ReleaseYear ?? rightTitle.ParsedYear;
+        var leftYear = left.EffectiveYear(leftTitle.ParsedYear);
+        var rightYear = right.EffectiveYear(rightTitle.ParsedYear);
         int? yearDelta = leftYear is not null && rightYear is not null
             ? Math.Abs(leftYear.Value - rightYear.Value)
             : null;

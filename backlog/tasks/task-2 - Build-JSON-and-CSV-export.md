@@ -1,10 +1,11 @@
 ---
 id: TASK-2
 title: Define and deliver portable library export beyond acquisition CSV
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@codex'
 created_date: '2026-08-29 21:51'
-updated_date: '2026-09-11 13:59'
+updated_date: '2026-09-11 19:09'
 labels:
   - data
   - infra
@@ -31,6 +32,12 @@ Provide portable Winnow library data beyond the existing schema-v2 acquisition C
 - [ ] #4 Additional CSV views have a documented analysis scope and do not promise lossless round-trip or identical coverage to JSON.
 - [ ] #5 Desktop and fullscreen expose consistent export behavior, with cancellation and write-failure coverage; the existing acquisition CSV remains supported.
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+Recommended scope is export only, with no general importer or lossless round-trip claim. Define JSON schema v1 for works, releases and external identifiers; ownerships with store/account/source provenance and nullable acquisition facts; user identity links and preferences; lists and membership; captured playtime and sessions with journal fields; and account-scoped achievement evidence. Exclude credentials, arbitrary settings, raw account-page/HTTP captures, filesystem locations, cover/cache bytes and plugin code. Use explicit allowlisted fields, UTC timestamps, preserved nulls and stable exported identifiers, with a documented additive-version policy. Add separate library and session CSV analysis views with documented flattening; retain acquisition CSV v2 unchanged. Share file-picker, cancellation and write-failure handling across desktop and fullscreen. Add temporary-SQLite serialization and real-surface command tests. Await the requested export-only versus importer scope decision before implementing this transfer contract.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

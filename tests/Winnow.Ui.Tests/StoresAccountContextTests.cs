@@ -1,4 +1,5 @@
 using Avalonia.Automation;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
@@ -23,6 +24,73 @@ namespace Winnow.Ui.Tests;
 
 public sealed class StoresAccountContextTests
 {
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Consent_explains_scope_and_keeps_purchase_permission_optional(bool fullscreen)
+    {
+        var stores = new StoresViewModel(new Connections());
+        using var context = Context(stores);
+        using var page = new FullscreenSteamConsentPage(context, () => { });
+        stores.OpenSignInConsentCommand.Execute(null);
+        var view = new StoresView { DataContext = stores };
+        var window = new Window { Width = 1200, Height = 900, Content = fullscreen ? page : view };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            AssertText(window, stores.SteamSignInGivesMessage);
+            AssertText(window, stores.SteamSignInCostsMessage);
+            AssertText(window, stores.CapturePurchaseHistoryMessage);
+            var permission = Assert.Single(window.GetVisualDescendants().OfType<Control>(), control =>
+                control.IsEffectivelyVisible && AutomationProperties.GetName(control) == stores.CapturePurchaseHistoryLabel);
+            if (fullscreen)
+            {
+                Assert.Equal("Off", AutomationProperties.GetItemStatus(permission));
+                permission.Focus();
+                page.Handle(GamepadButtons.Accept);
+                Assert.Equal("On", AutomationProperties.GetItemStatus(permission));
+                Assert.False(stores.CapturePurchaseHistory);
+            }
+            else Assert.False(Assert.IsType<CheckBox>(permission).IsChecked);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false, "Steam", StorePlatform.Steam)]
+    [InlineData(false, "Epic", StorePlatform.Epic)]
+    [InlineData(false, "GOG", StorePlatform.Gog)]
+    [InlineData(true, "Steam", StorePlatform.Steam)]
+    [InlineData(true, "Epic", StorePlatform.Epic)]
+    [InlineData(true, "GOG", StorePlatform.Gog)]
+    public async Task Optional_provider_states_are_named_and_neutral_on_both_surfaces(bool fullscreen, string platform, StorePlatform selected)
+    {
+        var stores = new StoresViewModel(new Connections()) { SelectedPlatform = selected };
+        using var context = Context(stores);
+        using var page = new FullscreenPlatformPage(context, platform);
+        var view = new StoresView { DataContext = stores };
+        var window = new Window { Width = 1920, Height = 1080, Content = fullscreen ? page : view };
+        try
+        {
+            await stores.RefreshCommand.ExecuteAsync(null);
+            window.Show(); await page.PendingRefresh; Dispatcher.UIThread.RunJobs();
+            var label = platform switch { "Steam" => stores.SteamStatusLabel, "Epic" => stores.EpicStatusLabel, _ => stores.GogStatusLabel };
+            var status = Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(), text => text.IsEffectivelyVisible && text.Text == label);
+            Assert.Equal(label, ControlAutomationPeer.CreatePeerForElement(status)!.GetName());
+            Assert.True(status.Bounds.Width > 0);
+            Assert.False(stores.SteamStatusNeedsAttention);
+            Assert.False(stores.EpicStatusNeedsAttention);
+            if (!fullscreen)
+            {
+                var pill = Assert.IsType<Border>(status.Parent);
+                Assert.Contains("provider-status", pill.Classes);
+                Assert.DoesNotContain("attention", pill.Classes);
+                Assert.Equal(platform == "GOG", pill.Classes.Contains("live"));
+            }
+        }
+        finally { window.Close(); }
+    }
+
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
@@ -156,7 +224,8 @@ public sealed class StoresAccountContextTests
         var settings = new SettingsRepository(db.Factory);
         var acquisitions = new AccountAcquisitionRepository(db.Factory);
         var observation = new OwnershipAcquisitionObservation { OwnershipId = 1, AccountRef = "10001",
-            AcquiredAt = new DateTime(2020, 1, 2, 12, 0, 0, DateTimeKind.Utc), LicenseType = "retail", Source = "steam", CapturedAt = DateTime.UtcNow };
+            AcquiredAt = new DateTime(2020, 1, 2, 12, 0, 0, DateTimeKind.Utc), LicenseType = "retail", Source = "steam", CapturedAt = DateTime.UtcNow,
+            PricePaidCents = 0, PriceSource = PriceSources.SteamAccountHistory };
         await acquisitions.TryAppendAsync(observation);
         await acquisitions.TryAppendAsync(observation with { AccountRef = "10002", AcquiredAt = new DateTime(2024, 1, 2, 12, 0, 0, DateTimeKind.Utc), LicenseType = "gift" });
         await settings.SetAsync(AccountScope.SettingKey, AccountScope.Own);
@@ -206,6 +275,7 @@ public sealed class StoresAccountContextTests
         using var services = new ServiceCollection().AddSingleton<IAccountStatsRepository>(repository).BuildServiceProvider();
         using var context = Context(new StoresViewModel(new Connections()), services: services);
         using var page = new FullscreenLibrarySummaryPage(context);
+        page.Stats.IsSpending = true;
         var window = new Window { Width = 1920, Height = 1080,
             Content = fullscreen ? page : new AccountStatsView { DataContext = model } };
         try

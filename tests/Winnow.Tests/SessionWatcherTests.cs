@@ -16,6 +16,40 @@ public sealed class SessionWatcherTests
 {
     private static readonly DateTime T0 = SessionWatcherHarness.Origin;
 
+    [Theory]
+    [InlineData("setup", "setup.exe")]
+    [InlineData("install", "install.exe")]
+    [InlineData("EasyAntiCheat_EOS_Setup", "EasyAntiCheat_EOS_Setup.exe")]
+    [InlineData("wine64", "__Installer/custom-bootstrap.exe")]
+    [InlineData("Game", "Prerequisites/Game.exe")]
+    [InlineData("Game", "redist/Game.exe")]
+    public async Task Installers_cannot_create_sessions_even_with_a_launch_intent_and_compatibility_prefix(
+        string processName, string executable)
+    {
+        using var harness = new SessionWatcherHarness();
+        var game = await harness.AddGameAsync("Installing Game", "Game.exe", executable);
+        Assert.True(harness.Declare(game.OwnershipId));
+        var compatPath = $"/home/test/.steam/steam/steamapps/compatdata/{game.SteamAppId}";
+        harness.Processes.Start(910, processName, Path.Combine(game.InstallPath, executable.Replace('/', Path.DirectorySeparatorChar)), T0,
+            steamCompatibilityDataPath: compatPath);
+
+        var installerTick = await harness.TickAtAsync(T0.AddSeconds(5));
+        Assert.Equal(0, installerTick.Started);
+        Assert.Null(harness.Intents.Attribute(
+            Path.Combine(game.InstallPath, executable.Replace('/', Path.DirectorySeparatorChar)),
+            processName, T0.AddSeconds(5)));
+        Assert.Empty(await harness.SessionsForAsync(game.OwnershipId));
+
+        // Installing must not block a real launch that follows it.
+        harness.Processes.Start(911, "Game", Path.Combine(game.InstallPath, "Game.exe"), T0.AddSeconds(10));
+        Assert.Equal(1, (await harness.TickAtAsync(T0.AddSeconds(15))).Started);
+        harness.Processes.Exit(911, T0.AddMinutes(10));
+        await harness.TickAtAsync(T0.AddMinutes(11));
+        var session = Assert.Single(await harness.SessionsForAsync(game.OwnershipId));
+        Assert.Equal(T0.AddSeconds(10), session.StartedAt);
+        Assert.Equal(590, session.DurationSeconds);
+    }
+
     [Fact]
     public async Task A_Proton_loader_is_attributed_by_its_compatibility_prefix()
     {

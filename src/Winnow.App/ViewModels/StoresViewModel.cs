@@ -1025,7 +1025,7 @@ public partial class StoresViewModel : ObservableObject
         "Always on. Reads owned games, playtime, last-played and install state from Galaxy.";
 
     public string GogNoSignInMessage =>
-        "Not needed. The local database has everything.";
+        "Not needed. Winnow reads the local Galaxy database.";
 
     public string GogStatusLabel => "LOCAL FILES";
 

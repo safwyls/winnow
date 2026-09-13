@@ -135,12 +135,9 @@ public partial class GameTileViewModel : ObservableObject
         // database. Nothing here invents a stand-in — the detail view simply
         // does not render a row it has no fact for.
         //
-        // `work` is the primary work on a collapsed tile. Title, cover,
-        // year, publisher and summary come from it and the members never
-        // vote, because the primary is the one thing about the group the
-        // user decided (the KEEP choice on the Same Game card). A tile that
-        // took a majority or a first-seen value would show something nobody
-        // chose.
+        // `work` is the canonical root. A preferred header store may supply
+        // the title, cover and primary entry, but scalar metadata remains on
+        // the root the metadata editor and IGDB pin operations address.
         ReleaseYear = work?.FirstReleaseYear;
         NameIsProvisional = work?.NameIsProvisional ?? false;
         Summary = string.IsNullOrWhiteSpace(work?.Summary) ? null : work!.Summary;
@@ -558,6 +555,10 @@ public partial class GameTileViewModel : ObservableObject
     /// visible card.
     /// </summary>
     internal ICoverLeases? Leases { get; }
+
+    internal string? BackgroundUrl { get; init; }
+    internal ArtworkPreferences? BackdropPreferences { get; init; }
+    internal Func<CancellationToken, Task<IReadOnlyList<WorkImages>>>? LoadBackdropImages { get; init; }
 
     /// <summary>
     /// The ramp every surface showing this game resolves dormancy through.

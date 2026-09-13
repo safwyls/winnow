@@ -48,7 +48,7 @@ public sealed class FullscreenPlatformPage : FullscreenPage
         }
         if (platform == "Steam")
         {
-            Text(nameof(stores.SteamStatusLabel));
+            Text(nameof(stores.SteamStatusLabel), resource: "TextDim");
             Text(nameof(stores.SteamSessionHealthMessage), nameof(stores.SteamHasSession), "TextDim");
             Text(nameof(stores.SteamSignedInAccountText), nameof(stores.ShowSteamSignedInAccount), "TextDim");
             Text(nameof(stores.SteamConnectionMessage));
@@ -78,10 +78,12 @@ public sealed class FullscreenPlatformPage : FullscreenPage
         }
         else if (platform == "Epic")
         {
-            Text(nameof(stores.EpicStatusLabel));
+            Text(nameof(stores.EpicStatusLabel), resource: "TextDim");
             Text(nameof(stores.EpicAccountLine), nameof(stores.ShowEpicAccountLine));
             Text(nameof(stores.EpicAnonymousMessage), nameof(stores.ShowEpicAnonymousLine));
             Text(nameof(stores.EpicLocalMessage), resource: "TextDim");
+            Text(nameof(stores.EpicGapMessage), nameof(stores.EpicCanSignIn), "TextDim");
+            Text(nameof(stores.EpicConsentPromiseMessage), nameof(stores.EpicCanSignIn), "TextDim");
             Text(nameof(stores.EpicSessionNotPersistedMessage), nameof(stores.EpicSessionNotPersisted), "Amber");
             Text(nameof(stores.EpicProblemMessage), nameof(stores.ShowEpicProblem), "Amber");
             Add("Sign out of Epic", () => context.ShowActions(stores.EpicSignOutMessage,
@@ -91,7 +93,7 @@ public sealed class FullscreenPlatformPage : FullscreenPage
             Label(signIn, nameof(stores.EpicSignInButtonText));
             Bind(signIn, IsEnabledProperty, nameof(stores.EpicCanSignIn));
         }
-        else { Text(nameof(stores.GogLocalMessage)); Text(nameof(stores.GogNoSignInMessage)); }
+        else { Text(nameof(stores.GogStatusLabel), resource: "TextDim"); Text(nameof(stores.GogLocalMessage)); Text(nameof(stores.GogNoSignInMessage)); }
         if (platform != "GOG") body.Children.Add(FullscreenUi.Text("The sign-in window supports controller field navigation and text entry. Provider challenges may still ask for a phone or pointer.", 28, "TextDim"));
         body.Children.Add(_notice); Add("Back", context.Back);
         Content = FullscreenUi.Scroll(body); SetFocusRows(controls.ToArray());
@@ -123,7 +125,14 @@ public sealed class FullscreenSteamConsentPage : FullscreenPage
         var stores = context.Shared.Stores;
         var capture = false;
         var permission = FullscreenUi.Button(stores.CapturePurchaseHistoryLabel + "     Off", () => { });
-        permission.Click += (_, _) => { capture = !capture; permission.Content = stores.CapturePurchaseHistoryLabel + (capture ? "     On" : "     Off"); };
+        Avalonia.Automation.AutomationProperties.SetName(permission, stores.CapturePurchaseHistoryLabel);
+        Avalonia.Automation.AutomationProperties.SetItemStatus(permission, "Off");
+        permission.Click += (_, _) =>
+        {
+            capture = !capture;
+            permission.Content = stores.CapturePurchaseHistoryLabel + (capture ? "     On" : "     Off");
+            Avalonia.Automation.AutomationProperties.SetItemStatus(permission, capture ? "On" : "Off");
+        };
         var status = FullscreenUi.Text("", 28, "TextDim");
         _cancel = FullscreenUi.Button(stores.SignInConsentCancelText, context.Back);
         var proceed = FullscreenUi.Button(stores.SignInConsentContinueText, async () =>

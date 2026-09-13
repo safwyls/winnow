@@ -54,6 +54,14 @@ public static class Program
     /// mid-run.
     /// </summary>
     private static Mutex? SingleInstance;
+    private static IDisposable? UpdateLease;
+    private static string? UpdateJournalPath;
+    private static bool PortableLeaseAvailable = true;
+
+    internal static void CompleteUpdateStartup()
+    {
+        if (UpdateJournalPath is { } journal) Winnow.Update.PortableUpdateEngine.MarkReady(journal);
+    }
 
     /// <summary>
     /// Where this run's database, covers, themes and WebView2 profile live, and
@@ -80,12 +88,35 @@ public static class Program
             AppHost = null;
             SingleInstance?.Dispose();
             SingleInstance = null;
+            UpdateLease?.Dispose();
+            UpdateLease = null;
             Shutdown.Dispose();
         }
     }
 
     private static void Run(string[] args)
     {
+        // A second library in the same portable installation must not race replacement.
+        if (File.Exists(Path.Combine(AppContext.BaseDirectory, "release-info.json")) &&
+            !UpdateInstallation.IsManagedLinux(AppContext.BaseDirectory) &&
+            !new WindowsUpdateInstaller().IsSupported)
+        {
+            try { UpdateLease = Winnow.Update.PortableUpdateEngine.AcquireApplicationLease(AppContext.BaseDirectory); }
+            catch (Exception ex) when ((ex is IOException or UnauthorizedAccessException) &&
+                !File.Exists(Winnow.Update.PortableUpdateEngine.GetJournalPath(AppContext.BaseDirectory)))
+            {
+                // Read-only portable media can still use release links and manual updates.
+                PortableLeaseAvailable = false;
+            }
+            var pendingJournal = Winnow.Update.PortableUpdateEngine.GetJournalPath(AppContext.BaseDirectory);
+            if (File.Exists(pendingJournal))
+            {
+                var phase = Winnow.Update.PortableUpdateEngine.ReadJournal(pendingJournal).Phase;
+                if (phase is not (Winnow.Update.UpdatePhase.Staged or Winnow.Update.UpdatePhase.Ready or
+                    Winnow.Update.UpdatePhase.Restored or Winnow.Update.UpdatePhase.Installed))
+                    throw new IOException("An interrupted portable update needs recovery. Keep the library and update workspace; follow the portable recovery instructions in the release documentation before starting Winnow again.");
+            }
+        }
         var builder = Host.CreateApplicationBuilder(args);
 
         // Credentials that must not go in the repo, for people who would rather
@@ -154,6 +185,20 @@ public static class Program
         }
 
         DiagnosticLogging.Configure(builder.Logging, DataLocation.Root);
+
+        if (UpdateLease is not null)
+        {
+            var journal = Winnow.Update.PortableUpdateEngine.GetJournalPath(AppContext.BaseDirectory);
+            if (File.Exists(journal))
+            {
+                var state = Winnow.Update.PortableUpdateEngine.ReadJournal(journal);
+                if (state.Phase is not (Winnow.Update.UpdatePhase.Staged or Winnow.Update.UpdatePhase.Ready or Winnow.Update.UpdatePhase.Restored))
+                {
+                    Winnow.Update.PortableUpdateEngine.ValidateStartup(journal, AppContext.BaseDirectory, DataLocation.Root);
+                    UpdateJournalPath = journal;
+                }
+            }
+        }
 
         // Both flags mean "leave this database alone", so every writer has to
         // honour them — otherwise rows appear fifteen minutes into UI work
@@ -455,6 +500,9 @@ public static class Program
         services.AddSingleton<IWorkRepository, WorkRepository>();
         services.AddSingleton<IIgdbObservationWriter, IgdbObservationWriter>();
         services.AddSingleton<IReleaseRepository, ReleaseRepository>();
+        services.AddSingleton<IReleaseYearEvidenceRepository, ReleaseYearEvidenceRepository>();
+        services.AddSingleton<IReleaseEditionEvidenceRepository, ReleaseEditionEvidenceRepository>();
+        services.AddSingleton<IGroupHeaderPreferenceRepository, GroupHeaderPreferenceRepository>();
         services.AddSingleton<IOwnershipRepository, OwnershipRepository>();
         services.AddSingleton<ISteamInstallStateRepository, SteamInstallStateRepository>();
         services.AddSingleton<IGogInstallStateRepository, GogInstallStateRepository>();
@@ -489,6 +537,8 @@ public static class Program
         // release and never a blended percentage, and this repository offers no
         // way to produce one.
         services.AddSingleton<IAchievementQueryRepository, AchievementQueryRepository>();
+        services.AddSingleton<IAchievementRepository, AchievementRepository>();
+        services.AddSingleton<SteamAchievementSyncService>();
 
         // Hiding is per work, not per ownership. The exclusion is one NOT EXISTS
         // inside LibraryQueryRepository's bucket query, so the grid, the list
@@ -553,6 +603,7 @@ public static class Program
         // so the UI reading it can never see a stale aggregate.
         services.AddSingleton<IAccountFactRepository, AccountFactRepository>();
         services.AddSingleton<IAccountStatsRepository, AccountStatsRepository>();
+        services.AddSingleton<IGameplayStatsRepository, GameplayStatsRepository>();
 
         // M8's feedback loop (recommendation-engine.md §6b), over migration
         // 0011. It is registered beside the other repositories rather than with
@@ -630,6 +681,7 @@ public static class Program
         services.AddSingleton(sp => new LibraryRefreshPipeline(
         [
             new("Steam playtime history", async ct => { await sp.GetRequiredService<ISteamPlaytimeBackfill>().BackfillAsync(ct); }, PublishAfter: true),
+            new("Steam achievements", async ct => { await sp.GetRequiredService<SteamAchievementSyncService>().SyncAsync(ct); }, PublishAfter: true),
             new("GamesDB identity links", async ct => { await sp.GetRequiredService<GamesDbIdentitySyncService>().SyncAsync(ct); }, PublishAfter: true),
             new("Titles and metadata", async ct => { await sp.GetRequiredService<EnrichmentSyncService>().EnrichAsync(ct); }, IgdbRelevant: true),
             new("Filter facets", async ct => { await sp.GetRequiredService<FacetSyncService>().SyncAsync(ct); }, IgdbRelevant: true),
@@ -653,6 +705,7 @@ public static class Program
             sp.GetRequiredService<TimeProvider>(),
             refresh: ct => RefreshLibraryAsync(sp, ct)));
         services.AddHostedService<RemoteOwnershipSchedulerService>();
+        services.AddHostedService<SteamAchievementSchedulerService>();
         services.AddHostedService(sp => new LifecycleSchedulerService(
             sp.GetRequiredService<LifecycleSyncService>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<RemoteOwnershipSchedulerOptions>>(),
@@ -729,6 +782,7 @@ public static class Program
         services.AddGamesDbIdentityGraph();
         services.AddSingleton<EnrichmentLookupPlanner>();
         services.AddSingleton<GamesDbIdentitySyncService>();
+        services.AddSingleton<IReleaseEditionEvidenceAcquirer, ReleaseEditionEvidenceAcquirer>();
 
         // §4.2. A second INGEST source, not a name fallback: localconfig.vdf
         // only records games that have been played, so the never-launched
@@ -862,12 +916,11 @@ public static class Program
         services.AddSingleton<ISteamAccountPageFilePicker, TopLevelSteamAccountPageFilePicker>();
         services.AddSingleton<SteamAccountImportViewModel>();
 
-        // The STATS screen. It reads IAccountStatsRepository (registered above)
-        // and nothing else — no importer, no harvester, no parser — which is
-        // §5.1's rule that the UI reads the database and raises commands. The
-        // screen refreshes on open rather than caching, so a singleton holds no
-        // stale figures; it is one only because the shell is.
+        // Desktop Stats shares the shell's lifetime and refreshes on open.
+        // Fullscreen constructs its own presentation state over the same query repositories.
         services.AddSingleton<AccountStatsViewModel>();
+        services.AddSingleton<GameplayStatsViewModel>();
+        services.AddSingleton<StatsViewModel>();
 
         // Appearance. The service is a singleton because it owns the ONE live
         // resource dictionary; a second instance would be a second opinion
@@ -898,14 +951,18 @@ public static class Program
         services.AddSingleton<FirstRunSetupViewModel>();
         services.AddHttpClient<GitHubReleaseClient>(client => client.Timeout = Timeout.InfiniteTimeSpan)
             .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
-        services.AddSingleton<IUpdateInstaller, WindowsUpdateInstaller>();
+        services.AddSingleton<IUpdateInstaller>(_ =>
+        {
+            var installed = new WindowsUpdateInstaller();
+            return installed.IsSupported ? installed : new PortableUpdateInstaller(AppContext.BaseDirectory, data.Root, PortableLeaseAvailable);
+        });
         services.AddSingleton(sp => new ApplicationUpdater(
             sp.GetRequiredService<GitHubReleaseClient>(), sp.GetRequiredService<ISettingsRepository>(),
             sp.GetRequiredService<IUpdateInstaller>(), Path.Combine(data.Root, "updates", "downloads"),
             ApplicationBuildInfo.Current.Version,
             System.Runtime.InteropServices.RuntimeInformation.OSArchitecture != System.Runtime.InteropServices.Architecture.X64 ? ""
-                : OperatingSystem.IsWindows() ? sp.GetRequiredService<IUpdateInstaller>().IsSupported ? "win-x64-setup.exe" : "win-x64.zip"
-                : OperatingSystem.IsLinux() ? AppContext.BaseDirectory.StartsWith("/opt/", StringComparison.Ordinal) ? "linux-x64.deb" : "linux-x64.tar.gz" : "",
+                : OperatingSystem.IsWindows() ? sp.GetRequiredService<IUpdateInstaller>() is WindowsUpdateInstaller ? "win-x64-setup.exe" : "win-x64.zip"
+                : OperatingSystem.IsLinux() ? UpdateInstallation.IsManagedLinux(AppContext.BaseDirectory) ? "linux-x64.deb" : "linux-x64.tar.gz" : "",
             () => Dispatcher.UIThread.Post(() => (Application.Current as App)?.ExitForUpdate()),
             sp.GetRequiredService<ILogger<ApplicationUpdater>>()));
         services.AddSingleton<IApplicationUpdater>(sp => sp.GetRequiredService<ApplicationUpdater>());
@@ -983,6 +1040,8 @@ public static class Program
         // firing the URI, so a warm store client cannot start the game before
         // the watcher has been told whose it is.
         services.AddSingleton<IUriDispatcher, TopLevelUriDispatcher>();
+        services.AddSingleton<IStoreClientAvailability, StoreClientAvailability>();
+        services.AddSingleton<IGameLinkRouter, GameLinkRouter>();
         services.AddSingleton<GameLaunchService>();
 
         // §5.2's journal prompt, and §9 pitfall 7's constraint on it: OFF unless
@@ -996,6 +1055,8 @@ public static class Program
         // host that skipped them still loads a library and still launches games;
         // registered here because the shell renders them.
         services.AddSingleton<LaunchStatusViewModel>();
+        services.AddSingleton<WindowsJournalNotification>();
+        services.AddSingleton<IJournalNotification>(sp => sp.GetRequiredService<WindowsJournalNotification>());
         services.AddSingleton<JournalPromptViewModel>();
 
         // The §5.1 seam in front of migration 0012, and the only App type that

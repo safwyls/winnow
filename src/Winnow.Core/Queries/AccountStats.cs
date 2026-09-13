@@ -47,8 +47,9 @@ public sealed record AccountBiggestPurchase
 /// <para>Three caveats apply to every member:</para>
 /// <list type="number">
 /// <item><description>Every amount is as-displayed cents from one locale
-/// sample. Nothing is converted; <see cref="IsSingleCurrency"/> is how a
-/// caller checks the totals are not a mix.</description></item>
+/// sample. Nothing is converted. Root amount fields are compatibility sums
+/// and must not be displayed when <see cref="IsSingleCurrency"/> is false;
+/// use <see cref="CurrencyGroups"/> for currency-specific totals instead.</description></item>
 /// <item><description>A captured page may be a partial view of the account.
 /// The licences page paginates and the history page load-mores. Every figure
 /// is "of what was captured", not "of the account".</description></item>
@@ -61,6 +62,16 @@ public sealed record AccountBiggestPurchase
 public sealed record AccountStats
 {
     public required string Source { get; init; }
+
+    /// <summary>
+    /// Separate aggregates for each known currency. Groups contain no nested groups;
+    /// unknown-currency records remain in capture counts and never enter these totals.
+    /// Steam dollar-credit annotations share the dollar group. No conversion is performed.
+    /// </summary>
+    public IReadOnlyList<AccountStats> CurrencyGroups { get; init; } = [];
+
+    /// <summary>The group's currency, or null when the capture has no single currency.</summary>
+    public string? CurrencySymbol => IsSingleCurrency && Currencies.Count == 1 ? Currencies[0].Symbol : null;
 
     /// <summary>Distinct captured account identities across both fact tables.</summary>
     public int KnownAccountCount { get; init; }
@@ -176,8 +187,8 @@ public sealed record AccountStats
     public int TransactionsWithoutDate { get; init; }
 
     /// <summary>
-    /// Currency symbols observed, so a caller can tell whether summing was
-    /// meaningful. No conversion is attempted anywhere.
+    /// Currency labels used for grouping, with Steam dollar-credit annotations
+    /// normalized to dollars. No conversion is attempted anywhere.
     /// </summary>
     public IReadOnlyList<AccountCurrencyUse> Currencies { get; init; } = [];
 

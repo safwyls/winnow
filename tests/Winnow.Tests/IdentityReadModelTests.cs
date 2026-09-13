@@ -296,7 +296,7 @@ public sealed class IdentityReadModelTests
     /// zero.
     /// </summary>
     [Fact]
-    public async Task A_release_with_no_achievements_carries_no_achievement_row()
+    public async Task An_unsupported_release_distinguishes_unknown_progress_from_zero()
     {
         using var fixture = new ReadModelFixture();
         var steam = await fixture.SeedAsync("Prey", minutes: 300, lastPlayed: Now.AddDays(-30));
@@ -311,7 +311,7 @@ public sealed class IdentityReadModelTests
 
         var rows = library.Details!.Coverage!.Rows;
         Assert.True(rows.Single(r => r.StoreBadge == "STEAM").HasAchievements);
-        Assert.False(rows.Single(r => r.StoreBadge == "EPIC").HasAchievements);
+        Assert.Equal("Not supported", rows.Single(r => r.StoreBadge == "EPIC").Achievements!.CountText);
     }
 
     /// <summary>
@@ -688,12 +688,16 @@ public sealed class IdentityReadModelTests
         }
 
         /// <summary>
-        /// Nothing ingests achievements yet, so the rows are written straight
-        /// into the §6.2 tables the reader reads.
+        /// Explicit per-account evidence keeps the two platform fixture percentages independent.
         /// </summary>
         public async Task SeedAchievementsAsync(long releaseId, int total, int unlocked)
         {
+            await new SettingsRepository(_db.Factory).SetAsync(SteamOwnedAccount.RefSettingKey, "12345");
             using var lease = _db.Factory.Lease();
+            await Dapper.SqlMapper.ExecuteAsync(lease.Connection, """
+                INSERT INTO achievement_observations(release_id,account_ref,availability,attempted_at,schema_at,progress_at)
+                VALUES(@releaseId,'12345',3,@at,@at,@at);
+                """, new { releaseId, at = DateTime.UtcNow }, lease.Transaction);
             for (var i = 0; i < total; i++)
             {
                 var key = $"ach_{releaseId}_{i}";
@@ -705,8 +709,8 @@ public sealed class IdentityReadModelTests
                 if (i < unlocked)
                 {
                     await Dapper.SqlMapper.ExecuteAsync(lease.Connection, """
-                        INSERT INTO achievement_unlocks (release_id, provider_key, unlocked_at)
-                        VALUES (@releaseId, @key, @at);
+                        INSERT INTO account_achievement_unlocks (release_id, provider_key, account_ref, unlocked_at)
+                        VALUES (@releaseId, @key, '12345', @at);
                         """,
                         new { releaseId, key, at = Now.AddDays(-10) },
                         lease.Transaction);

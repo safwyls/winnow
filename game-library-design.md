@@ -242,8 +242,10 @@ stored locally.
   high-precision join and the backbone of entity resolution. It also resolves GOG ids. It does
   **not** resolve Epic catalog ids: IGDB stores Epic *offer* and *page* ids instead, and a
   catalog-id lookup returns nothing.
-- **`game_versions` exposes release editions** (Skyrim, Special Edition, Anniversary). This is
-  the abstraction the Release layer needs. Do not reinvent it.
+- **An IGDB edition is a `games.id` with `version_parent` and `version_title`.**
+  `game_versions` groups a main game and its edition game IDs; its own ID is not one edition's
+  identity. Automatic linking requires a positive parent different from the edition game ID
+  and a nonempty version title, independently mapped from each release's native store ID.
 - A title search is the `search "…"` clause on the same `games` endpoint. It rides its own
   query body and its own cache namespace rather than widening the shared metadata query, so a
   400 costs the search alone. The term is user-typed free text, sanitized into the quoted
@@ -263,6 +265,13 @@ stored locally.
   beyond their TTL when credentials are absent or refetch fails; reading them never refreshes
   their timestamps. A stale miss has no such authority. Unsupported future versions and
   game payloads carrying another ID are ignored; a successful fresh answer replaces the old one.
+- Edition lookups use `external_games` with exact source and UID correlation, in the separate
+  `igdb-editions-v1` provider with payload version 1 and the existing 30-day TTL. They accept
+  one distinct explicit edition game per UID; conflicting game IDs, parent/title values or
+  malformed correlated rows cannot qualify. Complete empty answers are cached as Missing;
+  ordinary games are NotEdition. Failed or uncorrelatable responses remain unresolved.
+  This path accepts only current, complete, matching-version payloads with no future
+  timestamp. It never upgrades a legacy external mapping or serves expired positive evidence.
 - The shared `games` query carries `screenshots` and `artworks` as separate image arrays.
   Each row retains `image_id`, `width`, `height`, `alpha_channel` and `animated`; artworks also
   retain `image_type.name`. Dimensions and suitability metadata inform backdrop selection;
@@ -445,6 +454,21 @@ The shared acquisition reader uses only matching account observations in the fil
 aggregate presentation uses the earliest acquisition date and withholds conflicting licence or
 price values. Legacy ownership acquisition columns cannot supply a known account's facts.
 
+Saved-file imports combine all selected licence pages and deduplicate identical observations
+across overlapping pages; purchase history uses the first selected history file. Per-file
+results distinguish loaded, duplicate, unreadable and conflicting-account inputs. A saved
+`g_steamID` marker can refuse a visibly mixed-account selection but never authenticates or
+assigns the saved facts: account provenance remains unknown, and files without such markers
+cannot establish that they came from the same account. The picker explains that files must
+come from one account. Both desktop and fullscreen use this loader and importer.
+
+For saved licence pages, complete coverage requires contiguous advertised ranges from 1
+through a consistent total, with no failed inputs. Overlaps do not fill gaps. A single page
+without pagination retains the existing page-size caution; several pages without usable
+ranges remain unverified. Rendered row counts may differ from Steam's advertised licence
+count, so row counts never prove completion. Embedded-session captures retain their observed
+paginator-walk contract.
+
 The minted token lives about a day. The refresh token lasts roughly 207 days when the user
 chose remember-me, and is spent against `/jwt/finalizelogin`. A bad token returns a hard 401,
 where a bad API key returns a silent 200 with an empty envelope.
@@ -453,6 +477,14 @@ where a bad API key returns a silent 200 with an empty envelope.
 data underdetermines it: bundles appear as a single line item for N games, and third-party
 keys from Humble, Fanatical and the rest never appear in Steam's spending data at all, which
 is exactly the population with large libraries and unplayed piles.
+
+A known zero total on an eligible single-item, non-refunded Purchase fills an unknown
+ownership acquisition price just like a positive total. Missing or negative totals, bundles,
+gifts, in-game purchases and refund rows never supply that price. Account provenance and
+conflict suppression apply equally to zero; an existing price is never overwritten. The
+transaction fact always retains its parsed total. Acquisition CSV writes known zero as `0`
+and missing price as an empty cell. Desktop and fullscreen details continue to show the
+acquisition date and licence, without a per-game price or an inferred free-game label.
 
 #### Rules governing the account-stats figures
 
@@ -464,20 +496,24 @@ Unknown-account records remain a separate provenance group. When known and unkno
 coexist, they may describe the same transactions: money totals are withheld and counts describe
 captured records. Records are never reassigned or deleted by guessing which account supplied them.
 
-- When a capture holds more than one currency, or transactions with no currency symbol,
-  money totals are withheld and only counts are shown. Amounts are stored exactly as the page
-  displayed them; nothing is converted or added across currencies.
+- Money totals are grouped by currency, never converted or added across currencies. Steam's
+  `$credit` annotation is dollar credit, so the statistics query groups it with `$`, including
+  previously imported records. Stored source labels and import fingerprints remain unchanged.
+  Transactions without a currency remain in captured-record counts; they do not suppress
+  totals for known currencies or contribute to a known currency's money totals.
 - Wallet top-ups are not spend. Money reaches Steam either as a direct payment or as a
   top-up that later pays for products, and counting both would count the same money twice.
   Wallet credit is reported as its own fact and never as part of spend. What a redeemed code
-  cost is not on the page.
+  cost is not on the page. A wallet balance change supplies the redemption figure only;
+  a partial wallet payment never substitutes for a missing product total.
 - A bundle's total price is a real fact; the per-game split is not. Dividing by item count
   and weighting by market price are both defensible and both wrong, so no per-game price is
   computed or shown.
 - Only rows that rendered a discount carry a list price, and most purchases carry none. The
   discount figure is the difference on those rows and is never a total-savings figure.
-- The biggest transaction is the largest single transaction by price, not the most ever paid
-  for one game; a bundle is one transaction covering several items.
+- The biggest transaction is the largest single transaction within the selected currency,
+  not the most ever paid for one game; a bundle is one transaction covering several items.
+  Amounts in different currencies are never ranked against each other.
 - A refund and the purchase it reverses are two different rows, and a capture may hold either
   or both. The two figures are reported side by side and are never added together; reversal
   rows are never subtracted twice.
@@ -573,6 +609,11 @@ absence still reconciles known registry installations on the next successful loc
   games.
 - Local GOG titles carry the installer's locale, so a Polish install of GWENT reports a Polish
   title. `GamePieces.title` from Galaxy is canonical.
+- GOG sign-in remains deferred on desktop and fullscreen. An authorized probe of
+  `gameplay.gog.com` returned only `time_sum` aggregates, including for releases with
+  nonzero time, and no dated sessions to add to local facts. See the
+  [dated session-history evidence](docs/spikes/gog-session-history.md). Other response
+  variants and services remain unverified.
 
 **Built-in storefront client credentials.** Epic authentication uses the first complete
 credential pair from saved settings, `Epic:ClientId` / `Epic:ClientSecret` configuration,
@@ -608,6 +649,19 @@ HTTP policy as the bulk response. Accept one distinct safe `productHome` slug; o
 and ambiguous answers yield no link. A null namespace or null/empty mappings is a cached
 negative result. GraphQL errors or malformed envelopes retain a prior answer. The bulk map
 keeps precedence when it later includes the namespace.
+
+For edition evidence, the resolved slug locates
+`GET https://store-content.ak.epicgames.com/api/en-US/content/products/<slug>`.
+Its CMS pages supply a native Epic offer/page ID only when the page namespace, item namespace,
+catalog item ID and artifact AppName exactly match the stored launch triple and `hasItem`
+is true. An offer also needs its own matching namespace and `hasOffer`. A title or GamesDB
+counterpart ID never supplies this mapping. Duplicate/malformed fields and conflicting item
+identities cannot qualify. CMS responses use `epic-edition-v1:<slug>` in `storefront-v1`, the
+same bounded transport and a 24-hour lifetime. Expired or future-dated evidence requires a
+new valid response; transport or malformed-response failures yield no usable edition
+evidence. HTTP 403/404 cache an empty answer for that lifetime. The ordinary storefront-link
+cache keeps its existing stale-data policy. Measured source fields and fixture coverage are
+recorded in `docs/spikes/native-edition-evidence.md`.
 
 ---
 
@@ -803,7 +857,9 @@ Shutdown refuses new admissions, cancels and drains work, then clears the LRU an
 the pipeline. Outstanding leases keep their pixels valid until released; cancelled work
 cannot publish new decoded art after shutdown begins.
 The decode concurrency bound includes conversion into Avalonia bitmaps, so native and UI
-pixel allocations cannot outgrow it while waiting for publication. A failed second layer
+pixel allocations cannot outgrow it while waiting for publication. Network waits do not
+hold decode slots: artwork already on disk can load while other games await downloads.
+A failed second layer
 releases the first layer at either stage. Cancellation callbacks run outside the cache lock;
 their exceptions are logged and cannot interrupt cleanup or replace a caller's cancellation.
 A lease returns the exact art retained by its slot, including when another waiter replaces
@@ -865,6 +921,10 @@ HTTP 404 records a missing asset; transport and service failures do not record a
 Downloads happen on demand, without changing stored game metadata or requiring an API key.
 
 Controller input lives in `Winnow.App.Services`, independent of ingest and process monitoring.
+Fullscreen action pages retain their navigation-stack identity but render in the shell's
+edge overlay. The underlying page stays attached with input disabled, preserving its loaded
+state and scroll position. Dismissal removes the overlay and restores the invoking control;
+choosing an action dismisses before invoking it so a nested tool follows the normal page stack.
 The window polls a read-only source at 33 ms while open. Windows loads XInput from the system
 directory; Linux reads nonblocking joydev events using kernel-reported button and axis maps.
 Discovery retries every two seconds. Battery readings are optional and queried every thirty
@@ -879,9 +939,26 @@ visible release. Changing week or section cancels obsolete reads; loading older 
 selection, and failed reads offer retry without dropping committed rows. Returning from a
 note editor retains loaded pages and refreshes the saved note through `ISessionRepository`.
 Desktop and fullscreen details capture identity context on the dispatcher, read their history
-snapshot on a worker, and publish only for the current uncancelled request. Account summaries
+snapshot on a worker, and publish only for the current uncancelled request. Gameplay statistics
+capture ownership IDs and resolved game IDs from `LibraryViewModel.AllTiles`, which already
+applies library visibility and identity rules. Temporary search and facet selections do not
+silently change this population. `IGameplayStatsRepository` returns bounded aggregates for
+the selected store and half-open UTC interval. Local date boundaries define the period bins.
+Completed valid sessions contribute their stored duration in proportion to overlap with each
+bin; exact duplicate evidence counts once per ownership. Top games fold the selected store's
+sessions by the supplied resolved game ID. Session-length bands and the median use full
+durations of completed sessions that started within the period. Open, invalid and future-ended
+sessions do not contribute hours. Cumulative store counters are never added to these totals.
+Concurrent games contribute independent game-hours, and stored sessions do not identify the
+player account. Current library composition comes from the same scoped tiles and is labeled
+as current rather than historical. Each surface owns its `StatsViewModel` and gameplay filter
+state, reads on a worker, and cancels or ignores obsolete requests.
+
+Account summaries
 reuse the currency-safe `AccountStatsViewModel` with independent presentation state and worker
-reads. The measured bounds and remaining layout costs are recorded in
+reads. `AccountStatsDashboard` renders the shared chart projections with separate desktop and
+fullscreen sizing; selecting a currency updates the money charts and detailed figures together.
+The measured bounds and remaining layout costs are recorded in
 `docs/spikes/large-history-read-responsiveness.md`. Manual-game and identity tools construct their own
 `LibrarySettingsViewModel` and `MergeQueueViewModel` from DI; editor state and focus do not
 leak into desktop tools. Shared settings remain common application state. Both surfaces use
@@ -918,6 +995,19 @@ Programmatic controller input obeys the host's input-disabled state during token
 Provider-specific CAPTCHA, third-party sign-in and phone approval remain external validation
 boundaries. The Windows-only WebView2 availability rules remain unchanged.
 
+`IGameLinkRouter` applies `application.link_destination` (`in-app`, `browser`, or `store`)
+to game-detail reading links on both surfaces. It revalidates `GameLink` before dispatch.
+In-app reading retains `PatchNotesPolicy` unchanged; unsupported pages and unavailable or
+refused readers use the system browser. The only alternative native reading route is a
+canonical HTTPS Steam store app page to `steam://store/<appid>`, with a registered Windows
+protocol-handler executable verified through `AssocQueryStringW`. No Epic or GOG web-to-client
+route is assumed. Missing or refused clients fall back to the browser. The setting offers
+Store client only when Steam is available; a previously saved unavailable selection displays
+System browser without rewriting the stored preference. Each click rechecks availability.
+Explicit launcher actions preserve their validated native URI on every platform. Desktop
+details show fallback/failure status; fullscreen uses its shared notice. Update-download and
+provider-setup links retain their explicit browser destinations.
+
 ### 5.2 Session detection
 
 **Process watching** is the shipped mechanism and needs no setup. A launch-option wrapper
@@ -925,6 +1015,12 @@ boundaries. The Windows-only WebView2 availability rules remain unchanged.
 but not built.
 
 Two tiers. **Polling is for discovery only, never for exit detection.**
+
+Install actions dispatch to the store without declaring a gameplay launch intent. Known
+installers, prerequisite tools and other non-game helpers are excluded both during executable
+indexing and before process attribution, including launch-intent and Proton compatibility
+fallbacks. Installation alone must not create a session or advance Last played; desktop and
+fullscreen share this boundary. Store-imported play dates remain separate evidence.
 
 *Tier 1 — discovery, polled at 5s.* Enumerate pids and image names, and nothing else. On Windows
 that is one `NtQuerySystemInformation(SystemProcessInformation)` snapshot walked into a reusable
@@ -1037,15 +1133,21 @@ queue is where soft matches are cleared; a hard external-id join is not a soft m
 the shared ownership-refresh pipeline used at startup, on scheduled passes and after account
 changes. The lookup planner retains a graph answer only when it matches the requested Epic
 artifact and has a game ID. A numeric Steam or GOG counterpart already in the library can
-join through a reversible `same_game` link only when both referenced releases have the same
-positive `IgdbVersionId`. Unknown or conflicting versions remain reviewable; a game-level
-reference or similar title alone cannot establish edition equivalence.
+join through a reversible `same_game` link only when independent native-store observations
+map both releases to the same explicit IGDB edition game, parent and version title. Steam
+and GOG use their own exact external IDs; Epic uses only CMS-correlated offer/page IDs.
+All current native identifiers on a participating release must be accounted for. Multiple
+Epic IDs may include a complete Missing answer, but every positive answer must agree and an
+unanswered, ordinary-game or ambiguous alias cannot be silently ignored. Unknown or
+conflicting editions remain reviewable; game-level references and similar titles cannot
+establish edition equivalence.
 
-The link records the graph game ID, store IDs, release IDs and version evidence. Existing
-groups keep their representative when a singleton joins them. Ordinary launcher ingestion
-does not currently populate `IgdbVersionId`, so most imported pairs remain unresolved rather
-than being automatically linked. Logs distinguish observed counterparts, unresolved edition
-evidence, refused links and created links. Broader edition-evidence acquisition remains TASK-37.
+The link records the graph game ID, store IDs, release IDs and both native observations.
+Existing groups keep their representative when a singleton joins them. The legacy
+`releases.igdb_version_id` column supplies no automatic-link authority and is not backfilled.
+Logs distinguish observed pairs, eligible pairs, created links, unresolved evidence,
+conflicting editions and protected/changed identities. Eligibility is a source outcome,
+not a target queue size; unavailable CMS or IGDB edition mappings remain unresolved.
 
 `external_ids` remains globally keyed by `(provider, provider_id)`. No key is copied onto
 another release, and no work, release, ownership or history row is collapsed. A live identity
@@ -1055,8 +1157,9 @@ No fuzzy title evidence enters this automatic path.
 
 Rejected pairs, active metadata pins, expansion/variant membership and explicit separation
 history prevent automatic linking. A separated group's members remain available for manual
-linking. Repository checks revalidate release IDs, version evidence, external IDs and expected
-same-game roots inside the link transaction, so a changed mapping or user decision made while
+linking. Repository checks revalidate release IDs, persisted edition evidence, cached source
+payload hashes, evidence expiry, external IDs and expected same-game roots inside the link
+transaction, so a changed mapping or user decision made while
 the background lookup is running cannot be overwritten. Ordinary group reparenting is not
 a separation. Repeated passes create no extra links. Desktop and fullscreen share this
 pipeline and the identity-aware library refresh.
@@ -1115,10 +1218,19 @@ the running executable. On explicit restart, an external helper verifies and loc
 payload, waits for process exit after normal host shutdown, checks for locked binaries,
 then runs Setup without force-closing apps or rebooting Windows. It relaunches with the
 selected data directory. Failure logs describe manual recovery; there is no automatic
-rollback to a binary that may predate database migrations. Portable and Linux distributions
-use the release-check and browser-download path pending TASK-159; package-manager-owned
-files are never overwritten by the updater. `docs/releases.md` owns the support matrix,
-release workflow, and recovery instructions.
+rollback to a binary that may predate database migrations.
+
+Portable Windows and Ubuntu 24.04 archives use `PortableUpdateInstaller` and the separate
+`Winnow.Update` engine/`Winnow.Update.Helper` executable. The engine stages validated archives
+beside the installation, backs up SQLite after shutdown, journals directory replacement,
+and preserves the selected data directory even when it lives within the portable folder.
+Installation and library guards exclude competing Winnow processes during replacement.
+Startup records possible migration before database initialization and acknowledges readiness
+after host and Avalonia initialization. Interrupted replacement can recover before migration;
+after migration may have started, restoring the paired database and binaries requires an
+explicit recovery command. Desktop and fullscreen consume the same recovery snapshot and
+update-and-restart action. Package-manager-owned files are never overwritten by the updater.
+`docs/releases.md` owns the support matrix, release workflow, and recovery instructions.
 
 ---
 
@@ -1206,6 +1318,12 @@ is not repaired automatically.
 works(id, igdb_id UNIQUE, igdb_mapping_revision, name, sort_name,
       first_release_year, summary, cover_url, background_url)
 releases(id, work_id FK, igdb_version_id, name, platform, edition_note)
+release_year_evidence(release_id FK, source, source_id, year,
+                      PRIMARY KEY(release_id, source, source_id))
+group_header_preferences(work_id PK FK, preferred_store NULL, revision)
+release_edition_evidence(id, release_id FK, work_id FK, provider, provider_id,
+                         edition_game_id, version_parent_id, version_title,
+                         sources_json, valid_until, observed_at)
 external_ids(release_id FK, provider, provider_id, PRIMARY KEY(provider, provider_id))
   -- provider ∈ {steam, gog, epic, igdb} or plugin:<id>
 
@@ -1237,6 +1355,10 @@ manual_entry_identifiers(id, ownership_id FK manual_entries ON DELETE CASCADE,
 -- Achievements: per-release, never merged across platforms
 achievements(release_id FK, provider_key, name, description, hidden, global_pct)
 achievement_unlocks(release_id FK, provider_key, unlocked_at)
+  -- legacy unknown-account facts, never assigned to the currently selected account
+account_achievement_unlocks(release_id FK, provider_key, account_ref, unlocked_at)
+achievement_observations(release_id FK, account_ref, availability, attempted_at,
+                         schema_at, progress_at, global_at)
 
 -- Update tracking
 update_events(id, release_id FK, kind, build_id, occurred_at, title, url, raw_json)
@@ -1279,6 +1401,59 @@ metadata_cache(provider, provider_id, payload_json, fetched_at, PRIMARY KEY(prov
 settings(key, value)
 ```
 
+`release_edition_evidence` (migration 0042) records validated native-store observations
+without changing canonical Work metadata or globally unique external IDs. `edition_game_id`
+is an explicit IGDB game, never the ID of a `game_versions` grouping. Its positive parent
+must differ from that game ID; its title must be nonempty. Source-generated JSON holds
+provider/cache-key/SHA-256 references. Epic observations include both local and remote launch
+cache inputs (including an absent payload), the exact CMS page and every answered native
+IGDB lookup. A newly present preferred launch source therefore invalidates an older plan.
+The validity deadline is the earliest input deadline. Exact repeat observations reuse their
+row; refreshed or changed observations retain separate history. Recording and linking each
+revalidate the current release/work/store key and source hashes in a write transaction.
+Only evidence acquired during the current pass can qualify a pair; retained historical rows
+never restore eligibility after an unanswered refresh. Desktop and fullscreen read the same
+reversible identity and preserve per-release details and Separate again.
+
+`group_header_preferences` (migration 0041) stores a preferred header store independently
+of identity links. A choice is anchored to the same-game root at the time it is saved.
+Reads resolve that anchor through current same-game links; the highest revision wins when
+groups combine. An explicit null means Automatic and overrides older inherited choices.
+Retraction leaves preferences on their original anchors, so a separated group can recover
+its previous choice. Re-ingest never rewrites these preferences. Writes validate that the
+target is still a group root and that a selected store has an ownership in that group.
+
+Desktop and fullscreen share header selection: prefer a currently available member on the
+saved store, then the root's available entry, then the lowest work ID. Within a matching
+work, the preferred store's entry leads. The choice supplies header title, cover and primary
+store entry only; canonical identity, Work metadata, metadata editing, groups, lists and
+undo continue to use the identity root. Unavailable saved stores remain visible as unavailable
+in Merges and fall back automatically until an ownership returns or the user chooses Automatic.
+Resolved strips stay keyed by identity act for Separate again; their preferred header may
+come from another current member of the same group. Pending-proposal platform preferences
+remain separate and never overwrite a saved group choice.
+
+`works.first_release_year` remains the shared display and filter year for desktop and
+fullscreen, with its existing field-source and IGDB-pin rules. Edition matching uses
+separate `release_year_evidence` observations (migration 0039), never a backfill of Work
+dates. Each year is in 1–9999. The initial source is `steam_original_release_date`, keyed
+by the exact Steam app ID and read from `release.original_release_date` on that listing.
+Only positive Unix timestamps within the supported date range qualify; absent, zero or
+malformed dates remain unknown. `steam_release_date` is a store arrival date and is not a
+substitute. The library-wide reception pass reads this field from existing Steam caches,
+including fully enriched works. Repeated identical observations do not rewrite rows.
+
+Evidence is applicable only while its release owns that exact external ID. Conflicting
+applicable years supply no edition year. Soft matching and expansion detection prefer an
+applicable edition year, then the Work year, then a parsed title year. A user-owned Work
+year takes precedence over those sources, including a deliberately cleared value that
+disables all year fallback. Soft-match snapshots retain the selected year's source;
+inherited Work dates are labeled `work_first_release_year`, never edition evidence.
+Provider observations do not change Work fields, their provenance, or IGDB pins. A pin
+still replaces the Work metadata the user selected; independent Steam evidence remains
+available for matching. A release year alone does not establish edition equivalence for
+automatic cross-store links.
+
 The three rating sources in `work_ratings` are stored apart and never blended; a source with
 no figure gets no row. `label` is Steam's own words ("Very Positive"), stored verbatim rather
 than re-derived from the percentage. `work_ratings.score` is not a derived value: it is a
@@ -1312,8 +1487,8 @@ gates are documented in `docs/recommendation-engine.md`.
 A release is classified independently. A same-game group enters Derelict only when every
 visible release qualifies; evidence about one store copy cannot condemn an unknown or
 active sibling. Hidden games and account scope are applied before grouping, as for the
-other buckets. Derelict games appear in their own feed shelf and are excluded from ordinary
-play recommendations. Delisted and abandoned games may still run; this classification does
+other buckets. Derelict games are excluded from the feed and remain available in the library.
+Delisted and abandoned games may still run; this classification does
 not disable launch actions. When a group has a copy without Derelict evidence, ordinary
 recommendations and the default launch/install route prefer that copy. If every copy
 qualifies, manual launch remains available.
@@ -1344,6 +1519,36 @@ boundary threshold, and update-after-last-played windows.
 Never compute a blended cross-platform completion percentage. 100% on one platform and 30% on
 another are **two facts, not one average**. Render per-release rows nested under the Work. The
 unified view is a query, not a stored merge.
+
+Steam's achievement producer uses the documented `GetSchemaForGame/v2`,
+`GetPlayerAchievements/v1` and `GetGlobalAchievementPercentagesForApp/v2` endpoints.
+It requires a user API key whose fingerprint matches the confirmed Steam account, positive
+ownership membership for that account and an unambiguous Steam app ID. Session sign-in alone
+does not enable these user-key endpoints. Requests use the shared bounded transport, retry
+policy and one-request-per-second limiter; this client disables request logging so account
+IDs and API keys cannot enter logs. [Steam endpoint contracts](https://partner.steamgames.com/doc/webapi/isteamuserstats)
+
+The startup/manual refresh pipeline and a 15-minute background timer process at most 20 due
+games per pass. A 24-hour attempt interval bounds requests for both successes and failures,
+and the display uses the same day-long freshness window. These parameters spread roughly
+1,900 games across a day at up to 60 requests per pass; this is a capacity bound, not measured
+library coverage. `--no-sync` and sample mode disable the background timer with remote sync.
+
+An explicit empty schema means no achievements. Missing or malformed fields, private
+responses, conflicting keys, wrong-account replies and incomplete unlock lists remain
+unanswered. Known zero progress requires a complete schema-aligned answer. Account-keyed
+unlocks are replaced transactionally only after a valid response; failures retain the prior
+facts and their observation dates. Schema, progress and global percentages have separate
+success timestamps. Global-percentage failure does not erase valid progress or restamp old
+global values. Legacy unlock rows have unknown account provenance and never fill a named
+account's progress.
+
+Desktop and fullscreen detail rows distinguish Not fetched, Unavailable, No achievements,
+and known unlocked/total progress. A retained progress percentage says "last known" after a
+failed refresh or freshness expiry. Unsupported stores show Not supported. The desktop
+Library tab also displays a single copy's achievement row without requiring an identity
+link. The selected account controls each read; neither account nor platform percentages are
+blended. These are achievement percentages, not game-completion verdicts.
 
 ---
 

@@ -50,6 +50,11 @@ public interface IIgdbClient
         TimeSpan? cacheTtl = null,
         CancellationToken ct = default);
 
+    /// <summary>Strict, fresh edition evidence; unavailable lookups are absent, successful negatives are explicit.</summary>
+    Task<IReadOnlyDictionary<string, IgdbEditionMatch>> ResolveEditionsByExternalIdsAsync(
+        int externalGameSourceId, IEnumerable<string> uids, TimeSpan? cacheTtl = null, CancellationToken ct = default)
+        => Task.FromResult<IReadOnlyDictionary<string, IgdbEditionMatch>>(new Dictionary<string, IgdbEditionMatch>());
+
     /// <summary>
     /// Full metadata for known IGDB ids: name, cover, first release date,
     /// summary, genres, themes, platforms and publisher. Batched and cached like

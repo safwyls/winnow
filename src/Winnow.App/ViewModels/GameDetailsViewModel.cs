@@ -51,6 +51,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     /// silently.
     /// </summary>
     private readonly Core.Reading.IPatchNotesReader? _patchNotes;
+    private readonly IGameLinkRouter? _linkRouter;
 
     /// <summary>Only the events in the last displayed snapshot may be acknowledged.</summary>
     private IReadOnlyList<UpdateEvent> _events;
@@ -94,7 +95,8 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         IReadOnlyList<Session>? sessions = null,
         string? backgroundUrl = null,
         ArtworkPreferences? artworkPreferences = null,
-        IReadOnlyDictionary<long, DateTime>? acknowledgedByRelease = null)
+        IReadOnlyDictionary<long, DateTime>? acknowledgedByRelease = null,
+        IGameLinkRouter? linkRouter = null)
     {
         _covers = covers;
         _lightbox = lightbox;
@@ -106,6 +108,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         HideCommand = hideGame;
         AddToListCommand = addToList;
         _patchNotes = patchNotes;
+        _linkRouter = linkRouter;
         IgdbMatch = igdbMatch;
         MetadataEditor = metadataEditor;
         Lists = lists;
@@ -290,6 +293,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     /// that covers nothing shows what it always showed.
     /// </summary>
     public bool ShowCoverage => Coverage is { HasCoverage: true };
+    public bool ShowStandaloneAchievements => !ShowCoverage && Coverage?.Rows.Any(row => row.HasAchievements) == true;
 
     /// <summary>
     /// The expansions grouped under this game, and the base
@@ -551,6 +555,19 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         }
 
         return reader.Open(uri, Title) == Core.Reading.PatchNotesOutcome.Opened;
+    }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasLinkStatus))]
+    public partial string? LinkStatus { get; private set; }
+    public bool HasLinkStatus => !string.IsNullOrWhiteSpace(LinkStatus);
+
+    public async Task<bool> OpenReadingLinkAsync(GameLink link)
+    {
+        if (_linkRouter is null) return false;
+        var result = await _linkRouter.OpenAsync(link, Title);
+        if (!_disposed) LinkStatus = result.Message;
+        return true;
     }
 
     // ── Under the list: "I've read this one" ────────────────────────────────

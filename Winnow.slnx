@@ -20,6 +20,8 @@
     <Project Path="src/Winnow.Monitor/Winnow.Monitor.csproj" />
     <Project Path="src/Winnow.Recommend/Winnow.Recommend.csproj" />
     <Project Path="src/Winnow.Resolve/Winnow.Resolve.csproj" />
+    <Project Path="src/Winnow.Update.Helper/Winnow.Update.Helper.csproj" />
+    <Project Path="src/Winnow.Update/Winnow.Update.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Winnow.PluginFixture/Winnow.PluginFixture.csproj" />
@@ -30,6 +32,7 @@
     <Project Path="tests/Winnow.Recommend.Tests/Winnow.Recommend.Tests.csproj" />
     <Project Path="tests/Winnow.Tests/Winnow.Tests.csproj" />
     <Project Path="tests/Winnow.Ui.Tests/Winnow.Ui.Tests.csproj" />
+    <Project Path="tests/Winnow.Update.Tests/Winnow.Update.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/Winnow.Replay/Winnow.Replay.csproj" />

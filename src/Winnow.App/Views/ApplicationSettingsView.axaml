@@ -102,6 +102,18 @@
                     </Grid>
                 </Border>
 
+                <TextBlock Classes="label" AutomationProperties.HeadingLevel="2" Text="LINKS"/>
+                <Border Classes="card">
+                    <StackPanel Spacing="10">
+                        <TextBlock Classes="body-l" Text="Open links in"/>
+                        <ComboBox ItemsSource="{Binding LinkDestinationOptions}"
+                                  SelectedIndex="{Binding LinkDestinationIndex, Mode=TwoWay}"
+                                  MinWidth="220" HorizontalAlignment="Left"
+                                  AutomationProperties.Name="Open links in"/>
+                        <TextBlock Classes="para" Foreground="{StaticResource TextDim}"
+                                   TextWrapping="Wrap" Text="{Binding LinkDestinationNote}"/>
+                    </StackPanel>
+                </Border>
                 <TextBlock Classes="label" AutomationProperties.HeadingLevel="2"
                            IsVisible="{Binding HasUpdater}" Text="UPDATES"/>
                 <Border Classes="card" IsVisible="{Binding HasUpdater}"
@@ -128,6 +140,9 @@
                                           AutomationProperties.Name="Include beta releases"/>
                         </Grid>
                         <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding UpdateStatus}"
+                                   AutomationProperties.LiveSetting="Polite"/>
+                        <TextBlock Name="UpdateRecoveryStatus" Classes="body" TextWrapping="Wrap"
+                                   Text="{Binding UpdateRecoveryStatus}" IsVisible="{Binding HasUpdateRecoveryStatus}"
                                    AutomationProperties.LiveSetting="Polite"/>
                         <TextBlock Classes="data" IsVisible="{Binding CanCancelUpdate}"
                                    Text="{Binding UpdateProgress, StringFormat='Downloaded: {0:0}%'}"/>

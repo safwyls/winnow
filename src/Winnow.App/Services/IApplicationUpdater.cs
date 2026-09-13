@@ -4,7 +4,8 @@ public sealed record UpdateSnapshot(
     bool Automatic = true, bool IncludeBeta = false, bool Busy = false,
     bool CanDownload = false, bool CanRestart = false, double Progress = 0,
     string Status = "Updates have not been checked yet.", string? AvailableVersion = null,
-    string? ReleaseUrl = null, string? DownloadUrl = null, bool CanCancel = false);
+    string? ReleaseUrl = null, string? DownloadUrl = null, bool CanCancel = false,
+    string? RecoveryStatus = null);
 
 public interface IApplicationUpdater
 {

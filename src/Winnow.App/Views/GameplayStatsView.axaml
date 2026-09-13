@@ -1,0 +1,38 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Winnow.App.ViewModels" xmlns:views="using:Winnow.App.Views"
+             x:Class="Winnow.App.Views.GameplayStatsView" x:DataType="vm:GameplayStatsViewModel"
+             AutomationProperties.Name="Gameplay statistics">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="24,16,24,28" MaxWidth="1200" HorizontalAlignment="Stretch" Spacing="16">
+      <WrapPanel>
+        <StackPanel Spacing="6" Margin="0,0,16,12">
+          <TextBlock Classes="body" Text="Store"/>
+          <ComboBox Name="GameplayStore" MinWidth="180" ItemsSource="{Binding StoreOptions}" SelectedItem="{Binding SelectedStore}" AutomationProperties.Name="Gameplay store"/>
+        </StackPanel>
+        <StackPanel Spacing="6" Margin="0,0,16,12">
+          <TextBlock Classes="body" Text="Period"/>
+          <ComboBox Name="GameplayPeriod" MinWidth="150" ItemsSource="{Binding PeriodOptions}" SelectedItem="{Binding SelectedPeriod}" AutomationProperties.Name="Gameplay period"/>
+        </StackPanel>
+        <Button Content="Refresh" Command="{Binding RefreshCommand}" VerticalAlignment="Bottom" Margin="0,0,12,12"/>
+        <Button Content="Cancel" Command="{Binding CancelCommand}" IsVisible="{Binding IsLoading}" VerticalAlignment="Bottom" Margin="0,0,0,12"/>
+      </WrapPanel>
+      <WrapPanel IsVisible="{Binding IsCustom}">
+        <StackPanel Spacing="6" Margin="0,0,16,12">
+          <TextBlock Classes="body" Text="From · YYYY-MM-DD"/>
+          <TextBox Name="GameplayFrom" Width="180" Text="{Binding CustomFrom}" AutomationProperties.Name="Start date, YYYY-MM-DD"/>
+        </StackPanel>
+        <StackPanel Spacing="6" Margin="0,0,16,12">
+          <TextBlock Classes="body" Text="Through · YYYY-MM-DD"/>
+          <TextBox Name="GameplayUntil" Width="180" Text="{Binding CustomUntil}" AutomationProperties.Name="End date inclusive, YYYY-MM-DD"/>
+        </StackPanel>
+        <Button Content="Apply dates" Command="{Binding ApplyDatesCommand}" VerticalAlignment="Bottom" Margin="0,0,0,12"/>
+      </WrapPanel>
+      <TextBlock Classes="body" Text="Reading gameplay statistics…" IsVisible="{Binding IsLoading}"/>
+      <StackPanel Spacing="10" IsVisible="{Binding Problem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+        <TextBlock Classes="body" Foreground="{DynamicResource Amber}" Text="{Binding Problem}" TextWrapping="Wrap"/>
+        <Button Content="Try again" Command="{Binding RefreshCommand}"/>
+      </StackPanel>
+      <views:GameplayStatsDashboard/>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

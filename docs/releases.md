@@ -53,9 +53,20 @@ show an error in settings and leave the library usable. There are no repeated po
 | Installation | Update route |
 |---|---|
 | Installed Windows x64, including a custom installation directory | Download in the background, then **Restart to update** |
-| Portable Windows x64 | Release check and browser link to the portable ZIP; close and replace manually |
+| Portable Windows x64 with the bundled update helper and writable local directories | Download and stage in the background, then **Update and restart** |
 | Linux x64 Debian package | Release check and browser link to the `.deb`; close and install with the package manager |
-| Portable Linux x64 | Release check and browser link to the archive; close and replace manually |
+| Portable Ubuntu 24.04 x64 with the bundled update helper and writable local directories | Download and stage in the background, then **Update and restart** |
+
+The installed Windows helper waits up to five seconds for transient binary sharing locks
+after Winnow exits. Cancellation interrupts that wait. Persistent locks and permission
+failures stop the update before running the installer.
+| Other portable environments, linked paths or read-only media | Release check and browser link; close and replace manually |
+
+When a supported update is detected, the desktop title bar shows **Update and restart**.
+Fullscreen offers the same action in its header, quick menu and Application settings.
+The action is disabled while an operation is busy. Clicking it downloads and verifies the
+update if needed, then requests normal shutdown and restart. Background downloads alone
+never close the application. Both surfaces show the same progress, errors and recovery notice.
 
 The Windows updater requires the registered per-user Inno installation to match the running
 executable. Downloading never closes Winnow. It accepts only the exact platform asset from
@@ -89,7 +100,77 @@ Release CI fetches a digest-verified earlier published Windows installer and exe
 upgrade in a disposable custom directory. It also checks bad checksums, cancellation,
 shutdown timeout and locked binaries, relaunch arguments, and preservation of user files.
 These installation checks run only on disposable GitHub runners; local unit and headless UI
-tests do not install software. Portable Windows and Linux updates use the manual routes in the table above.
+tests do not install software.
+
+### Portable replacement and recovery
+
+The ZIP and tar.gz layouts are unchanged. Copies from before the portable helper was
+introduced need one manual archive upgrade; subsequent supported releases offer in-app
+replacement. Debian installations, including their `package-managed` marker, stay with the
+package manager: close Winnow and use `sudo apt install ./Winnow-<version>-linux-x64.deb`.
+The updater never invokes privilege elevation or replaces package-managed files.
+
+Portable downloads validate the release digest, version and runtime, archive paths and
+expanded size. Links and special archive entries are refused. Staging sits beside the
+installation in `.<installation folder>.winnow-update`; the installation and its parent
+must be writable. Leave room for the download, expanded release and library backup.
+The selected data directory may be inside the installation, but must not contain it or
+overlap the update workspace. Archive entries must not collide with that data directory.
+Abandoned staging can be downloaded again. Starting a later update retains the previous
+completed workspace under a `.retained-<id>` name; those older journals are evidence,
+while their backup files remain available for manual inspection. Recovery commands use
+the current workspace's journal. Retained workspaces are not automatically pruned.
+
+After explicit restart, the copied `Winnow.Update.Helper` waits for the exact original
+process to exit. Installation and library guards exclude other Winnow instances during
+replacement. The helper makes and checks a SQLite backup, including committed WAL data,
+before moving the old binaries to `previous` and the staged release into the original
+location. It moves an internal selected data directory to the same relative location.
+The selected library and `--no-sync` survive restart; one-time seed and sign-in commands do not.
+
+The durable `journal.json` records replacement and possible migration before startup.
+The new app acknowledges readiness only after migrations, host startup and Avalonia
+framework initialization. A missing or failed handshake leaves recovery evidence; the
+helper never silently reopens older binaries against a potentially migrated database.
+Keep the workspace, selected data directory and `before.db` until recovery is complete.
+Other files placed beside the app remain with the retained previous directory; custom
+themes, covers, credentials and preferences belong in the selected data directory.
+
+Close all Winnow instances before using the copied helper in the workspace's `helper`
+directory. Pass the absolute path to its `journal.json`:
+
+```text
+Winnow.Update.Helper recover --journal <absolute journal path>
+```
+
+This repairs interrupted replacement only when migration could not have started. After a
+possible migration, reinstall the same or a newer release into the original directory,
+then run `resume --journal <absolute journal path>` and launch Winnow with the original
+`--data-dir`. Alternatively, explicitly choose the paired binary and database restore:
+
+```text
+Winnow.Update.Helper recover --journal <absolute journal path> --restore-backup
+```
+
+On Windows the helper filename ends in `.exe`; on Linux invoke it with its path.
+An explicit restore returns library data to the pre-upgrade snapshot. Post-upgrade database
+files are retained in the workspace for inspection. Do not point old binaries at a newer
+database yourself. A missing backup or conflicting data location stops recovery without
+overwriting the conflicting files.
+
+Release CI also fetches digest-verified earlier portable Windows and Linux archives and
+performs actual upgrades on disposable Windows and Ubuntu 24.04 runners. It exercises
+external and internal data directories, corrupted downloads, interrupted replacement and
+failed new-version startup with explicit paired restore, checking library records and user
+files. Engine tests exercise individual recovery boundaries without touching a real library.
+The workflow retains journals and baseline-selection evidence. Runner results establish
+those environments only; hardware power-loss and filesystem durability behavior still
+depend on the device and filesystem.
+
+Archive name checks follow platform case sensitivity: Linux portable packages retain
+both the `Winnow` apphost and the `winnow` shell launcher. Exact duplicate entries remain
+invalid. The smoke script waits for the update helper's process exit with a bounded
+timeout; the restarted application stays open until scenario cleanup.
 
 ## Build without publishing
 

@@ -204,7 +204,7 @@ public sealed class FullscreenContext : IDisposable
     }
     public void ChooseVersion(GameTileViewModel tile)
     {
-        ShowActions("Choose version", tile.Entries.Select(entry => new FullscreenAction(
+        ShowActions("Choose launch version", tile.Entries.Select(entry => new FullscreenAction(
             $"{entry.StoreName} · {(entry.Installed is true ? "Installed" : entry.Installed is false ? "Not installed" : "Install state unknown")} · {entry.PrimaryAction?.Label ?? "Unavailable"}",
             () => Play(new GameTileViewModel([entry], tile.Game, tile.Title, DateTime.UtcNow, ramp: Library.Ramp)),
             entry.PrimaryAction is not null)).Append(new FullscreenAction("Cancel", () => { })).ToArray());
@@ -214,6 +214,12 @@ public sealed class FullscreenContext : IDisposable
         if (_disposed) return;
         try
         {
+            if (link.Kind == GameLinkKind.Link && Services?.GetService<IGameLinkRouter>() is { } router)
+            {
+                var result = await router.OpenAsync(link, Library.Details?.Title ?? link.Label);
+                if (!_disposed && result.Message is { } message) Notify(message);
+                return;
+            }
             var uri = new Uri(link.Uri);
             if (!link.IsLauncherProtocol && Services?.GetService<Winnow.Core.Reading.IPatchNotesReader>() is { IsAvailable: true } reader &&
                 reader.Open(uri, Library.Details?.Title ?? link.Label) == Winnow.Core.Reading.PatchNotesOutcome.Opened)
@@ -234,9 +240,27 @@ internal sealed class FullscreenActionsPage : FullscreenPage
     public FullscreenActionsPage(FullscreenContext context, string title, IReadOnlyList<FullscreenAction> actions) : base(context)
     {
         _title = title;
-        var buttons = actions.Select(action => { var button = FullscreenUi.Button(action.Label, () => { Context.Back(); action.Invoke(); }); button.IsEnabled = action.IsEnabled; return button; }).ToArray();
-        Content = FullscreenUi.Scroll(FullscreenUi.Stack([FullscreenUi.Text(title, 64), .. buttons]));
-        SetFocusRows(buttons.Select(b => new Control[] { b }).ToArray());
+        var buttons = actions.Select(action =>
+        {
+            var button = FullscreenUi.Button(action.Label, () => { Context.Back(); action.Invoke(); });
+            button.ContentTemplate = new Avalonia.Controls.Templates.FuncDataTemplate<string>((label, _) =>
+            {
+                var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), ColumnSpacing = 16 };
+                row.Children.Add(ActionIcons.Create(action.IconLabel ?? action.Label, 28 * context.TextScale));
+                var text = FullscreenUi.Text(label, 28);
+                Grid.SetColumn(text, 1); row.Children.Add(text);
+                return row;
+            });
+            button.IsEnabled = action.IsEnabled;
+            button.Opacity = action.IsEnabled ? 1 : .45;
+            return button;
+        }).ToArray();
+        var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto"), RowSpacing = 24 };
+        layout.Children.Add(FullscreenUi.Text(title, 40));
+        var scroll = FullscreenUi.Scroll(FullscreenUi.Stack(buttons)); Grid.SetRow(scroll, 1); layout.Children.Add(scroll);
+        var hints = FullscreenGlyphs.Hints("A  Select     B  Close"); Grid.SetRow(hints, 2); layout.Children.Add(hints);
+        Content = layout;
+        SetFocusRows([.. buttons.Select(b => new Control[] { b })]);
     }
 }
 

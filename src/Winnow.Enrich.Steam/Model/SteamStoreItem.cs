@@ -70,6 +70,9 @@ public sealed record SteamStoreItem(string AppId, string Name, IReadOnlyList<Ste
     /// TTL turns them over.
     /// </summary>
     public SteamStoreReviewSummary Reviews { get; init; } = SteamStoreReviewSummary.None;
+
+    /// <summary>UTC year from the listing's explicit original_release_date; Steam arrival dates are not substitutes.</summary>
+    public int? OriginalReleaseYear { get; init; }
 }
 
 /// <summary>

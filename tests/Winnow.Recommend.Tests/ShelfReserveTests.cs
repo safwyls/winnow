@@ -60,7 +60,7 @@ public class ShelfReserveTests : IClassFixture<ShelfReserveTests.ContestedLibrar
             deep.Shelves.Select(s => s.Id));
 
         Assert.Equal(
-            plain.Shelves.Select(s => $"{s.Id}: {s.Items.Count}"),
+            plain.Shelves.Select(s => $"{s.Id}: {Math.Min(s.Items.Count, Visible)}"),
             deep.Shelves.Select(s => $"{s.Id}: {Math.Min(s.Items.Count, Visible)}"));
     }
 
@@ -109,7 +109,7 @@ public class ShelfReserveTests : IClassFixture<ShelfReserveTests.ContestedLibrar
     {
         var deep = await _library.Harness.Engine.GetShelvesAsync(WithReserve);
 
-        var releases = deep.Shelves.SelectMany(s => s.Items).Select(i => i.ReleaseId).ToList();
+        var releases = deep.Shelves.Where(s => s.SupportsFeedback).SelectMany(s => s.Items).Select(i => i.ReleaseId).ToList();
         Assert.Equal(releases.Count, releases.Distinct().Count());
     }
 

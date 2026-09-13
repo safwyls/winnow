@@ -29,9 +29,11 @@ public sealed class FullscreenPluginSettingsPage : FullscreenPage
             controls.Children.Add(button); focus.Add([button]);
             return button;
         }
-        var enabled = Action(model.EnabledLabel, model.ToggleEnabledCommand, model.ToggleAccessibleName);
+        var enabled = new ToggleSwitch { FontSize = 28, MinHeight = 72,
+            OnContent = "Enabled", OffContent = "Disabled", Command = model.ToggleEnabledCommand };
+        controls.Children.Add(enabled); focus.Add([enabled]);
         enabled.IsVisible = model.CanConfigure;
-        enabled.Bind(ContentControl.ContentProperty, new Binding(nameof(model.EnabledLabel)) { Source = model });
+        enabled.Bind(ToggleSwitch.IsCheckedProperty, new Binding(nameof(model.ActivationSelected)) { Source = model, Mode = BindingMode.TwoWay });
         enabled.Bind(AutomationProperties.NameProperty, new Binding(nameof(model.ToggleAccessibleName)) { Source = model });
         enabled.Bind(AutomationProperties.ItemStatusProperty, new Binding(nameof(model.EnabledStatus)) { Source = model });
         var restart = FullscreenUi.Text("Restart Winnow to apply the enable or disable change.", 28, "Amber");
@@ -55,6 +57,8 @@ public sealed class FullscreenPluginSettingsPage : FullscreenPage
         if (model.CanConfigure) Action("Refresh now     Run", model.RefreshCommand, model.RefreshAccessibleName);
         var status = FullscreenUi.Text("", 28, "TextDim");
         status.Bind(TextBlock.TextProperty, new Binding(nameof(model.Status)) { Source = model });
+        status.Bind(IsVisibleProperty, new Binding(nameof(model.Status)) { Source = model,
+            Converter = Avalonia.Data.Converters.StringConverters.IsNotNullOrEmpty });
         AutomationProperties.SetLiveSetting(status, AutomationLiveSetting.Polite);
         controls.Children.Add(status);
         var back = FullscreenUi.Button("Back", context.Back);

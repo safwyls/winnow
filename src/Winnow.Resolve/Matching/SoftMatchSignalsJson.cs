@@ -44,6 +44,7 @@ public sealed record SoftMatchSideJson
     public IReadOnlyList<string> RebuildEditions { get; init; } = [];
     public IReadOnlyList<string> BundleEditions { get; init; } = [];
     public int? Year { get; init; }
+    public string? YearSource { get; init; }
     public string? Publisher { get; init; }
 }
 
@@ -117,7 +118,10 @@ public static class SoftMatchSignalsJson
             Ordinals = title.Ordinals,
             RebuildEditions = title.RebuildEditions,
             BundleEditions = title.BundleEditions,
-            Year = subject.ReleaseYear ?? title.ParsedYear,
+            Year = subject.EffectiveYear(title.ParsedYear),
+            YearSource = subject.ReleaseYearSource
+                ?? (subject.ReleaseYear is not null ? "provided_year"
+                    : subject.EffectiveYear(title.ParsedYear) is not null ? "title_year" : null),
             Publisher = subject.Publisher,
         };
 }

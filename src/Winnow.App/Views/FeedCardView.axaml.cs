@@ -33,6 +33,7 @@ public partial class FeedCardView : UserControl
     public FeedCardView()
     {
         InitializeComponent();
+        SizeChanged += (_, _) => RequestBackdrop();
 
         // The previewer gets a populated card; runtime leaves the DataContext
         // to the shelf. See Design/PreviewData.cs.
@@ -93,6 +94,7 @@ public partial class FeedCardView : UserControl
     {
         base.OnAttachedToVisualTree(e);
         RequestCover();
+        RequestBackdrop();
     }
 
     protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
@@ -100,6 +102,7 @@ public partial class FeedCardView : UserControl
         base.OnDetachedFromVisualTree(e);
         SetHover(false);
         SetFocusWithin(false);
+        _card?.ReleaseBackdrop();
     }
 
     private void Bind(FeedCardViewModel? card)
@@ -109,6 +112,7 @@ public partial class FeedCardView : UserControl
         // true after a rebind would be a receipt whose clock never runs again.
         if (_card is not null)
         {
+            _card.ReleaseBackdrop();
             _card.IsPointerOver = false;
             _card.IsFocusWithin = false;
         }
@@ -121,6 +125,7 @@ public partial class FeedCardView : UserControl
 
         WriteReason(card);
         RequestCover();
+        RequestBackdrop();
     }
 
     /// <summary>
@@ -161,6 +166,13 @@ public partial class FeedCardView : UserControl
 
             inlines.Add(inline);
         }
+    }
+
+    private void RequestBackdrop()
+    {
+        if (_card is null || this.GetVisualRoot() is null || Bounds.Width <= 0 || Bounds.Height <= 0) return;
+        var scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
+        _card.RequestBackdrop(Bounds.Width * scaling, Bounds.Height * scaling);
     }
 
     private void RequestCover()

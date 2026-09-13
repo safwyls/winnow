@@ -34,6 +34,9 @@ internal static class PreviewData
     private static AppearanceViewModel? _appearance;
     private static MergeQueueViewModel? _mergeQueue;
     private static AccountStatsViewModel? _accountStats;
+    private static StatsViewModel? _stats;
+    public static StatsViewModel Stats => _stats ??= new(AccountStats, new GameplayStatsViewModel(new PreviewGameplayStatsRepository(), Library));
+    public static GameplayStatsViewModel Gameplay => Stats.Gameplay;
     private static LibrarySettingsViewModel? _librarySettings;
     private static ApplicationSettingsViewModel? _applicationSettings;
     private static GameTileViewModel? _tile;
@@ -60,7 +63,7 @@ internal static class PreviewData
         Feed,
         AccountStats,
         LibrarySettings,
-        applicationSettings: ApplicationSettings);
+        applicationSettings: ApplicationSettings, stats: Stats);
 
     /// <summary>The landing screen's feed, resolved against <see cref="Library"/>'s tiles.</summary>
     public static FeedViewModel Feed => _feed ??= new FeedViewModel(new PreviewFeedService(), Library);

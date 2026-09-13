@@ -5,8 +5,9 @@ Bucket definitions: [build specification §6.1](../game-library-design.md#61-der
 
 This document defines the scoring signals, tuning defaults, evidence requirements, shelves
 and explanation contract. `RecommendationTuning` carries scoring parameters; changing a
-default does not require a database migration. Flat and shelf feeds share the scoring core,
-feedback, undo and surfacing memory. Desktop and fullscreen use their own presentation state.
+default does not require a database migration. Flat and shelf recommendations share the scoring core,
+feedback, undo and surfacing memory. Recently played is a chronological collection outside that loop.
+Desktop and fullscreen use their own presentation state.
 
 ---
 
@@ -33,8 +34,8 @@ exactly the build specification §6.1 sense: computed on every read, comparable 
 stored, never trusted by anything else.
 
 `GetShelvesAsync(request)` serves the scoring pass as themed shelves with their own pitches
-and membership rules available at Tier 0. It also adds a separate Derelict shelf when
-external lifecycle evidence warrants review (§6a); this shelf does not recommend playing.
+and membership rules available at Tier 0. Recently played comes first as a separate
+chronological collection outside scoring and feedback (§6a). Derelict stays in the library.
 
 Both built-in and plugin feeds use Core's `RecommendationGame` projection. The library
 snapshot carries complete live identity state separately from its visible bucket rows:
@@ -98,8 +99,8 @@ contributes zero and the gap is *visible*, which is the honest way to degrade).
 | **Taste affinity** | 0 | +0.10 | The candidate carries a genre/theme/tag that the user's actual hours concentrate in. Explicitly a **tiebreaker** for the 754-row shelfware pile, not the lead — genre similarity is the commodity the charter says loses to incumbents. Profile is playtime-weighted (√minutes, refund line and up — with one exception: a feed-**endorsed** release testifies below the line with whatever √minutes it has, §6b), so retired games — excluded as candidates — still testify about taste. Facets above the **prevalence cut** (carried by >25% of the facet-carrying library) are excluded from the profile entirely: measured, they saturate the metric into meaninglessness (see §2's re-measurement). |
 | **Tried to like it** | 1 | +0.10 | Distinct return episodes (snapshot rises or sessions beyond the first): 40 minutes across six evenings is a different fact from 40 minutes once. Zero until history accrues; a bonus, never a prerequisite. |
 | **Installed** | 0 | +0.05 | Zero friction: it is on disk right now. |
-| **Bought twice** | 0 | +0.05 | The same work owned on 2+ stores is a purchase made twice — intent money can measure. Fires only after cross-store merges are confirmed (see §2). |
-| **Recently played** (penalty) | 0 | −0.60 | Played within the fresh window — not forgotten, so not this feed's business. Sized to sink anything: no combination of positives outruns it into the top of a realistic feed. |
+| **Owned on multiple stores** | 0 | +0.05 | The same resolved game has copies on 2+ visible stores. This existing ownership bonus does not establish payment, repeated spending or deliberate intent; gifts, free claims and bundles also qualify. Internal names remain `BoughtTwice`/`bought_twice` for tuning compatibility. |
+| **Recently played** (penalty) | 0 | −0.60 | Played within the fresh window — not forgotten, so excluded from recommendation shelves. The separate Recently played collection ignores this penalty. Sized to sink anything: no combination of positives outruns it into the top of a realistic ranked feed. |
 | **Probably done** (penalty) | 0 | −0.30 | Deep in the bounced pile (a fair shake of hours), deeply dormant, and nothing has changed since — the model's way of saying "you were right to drop this" instead of nagging. The contribution's explanation says exactly that, which is the charter's honesty requirement made concrete. |
 | **Recently surfaced** (penalty) | 0 | −0.20 | Caller-supplied set of releases the feed showed recently — the anti-"same five games forever" mechanism. The caller loads it from the `feed_surfacings` log via `FeedbackSets` (§6b); the engine still stores nothing. |
 | **Mode mismatch** (penalty) | 0 | −0.10 | The candidate sits entirely on the wrong side of the single-player/online line for how this user demonstrably plays (93% single-player by committed game count, measured). Fires only under dominance (≥85% share over ≥20 mode-carrying committed games) and only against a candidate that is *exclusively* the other side; co-op without versus is a maybe, not a mistake. Sized to cancel a perfect taste match, not to bury — mode facets can be missing or wrong. |
@@ -119,6 +120,32 @@ later. Until that proof exists the coverage is `Unknown`, and no negative claim 
 release may be made by any signal or any sentence.
 
 Signals deliberately **not** scored, and why, are in §7.
+
+### Acquisition evidence
+
+Acquisition date and paid price currently contribute no score. Ownership alone cannot
+establish a purchase, discount, regret or willingness to play. Free, missing or conflicting
+acquisitions receive no additional penalty and no acquisition entry in the breakdown.
+The existing multiple-store contribution describes ownership only; its weight is unchanged.
+
+Any future acquisition signal must use the library's account scope and resolved game groups.
+Known Steam accounts require matching `OwnershipAcquisitionObservation` rows; legacy aggregate
+ownership fields cannot fill that account's missing facts. Aggregate presentation may use the
+earliest observed acquisition date, but conflicting prices or provenance stay unknown. Dates
+describe the recorded acquisition, not necessarily the user's first ownership or first play.
+Count each resolved game once; linked copies must not multiply acquisition contributions.
+
+Ownership prices lack currency. Do not compare their raw amounts, infer a currency from a
+symbol, or attach an unmatched transaction's list price. A multi-item transaction's total or
+discount is not a per-game amount. Even a single item needs an exact game/account match and
+trustworthy transaction provenance before it can describe that game's purchase. Current
+ownership prices do not retain a transaction link sufficient for that comparison.
+
+No new acquisition weight or tier is justified by the available evaluation. The dated
+[acquisition study](spikes/acquisition-evidence-2026-09-11.md) verifies account and grouping
+boundaries with captured fixtures: adding prices, conflicts and unmatched bundle transactions
+leaves baseline scores and reasons unchanged. Source semantics and synthetic labels do not
+establish ranking quality. Real coverage and later-outcome performance remain unmeasured.
 
 ## 4. The model
 
@@ -158,7 +185,7 @@ score = Σ (weight_s × value_s) − Σ penalties + jitter
 5. Everything the build specification §6.1 query already dropped upstream: consolidated demos/betas, and
    non-game entries (tools, soundtracks) under the default setting.
 6. **Derelict** lifecycle groups: cancelled, offline, delisted, abandoned or dead. These
-   enter only the dedicated review shelf, with no recommendation score or history probe.
+   stay out of the feed, with no recommendation score or history probe.
    Inactive and unknown evidence do not justify exclusion. The game's derived bucket is
    authoritative, so a viable linked store copy can keep a game in the ordinary pool.
 
@@ -282,7 +309,7 @@ storefront could show (a taste-matched backlog rail), and that is fine — ours 
 same feed that keeps getting better with history the storefronts never keep, so parity on
 day one compounds into a lead.
 
-Shelves, in claim order (which is also presentation order — strongest story first):
+Recommendation shelves follow Recently played in this claim and presentation order:
 
 | Shelf | Membership rule (Tier-0 facts only) | The pitch |
 |---|---|---|
@@ -384,31 +411,28 @@ arrives at the bottom is a game no queue has held. One backfill reads at a time;
 request waits behind it, and a backfill from a pass the feed has since replaced is
 discarded.
 
-### Derelict: lifecycle review
+### Recently played
 
-Derelict follows the five recommendation shelves when eligible evidence exists. Its
-membership comes from the same scoped, hidden-filtered, same-game bucket rows as the
-library. Dismissal and snooze widen to the resolved game before either pool is assembled.
-Each card carries the classifier's one-sentence reason and confidence, retained as
-`ReasonEvidence.Lifecycle`; no taste or playtime score pretends to explain a shutdown.
-The score is zero and the scoring-signal list is empty. Candidate, work and history-probe
-counts describe ordinary recommendations only. Library maturity still measures the whole
-library, including these games' real historical sessions.
+`recently_played` is the first shelf when the visible library has known last-played dates.
+It holds up to ten resolved games in descending last-played order, with stable identity
+ordering for ties. Linked store copies appear once, using the group's play evidence.
+Unknown and future dates, provisional names and Derelict groups are excluded.
 
-Recently surfaced entries follow unseen entries, then the existing daily deterministic
-shuffle rotates each group. No confidence cutoff is added here: classification owns its
-evidence gates, and a second cutoff would conceal cases the library already explains.
-The same `MaxPerShelf` depth holds visible cards and reserves; a deeper request leaves
-the visible prefix unchanged. Genre and franchise caps do not hide lifecycle evidence.
-Delisting and abandonment need not mean unplayability, so the shelf says some games may
-still be playable. No local launch failure or low single-player population alone can
-justify calling a game dead.
+This is a history collection: retired games, dismissals, snoozes, endorsements, surfacing
+memory and shuffle seeds do not change its membership or order. It does not claim games
+from the recommendation shelves. Items carry a last-played date, zero score and no scoring
+signals. Candidate, work and history-probe counts continue to describe recommendations.
 
-Lifecycle confidence expresses the strength of the available evidence. Its defaults are
-conservative policy choices, not probabilities calibrated against a labelled dataset;
-the percentage on the card must be read alongside its source reason. Play-history tiers
-do not increase lifecycle confidence, and the feed suppresses its playtime-confidence
-note when Derelict is the only shelf.
+Desktop shows the first six cards and holds four; fullscreen exposes all ten through its
+existing horizontal shelf. Neither surface offers verdict controls or logs feed surfacings
+for this collection. Empty collections are omitted.
+
+### Derelict: lifecycle exclusions
+
+Derelict remains a library bucket and is absent from the feed. The details view presents
+its lifecycle status, source reason and confidence. Confidence expresses evidence strength,
+not a probability calibrated against a labelled dataset. Delisting or abandonment does
+not by itself mean a game cannot launch; manual launch remains available.
 
 Lifecycle gates use `LifecycleTuning`, separate from the weighted play model. These are
 initial conservative defaults requiring later evaluation against labelled real libraries;
@@ -432,11 +456,10 @@ cannot establish silence. A newer activity signal vetoes the corresponding quiet
 | `DeadConfidence` / `AbandonedConfidence` | 0.80 / 0.75 | Corroborated behavioral inference remains below explicit status; unfinished projects have particularly uncertain schedules. |
 | `InactiveConfidence` / `ActiveConfidence` / `UnknownConfidence` | 0.55 / 0.65 / 0 | Low activity is weak negative evidence; observed activity supports a modest positive claim; absence of usable evidence contributes no confidence. |
 
-The review shelf does not vary these gates by play-history tier. A cold library can carry
+Lifecycle classification does not vary these gates by play-history tier. A cold library can carry
 explicit catalog evidence immediately, while behavioral classifications wait for dated
 external observations. Shared source silence, store failures and low single-player counts
-cannot be promoted into proof of death. Identical source reasons may repeat on Derelict
-and in its replacement reserve: varying prose must never conceal a lifecycle fact.
+cannot be promoted into proof of death.
 
 ## 6b. The feedback loop
 
@@ -619,7 +642,7 @@ skipped, which is why every list must carry at least one token-free variant; a v
 citing one of the game's own numbers is preferred over one that would be equally true of any
 game, which is what stops a feed of "it's in your library" cards.
 
-Real output, rendered from the live library:
+Example output using supported evidence:
 
 > You have not seen "Reforged Eden", which arrived after you left, and nobody has opened it in 4 years.
 >
@@ -629,7 +652,7 @@ Real output, rendered from the live library:
 >
 > A brief look, 22 minutes, and nothing after, untouched for 4 years.
 >
-> This has been waiting since you bought it, and nothing needs downloading first.
+> This has been waiting in your library, and nothing needs downloading first.
 >
 > 43 hours was your answer 7 years ago, and nothing since has argued with it.
 >
@@ -721,17 +744,35 @@ Capture commands, fixtures and measured results live in `docs/spikes/feed-replay
 
 ## 7. Deliberately deferred (and where each would plug in)
 
-- **Session-length fit** ("a 60-hour CRPG is not a Tuesday-night suggestion"): needs both
-  a session cadence (Tier 2) and per-game expected-commitment data (HLTB, unresolved
-  [VERIFY]). Would become a Tier-2 value on `RecommendationScorer`.
+Steam achievement ingestion supplies per-release, account-keyed availability and observation
+dates through the shared Core repository contract. Unknown, unavailable, no-schema and known
+zero progress are distinct. A failed refresh retains dated prior progress; legacy unlocks
+without an account never fill a named account's history. Achievement completion is not game
+completion, and global unlock percentages are not a general progress scale. The
+[2026-09-11 evaluation](spikes/achievement-evidence-2026-09-11.md) retains baseline scoring
+and retirement: captured fixtures verify account/platform separation and unchanged rankings,
+but provide no outcome evidence for a contribution. The scorer consumes no achievement
+signal and defines no grouped achievement percentage. Real coverage and recommendation
+quality remain unmeasured. Provider details are in build specification §6.2.
+
+- **Session-length fit:** needs evidence about playable sittings and the user's cadence
+  (Tier 2). Whole-game completion averages cannot determine where a player can stop.
+  Local session history or explicit session preferences remain possible future inputs,
+  independently of any completion-time provider.
 - **Return latency** as a scoring input (how long this user's round trips take): needs
   months of recorded sessions and update responses; monthly Replay snapshots cannot supply exact return times.
 - **Session-note ratings** as taste/verdict evidence: the table is empty and the journal
   prompt is opt-in; wire it into the probably-done gate when real rows exist.
-- **Genre-conditional thresholds** (2h in a roguelike vs. 2h in a CRPG): an open data-source question; arrives with HLTB or per-genre config, lands on `FairShakeMinutes`/bucket floors.
-- **"Short enough for tonight"** as a shelf: needs per-game expected-commitment data
-  (HLTB, unresolved [VERIFY]) — the Steam "Short" tag is too sparse and too voted-on to
-  carry a shelf's honesty. Same plug-in point as session-length fit.
+- **Genre-conditional thresholds** (2h in a roguelike vs. 2h in a CRPG): completion
+  estimates could supply research context, but cannot establish that this user finished
+  or abandoned a game. IGDB has a documented completion endpoint; edition coverage and
+  supported retention terms still need validation. No changes to `FairShakeMinutes` or
+  bucket floors are justified by the [2026-09-11 source study](spikes/expected-completion-2026-09-11.md).
+- **"Short enough for tonight"** as a shelf: finishing a whole game and finding a short
+  playable sitting are separate promises. Neither is established by a Steam "Short" tag.
+  A completion-based promise needs edition-matched estimates, uncertainty and the user's
+  remaining progress; session fit needs cadence evidence instead. The source study found
+  a candidate, not validated library coverage or a production signal.
 - **Any learned component.** One user's library is not a training set, and the
   explainability contract (§4) is load-bearing.
 

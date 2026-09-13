@@ -57,7 +57,7 @@ public class ShelfProbeBudgetTests : IClassFixture<ShelfProbeBudgetTests.Crowded
         Assert.Equal(probeLimit, feed.HistoryProbeCount);
 
         var populated = feed.Shelves
-            .Where(s => s.Items.Count > 0)
+            .Where(s => s.SupportsFeedback && s.Items.Count > 0)
             .Select(s => s.Id)
             .ToArray();
         Assert.Equal(AllShelves, populated);
@@ -77,7 +77,7 @@ public class ShelfProbeBudgetTests : IClassFixture<ShelfProbeBudgetTests.Crowded
         var unbounded = await _library.Harness.Engine.GetShelvesAsync(Request(int.MaxValue));
 
         Assert.Equal(Fingerprint(unbounded), Fingerprint(bounded));
-        Assert.Equal(AllShelves, bounded.Shelves.Select(s => s.Id).ToArray());
+        Assert.Equal(AllShelves, bounded.Shelves.Where(s => s.SupportsFeedback).Select(s => s.Id).ToArray());
     }
 
     private static string Fingerprint(ShelfFeed feed) => string.Join(

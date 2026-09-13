@@ -425,7 +425,7 @@ public sealed class SteamAccountPageImportService : ISteamAccountPageImport
                 continue;
             }
 
-            if (row.Total is not { } total || total.Cents <= 0)
+            if (row.Total is not { } total || total.Cents < 0)
             {
                 continue;
             }

@@ -9,13 +9,7 @@ using Winnow.Ingest.Steam.AccountPages;
 
 namespace Winnow.App.ViewModels;
 
-/// <summary>
-/// One rendered line of a stats table: a label, an optional count, and an
-/// optional money amount. Both numeric columns are strings because the view
-/// model decides whether a figure may be shown at all — a mixed-currency
-/// capture withholds every amount (see
-/// <see cref="AccountStats.IsSingleCurrency"/>) while keeping every count.
-/// </summary>
+/// <summary>A labelled count and currency-specific amount in a detailed table.</summary>
 public sealed record AccountStatRow
 {
     public required string Label { get; init; }
@@ -27,33 +21,7 @@ public sealed record AccountStatRow
     public string AmountText { get; init; } = string.Empty;
 }
 
-/// <summary>
-/// The STATS screen: what the captured Steam account pages add up to. Reads
-/// <see cref="IAccountStatsRepository"/> and nothing else (§5.1) — no ingest,
-/// no enrichment, no import.
-///
-/// <para>Two rules from the read model are enforced here rather than in the
-/// markup, because a binding cannot decide not to exist:</para>
-/// <list type="number">
-/// <item><description><b>No blended sums.</b> Every money figure is formatted
-/// through <see cref="Money"/>, which returns the empty string whenever
-/// <see cref="AccountStats.IsSingleCurrency"/> is false. Counts are unaffected:
-/// a count is currency-free. The read model carries no per-currency totals, so
-/// the honest per-currency presentation available is
-/// <see cref="CurrencyRows"/> — which symbols appeared, and on how many
-/// transactions.</description></item>
-/// <item><description><b>Wallet credit is never spend.</b> The two wallet
-/// slices are built into their own <see cref="WalletRows"/> collection and are
-/// added into no other figure. Counting a top-up and the product it later paid
-/// for would count the same money twice.</description></item>
-/// </list>
-///
-/// <para>Amounts are grouped with <see cref="CultureInfo.InvariantCulture"/>.
-/// The capture stores the symbol the page rendered and not the locale that
-/// rendered it, so formatting the digits back in the user's own locale would be
-/// a guess dressed as fidelity. The symbol is reproduced exactly; the digits are
-/// grouped one way everywhere.</para>
-/// </summary>
+/// <summary>Projects captured facts without blending currencies or overlapping accounts.</summary>
 public partial class AccountStatsViewModel : ObservableObject
 {
     private readonly IAccountStatsRepository _repository;
@@ -61,6 +29,20 @@ public partial class AccountStatsViewModel : ObservableObject
 
     /// <summary>The one symbol observed, or empty when there is none or several.</summary>
     private string _symbol = string.Empty;
+    [ObservableProperty] public partial int DashboardVersion { get; set; }
+    private AccountStats? _stats;
+    private bool _moneyAvailable;
+    public ObservableCollection<string> CurrencyOptions { get; } = [];
+    public ObservableCollection<AccountCurrencySummary> CurrencySummaries { get; } = [];
+    [ObservableProperty] public partial string? SelectedCurrency { get; set; }
+    [ObservableProperty] public partial IReadOnlyList<AccountChartItem> YearChart { get; set; } = [];
+    [ObservableProperty] public partial IReadOnlyList<AccountChartItem> KindChart { get; set; } = [];
+    [ObservableProperty] public partial IReadOnlyList<AccountChartItem> LicenceChart { get; set; } = [];
+    [ObservableProperty] public partial string KindChartNote { get; set; } = string.Empty;
+    [ObservableProperty] public partial string AverageSpendInsight { get; set; } = string.Empty;
+    [ObservableProperty] public partial string SpendInsight { get; set; } = string.Empty;
+    partial void OnSelectedCurrencyChanged(string? value) { if (_stats is not null) ProjectCurrency(_stats); }
+
     private string _accountScopeNote = string.Empty;
     private bool _ambiguousAccountOverlap;
 
@@ -91,6 +73,21 @@ public partial class AccountStatsViewModel : ObservableObject
     public string SpendHeading => AccountStatsCopy.SpendHeading;
 
     public string SpendNote => AccountStatsCopy.SpendNote;
+
+    public string SummaryHeading => "From captured purchases";
+    public string SummaryNote => "Product transactions with recorded prices only. Wallet credit and standalone refund rows are excluded. Percentages count transactions, not games or money; missing-price rows and uncaptured pages are outside these figures.";
+    public string NetSpendLabel => "Net spend with recorded prices";
+    public string RefundedShareLabel => "Purchases refunded";
+    public string BundleShareLabel => "Kept purchases in bundles";
+
+    [ObservableProperty]
+    public partial string NetSpendValue { get; set; } = "Not available";
+
+    [ObservableProperty]
+    public partial string RefundedShare { get; set; } = "Not available";
+
+    [ObservableProperty]
+    public partial string BundleShare { get; set; } = "Not available";
 
     public string YearHeading => AccountStatsCopy.YearHeading;
 
@@ -146,8 +143,7 @@ public partial class AccountStatsViewModel : ObservableObject
     public partial bool HasFacts { get; set; }
 
     /// <summary>
-    /// The capture holds more than one currency symbol, or transactions with
-    /// none. Every money figure is withheld while this is true.
+    /// The capture needs separate currency totals or contains currencyless records.
     /// </summary>
     [ObservableProperty]
     public partial bool IsMixedCurrency { get; set; }
@@ -159,7 +155,7 @@ public partial class AccountStatsViewModel : ObservableObject
     [ObservableProperty]
     public partial bool ShowBiggest { get; set; }
 
-    /// <summary>Withheld like any other amount when the capture is mixed-currency.</summary>
+    /// <summary>The largest transaction within the selected currency.</summary>
     [ObservableProperty]
     public partial string BiggestAmountText { get; set; } = string.Empty;
 
@@ -245,8 +241,58 @@ public partial class AccountStatsViewModel : ObservableObject
         OnPropertyChanged(nameof(IntroMessage));
         HasFacts = stats.HasAnything;
         IsMixedCurrency = !stats.IsSingleCurrency;
+        _stats = stats;
         _symbol = stats.Currencies.Count == 1 ? stats.Currencies[0].Symbol : string.Empty;
 
+        NetSpendValue = stats.GrossProductTransactionCount > 0 && Money(stats.NetProductSpendCents) is { Length: > 0 } money
+            ? money : "Not available";
+        RefundedShare = Percentage(stats.RefundedProductTransactionCount, stats.GrossProductTransactionCount);
+        BundleShare = Percentage(stats.BundlePurchases.Count, stats.NetProductTransactionCount);
+
+        CurrencyOptions.Clear();
+        CurrencySummaries.Clear();
+        IReadOnlyList<AccountStats> groups = stats.CurrencyGroups.Count > 0 ? stats.CurrencyGroups : stats.Currencies.Count == 1 && stats.IsSingleCurrency ? [stats] : [];
+        foreach (var group in groups)
+        {
+            var symbol = group.Currencies[0].Symbol;
+            CurrencyOptions.Add(symbol);
+            string Format(long value) => _ambiguousAccountOverlap || group.GrossProductTransactionCount == 0 ? "Not available" : symbol + Amount(value);
+            CurrencySummaries.Add(new(symbol, Format(group.NetProductSpendCents), Format(group.GrossProductSpendCents), Format(group.RefundedProductSpendCents)));
+        }
+        var selection = SelectedCurrency;
+        SelectedCurrency = selection is not null && CurrencyOptions.Contains(selection) ? selection : CurrencyOptions.FirstOrDefault();
+        ProjectCurrency(stats);
+        BuildLicences(stats);
+        LicenceChart = stats.LicenseAcquisitions.OrderByDescending(x => x.Count)
+            .Select(x => new AccountChartItem(LicenceLabel(x.Kind), x.Count, Count(x.Count), "Azure")).ToArray();
+        BuildCurrencies(stats);
+        BuildCapture(stats);
+        DashboardVersion++;
+    }
+
+    private void ProjectCurrency(AccountStats root)
+    {
+        var stats = root.CurrencyGroups.FirstOrDefault(x => x.Currencies[0].Symbol == SelectedCurrency) ?? root;
+        _symbol = stats.Currencies.Count == 1 ? stats.Currencies[0].Symbol : string.Empty;
+        _moneyAvailable = stats.IsSingleCurrency && !_ambiguousAccountOverlap;
+        NetSpendValue = stats.GrossProductTransactionCount > 0 && Money(stats.NetProductSpendCents) is { Length: > 0 } money ? money : "Not available";
+        YearChart = _moneyAvailable ? stats.SpendByYear.Select(x => new AccountChartItem(x.Year.ToString(CultureInfo.InvariantCulture), x.Cents, Money(x.Cents), "Azure")).ToArray() : [];
+        var kinds = new[] {
+            new AccountChartItem("Purchases", stats.Purchases.Cents, Money(stats.Purchases.Cents), "Azure"),
+            new AccountChartItem("Gifts bought for others", stats.GiftPurchases.Cents, Money(stats.GiftPurchases.Cents), "TextDim"),
+            new AccountChartItem("In-game purchases", stats.InGamePurchases.Cents, Money(stats.InGamePurchases.Cents), "Text")
+        };
+        var negativeKinds = kinds.Any(x => x.Value < 0);
+        KindChart = _moneyAvailable && !negativeKinds ? kinds.Where(x => x.Value > 0).ToArray() : [];
+        KindChartNote = negativeKinds && _moneyAvailable
+            ? "Some categories have negative totals. Their signed amounts are shown in the spending breakdown."
+            : "No positive net spending to chart yet.";
+        var peak = stats.SpendByYear.OrderByDescending(x => x.Cents).FirstOrDefault();
+        SpendInsight = _moneyAvailable && peak is not null
+            ? $"Highest recorded year: {peak.Year} · {Money(peak.Cents)}" : "No dated spending with a known currency yet.";
+        AverageSpendInsight = _moneyAvailable && stats.NetProductTransactionCount > 0
+            ? $"Average kept transaction: {_symbol}{(stats.NetProductSpendCents / 100m / stats.NetProductTransactionCount).ToString("N2", CultureInfo.InvariantCulture)} · bundles count as one transaction"
+            : "No kept transactions with recorded prices to average.";
         BuildSpend(stats);
         BuildYears(stats);
         BuildKinds(stats);
@@ -254,10 +300,8 @@ public partial class AccountStatsViewModel : ObservableObject
         BuildBundles(stats);
         BuildDiscounts(stats);
         BuildWallet(stats);
-        BuildLicences(stats);
-        BuildCurrencies(stats);
-        BuildCapture(stats);
         BuildBiggest(stats);
+        DashboardVersion++;
     }
 
     private void BuildSpend(AccountStats stats)
@@ -424,7 +468,7 @@ public partial class AccountStatsViewModel : ObservableObject
         // The row's own symbol, not the capture's: this is one transaction, so
         // it can be stated in the currency it was actually charged in even when
         // the capture as a whole cannot be summed.
-        BiggestAmountText = IsMixedCurrency && biggest.CurrencySymbol is null
+        BiggestAmountText = _ambiguousAccountOverlap || (!_moneyAvailable && biggest.CurrencySymbol is null)
             ? string.Empty
             : (biggest.CurrencySymbol ?? _symbol) + Amount(biggest.Cents);
         ShowBiggestAmount = BiggestAmountText.Length > 0;
@@ -436,11 +480,15 @@ public partial class AccountStatsViewModel : ObservableObject
     // ══ Formatting ══════════════════════════════════════════════════════════
 
     /// <summary>
-    /// Money with the symbol as stored, or the empty string when the capture
-    /// mixes currencies. This is the single gate every amount passes through.
+    /// Money in the selected currency, withheld when account captures may overlap.
     /// </summary>
     private string Money(long cents)
-        => IsMixedCurrency || _ambiguousAccountOverlap ? string.Empty : _symbol + Amount(cents);
+        => !_moneyAvailable ? string.Empty : _symbol + Amount(cents);
+
+    private string Percentage(int numerator, int denominator)
+        => _ambiguousAccountOverlap || denominator <= 0 || numerator < 0 || numerator > denominator
+            ? "Not available"
+            : (100m * numerator / denominator).ToString("0.#", CultureInfo.CurrentCulture) + "%";
 
     private static string Amount(long cents)
         => (cents / 100m).ToString("N2", CultureInfo.InvariantCulture);

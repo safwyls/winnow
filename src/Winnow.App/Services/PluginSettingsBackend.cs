@@ -21,7 +21,7 @@ public sealed class PluginSettingsBackend(PluginCatalog catalog, PluginStorage s
                 plugin.Manifest.Version, string.Join(", ", plugin.Manifest.Capabilities.Select(c => c switch
                 { "library" => "Library sources", "metadata" => "Metadata", "artwork" => "Artwork", _ => "Recommendation feeds" })), plugin.Enabled, plugin.Loaded,
                 plugin.RestartRequired, plugin.Error ?? (plugin.RestartRequired ? "Restart Winnow to apply this change."
-                    : plugin.Loaded ? "Enabled" : "Disabled"), fields, plugin.Manifest.Website));
+                    : string.Empty), fields, plugin.Manifest.Website));
         }
         foreach (var issue in catalog.Issues.ToArray())
             snapshots.Add(new("invalid:" + issue.DirectoryPath, Path.GetFileName(issue.DirectoryPath), "This plugin could not be loaded.", "", "",
