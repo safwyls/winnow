@@ -701,8 +701,8 @@ public sealed class FullscreenCover : Border
     private CoverPresenter? _presenter;
     private readonly Image _floor = new() { Stretch = Stretch.UniformToFill };
     private readonly Image _vivid = new() { Stretch = Stretch.UniformToFill };
-    private readonly FullscreenCoverPadding _floorPadding = new();
-    private readonly FullscreenCoverPadding _vividPadding = new();
+    private readonly CoverPadding _floorPadding = new();
+    private readonly CoverPadding _vividPadding = new();
     private readonly TextBlock _placeholder;
     private bool _selected;
 
@@ -731,7 +731,7 @@ public sealed class FullscreenCover : Border
             layers.Children.Add(dot);
         }
         Child = layers;
-        if (!background) { _floor.Stretch = Stretch.Uniform; _vivid.Stretch = Stretch.Uniform; }
+        if (!background) { CoverPresentation.SetIsCover(_floor, true); CoverPresentation.SetIsCover(_vivid, true); }
         if (background) { Opacity = .16; IsHitTestVisible = false; }
         AttachedToVisualTree += (_, _) =>
         {

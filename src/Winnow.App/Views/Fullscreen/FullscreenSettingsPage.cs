@@ -235,6 +235,9 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             Toggle("Fit ultrawide displays", "Use the full width of your display.", () => Context.FitUltrawide, Context.SetFitUltrawide);
             Toggle("Reduce motion", "Minimise animations and motion effects.", () => Context.ReducedMotion, value => Context.ReducedMotion = value);
             Toggle("Dim dormant covers", "Slightly dim games you haven’t played recently.", () => Context.DimCovers, value => Context.DimCovers = value);
+            Adjust("Cover art", "Fit shows the whole image. Fill crops it to the card.",
+                () => Context.Shared.Display.FitCoverArt ? "Fit" : "Fill",
+                _ => Context.Shared.Display.FitCoverArt = !Context.Shared.Display.FitCoverArt);
         }
         else if (_section == "Controller")
         {
@@ -365,7 +368,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         else main.Children.Add(FullscreenUi.Scroll(rows));
         var preview = FullscreenUi.Stack(FullscreenInformation.Heading(_section == "Appearance" ? "Preview" : _section),
             FullscreenUi.Text("Your next game is already here.", 48),
-            FullscreenInformation.Metadata(_section == "Appearance" ? "Theme applies to both views. Other appearance settings apply to fullscreen." : "Library and account settings apply to both desktop and fullscreen."));
+            FullscreenInformation.Metadata(_section == "Appearance" ? "Theme, cover art and cover dimming apply to both views. Other appearance settings apply to fullscreen." : "Library and account settings apply to both desktop and fullscreen."));
         if (_section == "Controller") Grid.SetColumnSpan(main.Children[0], 2);
         else { Grid.SetColumn(preview, 1); main.Children.Add(preview); }
         if (_section == "Appearance" && Context.Library.VisibleTiles.FirstOrDefault() is { } sample)
@@ -375,7 +378,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             preview.Children.Add(new FullscreenCover(sample) { Height = 320, HorizontalAlignment = HorizontalAlignment.Stretch });
             preview.Children.Add(FullscreenUi.Text(sample.Title, 48));
             preview.Children.Add(FullscreenInformation.Text(sample.UnreadText));
-            preview.Children.Add(FullscreenInformation.Metadata("Theme applies to both views. Other appearance settings apply to fullscreen."));
+            preview.Children.Add(FullscreenInformation.Metadata("Theme, cover art and cover dimming apply to both views. Other appearance settings apply to fullscreen."));
         }
         var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*"), RowSpacing = 24 };
         var navigation = FullscreenUi.TriggerNavigation(tabStrip);

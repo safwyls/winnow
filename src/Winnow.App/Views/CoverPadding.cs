@@ -6,33 +6,38 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 
-namespace Winnow.App.Views.Fullscreen;
+namespace Winnow.App.Views;
 
 /// <summary>Extends the cover's edge colors into the space left by an uncropped image.</summary>
-internal sealed class FullscreenCoverPadding : Control
+public sealed class CoverPadding : Control
 {
     private static readonly ConditionalWeakTable<Bitmap, EdgeColors> Colors = new();
-    private Bitmap? _source;
+    public static readonly StyledProperty<Bitmap?> SourceProperty =
+        AvaloniaProperty.Register<CoverPadding, Bitmap?>(nameof(Source));
     private EdgeColors? _colors;
+
+    static CoverPadding() => AffectsRender<CoverPadding>(SourceProperty, CoverPresentation.FitProperty);
 
     public Bitmap? Source
     {
-        get => _source;
-        set
-        {
-            if (ReferenceEquals(_source, value)) return;
-            _source = value;
-            // Sample only on artwork changes, and share the tiny palette without retaining cache pixels.
-            _colors = value is null ? null : Colors.GetValue(value, Sample);
-            InvalidateVisual();
-        }
+        get => GetValue(SourceProperty);
+        set => SetValue(SourceProperty, value);
     }
 
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == SourceProperty)
+        {
+            // Share the tiny sampled palette without retaining cache pixels.
+            _colors = Source is { } source ? Colors.GetValue(source, Sample) : null;
+        }
+    }
     public override void Render(DrawingContext context)
     {
         base.Render(context);
-        if (_source is null || _colors is null || Bounds.Width <= 0 || Bounds.Height <= 0) return;
-        var size = _source.Size;
+        if (!CoverPresentation.GetFit(this) || Source is null || _colors is null || Bounds.Width <= 0 || Bounds.Height <= 0) return;
+        var size = Source.Size;
         var scale = Math.Min(Bounds.Width / size.Width, Bounds.Height / size.Height);
         var horizontal = Math.Max(0, (Bounds.Width - size.Width * scale) / 2);
         var vertical = Math.Max(0, (Bounds.Height - size.Height * scale) / 2);
@@ -98,3 +103,4 @@ internal sealed class FullscreenCoverPadding : Control
         public static readonly EdgeColors Empty = new(Brushes.Transparent, Brushes.Transparent, Brushes.Transparent, Brushes.Transparent);
     }
 }
+

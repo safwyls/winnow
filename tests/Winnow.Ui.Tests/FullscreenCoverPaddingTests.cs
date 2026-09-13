@@ -3,7 +3,7 @@ using Avalonia;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using Winnow.App.Views.Fullscreen;
+using Winnow.App.Views;
 using Xunit;
 
 namespace Winnow.Ui.Tests;
@@ -19,7 +19,7 @@ public sealed class FullscreenCoverPaddingTests
             0, 0, 240, 255, 0, 0, 240, 255,
             220, 0, 0, 255, 220, 0, 0, 255
         });
-        var padding = new FullscreenCoverPadding { Source = source };
+        var padding = new CoverPadding { Source = source };
         padding.Measure(new Size(20, 60));
         padding.Arrange(new Rect(0, 0, 20, 60));
         using var rendered = new RenderTargetBitmap(new PixelSize(20, 60));
@@ -29,6 +29,18 @@ public sealed class FullscreenCoverPaddingTests
         var bottom = (59 * 20 + 10) * 4;
         Assert.Equal(new byte[] { 220, 0, 0, 255 }, pixels[bottom..(bottom + 4)]);
         Assert.Equal(0, pixels[(30 * 20 + 10) * 4 + 3]);
+        CoverPresentation.SetFit(padding, false);
+        using (var filled = new RenderTargetBitmap(new PixelSize(20, 60)))
+        {
+            filled.Render(padding);
+            Assert.All(Pixels(filled), pixel => Assert.Equal(0, pixel));
+        }
+        CoverPresentation.SetFit(padding, true);
+        using (var restored = new RenderTargetBitmap(new PixelSize(20, 60)))
+        {
+            restored.Render(padding);
+            Assert.Equal(pixels, Pixels(restored));
+        }
         padding.Source = null;
         using var cleared = new RenderTargetBitmap(new PixelSize(20, 60));
         cleared.Render(padding);
@@ -43,7 +55,7 @@ public sealed class FullscreenCoverPaddingTests
             0, 180, 0, 255, 0, 0, 240, 255,
             0, 180, 0, 255, 0, 0, 240, 255
         });
-        var padding = new FullscreenCoverPadding { Source = source };
+        var padding = new CoverPadding { Source = source };
         padding.Measure(new Size(60, 20));
         padding.Arrange(new Rect(0, 0, 60, 20));
         using var rendered = new RenderTargetBitmap(new PixelSize(60, 20));

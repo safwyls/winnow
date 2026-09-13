@@ -17,6 +17,37 @@ namespace Winnow.Ui.Tests;
 public sealed class FullscreenSettingsTests
 {
     [AvaloniaFact]
+    public void Cover_art_setting_tracks_shared_preference_and_controller_input()
+    {
+        using var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell);
+        var original = context.Shared.Display.FitCoverArt;
+        using var view = new FullscreenView(context);
+        var window = new Window { Width = 1920, Height = 1080, Content = view };
+        try
+        {
+            window.Show();
+            for (var i = 0; i < 3; i++) view.Handle(GamepadButtons.Next);
+            Dispatcher.UIThread.RunJobs();
+            var page = Assert.IsType<FullscreenSettingsPage>(view.CurrentPage);
+            var control = page.GetVisualDescendants().OfType<Button>()
+                .Single(b => AutomationProperties.GetName(b) == "Cover art");
+            context.Shared.Display.FitCoverArt = true;
+            Assert.Equal("Fit", AutomationProperties.GetItemStatus(control));
+            control.Focus();
+            page.Handle(GamepadButtons.Right);
+            Assert.False(context.Shared.Display.FitCoverArt);
+            Assert.False(Winnow.App.Views.CoverPresentation.GetFit(view));
+            Assert.Equal("Fill", AutomationProperties.GetItemStatus(control));
+            page.Handle(GamepadButtons.Left);
+            Assert.True(context.Shared.Display.FitCoverArt);
+            page.Handle(GamepadButtons.Accept);
+            Assert.False(context.Shared.Display.FitCoverArt);
+            Capture(window, "cover-art-appearance");
+        }
+        finally { window.Close(); context.Shared.Display.FitCoverArt = original; }
+    }
+
+    [AvaloniaFact]
     public void Dormancy_toggle_tracks_desktop_changes_and_controller_changes_update_desktop()
     {
         using var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell);

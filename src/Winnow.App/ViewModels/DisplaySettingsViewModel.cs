@@ -12,6 +12,18 @@ namespace Winnow.App.ViewModels;
 /// </summary>
 public partial class DisplaySettingsViewModel : ObservableObject
 {
+    public const string CoverArtModeSettingKey = "display.cover_art_mode";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CoverArtFitIndex))]
+    public partial bool FitCoverArt { get; set; } = true;
+
+    public int CoverArtFitIndex
+    {
+        get => FitCoverArt ? 0 : 1;
+        set { if (value is 0 or 1) FitCoverArt = value == 0; }
+    }
+
     private readonly DormancyRamp _ramp;
     private readonly ISettingsRepository? _settings;
     private readonly Func<Task>? _reloadLibrary;
@@ -123,6 +135,7 @@ public partial class DisplaySettingsViewModel : ObservableObject
         var stored = await Task.Run(async () =>
         {
             var storedDim = await _settings.GetAsync(DormancyRamp.DimCoversSettingKey, ct);
+            var storedCoverMode = await _settings.GetAsync(CoverArtModeSettingKey, ct);
             var storedNonGame = await _settings.GetAsync(
                 BucketThresholds.ShowNonGameEntriesSettingKey, ct);
             var storedGrouping = await _settings.GetAsync(
@@ -136,13 +149,14 @@ public partial class DisplaySettingsViewModel : ObservableObject
             {
                 await _journal.LoadAsync(ct);
             }
-            return (storedDim, storedNonGame, storedGrouping, storedCap, storedExplicit);
+            return (storedDim, storedCoverMode, storedNonGame, storedGrouping, storedCap, storedExplicit);
         }, ct);
 
         _loading = true;
         try
         {
             PromptAfterPlay = _journal?.PromptEnabled ?? false;
+            FitCoverArt = stored.storedCoverMode != "fill";
             if (bool.TryParse(stored.storedDim, out var dim))
             {
                 DimDormantCovers = dim;
@@ -179,6 +193,12 @@ public partial class DisplaySettingsViewModel : ObservableObject
                 MaturityCap = MaturityCap,
             };
         CapHiddenCount = await Task.Run(() => _libraryQueries.CountHiddenByRatingCapAsync(thresholds, ct), ct);
+    }
+
+    partial void OnFitCoverArtChanged(bool value)
+    {
+        if (!_loading && _settings is not null)
+            PendingSave = _settings.SetAsync(CoverArtModeSettingKey, value ? "fit" : "fill");
     }
 
     partial void OnDimDormantCoversChanged(bool value)

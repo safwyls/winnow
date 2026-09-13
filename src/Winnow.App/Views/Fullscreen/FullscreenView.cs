@@ -61,6 +61,10 @@ public sealed class FullscreenView : UserControl, IDisposable
     public FullscreenView(FullscreenContext context)
     {
         _context = context;
+        this.Bind(CoverPresentation.FitProperty, new Binding(nameof(DisplaySettingsViewModel.FitCoverArt))
+        {
+            Source = context.Shared.Display,
+        });
         AddHandler(PointerPressedEvent, (_, e) =>
         {
             if (e.GetCurrentPoint(this).Properties.PointerUpdateKind != PointerUpdateKind.RightButtonPressed) return;

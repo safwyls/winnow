@@ -1,6 +1,7 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
+             xmlns:views="using:Winnow.App.Views"
              x:Class="Winnow.App.Views.GameTileView"
              x:DataType="vm:GameTileViewModel"
              Name="Root"
@@ -117,7 +118,7 @@
              rather than on the elements because §8's reduced-motion setting has
              to be able to take it away, and a local Transitions value would
              outrank any selector trying to. -->
-        <Style Selector="Border#Lift Border#VividArt, Border#Lift Image#VividArtwork">
+        <Style Selector="Border#Lift Border#VividArt, Border#Lift Image#VividArtwork, Border#Lift views|CoverPadding#VividPadding">
             <Setter Property="Transitions">
                 <Transitions>
                     <DoubleTransition Property="Opacity" Duration="0:0:0.14" Easing="CubicEaseOut"/>
@@ -129,7 +130,7 @@
              schedule at all. This is independent of the dimming preference and
              cannot fight it: with dimming off the resting and hovered alphas are
              both 1.0, so there is nothing for either setting to animate. -->
-        <Style Selector="Border#Lift.snap Border#VividArt, Border#Lift.snap Image#VividArtwork">
+        <Style Selector="Border#Lift.snap Border#VividArt, Border#Lift.snap Image#VividArtwork, Border#Lift.snap views|CoverPadding#VividPadding">
             <Setter Property="Transitions">
                 <Transitions/>
             </Setter>
@@ -285,9 +286,11 @@
                     <!-- Real cover art: the same two layers, the same alpha, the
                          same 140ms transition. The spike's whole point is that
                          swapping the source changes nothing about the fade. -->
-                    <Image Source="{Binding #Root.Cover.Floor}" Stretch="UniformToFill"/>
-                    <Image Name="VividArtwork"
-                           Source="{Binding #Root.Cover.Vivid}" Stretch="UniformToFill"
+                    <views:CoverPadding Source="{Binding #Root.Cover.Floor}" IsHitTestVisible="False"/>
+                    <views:CoverPadding Name="VividPadding" Source="{Binding #Root.Cover.Vivid}" Opacity="{Binding DisplayAlpha}" IsHitTestVisible="False"/>
+                    <Image views:CoverPresentation.IsCover="True" Source="{Binding #Root.Cover.Floor}"/>
+                    <Image views:CoverPresentation.IsCover="True" Name="VividArtwork"
+                           Source="{Binding #Root.Cover.Vivid}"
                            Opacity="{Binding DisplayAlpha}"/>
 
                     <!-- Gloss sweep, per mock's .art::after. -->

@@ -1782,8 +1782,10 @@ publication. Refresh outcome sidecars suppress repeated checks for seven days af
 definite miss and one hour after a failure. No startup cache sweep is required. Existing
 decoded images and leases remain stable; replacements appear on a later disk load after
 memory eviction or restart. Explicit IGDB pins and user-art keys are excluded. Desktop
-and fullscreen share this selection/cache policy; desktop crops nonstandard art while
-fullscreen fits it and fills the remaining space with edge colors.
+and fullscreen share this selection/cache policy and the persisted `display.cover_art_mode`
+preference. Fit (the default) shows nonstandard art with edge-color padding; Fill crops
+to the unchanged card bounds. Switching mode updates realized portrait images without
+replacing their bitmap leases or refetching artwork. Heroes and screenshots are unaffected.
 
 **List membership resolution.** Membership in `list_items` is stored per release: adding
 a game to a list records the entry the user picked. A list contains a game when any release of any work

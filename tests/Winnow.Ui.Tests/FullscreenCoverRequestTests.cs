@@ -5,6 +5,8 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.VisualTree;
 using Winnow.App.Views.Fullscreen;
+using Winnow.App.Views;
+using Avalonia.Media;
 using Winnow.Covers;
 using Winnow.Tests;
 using Xunit;
@@ -27,6 +29,19 @@ public sealed class FullscreenCoverRequestTests
             window.UpdateLayout();
             Assert.Equal(new[] { CoverImaging.SnapWidth(400) }, leases.Widths);
             Assert.Contains(cover.GetVisualDescendants().OfType<Image>(), image => ReferenceEquals(image.Source, bitmap));
+            var bounds = cover.Bounds;
+            var images = cover.GetVisualDescendants().OfType<Image>().ToArray();
+            Assert.All(images, image => Assert.Equal(Stretch.Uniform, image.Stretch));
+            CoverPresentation.SetFit(window, false);
+            window.UpdateLayout();
+            Assert.All(images, image =>
+            {
+                Assert.Equal(Stretch.UniformToFill, image.Stretch);
+                Assert.Same(bitmap, image.Source);
+            });
+            Assert.Equal(bounds, cover.Bounds);
+            CoverPresentation.SetFit(window, true);
+            Assert.All(images, image => Assert.Equal(Stretch.Uniform, image.Stretch));
             cover.SetSelected(true);
             cover.SetSelected(false);
             Assert.Single(leases.Widths);

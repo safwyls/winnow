@@ -98,8 +98,9 @@ public sealed class FullscreenContext : IDisposable
     private void ThemeChanged(object? sender, EventArgs e) => PreferencesChanged?.Invoke(this, EventArgs.Empty);
     private void DisplayChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(DisplaySettingsViewModel.DimDormantCovers)) return;
-        Library.Ramp.DimsDormantCovers = DimCovers;
+        if (e.PropertyName == nameof(DisplaySettingsViewModel.DimDormantCovers))
+            Library.Ramp.DimsDormantCovers = DimCovers;
+        else if (e.PropertyName != nameof(DisplaySettingsViewModel.FitCoverArt)) return;
         PreferencesChanged?.Invoke(this, EventArgs.Empty);
     }
     private void FeedChanged(object? sender, PropertyChangedEventArgs e)

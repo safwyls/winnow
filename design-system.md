@@ -188,8 +188,12 @@ button with the standard visible focus treatment.
 4px base unit. Spacing: `4 · 8 · 12 · 16 · 24 · 32 · 48`.
 
 **Tile geometry.** 2:3 portrait, matching Steam's library capsule. IGDB and user artwork
-can have other proportions: desktop tiles crop to fill; fullscreen fits the whole image
-and extends its edge colors into the remaining space.
+can have other proportions. The shared **Cover art** preference defaults to **Fit**:
+show the whole image and extend its edge colors into the remaining space. **Fill**
+crops artwork to the card. Both modes retain the same 2:3 geometry and apply immediately
+to portrait covers on desktop and fullscreen. Set this in desktop Display or fullscreen
+Settings → Appearance; it persists across launches. Heroes and screenshots keep their
+own presentation. Reset fullscreen appearance leaves this shared preference intact.
 Default 148×222, gutter 16px. The density slider spans 108×162 → 200×300; the grid reflows on
 available width and does not use fixed column counts.
 
