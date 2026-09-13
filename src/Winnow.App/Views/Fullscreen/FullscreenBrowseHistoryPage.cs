@@ -31,20 +31,23 @@ public sealed class FullscreenBrowseHistoryPage : FullscreenPage
     private void Build()
     {
         _rows.Clear();
-        var body = FullscreenUi.Stack(FullscreenUi.Text(Title, 48));
+        var body = FullscreenInformation.Column();
+        body.Children.Add(FullscreenInformation.Title(Title));
+        FullscreenInformation.AddSection(body, "Your responses");
         foreach (var entry in Context.Feed.History.Entries)
         {
             var position = _rows.Count;
             var label = $"{entry.Title} · {entry.KindLabel} · {entry.StatusNote} {entry.StatusDate}";
             var button = FullscreenUi.Button(label, () => Actions(entry));
-            button.Content = FullscreenUi.Stack(FullscreenUi.Text(entry.Title, 32),
-                FullscreenUi.Text($"{entry.KindLabel} · {entry.StatusNote} {entry.StatusDate}", 24, "TextDim"));
+            button.Content = FullscreenUi.Stack(FullscreenInformation.Title(entry.Title),
+                FullscreenInformation.Metadata($"{entry.KindLabel} · {entry.StatusNote} {entry.StatusDate}"));
             AutomationProperties.SetName(button, label);
             button.GotFocus += (_, _) => _position = position;
+            if (_rows.Count > 0) body.Children.Add(FullscreenInformation.Rule());
             body.Children.Add(button);
             _rows.Add(button);
         }
-        if (_rows.Count == 0) body.Children.Add(FullscreenUi.Text(Context.Feed.History.Message));
+        if (_rows.Count == 0) body.Children.Add(FullscreenInformation.Text(Context.Feed.History.Message));
         var back = FullscreenUi.Button("Back to For you", Context.Back);
         body.Children.Add(back);
         _rows.Add(back);

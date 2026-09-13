@@ -17,9 +17,12 @@ public sealed class FullscreenDetailsReadingPage : FullscreenPage
     {
         _title = title;
         var back = FullscreenUi.Button("Back", Context.Back);
-        _scroll = FullscreenUi.Scroll(FullscreenUi.Text(text));
-        var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto"), MaxWidth = 1200 };
-        layout.Children.Add(FullscreenUi.Text(title, 32));
+        _scroll = FullscreenUi.Scroll(FullscreenInformation.Text(text));
+        var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto"), RowSpacing = 20, MaxWidth = 1200, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 20, 0, 0) };
+        var heading = new StackPanel { Spacing = 20 };
+        heading.Children.Add(FullscreenInformation.Title(title));
+        heading.Children.Add(FullscreenInformation.Rule());
+        layout.Children.Add(heading);
         Grid.SetRow(_scroll, 1);
         layout.Children.Add(_scroll);
         Grid.SetRow(back, 2);
@@ -50,7 +53,7 @@ public sealed class FullscreenDetailsScreenshotPage : FullscreenPage
         _lightbox = lightbox;
         var image = new Image { Stretch = Stretch.Uniform };
         image.Bind(Image.SourceProperty, new Binding(nameof(ScreenshotLightboxViewModel.Image)) { Source = lightbox });
-        var caption = FullscreenUi.Text(lightbox.Caption, 24);
+        var caption = FullscreenInformation.Metadata(lightbox.Caption);
         caption.Bind(TextBlock.TextProperty, new Binding(nameof(ScreenshotLightboxViewModel.Caption)) { Source = lightbox });
         var back = FullscreenUi.Button("Back", Context.Back);
         var layout = new Grid { RowDefinitions = new RowDefinitions("*,Auto,Auto") };

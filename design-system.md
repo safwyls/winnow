@@ -104,9 +104,11 @@ renders at its default light instance and every bold display style comes out wro
 consequently no `wdth` to set; Bricolage's static Bold is `wdth` 100, which is the widest cut
 the face has. `src/Winnow.App/Assets/Fonts/README.md` lists the exact files.
 
-**Every number is Plex Mono with tabular figures** (`FontFeatures="tnum"`). This is not
+**Desktop data uses Plex Mono with tabular figures** (`FontFeatures="tnum"`). This is not
 optional in list view, where a playtime column that does not align vertically is unreadable
-at scan speed.
+at scan speed. Fullscreen information uses BodyFont for dates, supporting facts and
+prominent personal metrics as specified below; charts and aligned numeric controls retain
+their data typography. Do not set an entire sentence in Mono merely because it contains a number.
 
 ### Scale
 
@@ -674,9 +676,10 @@ features must be maintained and verified in both presentations.
 
 The shared identity is the teal palette, three font families, cover art, dormancy and unread
 markers. Fullscreen gets its own type and spacing scale. Start with a 1920×1080 reference
-canvas, 5% safe margins, 64px game titles, 32px section headings and 28px body text; essential
-labels start at 24px at 100% text size. The user's text scale adjusts body labels from that
-reference. These are design starting points, not measured distance guarantees.
+canvas and 5% safe margins. Browsing heroes start at 64px; information surfaces use the
+hierarchy below. Primary navigation and compact adjustment controls retain their 28px
+labels. The user's text scale adjusts text from that reference. These are design starting
+points, not measured distance guarantees.
 4K increases rendering resolution rather than content density. Fit ultrawide is an optional
 fullscreen preference: it expands the reference canvas horizontally to the display aspect
 ratio at the default 1080px reference height. Overall UI scale adjusts both reference dimensions
@@ -686,6 +689,58 @@ Library grids reflow within the changed layout space. Home uses cover dimensions
 games, rather than enlarging art to fill the extra height. Available height still limits
 covers when increasing scale or using large margins. The default retains the
 16:9 composition. Validate readability from the actual seating position before accepting the scale.
+
+**Information hierarchy.** Use the following roles wherever a fullscreen surface mixes
+titles, facts, prose and actions. The reader should find the subject first, its supporting
+facts second, and the next action without reading an undifferentiated block. Use BodyFont
+with explicit weights for these roles; a larger size does not switch information to
+DisplayFont.
+
+| Role | Reference treatment | Use |
+|---|---|---|
+| Section label | 18px regular, uppercase, TextDim | Names a meaningful group; expose it as a heading |
+| Item title | 32px bold, Text | Game, event or subject name within a section |
+| Body and secondary action | 24px regular, Text | Descriptions, notes, explanations and links |
+| Metadata | 22px regular, TextDim | Dates, durations, sources and supporting status |
+| Prominent figure | 60px bold, Text, with 22px caption | A small set of useful personal metrics |
+
+Group related text with 10–14px spacing. Start information beneath local navigation with
+a 20px inset. Separate distinct groups or chronological entries with a 1px Line rule and
+12px space above and below it, in addition to the group's normal spacing. Do not insert
+rules between a heading and its first item, or around every control. A vertical rule can
+separate two complementary columns; a rule near hero art should fade before crossing it.
+Use existing theme brushes and their contrast rules. Flare still means unread, Amber
+means a warning or problem, and Volt marks an active choice or action; muted metadata
+must never hide an error or be the only carrier of meaning.
+
+Keep prose and information lists left aligned, normally within a 1320px maximum column
+at the reference scale. Short content keeps the same column width as long content.
+Use the available viewport width when narrower, wrap long names and action labels, and
+scroll vertically when content grows. Item previews may truncate only when opening the
+item reveals the complete text. Long-form reading pages show the full text. Preserve
+explicit controller focus paths and bring offscreen actions into view after layout.
+
+Put secondary navigation below the content it explains, using a text label and an arrow.
+Keep primary actions visibly prominent. Save, Cancel, checkboxes, rating choices, toggles
+and left/right adjustments keep their control affordances; they are not arrow links.
+Separate an item's title from date/source/status metadata rather than joining everything
+into one large label. Keep binding-driven labels, disabled states, progress and errors live.
+An empty section explains what belongs there using normal body copy; it does not invent
+entries or add decorative placeholder groups.
+
+Apply this pattern by role, not by reducing every font or adding dividers everywhere.
+Cover shelves and grids remain artwork-led; tab strips, menus, keyboards and file pickers
+retain compact navigation. Charts keep axis labels, numeric alignment and chart-specific
+type scales. Editors keep their fields and button grouping. Existing hero titles and
+specialized metric compositions remain surface-specific. Desktop uses its own scale and
+layout, with the same shared operations. Verify populated, empty, error and enlarged-text
+states, including controller reachability; rendered tests do not establish seating-distance
+readability or physical-controller behavior.
+
+`FullscreenInformation` supplies the reusable text roles, rules, bounded columns and
+wrapping secondary links. Use these for new information compositions rather than copying
+screen-specific font values. `FullscreenUi` continues to provide compact controls and
+navigation primitives.
 
 **For you** opens on a focused game in a horizontal cover shelf.
 Fullscreen makes the complete scored shelf available: up to six primary recommendations

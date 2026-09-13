@@ -56,7 +56,7 @@ public sealed class RailListControlsTests
         try
         {
             tv.Show(); await page.PendingRefresh; Flush();
-            var summary = page.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Library summary"));
+            var summary = page.GetVisualDescendants().OfType<Button>().Single(button => AutomationProperties.GetName(button) == "Library summary");
             Assert.True(summary.Focus(NavigationMethod.Tab));
             tv.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
             Assert.IsType<FullscreenLibrarySummaryPage>(opened);

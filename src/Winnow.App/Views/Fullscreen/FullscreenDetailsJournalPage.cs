@@ -38,9 +38,9 @@ public sealed class FullscreenDetailsJournalPage : FullscreenPage
             stars.Children.Add(button);
             choices.Add(button);
         }
-        var currentRating = FullscreenUi.Text("", 28, "TextDim");
+        var currentRating = FullscreenInformation.Metadata("");
         currentRating.Bind(TextBlock.TextProperty, new Binding(nameof(JournalEntryViewModel.DraftRatingText)) { Source = entry });
-        var problem = FullscreenUi.Text("", 28, "Amber");
+        var problem = FullscreenInformation.Text("", brush: "Amber");
         problem.Bind(TextBlock.TextProperty, new Binding(nameof(JournalEntryViewModel.Problem)) { Source = entry });
         var save = FullscreenUi.Button("Save", async () =>
         {
@@ -62,8 +62,20 @@ public sealed class FullscreenDetailsJournalPage : FullscreenPage
         actions.Children.Add(save);
         actions.Children.Add(cancel);
         actions.Children.Add(delete);
-        Content = FullscreenUi.Scroll(FullscreenUi.Stack(FullscreenUi.Text($"Journal · {entry.DateText}", 32),
-            _note, edit, FullscreenUi.Text("How was that?", 28), stars, currentRating, problem, actions));
+        var body = FullscreenInformation.Column("FullscreenJournalEditor");
+        body.Children.Add(FullscreenInformation.Heading("Journal"));
+        body.Children.Add(FullscreenInformation.Metadata(entry.DateText));
+        body.Children.Add(FullscreenInformation.Title("What were you doing?"));
+        body.Children.Add(_note);
+        body.Children.Add(edit);
+        FullscreenInformation.AddSection(body, "Rating");
+        body.Children.Add(FullscreenInformation.Title("How was that?"));
+        body.Children.Add(stars);
+        body.Children.Add(currentRating);
+        body.Children.Add(problem);
+        body.Children.Add(FullscreenInformation.Rule());
+        body.Children.Add(actions);
+        Content = FullscreenUi.Scroll(body);
         SetFocusRows([edit], choices.ToArray(), [save, cancel, delete]);
     }
 

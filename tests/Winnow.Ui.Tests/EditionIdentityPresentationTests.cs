@@ -1,3 +1,4 @@
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
@@ -66,7 +67,7 @@ public sealed class EditionIdentityPresentationTests
                 Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), text => text.Text?.Contains("Epic edition", StringComparison.Ordinal) == true);
                 using var identityPage = new FullscreenIdentityPage(context);
                 window.Content = identityPage;
-                await WaitUntil(() => window.GetVisualDescendants().OfType<Button>().Any(button => button.Content?.ToString()?.Contains("entries ·", StringComparison.Ordinal) == true));
+                await WaitUntil(() => window.GetVisualDescendants().OfType<Button>().Any(button => AutomationProperties.GetName(button)?.Contains("entries ·", StringComparison.Ordinal) == true));
                 Click(Find(window, "entries ·"));
                 Click(Find(window, "Separate again", exact: true));
                 await identityPage.PendingAction;
@@ -102,7 +103,7 @@ public sealed class EditionIdentityPresentationTests
 
     private static Button Find(Window window, string text, bool exact = false)
         => window.GetVisualDescendants().OfType<Button>().First(button => exact ? button.Content?.ToString() == text
-            : button.Content?.ToString()?.Contains(text, StringComparison.Ordinal) == true);
+            : (AutomationProperties.GetName(button) ?? button.Content?.ToString())?.Contains(text, StringComparison.Ordinal) == true);
     private static void Click(Button button)
     {
         Assert.True(button.Focus());

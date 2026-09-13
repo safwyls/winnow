@@ -20,20 +20,26 @@ public sealed class FullscreenArtworkOrderPage : FullscreenPage
 
     private void Render(string? restoreSource = null, int direction = 0)
     {
-        var content = FullscreenUi.Stack(FullscreenUi.Text(Title, 64),
-            FullscreenUi.Text(ArtworkOrderViewModel.Explanation, 28, "TextDim"));
+        var content = FullscreenInformation.Column();
+        content.Children.Add(FullscreenUi.Text(Title, 64));
+        content.Children.Add(FullscreenInformation.Text(ArtworkOrderViewModel.Explanation));
+        FullscreenInformation.AddSection(content, "Sources · preferred first");
         var focus = new List<Control[]>();
         Button? restore = null;
         foreach (var source in _model.Sources)
         {
+            if (focus.Count > 0) content.Children.Add(FullscreenInformation.Rule());
             var up = FullscreenUi.Button("Move up", () => _ = MoveAsync(source.SourceId, -1));
             up.IsEnabled = source.MoveUpCommand.CanExecute(source.SourceId);
             AutomationProperties.SetName(up, source.MoveUpLabel);
             var down = FullscreenUi.Button("Move down", () => _ = MoveAsync(source.SourceId, 1));
+            up.FontSize = down.FontSize = 24;
             down.IsEnabled = source.MoveDownCommand.CanExecute(source.SourceId);
             AutomationProperties.SetName(down, source.MoveDownLabel);
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), ColumnSpacing = 16, Margin = new Thickness(0, 12) };
-            row.Children.Add(FullscreenUi.Text(source.Label, 28));
+            var label = FullscreenInformation.Title(source.Label);
+            label.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center;
+            row.Children.Add(label);
             Grid.SetColumn(up, 1); row.Children.Add(up);
             Grid.SetColumn(down, 2); row.Children.Add(down);
             content.Children.Add(row);
@@ -42,7 +48,7 @@ public sealed class FullscreenArtworkOrderPage : FullscreenPage
                 ? source.MoveUpCommand.CanExecute(source.SourceId) ? up : down
                 : source.MoveDownCommand.CanExecute(source.SourceId) ? down : up;
         }
-        var status = FullscreenUi.Text("", 28, "TextDim");
+        var status = FullscreenInformation.Metadata("");
         status.Bind(TextBlock.TextProperty, new Binding(nameof(_model.Status)) { Source = _model });
         AutomationProperties.SetLiveSetting(status, AutomationLiveSetting.Polite);
         content.Children.Add(status);

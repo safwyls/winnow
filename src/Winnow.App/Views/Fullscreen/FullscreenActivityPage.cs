@@ -18,7 +18,7 @@ public sealed class FullscreenActivityPage : FullscreenPage
 {
     public override Control? Backdrop { get; } = new FullscreenAmbientBackdrop("activity");
     private readonly List<ActivityEntry> _entries = [];
-    private readonly StackPanel _preview = new() { Spacing = 24 };
+    private readonly StackPanel _preview = new() { Spacing = 14, MaxWidth = 960, HorizontalAlignment = HorizontalAlignment.Left };
     private ActivityEntry? _selected;
     private string _section = "Sessions";
     private int _week;
@@ -160,8 +160,8 @@ public sealed class FullscreenActivityPage : FullscreenPage
         var tabBar = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24 };
         foreach (var tab in tabs) { tab.Classes.Set("current", Equals(tab.Content, _section)); tab.GotFocus += (_, _) => _tabsFocused = true; tabBar.Children.Add(tab); }
         var start = WeekStart;
-        var list = new StackPanel { Spacing = 16 };
-        list.Children.Add(FullscreenUi.Text(_week == 0 ? "THIS WEEK" : $"{start:d MMM} – {start.AddDays(6):d MMM yyyy}", 24, "TextDim"));
+        var list = new StackPanel { Spacing = 14 };
+        list.Children.Add(FullscreenInformation.Heading(_week == 0 ? "This week" : $"{start:d MMM} – {start.AddDays(6):d MMM yyyy}"));
         var rows = _entries.Where(e => e.At.ToLocalTime() >= start && e.At.ToLocalTime() < start.AddDays(7))
             .Where(e => _section == "Updates" ? e.Update is not null : e.Session is not null && (_section != "Journal" || HasJournal(e.Note))).ToArray();
         var buttons = new List<Control[]> { tabs };
@@ -173,16 +173,24 @@ public sealed class FullscreenActivityPage : FullscreenPage
             button.MinHeight = 116;
             var content = new Grid { ColumnDefinitions = new ColumnDefinitions("144,*"), ColumnSpacing = 24 };
             content.Children.Add(new FullscreenCover(row.Tile) { Height = 112, Width = 144 });
-            var words = FullscreenUi.Stack(FullscreenUi.Text(row.Tile.Title, 32), FullscreenHistoryTypography.Data($"{row.At.ToLocalTime():ddd d MMM} · {row.At.ToLocalTime():t}   {row.Description}", 24));
-            if (HasJournal(row.Note)) words.Children.Add(FullscreenUi.Text("Journal entry", 24, "TextDim"));
+            var words = new StackPanel { Spacing = 8 };
+            var rowTitle = FullscreenInformation.Title(row.Tile.Title);
+            rowTitle.MaxLines = 2; rowTitle.TextTrimming = TextTrimming.CharacterEllipsis;
+            words.Children.Add(rowTitle);
+            words.Children.Add(FullscreenInformation.Metadata($"{row.At.ToLocalTime():ddd d MMM} · {row.At.ToLocalTime():t}"));
+            var description = FullscreenInformation.Text(row.Description);
+            description.MaxLines = 2; description.TextTrimming = TextTrimming.CharacterEllipsis;
+            words.Children.Add(description);
+            if (HasJournal(row.Note)) words.Children.Add(FullscreenInformation.Metadata("Journal entry"));
             Grid.SetColumn(words, 1); content.Children.Add(words); button.Content = content;
             button.GotFocus += (_, _) => { _tabsFocused = false; _initial = button; Select(row); };
             if (_initial is null || row == _selected) _initial = button;
+            if (list.Children.OfType<Button>().Any()) list.Children.Add(FullscreenInformation.Rule());
             list.Children.Add(button); buttons.Add([button]);
         }
         if (_problem is { } problem)
         {
-            list.Children.Add(FullscreenUi.Text(problem, 28, "Amber"));
+            list.Children.Add(FullscreenInformation.Text(problem, 24, "Amber"));
             var retry = FullscreenUi.Button("Try again", () =>
             {
                 if (_loading) return;
@@ -199,10 +207,10 @@ public sealed class FullscreenActivityPage : FullscreenPage
                 "Updates" => ("No updates this week", "Updates for your visible games appear here as they arrive. Choose an earlier week to look back."),
                 _ => ("No sessions this week", "Play a game to start your history, or choose an earlier week.")
             };
-            list.Children.Add(FullscreenUi.Text(_loaded ? empty.Item1 : _status, 32));
-            if (_loaded) list.Children.Add(FullscreenUi.Text(empty.Item2, 28, "TextDim"));
+            list.Children.Add(FullscreenInformation.Title(_loaded ? empty.Item1 : _status));
+            if (_loaded) list.Children.Add(FullscreenInformation.Text(empty.Item2));
         }
-        if (_reading && rows.Length > 0) list.Children.Add(FullscreenUi.Text(_status, 24, "TextDim"));
+        if (_reading && rows.Length > 0) list.Children.Add(FullscreenInformation.Metadata(_status));
         if (_next is not null && _problem is null)
         {
             var more = FullscreenUi.Button("Load more", () =>
@@ -214,18 +222,21 @@ public sealed class FullscreenActivityPage : FullscreenPage
             more.GotFocus += (_, _) => { _tabsFocused = false; _initial = more; };
             list.Children.Add(more); buttons.Add([more]);
         }
-        var summary = FullscreenUi.Button("Library summary", () => Context.Push(new FullscreenLibrarySummaryPage(Context)));
+        var summary = FullscreenInformation.Link("Library summary", () => Context.Push(new FullscreenLibrarySummaryPage(Context)));
         summary.GotFocus += (_, _) => { _tabsFocused = false; _initial = summary; };
         _initial ??= summary;
+        list.Children.Add(FullscreenInformation.Rule());
         list.Children.Add(summary); buttons.Add([summary]);
         var columns = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*"), ColumnSpacing = 48 };
         if (_preview.Parent is ScrollViewer previous) previous.Content = null;
         columns.Children.Add(FullscreenUi.Scroll(list));
         var previewScroll = FullscreenUi.Scroll(_preview);
-        Grid.SetColumn(previewScroll, 1); columns.Children.Add(previewScroll);
+        var previewRegion = new Border { BorderThickness = new Thickness(1, 0, 0, 0), Padding = new Thickness(32, 0, 0, 0), Child = previewScroll };
+        previewRegion[!Border.BorderBrushProperty] = new DynamicResourceExtension("Line");
+        Grid.SetColumn(previewRegion, 1); columns.Children.Add(previewRegion);
         var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*"), RowSpacing = 24 };
         var navigation = FullscreenUi.TriggerNavigation(tabBar);
-        layout.Children.Add(FullscreenUi.Text("Your activity", 64)); Grid.SetRow(navigation, 1); layout.Children.Add(navigation);
+        layout.Children.Add(FullscreenInformation.Text("Your activity", 64, weight: FontWeight.Bold)); Grid.SetRow(navigation, 1); layout.Children.Add(navigation);
         Grid.SetRow(columns, 2); layout.Children.Add(columns); Content = layout;
         SetFocusRows(buttons.ToArray());
         Select(rows.FirstOrDefault(r => r == _selected) ?? rows.FirstOrDefault());
@@ -244,12 +255,15 @@ public sealed class FullscreenActivityPage : FullscreenPage
         _selected = row; _preview.Children.Clear();
         if (row is null) { Changed(); return; }
         _preview.Children.Add(new FullscreenCover(row.Tile) { Height = 300, HorizontalAlignment = HorizontalAlignment.Stretch });
-        _preview.Children.Add(FullscreenUi.Text(row.Tile.Title, 48));
-        _preview.Children.Add(FullscreenHistoryTypography.Data($"{row.At.ToLocalTime():f}\n{row.Description}", 28));
-        _preview.Children.Add(FullscreenUi.Text(row.Update?.Title ?? "YOUR NOTE", 28));
-        _preview.Children.Add(FullscreenUi.Text(row.Note?.Note ?? (row.Update is null ? "No note for this session." : "Open the game to read its updates.")));
-        if (row.Note?.Rating is { } rating) _preview.Children.Add(FullscreenUi.Text($"How was that?  {rating} / 5", 28, "Volt"));
-        _preview.Children.Add(FullscreenUi.Text($"Played through {row.Store}", 24, "TextDim"));
+        _preview.Children.Add(FullscreenInformation.Title(row.Tile.Title));
+        _preview.Children.Add(FullscreenInformation.Metadata($"{row.At.ToLocalTime():f}"));
+        _preview.Children.Add(FullscreenInformation.Metadata($"Played through {row.Store}"));
+        _preview.Children.Add(FullscreenInformation.Rule());
+        _preview.Children.Add(FullscreenInformation.Heading(row.Update is null ? "Your note" : "Update"));
+        if (row.Update is not null) _preview.Children.Add(FullscreenInformation.Title(row.Description));
+        else _preview.Children.Add(FullscreenInformation.Metadata(row.Description));
+        _preview.Children.Add(FullscreenInformation.Text(row.Note?.Note ?? (row.Update is null ? "No note for this session." : "Open the game to read its updates.")));
+        if (row.Note?.Rating is { } rating) _preview.Children.Add(FullscreenInformation.Text($"How was that?  {rating} / 5"));
         Changed();
     }
 
@@ -334,7 +348,7 @@ public sealed class FullscreenSessionNotePage : FullscreenPage
         _entry = new JournalEntryViewModel(sessionId, original, repository);
         _entry.EditCommand.Execute(null);
         DataContext = _entry;
-        var field = new TextBox { AcceptsReturn = true, FontSize = 28, MinHeight = 180, TextWrapping = Avalonia.Media.TextWrapping.Wrap };
+        var field = new TextBox { AcceptsReturn = true, FontSize = 24, MinHeight = 180, TextWrapping = Avalonia.Media.TextWrapping.Wrap };
         field.Bind(TextBox.TextProperty, new Avalonia.Data.Binding(nameof(JournalEntryViewModel.DraftNote)) { Source = _entry, Mode = Avalonia.Data.BindingMode.TwoWay });
         field.Bind(IsEnabledProperty, new Avalonia.Data.Binding(nameof(JournalEntryViewModel.CanEdit)) { Source = _entry });
         AutomationProperties.SetName(field, "Journal note");
@@ -342,9 +356,9 @@ public sealed class FullscreenSessionNotePage : FullscreenPage
         var rate = FullscreenUi.Button("How was that?", () => context.ShowActions("How was that?", Enumerable.Range(1, 5)
             .Select(n => new FullscreenAction($"{n} / 5", () => _entry.RateCommand.Execute(n.ToString(System.Globalization.CultureInfo.InvariantCulture))))
             .Append(new("No rating", () => _entry.ClearRatingCommand.Execute(null))).ToArray()));
-        var rating = FullscreenUi.Text("", 28, "TextDim");
+        var rating = FullscreenInformation.Metadata("");
         rating.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding(nameof(JournalEntryViewModel.DraftRatingText)) { Source = _entry });
-        var status = FullscreenUi.Text("", 24, "TextDim");
+        var status = FullscreenInformation.Text("", 24, "Amber");
         status.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding(nameof(JournalEntryViewModel.Problem)) { Source = _entry });
         var save = FullscreenUi.Button("Save", async () =>
         {
@@ -358,7 +372,16 @@ public sealed class FullscreenSessionNotePage : FullscreenPage
         var cancel = FullscreenUi.Button("Cancel", Cancel);
         foreach (var button in new[] { edit, rate, save, cancel })
             button.Bind(IsEnabledProperty, new Avalonia.Data.Binding(nameof(JournalEntryViewModel.CanEdit)) { Source = _entry });
-        Content = FullscreenUi.Scroll(FullscreenUi.Stack(FullscreenUi.Text(title, 64), field, edit, rate, rating, status, save, cancel));
+        var body = FullscreenInformation.Column();
+        body.Children.Add(FullscreenInformation.Title(title));
+        FullscreenInformation.AddSection(body, "Your note");
+        body.Children.Add(field); body.Children.Add(edit);
+        FullscreenInformation.AddSection(body, "Rating");
+        body.Children.Add(rate); body.Children.Add(rating);
+        body.Children.Add(FullscreenInformation.Rule()); body.Children.Add(status);
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
+        actions.Children.Add(save); actions.Children.Add(cancel); body.Children.Add(actions);
+        Content = FullscreenUi.Scroll(body);
         SetFocusRows([edit], [rate], [save, cancel]);
     }
 
@@ -432,7 +455,7 @@ public sealed class FullscreenLibrarySummaryPage : FullscreenPage
         var body = FullscreenUi.Stack();
         var focus = new List<Control[]>();
         var sections = new WrapPanel();
-        var heading = FullscreenUi.Text("Library summary", 64);
+        var heading = FullscreenInformation.Text("Library summary", 64, weight: FontWeight.Bold);
         heading.Margin = new Thickness(0, 0, 32, 12);
         sections.Children.Add(heading);
         var gameplay = FullscreenUi.Button("Gameplay", () => _stats.IsSpending = false);
@@ -449,7 +472,7 @@ public sealed class FullscreenLibrarySummaryPage : FullscreenPage
         {
         body.Children.Add(FullscreenUi.Text("Source: Steam account pages. Spending imports for other stores are not available.", 28, "TextDim"));
         if (_stats.SpendingProblem is { } problem)
-            body.Children.Add(FullscreenUi.Text(problem, 28, "Amber"));
+            body.Children.Add(FullscreenInformation.Text(problem, 24, "Amber"));
         if (_stats.IsSpendingLoading)
             body.Children.Add(FullscreenUi.Text("Reading your account statistics…", 28, "TextDim"));
         var refresh = FullscreenUi.Button(_stats.SpendingProblem is null ? "Refresh Steam spending" : "Try again", () => _ = _stats.ActivateAsync());
@@ -527,7 +550,7 @@ public sealed class FullscreenLibrarySummaryPage : FullscreenPage
                 AutomationProperties.SetAutomationId(button, $"gameplay-{label}-{option.Label}");
                 button.Margin = new Thickness(0, 0, 16, 12); panel.Children.Add(button); buttons.Add(button);
             }
-            var group = FullscreenUi.Stack(FullscreenUi.Text(label, 28, "TextDim"), panel);
+            var group = FullscreenUi.Stack(FullscreenInformation.Heading(label), panel);
             group.Margin = new Thickness(0, 0, 40, 0);
             group.MaxWidth = Math.Max(260, Bounds.Width - 40);
             filters.Children.Add(group); focus.Add(buttons.ToArray());
@@ -542,7 +565,7 @@ public sealed class FullscreenLibrarySummaryPage : FullscreenPage
                 field.Bind(TextBox.TextProperty, new Avalonia.Data.Binding(property) { Source = model, Mode = Avalonia.Data.BindingMode.TwoWay });
                 AutomationProperties.SetName(field, label);
                 AutomationProperties.SetAutomationId(field, property);
-                body.Children.Add(FullscreenUi.Text(label, 28, "TextDim")); body.Children.Add(field); focus.Add([field]);
+                body.Children.Add(FullscreenInformation.Heading(label)); body.Children.Add(field); focus.Add([field]);
             }
             DateField("From · YYYY-MM-DD", nameof(GameplayStatsViewModel.CustomFrom));
             DateField("Through · YYYY-MM-DD", nameof(GameplayStatsViewModel.CustomUntil));
@@ -550,7 +573,7 @@ public sealed class FullscreenLibrarySummaryPage : FullscreenPage
             body.Children.Add(apply); focus.Add([apply]);
         }
         if (model.IsLoading) body.Children.Add(FullscreenUi.Text("Reading gameplay statistics…", 28, "TextDim"));
-        if (model.Problem is { } problem) body.Children.Add(FullscreenUi.Text(problem, 28, "Amber"));
+        if (model.Problem is { } problem) body.Children.Add(FullscreenInformation.Text(problem, 24, "Amber"));
         var refresh = FullscreenUi.Button(model.Problem is null ? "Refresh gameplay" : "Try again", () => _ = model.RefreshAsync());
         refresh.HorizontalAlignment = HorizontalAlignment.Left;
         body.Children.Add(refresh); focus.Add([refresh]);

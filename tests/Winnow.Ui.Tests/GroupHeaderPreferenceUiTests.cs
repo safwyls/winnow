@@ -73,12 +73,12 @@ public sealed class GroupHeaderPreferenceUiTests
         var window = new Window { Width = 1920, Height = 1080, Content = page };
         var opened = new List<FullscreenPage>();
         context.PageRequested += sheet => { opened.Add(sheet); window.Content = sheet; };
-        Button Find(string text) => window.GetVisualDescendants().OfType<Button>().First(button => button.Content?.ToString()?.Contains(text, StringComparison.Ordinal) == true);
+        Button Find(string text) => window.GetVisualDescendants().OfType<Button>().First(button => AutomationProperties.GetName(button)?.Contains(text, StringComparison.Ordinal) == true);
         void Click(Button button) { Assert.True(button.Focus()); button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs(); }
         try
         {
             window.Show();
-            await WaitUntil(() => page.GetVisualDescendants().OfType<Button>().Any(button => button.Content?.ToString()?.Contains("entries ·", StringComparison.Ordinal) == true));
+            await WaitUntil(() => page.GetVisualDescendants().OfType<Button>().Any(button => AutomationProperties.GetName(button)?.Contains("entries ·", StringComparison.Ordinal) == true));
             Click(Find("entries ·"));
             Click(Find("Header store · Automatic"));
             Click(Find("GOG"));

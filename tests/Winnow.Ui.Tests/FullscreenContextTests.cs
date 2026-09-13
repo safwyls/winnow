@@ -87,7 +87,7 @@ public sealed class FullscreenContextTests
             Assert.Equal(appearance.Service.Theme.Id, context.ThemeId);
             Assert.Equal(appearance.Service.Theme.Ground, Assert.IsType<Avalonia.Media.SolidColorBrush>(view.Resources["Ground"]).Color);
             var gradients = backdrop.Children.OfType<Border>().Select(b => b.Background).OfType<Avalonia.Media.LinearGradientBrush>().ToArray();
-            Assert.Equal(3, gradients.Length);
+            Assert.Equal(4, gradients.Length);
             foreach (var gradient in gradients)
                 foreach (var stop in gradient.GradientStops)
                 {

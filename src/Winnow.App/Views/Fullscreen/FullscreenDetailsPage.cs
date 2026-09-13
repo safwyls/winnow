@@ -355,12 +355,7 @@ public sealed class FullscreenDetailsPage : FullscreenPage
     }
 
     private static TextBlock DetailText(string text, double size, string brush = "Text", FontWeight? weight = null)
-    {
-        var block = FullscreenUi.Text(text, size, brush);
-        block[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension("BodyFont");
-        block.FontWeight = weight ?? FontWeight.Normal;
-        return block;
-    }
+        => FullscreenInformation.Text(text, size, brush, weight);
 
     private static StackPanel Metric(string value, string caption) => new()
     {
@@ -379,14 +374,8 @@ public sealed class FullscreenDetailsPage : FullscreenPage
 
     private static Button DetailLink(string text, Action action)
     {
-        var button = FullscreenUi.Button(text, action);
+        var button = FullscreenInformation.Link(text, action);
         button.Classes.Add("tv-details-link");
-        button.FontSize = 24;
-        button.Padding = new Thickness(0, 4);
-        button.MinHeight = 36;
-        button.HorizontalAlignment = HorizontalAlignment.Left;
-        button.Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 14,
-            Children = { DetailText(text, 24), DetailText("→", 26) } };
         return button;
     }
 
@@ -585,35 +574,14 @@ public sealed class FullscreenDetailsPage : FullscreenPage
     {
         var button = DetailLink(text, action);
         button.HorizontalAlignment = HorizontalAlignment.Stretch;
-        var label = DetailText(text, 24);
-        label.MaxLines = 3;
-        label.TextTrimming = TextTrimming.CharacterEllipsis;
-        var line = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 14,
-            HorizontalAlignment = HorizontalAlignment.Left };
-        line.Children.Add(label);
-        var arrow = DetailText("→", 26);
-        Grid.SetColumn(arrow, 1);
-        line.Children.Add(arrow);
-        button.Content = line;
         _rows.Add([button]);
         return button;
     }
 
     private StackPanel SectionContent(string name, string heading)
     {
-        var content = new StackPanel
-        {
-            Name = $"FullscreenDetails{name}", Spacing = 14, MaxWidth = 1320,
-            HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 20, 0, 0),
-            Children = { DetailText(heading, 18, "TextDim") }
-        };
-        content.LayoutUpdated += (_, _) =>
-        {
-            // Keep short and long sections on the same column, leaving room for the scrollbar.
-            var width = Math.Min(1320, Math.Max(0, _body.Bounds.Width - 24));
-            if (width > 0 && (double.IsNaN(content.Width) || Math.Abs(content.Width - width) > .5))
-                content.Width = width;
-        };
+        var content = FullscreenInformation.Column($"FullscreenDetails{name}");
+        content.Children.Add(FullscreenInformation.Heading(heading));
         return content;
     }
 

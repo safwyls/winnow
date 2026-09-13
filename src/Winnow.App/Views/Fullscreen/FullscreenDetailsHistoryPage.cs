@@ -43,20 +43,26 @@ public sealed class FullscreenDetailsHistoryPage : FullscreenPage
         var modes = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24 };
         modes.Children.Add(lifetime);
         modes.Children.Add(tracked);
-        var content = FullscreenUi.Stack(FullscreenUi.Text("Your play history", 32),
-            FullscreenUi.Text($"{_tracker.TotalText} {_tracker.TotalLabel} · {_tracker.LastPlayedText}"), modes,
-            FullscreenUi.Text(_tracker.Series.Summary, 24, "TextDim"),
-            FullscreenUi.Text(_tracker.Series.CoverageNote, 24, "TextDim"));
+        var content = FullscreenInformation.Column();
+        content.Children.Add(FullscreenInformation.Title("Your play history"));
+        content.Children.Add(FullscreenInformation.Text($"{_tracker.TotalText} {_tracker.TotalLabel}"));
+        content.Children.Add(FullscreenInformation.Metadata(_tracker.LastPlayedText));
+        content.Children.Add(modes);
+        FullscreenInformation.AddSection(content, "Recorded play");
+        content.Children.Add(FullscreenInformation.Text(_tracker.Series.Summary));
+        content.Children.Add(FullscreenInformation.Metadata(_tracker.Series.CoverageNote));
         List<Control[]> rows = [[lifetime, tracked]];
         foreach (var bar in _tracker.Series.Bars.Reverse().Skip(_page * PageSize).Take(PageSize))
         {
             var record = FullscreenUi.Button(bar.Label, () => Context.Push(new FullscreenDetailsReadingPage(Context,
                 bar.RecordDate, $"{bar.Label}\n{_tracker.Series.CoverageNote}")));
+            if (rows.Count > 1) content.Children.Add(FullscreenInformation.Rule());
+            record.Content = FullscreenInformation.Text(bar.Label);
             content.Children.Add(record);
             rows.Add([record]);
         }
-        if (!_tracker.HasRecords) content.Children.Add(FullscreenUi.Text("No recorded hours in this view."));
-        content.Children.Add(FullscreenUi.Text(_tracker.UpdateSummary, 24, "TextDim"));
+        if (!_tracker.HasRecords) content.Children.Add(FullscreenInformation.Text("No recorded hours in this view."));
+        content.Children.Add(FullscreenInformation.Metadata(_tracker.UpdateSummary));
         Content = FullscreenUi.Scroll(content);
         SetFocusRows(rows.ToArray());
         if (focus) FocusInitial();

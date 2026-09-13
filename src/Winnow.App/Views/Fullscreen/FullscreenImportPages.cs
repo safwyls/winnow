@@ -16,12 +16,14 @@ public sealed class FullscreenPurchaseHistoryPage : FullscreenPage
     public FullscreenPurchaseHistoryPage(FullscreenContext context) : base(context)
     {
         _model = context.Services is { } services ? ActivatorUtilities.CreateInstance<SteamAccountImportViewModel>(services, new FullscreenSavedPagesPicker(context)) : null;
-        var body = FullscreenUi.Stack(FullscreenUi.Text(Title, 64));
+        var body = FullscreenInformation.Column("FullscreenPurchaseHistory");
+        body.Children.Add(FullscreenInformation.Title(Title));
         var controls = new List<Control[]>();
         if (_model is { } model)
         {
-            body.Children.Add(FullscreenUi.Text(model.IntroMessage));
-            body.Children.Add(FullscreenUi.Text(model.SignInRouteExplanation));
+            body.Children.Add(FullscreenInformation.Text(model.IntroMessage));
+            FullscreenInformation.AddSection(body, "Steam sign-in");
+            body.Children.Add(FullscreenInformation.Text(model.SignInRouteExplanation));
             var signIn = FullscreenUi.Button(model.SignInRouteButtonText, async () =>
             {
                 if (!model.ImportFromSignInCommand.CanExecute(null)) return;
@@ -31,7 +33,8 @@ public sealed class FullscreenPurchaseHistoryPage : FullscreenPage
                 ShowResults();
             });
             body.Children.Add(signIn); controls.Add([signIn]);
-            body.Children.Add(FullscreenUi.Text(model.SavedPagesRouteExplanation));
+            FullscreenInformation.AddSection(body, "Saved pages");
+            body.Children.Add(FullscreenInformation.Text(model.SavedPagesRouteExplanation));
             var saved = FullscreenUi.Button(model.SavedPagesRouteButtonText, async () =>
             {
                 if (!model.ImportFromSavedPagesCommand.CanExecute(null)) return;
@@ -40,11 +43,12 @@ public sealed class FullscreenPurchaseHistoryPage : FullscreenPage
                 ShowResults();
             });
             body.Children.Add(saved); controls.Add([saved]);
-            _readResults = FullscreenUi.Button("Read import results", () => context.Push(new FullscreenDetailsReadingPage(context, "Import results", string.Join("\n\n", _results.Children.OfType<TextBlock>().Select(text => text.Text)))));
+            body.Children.Add(FullscreenInformation.Metadata(model.SavedPagesHintMessage));
+            body.Children.Add(FullscreenInformation.Metadata(model.SavedPagesLicensesHintMessage));
+            FullscreenInformation.AddSection(body, "Import results");
+            _readResults = FullscreenInformation.Link("Read import results", () => context.Push(new FullscreenDetailsReadingPage(context, "Import results", string.Join("\n\n", _results.Children.OfType<TextBlock>().Select(text => text.Text)))));
             _readResults.IsEnabled = false;
             body.Children.Add(_readResults); controls.Add([_readResults]);
-            body.Children.Add(FullscreenUi.Text(model.SavedPagesHintMessage, 24, "TextDim"));
-            body.Children.Add(FullscreenUi.Text(model.SavedPagesLicensesHintMessage, 24, "TextDim"));
             body.Children.Add(_results);
             AttachedToVisualTree += async (_, _) =>
             {
@@ -52,7 +56,7 @@ public sealed class FullscreenPurchaseHistoryPage : FullscreenPage
                 catch (Exception) { if (!_disposed) context.Notify("Couldn't read the Steam connection status. Reopen this page to try again."); }
             };
         }
-        else body.Children.Add(FullscreenUi.Text("Purchase history import is unavailable."));
+        else body.Children.Add(FullscreenInformation.Text("Purchase history import is unavailable."));
         var back = FullscreenUi.Button("Back", context.Back); body.Children.Add(back); controls.Add([back]);
         Content = FullscreenUi.Scroll(body); SetFocusRows(controls.ToArray());
     }
@@ -62,11 +66,11 @@ public sealed class FullscreenPurchaseHistoryPage : FullscreenPage
         if (_disposed || _model is not { } model) return;
         _results.Children.Clear();
         foreach (var message in new[] { model.NoticeMessage, model.ProblemMessage, model.HistoryTruncationMessage, model.LicensesTruncationMessage })
-            if (!string.IsNullOrWhiteSpace(message)) _results.Children.Add(FullscreenUi.Text(message));
-        if (model.HasDuplicatePages) _results.Children.Add(FullscreenUi.Text(model.DuplicatePagesMessage));
-        if (model.ShowLicensesCountMismatch) _results.Children.Add(FullscreenUi.Text(model.LicensesCountMismatchMessage));
-        if (model.ShowNothingApplied) _results.Children.Add(FullscreenUi.Text(model.NothingAppliedMessage));
-        foreach (var file in model.PickedFiles) _results.Children.Add(FullscreenUi.Text($"{file.Name} · {file.Outcome}", 24, "TextDim"));
+            if (!string.IsNullOrWhiteSpace(message)) _results.Children.Add(FullscreenInformation.Text(message));
+        if (model.HasDuplicatePages) _results.Children.Add(FullscreenInformation.Text(model.DuplicatePagesMessage));
+        if (model.ShowLicensesCountMismatch) _results.Children.Add(FullscreenInformation.Text(model.LicensesCountMismatchMessage));
+        if (model.ShowNothingApplied) _results.Children.Add(FullscreenInformation.Text(model.NothingAppliedMessage));
+        foreach (var file in model.PickedFiles) _results.Children.Add(FullscreenInformation.Metadata($"{file.Name} · {file.Outcome}"));
         foreach (var row in model.Counts.Concat(model.Skipped)) _results.Children.Add(FullscreenHistoryTypography.Data($"{row.Label}     {row.Value}", 28));
         if (_readResults is not null) _readResults.IsEnabled = true;
         _results.BringIntoView();
