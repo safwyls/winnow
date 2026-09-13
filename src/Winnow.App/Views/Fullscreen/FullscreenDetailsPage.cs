@@ -388,34 +388,38 @@ public sealed class FullscreenDetailsPage : FullscreenPage
 
     private Control Updates()
     {
-        var content = FullscreenUi.Stack(FullscreenUi.Text("Updates", 32));
-        if (_details.HasNoUpdates) content.Children.Add(FullscreenUi.Text("No updates recorded yet."));
+        var content = SectionContent("Updates", "UPDATES");
+        if (_details.HasNoUpdates) content.Children.Add(DetailText("No updates recorded yet.", 24, "TextDim"));
         foreach (var update in _details.Updates)
         {
+            if (content.Children.Count > 1) AddDivider(content);
             var button = Action($"{update.DateText} · {update.Headline}", () =>
             {
                 if (update.Link is { } link) Context.OpenLink(link);
                 else Context.Push(new FullscreenDetailsReadingPage(Context, update.Headline, "No patch notes page available for this update."));
             });
-            AutomationProperties.SetName(button, update.AutomationName);
+            button.Bind(AutomationProperties.NameProperty, new Binding(nameof(update.AutomationName)) { Source = update });
             AutomationProperties.SetAutomationId(button, $"update-{update.ReleaseId}-{update.OccurredAtUtc.Ticks}-{update.IsAnnouncement}");
-            if (update.IsUnread)
-            {
-                var label = (Control)button.Content!;
-                button.Content = null;
-                var line = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
-                line.Children.Add(FullscreenUi.Text("●", 28, "Flare"));
-                label.Margin = new Thickness(24, 0, 0, 0);
-                Grid.SetColumn(label, 1);
-                line.Children.Add(label);
-                button.Content = line;
-            }
+            var metadata = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 14 };
+            var marker = DetailText("●", 18, "Flare");
+            marker.Bind(IsVisibleProperty, new Binding(nameof(update.IsUnread)) { Source = update });
+            metadata.Children.Add(marker);
+            metadata.Children.Add(DetailText(update.DateText, 22, "TextDim"));
+            var headline = DetailText(update.Headline, 32, weight: FontWeight.Bold);
+            headline.MaxLines = 2;
+            headline.TextTrimming = TextTrimming.CharacterEllipsis;
+            button.Content = TimelineContent(metadata, headline);
+            StretchRow(button);
             content.Children.Add(button);
         }
         if (_details.HasGogPatchNotes)
+        {
+            AddDivider(content);
             content.Children.Add(Action("Patch notes", () => Context.Push(new FullscreenDetailsReadingPage(Context, "Patch notes", _details.GogPatchNotes!))));
+        }
         if (_details.ShowDismissFlag || _details.ShowRestoreFlag)
         {
+            AddSection(content, "READ STATUS");
             content.Children.Add(Action(_details.ShowDismissFlag ? _details.DismissFlagLabel : _details.RestoreFlagLabel, async () =>
             {
                 if (_details.ShowDismissFlag) await _details.DismissFlagCommand.ExecuteAsync(null);
@@ -423,24 +427,38 @@ public sealed class FullscreenDetailsPage : FullscreenPage
                 if (_details.FlagProblem is { } error) Context.Notify(error);
                 SelectTab(1);
             }));
-            content.Children.Add(FullscreenUi.Text(_details.ShowDismissFlag ? _details.DismissFlagNote : _details.RestoreFlagNote, 24, "TextDim"));
+            content.Children.Add(DetailText(_details.ShowDismissFlag ? _details.DismissFlagNote : _details.RestoreFlagNote, 22, "TextDim"));
         }
         return content;
     }
 
     private Control Journal()
     {
-        var content = FullscreenUi.Stack(FullscreenUi.Text("Journal", 32));
+        var content = SectionContent("Journal", "JOURNAL");
         if (_details.Journal is not { HasEntries: true } journal)
         {
-            content.Children.Add(FullscreenUi.Text(_details.Journal?.EmptyText ?? "No journal entries yet."));
+            content.Children.Add(DetailText(_details.Journal?.EmptyText ?? "No journal entries yet.", 24, "TextDim"));
             return content;
         }
         foreach (var entry in journal.Entries)
         {
+            if (content.Children.Count > 1) AddDivider(content);
             var button = Action($"{entry.DateText}  {entry.RatingText}\n{entry.Note}", () =>
                 Context.Push(new FullscreenDetailsJournalPage(Context, entry)));
             AutomationProperties.SetAutomationId(button, $"journal-{entry.SessionId}");
+            var metadata = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24 };
+            metadata.Children.Add(DetailText(entry.DateText, 22, "TextDim"));
+            var rating = DetailText(entry.RatingText, 22, "Volt");
+            rating.Bind(TextBlock.TextProperty, new Binding(nameof(entry.RatingText)) { Source = entry });
+            rating.Bind(IsVisibleProperty, new Binding(nameof(entry.HasRating)) { Source = entry });
+            metadata.Children.Add(rating);
+            var note = DetailText(entry.Note ?? "", 24);
+            note.MaxLines = 3;
+            note.TextTrimming = TextTrimming.CharacterEllipsis;
+            note.Bind(TextBlock.TextProperty, new Binding(nameof(entry.Note)) { Source = entry });
+            note.Bind(IsVisibleProperty, new Binding(nameof(entry.HasNote)) { Source = entry });
+            button.Content = TimelineContent(metadata, note);
+            StretchRow(button);
             content.Children.Add(button);
         }
         return content;
@@ -448,24 +466,30 @@ public sealed class FullscreenDetailsPage : FullscreenPage
 
     private Control Library()
     {
-        var content = FullscreenUi.Stack(FullscreenUi.Text("Your copies", 32));
+        var content = SectionContent("Library", "YOUR COPIES");
         if (!_details.ShowCopyBreakdown)
             foreach (var copy in _details.OwnCopies)
-                content.Children.Add(FullscreenUi.Text(string.Join(" · ", new[] { copy.Store, copy.InstallState,
-                    copy.Playtime, copy.HasLastPlayed ? $"Last played {copy.LastPlayed}" : null }.Where(value => value is not null))));
+            {
+                if (content.Children.Count > 1) AddDivider(content);
+                content.Children.Add(DetailText(copy.Store, 32, weight: FontWeight.Bold));
+                content.Children.Add(DetailText(string.Join(" · ", new[] { copy.InstallState,
+                    copy.Playtime, copy.HasLastPlayed ? $"Last played {copy.LastPlayed}" : null }.Where(value => value is not null)), 22, "TextDim"));
+            }
         if (_details.Coverage is { Rows.Count: > 0 } coverage)
         {
-            if (coverage.HasCoverage) content.Children.Add(FullscreenUi.Text("Also covers", 32));
+            if (coverage.HasCoverage) AddSection(content, "ALSO COVERS");
             if (coverage.IsComposite)
             {
-                content.Children.Add(FullscreenUi.Text($"{coverage.TotalPlaytimeText} total · Last played {coverage.TotalLastPlayedText}"));
-                content.Children.Add(FullscreenUi.Text(coverage.TotalNote, 24, "TextDim"));
+                content.Children.Add(DetailText($"{coverage.TotalPlaytimeText} total · Last played {coverage.TotalLastPlayedText}", 24));
+                content.Children.Add(DetailText(coverage.TotalNote, 22, "TextDim"));
             }
-            foreach (var row in coverage.Rows)
+            foreach (var (row, index) in coverage.Rows.Select((row, index) => (row, index)))
             {
-                content.Children.Add(FullscreenUi.Text($"{row.Title} · {row.StoreBadge}\n{row.PlaytimeText} · {row.LastPlayedText}"));
+                if (index > 0 || coverage.IsComposite) AddDivider(content);
+                content.Children.Add(DetailText(row.Title, 32, weight: FontWeight.Bold));
+                content.Children.Add(DetailText($"{row.StoreBadge} · {row.PlaytimeText} · {row.LastPlayedText}", 22, "TextDim"));
                 if (row.Achievements is { } achievements)
-                    content.Children.Add(FullscreenUi.Text($"Achievements: {achievements.SummaryText}", 24, "TextDim"));
+                    content.Children.Add(DetailText($"Achievements: {achievements.SummaryText}", 22, "TextDim"));
                 if (row.IsCovered)
                     content.Children.Add(Action(row.SeparateAutomationName, () => Context.ShowActions($"Separate {row.Title}?",
                         [new("Cancel", () => { }), new(row.SeparateLabel, async () =>
@@ -479,39 +503,48 @@ public sealed class FullscreenDetailsPage : FullscreenPage
         {
             if (expansions.HasExpansions)
             {
-                content.Children.Add(FullscreenUi.Text("Expansions", 32));
-                content.Children.Add(FullscreenUi.Text(expansions.Note, 24, "TextDim"));
+                AddSection(content, "EXPANSIONS");
+                content.Children.Add(DetailText(expansions.Note, 22, "TextDim"));
                 foreach (var expansion in expansions.Expansions) AddExpansion(content, expansions, expansion);
             }
             if (expansions.Extends is { } parent)
             {
-                content.Children.Add(FullscreenUi.Text("Extends", 32));
-                content.Children.Add(FullscreenUi.Text(expansions.ExtendsNote, 24, "TextDim"));
+                AddSection(content, "EXTENDS");
+                content.Children.Add(DetailText(expansions.ExtendsNote, 22, "TextDim"));
                 AddExpansion(content, expansions, parent);
             }
         }
-        if (_details.Acquisition is { } acquired)
-            content.Children.Add(FullscreenUi.Text(string.Join(" · ", new[] { acquired.HasDate ? $"Acquired {acquired.DateText}" : null,
-                acquired.HasLicence ? acquired.LicenseText : null }.Where(value => value is not null)), 24, "TextDim"));
-        if (_details.HasLifecycle) content.Children.Add(FullscreenUi.Text(_details.LifecycleText!, 28));
+        if (_details.Acquisition is { } acquired && (acquired.HasDate || acquired.HasLicence))
+        {
+            AddSection(content, "ACQUISITION");
+            content.Children.Add(DetailText(string.Join(" · ", new[] { acquired.HasDate ? $"Acquired {acquired.DateText}" : null,
+                acquired.HasLicence ? acquired.LicenseText : null }.Where(value => value is not null)), 22, "TextDim"));
+        }
+        if (_details.HasLifecycle)
+        {
+            AddSection(content, "STATUS");
+            content.Children.Add(DetailText(_details.LifecycleText!, 24));
+        }
         if (_details.HasTechnicalFacts)
         {
-            content.Children.Add(FullscreenUi.Text("Technical facts", 32));
-            if (_details.HasSteamAppId) content.Children.Add(FullscreenUi.Text($"Steam app ID: {_details.SteamAppId}", 24, "TextDim"));
+            AddSection(content, "TECHNICAL FACTS");
+            if (_details.HasSteamAppId) content.Children.Add(DetailText($"Steam app ID: {_details.SteamAppId}", 22, "TextDim"));
             if (_details.HasInstallPath)
                 content.Children.Add(Action("Installation path", () => Context.Push(new FullscreenDetailsReadingPage(Context, "Installation path", _details.InstallPath!))));
         }
+        if (_details.Lists is { } || _details.AddToListCommand is not null) AddSection(content, "LISTS");
         if (_details.Lists is { } lists)
         {
-            content.Children.Add(FullscreenUi.Text("Lists", 32));
             foreach (var list in lists.Rows)
             {
                 var button = Action(list.SelectionLabel, () => list.IsMember = !list.IsMember);
-                button.Bind(ContentControl.ContentProperty, new Binding(nameof(list.SelectionLabel)) { Source = list });
+                var label = DetailText(list.SelectionLabel, 24);
+                label.Bind(TextBlock.TextProperty, new Binding(nameof(list.SelectionLabel)) { Source = list });
+                button.Content = label;
                 button.Bind(AutomationProperties.NameProperty, new Binding(nameof(list.AutomationName)) { Source = list });
                 button.Bind(AutomationProperties.ItemStatusProperty, new Binding(nameof(list.StatusText)) { Source = list });
                 content.Children.Add(button);
-                var status = FullscreenUi.Text("", 24, "Amber");
+                var status = DetailText("", 22, "Amber");
                 status.Bind(TextBlock.TextProperty, new Binding(nameof(list.StatusText)) { Source = list });
                 status.Bind(IsVisibleProperty, new Binding(nameof(list.HasStatus)) { Source = list });
                 content.Children.Add(status);
@@ -524,7 +557,8 @@ public sealed class FullscreenDetailsPage : FullscreenPage
 
     private void AddExpansion(StackPanel content, GameExpansionsViewModel expansions, ExpansionRowViewModel row)
     {
-        content.Children.Add(FullscreenUi.Text($"{row.Title} · {row.StoreNames}\n{row.PlaytimeText} · {row.LastPlayedText}"));
+        content.Children.Add(DetailText(row.Title, 32, weight: FontWeight.Bold));
+        content.Children.Add(DetailText($"{row.StoreNames} · {row.PlaytimeText} · {row.LastPlayedText}", 22, "TextDim"));
         content.Children.Add(Action(row.UngroupAutomationName, () => Context.ShowActions($"Ungroup {row.Title}?",
             [new("Cancel", () => { }), new(row.UngroupLabel, async () =>
             {
@@ -535,12 +569,63 @@ public sealed class FullscreenDetailsPage : FullscreenPage
 
     private Button Action(string text, Action action)
     {
-        var button = FullscreenUi.Button(text, action);
-        button.Content = new TextBlock { Text = text, FontSize = 28, TextWrapping = TextWrapping.Wrap,
-            MaxLines = 3, TextTrimming = TextTrimming.CharacterEllipsis };
-        AutomationProperties.SetName(button, text);
+        var button = DetailLink(text, action);
+        button.HorizontalAlignment = HorizontalAlignment.Stretch;
+        var label = DetailText(text, 24);
+        label.MaxLines = 3;
+        label.TextTrimming = TextTrimming.CharacterEllipsis;
+        var line = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 14,
+            HorizontalAlignment = HorizontalAlignment.Left };
+        line.Children.Add(label);
+        var arrow = DetailText("→", 26);
+        Grid.SetColumn(arrow, 1);
+        line.Children.Add(arrow);
+        button.Content = line;
         _rows.Add([button]);
         return button;
+    }
+
+    private StackPanel SectionContent(string name, string heading)
+    {
+        var content = new StackPanel
+        {
+            Name = $"FullscreenDetails{name}", Spacing = 14, MaxWidth = 1320,
+            HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 20, 0, 0),
+            Children = { DetailText(heading, 18, "TextDim") }
+        };
+        content.LayoutUpdated += (_, _) =>
+        {
+            // Keep short and long sections on the same column, leaving room for the scrollbar.
+            var width = Math.Min(1320, Math.Max(0, _body.Bounds.Width - 24));
+            if (width > 0 && (double.IsNaN(content.Width) || Math.Abs(content.Width - width) > .5))
+                content.Width = width;
+        };
+        return content;
+    }
+
+    private static void AddDivider(StackPanel content)
+    {
+        var divider = Rule(true);
+        divider.Margin = new Thickness(0, 12);
+        content.Children.Add(divider);
+    }
+
+    private static void AddSection(StackPanel content, string heading)
+    {
+        AddDivider(content);
+        content.Children.Add(DetailText(heading, 18, "TextDim"));
+    }
+
+    private static StackPanel TimelineContent(Control metadata, Control body) => new()
+    {
+        Spacing = 10, Children = { metadata, body }
+    };
+
+    private static void StretchRow(Button button)
+    {
+        button.HorizontalAlignment = HorizontalAlignment.Stretch;
+        button.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+        button.Padding = new Thickness(0, 8);
     }
 
     private void ShowMore()

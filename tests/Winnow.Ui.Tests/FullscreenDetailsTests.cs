@@ -23,6 +23,118 @@ namespace Winnow.Ui.Tests;
 
 public sealed class FullscreenDetailsTests
 {
+    [AvaloniaTheory]
+    [InlineData(1, false)]
+    [InlineData(1, true)]
+    [InlineData(2, false)]
+    [InlineData(2, true)]
+    [InlineData(3, false)]
+    [InlineData(3, true)]
+    public void Detail_sections_wrap_content_and_keep_controller_actions_reachable(int section, bool populated)
+    {
+        var now = DateTime.UtcNow;
+        using var database = new TempDatabase();
+        var journal = new GameJournalViewModel(populated
+            ? Enumerable.Range(1, 4).Select(index => new SessionJournalEntry { SessionId = index, OwnershipId = 1,
+                SessionAt = now.AddDays(-index), Rating = index == 2 ? null : 4,
+                Note = index == 3 ? null : "Follow the mountain path to the abandoned observatory, then return to the village and speak to the cartographer about the missing expedition." })
+            : [], true, new Winnow.Data.Repositories.SessionRepository(database.Factory));
+        var updates = populated ? Enumerable.Range(1, 4).Select(index => UpdateEventViewModel.Create(new UpdateEvent
+        {
+            ReleaseId = 1, Kind = UpdateEventKinds.Announcement, OccurredAt = now.AddDays(-index),
+            Title = "Expedition update: new mountain regions, companion quests, controller improvements and fixes for the observatory campaign"
+        }, now.AddDays(-10), 120)).ToArray() : [];
+        var listEntry = new Winnow.App.ViewModels.Lists.GameListEntryViewModel(
+            new Winnow.App.ViewModels.Lists.GameListViewModel(new GameList { Id = 1,
+                Name = "Long adventures to revisit after finishing the mountain expedition with friends" }), [], (_, _) => Task.CompletedTask);
+        var lists = new Winnow.App.ViewModels.Lists.GameListsViewModel(populated ? [listEntry] : []);
+        var expansions = new GameExpansionsViewModel(populated
+            ? [new ExpansionRowViewModel(1, 2, "The mountain expedition: journeys beyond the abandoned observatory", ["STEAM"], "Steam", 120, now.AddDays(-5))]
+            : []);
+        using var details = new GameDetailsViewModel(TileFixture.Tile(now, title: "Mountain expedition"), "Never played", updates, now,
+            journal: journal, lists: lists, expansions: expansions,
+            addToList: new CommunityToolkit.Mvvm.Input.RelayCommand(() => { }));
+        var library = new LibraryViewModel(new PreviewLibraryQueryRepository(), new PreviewOwnershipRepository(),
+            new PreviewReleaseRepository(), new PreviewWorkRepository(), new PreviewUpdateEventRepository());
+        using var context = new FullscreenContext(library, new FeedViewModel(new PreviewFeedService(), library), PreviewData.Shell);
+        context.SafeMarginPercent = 3;
+        using var view = new FullscreenView(context);
+        context.Push(new FullscreenDetailsPage(context, details, section));
+        var window = new Window { Width = 2560, Height = 1440, Content = view };
+        window.Show();
+        try
+        {
+            foreach (var enlarged in new[] { false, true })
+            {
+                context.TextScale = enlarged ? 1.4 : 1;
+                context.UiScale = enlarged ? 1.2 : 1;
+                window.Width = enlarged ? 1280 : 2560;
+                window.Height = enlarged ? 720 : 1440;
+                Dispatcher.UIThread.RunJobs();
+                var page = Assert.IsType<FullscreenDetailsPage>(view.CurrentPage);
+                var scroll = Assert.Single(page.GetVisualDescendants().OfType<ScrollViewer>());
+                var body = Assert.IsAssignableFrom<Control>(scroll.Content);
+                Assert.True(scroll.Bounds.Height > 100);
+                foreach (var block in body.GetVisualDescendants().OfType<TextBlock>().Where(block => block.IsEffectivelyVisible))
+                {
+                    var point = block.TranslatePoint(default, body)!.Value;
+                    Assert.True(point.X >= -1 && point.X + block.Bounds.Width <= body.Bounds.Width + 1,
+                        $"Section {section}: '{block.Text}' overflows horizontally ({point.X} + {block.Bounds.Width} > {body.Bounds.Width}).");
+                }
+                var actions = body.GetVisualDescendants().OfType<Button>()
+                    .Where(button => button.IsEffectivelyVisible && button.IsEffectivelyEnabled).ToArray();
+                var visited = new HashSet<Button>();
+                // Start at the first section tab, then traverse the same explicit action rows as a controller.
+                var tabs = Assert.IsType<Grid>(page.Content).Children[1].GetVisualDescendants().OfType<Button>().ToArray();
+                tabs[0].Focus();
+                for (var index = 0; index <= actions.Length; index++)
+                {
+                    page.Handle(GamepadButtons.Down);
+                    Dispatcher.UIThread.RunJobs();
+                    if (window.FocusManager!.GetFocusedElement() is not Button focused || !actions.Contains(focused)) continue;
+                    visited.Add(focused);
+                    var point = focused.TranslatePoint(default, scroll)!.Value;
+                    Assert.True(point.Y < scroll.Bounds.Height && point.Y + focused.Bounds.Height > 0,
+                        $"Section {section}: focused action is outside the viewport.");
+                    if (focused.Bounds.Height <= scroll.Bounds.Height)
+                    {
+                        Assert.True(point.Y >= -1 && point.Y + focused.Bounds.Height <= scroll.Bounds.Height + 1,
+                            $"Section {section}: focused action clips at {point.Y} with height {focused.Bounds.Height}, viewport {scroll.Bounds.Height}.");
+                    }
+                }
+                Assert.All(actions, action => Assert.Contains(action, visited));
+                if (section == 3 && populated)
+                {
+                    var membership = Link(page, listEntry.AutomationName);
+                    foreach (var selected in new[] { true, false })
+                    {
+                        membership.Focus();
+                        page.Handle(GamepadButtons.Accept);
+                        Dispatcher.UIThread.RunJobs();
+                        Assert.Equal(selected, listEntry.IsMember);
+                        Assert.Same(membership, Link(page, listEntry.AutomationName));
+                        Assert.Contains(membership.GetVisualDescendants().OfType<TextBlock>(), block => block.Text == listEntry.SelectionLabel);
+                        Assert.Same(membership, window.FocusManager!.GetFocusedElement());
+                    }
+                }
+                if (!populated && section == 2)
+                    Assert.Contains(body.GetVisualDescendants().OfType<TextBlock>(), block => block.Text == journal.EmptyText);
+                if (populated)
+                    Assert.Contains(body.GetVisualDescendants().OfType<Border>(), border => border.Name == "FullscreenDetailsHorizontalRule");
+                if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
+                {
+                    Directory.CreateDirectory(directory);
+                    scroll.Offset = default;
+                    Dispatcher.UIThread.RunJobs();
+                    AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                    using var frame = window.CaptureRenderedFrame();
+                    frame!.Save(Path.Combine(directory, $"fullscreen-details-tab-{section}-{(populated ? "populated" : "empty")}-{(enlarged ? "140" : "100")}.png"));
+                }
+            }
+        }
+        finally { window.Close(); }
+    }
+
     private static Button Link(Control root, string name) => Assert.Single(root.GetVisualDescendants().OfType<Button>(),
         button => Avalonia.Automation.AutomationProperties.GetName(button) == name);
 

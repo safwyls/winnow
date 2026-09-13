@@ -872,6 +872,22 @@ behind the overview even when a wide hero preserves its whole composition.
 LT/RT changes local sections; directional focus follows the content groups and keeps
 offscreen actions reachable. Desktop details retain their existing composition.
 
+Updates, Journal and Library continue Overview's BodyFont, explicit weights and 20px
+inset beneath the tab rule. Their content is left aligned and bounded to 1320px for readable
+lines. Section labels use 18px uppercase TextDim, body and arrow actions use 24px, and
+dates and supporting facts use 22px TextDim. Line rules separate entries and related
+groups without adding card backgrounds.
+Updates puts each date above its 32px bold headline, with a Flare dot only while unread;
+the accessible row name states that same unread status. Headlines preview up to two
+lines. Patch notes and read-state actions follow the update list. Journal separates the
+date and optional Volt rating from the saved note's three-line preview. Opening an entry
+retains the shared editor and full note. Missing notes or ratings reserve no blank text.
+Library uses 32px bold store or game names above supporting copy facts, then separated
+sections for coverage, expansions, acquisition, status, technical facts and lists when
+available. List membership and save status remain live. Empty Updates and Journal use
+24px TextDim copy rather than inventing entries. These sections scroll with controller
+focus; desktop keeps its existing section layouts and shared operations.
+
 **Activity** is a personal history view. Sessions, Updates and Journal are local choices
 reached with directional navigation; bumpers continue switching the main screens. Large
 chronological rows occupy the left side and the selected event's art, facts and user note
