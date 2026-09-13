@@ -473,6 +473,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         title.Margin = new Thickness(0, 8, 0, 0);
         Grid.SetRow(title, 1);
         panel.Children.Add(title);
+        FullscreenCardEntrance.Attach(Context, cover, title, index % (_feed ? _shelfCapacity : _columns));
         var button = FullscreenUi.Button(tile.Title, () => Context.OpenGame(tile));
         button.Classes.Add("tv-cover");
         button.Content = panel;
@@ -821,6 +822,7 @@ public sealed class FullscreenBrowseSearchPage : FullscreenPage
             label.TextTrimming = TextTrimming.CharacterEllipsis;
             Grid.SetRow(label, 1);
             panel.Children.Add(label);
+            FullscreenCardEntrance.Attach(Context, cover, label, index % _columns);
             var button = FullscreenUi.Button(tile.Title, () => Context.OpenGame(tile));
             button.Classes.Add("tv-cover");
             button.Content = panel;

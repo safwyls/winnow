@@ -693,6 +693,12 @@ plus four reserve items. Show as many as fit at the chosen scale, with left/righ
 to overflow games; do not enlarge covers just to fill a short shelf. Desktop retains six
 cards with a hidden replacement reserve. Only actual viewport entry records an impression.
 
+New fullscreen card rows in For you, Library and Search materialize with a 180ms ease-out
+opacity fade, staggered left to right by 24ms per column (120ms maximum delay). Grid rows
+fade together by column. Cover outlines and input remain immediate; the effect changes no
+layout and stops when cards leave the page. Reduce motion shows cards immediately.
+This entrance is specific to fullscreen; desktop card presentation is unchanged.
+
 Recently played is the first shelf when play dates are available, ordered newest first.
 It holds up to ten games: six desktop cards and four additional games available in fullscreen.
 This collection has no recommendation verdict controls and records no feed impressions.
