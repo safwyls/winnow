@@ -5,10 +5,21 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      force_full:
+        description: 'Run the full suite even when matching evidence exists'
+        type: boolean
+        default: true
   workflow_call:
+    inputs:
+      force_full:
+        type: boolean
+        default: false
 
 permissions:
   contents: read
+  actions: read
+  pull-requests: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -22,6 +33,7 @@ jobs:
     env:
       DOTNET_NOLOGO: true
       DOTNET_CLI_TELEMETRY_OPTOUT: true
+      CI_FORCE_FULL: ${{ inputs.force_full || false }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -29,14 +41,34 @@ jobs:
       - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
         with:
           dotnet-version: '10.0.x'
+      - name: Restore and audit Linux dependencies
+        run: dotnet restore tests/Winnow.Monitor.Linux.Tests --force-evaluate --no-cache -warnaserror
+      - name: Verify CI evidence policy
+        shell: pwsh
+        run: ./scripts/Test-CiEvidence.ps1
+      - name: Resolve Linux validation evidence
+        id: evidence
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/Resolve-CiEvidence.ps1 -Platform linux
       - name: Verify real Linux process discovery and session recording
-        run: dotnet test tests/Winnow.Monitor.Linux.Tests --configuration Release --logger trx --results-directory TestResults
+        if: steps.evidence.outputs.reused != 'true'
+        run: dotnet test tests/Winnow.Monitor.Linux.Tests --configuration Release --no-restore --logger trx --logger "console;verbosity=normal" --results-directory TestResults --blame-hang-timeout 2m --blame-hang-dump-type mini
+      - name: Record full Linux validation
+        if: success() && steps.evidence.outputs.reused == 'false'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ci-evidence-linux-${{ github.run_attempt }}
+          path: ci-evidence/linux.json
+          if-no-files-found: error
+          retention-days: 2
       - name: Keep Linux test results
-        if: always()
+        if: always() && steps.evidence.outputs.reused != 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: linux-session-results
-          path: TestResults/**/*.trx
+          path: TestResults/**
           if-no-files-found: ignore
           retention-days: 7
 
@@ -50,6 +82,7 @@ jobs:
     env:
       DOTNET_NOLOGO: true
       DOTNET_CLI_TELEMETRY_OPTOUT: true
+      CI_FORCE_FULL: ${{ inputs.force_full || false }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -76,21 +109,41 @@ jobs:
       - name: Restore and audit direct and transitive dependencies
         run: dotnet restore --force-evaluate --no-cache -warnaserror
 
+      - name: Verify CI evidence policy
+        run: ./scripts/Test-CiEvidence.ps1
+
+      - name: Resolve Windows validation evidence
+        id: evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/Resolve-CiEvidence.ps1 -Platform windows
+
       - name: Build with analyzers
+        if: steps.evidence.outputs.reused != 'true'
         run: dotnet build --configuration Release --no-restore -warnaserror
 
       - name: Verify test timing summary
         run: ./scripts/Test-TestResultSummary.ps1
 
       - name: Test
+        if: steps.evidence.outputs.reused != 'true'
         run: dotnet test --configuration Release --no-build --logger trx --logger "console;verbosity=normal" --results-directory TestResults --blame-hang-timeout 5m --blame-hang-dump-type mini
 
+      - name: Record full Windows validation
+        if: success() && steps.evidence.outputs.reused == 'false'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ci-evidence-windows-${{ github.run_attempt }}
+          path: ci-evidence/windows.json
+          if-no-files-found: error
+          retention-days: 2
+
       - name: Summarize test timing
-        if: always()
+        if: always() && steps.evidence.outputs.reused != 'true'
         run: ./scripts/Summarize-TestResults.ps1 -ResultsDirectory TestResults -OutputPath $env:GITHUB_STEP_SUMMARY -Append
 
       - name: Keep test results
-        if: always()
+        if: always() && steps.evidence.outputs.reused != 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: test-results

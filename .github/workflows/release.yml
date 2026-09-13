@@ -8,6 +8,7 @@ on:
       - '.github/workflows/release.yml'
       - '.github/workflows/ci.yml'
       - 'packaging/**'
+      - 'scripts/**'
       - 'src/**'
       - 'plugins/**'
       - 'Directory.Build.props'
@@ -19,6 +20,7 @@ on:
       - '.github/workflows/release.yml'
       - '.github/workflows/ci.yml'
       - 'packaging/**'
+      - 'scripts/**'
       - 'src/**'
       - 'plugins/**'
       - 'Directory.Build.props'
@@ -76,7 +78,12 @@ jobs:
           "prerelease=$($release.Prerelease.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
 
   verify:
+    needs: version
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
     uses: ./.github/workflows/ci.yml
 
   build:
