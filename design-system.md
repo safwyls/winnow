@@ -953,7 +953,7 @@ an external website workflow, while entering and saving it stays inside the TV i
 | Library tools | Reachable from Library actions: hidden games, add game, possible identity matches and metadata corrections; one focused operation per page |
 | Library summary | Reachable from Activity; readable summary pages, with detailed analytics progressively disclosed |
 | Platforms / sign-in | Large status, configuration and action rows; controller browser input and fullscreen file selection use separate adapters over shared operations |
-| Quick menu | Resume, Exit fullscreen and confirmed Quit; Settings is available at root level so switching cannot discard a nested editor; B restores focus |
+| Quick menu | Resume, Exit fullscreen and confirmed Quit; Settings is available at root level so switching cannot discard a nested editor; repeated Menu presses keep the existing menu and selection; B restores focus |
 | Empty / unavailable / disconnected | One clear explanation and recovery action; preserve selection and never redirect input to an obscured surface |
 
 The image concepts cover the five main screens. Supporting views implement the contracts

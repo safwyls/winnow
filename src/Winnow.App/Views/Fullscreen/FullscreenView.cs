@@ -37,6 +37,7 @@ public sealed class FullscreenView : UserControl, IDisposable
     private Border? _actionOverlay;
     private Border? _actionPanel;
     private FullscreenPage? _shownPage;
+    private FullscreenActionsPage? _quickMenu;
     private readonly Dictionary<FullscreenPage, Control?> _actionReturnFocus = [];
     private readonly Grid _safe = new() { RowDefinitions = new RowDefinitions("80,*,64") };
     private readonly Grid _canvas = new() { Width = 1920, Height = 1080 };
@@ -295,6 +296,7 @@ public sealed class FullscreenView : UserControl, IDisposable
         }
         if (_stack.Count == 0) { QuickMenu(); return; }
         var page = _stack[^1]; _stack.RemoveAt(_stack.Count - 1); page.Dispose();
+        if (ReferenceEquals(page, _quickMenu)) _quickMenu = null;
         _actionReturnFocus.Remove(page, out var returnFocus);
         if (page is FullscreenDetailsPage) _context.Library.CloseDetailsCommand.Execute(null);
         ShowPage();
@@ -419,7 +421,7 @@ public sealed class FullscreenView : UserControl, IDisposable
     }
     private void QuickMenu()
     {
-        if (_context.Shared.Setup.IsOpen) return;
+        if (_context.Shared.Setup.IsOpen || (_quickMenu is not null && _stack.Contains(_quickMenu))) return;
         var actions = new List<FullscreenAction> { new("Resume", () => { }) };
         var updates = _context.Shared.ApplicationSettings;
         if (updates.HasUpdateAction)
@@ -431,7 +433,8 @@ public sealed class FullscreenView : UserControl, IDisposable
         actions.Add(new("Exit fullscreen", () => ExitRequested?.Invoke()));
         actions.Add(new("Quit Winnow", () => _context.ShowActions("Quit Winnow? Unsaved edits will be lost.",
             [new("Cancel", () => { }), new("Quit Winnow", () => QuitRequested?.Invoke())])));
-        _context.ShowActions("Quick menu", actions);
+        _quickMenu = new FullscreenActionsPage(_context, "Quick menu", actions);
+        Push(_quickMenu);
     }
     private void Notice(string text) => _context.ShowActions(text, [new("Continue", () => { })]);
     private void SetupChanged(object? sender, PropertyChangedEventArgs e)
