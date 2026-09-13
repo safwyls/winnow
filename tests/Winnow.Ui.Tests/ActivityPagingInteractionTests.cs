@@ -53,12 +53,19 @@ public sealed class ActivityPagingInteractionTests
     [AvaloniaFact]
     public async Task Load_more_is_explicit_and_disposal_cancels_a_pending_page_without_late_publication()
     {
+        var firstEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var firstRelease = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         CancellationToken observed = default;
         var repository = new Reader(async (ids, from, _, _, after, ct) =>
         {
-            if (after is null) return Page(ids.First(), from, 1) with { Next = new(from, 1) };
+            if (after is null)
+            {
+                firstEntered.SetResult();
+                await firstRelease.Task;
+                return Page(ids.First(), from, 1) with { Next = new(from, 1) };
+            }
             observed = ct; entered.SetResult(); await release.Task;
             return Page(ids.First(), from, 2);
         });
@@ -68,8 +75,14 @@ public sealed class ActivityPagingInteractionTests
         var window = new Window { Width=1920, Height=1080, Content=page };
         try
         {
-            window.Show(); Dispatcher.UIThread.RunJobs(); await page.PendingRefresh;
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            await firstEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            firstRelease.SetResult();
+            await page.PendingRefresh;
+            // Refresh replaces the content; its visual children attach during layout.
+            window.UpdateLayout();
             Assert.Equal(1, page.SelectedSessionId);
+            Assert.False(entered.Task.IsCompleted);
             page.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Content,"Load more"))
                 .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
@@ -78,7 +91,7 @@ public sealed class ActivityPagingInteractionTests
             release.SetResult(); await page.PendingRefresh;
             Assert.Equal(1, page.SelectedSessionId);
         }
-        finally { release.TrySetResult(); window.Close(); await page.PendingRefresh; }
+        finally { firstRelease.TrySetResult(); release.TrySetResult(); window.Close(); await page.PendingRefresh; }
     }
 
     [AvaloniaTheory]
