@@ -710,6 +710,11 @@ DisplayFont.
 | Metadata | 22px regular, TextDim | Dates, durations, sources and supporting status |
 | Prominent figure | 60px bold, Text, with 22px caption | A small set of useful personal metrics |
 
+Keep navigation tabs stable: reserve the larger regular/bold label dimensions, with identical
+padding, margins and border thickness in every selection and focus state. Root navigation
+and LT/RT section strips must not shift when emphasis changes; font and text-scale changes
+may remeasure the strip.
+
 Group related text with 10–14px spacing. Start information beneath local navigation with
 a 20px inset. Separate distinct groups or chronological entries with a 1px Line rule and
 12px space above and below it, in addition to the group's normal spacing. Do not insert

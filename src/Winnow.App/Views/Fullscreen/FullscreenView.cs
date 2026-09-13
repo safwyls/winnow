@@ -85,6 +85,9 @@ public sealed class FullscreenView : UserControl, IDisposable
                     border.Bind(Border.BorderThicknessProperty, new Binding(nameof(Button.BorderThickness)) { Source = button });
                     border.Bind(Border.PaddingProperty, new Binding(nameof(Button.Padding)) { Source = button });
                     var presenter = new ContentPresenter { VerticalContentAlignment = VerticalAlignment.Center };
+                    if (button.Classes.Contains("tv-navigation"))
+                        presenter.DataTemplates.Add(new FuncDataTemplate<string>((text, _) =>
+                            new FullscreenNavigationLabel { Text = text }));
                     presenter.Bind(ContentPresenter.ContentProperty, new Binding(nameof(Button.Content)) { Source = button });
                     presenter.Bind(ContentPresenter.ContentTemplateProperty, new Binding(nameof(Button.ContentTemplate)) { Source = button });
                     border.Child = presenter; return border;
@@ -98,11 +101,9 @@ public sealed class FullscreenView : UserControl, IDisposable
         { Setters = { new Setter(TemplatedControl.BorderBrushProperty, new DynamicResourceExtension("Volt")), new Setter(TemplatedControl.ForegroundProperty, new DynamicResourceExtension("Volt")) } });
         _roots = [new FullscreenBrowsePage(context, true), new FullscreenBrowsePage(context, false), new FullscreenActivityPage(context), new FullscreenSettingsPage(context)];
         _setup = new FullscreenSetupPage(context);
-        _tabs = new[] { "For you", "Library", "Activity", "Settings" }.Select((label, index) => FullscreenUi.Button(label, () => SelectSection(index))).ToArray();
+        _tabs = new[] { "For you", "Library", "Activity", "Settings" }.Select((label, index) => FullscreenUi.Tab(label, () => SelectSection(index))).ToArray();
         foreach (var tab in _tabs)
         {
-            var label = FullscreenUi.Text(tab.Content?.ToString() ?? "", 28);
-            tab.Content = label;
             tab.Background = Brushes.Transparent;
             tab.Padding = new Thickness(12, 8);
         }

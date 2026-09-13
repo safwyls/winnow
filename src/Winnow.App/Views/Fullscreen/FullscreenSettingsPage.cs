@@ -90,7 +90,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         _updateActions.Clear();
         _initial = null;
         var tabs = Sections.Select(label =>
-            FullscreenUi.Button(label, () => { _section = label; Render(); FocusInitial(); })).ToArray();
+            FullscreenUi.Tab(label, () => { _section = label; Render(); FocusInitial(); })).ToArray();
         var nav = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
         foreach (var tab in tabs)
         {

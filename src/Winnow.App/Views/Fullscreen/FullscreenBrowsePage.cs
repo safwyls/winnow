@@ -435,10 +435,10 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         collections.Children.Add(FullscreenUi.TriggerNavigation(shelves));
         Grid.SetColumn(tools, 2); collections.Children.Add(tools);
         Grid.SetRow(collections, 1);
-        var all = FullscreenUi.Button("All games", () => ChooseCollection("all"));
-        var installed = FullscreenUi.Button("Installed", () => ChooseCollection("installed"));
-        var never = FullscreenUi.Button("Never played", () => ChooseCollection("never"));
-        var patched = FullscreenUi.Button("Patched", () => ChooseCollection("patched"));
+        var all = FullscreenUi.Tab("All games", () => ChooseCollection("all"));
+        var installed = FullscreenUi.Tab("Installed", () => ChooseCollection("installed"));
+        var never = FullscreenUi.Tab("Never played", () => ChooseCollection("never"));
+        var patched = FullscreenUi.Tab("Patched", () => ChooseCollection("patched"));
         var lists = FullscreenUi.Button("My lists", () => Context.Push(new FullscreenBrowseListsPage(Context)));
         var actions = FullscreenUi.Button("More", LibraryActions);
         var filters = FullscreenUi.Button("Filter & sort", () => Context.Push(new FullscreenBrowseFiltersPage(Context)));

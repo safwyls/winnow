@@ -156,7 +156,7 @@ public sealed class FullscreenActivityPage : FullscreenPage
         if (_disposed) return;
         var restoreFocus = preserveFocus ? PreserveFocus() : null;
         var tabs = new[] { "Sessions", "Updates", "Journal" }.Select(label =>
-            FullscreenUi.Button(label, () => { _section = label; ChangePeriod(); })).ToArray();
+            FullscreenUi.Tab(label, () => { _section = label; ChangePeriod(); })).ToArray();
         var tabBar = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24 };
         foreach (var tab in tabs) { tab.Classes.Set("current", Equals(tab.Content, _section)); tab.GotFocus += (_, _) => _tabsFocused = true; tabBar.Children.Add(tab); }
         var start = WeekStart;
@@ -458,8 +458,8 @@ public sealed class FullscreenLibrarySummaryPage : FullscreenPage
         var heading = FullscreenInformation.Text("Library summary", 64, weight: FontWeight.Bold);
         heading.Margin = new Thickness(0, 0, 32, 12);
         sections.Children.Add(heading);
-        var gameplay = FullscreenUi.Button("Gameplay", () => _stats.IsSpending = false);
-        var spending = FullscreenUi.Button("Spending", () => _stats.IsSpending = true);
+        var gameplay = FullscreenUi.Tab("Gameplay", () => _stats.IsSpending = false);
+        var spending = FullscreenUi.Tab("Spending", () => _stats.IsSpending = true);
         gameplay.Classes.Set("current", !_stats.IsSpending); spending.Classes.Set("current", _stats.IsSpending);
         AutomationProperties.SetName(gameplay, _stats.GameplaySectionName);
         AutomationProperties.SetName(spending, _stats.SpendingSectionName);

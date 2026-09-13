@@ -76,7 +76,7 @@ public sealed class FullscreenDetailsPage : FullscreenPage
         heroText.HorizontalAlignment = HorizontalAlignment.Left;
         hero.Children.Add(heroText);
         _tabs = new[] { "Overview", "Updates", "Journal", "Library" }.Select((label, index) =>
-            FullscreenUi.Button(label, () => SelectTab(index))).ToArray();
+            FullscreenUi.Tab(label, () => SelectTab(index))).ToArray();
         var tabRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24, Margin = new Thickness(0, 8),
             HorizontalAlignment = HorizontalAlignment.Left };
         tabRow.Children.Add(FullscreenGlyphs.Icon("LT"));
@@ -195,10 +195,13 @@ public sealed class FullscreenDetailsPage : FullscreenPage
     private void SelectTab(int index, bool focus = true)
     {
         _tab = index;
-        var updatesLabel = DetailText(_details.HasUnreadUpdates ? $"Updates {_details.UnreadUpdateCount}" : "Updates", 24);
+        var updatesLabel = new FullscreenNavigationLabel
+        { Text = _details.HasUnreadUpdates ? $"Updates {_details.UnreadUpdateCount}" : "Updates" };
+        var unreadDot = FullscreenUi.Text("●", 24, "Flare");
+        unreadDot.FontWeight = FontWeight.Normal;
         _tabs[1].Content = _details.HasUnreadUpdates
             ? new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16,
-                Children = { FullscreenUi.Text("●", 24, "Flare"), updatesLabel } }
+                Children = { unreadDot, updatesLabel } }
             : updatesLabel;
         AutomationProperties.SetName(_tabs[1], _details.UpdatesTabAutomationName);
         for (var i = 0; i < _tabs.Length; i++) _tabs[i].Classes.Set("current", i == index);
