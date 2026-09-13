@@ -693,9 +693,9 @@ plus four reserve items. Show as many as fit at the chosen scale, with left/righ
 to overflow games; do not enlarge covers just to fill a short shelf. Desktop retains six
 cards with a hidden replacement reserve. Only actual viewport entry records an impression.
 
-New fullscreen card rows in For you, Library and Search materialize with a 180ms ease-out
-opacity fade, staggered left to right by 24ms per column (120ms maximum delay). Grid rows
-fade together by column. Cover outlines and input remain immediate; the effect changes no
+New fullscreen cards in For you, Library and Search materialize together with a 240ms ease-out
+fade from the top of each cover to its bottom, using a soft vertical opacity gradient.
+Labels fade with the lower edge. Cover outlines and input remain immediate; the effect changes no
 layout and stops when cards leave the page. Reduce motion shows cards immediately.
 This entrance is specific to fullscreen; desktop card presentation is unchanged.
 

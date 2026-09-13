@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using Winnow.App.Design;
 using Winnow.App.Services;
@@ -37,6 +38,7 @@ public sealed class FullscreenCardEntranceTests
             await Task.Delay(450);
             Dispatcher.UIThread.RunJobs();
             Assert.All(covers, cover => Assert.Equal(1, cover.Child!.Opacity));
+            Assert.All(covers, cover => Assert.Null(cover.Child!.OpacityMask));
             if (Environment.GetEnvironmentVariable("WINNOW_SCREENSHOT_DIR") is { Length: > 0 } directory)
             {
                 Directory.CreateDirectory(directory);
@@ -54,15 +56,19 @@ public sealed class FullscreenCardEntranceTests
         using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell);
         var cover = new FullscreenCover(PreviewData.Tile);
         var title = new TextBlock { Text = "Game" };
-        FullscreenCardEntrance.Attach(context, cover, title, 5);
+        FullscreenCardEntrance.Attach(context, cover, title);
         var content = new StackPanel { Children = { cover, title } };
         var window = new Window { Width = 400, Height = 600, Content = content };
         try
         {
             window.Show();
             Assert.Equal(0, cover.Child!.Opacity);
+            var mask = Assert.IsType<LinearGradientBrush>(cover.Child.OpacityMask);
+            Assert.Equal(mask.StartPoint.Point.X, mask.EndPoint.Point.X);
+            Assert.True(mask.StartPoint.Point.Y < mask.EndPoint.Point.Y);
             context.ReducedMotion = true;
             Assert.Equal(1, cover.Child.Opacity);
+            Assert.Null(cover.Child.OpacityMask);
             Assert.Equal(1, title.Opacity);
             window.Content = null;
             context.ReducedMotion = false;
@@ -72,6 +78,7 @@ public sealed class FullscreenCardEntranceTests
             await Task.Delay(350);
             Dispatcher.UIThread.RunJobs();
             Assert.Equal(1, cover.Child.Opacity);
+            Assert.Null(cover.Child.OpacityMask);
             Assert.Equal(1, title.Opacity);
         }
         finally { window.Close(); context.ReducedMotion = false; }
