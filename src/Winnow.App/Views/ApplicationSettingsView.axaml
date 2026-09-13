@@ -141,6 +141,9 @@
                         </Grid>
                         <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding UpdateStatus}"
                                    AutomationProperties.LiveSetting="Polite"/>
+                        <TextBlock Name="UpdateRecoveryStatus" Classes="body" TextWrapping="Wrap"
+                                   Text="{Binding UpdateRecoveryStatus}" IsVisible="{Binding HasUpdateRecoveryStatus}"
+                                   AutomationProperties.LiveSetting="Polite"/>
                         <TextBlock Classes="data" IsVisible="{Binding CanCancelUpdate}"
                                    Text="{Binding UpdateProgress, StringFormat='Downloaded: {0:0}%'}"/>
                         <TextBlock Classes="data" IsVisible="{Binding HasReleaseNotes}"

@@ -9,6 +9,9 @@ namespace Winnow.App.Services;
 public interface IUpdateInstaller
 {
     bool IsSupported { get; }
+    string? RecoveryStatus => null;
+    Task<string> StageAsync(string path, string sha256, string version, CancellationToken ct = default) => Task.FromResult(path);
+    void Discard(string staged) => File.Delete(staged);
     Task PrepareAsync(string installerPath, string sha256, CancellationToken ct = default);
 }
 

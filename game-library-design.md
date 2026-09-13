@@ -1213,10 +1213,19 @@ the running executable. On explicit restart, an external helper verifies and loc
 payload, waits for process exit after normal host shutdown, checks for locked binaries,
 then runs Setup without force-closing apps or rebooting Windows. It relaunches with the
 selected data directory. Failure logs describe manual recovery; there is no automatic
-rollback to a binary that may predate database migrations. Portable and Linux distributions
-use the release-check and browser-download path pending TASK-159; package-manager-owned
-files are never overwritten by the updater. `docs/releases.md` owns the support matrix,
-release workflow, and recovery instructions.
+rollback to a binary that may predate database migrations.
+
+Portable Windows and Ubuntu 24.04 archives use `PortableUpdateInstaller` and the separate
+`Winnow.Update` engine/`Winnow.Update.Helper` executable. The engine stages validated archives
+beside the installation, backs up SQLite after shutdown, journals directory replacement,
+and preserves the selected data directory even when it lives within the portable folder.
+Installation and library guards exclude competing Winnow processes during replacement.
+Startup records possible migration before database initialization and acknowledges readiness
+after host and Avalonia initialization. Interrupted replacement can recover before migration;
+after migration may have started, restoring the paired database and binaries requires an
+explicit recovery command. Desktop and fullscreen consume the same recovery snapshot and
+update-and-restart action. Package-manager-owned files are never overwritten by the updater.
+`docs/releases.md` owns the support matrix, release workflow, and recovery instructions.
 
 ---
 

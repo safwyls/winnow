@@ -319,6 +319,12 @@ public sealed class FullscreenSettingsPage : FullscreenPage
                 status.Bind(TextBlock.TextProperty, new Binding(nameof(app.UpdateStatus)) { Source = app });
                 AutomationProperties.SetLiveSetting(status, AutomationLiveSetting.Polite);
                 rows.Children.Add(status);
+                var recovery = FullscreenUi.Text("", 28);
+                recovery.Name = "UpdateRecoveryStatus";
+                recovery.Bind(TextBlock.TextProperty, new Binding(nameof(app.UpdateRecoveryStatus)) { Source = app });
+                recovery.Bind(IsVisibleProperty, new Binding(nameof(app.HasUpdateRecoveryStatus)) { Source = app });
+                AutomationProperties.SetLiveSetting(recovery, AutomationLiveSetting.Polite);
+                rows.Children.Add(recovery);
                 var progress = FullscreenHistoryTypography.Data("", 28);
                 progress.Bind(TextBlock.TextProperty, new Binding(nameof(app.UpdateProgress)) { Source = app, StringFormat = "Downloaded: {0:0}%" });
                 progress.Bind(IsVisibleProperty, new Binding(nameof(app.CanCancelUpdate)) { Source = app });
@@ -338,6 +344,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
                 UpdateAction("Download update", app.DownloadUpdateCommand, nameof(app.CanDownloadUpdate));
                 UpdateAction("Cancel download", app.CancelUpdateCommand, nameof(app.CanCancelUpdate));
                 UpdateAction("Restart to update", app.RestartUpdateCommand, nameof(app.CanRestartUpdate));
+                UpdateAction("Update and restart", app.UpdateAndRestartCommand, nameof(app.CanUpdateAndRestart));
                 UpdateAction("Release notes", app.OpenReleaseNotesCommand, nameof(app.HasReleaseNotes), "Browser");
                 UpdateAction("Download in browser", app.OpenManualDownloadCommand, nameof(app.HasManualDownload), "Browser");
             }

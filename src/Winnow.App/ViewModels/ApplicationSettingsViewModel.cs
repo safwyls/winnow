@@ -84,6 +84,10 @@ public partial class ApplicationSettingsViewModel : ObservableObject
     [ObservableProperty] public partial bool AutomaticUpdates { get; set; }
     [ObservableProperty] public partial bool IncludeBetaReleases { get; set; }
     [ObservableProperty] public partial string UpdateStatus { get; private set; } = "Updates are unavailable in this build.";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasUpdateRecoveryStatus))]
+    public partial string? UpdateRecoveryStatus { get; private set; }
+    public bool HasUpdateRecoveryStatus => !string.IsNullOrWhiteSpace(UpdateRecoveryStatus);
     [ObservableProperty] public partial string? AvailableVersion { get; private set; }
     [ObservableProperty] public partial double UpdateProgress { get; private set; }
     [ObservableProperty] public partial bool UpdateBusy { get; private set; }
@@ -91,6 +95,10 @@ public partial class ApplicationSettingsViewModel : ObservableObject
     [ObservableProperty] public partial bool CanCheckUpdate { get; private set; }
     [ObservableProperty] public partial bool CanDownloadUpdate { get; private set; }
     [ObservableProperty] public partial bool CanRestartUpdate { get; private set; }
+    [ObservableProperty] public partial bool HasUpdateAction { get; private set; }
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(UpdateAndRestartCommand))]
+    public partial bool CanUpdateAndRestart { get; private set; }
     [ObservableProperty] public partial bool HasReleaseNotes { get; private set; }
     [ObservableProperty] public partial bool HasManualDownload { get; private set; }
 
@@ -102,6 +110,7 @@ public partial class ApplicationSettingsViewModel : ObservableObject
         try { AutomaticUpdates = snapshot.Automatic; IncludeBetaReleases = snapshot.IncludeBeta; }
         finally { _refreshingUpdate = false; }
         UpdateStatus = snapshot.Status;
+        UpdateRecoveryStatus = snapshot.RecoveryStatus;
         AvailableVersion = snapshot.AvailableVersion;
         UpdateProgress = snapshot.Progress;
         UpdateBusy = snapshot.Busy;
@@ -109,6 +118,8 @@ public partial class ApplicationSettingsViewModel : ObservableObject
         CanCheckUpdate = !snapshot.Busy;
         CanDownloadUpdate = snapshot.CanDownload && !snapshot.Busy;
         CanRestartUpdate = snapshot.CanRestart && !snapshot.Busy;
+        HasUpdateAction = snapshot.CanDownload || snapshot.CanRestart || snapshot.CanCancel;
+        CanUpdateAndRestart = HasUpdateAction && !snapshot.Busy;
         HasReleaseNotes = snapshot.ReleaseUrl is not null;
         HasManualDownload = snapshot.DownloadUrl is not null;
     }
@@ -127,6 +138,15 @@ public partial class ApplicationSettingsViewModel : ObservableObject
     [RelayCommand] private Task CheckUpdateAsync() => RunUpdateAsync(() => _updater?.CheckAsync() ?? Task.CompletedTask);
     [RelayCommand] private Task DownloadUpdateAsync() => RunUpdateAsync(() => _updater?.DownloadAsync() ?? Task.CompletedTask);
     [RelayCommand] private Task RestartUpdateAsync() => RunUpdateAsync(() => _updater?.RestartAsync() ?? Task.CompletedTask);
+    [RelayCommand(CanExecute = nameof(CanUpdateAndRestart))]
+    private Task UpdateAndRestartAsync() => RunUpdateAsync(async () =>
+    {
+        if (_updater is null || _updater.Snapshot.Busy) return;
+        if (_updater.Snapshot.CanDownload) await _updater.DownloadAsync();
+        // A cancelled or failed download must never turn this click into a restart.
+        if (_updater.Snapshot is { CanRestart: true, Busy: false })
+            await _updater.RestartAsync();
+    });
     [RelayCommand] private void CancelUpdate() => _updater?.CancelDownload();
     [RelayCommand] private Task OpenReleaseNotesAsync() => OpenUpdateLinkAsync(_updater?.Snapshot.ReleaseUrl);
     [RelayCommand] private Task OpenManualDownloadAsync() => OpenUpdateLinkAsync(_updater?.Snapshot.DownloadUrl);

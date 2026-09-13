@@ -91,6 +91,7 @@
          and never reference Avalonia or WebView2 themselves (§5.1). -->
     <ProjectReference Include="..\Winnow.Auth.WebView\Winnow.Auth.WebView.csproj" />
     <ProjectReference Include="..\Winnow.Core\Winnow.Core.csproj" />
+    <ProjectReference Include="..\Winnow.Update\Winnow.Update.csproj" />
     <ProjectReference Include="..\Winnow.Covers\Winnow.Covers.csproj" />
     <ProjectReference Include="..\Winnow.Covers.Igdb\Winnow.Covers.Igdb.csproj" />
     <ProjectReference Include="..\Winnow.Data\Winnow.Data.csproj" />

@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using Avalonia.Controls;
@@ -138,7 +139,15 @@ public sealed class FullscreenView : UserControl, IDisposable
         _status.TextTrimming = TextTrimming.CharacterEllipsis;
         status.Children.Add(_status);
         Grid.SetColumn(_clock, 1); status.Children.Add(_clock);
-        Grid.SetColumn(status, 2); header.Children.Add(status);
+        var statusGroup = new StackPanel { Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
+        statusGroup.Children.Add(status);
+        var updateNotice = FullscreenUi.Text("Update available · Menu", 24, "TextDim");
+        updateNotice.Name = "FullscreenUpdateNotice";
+        updateNotice.HorizontalAlignment = HorizontalAlignment.Right;
+        updateNotice.Bind(IsVisibleProperty, new Binding(nameof(ApplicationSettingsViewModel.HasUpdateAction)) { Source = context.Shared.ApplicationSettings });
+        updateNotice.Bind(AutomationProperties.ItemStatusProperty, new Binding(nameof(ApplicationSettingsViewModel.UpdateStatus)) { Source = context.Shared.ApplicationSettings });
+        statusGroup.Children.Add(updateNotice);
+        Grid.SetColumn(statusGroup, 2); header.Children.Add(statusGroup);
         _safe.Children.Add(header); Grid.SetRow(_body, 1); _safe.Children.Add(_body);
         var footer = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), VerticalAlignment = VerticalAlignment.Bottom };
         footer.Children.Add(_hints);
@@ -401,6 +410,12 @@ public sealed class FullscreenView : UserControl, IDisposable
     {
         if (_context.Shared.Setup.IsOpen) return;
         var actions = new List<FullscreenAction> { new("Resume", () => { }) };
+        var updates = _context.Shared.ApplicationSettings;
+        if (updates.HasUpdateAction)
+            actions.Add(new("Update and restart", () =>
+            {
+                if (updates.UpdateAndRestartCommand.CanExecute(null)) updates.UpdateAndRestartCommand.Execute(null);
+            }, updates.CanUpdateAndRestart));
         if (_stack.Count == 0) actions.Add(new("Settings", () => SelectSection(3)));
         actions.Add(new("Exit fullscreen", () => ExitRequested?.Invoke()));
         actions.Add(new("Quit Winnow", () => _context.ShowActions("Quit Winnow? Unsaved edits will be lost.",

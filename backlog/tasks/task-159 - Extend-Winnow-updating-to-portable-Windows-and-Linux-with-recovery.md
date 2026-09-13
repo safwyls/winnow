@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-08 04:59'
-updated_date: '2026-09-11 19:06'
+updated_date: '2026-09-13 00:13'
 labels:
   - app-updates
 dependencies:
@@ -28,23 +28,27 @@ Extend the existing release checks and installed-Windows update flow to supporte
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Portable Windows users can download, verify, apply, and restart into an update while preserving the portable location and selected data directory.
+- [x] #1 Portable Windows users can download, verify, apply, and restart into an update while preserving the portable location and selected data directory.
 - [ ] #2 Supported Linux distribution formats have a documented and tested update route; package-managed installations use their package-management boundary and any required authentication is explicit.
-- [ ] #3 Existing Windows and Linux distribution users have a documented transition path if packaging formats or installation layout change; unsupported environments retain useful download links.
+- [x] #3 Existing Windows and Linux distribution users have a documented transition path if packaging formats or installation layout change; unsupported environments retain useful download links.
 - [ ] #4 Interrupted replacement, insufficient permissions or disk space, verification failure, and failed new-version startup have tested recovery behavior without silently discarding user data.
-- [ ] #5 Recovery defines database migration compatibility and backup or restore behavior; an older binary is never automatically reopened against an incompatible migrated database.
+- [x] #5 Recovery defines database migration compatibility and backup or restore behavior; an older binary is never automatically reopened against an incompatible migrated database.
 - [ ] #6 Release CI tests actual older-to-newer upgrades and recovery on supported Windows and Linux environments using disposable data; documentation specifies the support matrix and recovery limits.
-- [ ] #7 Desktop and fullscreen share update preferences, progress, failure/recovery state and explicit restart behavior; verify both presentation paths for the supported installation types.
+- [x] #7 Desktop and fullscreen share update preferences, progress, failure/recovery state and explicit restart behavior; verify both presentation paths for the supported installation types.
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-Retain current ZIP, tar.gz and Debian layouts. Add a separately packaged helper for Windows x64 and portable Ubuntu 24.04 x64; registered Windows installations retain Inno and package-managed Linux retains the package manager. Validate release metadata, digest, archive paths and writable owned installation boundaries before staging beside the existing directory. After explicit Restart, wait for the exact app process and all database handles to close, create a pre-migration SQLite backup, and durably journal directory replacement while retaining previous binaries. Preserve the selected data directory, including when it lies inside the portable directory, and preserve only supported restart arguments. Require a new-version ready handshake after migrations and host startup. Before that handshake, recover interrupted replacement from the journal; after any possible migration, never automatically reopen old binaries against the changed database. Expose recovery details and same-or-newer reinstall guidance; restoring the paired pre-upgrade database is an explicit recovery operation. Exercise digest, permissions, disk-space, interruption, startup and backup/restore failures with temporary files, plus actual previous-release upgrades on disposable Windows and Ubuntu runners; verify shared desktop/fullscreen state. This helper and recovery architecture is a material decision and awaits plan approval before implementation.
+Retain ZIP, tar.gz and Debian layouts. Bundle a separate self-contained portable helper for Windows x64 and Ubuntu 24.04 x64; registered Windows keeps Inno and managed Linux keeps its package manager. Stage verified archives beside the installation and preserve selected internal/external data. After explicit restart, wait for the exact parent process and installation/library leases, create a checked pre-migration SQLite backup, and durably journal replacement while retaining previous binaries. Record possible migration before database access and require readiness after migrations, host and framework initialization. Recover interrupted replacement before migration; require explicit paired database restore after migration may have started, or same/newer reinstall followed by resume. Share progress, recovery state and an Update and restart action across the title bar, desktop settings and fullscreen. Verify local engine/UI/integration tests and disposable published older-to-newer Windows/Ubuntu release-runner tests; retain measured evidence and update release/architecture documentation. User approval recorded on 2026-09-12; local implementation and checks completed, platform release-runner evidence remains pending.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 Audit evidence: ApplicationUpdater gates staging on IUpdateInstaller.IsSupported; WindowsUpdateInstaller supports only a matching registered Windows installation. docs/releases.md documents manual portable/Linux routes and no automatic rollback. TASK-158 supplies the completed installed-Windows baseline; this task's recovery scope remains unimplemented.
+
+Implementation started with user approval. Portable engine/helper and presentation work delegated; coordinator owns startup/installer integration, packaging and final verification.
+
+Implemented portable staging and independently packaged helper; verified digest/metadata/path checks, SQLite WAL backup after process shutdown, durable replacement journal, explicit paired restore and same/newer resume. App startup gates before data access and acknowledges readiness after host/Avalonia initialization. Desktop title-bar and fullscreen header/quick-menu/settings share Update and restart, progress and persistent recovery notice. Release build passed with zero warnings; focused Release tests: 33 engine + 34 updater + 31 UI/installation = 98 passed. Real app/helper transaction handshake and internal-data replacement passed against disposable built copies. 42 migration hashes verified. Detailed measured evidence: docs/spikes/portable-update-recovery.md. Full isolated suite: 5758 passed, 3 failed, 2 Linux-only skipped; activity paging passed rerun, existing PluginSettingsView accessibility-name and fullscreen platform chevron expectations remain failing outside changed behavior. Actual published older-to-newer Windows/Ubuntu CI scripts and evidence retention are implemented but not executed locally. Keep TASK-159 In Progress with AC2/4/6 pending platform runner evidence rather than claiming Ubuntu or release upgrade success.
 <!-- SECTION:NOTES:END -->

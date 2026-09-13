@@ -60,7 +60,8 @@ internal sealed class ApplicationUpdater(
         var automatic = await settings.GetAsync(AutomaticKey, ct).ConfigureAwait(false);
         var beta = await settings.GetAsync(BetaKey, ct).ConfigureAwait(false);
         CleanAbandonedDownloads();
-        Publish(Snapshot with { Automatic = automatic != "false", IncludeBeta = beta == "true" });
+        Publish(Snapshot with { Automatic = automatic != "false", IncludeBeta = beta == "true",
+            Status = installer.RecoveryStatus ?? Snapshot.Status, RecoveryStatus = installer.RecoveryStatus });
         _loaded = true;
     }
 
@@ -145,9 +146,16 @@ internal sealed class ApplicationUpdater(
                 Publish(Snapshot with { Progress = progress });
             }, cancellation.Token).ConfigureAwait(false);
             cancellation.Token.ThrowIfCancellationRequested();
-            var staged = Path.ChangeExtension(partial, ".exe");
+            var extension = release.AssetName.EndsWith(".tar.gz", StringComparison.Ordinal) ? ".tar.gz"
+                : release.AssetName.EndsWith(".zip", StringComparison.Ordinal) ? ".zip" : ".exe";
+            var staged = Path.ChangeExtension(partial, extension);
             File.Move(partial, staged);
-            _staged = staged;
+            try
+            {
+                _staged = await installer.StageAsync(staged, release.Sha256, release.Version.Text, cancellation.Token).ConfigureAwait(false);
+                if (_staged != staged) TryDelete(staged);
+            }
+            catch { TryDelete(staged); throw; }
             Publish(Snapshot with { CanDownload = false, CanRestart = true, Progress = 100,
                 Status = "Update ready. Restart when you are ready." });
         }
@@ -234,7 +242,12 @@ internal sealed class ApplicationUpdater(
 
     private void DeleteStaged()
     {
-        if (_staged is not null) TryDelete(_staged);
+        if (_staged is not null)
+        {
+            try { installer.Discard(_staged); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
         _staged = null;
     }
 
@@ -253,8 +266,10 @@ internal sealed class ApplicationUpdater(
             if ((File.GetAttributes(cacheDirectory) & FileAttributes.ReparsePoint) != 0) return;
             foreach (var file in Directory.EnumerateFiles(cacheDirectory))
             {
-                if (Path.GetExtension(file) is not (".partial" or ".exe")
-                    || !Guid.TryParseExact(Path.GetFileNameWithoutExtension(file), "N", out _)
+                var name = Path.GetFileName(file);
+                var stem = name.EndsWith(".tar.gz", StringComparison.Ordinal) ? name[..^7] : Path.GetFileNameWithoutExtension(file);
+                if (Path.GetExtension(file) is not (".partial" or ".exe" or ".zip" or ".gz")
+                    || !Guid.TryParseExact(stem, "N", out _)
                     || File.GetLastWriteTimeUtc(file) >= DateTime.UtcNow.AddDays(-2)) continue;
                 TryDelete(file);
             }

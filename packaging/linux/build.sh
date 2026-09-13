@@ -110,6 +110,7 @@ mkdir -p -- \
     "$deb_root/usr/share/icons/hicolor/scalable/apps" \
     "$deb_root/DEBIAN"
 cp -a -- "$publish_dir/." "$install_root/"
+printf 'deb\n' > "$install_root/package-managed"
 rm -f -- "$install_root/appsettings.local.json"
 cat > "$deb_root/usr/bin/winnow" <<'EOF'
 #!/usr/bin/env bash

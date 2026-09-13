@@ -105,6 +105,9 @@ tar -xzf "$tar_path" -C "$workspace/tar-extract"
     || fail "portable archive does not contain the icon"
 validate_manifest "$workspace/tar-extract/$artifact_name/release-info.json"
 validate_manifest "$workspace/deb-extract/opt/winnow/release-info.json"
+[[ -f $workspace/deb-extract/opt/winnow/package-managed ]] || fail "Debian update boundary marker is missing"
+[[ ! -e $workspace/tar-extract/$artifact_name/package-managed ]] || fail "portable archive has a package-manager marker"
+[[ -x $workspace/tar-extract/$artifact_name/update-helper/Winnow.Update.Helper ]] || fail "portable update helper is missing"
 
 # `apt-get install` resolves the package's declared runtime dependencies. The
 # runner is ephemeral, so this never installs Winnow onto a user's computer.

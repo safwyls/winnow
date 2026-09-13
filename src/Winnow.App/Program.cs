@@ -54,6 +54,14 @@ public static class Program
     /// mid-run.
     /// </summary>
     private static Mutex? SingleInstance;
+    private static IDisposable? UpdateLease;
+    private static string? UpdateJournalPath;
+    private static bool PortableLeaseAvailable = true;
+
+    internal static void CompleteUpdateStartup()
+    {
+        if (UpdateJournalPath is { } journal) Winnow.Update.PortableUpdateEngine.MarkReady(journal);
+    }
 
     /// <summary>
     /// Where this run's database, covers, themes and WebView2 profile live, and
@@ -80,12 +88,35 @@ public static class Program
             AppHost = null;
             SingleInstance?.Dispose();
             SingleInstance = null;
+            UpdateLease?.Dispose();
+            UpdateLease = null;
             Shutdown.Dispose();
         }
     }
 
     private static void Run(string[] args)
     {
+        // A second library in the same portable installation must not race replacement.
+        if (File.Exists(Path.Combine(AppContext.BaseDirectory, "release-info.json")) &&
+            !UpdateInstallation.IsManagedLinux(AppContext.BaseDirectory) &&
+            !new WindowsUpdateInstaller().IsSupported)
+        {
+            try { UpdateLease = Winnow.Update.PortableUpdateEngine.AcquireApplicationLease(AppContext.BaseDirectory); }
+            catch (Exception ex) when ((ex is IOException or UnauthorizedAccessException) &&
+                !File.Exists(Winnow.Update.PortableUpdateEngine.GetJournalPath(AppContext.BaseDirectory)))
+            {
+                // Read-only portable media can still use release links and manual updates.
+                PortableLeaseAvailable = false;
+            }
+            var pendingJournal = Winnow.Update.PortableUpdateEngine.GetJournalPath(AppContext.BaseDirectory);
+            if (File.Exists(pendingJournal))
+            {
+                var phase = Winnow.Update.PortableUpdateEngine.ReadJournal(pendingJournal).Phase;
+                if (phase is not (Winnow.Update.UpdatePhase.Staged or Winnow.Update.UpdatePhase.Ready or
+                    Winnow.Update.UpdatePhase.Restored or Winnow.Update.UpdatePhase.Installed))
+                    throw new IOException("An interrupted portable update needs recovery. Keep the library and update workspace; follow the portable recovery instructions in the release documentation before starting Winnow again.");
+            }
+        }
         var builder = Host.CreateApplicationBuilder(args);
 
         // Credentials that must not go in the repo, for people who would rather
@@ -154,6 +185,20 @@ public static class Program
         }
 
         DiagnosticLogging.Configure(builder.Logging, DataLocation.Root);
+
+        if (UpdateLease is not null)
+        {
+            var journal = Winnow.Update.PortableUpdateEngine.GetJournalPath(AppContext.BaseDirectory);
+            if (File.Exists(journal))
+            {
+                var state = Winnow.Update.PortableUpdateEngine.ReadJournal(journal);
+                if (state.Phase is not (Winnow.Update.UpdatePhase.Staged or Winnow.Update.UpdatePhase.Ready or Winnow.Update.UpdatePhase.Restored))
+                {
+                    Winnow.Update.PortableUpdateEngine.ValidateStartup(journal, AppContext.BaseDirectory, DataLocation.Root);
+                    UpdateJournalPath = journal;
+                }
+            }
+        }
 
         // Both flags mean "leave this database alone", so every writer has to
         // honour them — otherwise rows appear fifteen minutes into UI work
@@ -906,14 +951,18 @@ public static class Program
         services.AddSingleton<FirstRunSetupViewModel>();
         services.AddHttpClient<GitHubReleaseClient>(client => client.Timeout = Timeout.InfiniteTimeSpan)
             .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
-        services.AddSingleton<IUpdateInstaller, WindowsUpdateInstaller>();
+        services.AddSingleton<IUpdateInstaller>(_ =>
+        {
+            var installed = new WindowsUpdateInstaller();
+            return installed.IsSupported ? installed : new PortableUpdateInstaller(AppContext.BaseDirectory, data.Root, PortableLeaseAvailable);
+        });
         services.AddSingleton(sp => new ApplicationUpdater(
             sp.GetRequiredService<GitHubReleaseClient>(), sp.GetRequiredService<ISettingsRepository>(),
             sp.GetRequiredService<IUpdateInstaller>(), Path.Combine(data.Root, "updates", "downloads"),
             ApplicationBuildInfo.Current.Version,
             System.Runtime.InteropServices.RuntimeInformation.OSArchitecture != System.Runtime.InteropServices.Architecture.X64 ? ""
-                : OperatingSystem.IsWindows() ? sp.GetRequiredService<IUpdateInstaller>().IsSupported ? "win-x64-setup.exe" : "win-x64.zip"
-                : OperatingSystem.IsLinux() ? AppContext.BaseDirectory.StartsWith("/opt/", StringComparison.Ordinal) ? "linux-x64.deb" : "linux-x64.tar.gz" : "",
+                : OperatingSystem.IsWindows() ? sp.GetRequiredService<IUpdateInstaller>() is WindowsUpdateInstaller ? "win-x64-setup.exe" : "win-x64.zip"
+                : OperatingSystem.IsLinux() ? UpdateInstallation.IsManagedLinux(AppContext.BaseDirectory) ? "linux-x64.deb" : "linux-x64.tar.gz" : "",
             () => Dispatcher.UIThread.Post(() => (Application.Current as App)?.ExitForUpdate()),
             sp.GetRequiredService<ILogger<ApplicationUpdater>>()));
         services.AddSingleton<IApplicationUpdater>(sp => sp.GetRequiredService<ApplicationUpdater>());

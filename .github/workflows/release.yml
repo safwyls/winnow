@@ -58,6 +58,7 @@ jobs:
         run: |
           ./packaging/Test-Version.ps1
           ./packaging/windows/Test-PreviousWindowsInstaller.ps1
+          ./packaging/Test-PreviousPortableArchive.ps1
           [xml]$versionProps = Get-Content Version.props
           $versionPrefix = $versionProps.Project.PropertyGroup.VersionPrefix
           $version = if ($env:GITHUB_REF.StartsWith('refs/tags/')) {
@@ -89,7 +90,7 @@ jobs:
           - os: ubuntu-24.04
             runtime: linux-x64
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 25
+    timeout-minutes: 35
     env:
       RELEASE_VERSION: ${{ needs.version.outputs.version }}
       RELEASE_RUNTIME: ${{ matrix.runtime }}
@@ -107,6 +108,9 @@ jobs:
         run: |
           ./packaging/Publish.ps1 -Runtime $env:RELEASE_RUNTIME -Version $env:RELEASE_VERSION -Commit $env:GITHUB_SHA -OutputDirectory artifacts/publish
           ./packaging/Test-BundledPlugin.ps1 -BuildDirectory artifacts/publish
+      - name: Verify portable update recovery engine
+        shell: pwsh
+        run: dotnet test tests/Winnow.Update.Tests/Winnow.Update.Tests.csproj --configuration Release --logger "trx;LogFileName=portable-recovery.trx" --results-directory artifacts/portable-smoke-logs
       - name: Package Windows installer and archive
         if: runner.os == 'Windows'
         shell: pwsh
@@ -127,6 +131,31 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: bash packaging/linux/smoke-test.sh artifacts/packages "$RELEASE_VERSION"
+      - name: Fetch digest-verified earlier portable release
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          $extension = if ($env:RELEASE_RUNTIME -eq 'win-x64') { 'zip' } else { 'tar.gz' }
+          ./packaging/Get-PreviousPortableArchive.ps1 -Version $env:RELEASE_VERSION -Runtime $env:RELEASE_RUNTIME -OutputPath "artifacts/previous/portable.$extension"
+      - name: Verify Windows portable upgrade and recovery
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./packaging/Test-PortableUpgrade.ps1 -PreviousArchive artifacts/previous/portable.zip -Archive "artifacts/packages/Winnow-$env:RELEASE_VERSION-win-x64.zip" -PublishDirectory artifacts/publish -Version $env:RELEASE_VERSION -Runtime win-x64
+      - name: Verify Ubuntu portable upgrade and recovery
+        if: runner.os == 'Linux'
+        shell: bash
+        run: xvfb-run --auto-servernum pwsh -NoProfile -File packaging/Test-PortableUpgrade.ps1 -PreviousArchive artifacts/previous/portable.tar.gz -Archive "artifacts/packages/Winnow-$RELEASE_VERSION-linux-x64.tar.gz" -PublishDirectory artifacts/publish -Version "$RELEASE_VERSION" -Runtime linux-x64
+      - name: Keep portable upgrade evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: portable-upgrade-evidence-${{ matrix.runtime }}
+          path: |
+            artifacts/portable-smoke-logs/*
+            artifacts/previous/*.evidence.json
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Keep installable packages
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

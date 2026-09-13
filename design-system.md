@@ -2827,6 +2827,15 @@ off to receive stable releases only.” Both preferences are shared with fullscr
 settings. A polite status line explains checking, download progress, readiness or failure;
 available versions use Data typography. **Check for updates**, **Download update**, **Cancel
 download** and **Restart to update** expose the current operation. Restart is always explicit.
+When a supported update is detected, the desktop title bar shows **Update and restart** in
+neutral chrome, with the shared update status in its tooltip and accessible item status.
+The button stays visible but disabled during download. Activating it downloads and verifies
+the update if needed, then restarts only when preparation succeeds; cancellation or failure
+leaves Winnow open. Fullscreen shows **Update available · Menu** in its header and
+offers the same action in the controller quick menu and Application settings. Both surfaces
+read one shared state and command; background checks never restart the app or move focus.
+Recovery guidance remains in a separate wrapping, polite status line on both Application
+settings surfaces so a later release check cannot replace it with routine download status.
 **Release notes** and **Download in browser** open the official release destinations in the
 system browser; unsupported installations use the browser download path. Fullscreen presents
 the same controls as large ordered rows with its switch tracks, On/Off state and explicit

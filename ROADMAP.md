@@ -44,7 +44,7 @@ hardware validation. The remaining validation is listed in §6.
 | Presentation | Desktop and fullscreen views, controller navigation and text entry, shared themes, separate layout preferences, accessibility and reduced-motion support. |
 | Setup | Optional resumable setup for providers, themes and preferences, available again from Application settings on both surfaces. GOG uses local discovery. |
 | Export | Acquisition CSV with title, store, acquisition date, licence and price paid. Missing values stay blank; recorded prices are cents without a currency. |
-| Distribution | Windows/Linux x64 packages, release checks and draft publication workflow. Update notification and installer-based Windows updating; portable Windows/Linux update recovery is deferred. |
+| Distribution | Windows/Linux x64 packages, release checks and draft publication workflow. Installed Windows updating and portable Windows/Ubuntu update staging, paired backup and journal recovery; shared desktop/fullscreen update-and-restart action. |
 
 ## 4. Excluded and deferred
 
@@ -62,7 +62,7 @@ library matching, mobile, and a 3D shelf view. Fullscreen is a separate TV inter
 | GOG sign-in | Local Galaxy discovery supplies owned games and available local play facts. Investigate sign-in only if the unverified sessions endpoint adds useful session history (TASK-49). |
 | Other data research | Steam support-export format and availability (TASK-46). |
 | Navigation and notifications | Windows post-session notification (TASK-108), user-selected destinations for links (TASK-114). |
-| App updates | Recovery for portable Windows and Linux installations (TASK-159). |
+| App updates | Disposable Windows/Ubuntu release-upgrade CI evidence for portable recovery (TASK-159); local Windows engine and presentation tests cover the implementation. |
 
 Unowned-game recommendations are outside the current feed. A later wishlist feature would
 start from titles the user has explicitly selected, rather than a general purchase feed.

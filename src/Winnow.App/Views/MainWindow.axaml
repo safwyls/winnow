@@ -921,6 +921,18 @@
                     </StackPanel>
                 </Border>
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button Name="TitleBarUpdateButton" Content="Update and restart"
+                            FontFamily="{StaticResource BodyFont}" FontSize="{StaticResource LabelSize}"
+                            Foreground="{StaticResource Text}" Background="{StaticResource ChromeRaised}"
+                            BorderBrush="{StaticResource Line}" BorderThickness="1"
+                            CornerRadius="{StaticResource RadiusControl}" MinHeight="28" Height="28" Padding="12,0" Margin="0,4,12,4"
+                            VerticalContentAlignment="Center"
+                            IsVisible="{Binding ApplicationSettings.HasUpdateAction}"
+                            IsEnabled="{Binding ApplicationSettings.CanUpdateAndRestart}"
+                            Command="{Binding ApplicationSettings.UpdateAndRestartCommand}"
+                            AutomationProperties.Name="Update and restart"
+                            AutomationProperties.ItemStatus="{Binding ApplicationSettings.UpdateStatus}"
+                            ToolTip.Tip="{Binding ApplicationSettings.UpdateStatus}"/>
                     <Button AutomationProperties.Name="Minimise" Classes="wincontrol"
                             Click="OnMinimisePressed"
                             ToolTip.Tip="Minimise">

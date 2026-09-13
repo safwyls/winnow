@@ -1,0 +1,55 @@
+# Portable update recovery verification
+
+Measured on Windows x64 on 2026-09-12 for TASK-159. Current behavior and recovery
+commands are in [release instructions](../releases.md).
+
+## Local checks
+
+- Release solution build: zero warnings and errors, using
+  `dotnet build --configuration Release --artifacts-path C:\Temp\winnow-task159-final`.
+- Release recovery engine tests: 33 passed. Cases cover ZIP/tar rejection, digest and
+  staged-file verification, internal/external data replacement cuts, committed WAL backup,
+  explicit restore, missing/corrupt backups, simulated disk exhaustion, competing instances,
+  abandoned staging, transaction ownership and interrupted restore retry.
+- Release updater tests: 34 passed, including stage failure, retry and channel cancellation.
+- Release presentation/installation tests: 31 passed across `ApplicationUpdaterUiTests`,
+  `UpdateInstallationTests`, `WindowsUpdateInstallerTests`, `FullscreenQuickMenuTests` and
+  `FullscreenSettingsTests`. Desktop keyboard and fullscreen controller actions use the
+  same download-then-restart command. Failure prevents restart; recovery notices survive
+  transient status changes. Desktop and fullscreen captures were visually inspected.
+- Migration integrity: all 42 existing migration hashes verified; no migration was added.
+- Portable baseline-selection fixture and PowerShell parsing passed. Linux packaging Bash
+  syntax was checked through WSL.
+
+The first full-suite attempt used a shared `BaseOutputPath`, which mixed dependency versions
+and hit DLL locks. The repeat used per-project `--artifacts-path` outputs: 5,758 passed,
+three failed and two Linux-only cases skipped. The activity paging failure passed a focused
+rerun. Two failures remain outside the changed behavior: the existing accessible name on
+`PluginSettingsView.axaml`'s TextBlock and a fullscreen platform test expecting a chevron
+where the current platform row renders `Open`. The full suite is therefore not green.
+
+## Real app/helper handshake
+
+A temporary copy of the built app and helper used fabricated `1.0.0`/`1.0.1` release
+manifests and an internal `--data-dir`. The debug app initialized sample data, and the
+helper staged the ZIP while that app remained open. The test checked the transaction's
+ready/proceed exchange and confirmed the journal stayed Staged until that exact app process
+exited. Replacement, SQLite backup, restart and the real app's readiness acknowledgment
+completed successfully. The test then stopped only the disposable application's process.
+
+Evidence is in
+`C:\Users\safwyl\AppData\Local\Temp\winnow-task159-handshake-4d3296076f0c435b8d061c3688c2ded6`.
+This verifies the local integration with built binaries; it is not a published older-release
+upgrade or an Ubuntu result. No production library or launcher files were modified.
+
+## Release-runner evidence still required
+
+`packaging/Test-PortableUpgrade.ps1` runs on disposable Windows and Ubuntu 24.04 release
+runners. It fetches an earlier published archive with a verified digest, initializes and
+seeds its temporary database, and tests external/internal data, failed apphost startup with
+explicit paired restore, and interrupted replacement. The release workflow also runs the
+engine suite on both platforms and retains journals, TRX and baseline-selection evidence.
+
+Those release-runner checks were implemented but not executed in this local session.
+The available WSL distribution is Fedora 44 without .NET, so it cannot establish Ubuntu
+runtime or Unix permission coverage. Hardware power-loss behavior was not tested.

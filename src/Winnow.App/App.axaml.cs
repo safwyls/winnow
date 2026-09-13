@@ -83,6 +83,7 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+        Program.CompleteUpdateStartup();
     }
 
     private void OnTrayClicked(object? sender, EventArgs e) => RestoreMainWindow();
