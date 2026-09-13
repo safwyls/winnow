@@ -42,7 +42,7 @@ Evidence is in
 This verifies the local integration with built binaries; it is not a published older-release
 upgrade or an Ubuntu result. No production library or launcher files were modified.
 
-## Release-runner evidence still required
+## Release-runner method
 
 `packaging/Test-PortableUpgrade.ps1` runs on disposable Windows and Ubuntu 24.04 release
 runners. It fetches an earlier published archive with a verified digest, initializes and
@@ -50,7 +50,7 @@ seeds its temporary database, and tests external/internal data, failed apphost s
 explicit paired restore, and interrupted replacement. The release workflow also runs the
 engine suite on both platforms and retains journals, TRX and baseline-selection evidence.
 
-Those release-runner checks were implemented but not executed in this local session.
+Those release-runner checks were implemented but not executed in the initial 2026-09-12 local session.
 The available WSL distribution is Fedora 44 without .NET, so it cannot establish Ubuntu
 runtime or Unix permission coverage. Hardware power-loss behavior was not tested.
 
@@ -87,5 +87,20 @@ script had not changed since the earlier passing runs; the logs do not identify 
 remaining lock holder. The installed helper now retries sharing violations for at most
 five seconds and checks cancellation during the wait. Windows PowerShell 5.1 regression
 checks passed for writable files, a released lock, a persistent lock and cancellation.
-Windows release verification remains pending a rerun. Desktop and fullscreen use the same update helpers;
-no presentation behavior changed in this follow-up.
+Desktop and fullscreen use the same update helpers; no presentation behavior changed in
+this follow-up.
+
+## Successful release verification on 2026-09-13
+
+[Release run 34741215637](https://github.com/safwyls/winnow/actions/runs/34741215637)
+passed both Windows 2025 x64 and Ubuntu 24.04 x64 at commit `872efa4`. Each platform passed
+37 engine tests, package construction, installed-package smoke checks, and all four
+portable upgrade/recovery scenarios. The baseline was `v0.1.0-beta.6`, upgraded to
+`0.1.0-ci.65`. The Windows run also passed the four PowerShell 5.1 lock regressions and
+the installed helper's bad-digest, cancellation, shutdown-timeout, persistent-lock and
+successful-upgrade cases.
+
+The workflow retains package artifacts and portable-upgrade evidence (journals, TRX and
+baseline-selection records). This closes the pending runner validation for TASK-159;
+hardware power loss and other operating systems remain outside the measured scope.
+The unrelated full-suite failures described above are not resolved by these release fixes.

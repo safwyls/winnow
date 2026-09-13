@@ -1,11 +1,11 @@
 ---
 id: TASK-159
 title: Extend Winnow updating to portable Windows and Linux with recovery
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-08 04:59'
-updated_date: '2026-09-13 05:48'
+updated_date: '2026-09-13 05:55'
 labels:
   - app-updates
 dependencies:
@@ -29,11 +29,11 @@ Extend the existing release checks and installed-Windows update flow to supporte
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 Portable Windows users can download, verify, apply, and restart into an update while preserving the portable location and selected data directory.
-- [ ] #2 Supported Linux distribution formats have a documented and tested update route; package-managed installations use their package-management boundary and any required authentication is explicit.
+- [x] #2 Supported Linux distribution formats have a documented and tested update route; package-managed installations use their package-management boundary and any required authentication is explicit.
 - [x] #3 Existing Windows and Linux distribution users have a documented transition path if packaging formats or installation layout change; unsupported environments retain useful download links.
-- [ ] #4 Interrupted replacement, insufficient permissions or disk space, verification failure, and failed new-version startup have tested recovery behavior without silently discarding user data.
+- [x] #4 Interrupted replacement, insufficient permissions or disk space, verification failure, and failed new-version startup have tested recovery behavior without silently discarding user data.
 - [x] #5 Recovery defines database migration compatibility and backup or restore behavior; an older binary is never automatically reopened against an incompatible migrated database.
-- [ ] #6 Release CI tests actual older-to-newer upgrades and recovery on supported Windows and Linux environments using disposable data; documentation specifies the support matrix and recovery limits.
+- [x] #6 Release CI tests actual older-to-newer upgrades and recovery on supported Windows and Linux environments using disposable data; documentation specifies the support matrix and recovery limits.
 - [x] #7 Desktop and fullscreen share update preferences, progress, failure/recovery state and explicit restart behavior; verify both presentation paths for the supported installation types.
 <!-- AC:END -->
 
@@ -63,4 +63,12 @@ First repaired Ubuntu run passed archive staging and reached post-apply journal 
 Ubuntu release job 103680250659 at 382ec6c passed 37 engine tests, package/startup checks and all four portable upgrade/recovery scenarios from beta.6. Windows jobs instead exposed a latent installed-helper timing failure on Avalonia DLL exclusive-open after parent exit; no changes to installed helper or smoke occurred since earlier passing runs. Investigating bounded sharing retry without weakening persistent-lock refusal.
 
 Installed helper now retries only Windows sharing/lock violations (32/33) for a total five-second window after parent exit, checks cancellation each attempt, and immediately propagates other failures. Four standalone regression checks passed under production Windows PowerShell 5.1: writable files, transient release, persistent-lock refusal, cancellation during wait. Smoke invokes these checks before installer work. No installer was run locally.
+
+Release run 34741215637 passed Windows 2025 x64 and Ubuntu 24.04 x64 at 872efa4. Each platform passed 37 engine tests, packaging and installed smoke, and all four actual portable scenarios (external/internal data, failed startup with explicit paired restore, interrupted replacement), beta.6 to ci.65. Windows additionally passed four PS5.1 lock checks and bad-digest/cancel/shutdown-timeout/persistent-lock/successful installed upgrade scenarios. Artifacts retain journals/TRX/baseline evidence. AC2/4/6 now verified; no hardware-power-loss claim. Unrelated full-suite failures remain outside this task.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Portable Windows and Ubuntu updates and recovery verified on published older-to-newer runner fixtures. Both platform release jobs passed at 872efa4; shared desktop/fullscreen verification and local engine/UI results are recorded in docs/spikes/portable-update-recovery.md. Fixed Linux archive and journal casing, smoke process waiting, and transient installed-Windows sharing locks. Existing unrelated full-suite failures remain documented.
+<!-- SECTION:FINAL_SUMMARY:END -->
