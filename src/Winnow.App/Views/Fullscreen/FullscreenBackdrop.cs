@@ -89,6 +89,12 @@ public sealed class FullscreenBackdrop : Panel
         Children.Add(_fallbackVeil);
         if (cinematic)
         {
+            // Overview text rests on Ground even when a wide hero keeps its whole composition.
+            Children.Add(new Border { Background = new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(.5, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(.5, 1, RelativeUnit.Relative),
+                GradientStops = [new GradientStop(clearGround, .25), new GradientStop(ground, .48)]
+            } });
             // The title reads against a solid left edge while landscape detail survives on the right.
             Children.Add(new Border { Background = new LinearGradientBrush
             {

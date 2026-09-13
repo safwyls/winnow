@@ -22,7 +22,7 @@ public sealed class FullscreenDetailsPage : FullscreenPage
     private readonly Button[] _tabs;
     private readonly FullscreenBackdrop? _backdrop;
     private readonly StackPanel _actions = new() { Orientation = Orientation.Horizontal, Spacing = 24 };
-    private readonly TextBlock _identity = FullscreenUi.Text("", 28, "TextDim");
+    private readonly TextBlock _identity = FullscreenUi.Text("", 24, "TextDim");
     private int _tab;
 
     public FullscreenDetailsPage(FullscreenContext context, GameDetailsViewModel details, int selectedSection = 0) : base(context)
@@ -56,28 +56,38 @@ public sealed class FullscreenDetailsPage : FullscreenPage
         { Setters = { new Setter(Button.BorderBrushProperty, new DynamicResourceExtension("Volt")) } });
         var actions = _actions;
         RefreshHero();
-        var title = FullscreenUi.Text(details.Title, details.Title.Length > 45 ? 72 : 80);
+        var title = DetailText(details.Title, details.Title.Length > 45 ? 64 : 76, weight: FontWeight.Bold);
         title.Bind(TextBlock.TextProperty, new Binding(nameof(GameDetailsViewModel.Title)) { Source = details });
         title.MaxLines = 2;
         title.MaxWidth = 1050;
         title.HorizontalAlignment = HorizontalAlignment.Left;
         title.TextTrimming = TextTrimming.CharacterEllipsis;
         title.Classes.Add("tv-title");
-        var hero = new Grid { MinHeight = 240 };
+        var hero = new Grid { MinHeight = 232 };
         var heroText = FullscreenUi.Stack(title, _identity, actions);
+        heroText.Spacing = 12;
         heroText.MaxWidth = 1050;
         heroText.HorizontalAlignment = HorizontalAlignment.Left;
         hero.Children.Add(heroText);
         _tabs = new[] { "Overview", "Updates", "Journal", "Library" }.Select((label, index) =>
             FullscreenUi.Button(label, () => SelectTab(index))).ToArray();
-        var tabRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24, Margin = new Thickness(0, 12) };
+        var tabRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24, Margin = new Thickness(0, 8) };
         tabRow.Children.Add(FullscreenGlyphs.Icon("LT"));
-        foreach (var tab in _tabs) { tab.Classes.Add("tv-details-tab"); tabRow.Children.Add(tab); }
+        foreach (var tab in _tabs)
+        {
+            tab.Classes.Add("tv-details-tab");
+            tab.FontSize = 24;
+            tab.MinHeight = 52;
+            tab.Padding = new Thickness(18, 8);
+            tabRow.Children.Add(tab);
+        }
         tabRow.Children.Add(FullscreenGlyphs.Icon("RT"));
         var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*") };
         layout.Children.Add(hero);
-        Grid.SetRow(tabRow, 1);
-        layout.Children.Add(tabRow);
+        var tabRegion = new Border { Child = tabRow, BorderThickness = new Thickness(0, 0, 0, 1) };
+        tabRegion[!Border.BorderBrushProperty] = new DynamicResourceExtension("Line");
+        Grid.SetRow(tabRegion, 1);
+        layout.Children.Add(tabRegion);
         Grid.SetRow(_body, 2);
         layout.Children.Add(_body);
         Content = layout;
@@ -86,7 +96,7 @@ public sealed class FullscreenDetailsPage : FullscreenPage
         AttachedToVisualTree += (_, _) =>
         {
             details.RequestCover(800);
-            details.Screenshots?.RequestThumbnails(3);
+
             if (_tab is 0 or 2)
             {
                 var restore = PreserveFocus();
@@ -150,7 +160,7 @@ public sealed class FullscreenDetailsPage : FullscreenPage
         _rows[0] = _actions.Children.ToArray();
         _backdrop?.Select(_details.Tile);
         SelectTab(_tab, false);
-        _details.Screenshots?.RequestThumbnails(3);
+
         restore();
     }
 
@@ -171,7 +181,7 @@ public sealed class FullscreenDetailsPage : FullscreenPage
     private void SelectTab(int index, bool focus = true)
     {
         _tab = index;
-        var updatesLabel = FullscreenUi.Text(_details.HasUnreadUpdates ? $"Updates {_details.UnreadUpdateCount}" : "Updates");
+        var updatesLabel = DetailText(_details.HasUnreadUpdates ? $"Updates {_details.UnreadUpdateCount}" : "Updates", 24);
         _tabs[1].Content = _details.HasUnreadUpdates
             ? new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16,
                 Children = { FullscreenUi.Text("●", 24, "Flare"), updatesLabel } }
@@ -194,115 +204,176 @@ public sealed class FullscreenDetailsPage : FullscreenPage
 
     private Control Overview()
     {
-        var history = FullscreenUi.Stack(FullscreenUi.Text("YOUR HISTORY", 24, "TextDim"));
-        var figures = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*"), ColumnSpacing = 24 };
+        var history = new StackPanel { Spacing = 14 };
+        history.Children.Add(DetailText("YOUR HISTORY", 18, "TextDim"));
+        var figures = new Grid { ColumnDefinitions = new ColumnDefinitions("160,Auto,*"), ColumnSpacing = 28 };
         if (_details.PlaytimeText != "—")
         {
-            var played = FullscreenUi.Stack(FullscreenUi.Text(_details.PlaytimeText, 56), FullscreenUi.Text("played", 24, "TextDim"));
-            played.Spacing = 4;
+            var played = Metric(_details.PlaytimeText, "played");
             figures.Children.Add(played);
         }
         if (_details.HasGap)
         {
-            var away = FullscreenUi.Stack(FullscreenUi.Text(_details.IdleText, 56), FullscreenUi.Text("since last played", 24, "TextDim"));
-            away.Spacing = 4;
-            Grid.SetColumn(away, 1);
+            if (figures.Children.Count > 0)
+            {
+                var metricRule = Rule(false, 84);
+                Grid.SetColumn(metricRule, 1);
+                figures.Children.Add(metricRule);
+            }
+            var away = Metric(_details.IdleText, "since last played");
+            if (figures.Children.Count > 0) Grid.SetColumn(away, 2);
+            else Grid.SetColumnSpan(away, 3);
             figures.Children.Add(away);
         }
         if (figures.Children.Count > 0) history.Children.Add(figures);
-        if (_details.HasGap) history.Children.Add(FullscreenUi.Text($"Last played {_details.LastPlayedText}", 24, "TextDim"));
-        history.Children.Add(FullscreenUi.Text(_details.BucketLabel, 28));
-        if (_details.HasUnreadUpdates) history.Children.Add(FullscreenUi.Text(_details.UpdatesShortcutText, 28, "Flare"));
-        var historyButton = FullscreenUi.Button("Play history", () => Context.Push(new FullscreenDetailsHistoryPage(Context, _details.Tracker)));
-        historyButton.HorizontalAlignment = HorizontalAlignment.Left;
-        historyButton.MinHeight = 44;
-        historyButton.Padding = new Thickness(12, 4);
-        history.Children.Add(historyButton);
-        var overviewControls = new List<Control>();
-        if (_details.Journal?.Entries.FirstOrDefault(entry => entry.HasNote) is { } latest)
+        if (_details.HasGap)
         {
-            var note = FullscreenUi.Text(latest.Note!, 28);
-            note.Bind(TextBlock.TextProperty, new Binding(nameof(JournalEntryViewModel.Note)) { Source = latest });
-            note.MaxLines = 2;
-            note.TextTrimming = TextTrimming.CharacterEllipsis;
-            var openJournal = FullscreenUi.Button("Open journal", () => SelectTab(2));
-            openJournal.HorizontalAlignment = HorizontalAlignment.Left;
-            openJournal.MinHeight = 44;
-            openJournal.Padding = new Thickness(12, 4);
-            var journal = FullscreenUi.Stack(FullscreenUi.Text("LATEST NOTE", 24, "TextDim"), note, openJournal);
-            journal.Spacing = 8;
-            journal.Margin = new Thickness(0, 12, 0, 0);
-            history.Children.Add(journal);
-            overviewControls.Add(openJournal);
+            var lastPlayed = DetailText($"Last played {_details.LastPlayedText}", 22, "TextDim");
+            lastPlayed.Margin = new Thickness(0, 10, 0, 0);
+            history.Children.Add(lastPlayed);
         }
-        var summary = FullscreenUi.Text(_details.SummaryText ?? _details.EmptyBodyText, 28);
-        summary.MaxLines = 3;
+        history.Children.Add(DetailText(_details.BucketLabel, 32, weight: FontWeight.Bold));
+        if (_details.HasUnreadUpdates)
+            history.Children.Add(DetailText(_details.UpdatesShortcutText, 24, "Flare"));
+        var historyButton = DetailLink("Play history", () => Context.Push(new FullscreenDetailsHistoryPage(Context, _details.Tracker)));
+        history.Children.Add(historyButton);
+        var divider = Rule(true);
+        divider.Margin = new Thickness(0, 20, 0, 18);
+        history.Children.Add(divider);
+        var latest = _details.Journal?.Entries.FirstOrDefault(entry => entry.HasNote);
+        history.Children.Add(DetailText(latest is null ? "JOURNAL" : "LATEST NOTE", 18, "TextDim"));
+        if (latest is not null)
+        {
+            var note = DetailText(latest.Note!, 24);
+            note.Bind(TextBlock.TextProperty, new Binding(nameof(JournalEntryViewModel.Note)) { Source = latest });
+            note.MaxLines = 3;
+            note.TextTrimming = TextTrimming.CharacterEllipsis;
+            history.Children.Add(note);
+        }
+        var journalButton = DetailLink("Open journal", () => SelectTab(2));
+        history.Children.Add(journalButton);
+
+        var summary = DetailText(_details.SummaryText ?? _details.EmptyBodyText, 24);
+        summary.MaxLines = 2;
         summary.TextTrimming = TextTrimming.CharacterEllipsis;
-        var aboutButton = FullscreenUi.Button("Read more", ShowAbout);
-        var about = FullscreenUi.Stack(OverviewHeading("ABOUT", aboutButton), summary);
-        about.Spacing = 8;
-        history.Spacing = 8;
+        var aboutButton = DetailLink("Read more", ShowAbout);
+        var prefix = new StackPanel { Spacing = 12 };
+        prefix.Children.Add(DetailText("ABOUT", 18, "TextDim"));
+        prefix.Children.Add(summary);
+        prefix.Children.Add(aboutButton);
+        var about = new StackPanel { Spacing = 12 };
+        about.Children.Add(prefix);
         _rows.Add([historyButton, aboutButton]);
+        var screenshotControls = new List<Control> { journalButton };
         Button? gallery = null;
         if (_details.Screenshots is { HasShots: true } shots)
         {
-            gallery = FullscreenUi.Button("View gallery", () =>
-            {
-                shots.SelectCommand.Execute(shots.Shots[0]);
-                if (shots.Lightbox is { } lightbox) Context.Push(new FullscreenDetailsScreenshotPage(Context, lightbox));
-            });
-            about.Children.Add(OverviewHeading("SCREENSHOTS", gallery));
-            overviewControls.Add(gallery);
-            _rows.Add(overviewControls.ToArray());
-            overviewControls.Clear();
-            var row = new Grid { Name = "FullscreenOverviewScreenshots", ColumnDefinitions = new ColumnDefinitions("*,*"), Height = 240 };
-            var controls = new List<Control>();
-            foreach (var shot in shots.Shots.Take(2))
+            var heading = DetailText("SCREENSHOTS", 18, "TextDim");
+            heading.Margin = new Thickness(0, 8, 0, 0);
+            prefix.Children.Add(heading);
+            var row = new Grid { Name = "FullscreenOverviewScreenshots", ColumnDefinitions = new ColumnDefinitions("*,*"),
+                ColumnSpacing = 16, VerticalAlignment = VerticalAlignment.Top, HorizontalAlignment = HorizontalAlignment.Left };
+            foreach (var (shot, index) in shots.Shots.Take(2).Select((shot, index) => (shot, index)))
             {
                 var button = FullscreenUi.Button(shot.AutomationName, () =>
                 {
                     shots.SelectCommand.Execute(shot);
                     if (shots.Lightbox is { } lightbox) Context.Push(new FullscreenDetailsScreenshotPage(Context, lightbox));
                 });
-                var image = new Image { Stretch = Stretch.UniformToFill };
-                image.Bind(Image.SourceProperty, new Binding(nameof(GameScreenshotViewModel.Image)) { Source = shot });
-                button.Content = image;
-                button.ClipToBounds = true;
-                button.Padding = new Thickness(0, 0, 0, 8);
-                button.Margin = new Thickness(controls.Count == 0 ? 0 : 16, 0, 0, 0);
+                button.Content = new FullscreenScreenshotPreview(shots, shot);
+                button.Padding = new Thickness(0, 0, 0, 4);
+                button.MinHeight = 0;
+                button.VerticalAlignment = VerticalAlignment.Top;
                 button.HorizontalContentAlignment = HorizontalAlignment.Stretch;
                 button.VerticalContentAlignment = VerticalAlignment.Stretch;
                 AutomationProperties.SetName(button, shot.AutomationName);
-                Grid.SetColumn(button, controls.Count);
+                button.GotFocus += (_, _) => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    if (!button.IsKeyboardFocusWithin) return;
+                    button.UpdateLayout();
+                    button.BringIntoView();
+                }, Avalonia.Threading.DispatcherPriority.Background);
+                Grid.SetColumn(button, index);
                 row.Children.Add(button);
-                controls.Add(button);
+                screenshotControls.Add(button);
             }
             about.Children.Add(row);
-            overviewControls.AddRange(controls);
+            gallery = DetailLink("View gallery", () =>
+            {
+                shots.SelectCommand.Execute(shots.Shots[0]);
+                if (shots.Lightbox is { } lightbox) Context.Push(new FullscreenDetailsScreenshotPage(Context, lightbox));
+            });
+            about.Children.Add(gallery);
+            row.SizeChanged += (_, _) =>
+            {
+                if (row.Children.OfType<Button>().FirstOrDefault(button => button.IsKeyboardFocusWithin) is not { } focused) return;
+                // A new image or text scale can resize the row after the initial focus scroll.
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    if (focused.IsKeyboardFocusWithin) focused.BringIntoView();
+                }, Avalonia.Threading.DispatcherPriority.Loaded);
+            };
+            // Spend the remaining overview height on full images. Enlarged text can scroll.
+            row.LayoutUpdated += (_, _) =>
+            {
+                if (_body.Bounds.Height <= 0 || prefix.Bounds.Height <= 0) return;
+                var minimumPreview = Math.Min(180, Math.Max(80, _body.Bounds.Height - 8));
+                var available = Math.Max(minimumPreview, _body.Bounds.Height - prefix.Bounds.Height - gallery.Bounds.Height - 48);
+                if (Math.Abs(row.MaxHeight - available) > .5 || double.IsInfinity(row.MaxHeight))
+                    row.MaxHeight = available;
+                var aspect = row.Children.OfType<Button>().Select(button => ((FullscreenScreenshotPreview)button.Content!).AspectRatio).DefaultIfEmpty(16d / 9).Min();
+                var width = Math.Min(about.Bounds.Width, Math.Max(0, available - 4) * aspect * 2 + 16);
+                if (width > 0 && (double.IsNaN(row.Width) || Math.Abs(row.Width - width) > .5)) row.Width = width;
+            };
         }
-        if (overviewControls.Count > 0) _rows.Add(overviewControls.ToArray());
-        var columns = new Grid { ColumnDefinitions = new ColumnDefinitions("3*,7*"), Name = "FullscreenDetailsOverview" };
-        history.Margin = new Thickness(0, 0, 40, 0);
+        _rows.Add(screenshotControls.ToArray());
+        if (gallery is not null) _rows.Add([gallery]);
+        var columns = new Grid { ColumnDefinitions = new ColumnDefinitions("28*,72*"), Name = "FullscreenDetailsOverview",
+            VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 20, 0, 0) };
+        history.Margin = new Thickness(0, 0, 44, 0);
         columns.Children.Add(history);
         var aboutRegion = new Border { Child = about, BorderThickness = new Thickness(1, 0, 0, 0),
-            Padding = new Thickness(40, 0, 0, 0) };
+            Padding = new Thickness(44, 0, 0, 0) };
         aboutRegion[!Border.BorderBrushProperty] = new DynamicResourceExtension("Line");
         Grid.SetColumn(aboutRegion, 1);
         columns.Children.Add(aboutRegion);
         return columns;
     }
 
-    private static Grid OverviewHeading(string text, Button action)
+    private static TextBlock DetailText(string text, double size, string brush = "Text", FontWeight? weight = null)
     {
-        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        var heading = FullscreenUi.Text(text, 24, "TextDim");
-        heading.VerticalAlignment = VerticalAlignment.Center;
-        row.Children.Add(heading);
-        action.MinHeight = 44;
-        action.Padding = new Thickness(12, 4);
-        Grid.SetColumn(action, 1);
-        row.Children.Add(action);
-        return row;
+        var block = FullscreenUi.Text(text, size, brush);
+        block[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension("BodyFont");
+        block.FontWeight = weight ?? FontWeight.Normal;
+        return block;
+    }
+
+    private static StackPanel Metric(string value, string caption) => new()
+    {
+        Spacing = 4,
+        Children = { DetailText(value, 60, weight: FontWeight.Bold), DetailText(caption, 22, "TextDim") }
+    };
+
+    private static Border Rule(bool horizontal, double length = double.NaN)
+    {
+        var rule = new Border { Name = horizontal ? "FullscreenDetailsHorizontalRule" : "FullscreenDetailsMetricRule" };
+        rule[!Border.BackgroundProperty] = new DynamicResourceExtension("Line");
+        if (horizontal) { rule.Height = 1; rule.Width = length; }
+        else { rule.Width = 1; rule.Height = length; rule.VerticalAlignment = VerticalAlignment.Center; }
+        return rule;
+    }
+
+    private static Button DetailLink(string text, Action action)
+    {
+        var button = FullscreenUi.Button(text, action);
+        button.Classes.Add("tv-details-link");
+        button.FontSize = 24;
+        button.Padding = new Thickness(0, 4);
+        button.MinHeight = 36;
+        button.HorizontalAlignment = HorizontalAlignment.Left;
+        button.Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 14,
+            Children = { DetailText(text, 24), DetailText("→", 26) } };
+        return button;
     }
 
     private void ShowAbout()

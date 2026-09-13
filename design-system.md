@@ -846,18 +846,29 @@ and high-resolution cache entry; its source quality remains the upper limit on s
 The header shows B and the previous page name plus controller status and the clock. The
 root navigation and wordmark return when leaving details.
 
-The game title starts at 80px, uses 72px for long names and wraps to at most two lines in a bounded left region. The
+Details uses BodyFont throughout, with explicit weights rather than switching large figures
+to DisplayFont. The bold game title starts at 76px, uses 64px for long names and wraps to
+at most two lines in a bounded left region. The
 primary action uses a filled Volt treatment with VoltInk text and an icon; More remains
 secondary. The compact hero brings the section tabs closer to the actions. The active tab
 has a persistent underline; controller focus has a separate treatment.
-Overview gives roughly 30% of its width to personal history and 70% to About, separated
-by a quiet vertical rule. Hours played and time since last played lead the history panel,
-followed by the last-played date, status or unread-update reason and Play history. A saved
-journal note appears below with Open journal; no example note or empty note panel appears.
-About shows a three-line synopsis with Read more beside its heading, followed immediately
-by two larger screenshot previews with View gallery beside the screenshot heading when images exist. Read more opens the full
-description, publisher and reception in a reading page. Missing screenshots leave no empty
-frames. The overview can scroll when large text or a long title needs more room.
+Overview gives 28% of its width to personal history and 72% to About. A horizontal rule
+below the tabs and a vertical rule between the columns establish the content area. Hours
+played and time since last played use 60px bold figures, 22px regular captions and a short
+vertical rule between them. Keep these figures grouped rather than spreading them across
+the whole column. The date uses 22px regular text; the status uses 32px bold text.
+Play history follows as a left-aligned arrow link. A horizontal rule separates the journal
+region below it. Show the latest saved note when present, otherwise a quiet Journal heading;
+Open journal remains available in either case. Never substitute an example note.
+Section labels use 18px regular text, body copy and arrow links use 24px. Read more sits
+below the two-line synopsis. Two screenshot previews sit beneath the Screenshots label,
+with View gallery below the images. Previews retain the complete source image and its aspect
+ratio; they do not crop into fixed-height strips. The remaining overview height constrains
+their size, and each preview leases artwork at its physical display width independently of
+desktop thumbnails. Read more opens the full description, publisher and reception in a
+reading page. Missing screenshots leave no empty frames. The overview can scroll when
+large text or a long title needs more room. The cinematic backdrop settles into Ground
+behind the overview even when a wide hero preserves its whole composition.
 LT/RT changes local sections; directional focus follows the content groups and keeps
 offscreen actions reachable. Desktop details retain their existing composition.
 
