@@ -93,16 +93,19 @@ public sealed class LinuxProcessSmokeTests
                 await process.WaitForExitAsync();
                 // The watcher owns a separate Process and receives its exit
                 // callback asynchronously; waiting on this handle does not join it.
-                for (var attempt = 0; attempt < 100 && sessions.Items.Count == 0; attempt++)
+                // Discovery has already saved an open checkpoint. Wait for the
+                // completed session before disposing the callback's watcher.
+                for (var attempt = 0; attempt < 100 && !sessions.Items.Any(s => s.EndedAt is not null); attempt++)
                 {
                     await watcher.TickAsync();
-                    if (sessions.Items.Count == 0)
+                    if (!sessions.Items.Any(s => s.EndedAt is not null))
                     {
                         await Task.Delay(50);
                     }
                 }
 
                 var session = Assert.Single(sessions.Items);
+                Assert.NotNull(session.EndedAt);
                 Assert.Equal(ownershipId, session.OwnershipId);
                 Assert.Equal(SessionAttributions.Inferred, session.AttributedBy);
             }

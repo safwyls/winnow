@@ -54,7 +54,7 @@ jobs:
         run: ./scripts/Resolve-CiEvidence.ps1 -Platform linux
       - name: Verify real Linux process discovery and session recording
         if: steps.evidence.outputs.reused != 'true'
-        run: dotnet test tests/Winnow.Monitor.Linux.Tests --configuration Release --no-restore --logger trx --results-directory TestResults
+        run: dotnet test tests/Winnow.Monitor.Linux.Tests --configuration Release --no-restore --logger trx --logger "console;verbosity=normal" --results-directory TestResults --blame-hang-timeout 2m --blame-hang-dump-type mini
       - name: Record full Linux validation
         if: success() && steps.evidence.outputs.reused == 'false'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -68,7 +68,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: linux-session-results
-          path: TestResults/**/*.trx
+          path: TestResults/**
           if-no-files-found: ignore
           retention-days: 7
 

@@ -150,7 +150,8 @@ report the limitation and leave Backlog files untouched.
   both push and pull request. The job has a 45-minute overall budget to accommodate slower
   runners while keeping that inactivity check in place.
 - A separate Ubuntu CI job runs `tests/Winnow.Monitor.Linux.Tests` against real native
-  processes and a synthetic Proton environment. Those tests explicitly skip on non-Linux hosts.
+  processes and a synthetic Proton environment. A two-minute test inactivity timeout captures
+  a mini dump alongside its TRX results. Those tests explicitly skip on non-Linux hosts.
 - Release packaging lives in `packaging/`; `docs/releases.md` owns build and publication
   instructions. Tag releases must pass the reusable CI gate and both installer smoke checks
   before creating a draft release. Smoke scripts install only on disposable GitHub runners.
