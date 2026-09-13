@@ -50,15 +50,21 @@ public sealed class FullscreenHomeLayoutTests
             { SafeMarginPercent = margin, TextScale = textScale };
         using var view = new FullscreenView(context);
         var window = new Window { Width = 1920, Height = 1080, Content = view };
+        FullscreenCover CurrentCover()
+        {
+            var viewport = view.CurrentPage.GetVisualDescendants().OfType<FullscreenRowViewport>().Single();
+            viewport.AdvanceAnimation(TimeSpan.FromMilliseconds(220));
+            return viewport.GetRow(viewport.FirstRow).GetVisualDescendants().OfType<FullscreenCover>().First();
+        }
         double CoverHeight()
         {
-            var cover = view.CurrentPage.GetVisualDescendants().OfType<FullscreenCover>().First();
+            var cover = CurrentCover();
             return cover.Bounds.Height * cover.TransformToVisual(window)!.Value.M22;
         }
         void AssertBottomAlignment()
         {
             var page = view.CurrentPage;
-            var cover = page.GetVisualDescendants().OfType<FullscreenCover>().First();
+            var cover = CurrentCover();
             var tile = cover.GetVisualAncestors().OfType<Button>().First();
             var wall = Assert.IsType<Grid>(tile.GetVisualParent());
             var bottom = wall.TranslatePoint(new Point(0, wall.Bounds.Height), page)!.Value.Y;

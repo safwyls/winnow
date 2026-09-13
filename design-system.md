@@ -693,11 +693,16 @@ plus four reserve items. Show as many as fit at the chosen scale, with left/righ
 to overflow games; do not enlarge covers just to fill a short shelf. Desktop retains six
 cards with a hidden replacement reserve. Only actual viewport entry records an impression.
 
-New fullscreen cards in For you, Library and Search materialize together with a 240ms ease-out
-fade from the top of each cover to its bottom, using a soft vertical opacity gradient.
-Labels fade with the lower edge. Cover outlines and input remain immediate; the effect changes no
-layout and stops when cards leave the page. Reduce motion shows cards immediately.
-This entrance is specific to fullscreen; desktop card presentation is unchanged.
+Fullscreen cards stay opaque. In For you, moving to the next shelf slides the current cover
+row upward and the incoming row up from below; moving back reverses that direction.
+Library and Search keep two rows in view and scroll by one row when selection moves past
+the visible edge. These transitions take 220ms with an ease-out curve inside a clipped
+cover area. Nearby rows stay realized so their art remains available during the slide.
+The heading, hero and shelf indicator follow the selected shelf immediately.
+Focus belongs to the destination immediately; outgoing rows cannot receive input.
+Rapid input retargets the current movement. Reduce motion, layout changes and distant shelf
+jumps snap to the destination. Leaving a page stops the movement and releases its covers.
+There is no card entrance fade. Desktop card presentation is unchanged.
 
 Recently played is the first shelf when play dates are available, ordered newest first.
 It holds up to ten games: six desktop cards and four additional games available in fullscreen.
@@ -713,7 +718,7 @@ shelves; left/right moves among their games. The selected cover has the only foc
 The shelf title has no numeric fraction. A vertical rail at the right shows previous/next
 chevrons and one dot per shelf: the current dot is filled with Volt, the others are outlined
 in TextDim. Endpoint arrows dim when unavailable. Mouse users can click arrows or dots;
-controller up/down and LT/RT keep selecting shelves without extra focus stops.
+controller up/down, LT/RT and the mouse wheel keep selecting shelves without extra focus stops.
 The cover row anchors to the bottom of the Home content area above the footer. The shelf
 rail shares its vertical center and follows that bottom anchor; it scales down to fit when
 space is tight. The shelf heading stays directly above the covers with a 12px gap. Spare
@@ -726,7 +731,8 @@ rail, density control, hover actions or small cover buttons appear here.
 **Library** uses a regular cover grid and a short row of collection choices. A dedicated
 filter page groups large choices with persistent actions: Y applies and closes from anywhere,
 and B discards the draft. Search is a dedicated page
-with its own keyboard and results. **Game details** is a full page, with Play as its initial
+with its own keyboard and results. In Search, LT/RT moves two rows and the footer shows the
+visible row range. The mouse wheel moves through rows in both grids. **Game details** is a full page, with Play as its initial
 focus and overview, updates and journal as separate sections. **Activity** and **Settings**
 use large ordered rows, with focused values changed directly. Long content is paged or
 scrolled within an explicit reading region. Each section remembers its game and focus

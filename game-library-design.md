@@ -882,6 +882,13 @@ while a replacement loads and through its short crossfade. Generation checks dis
 loads. Detaching releases displayed, outgoing and pending leases; the detail page still owns its
 content and focus rows. Browse page capacity is presentation state and reflows around the
 selected release identity when the available columns change.
+Fullscreen Home, Library and Search share a clipped virtual row viewport. It retains the
+visible rows and one neighboring row on either side, plus outgoing rows during a bounded
+vertical transition. Home shows one shelf row; grids show two rows and retain the selected
+release and first visible row independently of desktop state. Only destination rows accept
+input. Detaching clears realized controls and releases their cover presenters; returning
+recreates the viewport around the remembered selection. Feed impression checks inspect
+the active shelf's actual clipped hit targets, never the offscreen buffered shelves.
 Its feed view-model exposes both the primary recommendations and the scored reserve as
 cards, while desktop retains the reserve for replacements. The shared scoring pass and its
 ordering remain unchanged. Both surfaces record surfacing only on actual viewport entry.
