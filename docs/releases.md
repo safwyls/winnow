@@ -223,14 +223,52 @@ git tag -a v0.1.0-beta.1 -m "Winnow 0.1.0 beta 1"
 git push origin v0.1.0-beta.1
 ```
 
-The workflow validates the tag, runs the existing Windows/Linux CI gate, and builds and
-smoke-checks both platforms. Only then does its release job receive `contents: write` and
+The workflow validates the tag before starting the Windows/Linux CI gate, and builds and
+smoke-checks both platforms. The gate can reuse matching full-test evidence as described below.
+Only then does its release job receive `contents: write` and
 create a **draft** release. A prerelease suffix also sets GitHub's prerelease flag. Review
 the assets and notes in GitHub Releases before publishing the draft. No signing certificate,
 external publishing service, or additional repository secret is required.
 
 A retry can replace assets on an existing draft for the same tag. It refuses to replace an
 already published release. Fix a published build by issuing a new version; do not move its tag.
+
+## Reusing CI validation
+
+Pull requests always run the full suite. After merge, and for tags or manual release builds,
+the existing required Windows and Linux jobs first restore and audit dependencies. Windows
+also verifies migrations against the current event's baseline. These checks run even when
+tests can be reused; a fresh vulnerability warning still fails the gate.
+
+Each successful full-test job uploads an immutable, per-platform evidence record. Reuse
+requires a completed successful run from this repository's CI or release workflow, with both
+required platform jobs successful in the recorded attempt. The complete Git tree, actual
+SDK version, runner image version, and restored package hashes and selected assets must match.
+Records expire for reuse 24 hours after their original run started. A reused job does not
+upload another record or extend that deadline.
+
+For ordinary runs, the recorded checkout and producer run must identify the exact target
+commit. A PR run instead records the actual temporary merge checkout, its tree and parents.
+The gate verifies those against GitHub's commit data and the merged PR's head/base and final
+merge commit. This permits reuse after a merge whose commit ID changed but source tree did
+not. Fork PR evidence is not reused. A tag can consume this original PR evidence directly,
+without waiting for a redundant full test run on `main`.
+
+An unavailable API, missing/expired artifact, different input, unresolvable merge commit,
+partial rerun without both jobs in the same attempt, or old evidence falls back to full tests.
+The search examines up to 30 recent successful runs per workflow. The job summary links the
+original run on reuse, or reports that full validation is running. Required check names and
+branch protection remain unchanged. To deliberately rerun everything, dispatch **CI** with
+**force_full** enabled (the default for a manual CI run).
+
+Final release packages are always rebuilt with the requested version and run the Windows
+installer, Linux startup and portable upgrade/recovery smoke checks. Reuse does not rename
+old artifacts, skip version-base validation, or exempt version-only commits. Include the
+intended `Version.props` base in a tested PR before tagging. Floating SDK or runner updates
+and changed package resolution deliberately require new full-test evidence.
+
+Run `pwsh -NoProfile -File scripts/Test-CiEvidence.ps1` to test the provenance, freshness,
+fallback and dependency-fingerprint rules. The policy checks run on both CI platforms.
 
 ## Platform limits
 

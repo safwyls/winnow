@@ -39,3 +39,6 @@ docs/screenshots/appearance/*.png
 
 # Raw user-saved Steam account pages (real account data; fixtures are sanitized copies)
 gdpr/
+
+# Full-test evidence generated and uploaded by CI.
+ci-evidence/

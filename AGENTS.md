@@ -130,8 +130,11 @@ report the limitation and leave Backlog files untouched.
   one another's edits. The coordinating agent owns integration and verification.
 - `Directory.Build.props` sets nullable, implicit usings and `TreatWarningsAsErrors`.
 - Build and test with `dotnet build` and `dotnet test` from the repository root.
-- CI runs Windows Release restore/build/test on pushes to `main` and pull requests, with SDK analyzers
-  and direct/transitive NuGet auditing enabled; warnings fail the gate. Windows CI
+- CI runs full Windows Release build/test and Linux session checks for pull requests. On `main`
+  and releases, the same required jobs may reuse full-test evidence from the last 24 hours only
+  when checkout provenance, complete source tree, resolved SDK, runner image and restored
+  dependencies match. Missing or invalid evidence runs full tests. Restore/audit and migration
+  checks stay fresh; warnings fail the gate. See `docs/releases.md` for the evidence contract. Windows CI
   and Linux session checks are required by `main` branch protection. Changes reach `main`
   through an up-to-date pull request; this also applies to administrators. No additional
   approving reviewer is required. Force pushes and branch deletion are disabled. Migration integrity
