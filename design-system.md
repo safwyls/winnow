@@ -777,7 +777,7 @@ The heading, hero and shelf indicator follow the selected shelf immediately.
 Focus belongs to the destination immediately; outgoing rows cannot receive input.
 Rapid input retargets the current movement. Reduce motion, layout changes and distant shelf
 jumps snap to the destination. Leaving a page stops the movement and releases its covers.
-There is no card entrance fade. Desktop card presentation is unchanged.
+There is no card entrance fade. Desktop shelves use ordinary scrolling rather than this row transition.
 
 Recently played is the first shelf when play dates are available, ordered newest first.
 It holds up to ten games: six desktop cards and four additional games available in fullscreen.
@@ -2318,17 +2318,26 @@ returns to the saved membership and shows **Couldn't save list changes. Try agai
 the control. List actions use the same error copy beside the library actions, while modal
 actions keep their prompt and draft. Refreshing the library preserves a pending choice.
 
-Desktop feed cards group feedback beside Install / Play beneath the card text, separated
-by a quiet vertical divider: bookmark-plus **Add to list** in Azure, clock **Not now** in
-Amber, and circle-minus **Not interested** in TextDim. Each 32px icon button has a tooltip
-and accessible name. The secondary group wraps together when space is tight; no divider
-appears without a primary action. Recently played offers only Add to list.
-Hero artwork sits behind the card at 22% opacity, fading from transparent on the left to
-its strongest point on the right. Rounded clipping contains the art; missing artwork leaves
-the ordinary Surface background. Artwork uses the shared source preferences and leased cache.
-Fullscreen retains its existing page hero and controller action panel.
-The bookmark and its inset plus use a 1px optical correction to share the apparent centerline
-of the circular feedback icons.
+Desktop For you uses six curated portrait covers per shelf, with a 180–240px cover
+width, 18px gaps and fixed 2:3 artwork bounds. Narrow windows scroll each shelf horizontally;
+Up/Down preserves the card column between shelves and Left/Right brings overflow into view.
+Short shelves keep the same slot sizes. The page scrolls vertically through shelf headings,
+short explanations and rules fading toward the right. Titles and two-line recommendation
+excerpts stay below each cover; the complete reason remains in the accessible name and quick view.
+
+Hover or keyboard focus reveals a bottom action strip inside the cover: **Add to list**,
+**Not now**, and **Not interested**, with 36px targets, named tooltips and neutral text-colored
+icons. Geometry does not change when actions appear. Recently played offers only Add to list.
+Feedback retains the in-place Undo receipt, countdown hold and history behavior.
+
+Click, Enter or Space opens an anchored quick-details flyout, never hover alone. It presents
+the title, complete recommendation reason, store and play metadata, an optional short summary,
+Play / Install when available, and **Open details**. Escape, light dismiss or its close button
+closes the flyout. Rebinding or removing a card closes it too; an open quick view holds that
+card's feedback countdown. The flyout stays within the window's available size and scrolls
+long content. Opening full details closes quick details first. No hero backdrop is fetched
+for desktop feed cards; portrait covers retain shared Fit/Fill and dormancy behavior.
+Fullscreen retains its page hero, shelves and controller action panel.
 
 In a static list, the game context menu offers **Remove from list**, acting on the selected
 games and leaving them in the library. Live lists determine their own membership.

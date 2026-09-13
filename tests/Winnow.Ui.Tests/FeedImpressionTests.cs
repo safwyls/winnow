@@ -31,6 +31,8 @@ public sealed class FeedImpressionTests
         fixture.Page.Offset = new Vector(0, fixture.Page.Extent.Height);
         await FlushAsync();
         var card = fixture.View.GetVisualDescendants().OfType<FeedCardView>().Last();
+        card.BringIntoView();
+        await FlushAsync();
         var button = card.FindControl<Button>("AddToList")!;
         var actions = (Panel)button.Parent!;
         var visibleButtons = actions.Children.OfType<Button>().Where(b => b.IsVisible).ToArray();
@@ -73,8 +75,13 @@ public sealed class FeedImpressionTests
         var firstCount = fixture.Service.Seen.Count;
         fixture.Page.Offset = new Vector(0, fixture.Page.Extent.Height);
         await FlushAsync();
-        Assert.Contains(fixture.Service.Seen, item => item.Release == 12);
+        Assert.DoesNotContain(fixture.Service.Seen, item => item.Release == 12);
         Assert.True(fixture.Service.Seen.Count > firstCount);
+        var verticallyVisibleCount = fixture.Service.Seen.Count;
+        fixture.ScrollLastShelfToEnd();
+        await FlushAsync();
+        Assert.Contains(fixture.Service.Seen, item => item.Release == 12);
+        Assert.True(fixture.Service.Seen.Count > verticallyVisibleCount);
         fixture.Page.Offset = default;
         await FlushAsync();
         Assert.Equal(fixture.Service.Seen.Count, fixture.Service.Seen.Select(item => item.Release).Distinct().Count());
@@ -138,6 +145,8 @@ public sealed class FeedImpressionTests
         Assert.Equal(count, fixture.Service.Seen.Count);
         fixture.Window.Show();
         await FlushAsync();
+        fixture.ScrollLastShelfToEnd();
+        await FlushAsync();
         Assert.Contains(fixture.Service.Seen, item => item.Release == 12);
     }
 
@@ -156,6 +165,9 @@ public sealed class FeedImpressionTests
         Assert.Equal(13, fixture.Feed.Shelves[1].Cards[^1].Tile.ReleaseId);
         Assert.DoesNotContain(fixture.Service.Seen, item => item.Release is 12 or 13);
         fixture.Page.Offset = new Vector(0, fixture.Page.Extent.Height);
+        await FlushAsync();
+        Assert.DoesNotContain(fixture.Service.Seen, item => item.Release is 12 or 13);
+        fixture.ScrollLastShelfToEnd();
         await FlushAsync();
         Assert.Contains(fixture.Service.Seen, item => item.Release == 13);
     }
@@ -220,6 +232,13 @@ public sealed class FeedImpressionTests
         public Service Service { get; } = new();
         public Clock Clock { get; } = new();
         public ScrollViewer Page => View.FindControl<ScrollViewer>("Page")!;
+        public void ScrollLastShelfToEnd()
+        {
+            var shelf = View.GetVisualDescendants().OfType<FeedGrid>().Last()
+                .GetVisualAncestors().OfType<ScrollViewer>().First();
+            Assert.True(shelf.Extent.Width > shelf.Viewport.Width);
+            shelf.Offset = new Vector(shelf.Extent.Width, 0);
+        }
         private readonly Dictionary<long, GameTileViewModel> _tiles = [];
         public event EventHandler? TilesChanged { add { } remove { } }
         public bool HasTiles => true;

@@ -159,7 +159,7 @@ public partial class FeedView : UserControl
 
     /// <summary>
     /// One step along the reading order. Inside a section that is simply the
-    /// next card, wrapping rows; at either end of one it is the neighbouring
+    /// next card; at either end of one it is the neighbouring
     /// section's nearest card, so the sequence runs unbroken down the screen.
     /// </summary>
     private static bool MoveBySequence(List<Section> sections, int section, int index, int step)
@@ -181,47 +181,24 @@ public partial class FeedView : UserControl
     }
 
     /// <summary>
-    /// One row up or down. Within a section a row is <see cref="FeedGrid.Columns"/>
-    /// cards wide; past its first or last row the move crosses into the section
-    /// above or below, entering by its last or first row and keeping the column
-    /// the user was in — clamped, because the target row can be shorter and a
-    /// move that refuses is worse than a move that lands next door.
+    /// One shelf up or down, keeping the card index and clamping for a shorter shelf.
     /// </summary>
     private static bool MoveByRow(List<Section> sections, int section, int index, int step)
     {
-        var columns = Math.Max(1, sections[section].Columns);
-        var next = index + (step * columns);
-        if (next >= 0 && next < sections[section].Cards.Count)
-        {
-            return Take(sections[section].Cards[next]);
-        }
-
         var target = section + step;
         if (target < 0 || target >= sections.Count)
         {
             return false;
         }
 
-        var column = index % columns;
         var cards = sections[target].Cards;
-
-        if (step > 0)
-        {
-            return Take(cards[Math.Min(column, cards.Count - 1)]);
-        }
-
-        // Entering from below: the last row's first card, plus the column —
-        // integer division finds that row's start without needing to know how
-        // ragged it is.
-        var lastRowStart = (cards.Count - 1) / Math.Max(1, sections[target].Columns)
-            * Math.Max(1, sections[target].Columns);
-        return Take(cards[Math.Min(lastRowStart + column, cards.Count - 1)]);
+        return Take(cards[Math.Min(index, cards.Count - 1)]);
     }
 
 #if DEBUG
     /// <summary>
     /// <c>--feed-probe</c> plus <c>F9</c>, the wall's probe pointed at this
-    /// screen and for the same reason: a wrapping grid's column count and its
+    /// screen and for the same reason: a shelf's column count and its
     /// arranged rects are precisely what a screenshot cannot tell you, and "one
     /// card per row too many" is invisible until you can read them. Writes to
     /// <c>%TEMP%\winnow-feed-debug.txt</c>.
@@ -252,15 +229,14 @@ public partial class FeedView : UserControl
     }
 #endif
 
-    /// <summary>One section's grid: its live column count and its cards in presentation order.</summary>
-    private readonly record struct Section(int Columns, List<FeedCardView> Cards);
+    /// <summary>One shelf's cards in presentation order.</summary>
+    private readonly record struct Section(List<FeedCardView> Cards);
 
     /// <summary>The sections, in presentation order, skipping any that drew no cards.</summary>
     private List<Section> Sections()
         => this.GetVisualDescendants()
             .OfType<FeedGrid>()
             .Select(grid => new Section(
-                grid.Columns,
                 grid.Children
                     .Select(child => child as FeedCardView
                         ?? child.GetVisualDescendants().OfType<FeedCardView>().FirstOrDefault())

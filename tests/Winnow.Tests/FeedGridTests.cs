@@ -1,127 +1,49 @@
-using System.Text.RegularExpressions;
 using Winnow.App.Views;
-using Winnow.Tests.Enforcement;
 using Xunit;
 
 namespace Winnow.Tests;
 
-/// <summary>
-/// Feed grid column/gutter arithmetic: rows fill their width flush.
-/// </summary>
 public sealed class FeedGridTests
 {
-    private const double Min = 420;
-    private const double Gutter = 14;
-
-    /// <summary>
-    /// The two widths that were measured on the running window: the 1200px
-    /// minimum, and the author's 3440px ultrawide. The grid's width is the
-    /// window's less the rail, the pane's padding and the section's — 328px, read
-    /// off the probe rather than derived.
-    /// </summary>
     [Theory]
-    [InlineData(888, 2)]     // 1200px window, the documented minimum
-    [InlineData(1272, 2)]    // 1600
-    [InlineData(1592, 3)]    // 1920
-    [InlineData(3112, 7)]    // 3440, the ultrawide this was reviewed on
-    public void The_column_count_is_what_the_width_fits(double width, int expected)
+    [InlineData(500, 180)]
+    [InlineData(888, 180)]
+    [InlineData(1170, 180)]
+    [InlineData(1290, 200)]
+    [InlineData(1530, 240)]
+    [InlineData(3112, 240)]
+    public void Six_slots_keep_covers_readable_and_bounded(double width, double expectedWidth)
     {
-        var (columns, _) = FeedGrid.GeometryFor(width, Min, Gutter);
-        Assert.Equal(expected, columns);
+        var (columns, itemWidth) = FeedGrid.GeometryFor(width, 180, 18);
+        Assert.Equal(6, columns);
+        Assert.Equal(expectedWidth, itemWidth);
     }
 
-    /// <summary>
-    /// Guards that the <c>Button.feedcard</c> style sets
-    /// <c>HorizontalAlignment</c> and <c>VerticalAlignment</c> to
-    /// <c>Stretch</c>. Without them a Button takes its own desired size
-    /// inside the slot <see cref="FeedGrid.ArrangeOverride"/> arranged for
-    /// it, and the card widths become content-driven. Asserted against markup
-    /// because there is no headless UI harness, and the defect is invisible
-    /// in review: the neighbouring <c>*ContentAlignment</c> setters already
-    /// say Stretch, but those align the content inside the button, not the
-    /// button inside its parent.
-    /// </summary>
     [Theory]
-    [InlineData("HorizontalAlignment")]
-    [InlineData("VerticalAlignment")]
-    public void The_card_fills_the_slot_the_grid_arranges_it_into(string property)
-    {
-        var markup = RepositoryTree.Read("src/Winnow.App/Views/FeedCardView.axaml");
-
-        var style = Regex.Match(
-            markup,
-            @"<Style Selector=""Button\.feedcard"">(.*?)</Style>",
-            RegexOptions.Singleline);
-
-        Assert.True(style.Success, "The card root's style is no longer Button.feedcard.");
-
-        Assert.Contains(
-            $"<Setter Property=\"{property}\" Value=\"Stretch\"/>",
-            style.Groups[1].Value,
-            StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// A row's cards plus the gutters BETWEEN them fill the width. The slack is
-    /// the floor's remainder and must stay under one pixel per column — anything
-    /// larger means a gutter was charged to a card that has no neighbour, which
-    /// is the failure §5.4 names.
-    /// </summary>
-    [Theory]
-    [InlineData(888)]
-    [InlineData(1272)]
-    [InlineData(1592)]
-    [InlineData(3112)]
-    [InlineData(419)]
+    [InlineData(1170)]
     [InlineData(1287)]
-    public void A_row_fills_the_width_it_was_given(double width)
+    [InlineData(1530)]
+    public void Six_covers_fill_the_available_width_until_the_size_cap(double width)
     {
-        var (columns, itemWidth) = FeedGrid.GeometryFor(width, Min, Gutter);
-
-        var used = (columns * itemWidth) + ((columns - 1) * Gutter);
-
-        Assert.True(used <= width, $"{columns} x {itemWidth} overflowed {width}.");
-        Assert.True(width - used < columns, $"{width - used}px of slack at {width} is a lost column.");
+        var (columns, itemWidth) = FeedGrid.GeometryFor(width, 180, 18);
+        var used = columns * itemWidth + (columns - 1) * 18;
+        Assert.InRange(width - used, 0, columns - double.Epsilon);
     }
 
-    /// <summary>
-    /// No card is ever drawn narrower than the floor. The floor is a prose
-    /// measure — the sentence is this screen's payload — so a width that cannot
-    /// fit two of them gets one card at the full width rather than two cramped
-    /// ones.
-    /// </summary>
-    [Theory]
-    [InlineData(400)]
-    [InlineData(700)]
-    [InlineData(853)]
-    public void A_width_that_fits_one_card_gets_one_column(double width)
-    {
-        var (columns, itemWidth) = FeedGrid.GeometryFor(width, Min, Gutter);
-
-        Assert.Equal(1, columns);
-        Assert.Equal(Math.Floor(width), itemWidth);
-    }
-
-    /// <summary>
-    /// The column count only ever goes up with the width. A count that dipped as
-    /// the window grew would be a rounding fault, and it is exactly what an
-    /// off-by-one gutter produces at the boundary widths.
-    /// </summary>
     [Fact]
-    public void Widening_the_window_never_costs_a_column()
+    public void Narrow_windows_overflow_horizontally_instead_of_wrapping()
     {
-        var previous = 0;
+        var (columns, itemWidth) = FeedGrid.GeometryFor(888, 180, 18);
+        Assert.True(columns * itemWidth + (columns - 1) * 18 > 888);
+        Assert.Equal(180, itemWidth);
+    }
 
-        for (var width = 200d; width <= 4000d; width += 1d)
-        {
-            var (columns, itemWidth) = FeedGrid.GeometryFor(width, Min, Gutter);
-
-            Assert.True(columns >= previous, $"{width}px dropped from {previous} to {columns} columns.");
-            Assert.True(
-                columns == 1 || itemWidth >= Min,
-                $"{width}px drew {columns} columns at {itemWidth}px, under the {Min}px floor.");
-
-            previous = columns;
-        }
+    [Theory]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NaN)]
+    [InlineData(0)]
+    public void Unmeasured_viewports_use_a_finite_readable_cover(double width)
+    {
+        Assert.Equal((6, 180d), FeedGrid.GeometryFor(width, 180, 18));
     }
 }

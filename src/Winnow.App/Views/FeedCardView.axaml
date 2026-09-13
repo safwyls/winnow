@@ -4,472 +4,138 @@
              xmlns:views="using:Winnow.App.Views"
              x:Class="Winnow.App.Views.FeedCardView"
              x:DataType="vm:FeedCardViewModel">
-
-    <!-- Feed card: cover, name, and full reason sentence. Card is a Button
-         (Tab stop, Enter, detail modal). Cover is 108x162 (TileMinWidth).
-         Flare appears once, on the unread dot only (§2). -->
-
     <UserControl.Styles>
-
-        <!-- The card. Opaque Surface (needed for dormancy cross-fade and
-             readability over translucent pane ground). -->
         <Style Selector="Button.feedcard">
-            <Setter Property="Background" Value="{StaticResource Surface}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource LineSoft}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="{StaticResource RadiusTile}"/>
-            <!-- Zero padding; inset is on the content. Focus ring draws
-                 at the card's edge. -->
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="VerticalContentAlignment" Value="Stretch"/>
-            <!-- A Button does not stretch by default. These are the ELEMENT
-                 alignments (button inside its parent), not the CONTENT
-                 alignments above (content inside the button). Removing
-                 either re-introduces ragged, content-driven card widths
-                 that FeedGrid.ArrangeOverride cannot prevent. -->
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="VerticalAlignment" Value="Stretch"/>
         </Style>
-        <!-- Elevation is the Surface → SurfaceRaised step (§4). The one place a
-             drop shadow is permitted is a tile on the wall, and a card is not
-             one — what lifts under the pointer here is the ART, by waking up. -->
         <Style Selector="Button.feedcard /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource Surface}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource LineSoft}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="{StaticResource RadiusTile}"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0.14"/>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Button.feedcard:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
-        </Style>
-        <Style Selector="Button.feedcard.snap /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Transitions">
-                <Transitions/>
-            </Setter>
-        </Style>
-        <Style Selector="Button.feedcard:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SurfaceHigh}"/>
-        </Style>
-
-        <!-- ══ §8's focus ring: 2px Volt, no reflow ═══════════════════════
-             Element-drawn so thickness stays constant (§10.7). -->
-        <Style Selector="Button.feedcard:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource LineSoft}"/>
-            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
         </Style>
         <Style Selector="Border#FocusRing">
-            <Setter Property="IsVisible" Value="False"/>
+            <Setter Property="Opacity" Value="0"/>
         </Style>
-        <Style Selector="Button.feedcard:focus-visible Border#FocusRing">
-            <Setter Property="IsVisible" Value="True"/>
+        <Style Selector="Button.feedcard:pointerover Border#FocusRing, Button.feedcard:focus-within Border#FocusRing, Button.feedcard.open Border#FocusRing">
+            <Setter Property="Opacity" Value="1"/>
         </Style>
-
-        <!-- §5.1's dormancy cross-fade. Transition in a style (not on the
-             element) so reduced-motion can remove it. -->
-        <Style Selector="Panel#Art Border#VividArt, Panel#Art Image#VividArtwork, Panel#Art views|CoverPadding#VividPadding">
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.14" Easing="CubicEaseOut"/>
-                </Transitions>
-            </Setter>
+        <!-- Keep actions measured and keyboard reachable; only their pixels disappear at rest. -->
+        <Style Selector="Border#ActionStrip">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
         </Style>
-        <!-- Reduced motion: the state snaps instead of fading (§8). An empty
-             transition set, not a zero duration — there is then no animation to
-             schedule at all. -->
-        <Style Selector="Panel#Art.snap Border#VividArt, Panel#Art.snap Image#VividArtwork, Panel#Art.snap views|CoverPadding#VividPadding">
-            <Setter Property="Transitions">
-                <Transitions/>
-            </Setter>
+        <Style Selector="Button.feedcard:pointerover Border#ActionStrip, Button.feedcard:focus-within Border#ActionStrip, Button.feedcard.open Border#ActionStrip">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="IsHitTestVisible" Value="True"/>
         </Style>
-
-        <!-- The sweep is determinate (§8): it states time remaining, not
-             merely that time is passing. 33ms matches the feed's smooth
-             tick so the arc glides continuously and a late tick cannot
-             show as a jump. Transition in a style, not on the element
-             (§12.5). -->
-        <Style Selector="Arc#CountdownSweep">
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="SweepAngle" Duration="0:0:0.033" Easing="LinearEasing"/>
-                </Transitions>
-            </Setter>
-        </Style>
-        <!-- Reduced motion: the sweep steps with the coarse tick (§8).
-             An empty transition set, not a zero duration, same pattern
-             as Panel#Art.snap. -->
-        <Style Selector="Panel#Countdown.snap Arc#CountdownSweep">
-            <Setter Property="Transitions">
-                <Transitions/>
-            </Setter>
-        </Style>
-
-        <!-- Compact action. The app's one primary treatment (Volt fill) at the
-             card's scale; the sizes are local values because nothing overrides
-             them and a second class for two numbers would be furniture. -->
-        <Style Selector="Button.cardact">
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Padding" Value="14,6"/>
-            <Setter Property="MinWidth" Value="0"/>
-        </Style>
-
-        <!-- Secondary actions keep a separate group beside Play and wrap together when needed. -->
         <Style Selector="Button.cardaside">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Padding" Value="8,5"/>
-            <Setter Property="MinWidth" Value="0"/>
-            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Padding" Value="8"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="2"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+            <Setter Property="CornerRadius" Value="4"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
-        <Style Selector="Button.cardaside /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-        </Style>
-        <!-- Card hovered/focused: feedback controls lift to full ink. -->
-        <Style Selector="Button.feedcard:pointerover Button.cardaside /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Foreground" Value="{StaticResource Text}"/>
-        </Style>
-        <Style Selector="Button.feedcard:focus-within Button.cardaside /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Foreground" Value="{StaticResource Text}"/>
-        </Style>
-        <!-- Its own hover is a raised field rather than a colour: a dismiss
-             control is not an alarm, and Flare is the badge's alone (§2). -->
         <Style Selector="Button.cardaside:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SurfaceHigh}"/>
-            <Setter Property="Foreground" Value="{StaticResource Text}"/>
-        </Style>
-        <Style Selector="Button.cardaside:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SurfaceHigh}"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
         </Style>
         <Style Selector="Button.cardaside:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
         </Style>
-        <Style Selector="Button.cardfeedback">
-            <Setter Property="Width" Value="32"/>
-            <Setter Property="Height" Value="32"/>
-            <Setter Property="Padding" Value="6"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Style Selector="Panel#Art Border#VividArt, Panel#Art Image#VividArtwork, Panel#Art views|CoverPadding#VividPadding">
+            <Setter Property="Transitions"><Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.14" Easing="CubicEaseOut"/>
+            </Transitions></Setter>
         </Style>
-
-        <!-- A card the user has answered. Only the art dims (text stays
-             full ink). State also stated in words on the receipt line (§8). -->
-        <Style Selector="Button.feedcard.setaside Panel#Art">
-            <Setter Property="Opacity" Value="0.42"/>
+        <Style Selector="Panel#Art.snap Border#VividArt, Panel#Art.snap Image#VividArtwork, Panel#Art.snap views|CoverPadding#VividPadding">
+            <Setter Property="Transitions"><Transitions/></Setter>
         </Style>
-        <!-- Keep the action geometry measured while its receipt is shown. -->
-        <Style Selector="Panel.cardactions.setaside, StackPanel.cardactions.setaside, WrapPanel.cardactions.setaside">
-            <Setter Property="Opacity" Value="0"/>
-        </Style>
-
+        <Style Selector="Button.feedcard.setaside Panel#Art"><Setter Property="Opacity" Value="0.42"/></Style>
+        <Style Selector="Arc#CountdownSweep"><Setter Property="Transitions"><Transitions>
+            <DoubleTransition Property="SweepAngle" Duration="0:0:0.033" Easing="LinearEasing"/>
+        </Transitions></Setter></Style>
+        <Style Selector="Panel#Countdown.snap Arc#CountdownSweep"><Setter Property="Transitions"><Transitions/></Setter></Style>
     </UserControl.Styles>
-
-    <!-- The name and the status both ride on the Button. It is the card's Tab
-         stop and the only element here with an automation peer of its own: the
-         Panels, Grids and Borders inside it get a NoneAutomationPeer and are
-         dropped from the control view, and a TextBlock answers with its own
-         Text and discards a name outright. The status is a second attached
-         property because ControlAutomationPeer raises a UIA property-changed
-         event for ItemStatus and not for Name, so a verdict that lands after
-         the card is drawn has nowhere else to be announced. -->
-    <Button Name="Card"
-            Classes="feedcard"
-            Classes.setaside="{Binding IsSetAside}"
-            Classes.snap="{Binding Tile.SnapDormancy}"
-            AutomationProperties.Name="{Binding AutomationName}"
-            AutomationProperties.ItemStatus="{Binding StatusAnnouncement}"
-            Command="{Binding Tile.OpenDetailsCommand}"
-            CommandParameter="{Binding Tile}">
-        <!-- No tooltip; hovering is the resting state of reading this
-             screen, so a tooltip would cover adjacent cards' sentences. -->
-        <Panel>
-        <Border CornerRadius="{StaticResource RadiusTile}" ClipToBounds="True" IsHitTestVisible="False">
-            <Border Name="HeroBackdrop" Opacity="0.22"><Border.Background><ImageBrush Source="{Binding Backdrop}" Stretch="UniformToFill"/></Border.Background>
-                <Border.OpacityMask>
-                    <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
-                        <GradientStop Color="Transparent" Offset="0"/>
-                        <GradientStop Color="#20000000" Offset="0.35"/>
-                        <GradientStop Color="#B0000000" Offset="0.7"/>
-                        <GradientStop Color="Black" Offset="1"/>
-                    </LinearGradientBrush>
-                </Border.OpacityMask>
-            </Border>
-        </Border>
-        <Grid Margin="14" ColumnDefinitions="108,14,*">
-
-            <!-- ══ The art ══════════════════════════════════════════════════
-                 Two-layer dormancy cross-fade and unread badge, same as the
-                 wall tiles. Reproduced (not shared) because pointer semantics
-                 differ; they share the view model. -->
-            <Panel Grid.Column="0"
-                   Name="Art"
-                   Width="108" Height="162"
-                   VerticalAlignment="Top"
-                   Classes.snap="{Binding Tile.SnapDormancy}">
-
-                <Border CornerRadius="{StaticResource RadiusTile}" ClipToBounds="True"
-                        BorderThickness="1" BorderBrush="{StaticResource LineSoft}">
-                    <Panel>
-                        <!-- Opaque ground under both art layers. -->
-                        <Border Background="{StaticResource TileGround}"/>
-
-                        <!-- Placeholder (§7): title on Surface until art loads. -->
-                        <Border Background="{Binding Tile.FloorBrush}"
-                                IsVisible="{Binding Cover.ShowPlaceholder}">
-                            <TextBlock Text="{Binding Tile.Title}"
-                                       FontFamily="{StaticResource DisplayFont}"
-                                       FontWeight="Bold" FontSize="15" LineHeight="17"
-                                       TextWrapping="Wrap"
-                                       Foreground="{Binding Tile.FloorTitleBrush}"
-                                       VerticalAlignment="Bottom" Margin="10"/>
+    <Button Name="Card" Classes="feedcard" Classes.setaside="{Binding IsSetAside}"
+            AutomationProperties.Name="{Binding AutomationName}" AutomationProperties.ItemStatus="{Binding StatusAnnouncement}">
+        <StackPanel Spacing="8">
+            <Panel Name="CoverFrame" Height="270">
+                <Border CornerRadius="6" ClipToBounds="True" Background="{StaticResource Surface}">
+                    <Panel Name="Art" Classes.snap="{Binding Tile.SnapDormancy}" IsHitTestVisible="False">
+                        <Border Background="{Binding Tile.FloorBrush}" IsVisible="{Binding Cover.ShowPlaceholder}">
+                            <TextBlock Text="{Binding Tile.Title}" FontFamily="{StaticResource DisplayFont}" FontWeight="Bold"
+                                       FontSize="18" TextWrapping="Wrap" VerticalAlignment="Bottom" Margin="12"
+                                       Foreground="{Binding Tile.FloorTitleBrush}"/>
                         </Border>
-                        <Border Name="VividArt"
-                                Background="{Binding Tile.VividBrush}"
-                                Opacity="{Binding Tile.DisplayAlpha}"
+                        <Border Name="VividArt" Background="{Binding Tile.VividBrush}" Opacity="{Binding Tile.DisplayAlpha}"
                                 IsVisible="{Binding Cover.ShowPlaceholder}">
-                            <TextBlock Text="{Binding Tile.Title}"
-                                       FontFamily="{StaticResource DisplayFont}"
-                                       FontWeight="Bold" FontSize="15" LineHeight="17"
-                                       TextWrapping="Wrap"
-                                       Foreground="White"
-                                       VerticalAlignment="Bottom" Margin="10"/>
+                            <TextBlock Text="{Binding Tile.Title}" FontFamily="{StaticResource DisplayFont}" FontWeight="Bold"
+                                       FontSize="18" TextWrapping="Wrap" VerticalAlignment="Bottom" Margin="12" Foreground="White"/>
                         </Border>
-
-                        <views:CoverPadding Source="{Binding Cover.Floor}" IsHitTestVisible="False"/>
-                        <views:CoverPadding Name="VividPadding" Source="{Binding Cover.Vivid}" Opacity="{Binding Tile.DisplayAlpha}" IsHitTestVisible="False"/>
+                        <views:CoverPadding Source="{Binding Cover.Floor}"/>
+                        <views:CoverPadding Name="VividPadding" Source="{Binding Cover.Vivid}" Opacity="{Binding Tile.DisplayAlpha}"/>
                         <Image views:CoverPresentation.IsCover="True" Source="{Binding Cover.Floor}"/>
-                        <Image views:CoverPresentation.IsCover="True" Name="VividArtwork"
-                               Source="{Binding Cover.Vivid}"
-                               Opacity="{Binding Tile.DisplayAlpha}"/>
-
-                        <!-- Gloss sweep, as on the wall. -->
-                        <Border IsHitTestVisible="False">
-                            <Border.Background>
-                                <LinearGradientBrush StartPoint="0%,0%" EndPoint="70%,100%">
-                                    <GradientStop Offset="0" Color="#29FFFFFF"/>
-                                    <GradientStop Offset="0.42" Color="#00FFFFFF"/>
-                                </LinearGradientBrush>
-                            </Border.Background>
-                        </Border>
+                        <Image views:CoverPresentation.IsCover="True" Name="VividArtwork" Source="{Binding Cover.Vivid}" Opacity="{Binding Tile.DisplayAlpha}"/>
                     </Panel>
                 </Border>
-
-                <!-- Unread badge (§5.2), outside clip for glow and fixed to
-                     the same top-left corner as the library tile. Flare's one
-                     use: an update landed after last session. -->
-                <Border Width="14" Height="14" CornerRadius="7"
-                        Background="{StaticResource Flare}"
-                        BorderBrush="{StaticResource Ground}" BorderThickness="2"
-                        BoxShadow="{DynamicResource BadgeGlow}"
-                        HorizontalAlignment="Left" VerticalAlignment="Top"
-                        Margin="8,8,0,0"
-                        IsVisible="{Binding Tile.HasUnread}"/>
-            </Panel>
-
-            <!-- ══ The name, the sentence, the way in ═══════════════════════ -->
-            <DockPanel Grid.Column="2" LastChildFill="True">
-
-                <!-- ══ The action line ═════════════════════════
-                     Pinned to the bottom so rows of cards align. Groups Play and secondary actions. On act, swaps for a
-                     receipt with Undo (same height, no reflow). -->
-                <Panel DockPanel.Dock="Bottom" Margin="0,10,0,0">
-
-                    <!-- The unanswered state. -->
-                    <WrapPanel Classes="cardactions" Orientation="Horizontal" ItemSpacing="8" LineSpacing="8"
-                               Classes.setaside="{Binding IsSetAside}"
-                               IsEnabled="{Binding ShowActions}"
-                               IsHitTestVisible="{Binding ShowActions}">
-
-                        <!-- Play/Install, or hidden if no action can be
-                             honestly named (§10.3). -->
-                        <Button Name="PrimaryAction"
-                                Classes="act primary cardact"
-                                HorizontalAlignment="Left"
-                                Content="{Binding Tile.PrimaryActionLabel}"
-                                ToolTip.Tip="{Binding Tile.PrimaryActionHint}"
-                                IsVisible="{Binding Tile.HasPrimaryAction}"
-                                Command="{Binding Tile.PrimaryActionCommand}"
-                                CommandParameter="{Binding Tile}"/>
-                        <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasSecondaryActions}">
-                            <Border Width="1" Height="24" Background="{StaticResource LineSoft}"
-                                    VerticalAlignment="Center" IsVisible="{Binding Tile.HasPrimaryAction}"/>
-                            <StackPanel Name="FeedbackActions" Spacing="4" Orientation="Horizontal"
-                                        VerticalAlignment="Center" Classes="cardactions"
-                                        Classes.setaside="{Binding IsSetAside}"
-                                        IsEnabled="{Binding ShowActions}"
-                                        IsHitTestVisible="{Binding ShowActions}">
-                                <Button Name="AddToList" Classes="cardaside cardfeedback"
-                                        ToolTip.Tip="Add to list" AutomationProperties.Name="Add to list"
-                                        IsVisible="{Binding CanAddToList}"
-                                        Command="{Binding AddToListCommand}">
-                                    <!-- The pointed bookmark carries more weight on its left edge
-                                         than the circular feedback glyphs. A one-pixel optical
-                                         correction aligns its visible center with their centers. -->
-                                    <Path Name="AddToListIcon" Width="16" Height="16" Stretch="Uniform"
-                                          RenderTransform="translateX(1px)"
-                                          Stroke="{StaticResource Azure}" StrokeThickness="1.6"
-                                          Data="M 3,1 L 13,1 L 13,15 L 8,12 L 3,15 Z M 8,4 L 8,9 M 5.5,6.5 L 10.5,6.5"/>
-                                </Button>
-                                <Button Name="NotNow" Classes="cardaside cardfeedback"
-                                        ToolTip.Tip="Not now" AutomationProperties.Name="Not now"
-                                        IsVisible="{Binding CanGiveFeedback}"
-                                        Command="{Binding NotNowCommand}">
-                                    <Path Width="16" Height="16" Stretch="Uniform"
-                                          Stroke="{StaticResource Amber}" StrokeThickness="1.6"
-                                          Data="M 8,1 A 7,7 0 1 1 7.99,1 Z M 8,4 L 8,8 L 11,10"/>
-                                </Button>
-                                <Button Name="NotInterested" Classes="cardaside cardfeedback"
-                                        ToolTip.Tip="Not interested" AutomationProperties.Name="Not interested"
-                                        IsVisible="{Binding CanGiveFeedback}"
-                                        Command="{Binding NotInterestedCommand}">
-                                    <Path Width="16" Height="16" Stretch="Uniform"
-                                          Stroke="{StaticResource TextDim}" StrokeThickness="1.6"
-                                          Data="M 8,1 A 7,7 0 1 1 7.99,1 Z M 4,8 L 12,8"/>
-                                </Button>
-                            </StackPanel>
-                        </StackPanel>
-                    </WrapPanel>
-
-                    <!-- The receipt. Date in Plex Mono, prose in body face. -->
-                    <Grid ColumnDefinitions="*,Auto"
-                          IsVisible="{Binding IsSetAside}">
-                        <StackPanel Grid.Column="0"
-                                    Orientation="Horizontal" Spacing="5"
-                                    VerticalAlignment="Center">
-                            <TextBlock Classes="body"
-                                       VerticalAlignment="Center"
-                                       Foreground="{StaticResource TextDim}"
-                                       Text="{Binding SetAsideNote}"/>
-                            <TextBlock Classes="data"
-                                       VerticalAlignment="Center"
-                                       Foreground="{StaticResource TextDim}"
-                                       IsVisible="{Binding HasSetAsideDate}"
-                                       Text="{Binding SetAsideDate}"/>
-                        </StackPanel>
-
-                        <!-- Quiet, not primary: the way back, not the next
-                             action. -->
-                        <Button Grid.Column="1"
-                                Classes="act quiet cardact"
-                                Content="Undo"
-                                Command="{Binding UndoCommand}"/>
-                    </Grid>
+                <Border Width="14" Height="14" CornerRadius="7" Background="{StaticResource Flare}"
+                        BorderBrush="{StaticResource Ground}" BorderThickness="2" BoxShadow="{DynamicResource BadgeGlow}"
+                        HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8" IsVisible="{Binding Tile.HasUnread}"/>
+                <Panel IsVisible="{Binding HasSecondaryActions}">
+                <Border Name="ActionStrip" Background="{StaticResource Surface}" CornerRadius="0,0,6,6"
+                        VerticalAlignment="Bottom" Padding="6" IsVisible="{Binding ShowActions}">
+                    <StackPanel Name="FeedbackActions" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+                        <Button Name="AddToList" Classes="cardaside" ToolTip.Tip="Add to list" AutomationProperties.Name="Add to list"
+                                IsVisible="{Binding CanAddToList}" Command="{Binding AddToListCommand}">
+                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource Text}" StrokeThickness="1.6"
+                                  Data="M 2,3 L 12,3 M 2,8 L 8,8 M 2,13 L 8,13 M 12,9 L 12,15 M 9,12 L 15,12"/>
+                        </Button>
+                        <Button Name="NotNow" Classes="cardaside" ToolTip.Tip="Not now" AutomationProperties.Name="Not now"
+                                IsVisible="{Binding CanGiveFeedback}" Command="{Binding NotNowCommand}">
+                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource Text}" StrokeThickness="1.6"
+                                  Data="M 8,1 A 7,7 0 1 1 7.99,1 Z M 8,4 L 8,8 L 11,10"/>
+                        </Button>
+                        <Button Name="NotInterested" Classes="cardaside" ToolTip.Tip="Not interested" AutomationProperties.Name="Not interested"
+                                IsVisible="{Binding CanGiveFeedback}" Command="{Binding NotInterestedCommand}">
+                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource Text}" StrokeThickness="1.6"
+                                  Data="M 8,1 A 7,7 0 1 1 7.99,1 Z M 3,13 L 13,3"/>
+                        </Button>
+                    </StackPanel>
+                </Border>
                 </Panel>
-
-                <!-- A write that did not land. Controls stay in place for
-                     retry; Amber for attention (§2). -->
-                <TextBlock DockPanel.Dock="Bottom"
-                           Classes="body"
-                           FontSize="11"
-                           Margin="0,8,0,0"
-                           TextWrapping="Wrap"
-                           Foreground="{StaticResource Amber}"
-                           IsVisible="{Binding HasProblem}"
-                           Text="{Binding Problem}"/>
-
-                <StackPanel Spacing="6">
-                    <!-- The countdown shares the feedback lane, leaving the
-                         title's measure unchanged when a receipt appears. -->
-                    <TextBlock Text="{Binding Tile.Title}"
-                               FontFamily="{StaticResource DisplayFont}"
-                               FontWeight="Bold" FontSize="15" LineHeight="17"
-                               TextWrapping="Wrap" MaxLines="2"
-                               TextTrimming="CharacterEllipsis"
-                               Foreground="{StaticResource Text}"/>
-
-                    <!-- Store chips have their own wrapping row beneath the title. -->
-                    <ItemsControl ItemsSource="{Binding Tile.StoreChips}"
-                                  ToolTip.Tip="{Binding Tile.StoreNames}"
-                                  HorizontalAlignment="Left">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel Orientation="Horizontal" ItemSpacing="4" LineSpacing="4"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Classes="store-chip">
-                                    <TextBlock Text="{Binding}"/>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <!-- THE REASON. Full wrap, no trimming. Inlines built in
-                         code-behind so numbers use Plex Mono tnum (§3). -->
-                    <TextBlock Name="Reason"
-                               Classes="body"
-                               FontFeatures="tnum"
-                               TextWrapping="Wrap"
-                               LineHeight="18"
-                               Foreground="{StaticResource Text}"/>
-                </StackPanel>
-
-            </DockPanel>
-
-
-        </Grid>
-
-        <!-- Determinate countdown ring (§8). Azure sweep on a LineSoft
-             track, 14px at 2px stroke — the badge's own outer diameter,
-             so the card has one mark size. On the card's Surface, not
-             on the art: the countdown is a fact about the card, and
-             §1/§2 keep the interface out of the cover.
-
-             The Panel no longer carries an accessible name. It never reached
-             anyone: a Panel gets a NoneAutomationPeer, which reports itself as
-             not a control element, and UIA's control view drops it. What the
-             ring means is now part of the card's ItemStatus, which is the one
-             attached property Avalonia raises a UIA event for and therefore the
-             only place a state that appears mid-read can be announced. The ring
-             itself stays as the determinate visual indicator §8 requires. -->
-        <Panel Name="Countdown"
-               Width="18" Height="18"
-               Background="Transparent"
-               HorizontalAlignment="Right" VerticalAlignment="Top"
-               Margin="0,10,10,0"
-               IsVisible="{Binding IsCountingDown}"
-               Classes.snap="{Binding Tile.SnapDormancy}"
-               ToolTip.Tip="Replaced by the next suggestion. Undo is on the history screen.">
-
-            <Ellipse Width="14" Height="14"
-                     HorizontalAlignment="Center" VerticalAlignment="Center"
-                     Stroke="{StaticResource LineSoft}" StrokeThickness="2"/>
-
-            <Arc Name="CountdownSweep"
-                 Width="14" Height="14"
-                 HorizontalAlignment="Center" VerticalAlignment="Center"
-                 StartAngle="-90"
-                 SweepAngle="{Binding CountdownSweep}"
-                 Stroke="{StaticResource Azure}" StrokeThickness="2"/>
-        </Panel>
-
-        <!-- Focus ring drawn inside the card bounds (outward offset
-             would be clipped by ScrollViewer). 1px Ground separator
-             inside the 2px Volt ring. -->
-        <Border Name="FocusRing"
-                BorderBrush="{StaticResource Volt}" BorderThickness="2"
-                CornerRadius="{StaticResource RadiusTile}"
-                IsHitTestVisible="False">
-            <Border BorderBrush="{StaticResource Ground}" BorderThickness="1"
-                    CornerRadius="4"/>
-        </Border>
-        </Panel>
+                <Border Background="{StaticResource Surface}" CornerRadius="0,0,6,6" VerticalAlignment="Bottom"
+                        Padding="10" IsVisible="{Binding IsSetAside}">
+                    <StackPanel Spacing="4">
+                        <TextBlock Classes="body" Text="{Binding SetAsideNote}" TextWrapping="Wrap"/>
+                        <TextBlock Classes="data" Text="{Binding SetAsideDate}" IsVisible="{Binding HasSetAsideDate}"/>
+                        <Button Classes="act quiet" Content="Undo" Command="{Binding UndoCommand}" HorizontalAlignment="Left"/>
+                    </StackPanel>
+                </Border>
+                <Panel Name="Countdown" Width="18" Height="18" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10"
+                       Background="{StaticResource Surface}" IsVisible="{Binding IsCountingDown}" Classes.snap="{Binding Tile.SnapDormancy}"
+                       ToolTip.Tip="Replaced by the next suggestion. Undo is on the history screen.">
+                    <Ellipse Width="14" Height="14" Stroke="{StaticResource LineSoft}" StrokeThickness="2"/>
+                    <Arc Name="CountdownSweep" Width="14" Height="14" StartAngle="-90" SweepAngle="{Binding CountdownSweep}"
+                         Stroke="{StaticResource Azure}" StrokeThickness="2"/>
+                </Panel>
+                <Border Name="FocusRing" BorderBrush="{StaticResource Volt}" BorderThickness="2" CornerRadius="6" IsHitTestVisible="False"/>
+            </Panel>
+            <TextBlock Text="{Binding Tile.Title}" FontFamily="{StaticResource DisplayFont}" FontWeight="Bold"
+                       FontSize="15" LineHeight="19" Height="19" TextTrimming="CharacterEllipsis" Foreground="{StaticResource Text}"/>
+            <TextBlock Name="Reason" Classes="body" FontFeatures="tnum" TextWrapping="Wrap" MaxLines="2" Height="36"
+                       TextTrimming="CharacterEllipsis" LineHeight="18" Foreground="{StaticResource TextDim}"/>
+            <TextBlock Classes="body" FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource Amber}"
+                       IsVisible="{Binding HasProblem}" Text="{Binding Problem}"/>
+        </StackPanel>
     </Button>
-
 </UserControl>

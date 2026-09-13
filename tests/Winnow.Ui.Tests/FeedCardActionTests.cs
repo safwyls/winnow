@@ -4,8 +4,6 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Headless;
 using Avalonia.Input;
-using Avalonia.Media;
-using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Winnow.App.Design;
@@ -41,26 +39,29 @@ public sealed class FeedCardActionTests
     }
 
     [AvaloniaTheory]
-    [InlineData(420)]
-    [InlineData(560)]
-    public void Install_card_groups_feedback_beside_primary_action(double width)
+    [InlineData(180)]
+    [InlineData(240)]
+    public void Portrait_card_actions_are_accessible_without_moving_the_card(double width)
     {
         var tile = TileFixture.Tile(DateTime.UtcNow, title: "A long game title that needs installing",
             steamAppId: "123", ownership: new Ownership { ReleaseId = 1, Store = "steam" });
         using var model = new FeedCardViewModel(tile, "You have never opened this game.",
             new FeedbackService(), _ => { });
-        var view = new FeedCardView { DataContext = model };
-        var window = new Window { Width = width, Height = 320, Content = view };
+        var view = new FeedCardView { DataContext = model, Width = width,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top };
+        var window = new Window { Width = 800, Height = 700, Content = view };
         try
         {
             window.Show();
             Dispatcher.UIThread.RunJobs();
-            var primary = view.FindControl<Button>("PrimaryAction")!;
-            Assert.Equal("Install", primary.Content);
+            var before = view.Bounds.Size;
+            var card = view.FindControl<Button>("Card")!;
+            Assert.True(card.Focus(NavigationMethod.Tab));
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(before, view.Bounds.Size);
             var names = new[] { "AddToList", "NotNow", "NotInterested" };
             var labels = new[] { "Add to list", "Not now", "Not interested" };
             Rect? previous = null;
-            var primaryRect = new Rect(primary.TranslatePoint(default, view)!.Value, primary.Bounds.Size);
             for (var i = 0; i < names.Length; i++)
             {
                 var button = view.FindControl<Button>(names[i])!;
@@ -69,15 +70,67 @@ public sealed class FeedCardActionTests
                 Assert.Equal(labels[i], ToolTip.GetTip(button));
                 var bounds = new Rect(button.TranslatePoint(default, view)!.Value, button.Bounds.Size);
                 Assert.True(bounds.Width >= 32 && bounds.Height >= 32);
+                Assert.InRange(bounds.Left, 0, view.Bounds.Width);
                 Assert.True(bounds.Right <= view.Bounds.Width);
-                Assert.True(bounds.Left >= primaryRect.Right);
-                Assert.False(bounds.Intersects(primaryRect));
                 if (previous is { } earlier)
                 {
                     Assert.Equal(earlier.Top, bounds.Top);
                     Assert.True(bounds.Left >= earlier.Right);
                 }
                 previous = bounds;
+                Assert.True(button.Focus(NavigationMethod.Tab));
+            }
+            Assert.Equal(before, view.Bounds.Size);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData("AddToList")]
+    [InlineData("NotNow")]
+    [InlineData("NotInterested")]
+    public void Pointer_actions_do_not_open_details_and_feedback_keeps_undo(string action)
+    {
+        var added = 0;
+        var opened = 0;
+        var tile = TileFixture.Tile(DateTime.UtcNow, title: "Aloft", steamAppId: "123");
+        tile.OpenDetailsCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() => opened++);
+        using var model = new FeedCardViewModel(tile, "Last played on 7 Sep 2026.",
+            new FeedbackService(), _ => added++);
+        var view = new FeedCardView { DataContext = model, Width = 220,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top };
+        var window = new Window { Width = 800, Height = 700, Content = view };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            var card = view.FindControl<Button>("Card")!;
+            var point = card.TranslatePoint(new Point(50, 50), window)!.Value;
+            window.MouseMove(point);
+            Dispatcher.UIThread.RunJobs();
+            var flyout = Assert.IsType<Flyout>(card.Flyout);
+            Assert.False(flyout.IsOpen);
+            var before = view.Bounds.Size;
+            var button = view.FindControl<Button>(action)!;
+            Assert.True(button.IsEffectivelyVisible);
+            Click(window, button);
+            Assert.Equal(0, opened);
+            Assert.False(flyout.IsOpen);
+            Assert.Equal(before, view.Bounds.Size);
+            if (action == "AddToList")
+            {
+                Assert.Equal(1, added);
+                Assert.False(model.IsSetAside);
+            }
+            else
+            {
+                Assert.True(model.IsSetAside);
+                var undo = view.GetVisualDescendants().OfType<Button>()
+                    .Single(b => ReferenceEquals(b.Command, model.UndoCommand));
+                Assert.True(undo.IsEffectivelyVisible);
+                Click(window, undo);
+                Assert.False(model.IsSetAside);
+                Assert.Equal(0, opened);
             }
         }
         finally { window.Close(); }
@@ -86,50 +139,150 @@ public sealed class FeedCardActionTests
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Hero_art_does_not_resize_the_card_or_cover_its_actions(bool feedback)
+    public void Card_opens_quick_details_before_full_details(bool keyboard)
     {
+        var opened = 0;
         var tile = TileFixture.Tile(DateTime.UtcNow, title: "Aloft", steamAppId: "123",
             ownership: new Ownership { ReleaseId = 1, Store = "steam" });
-        var added = 0;
-        tile.OpenDetailsCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() => { });
-        using var model = new FeedCardViewModel(tile, "Last played on 7 Sep 2026.",
-            feedback ? new FeedbackService() : null, _ => added++);
-        var view = new FeedCardView { DataContext = model, Width = 470, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top };
-        var window = new Window { Width = 510, Height = 240, Content = new Border { Padding = new Thickness(16), Child = view } };
-        using var art = new RenderTargetBitmap(new PixelSize(1600, 700));
-        var scene = new Canvas { Width = 1600, Height = 700, Background = Brushes.SteelBlue };
-        scene.Children.Add(new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse("M0,600 L450,170 L800,510 L1200,80 L1600,500 L1600,700 L0,700 Z"), Fill = Brushes.LightSeaGreen });
-        scene.Children.Add(new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse("M0,700 L620,420 L960,610 L1500,300 L1600,700 Z"), Fill = Brushes.DarkSlateGray });
-        scene.Measure(new Size(1600, 700)); scene.Arrange(new Rect(0, 0, 1600, 700)); art.Render(scene);
+        tile.OpenDetailsCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() => opened++);
+        const string reason = "You played for 2 hours, then left this game untouched for 90 days.";
+        using var model = new FeedCardViewModel(tile, reason, new FeedbackService(), _ => { });
+        var view = new FeedCardView { DataContext = model, Width = 220 };
+        var window = new Window { Width = 1000, Height = 800, Content = view };
         try
         {
-            window.Show(); Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
-            var before = view.Bounds.Size;
-            model.Backdrop = art; Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
-            // Let the compositor publish the new window before testing pointer hits.
-            await Task.Delay(40);
+            window.Show();
             Dispatcher.UIThread.RunJobs();
-            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-            Assert.Equal(before, view.Bounds.Size);
-            var bookmark = view.FindControl<Button>("AddToList")!;
-            var point = bookmark.TranslatePoint(new Point(16, 16), window)!.Value;
-            Assert.True(bookmark.IsEffectivelyVisible);
-            Assert.True(bookmark.IsEffectivelyEnabled);
-            Assert.True(window.InputHitTest(point) is Control hit &&
-                (ReferenceEquals(hit, bookmark) || hit.GetVisualAncestors().Contains(bookmark)),
-                $"Hit {window.InputHitTest(point)} at {point}");
-            window.MouseDown(point, MouseButton.Left); window.MouseUp(point, MouseButton.Left);
-
-            Assert.False(model.IsSetAside);
-            if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
+            var card = view.FindControl<Button>("Card")!;
+            var flyout = Assert.IsType<Flyout>(card.Flyout);
+            if (keyboard)
             {
-                Directory.CreateDirectory(directory); AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-                using var frame = window.CaptureRenderedFrame();
-                frame?.Save(Path.Combine(directory, $"feed-card-hero-{(feedback ? "recommendation" : "recent")}.png"));
+                Assert.True(card.Focus(NavigationMethod.Tab));
+                window.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None);
+                window.KeyReleaseQwerty(PhysicalKey.Enter, RawInputModifiers.None);
+                Dispatcher.UIThread.RunJobs();
             }
-            Assert.Equal(1, added);
+            else Click(window, card, new Point(40, 40));
+            Assert.True(flyout.IsOpen);
+            Assert.Equal(0, opened);
+            var content = Assert.IsAssignableFrom<Control>(flyout.Content);
+            Assert.Contains(content.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == reason);
+            var primary = content.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PrimaryAction");
+            Assert.Equal("Install", primary.Content);
+            var details = content.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "OpenDetails");
+            details.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(1, opened);
+            Assert.False(flyout.IsOpen);
         }
         finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Quick_details_closes_when_card_is_rebound_or_detached(bool rebind)
+    {
+        using var first = new FeedCardViewModel(TileFixture.Tile(DateTime.UtcNow), "First reason", new FeedbackService());
+        using var second = new FeedCardViewModel(TileFixture.Tile(DateTime.UtcNow), "Second reason", new FeedbackService());
+        var view = new FeedCardView { DataContext = first, Width = 220 };
+        var window = new Window { Width = 1000, Height = 800, Content = view };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            var card = view.FindControl<Button>("Card")!;
+            Click(window, card, new Point(40, 40));
+            var flyout = Assert.IsType<Flyout>(card.Flyout);
+            Assert.True(flyout.IsOpen);
+            if (rebind) view.DataContext = second;
+            else window.Content = null;
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(flyout.IsOpen);
+            Assert.False(first.IsFocusWithin);
+            Assert.False(first.IsPointerOver);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public void Escape_closes_quick_details_and_returns_focus_to_the_card()
+    {
+        using var model = new FeedCardViewModel(TileFixture.Tile(DateTime.UtcNow), "A reason", new FeedbackService());
+        var view = new FeedCardView { DataContext = model, Width = 220 };
+        var elsewhere = new Button { Content = "Elsewhere" };
+        var window = new Window { Width = 1000, Height = 800,
+            Content = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Children = { view, elsewhere } } };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            var card = view.FindControl<Button>("Card")!;
+            Assert.True(card.Focus(NavigationMethod.Tab));
+            window.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None);
+            window.KeyReleaseQwerty(PhysicalKey.Enter, RawInputModifiers.None);
+            Dispatcher.UIThread.RunJobs();
+            var flyout = Assert.IsType<Flyout>(card.Flyout);
+            Assert.True(flyout.IsOpen);
+            var content = Assert.IsAssignableFrom<Control>(flyout.Content);
+            var details = content.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "OpenDetails");
+            Assert.True(details.Focus(NavigationMethod.Tab));
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(model.IsFocusWithin);
+            Assert.True(model.IsCountdownHeld);
+
+            window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+            window.KeyReleaseQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(flyout.IsOpen);
+            Assert.True(card.IsFocused);
+            Assert.True(elsewhere.Focus(NavigationMethod.Tab));
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(model.IsFocusWithin);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public void Opening_another_cards_quick_details_does_not_stack_flyouts()
+    {
+        using var first = new FeedCardViewModel(TileFixture.Tile(DateTime.UtcNow), "First reason", new FeedbackService());
+        using var second = new FeedCardViewModel(TileFixture.Tile(DateTime.UtcNow), "Second reason", new FeedbackService());
+        var firstView = new FeedCardView { DataContext = first, Width = 220 };
+        var secondView = new FeedCardView { DataContext = second, Width = 220 };
+        var window = new Window { Width = 1000, Height = 800,
+            Content = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal,
+                Spacing = 24, Children = { firstView, secondView } } };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            var firstCard = firstView.FindControl<Button>("Card")!;
+            var secondCard = secondView.FindControl<Button>("Card")!;
+            var firstFlyout = Assert.IsType<Flyout>(firstCard.Flyout);
+            var secondFlyout = Assert.IsType<Flyout>(secondCard.Flyout);
+            Click(window, firstCard, new Point(40, 40));
+            Assert.True(firstFlyout.IsOpen);
+
+            Click(window, secondCard, new Point(40, 40));
+            Assert.False(firstFlyout.IsOpen);
+            // Native light dismiss may consume the outside click before the new card receives it.
+            if (!secondFlyout.IsOpen) Click(window, secondCard, new Point(40, 40));
+            Assert.True(secondFlyout.IsOpen);
+            Assert.False(firstFlyout.IsOpen);
+        }
+        finally { window.Close(); }
+    }
+
+    private static void Click(Window window, Button button, Point? localPoint = null)
+    {
+        var point = button.TranslatePoint(localPoint ?? new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), window)!.Value;
+        window.MouseMove(point);
+        Dispatcher.UIThread.RunJobs();
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        window.MouseDown(point, MouseButton.Left);
+        window.MouseUp(point, MouseButton.Left);
+        Dispatcher.UIThread.RunJobs();
     }
 
     private sealed class FeedbackService : IFeedService
