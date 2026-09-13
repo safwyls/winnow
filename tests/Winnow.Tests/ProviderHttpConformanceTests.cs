@@ -21,6 +21,10 @@ namespace Winnow.Tests;
 
 public sealed class ProviderHttpConformanceTests
 {
+    // Attempt tests must exhaust retries before the overall deadline, even when
+    // a busy runner delays timer continuations. Overall expiry has its own test.
+    private static readonly TimeSpan AttemptTestOverallTimeout = TimeSpan.FromSeconds(90);
+
     public static IEnumerable<object[]> Clients()
     {
         foreach (var name in new[] { "IIgdbClient", "IIgdbLifecycleClient", TwitchTokenProvider.HttpClientName,
@@ -118,7 +122,8 @@ public sealed class ProviderHttpConformanceTests
             await Task.Delay(Timeout.Infinite, token);
             throw new InvalidOperationException();
         });
-        using var host = Host(terminal, attemptTimeout: TimeSpan.FromMilliseconds(25));
+        using var host = Host(terminal, attemptTimeout: TimeSpan.FromMilliseconds(25),
+            overallTimeout: AttemptTestOverallTimeout);
         using var client = host.GetRequiredService<IHttpClientFactory>().CreateClient(name);
         var failure = await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync("https://fixture.invalid/query"));
         Assert.IsType<TimeoutRejectedException>(failure.InnerException);
@@ -142,7 +147,8 @@ public sealed class ProviderHttpConformanceTests
     {
         var terminal = new Terminal((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             { Content = new TrackedContent("{}", wait: true) }));
-        using var host = Host(terminal, attemptTimeout: TimeSpan.FromMilliseconds(25));
+        using var host = Host(terminal, attemptTimeout: TimeSpan.FromMilliseconds(25),
+            overallTimeout: AttemptTestOverallTimeout);
         using var client = host.GetRequiredService<IHttpClientFactory>().CreateClient(name);
         await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync("https://fixture.invalid/query"));
         Assert.Equal(3, terminal.Responses.Count);
