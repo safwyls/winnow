@@ -273,6 +273,10 @@ public sealed class FullscreenInteractionTests
             Assert.Equal("Library", television.CurrentPage.Title);
             window.HandleGamepad(GamepadButtons.Keyboard);
             Dispatcher.UIThread.RunJobs();
+            Assert.Equal("Library options", television.CurrentPage.Title);
+            window.HandleGamepad(GamepadButtons.Down);
+            window.HandleGamepad(GamepadButtons.Accept);
+            Dispatcher.UIThread.RunJobs();
             Assert.IsType<FullscreenBrowseFiltersPage>(television.CurrentPage);
             window.HandleGamepad(GamepadButtons.Back);
             window.HandleGamepad(GamepadButtons.Menu);

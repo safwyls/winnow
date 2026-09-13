@@ -99,7 +99,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     public override string Title => _feed ? "For you" : "Library";
     public override string Hints => _feed
         ? $"A  {(_selected is null ? "Choose" : "Open game")}{PlayHint}    Y  More    View  Search    ↑ ↓  Change shelf"
-        : $"A  Open game{PlayHint}    Y  Filter & sort    View  Search";
+        : $"A  Open game{PlayHint}    Y  Library options    View  Search";
     public override string RightHints => _feed ? "LT / RT  Shelf" : string.Empty;
     private string PlayHint => _selected is { IsOnDisk: true, IsPlayAction: true } ? "    X  Play" : string.Empty;
 
@@ -152,7 +152,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         }
         if (buttons.HasFlag(GamepadButtons.Keyboard))
         {
-            if (_feed) More(); else Context.Push(new FullscreenBrowseFiltersPage(Context));
+            if (_feed) More(); else LibraryActions();
             return true;
         }
         if (_feed && (buttons.HasFlag(GamepadButtons.Up) || buttons.HasFlag(GamepadButtons.Down)))
@@ -646,8 +646,9 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     {
         var actions = new List<FullscreenAction>
         {
-            new("Search", () => Context.Push(new FullscreenBrowseSearchPage(Context))),
+            new("My lists", () => Context.Push(new FullscreenBrowseListsPage(Context))),
             new("Filter & sort", () => Context.Push(new FullscreenBrowseFiltersPage(Context))),
+            new("Search", () => Context.Push(new FullscreenBrowseSearchPage(Context))),
             new("New list", () => Context.Library.BeginCreateListCommand.Execute(null)),
             new("Save as live list", () => Context.Library.BeginSaveLiveListCommand.Execute(null), Context.Library.CanSaveLiveList),
             new("Library tools", () => Context.Push(new FullscreenLibraryToolsPage(Context)))
@@ -675,7 +676,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
                 actions.Add(new("Move selected game later", () => Context.Library.MoveDownInListCommand.Execute(null), Context.Library.CanMoveDownInList));
             }
         }
-        Context.ShowActions("Library", actions);
+        Context.ShowActions("Library options", actions);
     }
 }
 

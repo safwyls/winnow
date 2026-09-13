@@ -806,7 +806,7 @@ position; Back restores the exact origin, including after viewing details.
 | A | Open the focused game or activate the focused action; opening details never launches |
 | B | Close the top layer or return one level; root never exits immediately |
 | X | Play the selected installed game from a browse screen; unavailable shortcuts are omitted |
-| Y | Invoke the labelled contextual action: More on For you, Filter & sort in Library, or Reset page in appearance; confirmation protects destructive changes |
+| Y | Invoke the labelled contextual action: More on For you, Library options in Library, or Reset page in appearance; confirmation protects destructive changes |
 | View | Open search from browsing |
 | Menu | Open a quick menu with Settings and Exit fullscreen; controller help is in Settings |
 
@@ -887,7 +887,13 @@ Resizing recomputes page capacity while keeping the selected release anchored. U
 first row on the first page reaches the collection choices. At grid edges, down advances a
 page and up returns to the previous page, preserving the column where possible. Triggers
 cycle All games, Installed, Never played and Patched collections; My lists remains an explicit
-picker. Y opens Filter & sort; View opens Search. Opening a game
+picker. Y opens the Library options side panel from any row, with My lists and Filter & sort
+first, followed by search and library/list actions, including actions for the selected game.
+The footer always labels this shortcut. The grid stays in place behind the panel; B closes
+it and restores the same selected game and viewport. Choosing lists or filters replaces
+the panel, so backing out without changes returns directly to that position. Header controls
+remain available for pointer access, and More opens the same panel. Repeated Y does not stack
+panels. Start keeps the app-wide Quick menu. View opens Search. Opening a game
 and returning restores the collection and selected game.
 
 **Game details** uses a landscape backdrop across the full canvas, including the header.
