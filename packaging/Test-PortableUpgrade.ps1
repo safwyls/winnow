@@ -113,7 +113,7 @@ try {
             $workspace = Split-Path $journal -Parent
             & python -c 'import sqlite3,sys; s=sqlite3.connect(sys.argv[1]); d=sqlite3.connect(sys.argv[2]); s.backup(d); d.close(); s.close()' $database (Join-Path $workspace 'before.db')
             if ($LASTEXITCODE -ne 0) { throw 'Could not prepare interrupted replacement backup.' }
-            $cut = Get-Content -LiteralPath $journal -Raw | ConvertFrom-Json
+            $cut = Get-Content -LiteralPath $journal -Raw | ConvertFrom-Json -AsHashtable
             $cut.DatabaseExisted = $true
             $cut.BackupCompleted = $true
             $cut.Phase = 2
@@ -127,20 +127,21 @@ try {
             }
             Move-Item -LiteralPath $install -Destination $previous
             Invoke-Helper @('recover', '--journal', $journal)
-            $recovered = Get-Content -LiteralPath $journal -Raw | ConvertFrom-Json
+            $recovered = Get-Content -LiteralPath $journal -Raw | ConvertFrom-Json -AsHashtable
             if ($recovered.Phase -ne 8 -or (Get-FileHash -LiteralPath (Join-Path $install 'Winnow.dll')).Hash -ne $oldHash -or
                 (Read-LibraryEvidence $database) -cne $libraryBefore) { throw 'Interrupted replacement did not recover prior binaries and internal data.' }
             Write-Host "Passed durable replacement interruption recovery with internal data ($Runtime)."
             continue
         }
         Invoke-Helper @('apply', '--journal', $journal) ($scenario -eq 'failed-startup')
-        $state = Get-Content -LiteralPath $journal -Raw | ConvertFrom-Json
+        # PayloadHashes can contain both Winnow and winnow on Linux.
+        $state = Get-Content -LiteralPath $journal -Raw | ConvertFrom-Json -AsHashtable
         if ($scenario -eq 'failed-startup') {
             if ($state.Phase -ne 6 -or -not $state.Failure) { throw 'Failed startup did not leave actionable recovery state.' }
             if ((Get-FileHash -LiteralPath (Join-Path $install 'Winnow.dll')).Hash -eq $oldHash) { throw 'Failed startup silently rolled back binaries.' }
             Invoke-Helper @('recover', '--journal', $journal) $true
             Invoke-Helper @('recover', '--journal', $journal, '--restore-backup')
-            $restored = Get-Content -LiteralPath $journal -Raw | ConvertFrom-Json
+            $restored = Get-Content -LiteralPath $journal -Raw | ConvertFrom-Json -AsHashtable
             if ($restored.Phase -ne 8 -or (Get-FileHash -LiteralPath (Join-Path $install 'Winnow.dll')).Hash -ne $oldHash) {
                 throw 'Explicit recovery did not restore the paired previous binaries.'
             }
