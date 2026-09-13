@@ -195,6 +195,7 @@ public sealed class FullscreenRowNavigationTests
             viewport.AdvanceAnimation(TimeSpan.FromMilliseconds(220));
             Assert.False(viewport.IsAnimating);
             Assert.InRange(viewport.RealizedRows.Count, 1, 3);
+            window.UpdateLayout();
             Assert.All(viewport.RealizedRows.Values, row => Assert.Equal(0, Assert.IsType<TranslateTransform>(row.RenderTransform).Y));
         }
         finally { window.Close(); }

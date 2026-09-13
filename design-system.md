@@ -693,6 +693,8 @@ plus four reserve items. Show as many as fit at the chosen scale, with left/righ
 to overflow games; do not enlarge covers just to fill a short shelf. Desktop retains six
 cards with a hidden replacement reserve. Only actual viewport entry records an impression.
 
+Fullscreen cards show cover art without a title caption beneath it in For you, Library and
+Search. Missing-art placeholders and accessible card names still identify the game.
 Fullscreen cards stay opaque. In For you, moving to the next shelf slides the current cover
 row upward and the incoming row up from below; moving back reverses that direction.
 Library and Search keep two rows in view and scroll by one row when selection moves past

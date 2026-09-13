@@ -532,9 +532,9 @@ public sealed class FullscreenBrowsePage : FullscreenPage
             var availableHeight = Math.Max(1, Bounds.Height - _hero.DesiredSize.Height - _homeHeading.DesiredSize.Height);
             var referenceHeight = Math.Max(1, availableHeight + (1080 - 1080 / Context.UiScale) * (1 - 2 * Context.SafeMarginPercent / 100));
             var referenceWidth = Math.Max(1, Bounds.Width * Context.UiScale - 76);
-            var referenceColumns = FullscreenCoverLayout.Columns(referenceWidth, referenceHeight, 1, Context.TextScale);
+            var referenceColumns = FullscreenCoverLayout.Columns(referenceWidth, referenceHeight, 1);
             var cellWidth = referenceWidth / referenceColumns;
-            var outsideArt = 36 * Context.TextScale + 28;
+            const double outsideArt = 20;
             cellWidth = Math.Min(cellWidth, Math.Max(1, availableHeight - outsideArt) * 2 / 3 + 24);
             columns = Math.Max(1, (int)Math.Floor((Bounds.Width - 76 + .01) / cellWidth));
             _wallWidth = Math.Min(Bounds.Width - 76, columns * cellWidth);
@@ -549,7 +549,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         }
         else
         {
-            columns = FullscreenCoverLayout.Columns(Bounds.Width, _wall.Bounds.Height, 2, Context.TextScale);
+            columns = FullscreenCoverLayout.Columns(Bounds.Width, _wall.Bounds.Height, 2);
             _wallWidth = Bounds.Width;
         }
         if (Math.Abs(_wall.Width - _wallWidth) > 1 || double.IsNaN(_wall.Width)) _wall.Width = _wallWidth;
@@ -566,17 +566,9 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     private Button MakeTile(GameTileViewModel tile, Action selected, FeedCardViewModel? feedCard = null)
     {
         var cover = new FullscreenCover(tile);
-        var title = FullscreenUi.Text(tile.Title, 24);
-        title.MaxLines = 1;
-        title.TextTrimming = TextTrimming.CharacterEllipsis;
-        var panel = new Grid { RowDefinitions = new RowDefinitions("*,Auto") };
-        panel.Children.Add(cover);
-        title.Margin = new Thickness(0, 8, 0, 0);
-        Grid.SetRow(title, 1);
-        panel.Children.Add(title);
         var button = FullscreenUi.Button(tile.Title, () => Context.OpenGame(tile));
         button.Classes.Add("tv-cover");
-        button.Content = panel;
+        button.Content = cover;
         button.Background = Brushes.Transparent;
         button.BorderThickness = new Thickness(0);
         button.FocusAdorner = null;
@@ -690,10 +682,10 @@ public sealed class FullscreenBrowsePage : FullscreenPage
 /// <summary>Two-row grids spend extra width on games, keeping full portrait art and compact gaps.</summary>
 internal static class FullscreenCoverLayout
 {
-    public static int Columns(double width, double height, int rows, double textScale)
+    public static int Columns(double width, double height, int rows)
     {
-        // Title line, its gap, button padding and bottom margin all occupy height outside the art.
-        var artHeight = Math.Max(1, height / rows - (36 * textScale + 28));
+        // Button padding and bottom margin occupy height outside the art.
+        var artHeight = Math.Max(1, height / rows - 20);
         var cellWidth = artHeight * 2 / 3 + 24;
         return Math.Max(1, (int)Math.Ceiling(width / cellWidth));
     }
@@ -899,7 +891,7 @@ public sealed class FullscreenBrowseSearchPage : FullscreenPage
     private void ResizeResults()
     {
         if (_results.Bounds.Width <= 0 || _results.Bounds.Height <= 0) return;
-        var columns = FullscreenCoverLayout.Columns(_results.Bounds.Width, _results.Bounds.Height, 2, Context.TextScale);
+        var columns = FullscreenCoverLayout.Columns(_results.Bounds.Width, _results.Bounds.Height, 2);
         if (columns == _columns) return;
         _columns = columns;
         _state.Resize(columns, _matches.Select(tile => tile.ReleaseId).ToArray());
@@ -942,16 +934,9 @@ public sealed class FullscreenBrowseSearchPage : FullscreenPage
         {
             var index = rowIndex * _columns + column;
             var cover = new FullscreenCover(tile);
-            var panel = new Grid { RowDefinitions = new RowDefinitions("*,Auto") };
-            panel.Children.Add(cover);
-            var label = FullscreenUi.Text(tile.Title, 24);
-            label.MaxLines = 1;
-            label.TextTrimming = TextTrimming.CharacterEllipsis;
-            Grid.SetRow(label, 1);
-            panel.Children.Add(label);
             var button = FullscreenUi.Button(tile.Title, () => Context.OpenGame(tile));
             button.Classes.Add("tv-cover");
-            button.Content = panel;
+            button.Content = cover;
             button.Background = Brushes.Transparent;
             button.BorderThickness = new Thickness(0);
             button.FocusAdorner = null;

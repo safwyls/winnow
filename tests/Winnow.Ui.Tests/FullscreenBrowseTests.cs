@@ -83,7 +83,8 @@ public sealed class FullscreenBrowseTests
             Assert.Equal(selected, AutomationProperties.GetName((Control)window.FocusManager.GetFocusedElement()!));
             foreach (var cover in page.GetVisualDescendants().OfType<FullscreenCover>().Where(cover => cover.GetVisualAncestors().OfType<Button>().Any(button => button.Classes.Contains("tv-cover"))))
             {
-                Assert.InRange(cover.Bounds.Width / cover.Bounds.Height, .665, .668);
+                // Layout rounds each dimension to pixels independently.
+                Assert.InRange(Math.Abs(cover.Bounds.Width - cover.Bounds.Height * 2 / 3), 0, 1);
                 Assert.All(cover.GetVisualDescendants().OfType<Image>(), image => Assert.Equal(Stretch.Uniform, image.Stretch));
             }
             Capture(window, "fullscreen-library-native-covers-wide-full-grid");
