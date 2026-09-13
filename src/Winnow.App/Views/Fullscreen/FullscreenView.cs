@@ -197,8 +197,8 @@ public sealed class FullscreenView : UserControl, IDisposable
         // A smaller reference canvas enlarges every control through the same uniform Viewbox transform.
         var referenceWidth = _context.FitUltrawide && Bounds.Height > 0
             ? Math.Max(1920, 1080 * Bounds.Width / Bounds.Height) : 1920;
-        _canvas.Width = referenceWidth / _context.UiScale;
-        _canvas.Height = 1080 / _context.UiScale;
+        _canvas.Width = referenceWidth / _context.EffectiveUiScale;
+        _canvas.Height = 1080 / _context.EffectiveUiScale;
         _safe.Margin = new Thickness(_canvas.Width * _context.SafeMarginPercent / 100, _canvas.Height * _context.SafeMarginPercent / 100);
         if (_actionPanel is not null) { _actionPanel.Width = ActionPanelWidth; _actionPanel.Padding = ActionPanelPadding; }
     }

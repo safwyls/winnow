@@ -328,8 +328,8 @@ public sealed class FullscreenDetailsTests
         {
             Dispatcher.UIThread.RunJobs();
             var backdrop = Assert.IsType<FullscreenBackdrop>(view.CurrentPage.Backdrop);
-            Assert.Equal(1920 / uiScale, backdrop.Bounds.Width, 1);
-            Assert.Equal(1080 / uiScale, backdrop.Bounds.Height, 1);
+            Assert.InRange(Math.Abs(1920 / (.85 * uiScale) - backdrop.Bounds.Width), 0, 1);
+            Assert.InRange(Math.Abs(1080 / (.85 * uiScale) - backdrop.Bounds.Height), 0, 1);
             Assert.Same(pixels, Assert.Single(backdrop.GetVisualDescendants().OfType<Image>(), image => image.Source is not null).Source);
             Assert.Contains(userBackground ? CoverKey.User("landscape") : CoverKey.SteamHero("42"), leases.Keys);
             Assert.Equal(1, images.Reads);

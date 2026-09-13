@@ -527,11 +527,11 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         int columns;
         if (_feed && _homeHeading is not null)
         {
-            // Use the 100% canvas as the sizing reference. Extra space at smaller UI scales
+            // Use the unscaled canvas as the sizing reference. Extra space at smaller UI scales
             // adds columns instead of increasing the cover height and undoing the user's zoom.
             var availableHeight = Math.Max(1, Bounds.Height - _hero.DesiredSize.Height - _homeHeading.DesiredSize.Height);
-            var referenceHeight = Math.Max(1, availableHeight + (1080 - 1080 / Context.UiScale) * (1 - 2 * Context.SafeMarginPercent / 100));
-            var referenceWidth = Math.Max(1, Bounds.Width * Context.UiScale - 76);
+            var referenceHeight = Math.Max(1, availableHeight + (1080 - 1080 / Context.EffectiveUiScale) * (1 - 2 * Context.SafeMarginPercent / 100));
+            var referenceWidth = Math.Max(1, Bounds.Width * Context.EffectiveUiScale - 76);
             var referenceColumns = FullscreenCoverLayout.Columns(referenceWidth, referenceHeight, 1);
             var cellWidth = referenceWidth / referenceColumns;
             const double outsideArt = 20;

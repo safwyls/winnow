@@ -684,8 +684,14 @@ points, not measured distance guarantees.
 fullscreen preference: it expands the reference canvas horizontally to the display aspect
 ratio at the default 1080px reference height. Overall UI scale adjusts both reference dimensions
 inversely, uniformly scaling text, controls and artwork while retaining percentage safe margins.
+The interface-scale control is centered on an effective scale of 0.85: displayed 100%
+matches the former 85% layout. At 16:9 this gives a roughly 2259×1271 logical canvas;
+the underlying component sizes remain authored against 1920×1080. Displayed 80–120%
+scales proportionally around that baseline in 5% steps. Existing saved interface scales
+restart at the new 100% baseline once; subsequent choices persist independently of the
+legacy setting. Text size, margins, motion and display-fit preferences are retained.
 Library grids reflow within the changed layout space. Home uses cover dimensions from its
-100% layout as a stable target: reducing interface scale shrinks covers and admits more
+unscaled 1920×1080 layout as a stable target: reducing interface scale shrinks covers and admits more
 games, rather than enlarging art to fill the extra height. Available height still limits
 covers when increasing scale or using large margins. The default retains the
 16:9 composition. Validate readability from the actual seating position before accepting the scale.

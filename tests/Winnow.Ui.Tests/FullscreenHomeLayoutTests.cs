@@ -153,8 +153,9 @@ public sealed class FullscreenHomeLayoutTests
                 var origin = backdrop.TranslatePoint(default, television)!.Value;
                 Assert.Equal(0, origin.X, 4);
                 Assert.Equal(0, origin.Y, 4);
-                Assert.Equal(television.Bounds.Width, backdrop.Bounds.Width, 4);
-                Assert.Equal(1080, backdrop.Bounds.Height, 4);
+                var backdropEnd = backdrop.TranslatePoint(new Point(backdrop.Bounds.Width, backdrop.Bounds.Height), television)!.Value;
+                Assert.InRange(Math.Abs(television.Bounds.Width - backdropEnd.X), 0, 1);
+                Assert.InRange(Math.Abs(television.Bounds.Height - backdropEnd.Y), 0, 1);
                 var pageOrigin = television.CurrentPage.TranslatePoint(default, television)!.Value;
                 Assert.True(pageOrigin.X > 0);
                 Assert.True(pageOrigin.Y > 0);
