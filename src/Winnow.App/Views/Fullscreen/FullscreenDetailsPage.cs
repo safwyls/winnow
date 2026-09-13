@@ -71,7 +71,8 @@ public sealed class FullscreenDetailsPage : FullscreenPage
         hero.Children.Add(heroText);
         _tabs = new[] { "Overview", "Updates", "Journal", "Library" }.Select((label, index) =>
             FullscreenUi.Button(label, () => SelectTab(index))).ToArray();
-        var tabRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24, Margin = new Thickness(0, 8) };
+        var tabRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24, Margin = new Thickness(0, 8),
+            HorizontalAlignment = HorizontalAlignment.Left };
         tabRow.Children.Add(FullscreenGlyphs.Icon("LT"));
         foreach (var tab in _tabs)
         {
@@ -86,6 +87,19 @@ public sealed class FullscreenDetailsPage : FullscreenPage
         layout.Children.Add(hero);
         var tabRegion = new Border { Child = tabRow, BorderThickness = new Thickness(0, 0, 0, 1) };
         tabRegion[!Border.BorderBrushProperty] = new DynamicResourceExtension("Line");
+        var dividerMask = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Absolute),
+            EndPoint = new RelativePoint(120, 0, RelativeUnit.Absolute),
+            GradientStops = [new GradientStop(Colors.White, 0), new GradientStop(Colors.Transparent, 1)]
+        };
+        // Keep the tabs opaque; only the rule beyond the final trigger fades into the artwork.
+        tabRow.SizeChanged += (_, _) =>
+        {
+            dividerMask.StartPoint = new RelativePoint(tabRow.Bounds.Width + 24, 0, RelativeUnit.Absolute);
+            dividerMask.EndPoint = new RelativePoint(tabRow.Bounds.Width + 120, 0, RelativeUnit.Absolute);
+        };
+        tabRegion.OpacityMask = dividerMask;
         Grid.SetRow(tabRegion, 1);
         layout.Children.Add(tabRegion);
         Grid.SetRow(_body, 2);

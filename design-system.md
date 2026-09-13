@@ -853,7 +853,9 @@ primary action uses a filled Volt treatment with VoltInk text and an icon; More 
 secondary. The compact hero brings the section tabs closer to the actions. The active tab
 has a persistent underline; controller focus has a separate treatment.
 Overview gives 28% of its width to personal history and 72% to About. A horizontal rule
-below the tabs and a vertical rule between the columns establish the content area. Hours
+below the tabs and a vertical rule between the columns establish the content area. The tab
+rule stays solid through the final trigger, then fades to transparent over 96px, starting
+24px beyond it, so it does not cross the hero artwork. Hours
 played and time since last played use 60px bold figures, 22px regular captions and a short
 vertical rule between them. Keep these figures grouped rather than spreading them across
 the whole column. The date uses 22px regular text; the status uses 32px bold text.
