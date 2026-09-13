@@ -39,4 +39,3 @@ internal sealed partial record ReleaseVersion(string Text, Version Number, strin
         return Pre.Length.CompareTo(other.Pre.Length);
     }
 }
-

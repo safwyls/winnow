@@ -397,4 +397,3 @@ public static class PortableUpdateEngine
         journal.Phase = UpdatePhase.Installed; journal.Failure = null; Write(journalPath, journal);
     }
 }
-
