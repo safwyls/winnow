@@ -430,8 +430,8 @@ export interface GalaxyLibraryEntry {
 
 **No playtime. No last-played. No title. No DLC flag.** Ownership and acquisition dates only.
 
-The genuinely interesting result is on `gameplay.gog.com`, where method discrimination proves
-a **read** route exists — a 401 alone would not, since a host might 401 every method:
+The unauthenticated `gameplay.gog.com` probe observed different responses by method,
+but did not establish a readable authenticated payload:
 
 | Method on `/games/{gid}/users/{uid}/sessions` | Status |
 |---|---|
@@ -439,17 +439,15 @@ a **read** route exists — a 401 alone would not, since a host might 401 every 
 | **POST** | **401** (same) |
 | PUT / DELETE / PATCH / PROPFIND | **405** `method_not_allowed` |
 
-**`GET` on the sessions route is routed and allowed, and 401s purely for want of a bearer
-token. CONFIRMED.** This is materially better than Epic, which exposes playtime with no dates
-at all (`epic-oauth.md` §5).
+These responses establish an authentication requirement in the tested path, not the
+contents or usefulness of an authorized GET response.
 
 Heroic **only ever writes** there — `storeManagers/gog/library.ts:210-238` POSTs
 `{session_date, time}` and expects 201; `gameplay.gog.com` appears in its GOG module in
-exactly two places, the POST and a log line. `gogdl` has no playtime concept whatsoever. So
-nobody reads this route, and **the response body of `GET …/sessions` is UNVERIFIED.** Given
-the write contract is per-session `{session_date, time}`, a session *list* would yield both
-total playtime and last-played at per-session granularity — a well-founded inference, not a
-confirmed payload.
+exactly two places, the POST and a log line in the source inspected for this spike.
+The POST fields do not establish a GET schema. The subsequent
+[authorized probe](gog-session-history.md) returned only `time_sum` aggregates for 45
+GOG-owned releases, including two nonzero results, with no dates or session list.
 
 ---
 
@@ -651,8 +649,9 @@ got smoother.
    does not before.
 4. **Whether a loopback `redirect_uri` survives GOG's post-authentication redirect.** The one
    unprobeable step, and the entire GOG loopback question.
-5. **The response body of `GET …/sessions`.** Route confirmed; payload inferred from the write
-   contract. The single fact that could justify GOG auth.
+5. **Additional dated history from `GET …/sessions`.** The
+   [2026-09-13 authorized probe](gog-session-history.md) returned aggregate-only payloads;
+   other accounts and response variants remain unverified. Sign-in remains deferred.
 6. **That the WebView2 runtime is present on all Windows 11 installs.** Confirmed on this
    machine only; handle its absence rather than assuming it.
 7. **Behaviour under Epic's Cloudflare bot detection over a full interactive sign-in.** The

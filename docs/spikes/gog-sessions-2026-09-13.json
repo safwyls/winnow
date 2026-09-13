@@ -1,0 +1,308 @@
+{
+  "observedAt": "2026-09-13T00:41:44.216Z",
+  "accountAlias": "ACCOUNT_A",
+  "identity": "user_id from successful token exchange used unchanged in library and session request paths",
+  "tokenStatus": 200,
+  "library": {
+    "status": 200,
+    "total_count": 46,
+    "limit": 500,
+    "returned": 46,
+    "gogOwned": 45,
+    "topLevelFields": [
+      "total_count",
+      "limit",
+      "items"
+    ]
+  },
+  "sessions": {
+    "request": "GET https://gameplay.gog.com/games/{gid}/users/{uid}/sessions",
+    "queryParameters": [],
+    "results": [
+      {
+        "gameId": "1430743056",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "3",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430743167",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430742983",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430743168",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1207659061",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430742899",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1207659013",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1207658901",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430742787",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1207658962",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1207659121",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430743139",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430743081",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430743140",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430742663",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430742827",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1441199941",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "2",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430743219",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430742984",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430743108",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430742953",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430742900",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1207658695",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430742927",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430743057",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430743082",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430743218",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1548764757",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430742866",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430742867",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1207664643",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":50}"
+      },
+      {
+        "gameId": "1430743030",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430742763",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1207658924",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1207658927",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430742954",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430742788",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430742926",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1971477531",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":54}"
+      },
+      {
+        "gameId": "1430742762",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430742826",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      },
+      {
+        "gameId": "1430742662",
+        "status": 200,
+        "contentType": "application/json",
+        "body": "{\"time_sum\":0}"
+      }
+    ]
+  },
+  "controls": {
+    "unauthenticated": {
+      "status": 401,
+      "body": "{\"error\":\"access_denied\",\"error_description\":\"OAuth2 authentication required\"}"
+    },
+    "authenticatedRepeat": {
+      "gameId": "1207664643",
+      "status": 200,
+      "body": "{\"time_sum\":50}",
+      "contentType": "application/json",
+      "link": null,
+      "contentRange": null
+    }
+  }
+}

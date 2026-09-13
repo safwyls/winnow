@@ -609,6 +609,11 @@ absence still reconciles known registry installations on the next successful loc
   games.
 - Local GOG titles carry the installer's locale, so a Polish install of GWENT reports a Polish
   title. `GamePieces.title` from Galaxy is canonical.
+- GOG sign-in remains deferred on desktop and fullscreen. An authorized probe of
+  `gameplay.gog.com` returned only `time_sum` aggregates, including for releases with
+  nonzero time, and no dated sessions to add to local facts. See the
+  [dated session-history evidence](docs/spikes/gog-session-history.md). Other response
+  variants and services remain unverified.
 
 **Built-in storefront client credentials.** Epic authentication uses the first complete
 credential pair from saved settings, `Epic:ClientId` / `Epic:ClientSecret` configuration,

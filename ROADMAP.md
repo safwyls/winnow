@@ -59,7 +59,7 @@ library matching, mobile, and a 3D shelf view. Fullscreen is a separate TV inter
 | Recommendation research | Acquisition-evidence evaluation (TASK-136), achievement progress (TASK-137), expected-commitment data (TASK-138), and achievement ingestion (TASK-15). New weights need evidence. |
 | Catalogue and identity | Per-edition years (TASK-13), broader GamesDB cross-store automation (TASK-37), and group-header/row actions (TASK-109–110). |
 | Steam collections | Static/dynamic collection import, including account ownership, repeat imports and preservation of Winnow list edits (DRAFT-1). |
-| GOG sign-in | Local Galaxy discovery supplies owned games and available local play facts. Investigate sign-in only if the unverified sessions endpoint adds useful session history (TASK-49). |
+| GOG sign-in | Local Galaxy discovery supplies owned games and available local play facts. The authorized sessions probe returned only aggregates, without dates; sign-in remains deferred unless additional dated history is demonstrated ([evidence](docs/spikes/gog-session-history.md), TASK-49). |
 | Other data research | Steam support-export format and availability (TASK-46). |
 | Navigation and notifications | Windows post-session notification (TASK-108), user-selected destinations for links (TASK-114). |
 | App updates | Disposable Windows/Ubuntu release-upgrade CI evidence for portable recovery (TASK-159); local Windows engine and presentation tests cover the implementation. |
