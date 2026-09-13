@@ -254,6 +254,8 @@ public sealed class FullscreenRowNavigationTests
             page.Handle(GamepadButtons.Down);
             Assert.Equal(1, viewport.FirstRow);
             Assert.False(viewport.IsAnimating);
+            window.UpdateLayout();
+            Assert.Equal(0, viewport.GetRow(1).TranslatePoint(default, viewport)!.Value.Y, 5);
             Assert.All(viewport.RealizedRows.Values, row => Assert.Equal(0, Assert.IsType<TranslateTransform>(row.RenderTransform).Y));
             var selectedName = AutomationProperties.GetName(Assert.IsAssignableFrom<Control>(window.FocusManager!.GetFocusedElement()));
 

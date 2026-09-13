@@ -30,6 +30,8 @@ public sealed class FullscreenBackdrop : Panel
     private readonly DispatcherTimer _fade = new() { Interval = TimeSpan.FromMilliseconds(16) };
     private readonly Stopwatch _fadeTime = new();
     private ICoverLease? _pending;
+    private (ICoverLease Lease, CoverArt Art)? _ready;
+    private bool _fallbackReady;
     private readonly FullscreenContext _context;
     private readonly ArtworkPreferences? _artworkPreferences;
     private GameTileViewModel _tile;
@@ -45,6 +47,7 @@ public sealed class FullscreenBackdrop : Panel
     private bool _attached;
     private bool _wideHeroLayout;
     private int _generation;
+    private CancellationTokenSource? _selectionCancellation;
     public FullscreenBackdrop(FullscreenContext context, GameTileViewModel tile, bool cinematic = false)
     {
         IsHitTestVisible = false; ClipToBounds = true;
@@ -65,7 +68,7 @@ public sealed class FullscreenBackdrop : Panel
         {
             var progress = _context.ReducedMotion ? 1 : Math.Clamp(_fadeTime.Elapsed.TotalMilliseconds / 180, 0, 1);
             _surface.Opacity = progress;
-            if (progress >= 1) FinishFade();
+            if (progress >= 1) FinishFade(presentReady: true);
         };
         if (!cinematic) OpacityMask = new LinearGradientBrush
         {
@@ -138,6 +141,10 @@ public sealed class FullscreenBackdrop : Panel
             if (_artworkPreferences is not null) _artworkPreferences.Changed -= ArtworkPreferencesChanged;
             context.Shared.Appearance.Service.Applied -= RefreshTint;
             _attached = false;
+            _selectionCancellation?.Cancel();
+            _selectionCancellation?.Dispose();
+            _selectionCancellation = null;
+            ClearReady();
             FinishFade();
             _generation++;
             _pending?.Dispose(); _pending = null;
@@ -161,13 +168,17 @@ public sealed class FullscreenBackdrop : Panel
     private void BeginSelection()
     {
         var generation = ++_generation;
+        _selectionCancellation?.Cancel();
+        _selectionCancellation?.Dispose();
+        _selectionCancellation = new CancellationTokenSource();
+        ClearReady();
         _pending?.Dispose(); _pending = null;
         _key = null;
         _rows = [];
         _backgroundUrl = null;
         _selectionRatio = 0;
         _requestedWidth = 0;
-        _ = ResolveAsync(_tile, generation);
+        _ = ResolveAsync(_tile, generation, _selectionCancellation.Token);
     }
 
     private void ArtworkPreferencesChanged() => Dispatcher.UIThread.Post(() =>
@@ -175,16 +186,25 @@ public sealed class FullscreenBackdrop : Panel
         if (_attached) BeginSelection();
     });
 
-    private async Task ResolveAsync(GameTileViewModel tile, int generation)
+    private async Task ResolveAsync(GameTileViewModel tile, int generation, CancellationToken ct)
     {
+        var workId = tile.Game.ResolvedWorkId;
+        var memberWorkIds = tile.Entries.Select(entry => entry.WorkId).ToArray();
+        var works = _context.Services?.GetService<IWorkRepository>();
+        var images = _context.Services?.GetService<IWorkImageRepository>();
         string? backgroundUrl = null;
         IReadOnlyList<WorkImages> rows = [];
         try
         {
-            if (_context.Services?.GetService<IWorkRepository>() is { } works)
-                backgroundUrl = (await works.GetAsync(tile.Game.ResolvedWorkId))?.BackgroundUrl;
-            if (_context.Services?.GetService<IWorkImageRepository>() is { } images)
-                rows = await BackdropImages.LoadAsync(images, tile.Game.ResolvedWorkId, tile.Entries.Select(entry => entry.WorkId));
+            // SQLite's async methods still execute synchronously. Capture presentation
+            // identity above, then perform metadata reads away from focus and animation.
+            await Task.Run(async () =>
+            {
+                if (works is not null)
+                    backgroundUrl = (await works.GetAsync(workId, ct).ConfigureAwait(false))?.BackgroundUrl;
+                if (images is not null)
+                    rows = await BackdropImages.LoadAsync(images, workId, memberWorkIds, ct).ConfigureAwait(false);
+            }, ct);
         }
         catch (Exception) { /* Missing metadata uses available art, then the selected game's cover. */ }
         if (!_attached || generation != _generation) return;
@@ -207,6 +227,12 @@ public sealed class FullscreenBackdrop : Panel
 
     private void ShowFallback()
     {
+        ClearReady();
+        if (_outgoingLease is not null && !_context.ReducedMotion)
+        {
+            _fallbackReady = true;
+            return;
+        }
         FinishFade();
         _image.Source = null;
         _veil.Background = null;
@@ -233,9 +259,23 @@ public sealed class FullscreenBackdrop : Panel
             var key = lease.Key;
             lease.Dispose();
             // A failed resolution upgrade should not discard usable artwork.
-            if (_held?.Key != key) NextCandidate();
+            if (_held?.Key != key && _ready?.Lease.Key != key) NextCandidate();
             return;
         }
+        // A new result must not promote a partly visible image to full opacity.
+        // Finish the visible blend, retaining only the latest ready replacement.
+        if (_outgoingLease is not null && !_context.ReducedMotion)
+        {
+            ClearReady();
+            _ready = (lease, art);
+            return;
+        }
+        Present(lease, art);
+    }
+
+    private void Present(ICoverLease lease, CoverArt art)
+    {
+        ClearReady();
         FinishFade();
         var previous = _held;
         var previousImage = _image.Source;
@@ -256,7 +296,14 @@ public sealed class FullscreenBackdrop : Panel
         else previous?.Dispose();
     }
 
-    private void FinishFade()
+    private void ClearReady()
+    {
+        _ready?.Lease.Dispose();
+        _ready = null;
+        _fallbackReady = false;
+    }
+
+    private void FinishFade(bool presentReady = false)
     {
         _fade.Stop();
         _fadeTime.Reset();
@@ -265,6 +312,17 @@ public sealed class FullscreenBackdrop : Panel
         _outgoingVeil.Background = null;
         _outgoingSurface.Background = null;
         _outgoingLease?.Dispose(); _outgoingLease = null;
+        if (!presentReady) return;
+        if (_ready is { } ready)
+        {
+            _ready = null;
+            Present(ready.Lease, ready.Art);
+        }
+        else if (_fallbackReady)
+        {
+            _fallbackReady = false;
+            ShowFallback();
+        }
     }
 
     private void RequestDisplaySize()
@@ -279,6 +337,7 @@ public sealed class FullscreenBackdrop : Panel
                 _tile.SteamBackdropAppIds, _artworkPreferences?.SourceOrder);
             if (!_candidates.SequenceEqual(candidates))
             {
+                ClearReady();
                 _candidates = candidates;
                 _candidateIndex = 0;
                 _requestedWidth = 0;

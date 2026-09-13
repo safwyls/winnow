@@ -879,7 +879,10 @@ shared repositories and action services. It never scales or navigates the deskto
 Fullscreen pages may supply a backdrop for the shell to mount behind its safe area and
 header. Browsing reuses that layer across selections, retaining the displayed artwork lease
 while a replacement loads and through its short crossfade. Generation checks discard stale
-loads. Detaching releases displayed, outgoing and pending leases; the detail page still owns its
+loads. Backdrop metadata reads run off the dispatcher after capturing the selected identity;
+superseding selections cancel those reads. A replacement ready during a crossfade waits
+in a single latest-result slot until the visible blend finishes. Detaching releases
+displayed, outgoing, ready and pending leases; the detail page still owns its
 content and focus rows. Browse page capacity is presentation state and reflows around the
 selected release identity when the available columns change.
 Fullscreen Home, Library and Search share a clipped virtual row viewport. It retains the
@@ -889,6 +892,9 @@ release and first visible row independently of desktop state. Only destination r
 input. Detaching clears realized controls and releases their cover presenters; returning
 recreates the viewport around the remembered selection. Feed impression checks inspect
 the active shelf's actual clipped hit targets, never the offscreen buffered shelves.
+Row movement uses render-frame timestamps and the last arranged row origin, so input
+preparation does not consume the animation and retargeting cannot jump before layout.
+Fullscreen covers wait for nonzero bounds before requesting their display-width bucket.
 Its feed view-model exposes both the primary recommendations and the scored reserve as
 cards, while desktop retains the reserve for replacements. The shared scoring pass and its
 ordering remain unchanged. Both surfaces record surfacing only on actual viewport entry.

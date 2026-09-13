@@ -696,7 +696,8 @@ cards with a hidden replacement reserve. Only actual viewport entry records an i
 Fullscreen cards stay opaque. In For you, moving to the next shelf slides the current cover
 row upward and the incoming row up from below; moving back reverses that direction.
 Library and Search keep two rows in view and scroll by one row when selection moves past
-the visible edge. These transitions take 220ms with an ease-out curve inside a clipped
+the visible edge. These transitions take 220ms from the first render-frame callback,
+with an ease-out curve inside a clipped
 cover area. Nearby rows stay realized so their art remains available during the slide.
 The heading, hero and shelf indicator follow the selected shelf immediately.
 Focus belongs to the destination immediately; outgoing rows cannot receive input.
@@ -790,7 +791,9 @@ Home, Library, Activity, Settings and setup place decorative backdrops on the fu
 outside the display margins and behind the header and footer. Safe margins constrain text
 and controls, not artwork. Game selection updates the background without moving the content.
 When changing games, retain the displayed landscape while the next landscape loads, then
-crossfade over 180ms. Reduced motion swaps the loaded art immediately. A cover fallback
+crossfade over 180ms. If another replacement becomes ready during that blend, retain
+only the latest ready image and finish the visible blend before starting the next one.
+Reduced motion swaps the loaded art immediately. A cover fallback
 appears only after landscape metadata or loading fails, never as an intermediate image
 between two landscapes. Ignore results from earlier selections.
 Game artwork fades in further to the right to keep the left content area quiet: browsing

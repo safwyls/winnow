@@ -539,7 +539,7 @@ public sealed class FullscreenBrowseTests
     }
 
     [AvaloniaFact]
-    public void Backdrop_uses_repository_screenshot_and_releases_pixels_on_detach()
+    public async Task Backdrop_uses_repository_screenshot_and_releases_pixels_on_detach()
     {
         using var pixels = new RenderTargetBitmap(new PixelSize(16, 9));
         var leases = new TestLeases(new CoverArt(pixels, pixels));
@@ -552,7 +552,11 @@ public sealed class FullscreenBrowseTests
         window.Show();
         try
         {
-            Dispatcher.UIThread.RunJobs();
+            for (var attempt = 0; attempt < 100 && leases.Keys.Count == 0; attempt++)
+            {
+                await Task.Delay(20);
+                Dispatcher.UIThread.RunJobs();
+            }
             Assert.Contains(CoverKey.IgdbBackdrop("tvscreenshot"), leases.Keys);
             var image = backdrop.GetVisualDescendants().OfType<Image>().Last();
             Assert.Same(pixels, image.Source);

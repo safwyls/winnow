@@ -21,6 +21,134 @@ namespace Winnow.Ui.Tests;
 
 public sealed class FullscreenBackdropTests
 {
+    [AvaloniaFact]
+    public async Task Saved_background_survives_failed_image_metadata_read()
+    {
+        using var database = new TempDatabase();
+        var works = new Winnow.Data.Repositories.WorkRepository(database.Factory);
+        var workId = await works.InsertAsync(new Work { Name = "Saved background", BackgroundUrl = UserArtRef.Format("saved") });
+        var leases = new DelayedLeases();
+        using var services = new ServiceCollection().AddSingleton<ICoverLeases>(leases)
+            .AddSingleton<IWorkRepository>(works).AddSingleton<IWorkImageRepository>(new FailingImages()).BuildServiceProvider();
+        using var feed = new FeedViewModel(new PreviewFeedService(), PreviewData.Library);
+        using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell, services);
+        var backdrop = new FullscreenBackdrop(context, TileFixture.Tile(DateTime.UtcNow, workId: workId));
+        var window = new Window { Width = 1920, Height = 1080, Content = backdrop };
+        try
+        {
+            await Show(window, leases);
+            Assert.Equal(CoverKey.User("saved"), leases.Last.Key);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Synchronous_metadata_read_leaves_dispatcher_free_and_stale_selection_cannot_present()
+    {
+        using var repository = new BlockingImages();
+        var leases = new DelayedLeases();
+        using var services = new ServiceCollection().AddSingleton<ICoverLeases>(leases)
+            .AddSingleton<IWorkImageRepository>(repository).BuildServiceProvider();
+        using var feed = new FeedViewModel(new PreviewFeedService(), PreviewData.Library);
+        using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell, services);
+        var backdrop = new FullscreenBackdrop(context, TileFixture.Tile(DateTime.UtcNow, workId: 91));
+        var window = new Window { Width = 1920, Height = 1080, Content = backdrop };
+        try
+        {
+            window.Show();
+            await repository.Entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.False(repository.RanOnDispatcher);
+            Assert.False(repository.Returned.Task.IsCompleted);
+            await Select(backdrop, TileFixture.Tile(DateTime.UtcNow, workId: 92), leases);
+            Assert.True(repository.Token.IsCancellationRequested);
+            Assert.Equal(CoverKey.IgdbBackdrop("landscape92"), leases.Last.Key);
+            repository.Release.Set();
+            await repository.Returned.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            await Flush();
+            Assert.DoesNotContain(leases.All, lease => lease.Key == CoverKey.IgdbBackdrop("landscape91"));
+        }
+        finally
+        {
+            repository.Release.Set();
+            window.Close();
+        }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task Ready_selection_does_not_cut_short_visible_crossfade(bool reduceMotionBeforeCompletion, bool fallback)
+    {
+        using var first = new RenderTargetBitmap(new PixelSize(16, 9));
+        using var second = new RenderTargetBitmap(new PixelSize(16, 9));
+        using var third = new RenderTargetBitmap(new PixelSize(16, 9));
+        using var fourth = new RenderTargetBitmap(new PixelSize(16, 9));
+        var leases = new DelayedLeases();
+        using var services = new ServiceCollection().AddSingleton<ICoverLeases>(leases)
+            .AddSingleton<IWorkImageRepository>(new Images()).BuildServiceProvider();
+        using var feed = new FeedViewModel(new PreviewFeedService(), PreviewData.Library);
+        using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell, services);
+        var backdrop = new FullscreenBackdrop(context, TileFixture.Tile(DateTime.UtcNow));
+        var window = new Window { Width = 1920, Height = 1080, Content = backdrop };
+        try
+        {
+            await Show(window, leases);
+            leases.Last.Complete(new CoverArt(first, first));
+            await Flush();
+            var initial = leases.Last;
+            await Select(backdrop, TileFixture.Tile(DateTime.UtcNow, workId: 2), leases);
+            leases.Last.Complete(new CoverArt(second, second));
+            await Flush();
+            var displayed = leases.Last;
+            var images = backdrop.GetVisualDescendants().OfType<Image>().ToArray();
+            var surface = Assert.IsType<Panel>(images[1].Parent!.Parent);
+            // Freeze a partial blend so the assertion cannot depend on scheduler timing.
+            var timer = (DispatcherTimer)typeof(FullscreenBackdrop).GetField("_fade",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(backdrop)!;
+            timer.Stop();
+            surface.Opacity = .25;
+            await Select(backdrop, TileFixture.Tile(DateTime.UtcNow, workId: 3), leases);
+            leases.Last.Complete(new CoverArt(third, third));
+            await Flush();
+            Assert.Same(first, images[0].Source);
+            Assert.Same(second, images[1].Source);
+            Assert.Equal(.25, surface.Opacity);
+            Assert.False(initial.Disposed);
+            Assert.False(displayed.Disposed);
+            Assert.False(leases.Last.Disposed);
+            var superseded = leases.Last;
+            await Select(backdrop, TileFixture.Tile(DateTime.UtcNow, workId: 4), leases);
+            Assert.True(superseded.Disposed);
+            leases.Last.Complete(fallback ? null : new CoverArt(fourth, fourth));
+            await Flush();
+            Assert.Same(first, images[0].Source);
+            Assert.Same(second, images[1].Source);
+            // Complete the frozen blend; only the most recent selection may follow it.
+            context.ReducedMotion = reduceMotionBeforeCompletion;
+            typeof(FullscreenBackdrop).GetMethod("FinishFade",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .Invoke(backdrop, [true]);
+            Assert.True(initial.Disposed);
+            Assert.Equal(reduceMotionBeforeCompletion || fallback, displayed.Disposed);
+            Assert.Same(reduceMotionBeforeCompletion || fallback ? null : second, images[0].Source);
+            Assert.Same(fallback ? null : fourth, images[1].Source);
+            Assert.Equal(reduceMotionBeforeCompletion || fallback ? 1 : 0, surface.Opacity);
+            if (fallback) Assert.IsType<FullscreenCover>(Assert.Single(backdrop.Children.OfType<ContentControl>()).Content);
+            timer.Stop();
+            // Detaching with both a visible blend and a queued result releases all three.
+            await Select(backdrop, TileFixture.Tile(DateTime.UtcNow, workId: 5), leases);
+            leases.Last.Complete(new CoverArt(third, third));
+            await Flush();
+        }
+        finally
+        {
+            window.Close();
+            Assert.All(leases.All, lease => Assert.True(lease.Disposed));
+        }
+    }
+
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
@@ -37,7 +165,7 @@ public sealed class FullscreenBackdropTests
         var window = new Window { Width = 1920, Height = 1080, Content = backdrop };
         try
         {
-            window.Show(); Dispatcher.UIThread.RunJobs();
+            await Show(window, leases);
             var image = backdrop.GetVisualDescendants().OfType<Image>().Last();
             var fallback = Assert.Single(backdrop.Children.OfType<ContentControl>());
             Assert.Null(fallback.Content);
@@ -45,12 +173,12 @@ public sealed class FullscreenBackdropTests
             await Flush();
             Assert.Same(first, image.Source);
             var held = leases.Last;
-            backdrop.Select(TileFixture.Tile(DateTime.UtcNow, workId: 2));
+            await Select(backdrop, TileFixture.Tile(DateTime.UtcNow, workId: 2), leases);
             var obsolete = leases.Last;
             Assert.Same(first, image.Source);
             Assert.False(held.Disposed);
             Assert.Null(fallback.Content);
-            backdrop.Select(TileFixture.Tile(DateTime.UtcNow, workId: 3));
+            await Select(backdrop, TileFixture.Tile(DateTime.UtcNow, workId: 3), leases);
             var selected = leases.Last;
             Assert.True(obsolete.Disposed);
             obsolete.Complete(new CoverArt(next, next));
@@ -71,7 +199,7 @@ public sealed class FullscreenBackdropTests
             Assert.True(held.Disposed);
             Assert.Same(selected, leases.Last);
             var finalTile = TileFixture.Tile(DateTime.UtcNow, workId: 4);
-            backdrop.Select(finalTile);
+            await Select(backdrop, finalTile, leases);
             var finalLease = leases.Last;
             backdrop.Select(finalTile);
             Assert.Same(finalLease, leases.Last);
@@ -99,13 +227,13 @@ public sealed class FullscreenBackdropTests
         var window = new Window { Width = 1920, Height = 1080, Content = backdrop };
         try
         {
-            window.Show(); Dispatcher.UIThread.RunJobs();
+            await Show(window, leases);
             var fallback = Assert.Single(backdrop.Children.OfType<ContentControl>());
             Assert.Null(fallback.Content);
             leases.Last.Complete(null);
             await Flush();
             Assert.IsType<FullscreenCover>(fallback.Content);
-            backdrop.Select(TileFixture.Tile(DateTime.UtcNow, workId: 2));
+            await Select(backdrop, TileFixture.Tile(DateTime.UtcNow, workId: 2), leases);
             var pending = leases.Last;
             window.Content = null;
             Assert.True(pending.Disposed);
@@ -162,7 +290,7 @@ public sealed class FullscreenBackdropTests
         var window = new Window { Width = 1920, Height = 1080, Content = backdrop };
         try
         {
-            window.Show(); Dispatcher.UIThread.RunJobs();
+            await Show(window, leases);
             Assert.Equal(CoverKey.IgdbBackdrop("art"), leases.Last.Key);
             leases.Last.Complete(null);
             await Flush();
@@ -203,7 +331,7 @@ public sealed class FullscreenBackdropTests
             Content = new FullscreenBackdrop(context, TileFixture.Tile(DateTime.UtcNow)) };
         try
         {
-            window.Show(); Dispatcher.UIThread.RunJobs();
+            await Show(window, leases);
             Assert.Equal(CoverKey.IgdbBackdrop("art"), leases.Last.Key);
             Assert.Equal(expectedBucket, leases.Last.Width);
             leases.Last.Complete(null);
@@ -235,7 +363,7 @@ public sealed class FullscreenBackdropTests
         var heroSize = new Size(width, fitted ? Math.Round(width * 124d / 384) : 1080);
         try
         {
-            window.Show(); Dispatcher.UIThread.RunJobs();
+            await Show(window, leases);
             Assert.Equal(CoverKey.SteamHero("42"), leases.Last.Key);
             Assert.Equal(fitted ? 2560 : 3840, leases.Last.Width);
             leases.Last.Complete(new CoverArt(hero, hero));
@@ -255,7 +383,7 @@ public sealed class FullscreenBackdropTests
                 gradient.GradientStops.First(stop => stop.Color.A == 255).Offset);
             Assert.Equal(255, gradient.GradientStops[^1].Color.A);
 
-            backdrop.Select(TileFixture.Tile(DateTime.UtcNow, workId: 2));
+            await Select(backdrop, TileFixture.Tile(DateTime.UtcNow, workId: 2), leases);
             leases.Last.Complete(new CoverArt(landscape, landscape));
             await Flush();
             Assert.Equal(new Size(width, 1080), art.Bounds.Size);
@@ -264,7 +392,7 @@ public sealed class FullscreenBackdropTests
             Assert.InRange(surface.Opacity, 0, .99);
             await Task.Delay(230); Dispatcher.UIThread.RunJobs();
 
-            backdrop.Select(TileFixture.Tile(DateTime.UtcNow, workId: 3, steamAppId: "43"));
+            await Select(backdrop, TileFixture.Tile(DateTime.UtcNow, workId: 3, steamAppId: "43"), leases);
             leases.Last.Complete(new CoverArt(hero, hero));
             await Flush();
             Assert.Equal(heroSize, art.Bounds.Size);
@@ -335,6 +463,26 @@ public sealed class FullscreenBackdropTests
         Dispatcher.UIThread.RunJobs();
     }
 
+    private static async Task Show(Window window, DelayedLeases leases)
+    {
+        var previous = leases.All.Count;
+        window.Show();
+        await Until(() => leases.All.Count > previous);
+    }
+
+    private static async Task Select(FullscreenBackdrop backdrop, GameTileViewModel tile, DelayedLeases leases)
+    {
+        var previous = leases.All.Count;
+        backdrop.Select(tile);
+        await Until(() => leases.All.Count > previous);
+    }
+
+    private static async Task Until(Func<bool> condition)
+    {
+        for (var attempt = 0; attempt < 100 && !condition(); attempt++) await Flush();
+        Assert.True(condition(), "Backdrop work did not reach the dispatcher.");
+    }
+
     private sealed class Images : IWorkImageRepository
     {
         public Task UpsertAsync(WorkImages images, CancellationToken ct = default) => throw new NotSupportedException();
@@ -342,6 +490,42 @@ public sealed class FullscreenBackdropTests
         public Task<IReadOnlyList<WorkImages>> GetForWorkAsync(long workId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<WorkImages>>([new() { WorkId = workId, Source = ImageSources.Igdb,
                 Kind = ImageKinds.Screenshot, ImageIds = $"landscape{workId}", ObservedAt = DateTime.UtcNow }]);
+    }
+
+    private sealed class BlockingImages : IWorkImageRepository, IDisposable
+    {
+        public ManualResetEventSlim Release { get; } = new();
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Returned { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public bool RanOnDispatcher { get; private set; }
+        public CancellationToken Token { get; private set; }
+        public Task<IReadOnlyList<WorkImages>> GetForWorkAsync(long workId, CancellationToken ct = default)
+        {
+            if (workId == 91)
+            {
+                RanOnDispatcher = Dispatcher.UIThread.CheckAccess();
+                Token = ct;
+                Entered.SetResult();
+                Release.Wait(TimeSpan.FromSeconds(3));
+                Returned.SetResult();
+            }
+            return Task.FromResult<IReadOnlyList<WorkImages>>([new()
+            {
+                WorkId = workId, Source = ImageSources.Igdb, Kind = ImageKinds.Screenshot,
+                ImageIds = $"landscape{workId}", ObservedAt = DateTime.UtcNow
+            }]);
+        }
+        public Task UpsertAsync(WorkImages images, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<bool> DeleteAsync(long workId, string source, string kind, CancellationToken ct = default) => throw new NotSupportedException();
+        public void Dispose() => Release.Dispose();
+    }
+
+    private sealed class FailingImages : IWorkImageRepository
+    {
+        public Task<IReadOnlyList<WorkImages>> GetForWorkAsync(long workId, CancellationToken ct = default)
+            => throw new IOException("Metadata unavailable");
+        public Task UpsertAsync(WorkImages images, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<bool> DeleteAsync(long workId, string source, string kind, CancellationToken ct = default) => throw new NotSupportedException();
     }
 
     private sealed class DelayedLeases : ICoverLeases

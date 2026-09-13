@@ -42,8 +42,8 @@ public sealed class FullscreenView : UserControl, IDisposable
     private readonly Grid _canvas = new() { Width = 1920, Height = 1080 };
     private readonly TextBlock _clock = FullscreenUi.Text("", 24);
     private readonly TextBlock _status = FullscreenUi.Text("Controller disconnected", 24, "Text");
-    private readonly ContentControl _hints = new();
-    private readonly ContentControl _rightHints = new() { HorizontalAlignment = HorizontalAlignment.Right };
+    private readonly ContentControl _hints = new() { Name = "FullscreenHints" };
+    private readonly ContentControl _rightHints = new() { Name = "FullscreenRightHints", HorizontalAlignment = HorizontalAlignment.Right };
     private readonly TextBlock _launch = FullscreenUi.Text("", 28);
     private readonly Button[] _tabs;
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(15) };
@@ -51,6 +51,7 @@ public sealed class FullscreenView : UserControl, IDisposable
     private int _section;
     private bool _disposed;
     private readonly ConditionalWeakTable<Control, TypeSize> _typeSizes = new();
+    private string? _shownHints, _shownRightHints;
     private sealed record TypeSize(double Value);
     public event Action? ExitRequested;
     public event Action? QuitRequested;
@@ -377,8 +378,18 @@ public sealed class FullscreenView : UserControl, IDisposable
     }
     private void PageChanged(object? sender, EventArgs e)
     {
-        _hints.Content = FullscreenGlyphs.Hints(CurrentPage.Hints);
-        _rightHints.Content = FullscreenGlyphs.Hints(CurrentPage.RightHints);
+        var hints = CurrentPage.Hints;
+        var rightHints = CurrentPage.RightHints;
+        if (_shownHints != hints)
+        {
+            _shownHints = hints;
+            _hints.Content = FullscreenGlyphs.Hints(hints);
+        }
+        if (_shownRightHints != rightHints)
+        {
+            _shownRightHints = rightHints;
+            _rightHints.Content = FullscreenGlyphs.Hints(rightHints);
+        }
     }
     public void FocusPage() => Dispatcher.UIThread.Post(() =>
     {

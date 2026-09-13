@@ -53,7 +53,7 @@ public sealed class ArtworkPreferenceBackdropTests
         try
         {
             window.Show(); Dispatcher.UIThread.RunJobs();
-            await Flush();
+            await Until(() => leases.All.Count > 0);
             Assert.Equal(CoverKey.User("rootsaved"), leases.Last.Key);
             leases.Last.Complete(null);
             await Flush();
@@ -118,13 +118,14 @@ public sealed class ArtworkPreferenceBackdropTests
         try
         {
             window.Show(); Dispatcher.UIThread.RunJobs();
+            await Until(() => leases.All.Count > 0);
             var image = backdrop.GetVisualDescendants().OfType<Image>().Last();
             var previous = leases.Last;
             Assert.Equal(CoverKey.SteamHero("42"), previous.Key);
             previous.Complete(oldArt);
             await Flush();
             await preferences.SaveAsync([ArtworkPreferences.Igdb, ArtworkPreferences.SteamGridDb, ArtworkPreferences.Steam]);
-            await Flush();
+            await Until(() => leases.Last.Key == CoverKey.IgdbBackdrop("art"));
             Assert.Equal(CoverKey.IgdbBackdrop("art"), leases.Last.Key);
             Assert.Same(oldArt, image.Source);
             Assert.False(previous.Disposed);
@@ -148,6 +149,11 @@ public sealed class ArtworkPreferenceBackdropTests
         Images = [new() { ImageId = "art", Width = 3840, Height = 2160 }], ObservedAt = DateTime.UtcNow,
     }];
     private static async Task Flush() { await Task.Delay(20); Dispatcher.UIThread.RunJobs(); }
+    private static async Task Until(Func<bool> condition)
+    {
+        for (var attempt = 0; attempt < 100 && !condition(); attempt++) await Flush();
+        Assert.True(condition(), "Backdrop metadata did not reach the dispatcher.");
+    }
     private sealed class Images : IWorkImageRepository
     {
         public Task<IReadOnlyList<WorkImages>> GetForWorkAsync(long workId, CancellationToken ct = default) => Task.FromResult(Rows);

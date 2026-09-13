@@ -1,8 +1,6 @@
-using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
-using Avalonia.Threading;
 
 namespace Winnow.App.Views.Fullscreen;
 
@@ -11,24 +9,23 @@ internal sealed class FullscreenRowViewport : Panel, IDisposable
 {
     private readonly FullscreenContext _context;
     private readonly Dictionary<int, Control> _rows = [];
-    private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(16) };
-    private readonly Stopwatch _elapsed = new();
     private Func<int, Control>? _createRow;
     private int _rowCount, _visibleRows = 1;
     private double _offset, _startOffset;
     private Size _layoutSize;
+    private int _layoutFirstRow, _animationGeneration;
+    private TimeSpan? _animationStart;
     private bool _subscribed, _attached, _disposed;
 
     public int FirstRow { get; private set; }
     public IReadOnlyDictionary<int, Control> RealizedRows => _rows;
-    public new bool IsAnimating => _timer.IsEnabled;
+    public new bool IsAnimating { get; private set; }
     public event EventHandler? RowsChanged;
 
     public FullscreenRowViewport(FullscreenContext context)
     {
         _context = context;
         ClipToBounds = true;
-        _timer.Tick += Tick;
         // Focus belongs to the target row immediately, even while it is travelling into view.
         AddHandler(RequestBringIntoViewEvent, (_, e) => e.Handled = true);
     }
@@ -55,8 +52,7 @@ internal sealed class FullscreenRowViewport : Panel, IDisposable
         var target = Clamp(firstRow);
         if (target == FirstRow)
         {
-            if (!animate || _context.ReducedMotion) Snap();
-            else Realize();
+            if (IsAnimating && (!animate || _context.ReducedMotion)) Snap();
             return;
         }
 
@@ -69,9 +65,11 @@ internal sealed class FullscreenRowViewport : Panel, IDisposable
             return;
         }
         _startOffset = _offset;
-        _elapsed.Restart();
-        _timer.Start();
+        _animationStart = null;
+        IsAnimating = true;
+        var generation = ++_animationGeneration;
         Realize();
+        RequestFrame(generation);
     }
 
     public Control GetRow(int index) => _rows[index];
@@ -116,7 +114,8 @@ internal sealed class FullscreenRowViewport : Panel, IDisposable
             row.IsEnabled = active;
             row.IsHitTestVisible = active;
         }
-        InvalidateMeasure();
+        if (changed) InvalidateMeasure();
+        else InvalidateArrange();
         PositionRows();
         if (changed) RowsChanged?.Invoke(this, EventArgs.Empty);
     }
@@ -137,6 +136,7 @@ internal sealed class FullscreenRowViewport : Panel, IDisposable
             if (IsAnimating) Snap();
         }
         var rowHeight = finalSize.Height / _visibleRows;
+        _layoutFirstRow = FirstRow;
         foreach (var (index, row) in _rows)
             row.Arrange(new Rect(0, (index - FirstRow) * rowHeight, finalSize.Width, rowHeight));
         PositionRows();
@@ -145,12 +145,20 @@ internal sealed class FullscreenRowViewport : Panel, IDisposable
 
     private void PositionRows()
     {
-        var y = (FirstRow - _offset) * _layoutSize.Height / _visibleRows;
+        // Transforms must use the row positions already arranged, including between input and layout.
+        var y = (_layoutFirstRow - _offset) * _layoutSize.Height / _visibleRows;
         foreach (var row in _rows.Values)
             if (row.RenderTransform is TranslateTransform translation) translation.Y = y;
     }
 
-    private void Tick(object? sender, EventArgs e) => AdvanceAnimation(_elapsed.Elapsed);
+    private void RequestFrame(int generation) => TopLevel.GetTopLevel(this)?.RequestAnimationFrame(timestamp =>
+    {
+        if (!IsAnimating || generation != _animationGeneration || !_attached) return;
+        // Row creation and the input handler's other work precede the animation clock.
+        _animationStart ??= timestamp;
+        AdvanceAnimation(timestamp - _animationStart.Value);
+        if (IsAnimating) RequestFrame(generation);
+    });
 
     internal void AdvanceAnimation(TimeSpan elapsed)
     {
@@ -171,8 +179,9 @@ internal sealed class FullscreenRowViewport : Panel, IDisposable
 
     private void Stop()
     {
-        _timer.Stop();
-        _elapsed.Reset();
+        IsAnimating = false;
+        _animationStart = null;
+        _animationGeneration++;
     }
 
     private void PreferencesChanged(object? sender, EventArgs e)

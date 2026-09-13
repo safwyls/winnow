@@ -37,6 +37,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     private bool _pending;
     private bool _sizePending;
     private ContentControl _hero = new();
+    private (FeedCardViewModel Card, FeedShelfViewModel Shelf, string? Reason, string Title, string Facts)? _heroState;
     private TextBlock? _homeHeading;
     private Border? _homeIndicatorHost;
     private Grid? _homeShelf;
@@ -254,6 +255,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     {
         _visibleCards.Clear();
         _hero = new ContentControl { MinHeight = 300 };
+        _heroState = null;
         _art.Opacity = 1;
         if (Context.Feed.Shelves.Count == 0)
         {
@@ -363,7 +365,12 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     private void SetHero(FeedCardViewModel card, FeedShelfViewModel shelf)
     {
         _selected = card.Tile;
-        var reason = FullscreenUi.Text(card.IsSetAside ? card.SetAsideNote : card.Reason, 28);
+        var reasonText = card.IsSetAside ? card.SetAsideNote : card.Reason;
+        var facts = $"{card.Tile.PlaytimeText} played · {card.Tile.LastPlayedText} · {(card.Tile.IsOnDisk ? "Installed" : "Not installed")} · {card.Tile.StoreNames}";
+        var state = (card, shelf, reasonText, card.Tile.Title, facts);
+        if (_heroState == state) return;
+        _heroState = state;
+        var reason = FullscreenUi.Text(reasonText, 28);
         reason.Name = "FullscreenHomeReason";
         reason.MaxLines = 2;
         reason.TextTrimming = TextTrimming.WordEllipsis;
@@ -382,7 +389,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         title.TextTrimming = TextTrimming.WordEllipsis;
         _hero.Content = FullscreenUi.Stack(FullscreenUi.Text(shelf.Title.ToUpperInvariant(), 24, "TextDim"),
             title, reason,
-            FullscreenUi.Text($"{card.Tile.PlaytimeText} played · {card.Tile.LastPlayedText} · {(card.Tile.IsOnDisk ? "Installed" : "Not installed")} · {card.Tile.StoreNames}", 24, "TextDim"));
+            FullscreenUi.Text(facts, 24, "TextDim"));
         SelectBackdrop(card.Tile);
         Changed();
     }
@@ -754,7 +761,10 @@ public sealed class FullscreenCover : Border
     private void RequestArt()
     {
         var top = TopLevel.GetTopLevel(this);
-        var scale = top is null ? 1 : Math.Abs(this.TransformToVisual(top)?.M11 ?? 1) * top.RenderScaling;
+        // Attachment precedes layout. Asking for the minimum bucket here starts a
+        // redundant decode before the display-sized request can use its warm cache entry.
+        if (top is null || Bounds.Width <= 0) return;
+        var scale = Math.Abs(this.TransformToVisual(top)?.M11 ?? 1) * top.RenderScaling;
         _presenter?.Request(Math.Max(200, Bounds.Width * scale));
     }
 
@@ -774,7 +784,10 @@ public sealed class FullscreenCover : Border
         base.MeasureOverride(size);
         return size;
     }
-    private void OnArtChanged(object? sender, PropertyChangedEventArgs e) => Paint();
+    private void OnArtChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(CoverPresenter.Art) or null) Paint();
+    }
     private void OnTileChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(GameTileViewModel.DormancyAlpha) or nameof(GameTileViewModel.DisplayAlpha)) Paint();
