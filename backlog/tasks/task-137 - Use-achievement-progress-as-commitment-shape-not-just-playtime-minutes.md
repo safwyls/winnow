@@ -15,7 +15,7 @@ documentation:
   - docs/recommendation-engine.md
   - game-library-design.md
 priority: medium
-ordinal: 164000
+ordinal: 177000
 ---
 
 ## Description

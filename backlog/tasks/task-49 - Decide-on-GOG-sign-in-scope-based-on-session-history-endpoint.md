@@ -15,7 +15,7 @@ documentation:
   - docs/spikes/epic-gog-local-files.md
 priority: low
 type: spike
-ordinal: 99000
+ordinal: 114000
 ---
 
 ## Description

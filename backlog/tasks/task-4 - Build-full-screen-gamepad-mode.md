@@ -1,11 +1,11 @@
 ---
 id: TASK-4
 title: Validate fullscreen with physical controllers and the intended display
-status: To Do
+status: Done
 assignee:
   - codex
 created_date: '2026-08-29 21:52'
-updated_date: '2026-09-11 19:14'
+updated_date: '2026-09-13 00:47'
 labels:
   - ui
   - accessibility
@@ -19,7 +19,7 @@ documentation:
   - design-system.md
   - docs/spikes/fullscreen-controller-verification.md
 priority: low
-ordinal: 259000
+ordinal: 295000
 ---
 
 ## Description
@@ -30,9 +30,9 @@ Validate the implemented fullscreen UI with a real controller at normal seating 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Every Winnow-owned screen and operation is reachable using the tested physical controller; live provider and native-window handoffs have recorded results and explicit external input requirements.
-- [ ] #2 Focus remains visible throughout the tested flows at normal seating distance and the supported display/text settings.
-- [ ] #3 Winnow-owned operations complete without a mouse or keyboard; record any failing screen, control or handoff instead of inferring success from automated input tests.
+- [x] #1 Every Winnow-owned screen and operation is reachable using the tested physical controller; live provider and native-window handoffs have recorded results and explicit external input requirements.
+- [x] #2 Focus remains visible throughout the tested flows at normal seating distance and the supported display/text settings.
+- [x] #3 Winnow-owned operations complete without a mouse or keyboard; record any failing screen, control or handoff instead of inferring success from automated input tests.
 - [x] #4 The full-screen surface shows a clock
 - [x] #5 Connected controller battery level is shown when the platform reports it, and the absence of that reading is not treated as an error
 <!-- AC:END -->
