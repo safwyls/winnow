@@ -98,12 +98,12 @@ public sealed class PluginSettingsInteractionTests
             Dispatcher.UIThread.RunJobs();
             var view = Assert.Single(window.GetVisualDescendants().OfType<PluginSettingsView>());
             Assert.Equal(3, shell.PluginSettings.Plugins.Count);
-            Assert.Equal("Active artwork · 2.0", Named<TextBlock>(view, "Loaded plugins").Text);
+            Assert.Equal("Active artwork · 2.0", LoadedPluginSummary(view));
             shell.ShowEnrichmentSettingsCommand.Execute(null);
             backend.Loaded = false;
             shell.ShowPluginSettingsCommand.Execute(null);
             Dispatcher.UIThread.RunJobs();
-            Assert.Equal("No plugins are loaded in this session.", Named<TextBlock>(view, "Loaded plugins").Text);
+            Assert.Equal("No plugins are loaded in this session.", LoadedPluginSummary(view));
         }
         finally { window.Close(); }
     }
@@ -120,7 +120,7 @@ public sealed class PluginSettingsInteractionTests
         {
             await page.PendingPluginRefresh;
             Dispatcher.UIThread.RunJobs();
-            Assert.Equal("Active artwork · 2.0", Named<TextBlock>(page, "Loaded plugins").Text);
+            Assert.Equal("Active artwork · 2.0", LoadedPluginSummary(page));
             Assert.NotNull(Named<Button>(page, "Active artwork"));
         }
         finally { window.Close(); }
@@ -137,24 +137,24 @@ public sealed class PluginSettingsInteractionTests
         window.Show();
         try
         {
-            Assert.Equal("Active artwork · 2.0", Named<TextBlock>(desktop, "Loaded plugins").Text);
+            Assert.Equal("Active artwork · 2.0", LoadedPluginSummary(desktop));
             Assert.Equal(3, shell.PluginSettings.Plugins.Count);
             Capture(window, "desktop-loaded-plugins");
             using var fullscreen = new FullscreenSettingsPage(context, "Plugins");
             window.Content = fullscreen;
             await fullscreen.PendingPluginRefresh;
             Dispatcher.UIThread.RunJobs();
-            Assert.Equal("Active artwork · 2.0", Named<TextBlock>(fullscreen, "Loaded plugins").Text);
+            Assert.Equal("Active artwork · 2.0", LoadedPluginSummary(fullscreen));
             Assert.NotNull(Named<Button>(fullscreen, "Waiting for restart"));
             Capture(window, "fullscreen-loaded-plugins");
 
             backend.Loaded = false;
             await shell.PluginSettings.LoadAsync();
             Dispatcher.UIThread.RunJobs();
-            Assert.Equal("No plugins are loaded in this session.", Named<TextBlock>(fullscreen, "Loaded plugins").Text);
+            Assert.Equal("No plugins are loaded in this session.", LoadedPluginSummary(fullscreen));
             window.Content = desktop;
             Dispatcher.UIThread.RunJobs();
-            Assert.Equal("No plugins are loaded in this session.", Named<TextBlock>(desktop, "Loaded plugins").Text);
+            Assert.Equal("No plugins are loaded in this session.", LoadedPluginSummary(desktop));
         }
         finally { window.Close(); }
     }
@@ -397,6 +397,17 @@ public sealed class PluginSettingsInteractionTests
             Assert.False(Named<Button>(page, "Remove saved Community artwork API key").IsEffectivelyEnabled);
         }
         finally { window.Close(); }
+    }
+
+    private static string? LoadedPluginSummary(Control root)
+    {
+        var summary = root.GetVisualDescendants().OfType<TextBlock>()
+            .Single(control => AutomationProperties.GetAutomationId(control) == "LoadedPluginsSummary");
+        var peer = Avalonia.Automation.Peers.ControlAutomationPeer.CreatePeerForElement(summary);
+        Assert.NotNull(peer);
+        Assert.Equal(summary.Text, peer.GetName());
+        Assert.Equal(AutomationLiveSetting.Polite, AutomationProperties.GetLiveSetting(summary));
+        return summary.Text;
     }
 
     private static T Named<T>(Control root, string name) where T : Control => root.GetVisualDescendants()

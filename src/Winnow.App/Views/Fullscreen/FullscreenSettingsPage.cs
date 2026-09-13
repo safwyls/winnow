@@ -276,7 +276,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             Group("Loaded plugins");
             var loadedPlugins = FullscreenUi.Text("", 28, "TextDim");
             loadedPlugins.Bind(TextBlock.TextProperty, new Binding(nameof(PluginSettingsViewModel.LoadedPluginSummary)) { Source = Context.Shared.EnrichmentSettings.Plugins });
-            AutomationProperties.SetName(loadedPlugins, "Loaded plugins");
+            AutomationProperties.SetAutomationId(loadedPlugins, "LoadedPluginsSummary");
             AutomationProperties.SetLiveSetting(loadedPlugins, AutomationLiveSetting.Polite);
             rows.Children.Add(loadedPlugins);
             Group("Plugins");

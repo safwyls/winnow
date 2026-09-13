@@ -30,7 +30,7 @@
                 <StackPanel HorizontalAlignment="Stretch" Spacing="14">
                     <TextBlock Classes="label section" AutomationProperties.HeadingLevel="2" Text="LOADED PLUGINS"/>
                     <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding LoadedPluginSummary}"
-                               AutomationProperties.Name="Loaded plugins" AutomationProperties.LiveSetting="Polite"/>
+                               AutomationProperties.AutomationId="LoadedPluginsSummary" AutomationProperties.LiveSetting="Polite"/>
                     <TextBlock Classes="label section" AutomationProperties.HeadingLevel="2" Text="INSTALL AND CONFIGURE"/>
                     <Border Classes="card">
                         <StackPanel Spacing="12">

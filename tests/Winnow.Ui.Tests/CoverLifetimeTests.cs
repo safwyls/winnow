@@ -66,7 +66,7 @@ public sealed class CoverLifetimeTests
         var loads = leases.Select(lease => lease.GetAsync()).ToArray();
         await fixture.Source.Entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
         Assert.Equal(4, fixture.Cache.PendingCount);
-        Assert.True(fixture.Source.Calls <= 2);
+        Assert.InRange(fixture.Source.Calls, 1, fixture.Options.MaxConcurrentFetches);
         Assert.All(loads.Skip(4), task => Assert.True(task.IsCompletedSuccessfully));
         foreach (var lease in leases) lease.Dispose();
         await Task.WhenAll(loads.Select(ObserveCancellation)).WaitAsync(TimeSpan.FromSeconds(3));
@@ -218,7 +218,7 @@ public sealed class CoverLifetimeTests
         public Fixture(int maxPending = 128, Func<SKBitmap, Avalonia.Media.Imaging.Bitmap>? convert = null)
         {
             Options = new() { CacheDirectory = Path.Combine(Path.GetTempPath(), "winnow-art-lifetime-" + Guid.NewGuid().ToString("N")),
-                MaxPendingLoads = maxPending, MaxConcurrentDecodes = 2 };
+                MaxPendingLoads = maxPending, MaxConcurrentFetches = 2, MaxConcurrentDecodes = 2 };
             var pipeline = new CoverPipeline([Source], new CoverDiskCache(Options), Options);
             void Post(Action action) { Interlocked.Increment(ref Disposals); action(); }
             Cache = convert is null ? new(pipeline, Options, post: Post) : new(pipeline, Options, null, Post, convert);
