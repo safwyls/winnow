@@ -1,11 +1,11 @@
 ---
 id: TASK-257
 title: Reuse verified CI evidence after merge and for releases
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-13 16:06'
-updated_date: '2026-09-13 16:34'
+updated_date: '2026-09-13 16:36'
 labels: []
 dependencies: []
 type: enhancement
@@ -46,10 +46,12 @@ Final local validation: 53 policy/entrypoint checks and actionlint passed. Hoste
 Final run Linux native test exceeded its normal duration. Reviewer found the smoke wait checks any saved session even though discovery already checkpoints an open session; this can race disposal with exit callbacks. It is a plausible cause rather than dump-proven diagnosis. Correct the test completion assertion and add hang capture within the CI validation scope.
 
 Hosted Windows full CI passed at 9966cc2, including evidence upload; both final package smoke builds passed. Linux native tests stalled until the old 10-minute job limit. The smoke fixture now waits for EndedAt instead of accepting its initial open checkpoint, and asserts closure before cleanup. Linux CLI adds a 2-minute inactivity dump and normal test logging; artifacts retain dumps. Target project compiles locally (two Linux-only skips on Windows). Native correction awaits hosted verification; 53 policy tests and actionlint remain green.
+
+Hosted Linux run 34769013241 passed the corrected native/Proton tests and all 53 policy/entrypoint checks. The fresh-query GitHub API filter was verified against real workflow history. Prior full Windows CI and both packaging smoke builds passed at 9966cc2; final checks follow on PR #16. The test correction verifies completed sessions; no production watcher locking changes were made.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Implemented full-only, recent per-platform evidence reuse with strict provenance/input matching and automatic full fallback. Fresh audits/migrations and final package smoke checks remain. 53 policy and resolver integration checks pass, workflow lint passes, independent review has no blocker, and hosted Linux evidence generation is verified. Full hosted gates continue on PR #16; no merge performed.
+Implemented recent full-test evidence reuse with trusted merge/commit provenance, complete input fingerprints and full fallback. Fresh audits/migrations and release smoke tests remain. 53 policy/entrypoint checks pass on Windows locally and Linux in CI; actionlint passes; full hosted Windows and package smoke checks passed. Corrected Linux smoke completion wait and verified it on GitHub, with hang diagnostics retained. Final PR gates remain authoritative; no merge performed.
 <!-- SECTION:FINAL_SUMMARY:END -->
