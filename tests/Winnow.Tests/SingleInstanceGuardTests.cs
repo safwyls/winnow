@@ -23,8 +23,8 @@ public class SingleInstanceGuardTests
         using var first = SingleInstanceGuard.TryAcquire(directory);
         Assert.NotNull(first);
 
-        // Held, not merely created: a null here is the "second copy shows a
-        // sentence and exits" arm, so it is the whole behaviour under test.
+        // Held, not merely created: null sends the second copy down the
+        // activation path without starting another host.
         using var second = SingleInstanceGuard.TryAcquire(directory);
         Assert.Null(second);
     }

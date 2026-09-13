@@ -83,6 +83,7 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+        Program.InstanceActivation?.SetHandler(() => Avalonia.Threading.Dispatcher.UIThread.Post(RestoreMainWindow));
         Program.CompleteUpdateStartup();
     }
 

@@ -48,12 +48,13 @@ public static class Program
 
     /// <summary>
     /// The single-instance mutex held for this run (TASK-23): null in a second
-    /// copy, which refuses to start. A static field, not a local in <see
+    /// copy, which activates the existing session. A static field, not a local in <see
     /// cref="Main"/>, because the mutex protects the process only while the
     /// handle stays open, and a local the JIT considered dead would release it
     /// mid-run.
     /// </summary>
     private static Mutex? SingleInstance;
+    internal static SingleInstanceActivation? InstanceActivation { get; private set; }
     private static IDisposable? UpdateLease;
     private static string? UpdateJournalPath;
     private static bool PortableLeaseAvailable = true;
@@ -86,6 +87,8 @@ public static class Program
         finally
         {
             AppHost = null;
+            InstanceActivation?.Dispose();
+            InstanceActivation = null;
             SingleInstance?.Dispose();
             SingleInstance = null;
             UpdateLease?.Dispose();
@@ -180,9 +183,11 @@ public static class Program
         SingleInstance = Services.SingleInstanceGuard.TryAcquire(DataLocation.Root);
         if (SingleInstance is null)
         {
-            Services.SingleInstanceGuard.RefuseToStart(DataLocation.Root);
+            if (!SingleInstanceActivation.RequestAsync(DataLocation.Root).GetAwaiter().GetResult())
+                System.Diagnostics.Trace.TraceWarning("The existing Winnow session did not acknowledge activation.");
             return;
         }
+        InstanceActivation = new SingleInstanceActivation(DataLocation.Root);
 
         DiagnosticLogging.Configure(builder.Logging, DataLocation.Root);
 

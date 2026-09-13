@@ -671,6 +671,15 @@ Background services run as `IHostedService` implementations under the generic ho
 Avalonia UI resolves view models from the same DI container. **The UI never calls an ingest or
 enrichment component directly; it reads the database and raises commands.**
 
+One process owns each data directory, enforced by a named mutex before the host starts.
+A repeated launch sends a bounded request over a current-user named pipe and exits without
+starting another host or showing an error. The owner queues requests until the UI is ready,
+then restores and activates its existing desktop or fullscreen window, preserving its
+presentation and navigation state. Separate `--data-dir` libraries remain independent.
+On Windows the launcher grants the owner foreground permission before requesting activation;
+other desktops use Avalonia activation subject to the window manager's focus policy.
+An unavailable or older owner's activation channel times out quietly after three seconds.
+
 ```mermaid
 graph TB
     subgraph UI["Avalonia UI (MVVM)"]

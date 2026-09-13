@@ -251,9 +251,13 @@ public partial class MainWindow : Window
             ? WindowState.Normal
             : WindowState.Maximized;
 
+    private WindowState _restoreWindowState = WindowState.Normal;
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
+        if (change.Property == WindowStateProperty && WindowState != WindowState.Minimized)
+            _restoreWindowState = WindowState;
         if (_chromeReady && (change.Property == WindowStateProperty || change.Property == BoundsProperty))
             UpdateFullscreenPresentation();
 
@@ -290,7 +294,7 @@ public partial class MainWindow : Window
             Show();
         }
 
-        WindowState = WindowState.Normal;
+        if (WindowState == WindowState.Minimized) WindowState = _restoreWindowState;
         IsHiddenInTray = false;
         Activate();
         TrayStateChanged?.Invoke(this, EventArgs.Empty);
