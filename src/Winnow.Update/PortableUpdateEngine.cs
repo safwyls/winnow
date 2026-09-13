@@ -123,7 +123,9 @@ public static class PortableUpdateEngine
     }
     private static void Extract(Stream archive, bool isZip, string destination, long available)
     {
-        long total = 0; var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // Linux packages contain both the Winnow apphost and the winnow shell launcher.
+        // Match the target platform's path semantics while retaining duplicate rejection.
+        long total = 0; var names = new HashSet<string>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
         string Target(string name, long length)
         {
             name = name.Replace('\\', '/');

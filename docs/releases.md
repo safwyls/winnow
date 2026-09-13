@@ -163,6 +163,11 @@ The workflow retains journals and baseline-selection evidence. Runner results es
 those environments only; hardware power-loss and filesystem durability behavior still
 depend on the device and filesystem.
 
+Archive name checks follow platform case sensitivity: Linux portable packages retain
+both the `Winnow` apphost and the `winnow` shell launcher. Exact duplicate entries remain
+invalid. The smoke script waits for the update helper's process exit with a bounded
+timeout; the restarted application stays open until scenario cleanup.
+
 ## Build without publishing
 
 Pushes to `main` and `codex/**`, and pull requests, build packages when application,

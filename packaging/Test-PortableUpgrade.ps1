@@ -31,9 +31,14 @@ function Stop-SmokeProcess($Process) {
     if (-not $Process.HasExited) { $Process.Kill($true); $Process.WaitForExit() }
 }
 function Invoke-Helper([string[]]$Arguments, [bool]$ExpectFailure = $false) {
-    $result = & $helper @Arguments 2>&1
-    $code = $LASTEXITCODE
-    $result | ForEach-Object { Write-Host $_ }
+    # Capturing native output waits for inherited pipes held by the relaunched app.
+    # Wait for the helper itself, allowing archive IO and its two-minute readiness check.
+    $helperTimeout = [TimeSpan]::FromMinutes(5)
+    $process = Start-SmokeProcess $helper $Arguments
+    if (-not $process.WaitForExit([int]$helperTimeout.TotalMilliseconds)) {
+        throw "Portable helper '$($Arguments[0])' did not exit within $($helperTimeout.TotalMinutes) minutes (PID $($process.Id))."
+    }
+    $code = $process.ExitCode
     if (($code -eq 0) -eq $ExpectFailure) { throw "Unexpected helper exit ${code}: $($Arguments[0])" }
 }
 function Read-LibraryEvidence([string]$Database) {

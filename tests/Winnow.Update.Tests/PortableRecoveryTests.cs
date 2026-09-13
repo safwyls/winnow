@@ -44,6 +44,40 @@ public sealed class PortableRecoveryTests
         Assert.Throws<IOException>(() => f.Stage());
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ArchiveCaseDistinctNamesFollowPlatformSemantics(bool tar)
+    {
+        using var f = new Fixture();
+        var launcher = f.ExecutableName.ToLowerInvariant();
+        if (tar) f.ReleaseTar(launcher); else f.Zip(extra: launcher);
+
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Throws<IOException>(() => f.Stage());
+        }
+        else
+        {
+            f.Stage();
+            var staged = Path.Combine(f.Workspace, "staged");
+            Assert.Equal("new", File.ReadAllText(Path.Combine(staged, f.ExecutableName)));
+            Assert.Equal("escape", File.ReadAllText(Path.Combine(staged, launcher)));
+        }
+        Assert.Equal("old", File.ReadAllText(f.Executable));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RejectsExactDuplicateArchiveNames(bool tar)
+    {
+        using var f = new Fixture();
+        if (tar) f.ReleaseTar(f.ExecutableName); else f.Zip(extra: f.ExecutableName);
+        Assert.Throws<IOException>(() => f.Stage());
+        Assert.Equal("old", File.ReadAllText(f.Executable));
+    }
+
     [Fact]
     public void RejectsWrongDigestAndMetadataWithoutChangingInstallation()
     {
@@ -296,6 +330,23 @@ public sealed class PortableRecoveryTests
             var entry = new PaxTarEntry(link ? TarEntryType.SymbolicLink : TarEntryType.RegularFile, name);
             if (link) entry.LinkName = "../escape"; else entry.DataStream = new MemoryStream([1, 2]);
             tar.WriteEntry(entry);
+        }
+        public void ReleaseTar(string extra)
+        {
+            Archive = Path.Combine(Root, "release.tar.gz");
+            using var file = File.Create(Archive);
+            using var gzip = new GZipStream(file, CompressionMode.Compress);
+            using var tar = new TarWriter(gzip);
+            const string root = "Winnow-2.0.0-linux-x64/";
+            tar.WriteEntry(new PaxTarEntry(TarEntryType.Directory, root));
+            void Add(string name, string value)
+            {
+                using var data = new MemoryStream(Encoding.UTF8.GetBytes(value));
+                tar.WriteEntry(new PaxTarEntry(TarEntryType.RegularFile, root + name) { DataStream = data });
+            }
+            Add("release-info.json", Manifest("2.0.0"));
+            Add(ExecutableName, "new");
+            Add(extra, "escape");
         }
         public string Stage(string? hash = null) => PortableUpdateEngine.Stage(Archive, hash ?? Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Archive))), "2.0.0", Runtime, Install, Data, ExecutableName, ["--no-sync"]);
         public void SetPhase(UpdatePhase phase, bool migrated = false, bool databaseExisted = false)

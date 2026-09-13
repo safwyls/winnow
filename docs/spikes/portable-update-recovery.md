@@ -53,3 +53,23 @@ engine suite on both platforms and retains journals, TRX and baseline-selection 
 Those release-runner checks were implemented but not executed in this local session.
 The available WSL distribution is Fedora 44 without .NET, so it cannot establish Ubuntu
 runtime or Unix permission coverage. Hardware power-loss behavior was not tested.
+
+## Release-runner failures investigated on 2026-09-13
+
+Release run `34740262012` built both packages, passed engine tests, and passed the
+installed-package smoke checks. Ubuntu's portable upgrade failed at staging with
+`Unsafe or duplicate archive entry`: the case-insensitive entry set treated the packaged
+`Winnow` apphost and `winnow` launcher as the same file. The extractor now uses platform
+case sensitivity. ZIP and tar regression cases cover case-distinct filenames and exact
+duplicate rejection. All 37 engine tests pass on Windows; Linux execution awaits CI.
+
+Both Windows release runs stalled in the portable upgrade smoke step. The helper was
+invoked through a captured PowerShell pipeline; its persistent Winnow child inherits the
+output handles. A local reproduction with a short-lived native launcher and a five-second
+child took 5.50 seconds to return, despite the launcher exiting immediately. The smoke
+script now waits for the helper process itself with a timeout rather than waiting for
+pipeline EOF. This changes test orchestration, not application startup or recovery policy.
+
+These fixes require a new Windows/Ubuntu release run before platform upgrade success can
+be claimed. Desktop and fullscreen continue to use the same portable update engine;
+no presentation behavior changed in this follow-up.
