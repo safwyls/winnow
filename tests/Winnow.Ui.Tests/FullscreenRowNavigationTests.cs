@@ -20,6 +20,41 @@ namespace Winnow.Ui.Tests;
 public sealed class FullscreenRowNavigationTests
 {
     [AvaloniaFact]
+    public async Task Shelf_changes_carry_the_current_column_on_revisits_and_clamp_short_rows()
+    {
+        using var fixture = new Fixture();
+        await fixture.Library.LoadCommand.ExecuteAsync(null);
+        for (var shelf = 0; shelf < 3; shelf++)
+            fixture.Feed.Shelves.Add(new FeedShelfViewModel($"shelf-{shelf}", $"Shelf {shelf}", "",
+                fixture.Library.AllTiles.Skip(shelf * 4).Take(shelf == 2 ? 2 : 4)
+                    .Select(tile => new FeedCardViewModel(tile, "Ready to play."))));
+        using var page = new FullscreenBrowsePage(fixture.Context, true);
+        var window = new Window { Width = 1920, Height = 1080, Content = page };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs(); page.FocusInitial();
+            var viewport = Viewport(page);
+            var first = viewport.GetRow(0);
+            var second = viewport.GetRow(1);
+            Assert.True(Cards(first)[3].Focus());
+            page.Handle(GamepadButtons.Down);
+            Assert.Same(Cards(second)[3], window.FocusManager!.GetFocusedElement());
+            Assert.True(Cards(second)[1].Focus());
+            page.Handle(GamepadButtons.Up);
+            Assert.Same(Cards(first)[1], window.FocusManager.GetFocusedElement());
+            Assert.True(Cards(first)[3].Focus());
+            page.Handle(GamepadButtons.PageNext);
+            Assert.Same(Cards(second)[3], window.FocusManager.GetFocusedElement());
+            page.Handle(GamepadButtons.Down);
+            Assert.Same(Cards(viewport.GetRow(2))[1], window.FocusManager.GetFocusedElement());
+            page.Handle(GamepadButtons.Up);
+            Assert.Same(second, viewport.GetRow(1));
+            Assert.Same(Cards(second)[1], window.FocusManager.GetFocusedElement());
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
     public async Task Fullscreen_shell_keeps_outgoing_cards_opaque_across_all_row_transitions()
     {
         using var fixture = new Fixture();

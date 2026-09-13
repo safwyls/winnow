@@ -715,7 +715,9 @@ two lines at the chosen text size and truncates overflow with an ellipsis, so de
 length does not resize the cover shelf. Titles keep one line at the reference title size and
 ellipsize overflow; opening game details reveals the full title. Title length never consumes
 a second row or reduces the preferred cover size. Up/down changes
-shelves; left/right moves among their games. The selected cover has the only focus ring.
+shelves; left/right moves among their games. Changing shelves carries the current visible
+column, clamping to the last card in a shorter row. Each shelf retains its overflow page,
+but does not restore a separate selected column. The selected cover has the only focus ring.
 The shelf title has no numeric fraction. A vertical rail at the right shows previous/next
 chevrons and one dot per shelf: the current dot is filled with Volt, the others are outlined
 in TextDim. Endpoint arrows dim when unavailable. Mouse users can click arrows or dots;

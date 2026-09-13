@@ -331,6 +331,11 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         if (_pending) { _pending = false; Rebuild(); FocusInitial(); }
         index = Math.Clamp(index, 0, Math.Max(0, Context.Feed.Shelves.Count - 1));
         if (_rowViewport is null || index == _shelf) return;
+        var shelf = Context.Feed.Shelves[index];
+        var position = Math.Clamp(_shelfPositions.GetValueOrDefault(shelf.Id), 0, Math.Max(0, shelf.Cards.Count - 1));
+        // Keep the destination's overflow page, but carry focus vertically from the current column.
+        _shelfPositions[shelf.Id] = Math.Min(position / _shelfCapacity * _shelfCapacity + _card % _shelfCapacity,
+            Math.Max(0, shelf.Cards.Count - 1));
         _shelf = index;
         _rowViewport.Show(index);
         UpdateHomeSelection();
