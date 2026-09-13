@@ -93,13 +93,13 @@ public sealed class FullscreenBackdrop : Panel
             Children.Add(new Border { Background = new LinearGradientBrush
             {
                 StartPoint = new RelativePoint(0, .5, RelativeUnit.Relative), EndPoint = new RelativePoint(1, .5, RelativeUnit.Relative),
-                GradientStops = [new GradientStop(ground, 0), new GradientStop(Color.FromArgb(220, ground.R, ground.G, ground.B), .58),
-                    new GradientStop(Color.FromArgb(55, ground.R, ground.G, ground.B), .85), new GradientStop(clearGround, 1)]
+                GradientStops = [new GradientStop(ground, 0), new GradientStop(Color.FromArgb(220, ground.R, ground.G, ground.B), .32),
+                    new GradientStop(Color.FromArgb(55, ground.R, ground.G, ground.B), .7), new GradientStop(clearGround, 1)]
             } });
             Children.Add(new Border { Background = new LinearGradientBrush
             {
                 StartPoint = new RelativePoint(.5, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(.5, 1, RelativeUnit.Relative),
-                GradientStops = [new GradientStop(ground, 0), new GradientStop(Color.FromArgb(220, ground.R, ground.G, ground.B), .1),
+                GradientStops = [new GradientStop(ground, 0), new GradientStop(Color.FromArgb(150, ground.R, ground.G, ground.B), .1),
                     new GradientStop(clearGround, .2)]
             } });
         }

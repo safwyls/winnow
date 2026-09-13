@@ -801,8 +801,9 @@ Reduced motion swaps the loaded art immediately. A cover fallback
 appears only after landscape metadata or loading fails, never as an intermediate image
 between two landscapes. Ignore results from earlier selections.
 Game artwork fades in further to the right to keep the left content area quiet: browsing
-backdrops reveal between 30% and 85% of the canvas width, and the details veil stays dense
-through 58% before opening toward the right edge.
+backdrops reveal between 30% and 85% of the canvas width. The details veil stays dense
+through 32% before opening toward the right edge, leaving the hero artwork visible beside
+the title; its top veil keeps controller status and the clock legible.
 
 Below 21:9, fullscreen Steam and SteamGridDB heroes fill the canvas with a centered crop and the
 canvas-wide vertical fade. Request enough source pixels to fill the crop's height.
@@ -845,14 +846,20 @@ and high-resolution cache entry; its source quality remains the upper limit on s
 The header shows B and the previous page name plus controller status and the clock. The
 root navigation and wordmark return when leaving details.
 
-The game title starts at 96px, uses 72px for long names and wraps to at most two lines in a bounded left region. The
-primary action is larger than adjacent actions while retaining transparent underline focus.
-Overview is a bounded composition without a scroll fold. A vertical rule separates the
-history/return reason and Play history/About game actions from a two-line synopsis and two
-visible screenshot previews. About game opens the full description, publisher and reception
-in a reading page. LT/RT changes local sections; all management actions remain controller-accessible.
-Play history, About game and screenshot previews form one left-to-right focus row matching
-their placement; Up returns to the section tabs.
+The game title starts at 80px, uses 72px for long names and wraps to at most two lines in a bounded left region. The
+primary action uses a filled Volt treatment with VoltInk text and an icon; More remains
+secondary. The compact hero brings the section tabs closer to the actions. The active tab
+has a persistent underline; controller focus has a separate treatment.
+Overview gives roughly 30% of its width to personal history and 70% to About, separated
+by a quiet vertical rule. Hours played and time since last played lead the history panel,
+followed by the last-played date, status or unread-update reason and Play history. A saved
+journal note appears below with Open journal; no example note or empty note panel appears.
+About shows a three-line synopsis with Read more beside its heading, followed immediately
+by two larger screenshot previews with View gallery beside the screenshot heading when images exist. Read more opens the full
+description, publisher and reception in a reading page. Missing screenshots leave no empty
+frames. The overview can scroll when large text or a long title needs more room.
+LT/RT changes local sections; directional focus follows the content groups and keeps
+offscreen actions reachable. Desktop details retain their existing composition.
 
 **Activity** is a personal history view. Sessions, Updates and Journal are local choices
 reached with directional navigation; bumpers continue switching the main screens. Large

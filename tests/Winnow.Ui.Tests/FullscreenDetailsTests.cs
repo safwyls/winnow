@@ -24,10 +24,48 @@ namespace Winnow.Ui.Tests;
 public sealed class FullscreenDetailsTests
 {
     [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Overview_previews_only_the_latest_saved_note_and_omits_missing_content(bool hasNotes)
+    {
+        var now = DateTime.UtcNow;
+        using var database = new TempDatabase();
+        var journal = new GameJournalViewModel(hasNotes
+            ? [new SessionJournalEntry { SessionId = 1, OwnershipId = 1, SessionAt = now.AddDays(-2), Note = "An older saved note." },
+                new SessionJournalEntry { SessionId = 2, OwnershipId = 1, SessionAt = now.AddDays(-1), Note = "Return to the mountain camp." }]
+            : [], true, new Winnow.Data.Repositories.SessionRepository(database.Factory));
+        using var details = new GameDetailsViewModel(TileFixture.Tile(now), "Never played", [], now, journal: journal);
+        using var page = new FullscreenDetailsPage(null!, details);
+        var window = new Window { Width = 1920, Height = 1080, Content = page };
+        window.Show();
+        try
+        {
+            Dispatcher.UIThread.RunJobs();
+            var text = page.GetVisualDescendants().OfType<TextBlock>().Select(block => block.Text).ToArray();
+            Assert.Equal(hasNotes, text.Any(value => value?.Contains("Return to the mountain camp.") == true));
+            Assert.DoesNotContain(text, value => value?.Contains("An older saved note.") == true);
+            Assert.DoesNotContain(text, value => value == journal.EmptyText);
+            Assert.DoesNotContain(page.GetVisualDescendants().OfType<Grid>(), grid => grid.Name == "FullscreenOverviewScreenshots");
+            Assert.DoesNotContain(text, value => value == "RECEPTION");
+            Assert.Contains(details.EmptyBodyText, text);
+            var openJournal = page.GetVisualDescendants().OfType<Button>().SingleOrDefault(button => Equals(button.Content, "Open journal"));
+            if (hasNotes)
+            {
+                Assert.NotNull(openJournal);
+                openJournal.Focus();
+                page.Handle(GamepadButtons.Accept);
+                Assert.Equal(2, page.SelectedSection);
+            }
+            else Assert.Null(openJournal);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
-    public void Overview_actions_and_screenshots_are_horizontal_neighbors(int screenshotCount)
+    public void Overview_controller_moves_between_actions_and_the_screenshot_row(int screenshotCount)
     {
         var now = DateTime.UtcNow;
         using var details = new GameDetailsViewModel(TileFixture.Tile(now, title: "Across the room"), "Started", [], now,
@@ -41,37 +79,51 @@ public sealed class FullscreenDetailsTests
             Dispatcher.UIThread.RunJobs();
             var buttons = page.GetVisualDescendants().OfType<Button>().ToArray();
             var history = Assert.Single(buttons, button => Equals(button.Content, "Play history"));
-            var about = Assert.Single(buttons, button => Equals(button.Content, "About game"));
+            var about = Assert.Single(buttons, button => Equals(button.Content, "Read more"));
             var screenshots = buttons.Where(button => button.Content is Image).ToArray();
             Assert.Equal(screenshotCount, screenshots.Length);
             page.FocusInitial();
             var primary = window.FocusManager!.GetFocusedElement();
-            Assert.Equal(details.PrimaryAction?.Label ?? "More", Assert.IsType<Button>(primary).Content);
+            Assert.IsType<Button>(primary);
             page.Handle(GamepadButtons.Down);
             var tab = window.FocusManager.GetFocusedElement();
+            page.Handle(GamepadButtons.Right);
+            var focusedTab = Assert.IsType<Button>(window.FocusManager.GetFocusedElement());
+            Assert.Equal(0, page.SelectedSection);
+            Assert.DoesNotContain("current", focusedTab.Classes);
+            Assert.Equal(0, Assert.IsAssignableFrom<ISolidColorBrush>(focusedTab.BorderBrush).Color.A);
+            Assert.True(Assert.IsAssignableFrom<ISolidColorBrush>(Assert.IsType<Button>(tab).BorderBrush).Color.A > 0);
+            page.Handle(GamepadButtons.Left);
             page.Handle(GamepadButtons.Down);
             Assert.Same(history, window.FocusManager.GetFocusedElement());
             page.Handle(GamepadButtons.Right);
             Assert.Same(about, window.FocusManager.GetFocusedElement());
-            page.Handle(GamepadButtons.Down);
-            Assert.Same(about, window.FocusManager.GetFocusedElement());
-            foreach (var screenshot in screenshots)
+            if (screenshots.Length > 0)
             {
-                page.Handle(GamepadButtons.Right);
-                Assert.Same(screenshot, window.FocusManager.GetFocusedElement());
-                page.Handle(GamepadButtons.Up);
-                Assert.Contains(Assert.IsType<Button>(window.FocusManager.GetFocusedElement()).Content, new object[] { "Journal", "Library" });
                 page.Handle(GamepadButtons.Down);
-                Assert.Same(screenshot, window.FocusManager.GetFocusedElement());
+                var gallery = Assert.Single(buttons, button => Equals(button.Content, "View gallery"));
+                Assert.Same(gallery, window.FocusManager.GetFocusedElement());
+                page.Handle(GamepadButtons.Down);
+                Assert.Contains(window.FocusManager.GetFocusedElement(), screenshots);
+                screenshots[0].Focus();
+                foreach (var screenshot in screenshots.Skip(1))
+                {
+                    page.Handle(GamepadButtons.Right);
+                    Assert.Same(screenshot, window.FocusManager.GetFocusedElement());
+                }
+                page.Handle(GamepadButtons.Right);
+                Assert.Same(screenshots[^1], window.FocusManager.GetFocusedElement());
+                page.Handle(GamepadButtons.Up);
+                Assert.Same(gallery, window.FocusManager.GetFocusedElement());
+                page.Handle(GamepadButtons.Up);
+                Assert.Contains(window.FocusManager.GetFocusedElement(), new[] { history, about });
             }
-            page.Handle(GamepadButtons.Right);
-            Assert.Same(screenshots.LastOrDefault() ?? about, window.FocusManager.GetFocusedElement());
-            var neighbors = new[] { history, about }.Concat(screenshots).ToArray();
-            for (var index = neighbors.Length - 2; index >= 0; index--)
+            else
             {
-                page.Handle(GamepadButtons.Left);
-                Assert.Same(neighbors[index], window.FocusManager.GetFocusedElement());
+                page.Handle(GamepadButtons.Down);
+                Assert.Same(about, window.FocusManager.GetFocusedElement());
             }
+            history.Focus();
             Assert.Same(history, window.FocusManager.GetFocusedElement());
             page.Handle(GamepadButtons.Up);
             Assert.Same(tab, window.FocusManager.GetFocusedElement());
@@ -82,10 +134,11 @@ public sealed class FullscreenDetailsTests
     }
 
     [AvaloniaTheory]
-    [InlineData(true, false)]
-    [InlineData(false, false)]
-    [InlineData(true, true)]
-    public void Cinematic_details_lease_saved_landscape_across_the_canvas_and_release_on_close(bool userBackground, bool longTitle)
+    [InlineData(true, false, false)]
+    [InlineData(false, false, false)]
+    [InlineData(true, true, false)]
+    [InlineData(true, false, true)]
+    public void Cinematic_details_lease_saved_landscape_across_the_canvas_and_release_on_close(bool userBackground, bool longTitle, bool hasJournal)
     {
         // An original geometric landscape exercises real bitmap decoding/display without live library art.
         using var pixels = new RenderTargetBitmap(new PixelSize(1600, 900));
@@ -113,9 +166,17 @@ public sealed class FullscreenDetailsTests
         var library = new LibraryViewModel(new PreviewLibraryQueryRepository(), new PreviewOwnershipRepository(),
             new PreviewReleaseRepository(), new PreviewWorkRepository(), new PreviewUpdateEventRepository());
         using var context = new FullscreenContext(library, new FeedViewModel(new PreviewFeedService(), library), PreviewData.Shell, services);
-        using var details = new GameDetailsViewModel(TileFixture.Tile(DateTime.UtcNow, title: work.Name, work: work, steamAppId: "42",
+        var now = DateTime.UtcNow;
+        using var database = new TempDatabase();
+        var journal = hasJournal ? new GameJournalViewModel(
+            [new SessionJournalEntry { SessionId = 1, OwnershipId = 1, SessionAt = now.AddDays(-5),
+                Note = "Found the mountain camp. Next time, follow the coast toward the lighthouse." }],
+            true, new Winnow.Data.Repositories.SessionRepository(database.Factory)) : null;
+        using var details = new GameDetailsViewModel(TileFixture.Tile(now, title: work.Name, work: work, steamAppId: "42",
+            bucket: hasJournal ? LibraryBuckets.Bounced : LibraryBuckets.NeverPlayed,
+            playtimeMinutes: hasJournal ? 120 : 0, lastPlayedUtc: hasJournal ? now.AddDays(-5) : null,
             ownership: new Ownership { ReleaseId = 1, Store = "steam", Installed = true }),
-            "Never played", [], DateTime.UtcNow, covers: leases, images: images.Rows);
+            hasJournal ? "Started" : "Never played", [], now, covers: leases, images: images.Rows, journal: journal);
         using var view = new FullscreenView(context);
         context.Push(new FullscreenDetailsPage(context, details));
         var window = new Window { Width = 1920, Height = 1080, Content = view };
@@ -131,13 +192,42 @@ public sealed class FullscreenDetailsTests
             Assert.Equal(1, images.Reads);
             var hero = Assert.IsType<Grid>(Assert.IsType<Grid>(view.CurrentPage.Content).Children[0]);
             Assert.Empty(hero.GetVisualDescendants().OfType<Image>());
+            view.CurrentPage.FocusInitial();
+            var primary = Assert.IsType<Button>(window.FocusManager!.GetFocusedElement());
+            Assert.Equal("details-primary-action", Avalonia.Automation.AutomationProperties.GetAutomationId(primary));
+            Assert.True(Assert.IsAssignableFrom<ISolidColorBrush>(primary.Background).Color.A > 0);
+            Assert.NotEqual(Assert.IsAssignableFrom<ISolidColorBrush>(primary.Background).Color,
+                Assert.IsAssignableFrom<ISolidColorBrush>(primary.Foreground).Color);
+            var overview = Assert.Single(view.CurrentPage.GetVisualDescendants().OfType<Grid>(), grid => grid.Name == "FullscreenDetailsOverview");
+            Assert.True(overview.Children[1].Bounds.Width > overview.Children[0].Bounds.Width * 2);
+            var initialScroll = Assert.Single(view.CurrentPage.GetVisualDescendants().OfType<ScrollViewer>());
+            var initialStrip = Assert.Single(view.CurrentPage.GetVisualDescendants().OfType<Grid>(), grid => grid.Name == "FullscreenOverviewScreenshots");
+            var gallery = Assert.Single(view.CurrentPage.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "View gallery"));
+            if (!longTitle)
+            {
+                foreach (var control in initialStrip.Children.Append(gallery))
+                {
+                    var position = control.TranslatePoint(default, initialScroll)!.Value;
+                    Assert.True(position.Y >= 0);
+                    Assert.True(position.Y + control.Bounds.Height <= initialScroll.Bounds.Height + 1,
+                        $"{control}: bottom {position.Y + control.Bounds.Height} exceeds viewport {initialScroll.Bounds.Height}.");
+                }
+            }
+            if (hasJournal)
+            {
+                var text = overview.GetVisualDescendants().OfType<TextBlock>().Select(block => block.Text).ToArray();
+                Assert.Contains(details.PlaytimeText, text);
+                Assert.Contains(details.IdleText, text);
+                Assert.Contains(journal!.Entries[0].Note, text);
+            }
             if (userBackground && Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
             {
                 Directory.CreateDirectory(directory);
                 AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                 Dispatcher.UIThread.RunJobs();
                 using var frame = window.CaptureRenderedFrame();
-                frame!.Save(Path.Combine(directory, longTitle ? "fullscreen-details-long-title.png" : "fullscreen-details-landscape.png"));
+                frame!.Save(Path.Combine(directory, hasJournal ? "fullscreen-details-journal.png"
+                    : longTitle ? "fullscreen-details-long-title.png" : "fullscreen-details-landscape.png"));
             }
             window.Width = 3840;
             window.Height = 2160;
@@ -150,15 +240,18 @@ public sealed class FullscreenDetailsTests
             var layout = Assert.IsType<Grid>(view.CurrentPage.Content);
             Assert.True(hero.Bounds.Bottom <= layout.Children[1].Bounds.Top);
             Assert.True(layout.Children[2].Bounds.Height > 100);
-            Assert.Empty(view.CurrentPage.GetVisualDescendants().OfType<ScrollViewer>());
+            var scroll = Assert.Single(view.CurrentPage.GetVisualDescendants().OfType<ScrollViewer>());
             var strip = Assert.Single(view.CurrentPage.GetVisualDescendants().OfType<Grid>(), grid => grid.Name == "FullscreenOverviewScreenshots");
             Assert.Equal(2, strip.Children.Count);
             foreach (var button in strip.Children.OfType<Button>())
             {
-                var position = button.TranslatePoint(default, layout)!.Value;
                 Assert.True(button.Bounds.Height >= 150);
-                Assert.True(position.Y + button.Bounds.Height <= layout.Bounds.Height + 1);
                 button.Focus();
+                view.CurrentPage.FocusInitial();
+                Dispatcher.UIThread.RunJobs();
+                var position = button.TranslatePoint(default, scroll)!.Value;
+                Assert.True(position.Y >= -1);
+                Assert.True(position.Y + button.Bounds.Height <= scroll.Bounds.Height + 1);
                 Assert.Same(button, window.FocusManager!.GetFocusedElement());
             }
             if (longTitle && Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } scaledDirectory)
@@ -168,7 +261,7 @@ public sealed class FullscreenDetailsTests
                 using var frame = window.CaptureRenderedFrame();
                 frame!.Save(Path.Combine(scaledDirectory, "fullscreen-details-long-title-140.png"));
             }
-            var about = Assert.Single(view.CurrentPage.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "About game"));
+            var about = Assert.Single(view.CurrentPage.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "Read more"));
             about.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
             Dispatcher.UIThread.RunJobs();
             Assert.IsType<FullscreenDetailsReadingPage>(view.CurrentPage);
@@ -269,7 +362,7 @@ public sealed class FullscreenDetailsTests
     }
 
     [AvaloniaFact]
-    public void Long_game_title_expands_the_hero_without_overlapping_section_navigation()
+    public void Long_game_title_and_actions_fit_the_hero_without_overlapping_section_navigation()
     {
         var now = DateTime.UtcNow;
         using var details = new GameDetailsViewModel(TileFixture.Tile(now, title: string.Join(" ", Enumerable.Repeat("A very long game title", 10))), "Never played", [], now);
@@ -282,7 +375,14 @@ public sealed class FullscreenDetailsTests
             var layout = Assert.IsType<Grid>(page.Content);
             var hero = layout.Children[0];
             var sections = layout.Children[1];
-            Assert.True(hero.Bounds.Height > 320);
+            foreach (var child in hero.GetVisualDescendants().OfType<Button>())
+            {
+                var position = child.TranslatePoint(default, hero)!.Value;
+                Assert.True(position.Y >= 0);
+                Assert.True(position.Y + child.Bounds.Height <= hero.Bounds.Height + 1);
+            }
+            var title = Assert.Single(hero.GetVisualDescendants().OfType<TextBlock>(), block => block.Classes.Contains("tv-title"));
+            Assert.True(title.Bounds.Height > title.FontSize);
             Assert.True(hero.Bounds.Bottom <= sections.Bounds.Top);
         }
         finally { window.Close(); }
@@ -427,7 +527,10 @@ public sealed class FullscreenDetailsTests
             Assert.Equal(0, page.SelectedSection);
             Assert.IsType<Button>(window.FocusManager!.GetFocusedElement());
             var first = (Button)window.FocusManager.GetFocusedElement()!;
-            Assert.Equal(details.PrimaryAction?.Label ?? "More", first.Content);
+            if (details.HasPrimaryAction)
+                Assert.Equal("details-primary-action", Avalonia.Automation.AutomationProperties.GetAutomationId(first));
+            else
+                Assert.Equal("More", first.Content);
             Assert.True(page.Handle(GamepadButtons.PageNext));
             Assert.Equal(1, page.SelectedSection);
             Assert.Equal(0, details.SelectedTabIndex);
