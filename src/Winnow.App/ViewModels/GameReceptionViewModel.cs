@@ -5,8 +5,8 @@ namespace Winnow.App.ViewModels;
 
 /// <summary>
 /// One attributed figure on the reception line: a source, a score, a count and
-/// a tooltip. The count travels with the score and is on the line, because a 9
-/// from four people and a 9 from four thousand are different claims.
+/// a tooltip. Counts remain in tooltips and accessible names when a compact
+/// presentation omits them from the visible line.
 /// </summary>
 public sealed class ReceptionFigureViewModel
 {
@@ -16,7 +16,7 @@ public sealed class ReceptionFigureViewModel
     /// <summary>The score as display text (e.g. "78" or "91%").</summary>
     public required string Value { get; init; }
 
-    /// <summary>The count as display text, on the line beside the score.</summary>
+    /// <summary>The count as display text for presentations that show it beside the score.</summary>
     public required string Count { get; init; }
 
     /// <summary>The full attribution on hover. Steam's own label appears here, not on the line.</summary>

@@ -1321,12 +1321,13 @@ wheel, Shift-wheel and horizontal trackpad input scroll the strip horizontally, 
 stays with the strip at either edge. The image path remains `CoverKey.IgdbScreenshot` through
 the existing cache and `t_screenshot_huge` rendition.
 
-**Reception follows the screenshots in Overview.** Up to three attributed figures appear in
-this order: IGDB users, IGDB critics, Steam. Each shows its value and respondent count on the
-line. They are never blended into a Winnow verdict. Steam's descriptive label appears in the
-tooltip alongside its percentage and count. A source with no figure contributes nothing.
-Values take `Text`; attribution and counts take `TextDim`. A `WrapPanel` lets complete figures
-wrap without dropping counts. A base-game relationship remains a single visible row;
+**Desktop reception sits beside the year and publisher in the details header.** Up to three
+attributed figures appear in this order: IGDB users, IGDB critics, Steam. Each shows its source
+and value; respondent counts and Steam's descriptive label appear in the hover tooltip and
+accessible name. They are never blended into a Winnow verdict. A source with no figure
+contributes nothing. Values take `Text`; attribution takes `TextDim`. A `WrapPanel` lets
+complete figures wrap on narrow windows. Fullscreen keeps counts in its About reading page,
+where controller users can read them without hovering. A base-game relationship remains a single visible row;
 expansion rows open behind a collapsed disclosure so long collections do not crowd Overview.
 
 **Activity retains the play evidence.** The tracker follows §10.2. Updates and Journal have dedicated tabs. UPDATES is

@@ -131,6 +131,14 @@ public sealed class DetailsRefreshParityTests
             Assert.Equal("1 unread update", tracker.UpdateSummary);
             Assert.Equal(2, details.Updates.Count);
             Assert.Equal("90", Assert.Single(details.Reception!.Figures).Value);
+            if (!fullscreen)
+            {
+                var headerRatings = view.FindControl<ItemsControl>("HeaderRatings")!;
+                Assert.True(headerRatings.IsEffectivelyVisible);
+                var figure = Assert.Single(details.Reception.Figures);
+                Assert.DoesNotContain(headerRatings.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == figure.Count);
+                Assert.Contains(headerRatings.GetVisualDescendants().OfType<StackPanel>(), panel => Equals(ToolTip.GetTip(panel), figure.Tooltip));
+            }
             Assert.Single(details.Screenshots!.Shots);
             Assert.Equal("newshot", details.Screenshots.Shots[0].Key.Id);
 
