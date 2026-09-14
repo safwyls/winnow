@@ -133,3 +133,14 @@
   .docs-prose h2 { font-size: 1.65rem; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+.docs-figure { margin: 28px 0; }
+.docs-figure img, .docs-demo video { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; background: #090a0f; }
+.docs-figure a { display: block; }
+.docs-figure figcaption { color: var(--dim); font-size: .78rem; line-height: 1.65; margin-top: 10px; }
+.docs-figure figcaption span { display: block; }
+.docs-demo { margin: 0 0 42px; }
+.docs-demo h2 { font-size: 1.8rem; margin: 12px 0; }
+.docs-demo > p:not(.eyebrow) { color: var(--dim); line-height: 1.7; margin-bottom: 20px; }
+.docs-demo details { margin-top: 16px; color: var(--dim); font-size: .85rem; line-height: 1.7; }
+.docs-demo summary { cursor: pointer; color: var(--volt); }
+.docs-demo ol { padding-left: 24px; }
