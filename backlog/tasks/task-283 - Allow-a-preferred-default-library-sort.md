@@ -3,9 +3,9 @@ id: TASK-283
 title: Allow a preferred default library sort
 status: Done
 assignee:
-  - '--plan'
+  - '@codex'
 created_date: '2026-09-14 03:13'
-updated_date: '2026-09-14 03:17'
+updated_date: '2026-09-14 03:33'
 labels: []
 dependencies: []
 ordinal: 325000
@@ -33,6 +33,8 @@ Persist a Library settings selector and apply it to both surfaces on startup and
 
 <!-- SECTION:NOTES:BEGIN -->
 Added Settings Library default sort selector on desktop and controller adjustment in fullscreen. Stored enum names in library.default-sort with safe fallback, applied at startup and on explicit preference changes. Browsing sorts remain temporary; manual lists preserve their order and use a changed default after exit. Verified 26 LibrarySettingsViewModel tests, 35 ListsViewModel tests, and 12 FullscreenSettings tests including desktop selector and controller interaction. Build completed without warnings; git diff check passed.
+
+Full UI regression run caught the new preference read on the UI thread; moved it into Task.Run and StartupReadThreadTests now passes.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

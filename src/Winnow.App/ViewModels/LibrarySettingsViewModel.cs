@@ -441,7 +441,7 @@ public partial class LibrarySettingsViewModel : ObservableObject
             var stored = await Task.Run(() => _settings.GetAsync(
                 BucketThresholds.ShowExplicitContentSettingKey, ct), ct);
 
-            var storedSort = await _settings.GetAsync(DefaultSortSettingKey, ct);
+            var storedSort = await Task.Run(() => _settings.GetAsync(DefaultSortSettingKey, ct), ct);
             _loading = true;
             try
             {
