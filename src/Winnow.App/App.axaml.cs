@@ -16,6 +16,8 @@ public partial class App : Application
     private ApplicationSettingsViewModel? _applicationSettings;
     private TrayIcon? _trayIcon;
     private bool _backgroundStart;
+    private TaskbarJumpListController? _jumpList;
+    private readonly SemaphoreSlim _activationQueue = new(1);
 
     public override void Initialize()
     {
@@ -62,9 +64,13 @@ public partial class App : Application
             _backgroundStart = Environment.GetCommandLineArgs()
                 .Contains("--background", StringComparer.Ordinal);
 
+            WindowsJumpList.SetAppId(Program.DataLocation.Root);
+            var shared = services.GetRequiredService<MainWindowViewModel>();
+            _jumpList = new TaskbarJumpListController(shared.Library, Program.DataLocation.Root);
+            desktop.Exit += (_, _) => _jumpList?.Dispose();
             _mainWindow = new MainWindow
             {
-                DataContext = services.GetRequiredService<MainWindowViewModel>(),
+                DataContext = shared,
                 StartHidden = _backgroundStart,
             };
             _mainWindow.TrayStateChanged += (_, _) => UpdateTrayVisibility();
@@ -83,11 +89,45 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
-        Program.InstanceActivation?.SetHandler(() => Avalonia.Threading.Dispatcher.UIThread.Post(RestoreMainWindow));
+        Program.InstanceActivation?.SetHandler((AppActivationRequest request) =>
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => HandleActivation(request)));
         Program.CompleteUpdateStartup();
     }
 
     private void OnTrayClicked(object? sender, EventArgs e) => RestoreMainWindow();
+
+    private async void HandleActivation(AppActivationRequest request)
+    {
+        RestoreMainWindow();
+        if (request.Kind == AppActivationKind.Activate) return;
+        if (request.Kind == AppActivationKind.Fullscreen)
+        {
+            if (_mainWindow is { IsFullscreen: false } main) main.ToggleFullscreen();
+            return;
+        }
+        await _activationQueue.WaitAsync();
+        try
+        {
+            RestoreMainWindow();
+            if (_mainWindow is not { } window) return;
+            if (request.Kind == AppActivationKind.LaunchGame)
+            {
+                if (!await window.StartupLibraryReady.WaitAsync(TimeSpan.FromSeconds(30))) return;
+                if (window.DataContext is MainWindowViewModel shared
+                    && shared.Library.TileForOwnership(request.OwnershipId) is { } tile)
+                {
+                    if (tile.IsPlayAction) await shared.Library.LaunchCommand.ExecuteAsync(tile);
+                    else shared.Library.OpenDetailsCommand.Execute(tile);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Program.AppHost?.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(App))
+                .LogWarning(ex, "Could not complete the taskbar action.");
+        }
+        finally { _activationQueue.Release(); }
+    }
 
     private void OnOpenFromTray(object? sender, EventArgs e) => RestoreMainWindow();
 

@@ -71,16 +71,16 @@ public sealed class FeedImpressionTests
         await FlushAsync();
         Assert.True(fixture.Window.IsActive);
         Assert.NotEmpty(fixture.Service.Seen);
-        Assert.DoesNotContain(fixture.Service.Seen, item => item.Release == 12);
+        Assert.DoesNotContain(fixture.Service.Seen, item => item.Release == 11);
         var firstCount = fixture.Service.Seen.Count;
         fixture.Page.Offset = new Vector(0, fixture.Page.Extent.Height);
         await FlushAsync();
-        Assert.DoesNotContain(fixture.Service.Seen, item => item.Release == 12);
+        Assert.DoesNotContain(fixture.Service.Seen, item => item.Release == 11);
         Assert.True(fixture.Service.Seen.Count > firstCount);
         var verticallyVisibleCount = fixture.Service.Seen.Count;
         fixture.ScrollLastShelfToEnd();
         await FlushAsync();
-        Assert.Contains(fixture.Service.Seen, item => item.Release == 12);
+        Assert.Contains(fixture.Service.Seen, item => item.Release == 11);
         Assert.True(fixture.Service.Seen.Count > verticallyVisibleCount);
         fixture.Page.Offset = default;
         await FlushAsync();
@@ -147,7 +147,7 @@ public sealed class FeedImpressionTests
         await FlushAsync();
         fixture.ScrollLastShelfToEnd();
         await FlushAsync();
-        Assert.Contains(fixture.Service.Seen, item => item.Release == 12);
+        Assert.Contains(fixture.Service.Seen, item => item.Release == 11);
     }
 
     [AvaloniaFact]

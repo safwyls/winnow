@@ -9,8 +9,8 @@ internal sealed class SingleInstanceActivation : IDisposable
     private readonly CancellationTokenSource _stop = new();
     private readonly object _gate = new();
     private readonly Task _listener;
-    private Action? _activate;
-    private bool _pending;
+    private Action<AppActivationRequest>? _activate;
+    private readonly Queue<AppActivationRequest> _pending = new();
 
     public SingleInstanceActivation(string directory)
     {
@@ -19,12 +19,30 @@ internal sealed class SingleInstanceActivation : IDisposable
         _listener = Task.Run(() => ListenAsync(name, pipe));
     }
 
-    public void SetHandler(Action activate)
+    public void SetHandler(Action activate) => SetHandler(_ => activate());
+
+    public void SetHandler(Action<AppActivationRequest> activate)
     {
         lock (_gate)
         {
             _activate = activate;
-            if (_pending) { _pending = false; activate(); }
+            while (_pending.TryDequeue(out var request)) activate(request);
+        }
+    }
+
+    public bool Enqueue(AppActivationRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        lock (_gate)
+        {
+            if (_activate is { } activate) activate(request);
+            else
+            {
+                if (_pending.Count > 0 && _pending.Last() == request) return true;
+                if (_pending.Count >= 64) return false;
+                _pending.Enqueue(request);
+            }
+            return true;
         }
     }
 
@@ -45,15 +63,20 @@ internal sealed class SingleInstanceActivation : IDisposable
                     await pipe.WriteAsync(BitConverter.GetBytes(Environment.ProcessId), exchange.Token);
                     var request = new byte[1];
                     await pipe.ReadExactlyAsync(request, exchange.Token);
-                    if (request[0] == 1)
+                    AppActivationRequest? action = request[0] switch
                     {
-                        lock (_gate)
-                        {
-                            if (_activate is { } activate) activate();
-                            else _pending = true;
-                        }
-                        await pipe.WriteAsync(new byte[] { 1 }, exchange.Token);
+                        1 => AppActivationRequest.Activate,
+                        2 => AppActivationRequest.Fullscreen,
+                        _ => null
+                    };
+                    if (request[0] == 3)
+                    {
+                        var payload = new byte[8];
+                        await pipe.ReadExactlyAsync(payload, exchange.Token);
+                        var id = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(payload);
+                        if (id > 0) action = AppActivationRequest.ForGame(id);
                     }
+                    await pipe.WriteAsync(new byte[] { action is not null && Enqueue(action) ? (byte)1 : (byte)0 }, exchange.Token);
                 }
                 catch (Exception ex) when (ex is IOException or OperationCanceledException) { }
             }
@@ -62,7 +85,10 @@ internal sealed class SingleInstanceActivation : IDisposable
         }
     }
 
-    public static async Task<bool> RequestAsync(string directory, TimeSpan? timeout = null)
+    public static Task<bool> RequestAsync(string directory, TimeSpan? timeout = null)
+        => RequestAsync(directory, AppActivationRequest.Activate, timeout);
+
+    public static async Task<bool> RequestAsync(string directory, AppActivationRequest request, TimeSpan? timeout = null)
     {
         using var deadline = new CancellationTokenSource(timeout ?? TimeSpan.FromSeconds(3));
         try
@@ -74,7 +100,11 @@ internal sealed class SingleInstanceActivation : IDisposable
             await pipe.ReadExactlyAsync(process, deadline.Token);
             // A newly launched process can pass its foreground permission to the existing UI.
             if (OperatingSystem.IsWindows()) AllowSetForegroundWindow(BitConverter.ToInt32(process));
-            await pipe.WriteAsync(new byte[] { 1 }, deadline.Token);
+            var payload = new byte[request.Kind == AppActivationKind.LaunchGame ? 9 : 1];
+            payload[0] = (byte)request.Kind;
+            if (payload.Length == 9)
+                System.Buffers.Binary.BinaryPrimitives.WriteInt64LittleEndian(payload.AsSpan(1), request.OwnershipId);
+            await pipe.WriteAsync(payload, deadline.Token);
             var reply = new byte[1];
             await pipe.ReadExactlyAsync(reply, deadline.Token);
             return reply[0] == 1;

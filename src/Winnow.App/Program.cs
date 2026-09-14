@@ -180,14 +180,16 @@ public static class Program
         // copy pointed at a throwaway --data-dir still runs — that is the
         // documented safe way to click around, and it is not the two-copies
         // failure this guard exists to prevent.
+        var activationRequest = AppActivationRequest.FromArguments(args);
         SingleInstance = Services.SingleInstanceGuard.TryAcquire(DataLocation.Root);
         if (SingleInstance is null)
         {
-            if (!SingleInstanceActivation.RequestAsync(DataLocation.Root).GetAwaiter().GetResult())
+            if (!SingleInstanceActivation.RequestAsync(DataLocation.Root, activationRequest).GetAwaiter().GetResult())
                 System.Diagnostics.Trace.TraceWarning("The existing Winnow session did not acknowledge activation.");
             return;
         }
         InstanceActivation = new SingleInstanceActivation(DataLocation.Root);
+        if (activationRequest.Kind != AppActivationKind.Activate) InstanceActivation.Enqueue(activationRequest);
 
         DiagnosticLogging.Configure(builder.Logging, DataLocation.Root);
 

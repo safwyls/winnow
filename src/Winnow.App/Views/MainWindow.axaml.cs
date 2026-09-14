@@ -374,6 +374,9 @@ public partial class MainWindow : Window
         }
     }
 
+    private readonly TaskCompletionSource<bool> _startupLibraryReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    internal Task<bool> StartupLibraryReady => _startupLibraryReady.Task;
+
     protected override async void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
@@ -399,15 +402,18 @@ public partial class MainWindow : Window
         try
         {
             await LoadOnOpenAsync();
+            _startupLibraryReady.TrySetResult(true);
             if (_shell is not null) await _shell.Setup.LoadAsync();
         }
         catch (OperationCanceledException)
         {
+            _startupLibraryReady.TrySetResult(false);
             // The window closed mid-load. Nothing was half-written that the
             // next launch does not resume, and a shutdown is not a failure.
         }
         catch (Exception ex)
         {
+            _startupLibraryReady.TrySetResult(false);
             LogStartupLoadFailure(ex);
         }
     }

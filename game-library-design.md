@@ -680,6 +680,16 @@ On Windows the launcher grants the owner foreground permission before requesting
 other desktops use Avalonia activation subject to the window manager's focus policy.
 An unavailable or older owner's activation channel times out quietly after three seconds.
 
+Windows taskbar jump lists use the same channel for typed fullscreen and ownership-launch
+requests. Links contain a positive local ownership id, never an arbitrary launch target;
+the receiving library resolves the current playable entry through its normal launch command.
+Cold-start launches wait for the window's library and presentation settings to finish loading.
+The taskbar publishes up to ten launchable games ordered by last play and a fullscreen task,
+refreshing when the library tiles change. Shell COM work runs on an STA worker. Removed
+destinations are retained in `jump-list-removed.json` under the data directory. Isolated
+libraries use distinct AppUserModelIDs and every task forwards its data directory. Shell
+failures leave the application usable; other platforms do not publish a jump list.
+
 ```mermaid
 graph TB
     subgraph UI["Avalonia UI (MVVM)"]
