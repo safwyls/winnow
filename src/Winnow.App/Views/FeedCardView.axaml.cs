@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Primitives.PopupPositioning;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Data;
@@ -23,7 +24,7 @@ public partial class FeedCardView : UserControl
     private FeedPreviewBubble? _bubble;
     private readonly Flyout _quickDetails = new()
     {
-        Placement = PlacementMode.RightEdgeAlignedTop,
+        Placement = PlacementMode.Custom,
         ShowMode = FlyoutShowMode.Transient,
         OverlayDismissEventPassThrough = true,
     };
@@ -32,6 +33,7 @@ public partial class FeedCardView : UserControl
     {
         InitializeComponent();
         FlyoutBase.SetAttachedFlyout(Card, _quickDetails);
+        _quickDetails.CustomPopupPlacementCallback = PlacePreview;
         Card.Click += (_, e) =>
         {
             if (!ReferenceEquals(e.Source, Card)) return;
@@ -183,8 +185,8 @@ public partial class FeedCardView : UserControl
         var origin = top is not null ? CoverFrame.TranslatePoint(default, top) ?? default : default;
         var rightSpace = (top?.Bounds.Width ?? 900) - origin.X - CoverFrame.Bounds.Width;
         var leftSide = rightSpace < 362 && origin.X > rightSpace;
-        _quickDetails.Placement = leftSide ? PlacementMode.LeftEdgeAlignedTop : PlacementMode.RightEdgeAlignedTop;
-        var width = Math.Clamp((leftSide ? origin.X : rightSpace) - 46, 180, 320);
+        var width = Math.Min(Math.Clamp((leftSide ? origin.X : rightSpace) - 46, 180, 320),
+            Math.Max(1, (top?.Bounds.Width ?? 900) - 58));
         var rows = new StackPanel { Spacing = 10, Width = width };
         TextBlock Text(string? value, int size = 13, bool quiet = false, bool title = false) => new()
         {
@@ -209,7 +211,7 @@ public partial class FeedCardView : UserControl
             BorderBrush = Resource<IBrush>("Line", Brushes.Gray),
             Child = new ScrollViewer
             {
-                Content = rows, MaxHeight = Math.Max(120, (top?.Bounds.Height ?? 600) - 100),
+                Content = rows, MaxHeight = Math.Max(1, (top?.Bounds.Height ?? 600) - 48),
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             },
         };
@@ -225,6 +227,22 @@ public partial class FeedCardView : UserControl
     {
         _hoverSuppressed = true;
         _quickDetails.Hide();
+    }
+
+    private void PlacePreview(CustomPopupPlacement placement)
+    {
+        if (TopLevel.GetTopLevel(this) is not { } top) return;
+        var origin = Card.TranslatePoint(default, top) ?? default;
+        var right = origin.X + CoverFrame.Bounds.Width;
+        var leftSide = top.Bounds.Width - right < placement.PopupSize.Width + 8 && origin.X > top.Bounds.Width - right;
+        var x = leftSide ? origin.X - placement.PopupSize.Width : right;
+        // Native popup constraints use the monitor; clamp to our client area first.
+        x = Math.Clamp(x, 8, Math.Max(8, top.Bounds.Width - placement.PopupSize.Width - 8));
+        var y = Math.Clamp(origin.Y, 8, Math.Max(8, top.Bounds.Height - placement.PopupSize.Height - 8));
+        placement.AnchorRectangle = new Rect(x, y, 1, 1);
+        placement.Anchor = PopupAnchor.TopLeft;
+        placement.Gravity = PopupGravity.BottomRight;
+        placement.Offset = default;
     }
 
     private void UpdateBubblePointer()

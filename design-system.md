@@ -2343,7 +2343,9 @@ Hero artwork fills the bubble at 18% opacity, clipped into the same rounded shap
 as its surface and outline. Artwork is leased only while the preview is open. Escape or light
 dismiss closes it. Rebinding or removing a card closes it too; an open
 quick view holds that card's feedback countdown. The bubble stays within the window's
-available size. Opening full details closes quick details first.
+client area with an 8px inset, shifting upward at the bottom edge even when the originating
+tile is partially scrolled out of view. Placement uses the measured bubble size rather than
+the monitor bounds. Opening full details closes quick details first.
 Portrait covers retain shared Fit/Fill and dormancy behavior.
 Fullscreen retains its page hero, shelves and controller action panel.
 

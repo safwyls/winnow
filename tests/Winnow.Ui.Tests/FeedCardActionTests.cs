@@ -20,6 +20,35 @@ namespace Winnow.Ui.Tests;
 
 public sealed class FeedCardActionTests
 {
+    [AvaloniaTheory]
+    [InlineData(20, 340)]
+    [InlineData(650, 340)]
+    [InlineData(650, -100)]
+    public void Preview_stays_inside_window_for_partially_visible_edge_tiles(double x, double y)
+    {
+        using var model = new FeedCardViewModel(TileFixture.Tile(DateTime.UtcNow), "Reason", new FeedbackService());
+        var view = new FeedCardView { DataContext = model, Width = 220 };
+        Canvas.SetLeft(view, x);
+        Canvas.SetTop(view, y);
+        var window = new Window { Width = 900, Height = 400, Content = new Canvas { Children = { view } } };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            window.MouseMove(new Point(x + 40, Math.Max(40, y + 20)));
+            Dispatcher.UIThread.RunJobs();
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Dispatcher.UIThread.RunJobs();
+            var flyout = Assert.IsType<Flyout>(FlyoutBase.GetAttachedFlyout(view.FindControl<Button>("Card")!));
+            Assert.True(flyout.IsOpen);
+            var content = Assert.IsType<FeedPreviewBubble>(flyout.Content);
+            var position = window.PointToClient(content.PointToScreen(default));
+            Assert.InRange(position.X, 0, window.Bounds.Width - content.Bounds.Width);
+            Assert.InRange(position.Y, 0, window.Bounds.Height - content.Bounds.Height);
+        }
+        finally { window.Close(); }
+    }
+
     [AvaloniaFact]
     public async Task Built_in_shelf_headers_explain_their_membership_in_tooltips()
     {
