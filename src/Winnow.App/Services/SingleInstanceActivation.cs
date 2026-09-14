@@ -46,8 +46,10 @@ internal sealed class SingleInstanceActivation : IDisposable
         }
     }
 
-    private static NamedPipeServerStream CreatePipe(string name) => new(name, PipeDirection.InOut,
-        1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+    private static NamedPipeServerStream CreatePipe(string name) => OperatingSystem.IsWindows()
+        ? WindowsActivationSecurity.CreatePipe(name)
+        : new(name, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
+            PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
 
     private async Task ListenAsync(string name, NamedPipeServerStream pipe)
     {
@@ -94,8 +96,10 @@ internal sealed class SingleInstanceActivation : IDisposable
         try
         {
             using var pipe = new NamedPipeClientStream(".", SingleInstanceGuard.ActivationNameFor(directory),
-                PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+                PipeDirection.InOut, PipeOptions.Asynchronous |
+                    (OperatingSystem.IsWindows() ? PipeOptions.None : PipeOptions.CurrentUserOnly));
             await pipe.ConnectAsync(deadline.Token);
+            if (OperatingSystem.IsWindows()) WindowsActivationSecurity.VerifyServer(pipe);
             var process = new byte[4];
             await pipe.ReadExactlyAsync(process, deadline.Token);
             // A newly launched process can pass its foreground permission to the existing UI.

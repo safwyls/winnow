@@ -676,6 +676,10 @@ A repeated launch sends a bounded request over a current-user named pipe and exi
 starting another host or showing an error. The owner queues requests until the UI is ready,
 then restores and activates its existing desktop or fullscreen window, preserving its
 presentation and navigation state. Separate `--data-dir` libraries remain independent.
+On Windows the mutex and pipe explicitly belong to the current user's SID, deny network
+logons, and carry medium integrity so Explorer can contact a session started from an
+administrator terminal. The client verifies the pipe owner's SID before exchanging requests.
+Other platforms retain the runtime's current-user-only pipe restriction.
 On Windows the launcher grants the owner foreground permission before requesting activation;
 other desktops use Avalonia activation subject to the window manager's focus policy.
 An unavailable or older owner's activation channel times out quietly after three seconds.

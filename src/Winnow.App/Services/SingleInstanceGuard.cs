@@ -38,7 +38,10 @@ internal static class SingleInstanceGuard
         // A crashed holder needs no AbandonedMutexException handling either:
         // the named mutex is destroyed when the last handle closes with the
         // process, so the next launch finds no name and starts clean.
-        var mutex = new Mutex(initiallyOwned: true, NameFor(dataDirectory), out var createdNew);
+        bool createdNew;
+        var mutex = OperatingSystem.IsWindows()
+            ? WindowsActivationSecurity.CreateMutex(NameFor(dataDirectory), out createdNew)
+            : new Mutex(initiallyOwned: true, NameFor(dataDirectory), out createdNew);
         if (!createdNew)
         {
             // Another copy created it first: this process is the second one.
