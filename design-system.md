@@ -762,7 +762,7 @@ navigation primitives.
 **For you** opens on a focused game in a horizontal cover shelf.
 Fullscreen makes the complete scored shelf available: up to six primary recommendations
 plus four reserve items. Show as many as fit at the chosen scale, with left/right navigation
-to overflow games; do not enlarge covers just to fill a short shelf. Desktop retains six
+to overflow games; do not enlarge covers just to fill a short shelf. Desktop retains five
 cards with a hidden replacement reserve. Only actual viewport entry records an impression.
 
 Fullscreen cards show cover art without a title caption beneath it in For you, Library and
@@ -780,7 +780,7 @@ jumps snap to the destination. Leaving a page stops the movement and releases it
 There is no card entrance fade. Desktop shelves use ordinary scrolling rather than this row transition.
 
 Recently played is the first shelf when play dates are available, ordered newest first.
-It holds up to ten games: six desktop cards and four additional games available in fullscreen.
+It holds up to ten games: five desktop cards and five additional games available in fullscreen.
 This collection has no recommendation verdict controls and records no feed impressions.
 Its order does not change with recommendation feedback or daily rotation.
 
@@ -2320,10 +2320,13 @@ returns to the saved membership and shows **Couldn't save list changes. Try agai
 the control. List actions use the same error copy beside the library actions, while modal
 actions keep their prompt and draft. Refreshing the library preserves a pending choice.
 
-Desktop For you uses six curated portrait covers per shelf, with a 180–240px cover
-width, 18px gaps and fixed 2:3 artwork bounds. Narrow windows scroll each shelf horizontally;
+Desktop For you uses five curated portrait covers per shelf, with a 180–240px cover
+width, 18px gaps and fixed 2:3 artwork bounds. Five covers fit the default 1280×820 window
+without horizontal scrolling. Narrower available areas can still scroll each shelf horizontally;
 Up/Down preserves the card column between shelves and Left/Right brings overflow into view.
-Short shelves keep the same slot sizes. The page scrolls vertically through shelf headings,
+Short shelves keep the same slot sizes. Additional desktop candidates enter the replacement
+queue ahead of the existing reserve and are not recorded as seen until displayed. Fullscreen
+keeps its full scored shelf. The page scrolls vertically through shelf headings,
 short explanations and rules fading toward the right. Titles and two-line recommendation
 excerpts stay below each cover; the complete reason remains in the accessible name.
 

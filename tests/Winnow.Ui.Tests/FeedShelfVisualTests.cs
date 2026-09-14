@@ -35,7 +35,7 @@ public sealed class FeedShelfVisualTests
         for (var shelf = 0; shelf < 2; shelf++)
         {
             var cards = new List<FeedCardViewModel>();
-            for (var i = 0; i < 6; i++)
+            for (var i = 0; i < 5; i++)
             {
                 var file = Path.Combine(source ?? "", $"steam_{ids[i]}.src.jpg");
                 var bitmap = source is not null && File.Exists(file) ? new Bitmap(file) : null;

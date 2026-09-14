@@ -3,7 +3,7 @@ using Avalonia.Controls;
 
 namespace Winnow.App.Views;
 
-/// <summary>A shelf of six curated cover slots, scrolling horizontally when they cannot fit.</summary>
+/// <summary>A shelf of five curated cover slots, scrolling horizontally when they cannot fit.</summary>
 public sealed class FeedGrid : Panel
 {
     public static readonly StyledProperty<double> MinItemWidthProperty =
@@ -47,7 +47,7 @@ public sealed class FeedGrid : Panel
     public static (int Columns, double ItemWidth) GeometryFor(double width, double minItemWidth, double gutter)
     {
         var minimum = Math.Max(1, minItemWidth);
-        if (!double.IsFinite(width) || width <= 0) return (6, minimum);
-        return (6, Math.Clamp(Math.Floor((width - 5 * gutter) / 6), minimum, Math.Max(minimum, 240)));
+        if (!double.IsFinite(width) || width <= 0) return (5, minimum);
+        return (5, Math.Clamp(Math.Floor((width - 4 * gutter) / 5), minimum, Math.Max(minimum, 240)));
     }
 }

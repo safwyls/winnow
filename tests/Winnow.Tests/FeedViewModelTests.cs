@@ -12,7 +12,37 @@ namespace Winnow.Tests;
 public sealed class FeedViewModelTests
 {
     [Theory]
-    [InlineData(false, 6, 4)]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Desktop_excess_items_lead_the_reserve_without_being_counted_seen(bool supplemental)
+    {
+        var tiles = new FakeTileSource();
+        var items = Enumerable.Range(1, 8).Select(id => Item(tiles, id, $"Reason {id}")).ToArray();
+        var source = Shelf(supplemental ? "plugin:extra" : "patched", "Shelf", "", items.Take(6).ToArray())
+            with { Reserve = items.Skip(6).ToArray() };
+        var snapshot = supplemental
+            ? Snapshot() with { AdditionalShelves = Task.FromResult(new FeedSupplement([source], 8)) }
+            : Snapshot(source);
+        var service = new FakeFeedService(snapshot);
+        using var feed = new FeedViewModel(service, tiles);
+        await feed.LoadCommand.ExecuteAsync(null);
+        await feed.AdditionalShelvesLoading;
+        var shelf = Assert.Single(feed.Shelves);
+        Assert.Equal(new long[] { 1, 2, 3, 4, 5 }, shelf.Cards.Select(c => c.Tile.ReleaseId));
+        Assert.Equal(new long[] { 6, 7, 8 }, shelf.Reserve.Select(c => c.ReleaseId));
+        foreach (var card in shelf.Cards) await feed.RecordViewportEntryAsync(card);
+        Assert.Equal(new long[] { 1, 2, 3, 4, 5 }, service.Surfaced.Select(c => c.ReleaseId));
+        await shelf.Cards[0].NotInterestedCommand.ExecuteAsync(null);
+        feed.Tick(TimeSpan.FromSeconds(6));
+        Assert.Equal(6, shelf.Cards[0].Tile.ReleaseId);
+        Assert.Equal(5, shelf.Cards.Count);
+        Assert.DoesNotContain(service.Surfaced, c => c.ReleaseId >= 6);
+        await feed.RecordViewportEntryAsync(shelf.Cards[0]);
+        Assert.Equal(6, service.Surfaced[^1].ReleaseId);
+    }
+
+    [Theory]
+    [InlineData(false, 5, 5)]
     [InlineData(true, 10, 0)]
     public async Task Recently_played_keeps_order_and_capacity_without_feedback(bool fullscreen, int visible, int reserve)
     {
@@ -93,7 +123,7 @@ public sealed class FeedViewModelTests
     }
 
     [Theory]
-    [InlineData(false, 6, 4)]
+    [InlineData(false, 5, 5)]
     [InlineData(true, 10, 0)]
     public async Task Fullscreen_can_present_the_scored_reserve_while_desktop_keeps_it_hidden(bool includeReserve, int visible, int reserve)
     {
@@ -222,20 +252,20 @@ public sealed class FeedViewModelTests
     {
         var tiles = new FakeTileSource();
 
-        // Six items is what `ready_to_play` actually holds on the real library.
+        // A shelf with fewer than five recommendations should remain complete.
         var snapshot = Snapshot(
             Shelf("ready_to_play", "Installed and waiting", "Already on your disk, nothing sunk.",
-                Enumerable.Range(1, 6).Select(i => Item(tiles, i, $"Reason {i}.")).ToArray()));
+                Enumerable.Range(1, 3).Select(i => Item(tiles, i, $"Reason {i}.")).ToArray()));
 
         var feed = new FeedViewModel(new FakeFeedService(snapshot), tiles);
         await feed.LoadCommand.ExecuteAsync(null);
 
         var shelf = Assert.Single(feed.Shelves);
-        Assert.Equal(6, shelf.Cards.Count);
+        Assert.Equal(3, shelf.Cards.Count);
 
-        // The count is what makes six read as an answer rather than as a
+        // The count is what makes three read as an answer rather than as a
         // half-loaded ten.
-        Assert.Equal("6", shelf.CountText);
+        Assert.Equal("3", shelf.CountText);
         Assert.True(feed.ShowShelves);
     }
 

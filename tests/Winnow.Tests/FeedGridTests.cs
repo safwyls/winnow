@@ -8,22 +8,22 @@ public sealed class FeedGridTests
     [Theory]
     [InlineData(500, 180)]
     [InlineData(888, 180)]
-    [InlineData(1170, 180)]
-    [InlineData(1290, 200)]
-    [InlineData(1530, 240)]
+    [InlineData(972, 180)]
+    [InlineData(1072, 200)]
+    [InlineData(1272, 240)]
     [InlineData(3112, 240)]
-    public void Six_slots_keep_covers_readable_and_bounded(double width, double expectedWidth)
+    public void Five_slots_keep_covers_readable_and_bounded(double width, double expectedWidth)
     {
         var (columns, itemWidth) = FeedGrid.GeometryFor(width, 180, 18);
-        Assert.Equal(6, columns);
+        Assert.Equal(5, columns);
         Assert.Equal(expectedWidth, itemWidth);
     }
 
     [Theory]
-    [InlineData(1170)]
-    [InlineData(1287)]
-    [InlineData(1530)]
-    public void Six_covers_fill_the_available_width_until_the_size_cap(double width)
+    [InlineData(972)]
+    [InlineData(1100)]
+    [InlineData(1272)]
+    public void Five_covers_fill_the_available_width_until_the_size_cap(double width)
     {
         var (columns, itemWidth) = FeedGrid.GeometryFor(width, 180, 18);
         var used = columns * itemWidth + (columns - 1) * 18;
@@ -44,6 +44,6 @@ public sealed class FeedGridTests
     [InlineData(0)]
     public void Unmeasured_viewports_use_a_finite_readable_cover(double width)
     {
-        Assert.Equal((6, 180d), FeedGrid.GeometryFor(width, 180, 18));
+        Assert.Equal((5, 180d), FeedGrid.GeometryFor(width, 180, 18));
     }
 }
