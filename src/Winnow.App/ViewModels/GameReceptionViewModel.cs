@@ -15,6 +15,10 @@ public sealed class ReceptionFigureViewModel
 
     /// <summary>The score as display text (e.g. "78" or "91%").</summary>
     public required string Value { get; init; }
+    public string? Label { get; init; }
+    public string CompactValue => Label ?? Value;
+    public string CompactSource => Source == GameReceptionCopy.SourceIgdbUsers ? "IGDB"
+        : Source == GameReceptionCopy.SourceIgdbCritics ? "IGDB critics" : "Steam";
 
     /// <summary>The count as display text for presentations that show it beside the score.</summary>
     public required string Count { get; init; }
@@ -55,6 +59,9 @@ public sealed class GameReceptionViewModel
 
     /// <summary>True when at least one source contributed a figure.</summary>
     public bool HasFigures => Figures.Count > 0;
+    public string CompactText => string.Join(" · ", Figures.Select(figure => $"{figure.CompactSource} {figure.CompactValue}"));
+    public string Tooltip => string.Join("\n", Figures.Select(figure => figure.Tooltip));
+    public string CompactAutomationName => string.Join("; ", Figures.Select(figure => figure.AutomationName));
 
     /// <summary>Accessible name for the whole line.</summary>
     public string AutomationName => GameReceptionCopy.LineAutomationName;
@@ -97,6 +104,7 @@ public sealed class GameReceptionViewModel
             {
                 Source = GameReceptionCopy.SourceSteam,
                 Value = $"{percent:N0}%",
+                Label = string.IsNullOrWhiteSpace(steam.Label) ? "Unclassified" : steam.Label,
                 Count = GameReceptionCopy.SteamCount(count),
                 Tooltip = GameReceptionCopy.SteamTooltip(steam.Label, percent, count),
                 AutomationName = GameReceptionCopy.SteamAutomationName(steam.Label, percent, count),

@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-14 01:55'
-updated_date: '2026-09-14 02:01'
+updated_date: '2026-09-14 02:08'
 labels: []
 dependencies: []
 ordinal: 322000
@@ -35,6 +35,8 @@ Expose a repository-backed ratings loader on library tiles, load it during previ
 Desktop preview loads work ratings through a library-owned repository delegate and renders shared reception figures with source, score and count. No enrichment/network fetch is triggered. Requests cancel with preview lifetime and stale results are ignored. Missing scores occupy no space. Fullscreen already renders shared reception on its details presentation and is unchanged. Build passed without warnings; 29 focused UI tests passed, including 5 new ratings cases and async growth remaining within window bounds.
 
 User follow-up: moved desktop details reception from Overview to the identity header beside year/publisher. Visible figures now show source and value only; existing tooltips and accessible names retain counts. Fullscreen retains counts in its About reading page for controller access. Updated design guidance and verified 10 details refresh/mapping tests, including header visibility across tabs and tooltip-only counts.
+
+User follow-up: details header and feed preview now share one compact middle-dot-separated rating line. Counts are tooltip-only; Steam uses its stored qualitative label, while percentage and count stay in full tooltip/accessibility text. Preview ratings use TextDim. The feed tile also exposes that tooltip because entering the preview dismisses it. Fullscreen retains numeric reception in its controller-readable About page. Verified 31 focused UI tests; reran 23 feed tests after adding tile tooltip.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

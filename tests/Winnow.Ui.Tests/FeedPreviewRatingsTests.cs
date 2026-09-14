@@ -32,14 +32,16 @@ public sealed class FeedPreviewRatingsTests
         Assert.Equal(1, requests);
         var ratings = fixture.RatingsControl;
         Assert.True(ratings.IsEffectivelyVisible);
-        var lines = ratings.GetVisualDescendants().OfType<TextBlock>().ToArray();
-        var expected = GameReceptionViewModel.From(Ratings())!.Figures;
-        Assert.Equal(3, lines.Length);
-        for (var i = 0; i < lines.Length; i++)
+        var expected = GameReceptionViewModel.From(Ratings())!;
+        Assert.Equal(expected.CompactText, ratings.Text);
+        Assert.Equal(expected.Tooltip, ToolTip.GetTip(ratings));
+        foreach (var figure in expected.Figures)
         {
-            Assert.Equal($"{expected[i].Source}  {expected[i].Value} · {expected[i].Count}", lines[i].Text);
-            Assert.Equal(expected[i].AutomationName, AutomationProperties.GetName(lines[i]));
+            Assert.DoesNotContain(figure.Count, ratings.Text!);
+            Assert.Contains(figure.Tooltip, (string)ToolTip.GetTip(ratings)!);
         }
+        Assert.Contains("Very Positive", ratings.Text!);
+        Assert.DoesNotContain("%", ratings.Text!);
         fixture.Window.MouseMove(new Point(880, 380));
         Pump();
         Assert.False(fixture.Flyout.IsOpen);
@@ -103,7 +105,7 @@ public sealed class FeedPreviewRatingsTests
 
     private static IReadOnlyList<WorkRating> Ratings() =>
     [
-        Rating(RatingSources.Steam, 93, 1500),
+        Rating(RatingSources.Steam, 93, 1500) with { Label = "Very Positive" },
         Rating(RatingSources.IgdbCritics, 88, 12),
         Rating(RatingSources.IgdbUsers, 81, 100),
     ];
@@ -134,7 +136,7 @@ public sealed class FeedPreviewRatingsTests
         public FeedCardView View { get; }
         public Flyout Flyout => Assert.IsType<Flyout>(FlyoutBase.GetAttachedFlyout(View.FindControl<Button>("Card")!));
         public FeedPreviewBubble Bubble => Assert.IsType<FeedPreviewBubble>(Flyout.Content);
-        public ItemsControl RatingsControl => Bubble.GetVisualDescendants().OfType<ItemsControl>()
+        public TextBlock RatingsControl => Bubble.GetVisualDescendants().OfType<TextBlock>()
             .Single(control => control.Name == "PreviewRatings");
 
         public PreviewFixture(Func<CancellationToken, Task<IReadOnlyList<WorkRating>>> load, double y = 20)

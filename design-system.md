@@ -1322,11 +1322,12 @@ stays with the strip at either edge. The image path remains `CoverKey.IgdbScreen
 the existing cache and `t_screenshot_huge` rendition.
 
 **Desktop reception sits beside the year and publisher in the details header.** Up to three
-attributed figures appear in this order: IGDB users, IGDB critics, Steam. Each shows its source
-and value; respondent counts and Steam's descriptive label appear in the hover tooltip and
-accessible name. They are never blended into a Winnow verdict. A source with no figure
-contributes nothing. Values take `Text`; attribution takes `TextDim`. A `WrapPanel` lets
-complete figures wrap on narrow windows. Fullscreen keeps counts in its About reading page,
+attributed figures appear in this order: IGDB users, IGDB critics, Steam, on one line separated
+by middle dots. IGDB shows scores; Steam shows its published label, such as “Very Positive”.
+Respondent counts and Steam's percentage remain in the hover tooltip and accessible name.
+They are never blended into a Winnow verdict. A source with no figure contributes nothing.
+The line moves below the identity text when necessary and trims at narrow widths; the tooltip
+retains every figure. Fullscreen keeps percentages and counts in its About reading page,
 where controller users can read them without hovering. A base-game relationship remains a single visible row;
 expansion rows open behind a collapsed disclosure so long collections do not crowd Overview.
 
@@ -2337,8 +2338,9 @@ when space is tighter on the right. A connected triangular pointer aims at the c
 Leaving the tile immediately closes the bubble, including when moving onto the bubble itself.
 Clicking the artwork, Enter or Space opens full details directly. Only one preview opens at
 a time. It presents a bold title, quieter store and play metadata, available IGDB user and
-critic scores and Steam's positive-review percentage with their counts, and an optional
-four-line summary, with no actions. Ratings use the shared reception formatting and are
+critic scores and Steam's published review label, and an optional four-line summary, with no
+actions. Ratings occupy one subdued `TextDim` line with middle-dot separators; counts and
+Steam's percentage are retained in tooltip and accessible text. Ratings use shared reception formatting and are
 loaded from local storage while the preview is open; absent sources occupy no space.
 The recommendation reason stays below the cover rather than
 repeating in the preview.

@@ -396,37 +396,12 @@
                                                              IsVisible="{Binding HasPublisher}"
                                                              Text="{Binding Publisher}"/>
                                     </Grid>
-                                    <ItemsControl Name="HeaderRatings" ItemsSource="{Binding Reception.Figures}"
-                                                      IsVisible="{Binding ShowReception}"
-                                                      AutomationProperties.Name="{Binding Reception.AutomationName}"
-                                                      AutomationProperties.AccessibilityView="Control"
-                                                      AutomationProperties.ControlTypeOverride="Group">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <WrapPanel Orientation="Horizontal"/>
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="vm:ReceptionFigureViewModel">
-                                                <StackPanel Orientation="Horizontal"
-                                                                Spacing="6"
-                                                                Margin="0,0,14,0"
-                                                                ToolTip.Tip="{Binding Tooltip}"
-                                                                AutomationProperties.Name="{Binding AutomationName}"
-                                                                AutomationProperties.AccessibilityView="Control">
-                                                        <TextBlock Classes="label"
-                                                                   FontSize="10"
-                                                                   VerticalAlignment="Center"
-                                                                   Text="{Binding Source}"/>
-                                                        <TextBlock Classes="data"
-                                                                   FontSize="13"
-                                                                   VerticalAlignment="Center"
-                                                                   Foreground="{StaticResource Text}"
-                                                                   Text="{Binding Value}"/>
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
+                                    <TextBlock Name="HeaderRatings" Classes="body" FontSize="12"
+                                               Text="{Binding Reception.CompactText}"
+                                               IsVisible="{Binding ShowReception}"
+                                               ToolTip.Tip="{Binding Reception.Tooltip}"
+                                               AutomationProperties.Name="{Binding Reception.CompactAutomationName}"
+                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
                                 </WrapPanel>
                                 <TextBlock Classes="body"
                                            FontSize="12"

@@ -1,7 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
-using Avalonia.Controls.Templates;
 using Avalonia.Automation;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Primitives.PopupPositioning;
@@ -199,17 +198,13 @@ public partial class FeedCardView : UserControl
         };
         rows.Children.Add(Text(tile.Title, 22, title: true));
         rows.Children.Add(Text($"{tile.StoreNames} · {tile.StatText}", quiet: true));
-        var ratings = new ItemsControl
-        {
-            Name = "PreviewRatings",
-            ItemTemplate = new FuncDataTemplate<ReceptionFigureViewModel>((figure, _) =>
-            {
-                var line = Text($"{figure!.Source}  {figure.Value} · {figure.Count}");
-                AutomationProperties.SetName(line, figure.AutomationName);
-                return line;
-            }),
-        };
-        ratings.Bind(ItemsControl.ItemsSourceProperty, new Binding("Reception.Figures") { Source = card });
+        var ratings = Text(null, 12, quiet: true);
+        ratings.Name = "PreviewRatings";
+        ratings.TextWrapping = TextWrapping.NoWrap;
+        ratings.TextTrimming = TextTrimming.CharacterEllipsis;
+        ratings.Bind(TextBlock.TextProperty, new Binding("Reception.CompactText") { Source = card });
+        ratings.Bind(ToolTip.TipProperty, new Binding("Reception.Tooltip") { Source = card });
+        ratings.Bind(AutomationProperties.NameProperty, new Binding("Reception.CompactAutomationName") { Source = card });
         ratings.Bind(IsVisibleProperty, new Binding("Reception.HasFigures") { Source = card, FallbackValue = false });
         rows.Children.Add(ratings);
         if (!string.IsNullOrWhiteSpace(tile.Summary))
