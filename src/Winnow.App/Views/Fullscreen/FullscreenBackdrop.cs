@@ -375,7 +375,10 @@ public sealed class FullscreenBackdrop : Panel
         {
             StartPoint = new RelativePoint(.5, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(.5, 1, RelativeUnit.Relative),
             GradientStops = FitsWholeHero(key)
-                ? [new GradientStop(clear, 0), new GradientStop(clear, .85), new GradientStop(ground, 1)]
+                ? [new GradientStop(clear, 0), new GradientStop(clear, .65),
+                    new GradientStop(Color.FromArgb(72, ground.R, ground.G, ground.B), .78),
+                    new GradientStop(Color.FromArgb(200, ground.R, ground.G, ground.B), .9),
+                    new GradientStop(ground, .98), new GradientStop(ground, 1)]
                 : _cinematic
                     ? [new GradientStop(clear, 0), new GradientStop(Color.FromArgb(35, ground.R, ground.G, ground.B), .25),
                         new GradientStop(ground, .55), new GradientStop(ground, 1)]

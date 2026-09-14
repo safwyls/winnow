@@ -882,7 +882,8 @@ canvas-wide vertical fade. Request enough source pixels to fill the crop's heigh
 At 21:9 and wider, these heroes retain their whole composition. Fit them across the
 canvas width, preserve their aspect ratio and align them at the top; exceptionally wide
 canvases fit the whole image within the height and center it horizontally. Fade the final
-15% of the image height into Ground, with Ground filling the canvas below. Each crossfade
+35% of the image height gradually into Ground, reaching solid Ground at 98% so the
+image boundary disappears before the canvas below. Each crossfade
 layer keeps its own image geometry. Desktop detail backdrops continue to fill their card
 with a crop and request enough source pixels for that crop.
 

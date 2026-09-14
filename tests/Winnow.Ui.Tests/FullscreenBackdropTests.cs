@@ -379,7 +379,7 @@ public sealed class FullscreenBackdropTests
             Assert.Equal(new Size(width, 1080), surface.Bounds.Size);
             Assert.IsType<SolidColorBrush>(surface.Background);
             var gradient = Assert.IsType<LinearGradientBrush>(Assert.Single(art.Children.OfType<Border>()).Background);
-            Assert.Equal(fitted ? 1 : cinematic ? .55 : .85,
+            Assert.Equal(fitted ? .98 : cinematic ? .55 : .85,
                 gradient.GradientStops.First(stop => stop.Color.A == 255).Offset);
             Assert.Equal(255, gradient.GradientStops[^1].Color.A);
 
@@ -408,8 +408,10 @@ public sealed class FullscreenBackdropTests
             Assert.Equal(0, art.Bounds.Top);
             Assert.Equal(3840, leases.Last.Width);
             gradient = Assert.IsType<LinearGradientBrush>(Assert.Single(art.Children.OfType<Border>()).Background);
-            Assert.Equal(.85, gradient.GradientStops[^2].Offset);
-            Assert.Equal(0, gradient.GradientStops[^2].Color.A);
+            Assert.Equal(.65, gradient.GradientStops[1].Offset);
+            Assert.Equal(0, gradient.GradientStops[1].Color.A);
+            Assert.Equal(.98, gradient.GradientStops[^2].Offset);
+            Assert.Equal(255, gradient.GradientStops[^2].Color.A);
             window.Width = 1920;
             Dispatcher.UIThread.RunJobs();
             Assert.Equal(new Size(1920, 1080), art.Bounds.Size);
