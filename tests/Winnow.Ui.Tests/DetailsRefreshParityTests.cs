@@ -138,6 +138,10 @@ public sealed class DetailsRefreshParityTests
                 var figure = Assert.Single(details.Reception.Figures);
                 Assert.DoesNotContain(figure.Count, headerRatings.Text!);
                 Assert.Equal(figure.Tooltip, ToolTip.GetTip(headerRatings));
+                var ratingsGroup = view.FindControl<Border>("HeaderRatingsGroup")!;
+                var ratingsPeer = Avalonia.Automation.Peers.ControlAutomationPeer.CreatePeerForElement(ratingsGroup)!;
+                Assert.True(ratingsPeer.IsControlElement());
+                Assert.Equal(details.Reception.CompactAutomationName, ratingsPeer.GetName());
             }
             Assert.Single(details.Screenshots!.Shots);
             Assert.Equal("newshot", details.Screenshots.Shots[0].Key.Id);

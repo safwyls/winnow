@@ -396,12 +396,16 @@
                                                              IsVisible="{Binding HasPublisher}"
                                                              Text="{Binding Publisher}"/>
                                     </Grid>
+                                    <Border Name="HeaderRatingsGroup" IsVisible="{Binding ShowReception}"
+                                            AutomationProperties.AccessibilityView="Control"
+                                            AutomationProperties.Name="{Binding Reception.CompactAutomationName}">
                                     <TextBlock Name="HeaderRatings" Classes="body" FontSize="12"
                                                Text="{Binding Reception.CompactText}"
                                                IsVisible="{Binding ShowReception}"
                                                ToolTip.Tip="{Binding Reception.Tooltip}"
-                                               AutomationProperties.Name="{Binding Reception.CompactAutomationName}"
+                                               AutomationProperties.AccessibilityView="Raw"
                                                TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                                    </Border>
                                 </WrapPanel>
                                 <TextBlock Classes="body"
                                            FontSize="12"

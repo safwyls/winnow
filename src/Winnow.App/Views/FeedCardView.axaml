@@ -94,7 +94,7 @@
                 </Border>
                 <Border Width="14" Height="14" CornerRadius="7" Background="{StaticResource Flare}"
                         BorderBrush="{StaticResource Ground}" BorderThickness="2" BoxShadow="{DynamicResource BadgeGlow}"
-                        HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8" IsVisible="{Binding Tile.HasUnread}"/>
+                        HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8,8,0,0" IsVisible="{Binding Tile.HasUnread}"/>
                 <Panel IsVisible="{Binding HasSecondaryActions}">
                 <Border Name="ActionStrip" Background="{StaticResource Surface}" CornerRadius="0,0,6,6"
                         VerticalAlignment="Bottom" Padding="6" IsVisible="{Binding ShowActions}">
