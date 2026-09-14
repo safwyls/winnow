@@ -59,7 +59,7 @@ public sealed class GameReceptionViewModel
 
     /// <summary>True when at least one source contributed a figure.</summary>
     public bool HasFigures => Figures.Count > 0;
-    public string CompactText => string.Join(" · ", Figures.Select(figure => $"{figure.CompactSource} {figure.CompactValue}"));
+    public string CompactText => string.Join(" · ", Figures.Select(figure => $"{figure.CompactSource}: {figure.CompactValue}"));
     public string Tooltip => string.Join("\n", Figures.Select(figure => figure.Tooltip));
     public string CompactAutomationName => string.Join("; ", Figures.Select(figure => figure.AutomationName));
 
