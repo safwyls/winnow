@@ -6,7 +6,7 @@ using Avalonia.Media.Imaging;
 namespace Winnow.App.Views;
 
 /// <summary>A preview surface whose artwork and outline continue through its tile pointer.</summary>
-public sealed class FeedPreviewBubble : Decorator
+public sealed class GamePreviewBubble : Decorator
 {
     private const double ArrowWidth = 10;
     private const double ArrowHalfHeight = 9;
@@ -14,23 +14,23 @@ public sealed class FeedPreviewBubble : Decorator
     private const double ContentPadding = 16;
 
     public static readonly StyledProperty<Bitmap?> SourceProperty =
-        AvaloniaProperty.Register<FeedPreviewBubble, Bitmap?>(nameof(Source));
+        AvaloniaProperty.Register<GamePreviewBubble, Bitmap?>(nameof(Source));
     public static readonly StyledProperty<IBrush?> BackgroundProperty =
-        AvaloniaProperty.Register<FeedPreviewBubble, IBrush?>(nameof(Background));
+        AvaloniaProperty.Register<GamePreviewBubble, IBrush?>(nameof(Background));
     public static readonly StyledProperty<IBrush?> BorderBrushProperty =
-        AvaloniaProperty.Register<FeedPreviewBubble, IBrush?>(nameof(BorderBrush));
+        AvaloniaProperty.Register<GamePreviewBubble, IBrush?>(nameof(BorderBrush));
     public static readonly StyledProperty<bool> ArrowOnRightProperty =
-        AvaloniaProperty.Register<FeedPreviewBubble, bool>(nameof(ArrowOnRight));
+        AvaloniaProperty.Register<GamePreviewBubble, bool>(nameof(ArrowOnRight));
     public static readonly StyledProperty<double> ArrowOffsetProperty =
-        AvaloniaProperty.Register<FeedPreviewBubble, double>(nameof(ArrowOffset), 40);
+        AvaloniaProperty.Register<GamePreviewBubble, double>(nameof(ArrowOffset), 40);
 
-    static FeedPreviewBubble()
+    static GamePreviewBubble()
     {
-        AffectsRender<FeedPreviewBubble>(SourceProperty, BackgroundProperty, BorderBrushProperty,
+        AffectsRender<GamePreviewBubble>(SourceProperty, BackgroundProperty, BorderBrushProperty,
             ArrowOnRightProperty, ArrowOffsetProperty);
     }
 
-    public FeedPreviewBubble() => UpdatePadding();
+    public GamePreviewBubble() => UpdatePadding();
 
     public Bitmap? Source { get => GetValue(SourceProperty); set => SetValue(SourceProperty, value); }
     public IBrush? Background { get => GetValue(BackgroundProperty); set => SetValue(BackgroundProperty, value); }

@@ -73,7 +73,7 @@ public sealed class FeedCardActionTests
             Dispatcher.UIThread.RunJobs();
             var flyout = Assert.IsType<Flyout>(FlyoutBase.GetAttachedFlyout(view.FindControl<Button>("Card")!));
             Assert.True(flyout.IsOpen);
-            var content = Assert.IsType<FeedPreviewBubble>(flyout.Content);
+            var content = Assert.IsType<GamePreviewBubble>(flyout.Content);
             var position = window.PointToClient(content.PointToScreen(default));
             Assert.InRange(position.X, 0, window.Bounds.Width - content.Bounds.Width);
             Assert.InRange(position.Y, 0, window.Bounds.Height - content.Bounds.Height);

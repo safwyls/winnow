@@ -31,10 +31,15 @@ public partial class GameTileView : UserControl
 
     private bool _pointerInside;
     private bool _keyboardActionFocus;
+    private readonly GameHoverPreview _preview;
+    private GamePreviewViewModel? _previewModel;
 
     public GameTileView()
     {
         InitializeComponent();
+        _preview = new GameHoverPreview(this, Face);
+        AddHandler(PointerPressedEvent, (_, _) => _preview.Suppress(), RoutingStrategies.Tunnel);
+        AddHandler(KeyDownEvent, (_, e) => { if (e.Key == Key.Escape) _preview.Suppress(); }, RoutingStrategies.Tunnel);
         AddHandler(GotFocusEvent, OnDescendantGotFocus, RoutingStrategies.Bubble);
 
         // The previewer gets a populated tile; runtime leaves the DataContext
@@ -57,6 +62,7 @@ public partial class GameTileView : UserControl
     {
         base.OnPointerEntered(e);
         _pointerInside = true;
+        _preview.Show();
         ApplyInteractionState();
     }
 
@@ -64,6 +70,7 @@ public partial class GameTileView : UserControl
     {
         base.OnPointerExited(e);
         _pointerInside = false;
+        _preview.Exit();
         ApplyInteractionState();
     }
 
@@ -80,6 +87,7 @@ public partial class GameTileView : UserControl
         if (_pointerInside != pointerInside)
         {
             _pointerInside = pointerInside;
+            if (pointerInside) _preview.Show(); else _preview.Exit();
             ApplyInteractionState();
         }
     }
@@ -121,6 +129,7 @@ public partial class GameTileView : UserControl
             }
 
             _bound = DataContext as GameTileViewModel;
+            RetargetPreview();
             _pointerInside = false;
             _keyboardActionFocus = false;
             Cover.Target(_bound?.CoverKey, _bound?.Leases, _bound?.Ramp);
@@ -139,6 +148,7 @@ public partial class GameTileView : UserControl
         ClearDetachedActionState(PrimaryActionHost);
         ClearDetachedActionState(DetailsActionHost);
         _bound = DataContext as GameTileViewModel;
+        RetargetPreview();
         _pointerInside = IsPointerOver;
         Cover.Target(_bound?.CoverKey, _bound?.Leases, _bound?.Ramp);
         ApplyInteractionState();
@@ -147,6 +157,9 @@ public partial class GameTileView : UserControl
 
     protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     {
+        _preview.Target(null);
+        _previewModel?.Dispose();
+        _previewModel = null;
         _pointerInside = false;
         _keyboardActionFocus = false;
         ApplyInteractionState();
@@ -154,6 +167,14 @@ public partial class GameTileView : UserControl
         HideDetachedAction(DetailsActionHost);
         Cover.Release();
         base.OnDetachedFromVisualTree(e);
+    }
+
+    private void RetargetPreview()
+    {
+        _preview.Target(null);
+        _previewModel?.Dispose();
+        _previewModel = _bound is null ? null : new GamePreviewViewModel(_bound);
+        _preview.Target(_previewModel);
     }
 
     private void RequestCover()

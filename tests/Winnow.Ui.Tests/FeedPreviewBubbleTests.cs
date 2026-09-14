@@ -10,13 +10,13 @@ using Xunit;
 
 namespace Winnow.Ui.Tests;
 
-public sealed class FeedPreviewBubbleTests
+public sealed class GamePreviewBubbleTests
 {
     [AvaloniaFact]
     public void Artwork_continues_through_pointer_without_border_seam_or_rectangular_spill()
     {
         using var source = SolidBitmap();
-        var bubble = new FeedPreviewBubble
+        var bubble = new GamePreviewBubble
         {
             Background = Brushes.Black,
             BorderBrush = Brushes.White,
@@ -38,7 +38,7 @@ public sealed class FeedPreviewBubbleTests
     public void Flipped_pointer_moves_artwork_and_content_gutter_together()
     {
         var child = new Border();
-        var bubble = new FeedPreviewBubble { Background = Brushes.Black, Child = child };
+        var bubble = new GamePreviewBubble { Background = Brushes.Black, Child = child };
         Layout(bubble);
         Assert.Equal(26, child.Bounds.X);
         var contentWidth = child.Bounds.Width;

@@ -134,7 +134,7 @@ public sealed class FeedPreviewRatingsTests
         public Window Window { get; }
         public FeedCardView View { get; }
         public Flyout Flyout => Assert.IsType<Flyout>(FlyoutBase.GetAttachedFlyout(View.FindControl<Button>("Card")!));
-        public FeedPreviewBubble Bubble => Assert.IsType<FeedPreviewBubble>(Flyout.Content);
+        public GamePreviewBubble Bubble => Assert.IsType<GamePreviewBubble>(Flyout.Content);
         public TextBlock RatingsControl => Bubble.GetVisualDescendants().OfType<TextBlock>()
             .Single(control => control.Name == "PreviewRatings");
 

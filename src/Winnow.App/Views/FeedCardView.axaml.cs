@@ -1,12 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
-using Avalonia.Automation;
-using Avalonia.Controls.Primitives;
-using Avalonia.Controls.Primitives.PopupPositioning;
 using Avalonia.Input;
 using Avalonia.Media;
-using Avalonia.Data;
 using Avalonia.VisualTree;
 using Winnow.App.ViewModels;
 
@@ -20,49 +16,31 @@ public partial class FeedCardView : UserControl
     private CoverPresenter? _cover;
     private bool _hovered;
     private bool _focused;
-    private bool _hoverSuppressed;
-    private static WeakReference<FeedCardView>? _activePreview;
-    private FeedPreviewBubble? _bubble;
-    private readonly Flyout _quickDetails = new()
-    {
-        Placement = PlacementMode.Custom,
-        ShowMode = FlyoutShowMode.Transient,
-        OverlayDismissEventPassThrough = true,
-    };
+    private readonly GameHoverPreview _preview;
+    private Flyout _quickDetails => _preview.Flyout;
 
     public FeedCardView()
     {
         InitializeComponent();
-        FlyoutBase.SetAttachedFlyout(Card, _quickDetails);
-        _quickDetails.CustomPopupPlacementCallback = PlacePreview;
+        _preview = new GameHoverPreview(this, Card);
         Card.Click += (_, e) =>
         {
             if (!ReferenceEquals(e.Source, Card)) return;
-            SuppressPreview();
+            _preview.Suppress();
             if (_tile is { } tile && tile.OpenDetailsCommand?.CanExecute(tile) == true)
                 tile.OpenDetailsCommand.Execute(tile);
         };
         Card.KeyDown += (_, e) =>
         {
-            if (e.Key == Key.Escape) SuppressPreview();
+            if (e.Key == Key.Escape) _preview.Suppress();
         };
-        _quickDetails.Opening += (_, _) => BuildQuickDetails();
         _quickDetails.Opened += (_, _) =>
         {
-            if (_quickDetails.Content is Control content && content.GetVisualAncestors().OfType<FlyoutPresenter>().FirstOrDefault() is { } presenter)
-            {
-                presenter.Background = Brushes.Transparent;
-                presenter.BorderThickness = new Thickness(0);
-                presenter.Padding = new Thickness(0);
-            }
-            UpdateBubblePointer();
             Card.Classes.Set("open", true);
             Apply();
         };
         _quickDetails.Closed += (_, _) =>
         {
-            _card?.ReleaseBackdrop();
-            if (_activePreview?.TryGetTarget(out var active) == true && ReferenceEquals(active, this)) _activePreview = null;
             Card.Classes.Set("open", false);
             Apply();
         };
@@ -83,8 +61,7 @@ public partial class FeedCardView : UserControl
     {
         base.OnPointerEntered(e);
         _hovered = true;
-        if (!_quickDetails.IsOpen && !_hoverSuppressed && IsEffectivelyVisible && _card?.ShowActions == true)
-            _quickDetails.ShowAt(Card);
+        if (_card?.ShowActions == true) _preview.Show();
         Apply();
     }
 
@@ -92,8 +69,7 @@ public partial class FeedCardView : UserControl
     {
         base.OnPointerExited(e);
         _hovered = false;
-        _hoverSuppressed = false;
-        _quickDetails.Hide();
+        _preview.Exit();
         Apply();
     }
 
@@ -110,10 +86,7 @@ public partial class FeedCardView : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
-        _quickDetails.Hide();
-        _quickDetails.Content = null;
-        _bubble = null;
-        _hoverSuppressed = false;
+        _preview.Target(null);
         if (_card is not null)
         {
             _card.IsPointerOver = false;
@@ -122,6 +95,7 @@ public partial class FeedCardView : UserControl
         _card = DataContext as FeedCardViewModel;
         _tile = _card?.Tile;
         _cover = _card?.Cover;
+        _preview.Target(_card?.Preview);
         Apply();
         WriteReason(_card);
         RequestCover();
@@ -136,9 +110,7 @@ public partial class FeedCardView : UserControl
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
-        _quickDetails.Hide();
-        _quickDetails.Content = null;
-        _bubble = null;
+        _preview.Hide();
         _hovered = false;
         _focused = false;
         Apply();
@@ -175,95 +147,4 @@ public partial class FeedCardView : UserControl
         }
     }
 
-    private void BuildQuickDetails()
-    {
-        if (_card is not { } card) return;
-        if (_activePreview?.TryGetTarget(out var previous) == true && !ReferenceEquals(previous, this)) previous._quickDetails.Hide();
-        _activePreview = new WeakReference<FeedCardView>(this);
-        var tile = card.Tile;
-        var top = TopLevel.GetTopLevel(this);
-        _quickDetails.OverlayInputPassThroughElement = top;
-        var origin = top is not null ? CoverFrame.TranslatePoint(default, top) ?? default : default;
-        var rightSpace = (top?.Bounds.Width ?? 900) - origin.X - CoverFrame.Bounds.Width;
-        var leftSide = rightSpace < 362 && origin.X > rightSpace;
-        var width = Math.Min(Math.Clamp((leftSide ? origin.X : rightSpace) - 46, 180, 320),
-            Math.Max(1, (top?.Bounds.Width ?? 900) - 58));
-        var rows = new StackPanel { Spacing = 10, Width = width };
-        TextBlock Text(string? value, int size = 13, bool quiet = false, bool title = false) => new()
-        {
-            Text = value, FontSize = size, TextWrapping = TextWrapping.Wrap,
-            FontFamily = Resource<FontFamily>(title ? "DisplayFont" : "BodyFont", FontFamily.Default),
-            FontWeight = title ? FontWeight.Bold : FontWeight.Normal,
-            Foreground = Resource<IBrush>(quiet ? "TextDim" : "Text", Brushes.White),
-        };
-        rows.Children.Add(Text(tile.Title, 22, title: true));
-        rows.Children.Add(Text($"{tile.StoreNames} · {tile.StatText}", quiet: true));
-        var ratings = Text(null, 12, quiet: true);
-        ratings.Name = "PreviewRatings";
-        ratings.TextWrapping = TextWrapping.NoWrap;
-        ratings.TextTrimming = TextTrimming.CharacterEllipsis;
-        ratings.Bind(TextBlock.TextProperty, new Binding("Reception.CompactText") { Source = card });
-        ratings.Bind(AutomationProperties.NameProperty, new Binding("Reception.CompactAutomationName") { Source = card });
-        ratings.Bind(IsVisibleProperty, new Binding("Reception.HasFigures") { Source = card, FallbackValue = false });
-        rows.Children.Add(ratings);
-        if (!string.IsNullOrWhiteSpace(tile.Summary))
-        {
-            var summary = Text(tile.Summary);
-            summary.MaxLines = 4;
-            summary.TextTrimming = TextTrimming.CharacterEllipsis;
-            rows.Children.Add(summary);
-        }
-        _bubble = new FeedPreviewBubble
-        {
-            Name = "FeedPreviewBubble", ArrowOnRight = leftSide,
-            Background = Resource<IBrush>("SurfaceRaised", Brushes.DarkSlateGray),
-            BorderBrush = Resource<IBrush>("Line", Brushes.Gray),
-            Child = new ScrollViewer
-            {
-                Content = rows, MaxHeight = Math.Max(1, (top?.Bounds.Height ?? 600) - 48),
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            },
-        };
-        _bubble.Bind(FeedPreviewBubble.SourceProperty, new Binding(nameof(FeedCardViewModel.Backdrop)) { Source = card });
-        _bubble.PointerEntered += (_, _) => _quickDetails.Hide();
-        _bubble.LayoutUpdated += (_, _) => UpdateBubblePointer();
-        _quickDetails.Content = _bubble;
-        var scaling = top?.RenderScaling ?? 1;
-        card.RequestBackdrop((width + 32) * scaling, 220 * scaling);
-        card.RequestRatings();
-    }
-
-    private void SuppressPreview()
-    {
-        _hoverSuppressed = true;
-        _quickDetails.Hide();
-    }
-
-    private void PlacePreview(CustomPopupPlacement placement)
-    {
-        if (TopLevel.GetTopLevel(this) is not { } top) return;
-        var origin = Card.TranslatePoint(default, top) ?? default;
-        var right = origin.X + CoverFrame.Bounds.Width;
-        var leftSide = top.Bounds.Width - right < placement.PopupSize.Width + 8 && origin.X > top.Bounds.Width - right;
-        var x = leftSide ? origin.X - placement.PopupSize.Width : right;
-        // Native popup constraints use the monitor; clamp to our client area first.
-        x = Math.Clamp(x, 8, Math.Max(8, top.Bounds.Width - placement.PopupSize.Width - 8));
-        var y = Math.Clamp(origin.Y, 8, Math.Max(8, top.Bounds.Height - placement.PopupSize.Height - 8));
-        placement.AnchorRectangle = new Rect(x, y, 1, 1);
-        placement.Anchor = PopupAnchor.TopLeft;
-        placement.Gravity = PopupGravity.BottomRight;
-        placement.Offset = default;
-    }
-
-    private void UpdateBubblePointer()
-    {
-        if (_bubble is not { Bounds.Width: > 0, Bounds.Height: > 0 } bubble || bubble.GetVisualRoot() is null || CoverFrame.GetVisualRoot() is null) return;
-        var anchor = CoverFrame.PointToScreen(new Point(CoverFrame.Bounds.Width / 2, CoverFrame.Bounds.Height / 2));
-        var panel = bubble.PointToScreen(default);
-        var scale = TopLevel.GetTopLevel(bubble)?.RenderScaling ?? 1;
-        bubble.ArrowOnRight = panel.X < anchor.X;
-        bubble.ArrowOffset = (anchor.Y - panel.Y) / scale;
-    }
-
-    private T Resource<T>(string name, T fallback) => this.TryFindResource(name, out var value) && value is T resource ? resource : fallback;
 }

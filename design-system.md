@@ -2338,10 +2338,16 @@ Azure, Amber and TextDim respectively. Geometry does not change when actions app
 Recently played offers only Add to list.
 Feedback retains the in-place Undo receipt, countdown hold and history behavior.
 
+Desktop feed and library cover tiles share one hover-preview component, including artwork
+and ratings loading, layout, dismissal and window-bound positioning. Library selection,
+double-click and action controls retain their existing behavior. Recycling a library tile
+closes its preview and releases its independent artwork lease. Fullscreen continues to show
+the selected game's information in its hero area rather than a pointer-hover bubble.
+
 Hovering a tile immediately opens a compact quick-details bubble to its right, flipping left
 when space is tighter on the right. A connected triangular pointer aims at the cover.
 Leaving the tile immediately closes the bubble, including when moving onto the bubble itself.
-Clicking the artwork, Enter or Space opens full details directly. Only one preview opens at
+On feed cards, clicking the artwork, Enter or Space opens full details directly. Only one preview opens at
 a time. It presents a bold title, quieter store and play metadata, available IGDB user and
 critic scores and Steam's published review label, and an optional four-line summary, with no
 actions. Ratings occupy one subdued `TextDim` line with middle-dot separators; counts and
