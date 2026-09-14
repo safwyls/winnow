@@ -48,9 +48,11 @@ public sealed class SingleInstanceActivationTests
         server.SetHandler(received.Add);
         using var pipe = new System.IO.Pipes.NamedPipeClientStream(".",
             SingleInstanceGuard.ActivationNameFor(directory), System.IO.Pipes.PipeDirection.InOut,
-            System.IO.Pipes.PipeOptions.Asynchronous | System.IO.Pipes.PipeOptions.CurrentUserOnly);
+            System.IO.Pipes.PipeOptions.Asynchronous | (OperatingSystem.IsWindows()
+                ? System.IO.Pipes.PipeOptions.None : System.IO.Pipes.PipeOptions.CurrentUserOnly));
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
         await pipe.ConnectAsync(timeout.Token);
+        if (OperatingSystem.IsWindows()) WindowsActivationSecurity.VerifyServer(pipe);
         await pipe.ReadExactlyAsync(new byte[4], timeout.Token);
         var payload = new byte[command == 3 ? 9 : 1];
         payload[0] = command;
