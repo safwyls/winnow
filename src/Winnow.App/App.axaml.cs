@@ -66,7 +66,8 @@ public partial class App : Application
 
             WindowsJumpList.SetAppId(Program.DataLocation.Root);
             var shared = services.GetRequiredService<MainWindowViewModel>();
-            _jumpList = new TaskbarJumpListController(shared.Library, Program.DataLocation.Root);
+            _jumpList = new TaskbarJumpListController(shared.Library, Program.DataLocation.Root,
+                services.GetService<Winnow.Covers.CoverPipeline>());
             desktop.Exit += (_, _) => _jumpList?.Dispose();
             _mainWindow = new MainWindow
             {

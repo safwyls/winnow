@@ -2941,7 +2941,9 @@ launchable games ordered by last play, and **Switch to Fullscreen Mode** under T
 entries launch through the current library; fullscreen entry restores the existing window
 without toggling back to desktop when already fullscreen. Both actions also work from a
 closed application. Windows supplies pinning and close-window commands. Its privacy and
-removed-item choices are respected. These taskbar links currently use Winnow's application icon.
+removed-item choices are respected. Game entries use square thumbnails of their cover artwork,
+cached as Windows icons at several display sizes. Missing artwork falls back to Winnow's
+application icon; the fullscreen task always uses that icon.
 
 Application settings on both desktop and fullscreen also offer **Start in fullscreen**,
 off by default. It opens the TV interface on the next normal launch; changing it does not

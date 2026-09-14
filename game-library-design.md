@@ -689,6 +689,11 @@ refreshing when the library tiles change. Shell COM work runs on an STA worker. 
 destinations are retained in `jump-list-removed.json` under the data directory. Isolated
 libraries use distinct AppUserModelIDs and every task forwards its data directory. Shell
 failures leave the application usable; other platforms do not publish a jump list.
+Game icons are center-cropped from the shared cover pipeline on a background worker and
+encoded as multi-size ICO files under `jump-list-icons` in the active data directory.
+Content-addressed filenames let the shell pick up changed artwork while retaining files
+referenced by existing destinations. The list publishes immediately with cached or app icons,
+then refreshes when artwork resolves; missing or timed-out artwork keeps the app fallback.
 
 ```mermaid
 graph TB

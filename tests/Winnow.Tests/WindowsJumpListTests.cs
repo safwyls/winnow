@@ -42,7 +42,11 @@ public sealed class WindowsJumpListTests
         Directory.CreateDirectory(directory);
         try
         {
-            Assert.True(WindowsJumpList.Publish(directory, [new JumpListGame(42, "Jump List smoke game")]));
+            using var bitmap = new SkiaSharp.SKBitmap(32, 32);
+            bitmap.Erase(SkiaSharp.SKColors.Lime);
+            var icon = Path.Combine(directory, "game.ico");
+            File.WriteAllBytes(icon, JumpListIcons.Encode(bitmap));
+            Assert.True(WindowsJumpList.Publish(directory, [new JumpListGame(42, "Jump List smoke game", icon)]));
             Assert.True(WindowsJumpList.Publish(directory, []));
         }
         finally
