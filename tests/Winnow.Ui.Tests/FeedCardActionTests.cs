@@ -20,6 +20,38 @@ namespace Winnow.Ui.Tests;
 
 public sealed class FeedCardActionTests
 {
+    [AvaloniaFact]
+    public void Feed_action_pointer_press_has_no_border_but_keyboard_focus_does()
+    {
+        using var model = new FeedCardViewModel(TileFixture.Tile(DateTime.UtcNow), "Reason", new FeedbackService(), _ => { });
+        var view = new FeedCardView { DataContext = model, Width = 220 };
+        var window = new Window { Width = 1000, Height = 700, Content = view };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            var button = view.FindControl<Button>("AddToList")!;
+            var point = button.TranslatePoint(new Point(18, 18), window)!.Value;
+            window.MouseMove(point);
+            Dispatcher.UIThread.RunJobs();
+            window.MouseDown(point, MouseButton.Left);
+            Dispatcher.UIThread.RunJobs();
+            var presenter = button.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.ContentPresenter>()
+                .First(p => p.Name == "PART_ContentPresenter");
+            Assert.Equal(Colors.Transparent, Assert.IsAssignableFrom<ISolidColorBrush>(presenter.BorderBrush).Color);
+            window.MouseUp(point, MouseButton.Left);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(Colors.Transparent, Assert.IsAssignableFrom<ISolidColorBrush>(presenter.BorderBrush).Color);
+            window.MouseMove(new Point(950, 650));
+            view.FindControl<Button>("Card")!.Focus(NavigationMethod.Tab);
+            button.Focus(NavigationMethod.Tab);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(Assert.IsAssignableFrom<ISolidColorBrush>(view.FindResource("Volt")).Color,
+                Assert.IsAssignableFrom<ISolidColorBrush>(presenter.BorderBrush).Color);
+        }
+        finally { window.Close(); }
+    }
+
     [AvaloniaTheory]
     [InlineData(20, 340)]
     [InlineData(650, 340)]
