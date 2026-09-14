@@ -1,6 +1,6 @@
 # Winnow promo site
 
-The player page, developer page, and interactive architecture diagram deploy to
+The player page, developer page, documentation guides, and interactive architecture diagram deploy to
 https://winnow.gg/ through `.github/workflows/pages.yml`.
 GitHub Pages must use **GitHub Actions** as its publishing source in repository
 Settings → Pages. No deployment secret is required.
@@ -12,9 +12,19 @@ also supports manual runs on `main`.
 ## Local build
 
 From this directory, run `npm ci` and `npm run build:pages` with Node 22.13 or newer.
-Upload only `dist/pages` to Pages. The build renders both routes, arranges the
-developer page as `developers/index.html`, and checks local HTML and CSS links.
+Upload only `dist/pages` to Pages. The build renders the player and developer routes plus
+`/docs/`, `/docs/setup/`, `/docs/configuration/`, `/docs/plugins/`, and `/docs/plugin-sdk/`.
+It arranges routes as directory indexes and checks local HTML/CSS links and HTML anchors.
 Missing rendered pages or assets fail the build.
+
+## Documentation
+
+`app/docs/player-content.tsx` contains player walkthroughs; `sdk-content.tsx` contains the
+API 1 reference. Shared article components supply navigation, section links, and a browser-local
+search index built from the same article content. All prose is prerendered and remains readable
+without JavaScript. Search needs JavaScript and sends no queries to a server.
+Keep instructions aligned with the application source and `docs/plugins.md`; examples live in
+`public/examples/`. New routes must also be listed in `scripts/build-pages.mjs`.
 
 The Pages build uses the domain root for links and bundled assets. Set
 `PAGES_BASE_PATH` to a slash-prefixed path without a trailing slash only when

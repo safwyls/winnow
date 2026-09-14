@@ -23,7 +23,7 @@ export default function Developers() {
     <main className="dev-page">
       <header className="site-header dev-header">
         <a className="brand" href={sitePath('/')} aria-label="Winnow home"><span className="brand-mark" aria-hidden="true" /><span>Winnow</span><span className="dev-slash">/ developers</span></a>
-        <nav aria-label="Developer navigation"><a href="#architecture">Architecture</a><a href="#modules">Modules</a><a className="nav-cta" href="https://github.com/safwyls/winnow"><Code2 size={15} aria-hidden="true" /> GitHub</a></nav>
+        <nav aria-label="Developer navigation"><a href="#architecture">Architecture</a><a href={sitePath('/docs/plugin-sdk/')}>Plugin SDK</a><a className="nav-docs" href={sitePath('/docs/')}>Docs</a><a className="nav-cta" href="https://github.com/safwyls/winnow"><Code2 size={15} aria-hidden="true" /> GitHub</a></nav>
       </header>
 
       <section className="dev-hero shell">
@@ -68,7 +68,7 @@ export default function Developers() {
         <a className="button button-primary" href="https://github.com/safwyls/winnow"><Code2 size={18} aria-hidden="true" /> Browse the source</a>
       </section>
 
-      <footer><a className="brand" href={sitePath('/')}><span className="brand-mark" aria-hidden="true" /><span>Winnow</span></a><p>Local-first game discovery, built in the open.</p><div><a href={sitePath('/')}>For players</a><a href="https://github.com/safwyls/winnow">GitHub</a></div></footer>
+      <footer><a className="brand" href={sitePath('/')}><span className="brand-mark" aria-hidden="true" /><span>Winnow</span></a><p>Local-first game discovery, built in the open.</p><div><a href={sitePath('/docs/')}>Docs</a><a href={sitePath('/')}>For players</a><a href="https://github.com/safwyls/winnow">GitHub</a></div></footer>
     </main>
   );
 }

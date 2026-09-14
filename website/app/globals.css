@@ -211,6 +211,7 @@ footer > div { justify-self: end; display: flex; gap: 22px; }
 
 @media (max-width: 620px) {
   .dev-slash { display: none; }
+  .site-header nav a.nav-docs { display: inline; }
   .dev-hero { padding-block: 80px 72px; }
   .dev-hero h1 { font-size: clamp(3.4rem, 17vw, 5rem); }
   .principles { grid-template-columns: 1fr; }

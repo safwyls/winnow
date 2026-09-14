@@ -1,0 +1,10 @@
+{
+  "id": "example-installed",
+  "name": "Installed and unplayed",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "entryAssembly": "Example.Installed.dll",
+  "entryType": "Example.Installed.Provider",
+  "description": "A local example shelf for installed games with no recorded playtime.",
+  "capabilities": ["recommendations"]
+}
