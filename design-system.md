@@ -2335,8 +2335,11 @@ Hovering a tile immediately opens a compact quick-details bubble to its right, f
 when space is tighter on the right. A connected triangular pointer aims at the cover.
 Leaving the tile immediately closes the bubble, including when moving onto the bubble itself.
 Clicking the artwork, Enter or Space opens full details directly. Only one preview opens at
-a time. It presents a bold title, quieter store and play metadata, and an optional four-line
-summary, with no actions. The recommendation reason stays below the cover rather than
+a time. It presents a bold title, quieter store and play metadata, available IGDB user and
+critic scores and Steam's positive-review percentage with their counts, and an optional
+four-line summary, with no actions. Ratings use the shared reception formatting and are
+loaded from local storage while the preview is open; absent sources occupy no space.
+The recommendation reason stays below the cover rather than
 repeating in the preview.
 
 Hero artwork fills the bubble at 18% opacity, clipped into the same rounded shape and pointer

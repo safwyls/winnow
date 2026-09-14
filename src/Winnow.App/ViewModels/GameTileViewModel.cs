@@ -559,6 +559,7 @@ public partial class GameTileViewModel : ObservableObject
     internal string? BackgroundUrl { get; init; }
     internal ArtworkPreferences? BackdropPreferences { get; init; }
     internal Func<CancellationToken, Task<IReadOnlyList<WorkImages>>>? LoadBackdropImages { get; init; }
+    internal Func<CancellationToken, Task<IReadOnlyList<WorkRating>>>? LoadRatings { get; init; }
 
     /// <summary>
     /// The ramp every surface showing this game resolves dormancy through.

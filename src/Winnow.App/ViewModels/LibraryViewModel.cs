@@ -1114,6 +1114,9 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                 bucketLabel: BucketLabelFor(primaryRow.Game.Bucket))
             {
                 BackgroundUrl = display?.BackgroundUrl,
+                LoadRatings = _workRatings is { } ratingsRepository
+                    ? ct => ratingsRepository.GetForWorkAsync(resolvedWorkId, ct)
+                    : null,
                 BackdropPreferences = _artworkPreferences,
                 LoadBackdropImages = _workImages is { } imageRepository
                     ? ct => BackdropImages.LoadAsync(imageRepository, resolvedWorkId,

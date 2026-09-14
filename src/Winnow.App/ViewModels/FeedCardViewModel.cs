@@ -28,6 +28,7 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
     private bool _disposed;
     private LeasedBackdrop? _backdrop;
     private CancellationTokenSource? _backdropLoading;
+    private CancellationTokenSource? _ratingsLoading;
     private IReadOnlyList<WorkImages>? _backdropImages;
     private double _backdropWidth;
     private double _backdropHeight;
@@ -51,6 +52,31 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     public partial Bitmap? Backdrop { get; set; }
+
+    [ObservableProperty]
+    public partial GameReceptionViewModel? Reception { get; set; }
+
+    public void RequestRatings()
+    {
+        if (_disposed || _ratingsLoading is not null || Tile.LoadRatings is not { } load) return;
+        _ratingsLoading = new CancellationTokenSource();
+        _ = LoadRatingsAsync(load, _ratingsLoading);
+    }
+
+    private async Task LoadRatingsAsync(Func<CancellationToken, Task<IReadOnlyList<WorkRating>>> load,
+        CancellationTokenSource request)
+    {
+        IReadOnlyList<WorkRating> ratings;
+        try { ratings = await load(request.Token).ConfigureAwait(false); }
+        catch (Exception) { ratings = []; }
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_disposed || !ReferenceEquals(_ratingsLoading, request)) return;
+            _ratingsLoading = null;
+            request.Dispose();
+            Reception = GameReceptionViewModel.From(ratings);
+        });
+    }
 
     public void RequestBackdrop(double widthPixels, double heightPixels)
     {
@@ -100,6 +126,10 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
 
     public void ReleaseBackdrop()
     {
+        _ratingsLoading?.Cancel();
+        _ratingsLoading?.Dispose();
+        _ratingsLoading = null;
+        Reception = null;
         if (Tile.BackdropPreferences is { } preferences) preferences.Changed -= BackdropPreferencesChanged;
         _backdropLoading?.Cancel();
         _backdropLoading?.Dispose();

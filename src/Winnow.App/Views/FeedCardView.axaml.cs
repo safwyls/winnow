@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
+using Avalonia.Controls.Templates;
+using Avalonia.Automation;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Primitives.PopupPositioning;
 using Avalonia.Input;
@@ -197,6 +199,19 @@ public partial class FeedCardView : UserControl
         };
         rows.Children.Add(Text(tile.Title, 22, title: true));
         rows.Children.Add(Text($"{tile.StoreNames} · {tile.StatText}", quiet: true));
+        var ratings = new ItemsControl
+        {
+            Name = "PreviewRatings",
+            ItemTemplate = new FuncDataTemplate<ReceptionFigureViewModel>((figure, _) =>
+            {
+                var line = Text($"{figure!.Source}  {figure.Value} · {figure.Count}");
+                AutomationProperties.SetName(line, figure.AutomationName);
+                return line;
+            }),
+        };
+        ratings.Bind(ItemsControl.ItemsSourceProperty, new Binding("Reception.Figures") { Source = card });
+        ratings.Bind(IsVisibleProperty, new Binding("Reception.HasFigures") { Source = card, FallbackValue = false });
+        rows.Children.Add(ratings);
         if (!string.IsNullOrWhiteSpace(tile.Summary))
         {
             var summary = Text(tile.Summary);
@@ -221,6 +236,7 @@ public partial class FeedCardView : UserControl
         _quickDetails.Content = _bubble;
         var scaling = top?.RenderScaling ?? 1;
         card.RequestBackdrop((width + 32) * scaling, 220 * scaling);
+        card.RequestRatings();
     }
 
     private void SuppressPreview()
