@@ -34,11 +34,10 @@ public sealed class FeedPreviewRatingsTests
         Assert.True(ratings.IsEffectivelyVisible);
         var expected = GameReceptionViewModel.From(Ratings())!;
         Assert.Equal(expected.CompactText, ratings.Text);
-        Assert.Equal(expected.Tooltip, ToolTip.GetTip(ratings));
+        Assert.Null(ToolTip.GetTip(ratings));
         foreach (var figure in expected.Figures)
         {
             Assert.DoesNotContain(figure.Count, ratings.Text!);
-            Assert.Contains(figure.Tooltip, (string)ToolTip.GetTip(ratings)!);
         }
         Assert.Contains("Very Positive", ratings.Text!);
         Assert.DoesNotContain("%", ratings.Text!);

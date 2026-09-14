@@ -67,7 +67,6 @@
         <Style Selector="Panel#Countdown.snap Arc#CountdownSweep"><Setter Property="Transitions"><Transitions/></Setter></Style>
     </UserControl.Styles>
     <Button Name="Card" Classes="feedcard" Classes.setaside="{Binding IsSetAside}"
-            ToolTip.Tip="{Binding Reception.Tooltip}"
             AutomationProperties.Name="{Binding AutomationName}" AutomationProperties.ItemStatus="{Binding StatusAnnouncement}">
         <StackPanel Spacing="8">
             <Panel Name="CoverFrame" Height="270">

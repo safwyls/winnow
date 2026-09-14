@@ -2340,7 +2340,8 @@ Clicking the artwork, Enter or Space opens full details directly. Only one previ
 a time. It presents a bold title, quieter store and play metadata, available IGDB user and
 critic scores and Steam's published review label, and an optional four-line summary, with no
 actions. Ratings occupy one subdued `TextDim` line with middle-dot separators; counts and
-Steam's percentage are retained in tooltip and accessible text. Ratings use shared reception formatting and are
+Steam's percentage remain in accessible text. Review tooltips appear only in desktop details,
+not on feed tiles or previews. Ratings use shared reception formatting and are
 loaded from local storage while the preview is open; absent sources occupy no space.
 The recommendation reason stays below the cover rather than
 repeating in the preview.

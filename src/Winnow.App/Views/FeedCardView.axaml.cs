@@ -203,7 +203,6 @@ public partial class FeedCardView : UserControl
         ratings.TextWrapping = TextWrapping.NoWrap;
         ratings.TextTrimming = TextTrimming.CharacterEllipsis;
         ratings.Bind(TextBlock.TextProperty, new Binding("Reception.CompactText") { Source = card });
-        ratings.Bind(ToolTip.TipProperty, new Binding("Reception.Tooltip") { Source = card });
         ratings.Bind(AutomationProperties.NameProperty, new Binding("Reception.CompactAutomationName") { Source = card });
         ratings.Bind(IsVisibleProperty, new Binding("Reception.HasFigures") { Source = card, FallbackValue = false });
         rows.Children.Add(ratings);
