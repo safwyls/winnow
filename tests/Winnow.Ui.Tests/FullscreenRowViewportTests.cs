@@ -13,6 +13,30 @@ namespace Winnow.Ui.Tests;
 public sealed class FullscreenRowViewportTests
 {
     [AvaloniaFact]
+    public void Scheduled_frames_ignore_superseded_transitions_and_detached_rows()
+    {
+        using var fixture = new Fixture();
+        var viewport = fixture.Viewport;
+        var frames = new ManualRowAnimationFrames(viewport);
+        viewport.Show(1);
+        frames.Tick(TimeSpan.FromSeconds(10));
+        frames.Tick(TimeSpan.FromSeconds(10.1));
+        viewport.Show(2);
+        fixture.Window.UpdateLayout();
+        var before = Top(viewport.GetRow(2));
+        // Both the old request and the new one arrive late in the same frame.
+        frames.Tick(TimeSpan.FromSeconds(20));
+        Assert.True(viewport.IsAnimating);
+        Assert.Equal(before, Top(viewport.GetRow(2)), 5);
+        frames.Tick(TimeSpan.FromSeconds(20.11));
+        Assert.InRange(Top(viewport.GetRow(2)), 0, before - 1);
+        fixture.Window.Content = null;
+        frames.Tick(TimeSpan.FromSeconds(30));
+        Assert.False(viewport.IsAnimating);
+        Assert.Empty(viewport.RealizedRows);
+    }
+
+    [AvaloniaFact]
     public void Moving_down_retains_rows_and_translates_without_fading()
     {
         using var fixture = new Fixture();
@@ -180,6 +204,7 @@ public sealed class FullscreenRowViewportTests
         {
             Context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell);
             Viewport = new FullscreenRowViewport(Context);
+            _ = new ManualRowAnimationFrames(Viewport);
             Viewport.Configure(1000, 2, index => new Border { Child = new Button { Content = $"Row {index}" } });
             Window = new Window { Width = 800, Height = 600, Content = Viewport };
             Window.Show();

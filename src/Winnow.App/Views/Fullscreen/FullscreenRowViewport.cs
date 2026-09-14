@@ -21,6 +21,8 @@ internal sealed class FullscreenRowViewport : Panel, IDisposable
     public IReadOnlyDictionary<int, Control> RealizedRows => _rows;
     public new bool IsAnimating { get; private set; }
     public event EventHandler? RowsChanged;
+    // Tests can own frame time while still exercising the production callback and generation checks.
+    internal Action<Action<TimeSpan>>? FrameScheduler { get; set; }
 
     public FullscreenRowViewport(FullscreenContext context)
     {
@@ -151,14 +153,19 @@ internal sealed class FullscreenRowViewport : Panel, IDisposable
             if (row.RenderTransform is TranslateTransform translation) translation.Y = y;
     }
 
-    private void RequestFrame(int generation) => TopLevel.GetTopLevel(this)?.RequestAnimationFrame(timestamp =>
+    private void RequestFrame(int generation)
     {
-        if (!IsAnimating || generation != _animationGeneration || !_attached) return;
-        // Row creation and the input handler's other work precede the animation clock.
-        _animationStart ??= timestamp;
-        AdvanceAnimation(timestamp - _animationStart.Value);
-        if (IsAnimating) RequestFrame(generation);
-    });
+        void Frame(TimeSpan timestamp)
+        {
+            if (!IsAnimating || generation != _animationGeneration || !_attached) return;
+            // Row creation and the input handler's other work precede the animation clock.
+            _animationStart ??= timestamp;
+            AdvanceAnimation(timestamp - _animationStart.Value);
+            if (IsAnimating) RequestFrame(generation);
+        }
+        if (FrameScheduler is { } scheduler) scheduler(Frame);
+        else TopLevel.GetTopLevel(this)?.RequestAnimationFrame(Frame);
+    }
 
     internal void AdvanceAnimation(TimeSpan elapsed)
     {

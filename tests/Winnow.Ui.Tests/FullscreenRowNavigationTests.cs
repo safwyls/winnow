@@ -259,13 +259,21 @@ public sealed class FullscreenRowNavigationTests
             window.Show(); Dispatcher.UIThread.RunJobs();
             var viewport = Viewport(page);
             var card = Cards(viewport.GetRow(0)).First();
+            var frames = new ManualRowAnimationFrames(viewport);
             Assert.True(card.Focus());
             var point = card.TranslatePoint(new Point(card.Bounds.Width / 2, card.Bounds.Height / 2), window)!.Value;
             window.MouseWheel(point, new Vector(0, -1));
             window.MouseWheel(point, new Vector(0, -1));
             Assert.Equal(1, viewport.FirstRow);
             Assert.True(viewport.IsAnimating);
-            viewport.AdvanceAnimation(TimeSpan.FromMilliseconds(220));
+            // A busy runner can spend longer than a transition dispatching pointer input.
+            // The first rendered frame establishes time zero, regardless of that delay.
+            frames.Tick(TimeSpan.FromSeconds(10));
+            Assert.True(viewport.IsAnimating);
+            frames.Tick(TimeSpan.FromSeconds(10) + TimeSpan.FromMilliseconds(110));
+            Assert.True(viewport.IsAnimating);
+            AssertNoFade(viewport);
+            frames.Tick(TimeSpan.FromSeconds(10) + TimeSpan.FromMilliseconds(220));
             Assert.False(viewport.IsAnimating);
         }
         finally { window.Close(); }
@@ -346,7 +354,12 @@ public sealed class FullscreenRowNavigationTests
     private static FullscreenPage CreateGrid(FullscreenContext context, bool search) => search
         ? new FullscreenBrowseSearchPage(context) : new FullscreenBrowsePage(context, false);
 
-    private static FullscreenRowViewport Viewport(Control page) => Assert.Single(page.GetVisualDescendants().OfType<FullscreenRowViewport>());
+    private static FullscreenRowViewport Viewport(Control page)
+    {
+        var viewport = Assert.Single(page.GetVisualDescendants().OfType<FullscreenRowViewport>());
+        if (viewport.FrameScheduler is null) _ = new ManualRowAnimationFrames(viewport);
+        return viewport;
+    }
 
     private static Button[] Cards(Control row) => row.GetVisualDescendants().OfType<Button>().Where(button => button.Classes.Contains("tv-cover")).ToArray();
 
