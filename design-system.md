@@ -2326,23 +2326,24 @@ short explanations and rules fading toward the right. Titles and two-line recomm
 excerpts stay below each cover; the complete reason remains in the accessible name.
 
 Hover or keyboard focus reveals a bottom action strip inside the cover: **Add to list**,
-**Not now**, and **Not interested**, with 36px targets, named tooltips and neutral text-colored
-icons. Geometry does not change when actions appear. Recently played offers only Add to list.
+**Not now**, and **Not interested**, with 36px targets and named tooltips. Their icons use
+Azure, Amber and TextDim respectively. Geometry does not change when actions appear.
+Recently played offers only Add to list.
 Feedback retains the in-place Undo receipt, countdown hold and history behavior.
 
-Hovering a cover for 300ms opens a compact quick-details bubble to its right, flipping left
-when space is tighter on the right. A connected triangular pointer aims at the cover. A 220ms
-close delay lets the pointer cross into the bubble; leaving both surfaces closes it. Click,
-Enter or Space also opens it, with keyboard focus available for its actions. Only one preview
-opens at a time. It presents a bold title, quieter store and play metadata, an optional
-four-line summary, Play / Install when available, and **Open details**. The recommendation
-reason stays below the cover rather than repeating in the preview.
+Hovering a tile immediately opens a compact quick-details bubble to its right, flipping left
+when space is tighter on the right. A connected triangular pointer aims at the cover.
+Leaving the tile immediately closes the bubble, including when moving onto the bubble itself.
+Clicking the artwork, Enter or Space opens full details directly. Only one preview opens at
+a time. It presents a bold title, quieter store and play metadata, and an optional four-line
+summary, with no actions. The recommendation reason stays below the cover rather than
+repeating in the preview.
 
 Hero artwork fills the bubble at 18% opacity, clipped into the same rounded shape and pointer
-as its surface and outline. Artwork is leased only while the preview is open. Escape, light
-dismiss or its close button closes it. Rebinding or removing a card closes it too; an open
+as its surface and outline. Artwork is leased only while the preview is open. Escape or light
+dismiss closes it. Rebinding or removing a card closes it too; an open
 quick view holds that card's feedback countdown. The bubble stays within the window's
-available size and scrolls long content. Opening full details closes quick details first.
+available size. Opening full details closes quick details first.
 Portrait covers retain shared Fit/Fill and dormancy behavior.
 Fullscreen retains its page hero, shelves and controller action panel.
 

@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media.Imaging;
@@ -62,9 +63,9 @@ public sealed class FeedShelfVisualTests
             Assert.Equal(12, cards.Length);
             Save("shelves");
             var card = cards[3].FindControl<Button>("Card")!;
-            card.Focus();
-            Assert.IsType<Flyout>(card.Flyout).ShowAt(card);
+            window.MouseMove(card.TranslatePoint(new Point(40, 40), window)!.Value);
             Dispatcher.UIThread.RunJobs();
+            Assert.True(Assert.IsType<Flyout>(FlyoutBase.GetAttachedFlyout(card)).IsOpen);
             Save("quick-details");
         }
         finally

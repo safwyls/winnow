@@ -97,17 +97,17 @@
                     <StackPanel Name="FeedbackActions" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
                         <Button Name="AddToList" Classes="cardaside" ToolTip.Tip="Add to list" AutomationProperties.Name="Add to list"
                                 IsVisible="{Binding CanAddToList}" Command="{Binding AddToListCommand}">
-                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource Text}" StrokeThickness="1.6"
+                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource Azure}" StrokeThickness="1.6"
                                   Data="M 2,3 L 12,3 M 2,8 L 8,8 M 2,13 L 8,13 M 12,9 L 12,15 M 9,12 L 15,12"/>
                         </Button>
                         <Button Name="NotNow" Classes="cardaside" ToolTip.Tip="Not now" AutomationProperties.Name="Not now"
                                 IsVisible="{Binding CanGiveFeedback}" Command="{Binding NotNowCommand}">
-                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource Text}" StrokeThickness="1.6"
+                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource Amber}" StrokeThickness="1.6"
                                   Data="M 8,1 A 7,7 0 1 1 7.99,1 Z M 8,4 L 8,8 L 11,10"/>
                         </Button>
                         <Button Name="NotInterested" Classes="cardaside" ToolTip.Tip="Not interested" AutomationProperties.Name="Not interested"
                                 IsVisible="{Binding CanGiveFeedback}" Command="{Binding NotInterestedCommand}">
-                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource Text}" StrokeThickness="1.6"
+                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource TextDim}" StrokeThickness="1.6"
                                   Data="M 8,1 A 7,7 0 1 1 7.99,1 Z M 3,13 L 13,3"/>
                         </Button>
                     </StackPanel>

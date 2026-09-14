@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Media;
 using Avalonia.Headless.XUnit;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -61,6 +63,7 @@ public sealed class FeedCardActionTests
             Assert.Equal(before, view.Bounds.Size);
             var names = new[] { "AddToList", "NotNow", "NotInterested" };
             var labels = new[] { "Add to list", "Not now", "Not interested" };
+            var inks = new[] { "Azure", "Amber", "TextDim" };
             Rect? previous = null;
             for (var i = 0; i < names.Length; i++)
             {
@@ -68,6 +71,9 @@ public sealed class FeedCardActionTests
                 Assert.True(button.IsEffectivelyVisible);
                 Assert.Equal(labels[i], AutomationProperties.GetName(button));
                 Assert.Equal(labels[i], ToolTip.GetTip(button));
+                var icon = Assert.IsType<Avalonia.Controls.Shapes.Path>(button.Content);
+                Assert.Equal(Assert.IsAssignableFrom<ISolidColorBrush>(view.FindResource(inks[i])).Color,
+                    Assert.IsAssignableFrom<ISolidColorBrush>(icon.Stroke).Color);
                 var bounds = new Rect(button.TranslatePoint(default, view)!.Value, button.Bounds.Size);
                 Assert.True(bounds.Width >= 32 && bounds.Height >= 32);
                 Assert.InRange(bounds.Left, 0, view.Bounds.Width);
@@ -108,14 +114,13 @@ public sealed class FeedCardActionTests
             var point = card.TranslatePoint(new Point(50, 50), window)!.Value;
             window.MouseMove(point);
             Dispatcher.UIThread.RunJobs();
-            var flyout = Assert.IsType<Flyout>(card.Flyout);
-            Assert.False(flyout.IsOpen);
+            var flyout = Assert.IsType<Flyout>(FlyoutBase.GetAttachedFlyout(card));
+            Assert.True(flyout.IsOpen);
             var before = view.Bounds.Size;
             var button = view.FindControl<Button>(action)!;
             Assert.True(button.IsEffectivelyVisible);
             Click(window, button);
             Assert.Equal(0, opened);
-            Assert.False(flyout.IsOpen);
             Assert.Equal(before, view.Bounds.Size);
             if (action == "AddToList")
             {
@@ -137,16 +142,15 @@ public sealed class FeedCardActionTests
     }
 
     [AvaloniaTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void Card_opens_quick_details_before_full_details(bool keyboard)
+    [InlineData(null)]
+    [InlineData(PhysicalKey.Enter)]
+    [InlineData(PhysicalKey.Space)]
+    public void Card_art_activation_opens_full_details_directly(PhysicalKey? key)
     {
         var opened = 0;
-        var tile = TileFixture.Tile(DateTime.UtcNow, title: "Aloft", steamAppId: "123",
-            ownership: new Ownership { ReleaseId = 1, Store = "steam" });
+        var tile = TileFixture.Tile(DateTime.UtcNow, title: "Aloft", steamAppId: "123");
         tile.OpenDetailsCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() => opened++);
-        const string reason = "You played for 2 hours, then left this game untouched for 90 days.";
-        using var model = new FeedCardViewModel(tile, reason, new FeedbackService(), _ => { });
+        using var model = new FeedCardViewModel(tile, "A reason", new FeedbackService());
         var view = new FeedCardView { DataContext = model, Width = 220 };
         var window = new Window { Width = 1000, Height = 800, Content = view };
         try
@@ -154,25 +158,15 @@ public sealed class FeedCardActionTests
             window.Show();
             Dispatcher.UIThread.RunJobs();
             var card = view.FindControl<Button>("Card")!;
-            var flyout = Assert.IsType<Flyout>(card.Flyout);
-            if (keyboard)
+            var flyout = Assert.IsType<Flyout>(FlyoutBase.GetAttachedFlyout(card));
+            if (key is { } physicalKey)
             {
                 Assert.True(card.Focus(NavigationMethod.Tab));
-                window.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None);
-                window.KeyReleaseQwerty(PhysicalKey.Enter, RawInputModifiers.None);
+                window.KeyPressQwerty(physicalKey, RawInputModifiers.None);
+                window.KeyReleaseQwerty(physicalKey, RawInputModifiers.None);
                 Dispatcher.UIThread.RunJobs();
             }
             else Click(window, card, new Point(40, 40));
-            Assert.True(flyout.IsOpen);
-            Assert.Equal(0, opened);
-            var content = Assert.IsAssignableFrom<Control>(flyout.Content);
-            Assert.DoesNotContain(content.GetVisualDescendants().OfType<TextBlock>(),
-                text => text.Text == reason || text.Text == "WHY THIS GAME");
-            var primary = content.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PrimaryAction");
-            Assert.Equal("Install", primary.Content);
-            var details = content.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "OpenDetails");
-            details.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
-            Dispatcher.UIThread.RunJobs();
             Assert.Equal(1, opened);
             Assert.False(flyout.IsOpen);
         }
@@ -193,8 +187,9 @@ public sealed class FeedCardActionTests
             window.Show();
             Dispatcher.UIThread.RunJobs();
             var card = view.FindControl<Button>("Card")!;
-            Click(window, card, new Point(40, 40));
-            var flyout = Assert.IsType<Flyout>(card.Flyout);
+            window.MouseMove(card.TranslatePoint(new Point(40, 40), window)!.Value);
+            Dispatcher.UIThread.RunJobs();
+            var flyout = Assert.IsType<Flyout>(FlyoutBase.GetAttachedFlyout(card));
             Assert.True(flyout.IsOpen);
             if (rebind) view.DataContext = second;
             else window.Content = null;
@@ -220,15 +215,10 @@ public sealed class FeedCardActionTests
             Dispatcher.UIThread.RunJobs();
             var card = view.FindControl<Button>("Card")!;
             Assert.True(card.Focus(NavigationMethod.Tab));
-            window.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None);
-            window.KeyReleaseQwerty(PhysicalKey.Enter, RawInputModifiers.None);
+            window.MouseMove(card.TranslatePoint(new Point(40, 40), window)!.Value);
             Dispatcher.UIThread.RunJobs();
-            var flyout = Assert.IsType<Flyout>(card.Flyout);
+            var flyout = Assert.IsType<Flyout>(FlyoutBase.GetAttachedFlyout(card));
             Assert.True(flyout.IsOpen);
-            var content = Assert.IsAssignableFrom<Control>(flyout.Content);
-            var details = content.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "OpenDetails");
-            Assert.True(details.Focus(NavigationMethod.Tab));
-            Dispatcher.UIThread.RunJobs();
             Assert.True(model.IsFocusWithin);
             Assert.True(model.IsCountdownHeld);
 
@@ -244,41 +234,10 @@ public sealed class FeedCardActionTests
         finally { window.Close(); }
     }
 
-    [AvaloniaFact]
-    public void Opening_another_cards_quick_details_does_not_stack_flyouts()
-    {
-        using var first = new FeedCardViewModel(TileFixture.Tile(DateTime.UtcNow), "First reason", new FeedbackService());
-        using var second = new FeedCardViewModel(TileFixture.Tile(DateTime.UtcNow), "Second reason", new FeedbackService());
-        var firstView = new FeedCardView { DataContext = first, Width = 220 };
-        var secondView = new FeedCardView { DataContext = second, Width = 220 };
-        var window = new Window { Width = 1400, Height = 800,
-            Content = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal,
-                Spacing = 440, Children = { firstView, secondView } } };
-        try
-        {
-            window.Show();
-            Dispatcher.UIThread.RunJobs();
-            var firstCard = firstView.FindControl<Button>("Card")!;
-            var secondCard = secondView.FindControl<Button>("Card")!;
-            var firstFlyout = Assert.IsType<Flyout>(firstCard.Flyout);
-            var secondFlyout = Assert.IsType<Flyout>(secondCard.Flyout);
-            Click(window, firstCard, new Point(40, 40));
-            Assert.True(firstFlyout.IsOpen);
-
-            Click(window, secondCard, new Point(40, 40));
-            Assert.False(firstFlyout.IsOpen);
-            // Native light dismiss may consume the outside click before the new card receives it.
-            if (!secondFlyout.IsOpen) Click(window, secondCard, new Point(40, 40));
-            Assert.True(secondFlyout.IsOpen);
-            Assert.False(firstFlyout.IsOpen);
-        }
-        finally { window.Close(); }
-    }
-
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Hover_preview_holds_across_the_gap_and_allows_actions_or_departure(bool openDetails)
+    public void Hover_preview_opens_immediately_and_closes_on_exit_even_over_the_preview(bool overPreview)
     {
         var opened = 0;
         var metadataRequests = 0;
@@ -305,42 +264,32 @@ public sealed class FeedCardActionTests
             Dispatcher.UIThread.RunJobs();
             Assert.Equal(0, metadataRequests);
             var card = view.FindControl<Button>("Card")!;
-            var flyout = Assert.IsType<Flyout>(card.Flyout);
+            var flyout = Assert.IsType<Flyout>(FlyoutBase.GetAttachedFlyout(card));
             window.MouseMove(card.TranslatePoint(new Point(40, 40), window)!.Value);
             Dispatcher.UIThread.RunJobs();
-            Assert.False(flyout.IsOpen);
-            await Until(() => flyout.IsOpen);
+            Assert.True(flyout.IsOpen);
             Assert.Equal(1, metadataRequests);
             Assert.False(card.IsFocused);
             var content = Assert.IsAssignableFrom<Control>(flyout.Content);
             var popup = TopLevel.GetTopLevel(content)!;
-            var details = content.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "OpenDetails");
-            window.MouseMove(new Point(230, 40));
-            popup.MouseMove(details.TranslatePoint(new Point(8, 8), popup)!.Value);
-            await Task.Delay(300);
-            Dispatcher.UIThread.RunJobs();
-            Assert.True(flyout.IsOpen);
+            Assert.Empty(content.GetVisualDescendants().OfType<Button>());
+            Assert.DoesNotContain(content.GetVisualDescendants().OfType<TextBlock>(),
+                text => text.Text == "WHY THIS GAME" || text.Text == model.Reason);
             Assert.True(model.IsCountdownHeld);
-            if (openDetails)
-            {
-                Click(popup, details);
-                Assert.Equal(1, opened);
-            }
+            if (overPreview)
+                popup.MouseMove(content.TranslatePoint(new Point(40, 40), popup)!.Value);
             else
-            {
-                popup.MouseMove(new Point(-50, -50));
                 window.MouseMove(new Point(1000, 700));
-                await Until(() => !flyout.IsOpen);
-                Assert.Equal(0, opened);
-            }
+            Dispatcher.UIThread.RunJobs();
             Assert.False(flyout.IsOpen);
+            Assert.Equal(0, opened);
             Assert.True(metadataCancellation.IsCancellationRequested);
         }
         finally { window.Close(); }
     }
 
     [AvaloniaFact]
-    public async Task Hovering_another_card_replaces_the_preview_without_a_click()
+    public void Hovering_another_card_replaces_the_preview_without_a_click()
     {
         using var first = new FeedCardViewModel(TileFixture.Tile(DateTime.UtcNow), "First", new FeedbackService());
         using var second = new FeedCardViewModel(TileFixture.Tile(DateTime.UtcNow), "Second", new FeedbackService());
@@ -355,25 +304,17 @@ public sealed class FeedCardActionTests
             Dispatcher.UIThread.RunJobs();
             var firstCard = firstView.FindControl<Button>("Card")!;
             var secondCard = secondView.FindControl<Button>("Card")!;
-            var firstFlyout = Assert.IsType<Flyout>(firstCard.Flyout);
-            var secondFlyout = Assert.IsType<Flyout>(secondCard.Flyout);
+            var firstFlyout = Assert.IsType<Flyout>(FlyoutBase.GetAttachedFlyout(firstCard));
+            var secondFlyout = Assert.IsType<Flyout>(FlyoutBase.GetAttachedFlyout(secondCard));
             window.MouseMove(firstCard.TranslatePoint(new Point(40, 40), window)!.Value);
-            await Until(() => firstFlyout.IsOpen);
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(firstFlyout.IsOpen);
             window.MouseMove(secondCard.TranslatePoint(new Point(40, 40), window)!.Value);
-            await Until(() => secondFlyout.IsOpen);
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(secondFlyout.IsOpen);
             Assert.False(firstFlyout.IsOpen);
         }
         finally { window.Close(); }
-    }
-
-    private static async Task Until(Func<bool> condition)
-    {
-        for (var attempt = 0; attempt < 150 && !condition(); attempt++)
-        {
-            await Task.Delay(10);
-            Dispatcher.UIThread.RunJobs();
-        }
-        Assert.True(condition(), "Preview did not reach its expected state.");
     }
 
     private static void Click(TopLevel window, Button button, Point? localPoint = null)
