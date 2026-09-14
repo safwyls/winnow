@@ -20,6 +20,67 @@ namespace Winnow.Ui.Tests;
 
 public sealed class FeedCardActionTests
 {
+    [AvaloniaTheory]
+    [InlineData(180, false)]
+    [InlineData(240, true)]
+    public void Shared_cover_scales_and_launch_and_details_have_independent_hit_targets(double width, bool installed)
+    {
+        var opened = 0;
+        var launched = 0;
+        var tile = TileFixture.Tile(DateTime.UtcNow, steamAppId: "123",
+            ownership: new Ownership { ReleaseId = 1, Store = "steam", Installed = installed });
+        tile.OpenDetailsCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() => opened++);
+        tile.PrimaryActionCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() => launched++);
+        using var model = new FeedCardViewModel(tile, "A reason", new FeedbackService(), _ => { });
+        var view = new FeedCardView { DataContext = model, Width = width,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top };
+        var window = new Window { Width = 1000, Height = 700, Content = view };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            var cover = view.FindControl<GameTileView>("CoverTile")!;
+            Assert.Equal(width * 1.5, cover.Bounds.Height);
+            var card = view.FindControl<Button>("Card")!;
+            card.Focus(NavigationMethod.Tab);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Contains("actions-visible", cover.FindControl<Border>("Lift")!.Classes);
+            var primary = cover.GetVisualDescendants().OfType<Button>()
+                .Single(b => AutomationProperties.GetName(b) == (installed ? "Play" : "Install"));
+            var details = cover.GetVisualDescendants().OfType<Button>()
+                .Single(b => AutomationProperties.GetName(b) == "Details");
+            var primaryBottom = primary.TranslatePoint(new Point(0, primary.Bounds.Height), view)!.Value.Y;
+            var feedbackTop = view.FindControl<Border>("ActionStrip")!.TranslatePoint(default, view)!.Value.Y;
+            Assert.True(primaryBottom <= feedbackTop);
+            Click(window, primary);
+            Assert.Equal(1, launched);
+            Assert.Equal(0, opened);
+            window.MouseMove(new Point(950, 650));
+            Dispatcher.UIThread.RunJobs();
+            Assert.DoesNotContain("actions-visible", cover.FindControl<Border>("Lift")!.Classes);
+            Assert.False(view.FindControl<Border>("ActionStrip")!.IsHitTestVisible);
+            Click(window, details);
+            Assert.Equal(1, opened);
+            Click(window, card, new Point(width / 2, 70));
+            Assert.Equal(2, opened);
+            Click(window, card, new Point(width / 2, cover.Bounds.Height + 12));
+            Assert.Equal(3, opened);
+            view.Width = width + 20;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal((width + 20) * 1.5, cover.Bounds.Height);
+            if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
+            {
+                window.MouseMove(card.TranslatePoint(new Point(width / 2, 70), window)!.Value);
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                Dispatcher.UIThread.RunJobs();
+                Directory.CreateDirectory(directory);
+                using var frame = window.CaptureRenderedFrame();
+                frame!.Save(System.IO.Path.Combine(directory, $"shared-feed-tile-{width}.png"));
+            }
+        }
+        finally { window.Close(); }
+    }
+
     [AvaloniaFact]
     public void Feed_action_pointer_press_has_no_border_but_keyboard_focus_does()
     {

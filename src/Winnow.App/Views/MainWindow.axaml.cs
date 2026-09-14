@@ -1071,7 +1071,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// A click selects the card; a double click opens the detail modal.
+    /// Select the card on press; the shared tile opens details on release.
     /// Buttons own their presses, including repeated clicks.
     /// </summary>
     private void OnTilePressed(object? sender, PointerPressedEventArgs e)
@@ -1097,13 +1097,6 @@ public partial class MainWindow : Window
             || source.FindAncestorOfType<RangeBase>(includeSelf: true) is not null)
         {
             library.SelectTile(tile);
-            return;
-        }
-
-        if (e.ClickCount >= 2)
-        {
-            library.OpenDetailsCommand.Execute(tile);
-            e.Handled = true;
             return;
         }
 

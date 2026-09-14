@@ -367,7 +367,7 @@
                     </Border>
 
                     <!-- Hover overlay: ≤ 4 facts — the tile is a decision surface. -->
-                    <Border Name="Scrim" VerticalAlignment="Bottom" Padding="10,24,10,10"
+                    <Border Name="Scrim" VerticalAlignment="Bottom" Padding="10,24,10,10" Margin="{Binding #Root.ActionInset}"
                             Background="{StaticResource TileScrim}">
                         <StackPanel Spacing="8">
                             <!-- §5.3: title in Body L, then playtime + idle and

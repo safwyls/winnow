@@ -312,7 +312,7 @@ overlay transition. Pointer focus from clicking an action does not pin the revea
 The realized `GameTileView` owns that distinction and clears hover, focus and hit targets when
 it is rebound or detached; pointer capture is resolved from the pointer's actual tile geometry.
 Each icon has at least a 32px square hit target at the 108px density floor. A press on an icon
-belongs only to that control; a double click elsewhere on the tile opens Details. Selection,
+belongs only to that control; a single click elsewhere on the tile opens Details on release. Selection,
 store marks, expansion marks and the unread badge remain available without revealing actions.
 Hover and keyboard action focus also draw the promo site's 2px Volt border highlight. The
 ring sits inside the tile with a 1px Ground separator so edge tiles remain unclipped. It
@@ -2338,9 +2338,17 @@ Azure, Amber and TextDim respectively. Geometry does not change when actions app
 Recently played offers only Add to list.
 Feedback retains the in-place Undo receipt, countdown hold and history behavior.
 
-Desktop feed and library cover tiles share one hover-preview component, including artwork
-and ratings loading, layout, dismissal and window-bound positioning. Library selection,
-double-click and action controls retain their existing behavior. Recycling a library tile
+Desktop feed and library covers use `GameTileView` for artwork, dormancy, Fit/Fill, unread
+badges, the details dogear and the Play/Install overlay. The face fills its host at the same
+2:3 ratio; the library density and feed column width determine its size. Actions retain
+minimum hit sizes rather than shrinking with the artwork. The feed reserves 48px below the
+shared overlay for its feedback strip, with its title and reason beneath the cover.
+Both surfaces open details with a single click outside an action; Play/Install and feed
+feedback buttons execute only their own commands. The feed also opens details from its
+caption and reason. Library selection still updates on press.
+
+Both surfaces share the hover-preview component, including artwork and ratings loading,
+layout, dismissal and window-bound positioning. Recycling a library tile
 closes its preview and releases its independent artwork lease. Fullscreen continues to show
 the selected game's information in its hero area rather than a pointer-hover bubble.
 

@@ -13,9 +13,9 @@ public partial class FeedCardView : UserControl
 {
     private FeedCardViewModel? _card;
     private GameTileViewModel? _tile;
-    private CoverPresenter? _cover;
     private bool _hovered;
     private bool _focused;
+    private bool _keyboardFocus;
     private readonly GameHoverPreview _preview;
     private Flyout _quickDetails => _preview.Flyout;
 
@@ -23,12 +23,17 @@ public partial class FeedCardView : UserControl
     {
         InitializeComponent();
         _preview = new GameHoverPreview(this, Card);
+        AddHandler(PointerPressedEvent, (_, _) => _preview.Suppress(), Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        AddHandler(GotFocusEvent, (_, e) =>
+        {
+            _keyboardFocus = e.NavigationMethod is NavigationMethod.Tab or NavigationMethod.Directional;
+            Apply();
+        }, Avalonia.Interactivity.RoutingStrategies.Bubble);
         Card.Click += (_, e) =>
         {
             if (!ReferenceEquals(e.Source, Card)) return;
             _preview.Suppress();
-            if (_tile is { } tile && tile.OpenDetailsCommand?.CanExecute(tile) == true)
-                tile.OpenDetailsCommand.Execute(tile);
+            CoverTile.OpenDetails();
         };
         Card.KeyDown += (_, e) =>
         {
@@ -44,7 +49,7 @@ public partial class FeedCardView : UserControl
             Card.Classes.Set("open", false);
             Apply();
         };
-        SizeChanged += (_, _) => RequestCover();
+
         if (Avalonia.Controls.Design.IsDesignMode) DataContext = Design.PreviewData.FeedCard;
     }
 
@@ -79,6 +84,7 @@ public partial class FeedCardView : UserControl
         if (change.Property == IsKeyboardFocusWithinProperty)
         {
             _focused = change.NewValue is true;
+            if (!_focused) _keyboardFocus = false;
             Apply();
         }
     }
@@ -94,18 +100,16 @@ public partial class FeedCardView : UserControl
         }
         _card = DataContext as FeedCardViewModel;
         _tile = _card?.Tile;
-        _cover = _card?.Cover;
+        CoverTile.ActionInset = new Thickness(0, 0, 0, _card?.HasSecondaryActions == true ? 48 : 0);
         _preview.Target(_card?.Preview);
         Apply();
         WriteReason(_card);
-        RequestCover();
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
         _quickDetails.OverlayInputPassThroughElement = TopLevel.GetTopLevel(this);
-        RequestCover();
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
@@ -113,6 +117,7 @@ public partial class FeedCardView : UserControl
         _preview.Hide();
         _hovered = false;
         _focused = false;
+        _keyboardFocus = false;
         Apply();
         base.OnDetachedFromVisualTree(e);
     }
@@ -131,14 +136,11 @@ public partial class FeedCardView : UserControl
         }
     }
 
-    private void RequestCover()
-    {
-        if (_cover is null || this.GetVisualRoot() is null || CoverFrame.Bounds.Width <= 0) return;
-        _cover.Request(CoverFrame.Bounds.Width * (TopLevel.GetTopLevel(this)?.RenderScaling ?? 1));
-    }
-
     private void Apply()
     {
+        var reveal = _hovered || _keyboardFocus;
+        Card.Classes.Set("actions-visible", reveal);
+        CoverTile.InteractionActive = reveal;
         if (_tile is not null) _tile.IsPointerOver = _hovered;
         if (_card is not null)
         {

@@ -22,7 +22,7 @@
         <Style Selector="Border#FocusRing">
             <Setter Property="Opacity" Value="0"/>
         </Style>
-        <Style Selector="Button.feedcard:pointerover Border#FocusRing, Button.feedcard:focus-within Border#FocusRing, Button.feedcard.open Border#FocusRing">
+        <Style Selector="Button.feedcard.actions-visible Border#FocusRing">
             <Setter Property="Opacity" Value="1"/>
         </Style>
         <!-- Keep actions measured and keyboard reachable; only their pixels disappear at rest. -->
@@ -30,7 +30,7 @@
             <Setter Property="Opacity" Value="0"/>
             <Setter Property="IsHitTestVisible" Value="False"/>
         </Style>
-        <Style Selector="Button.feedcard:pointerover Border#ActionStrip, Button.feedcard:focus-within Border#ActionStrip, Button.feedcard.open Border#ActionStrip">
+        <Style Selector="Button.feedcard.actions-visible Border#ActionStrip">
             <Setter Property="Opacity" Value="1"/>
             <Setter Property="IsHitTestVisible" Value="True"/>
         </Style>
@@ -56,15 +56,7 @@
         <Style Selector="Button.cardaside:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
         </Style>
-        <Style Selector="Panel#Art Border#VividArt, Panel#Art Image#VividArtwork, Panel#Art views|CoverPadding#VividPadding">
-            <Setter Property="Transitions"><Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.14" Easing="CubicEaseOut"/>
-            </Transitions></Setter>
-        </Style>
-        <Style Selector="Panel#Art.snap Border#VividArt, Panel#Art.snap Image#VividArtwork, Panel#Art.snap views|CoverPadding#VividPadding">
-            <Setter Property="Transitions"><Transitions/></Setter>
-        </Style>
-        <Style Selector="Button.feedcard.setaside Panel#Art"><Setter Property="Opacity" Value="0.42"/></Style>
+        <Style Selector="Button.feedcard.setaside views|GameTileView"><Setter Property="Opacity" Value="0.42"/></Style>
         <Style Selector="Arc#CountdownSweep"><Setter Property="Transitions"><Transitions>
             <DoubleTransition Property="SweepAngle" Duration="0:0:0.033" Easing="LinearEasing"/>
         </Transitions></Setter></Style>
@@ -74,27 +66,7 @@
             AutomationProperties.Name="{Binding AutomationName}" AutomationProperties.ItemStatus="{Binding StatusAnnouncement}">
         <StackPanel Spacing="8">
             <Panel Name="CoverFrame" Height="270">
-                <Border CornerRadius="6" ClipToBounds="True" Background="{StaticResource Surface}">
-                    <Panel Name="Art" Classes.snap="{Binding Tile.SnapDormancy}" IsHitTestVisible="False">
-                        <Border Background="{Binding Tile.FloorBrush}" IsVisible="{Binding Cover.ShowPlaceholder}">
-                            <TextBlock Text="{Binding Tile.Title}" FontFamily="{StaticResource DisplayFont}" FontWeight="Bold"
-                                       FontSize="18" TextWrapping="Wrap" VerticalAlignment="Bottom" Margin="12"
-                                       Foreground="{Binding Tile.FloorTitleBrush}"/>
-                        </Border>
-                        <Border Name="VividArt" Background="{Binding Tile.VividBrush}" Opacity="{Binding Tile.DisplayAlpha}"
-                                IsVisible="{Binding Cover.ShowPlaceholder}">
-                            <TextBlock Text="{Binding Tile.Title}" FontFamily="{StaticResource DisplayFont}" FontWeight="Bold"
-                                       FontSize="18" TextWrapping="Wrap" VerticalAlignment="Bottom" Margin="12" Foreground="White"/>
-                        </Border>
-                        <views:CoverPadding Source="{Binding Cover.Floor}"/>
-                        <views:CoverPadding Name="VividPadding" Source="{Binding Cover.Vivid}" Opacity="{Binding Tile.DisplayAlpha}"/>
-                        <Image views:CoverPresentation.IsCover="True" Source="{Binding Cover.Floor}"/>
-                        <Image views:CoverPresentation.IsCover="True" Name="VividArtwork" Source="{Binding Cover.Vivid}" Opacity="{Binding Tile.DisplayAlpha}"/>
-                    </Panel>
-                </Border>
-                <Border Width="14" Height="14" CornerRadius="7" Background="{StaticResource Flare}"
-                        BorderBrush="{StaticResource Ground}" BorderThickness="2" BoxShadow="{DynamicResource BadgeGlow}"
-                        HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8,8,0,0" IsVisible="{Binding Tile.HasUnread}"/>
+                <views:GameTileView Name="CoverTile" DataContext="{Binding Tile}" Embedded="True"/>
                 <Panel IsVisible="{Binding HasSecondaryActions}">
                 <Border Name="ActionStrip" Background="{StaticResource Surface}" CornerRadius="0,0,6,6"
                         VerticalAlignment="Bottom" Padding="6" IsVisible="{Binding ShowActions}">

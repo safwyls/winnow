@@ -29,7 +29,6 @@ public sealed class ReducedMotionCoverageTests
     }
 
     [Theory]
-    [InlineData("src/Winnow.App/Views/FeedCardView.axaml", "Panel#Art.snap")]
     [InlineData("src/Winnow.App/Views/FeedCardView.axaml", "Panel#Countdown.snap")]
     [InlineData("src/Winnow.App/Views/GameTileView.axaml", "Border#Lift.snap")]
     [InlineData("src/Winnow.App/Views/MainWindow.axaml", "Window.reducedmotion")]

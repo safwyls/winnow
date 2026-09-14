@@ -23,6 +23,22 @@ namespace Winnow.App.Views;
 /// </summary>
 public partial class GameTileView : UserControl
 {
+    // A feed card owns the larger clickable caption and the preview lifetime.
+    // Its cover still owns art leases and the two independent action buttons.
+    public static readonly Avalonia.StyledProperty<bool> EmbeddedProperty =
+        Avalonia.AvaloniaProperty.Register<GameTileView, bool>(nameof(Embedded));
+    public bool Embedded { get => GetValue(EmbeddedProperty); set => SetValue(EmbeddedProperty, value); }
+
+    public static readonly Avalonia.StyledProperty<Avalonia.Thickness> ActionInsetProperty =
+        Avalonia.AvaloniaProperty.Register<GameTileView, Avalonia.Thickness>(nameof(ActionInset));
+    public Avalonia.Thickness ActionInset { get => GetValue(ActionInsetProperty); set => SetValue(ActionInsetProperty, value); }
+
+    public static readonly Avalonia.StyledProperty<bool> InteractionActiveProperty =
+        Avalonia.AvaloniaProperty.Register<GameTileView, bool>(nameof(InteractionActive));
+    public bool InteractionActive { get => GetValue(InteractionActiveProperty); set => SetValue(InteractionActiveProperty, value); }
+
+    private GameTileViewModel? _pressedTile;
+    private Avalonia.Point _pressPosition;
     /// <summary>Fallback tile width when the container is measured after attach (the wall's density minimum).</summary>
     private const double NominalTileWidth = 148;
 
@@ -41,6 +57,7 @@ public partial class GameTileView : UserControl
         AddHandler(PointerPressedEvent, (_, _) => _preview.Suppress(), RoutingStrategies.Tunnel);
         AddHandler(KeyDownEvent, (_, e) => { if (e.Key == Key.Escape) _preview.Suppress(); }, RoutingStrategies.Tunnel);
         AddHandler(GotFocusEvent, OnDescendantGotFocus, RoutingStrategies.Bubble);
+        SizeChanged += (_, _) => RequestCover();
 
         // The previewer gets a populated tile; runtime leaves the DataContext
         // to the wall's container recycling. See Design/PreviewData.cs.
@@ -62,13 +79,14 @@ public partial class GameTileView : UserControl
     {
         base.OnPointerEntered(e);
         _pointerInside = true;
-        _preview.Show();
+        if (!Embedded) _preview.Show();
         ApplyInteractionState();
     }
 
     protected override void OnPointerExited(PointerEventArgs e)
     {
         base.OnPointerExited(e);
+        _pressedTile = null;
         _pointerInside = false;
         _preview.Exit();
         ApplyInteractionState();
@@ -87,14 +105,49 @@ public partial class GameTileView : UserControl
         if (_pointerInside != pointerInside)
         {
             _pointerInside = pointerInside;
-            if (pointerInside) _preview.Show(); else _preview.Exit();
+            if (pointerInside && !Embedded) _preview.Show(); else _preview.Exit();
             ApplyInteractionState();
         }
+    }
+
+    protected override void OnPointerPressed(PointerPressedEventArgs e)
+    {
+        base.OnPointerPressed(e);
+        _pressedTile = null;
+        if (Embedded || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        for (var visual = e.Source as Avalonia.Visual; visual is not null && visual != this; visual = visual.GetVisualParent())
+        {
+            if (visual is Button or Avalonia.Controls.Primitives.RangeBase) return;
+        }
+        _pressedTile = _bound;
+        _pressPosition = e.GetPosition(this);
+    }
+
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    {
+        base.OnPointerReleased(e);
+        var pressed = _pressedTile;
+        _pressedTile = null;
+        var position = e.GetPosition(this);
+        if (e.InitialPressMouseButton != MouseButton.Left || pressed is null || pressed != _bound
+            || !new Avalonia.Rect(Bounds.Size).Contains(position)
+            || Math.Abs(position.X - _pressPosition.X) > 8 || Math.Abs(position.Y - _pressPosition.Y) > 8) return;
+        OpenDetails();
+        e.Handled = true;
+    }
+
+    public void OpenDetails()
+    {
+        _preview.Suppress();
+        if (_bound is { } tile && tile.OpenDetailsCommand?.CanExecute(tile) == true)
+            tile.OpenDetailsCommand.Execute(tile);
     }
 
     protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
+
+        if (change.Property == InteractionActiveProperty) ApplyInteractionState();
 
         if (change.Property == IsKeyboardFocusWithinProperty && change.NewValue is false)
         {
@@ -129,6 +182,7 @@ public partial class GameTileView : UserControl
             }
 
             _bound = DataContext as GameTileViewModel;
+            _pressedTile = null;
             RetargetPreview();
             _pointerInside = false;
             _keyboardActionFocus = false;
@@ -161,6 +215,7 @@ public partial class GameTileView : UserControl
         _previewModel?.Dispose();
         _previewModel = null;
         _pointerInside = false;
+        _pressedTile = null;
         _keyboardActionFocus = false;
         ApplyInteractionState();
         HideDetachedAction(PrimaryActionHost);
@@ -173,7 +228,7 @@ public partial class GameTileView : UserControl
     {
         _preview.Target(null);
         _previewModel?.Dispose();
-        _previewModel = _bound is null ? null : new GamePreviewViewModel(_bound);
+        _previewModel = _bound is null || Embedded ? null : new GamePreviewViewModel(_bound);
         _preview.Target(_previewModel);
     }
 
@@ -205,10 +260,10 @@ public partial class GameTileView : UserControl
     {
         if (DataContext is GameTileViewModel tile)
         {
-            tile.IsPointerOver = _pointerInside;
+            tile.IsPointerOver = _pointerInside || InteractionActive;
         }
 
-        Lift.Classes.Set("actions-visible", _pointerInside || _keyboardActionFocus);
+        Lift.Classes.Set("actions-visible", _pointerInside || _keyboardActionFocus || InteractionActive);
     }
 
     private static void HideDetachedAction(Border host)

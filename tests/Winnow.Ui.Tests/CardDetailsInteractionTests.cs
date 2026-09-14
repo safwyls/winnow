@@ -24,6 +24,32 @@ namespace Winnow.Ui.Tests;
 
 public sealed class CardDetailsInteractionTests
 {
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Incomplete_click_or_recycled_press_does_not_open_details(bool recycle)
+    {
+        var opened = 0;
+        var tile = TileFixture.Tile(DateTime.UtcNow);
+        tile.OpenDetailsCommand = new RelayCommand(() => opened++);
+        var view = new GameTileView { DataContext = tile, Width = 180, Height = 270 };
+        var window = new Window { Width = 800, Height = 600, Content = view };
+        try
+        {
+            window.Show();
+            Flush();
+            var point = view.TranslatePoint(new Point(70, 70), window)!.Value;
+            window.MouseMove(point);
+            window.MouseDown(point, MouseButton.Left);
+            if (recycle) view.DataContext = TileFixture.Tile(DateTime.UtcNow);
+            else window.MouseMove(new Point(780, 580));
+            window.MouseUp(recycle ? point : new Point(780, 580), MouseButton.Left);
+            Flush();
+            Assert.Equal(0, opened);
+        }
+        finally { window.Close(); }
+    }
+
     [AvaloniaFact]
     public async Task Hover_border_preserves_selection_and_clears_when_the_tile_is_recycled()
     {
@@ -448,7 +474,7 @@ public sealed class CardDetailsInteractionTests
     }
 
     [AvaloniaFact]
-    public async Task Non_control_double_click_opens_details_but_icon_press_only_runs_its_action()
+    public async Task Single_click_opens_details_but_icon_press_only_runs_its_action()
     {
         using var fixture = await CardFixture.CreateAsync(108);
         var presses = 0;
@@ -458,12 +484,7 @@ public sealed class CardDetailsInteractionTests
         var coverPoint = fixture.Position(fixture.TileView, new Point(54, 80));
 
         fixture.Window.MouseMove(coverPoint);
-        fixture.Window.MouseDown(coverPoint, MouseButton.Left);
-        fixture.Window.MouseUp(coverPoint, MouseButton.Left);
         Flush();
-        Assert.Same(fixture.Tile, fixture.Library.SelectedTile);
-        Assert.False(fixture.Library.IsDetailsOpen);
-
         fixture.Click(fixture.Button("Play"));
         Assert.Equal(1, presses);
         Assert.False(fixture.Library.IsDetailsOpen);
@@ -471,8 +492,7 @@ public sealed class CardDetailsInteractionTests
         fixture.Window.MouseMove(coverPoint);
         fixture.Window.MouseDown(coverPoint, MouseButton.Left);
         fixture.Window.MouseUp(coverPoint, MouseButton.Left);
-        fixture.Window.MouseDown(coverPoint, MouseButton.Left);
-        fixture.Window.MouseUp(coverPoint, MouseButton.Left);
+        Assert.Same(fixture.Tile, fixture.Library.SelectedTile);
         if (fixture.Library.OpenDetailsCommand.ExecutionTask is { } opened) await opened;
         Flush();
         Assert.True(fixture.Library.IsDetailsOpen);
