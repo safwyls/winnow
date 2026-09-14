@@ -166,7 +166,8 @@ public sealed class FeedCardActionTests
             Assert.True(flyout.IsOpen);
             Assert.Equal(0, opened);
             var content = Assert.IsAssignableFrom<Control>(flyout.Content);
-            Assert.Contains(content.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == reason);
+            Assert.DoesNotContain(content.GetVisualDescendants().OfType<TextBlock>(),
+                text => text.Text == reason || text.Text == "WHY THIS GAME");
             var primary = content.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PrimaryAction");
             Assert.Equal("Install", primary.Content);
             var details = content.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "OpenDetails");
@@ -250,9 +251,9 @@ public sealed class FeedCardActionTests
         using var second = new FeedCardViewModel(TileFixture.Tile(DateTime.UtcNow), "Second reason", new FeedbackService());
         var firstView = new FeedCardView { DataContext = first, Width = 220 };
         var secondView = new FeedCardView { DataContext = second, Width = 220 };
-        var window = new Window { Width = 1000, Height = 800,
+        var window = new Window { Width = 1400, Height = 800,
             Content = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal,
-                Spacing = 24, Children = { firstView, secondView } } };
+                Spacing = 440, Children = { firstView, secondView } } };
         try
         {
             window.Show();
@@ -274,7 +275,108 @@ public sealed class FeedCardActionTests
         finally { window.Close(); }
     }
 
-    private static void Click(Window window, Button button, Point? localPoint = null)
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Hover_preview_holds_across_the_gap_and_allows_actions_or_departure(bool openDetails)
+    {
+        var opened = 0;
+        var metadataRequests = 0;
+        CancellationToken metadataCancellation = default;
+        var source = TileFixture.Tile(DateTime.UtcNow, steamAppId: "123");
+        var tile = new GameTileViewModel(source.Entries, source.Game, source.Title, DateTime.UtcNow)
+        {
+            LoadBackdropImages = token =>
+            {
+                metadataRequests++;
+                metadataCancellation = token;
+                return new TaskCompletionSource<IReadOnlyList<WorkImages>>().Task;
+            },
+            OpenDetailsCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() => opened++),
+        };
+        using var model = new FeedCardViewModel(tile, "A reason kept beneath the cover", new FeedbackService());
+        var view = new FeedCardView { DataContext = model, Width = 220,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top };
+        var window = new Window { Width = 1100, Height = 800, Content = view };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(0, metadataRequests);
+            var card = view.FindControl<Button>("Card")!;
+            var flyout = Assert.IsType<Flyout>(card.Flyout);
+            window.MouseMove(card.TranslatePoint(new Point(40, 40), window)!.Value);
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(flyout.IsOpen);
+            await Until(() => flyout.IsOpen);
+            Assert.Equal(1, metadataRequests);
+            Assert.False(card.IsFocused);
+            var content = Assert.IsAssignableFrom<Control>(flyout.Content);
+            var popup = TopLevel.GetTopLevel(content)!;
+            var details = content.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "OpenDetails");
+            window.MouseMove(new Point(230, 40));
+            popup.MouseMove(details.TranslatePoint(new Point(8, 8), popup)!.Value);
+            await Task.Delay(300);
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(flyout.IsOpen);
+            Assert.True(model.IsCountdownHeld);
+            if (openDetails)
+            {
+                Click(popup, details);
+                Assert.Equal(1, opened);
+            }
+            else
+            {
+                popup.MouseMove(new Point(-50, -50));
+                window.MouseMove(new Point(1000, 700));
+                await Until(() => !flyout.IsOpen);
+                Assert.Equal(0, opened);
+            }
+            Assert.False(flyout.IsOpen);
+            Assert.True(metadataCancellation.IsCancellationRequested);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Hovering_another_card_replaces_the_preview_without_a_click()
+    {
+        using var first = new FeedCardViewModel(TileFixture.Tile(DateTime.UtcNow), "First", new FeedbackService());
+        using var second = new FeedCardViewModel(TileFixture.Tile(DateTime.UtcNow), "Second", new FeedbackService());
+        var firstView = new FeedCardView { DataContext = first, Width = 220 };
+        var secondView = new FeedCardView { DataContext = second, Width = 220 };
+        var window = new Window { Width = 1400, Height = 800,
+            Content = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal,
+                Spacing = 440, Children = { firstView, secondView } } };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            var firstCard = firstView.FindControl<Button>("Card")!;
+            var secondCard = secondView.FindControl<Button>("Card")!;
+            var firstFlyout = Assert.IsType<Flyout>(firstCard.Flyout);
+            var secondFlyout = Assert.IsType<Flyout>(secondCard.Flyout);
+            window.MouseMove(firstCard.TranslatePoint(new Point(40, 40), window)!.Value);
+            await Until(() => firstFlyout.IsOpen);
+            window.MouseMove(secondCard.TranslatePoint(new Point(40, 40), window)!.Value);
+            await Until(() => secondFlyout.IsOpen);
+            Assert.False(firstFlyout.IsOpen);
+        }
+        finally { window.Close(); }
+    }
+
+    private static async Task Until(Func<bool> condition)
+    {
+        for (var attempt = 0; attempt < 150 && !condition(); attempt++)
+        {
+            await Task.Delay(10);
+            Dispatcher.UIThread.RunJobs();
+        }
+        Assert.True(condition(), "Preview did not reach its expected state.");
+    }
+
+    private static void Click(TopLevel window, Button button, Point? localPoint = null)
     {
         var point = button.TranslatePoint(localPoint ?? new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), window)!.Value;
         window.MouseMove(point);

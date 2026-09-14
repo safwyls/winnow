@@ -2323,20 +2323,27 @@ width, 18px gaps and fixed 2:3 artwork bounds. Narrow windows scroll each shelf 
 Up/Down preserves the card column between shelves and Left/Right brings overflow into view.
 Short shelves keep the same slot sizes. The page scrolls vertically through shelf headings,
 short explanations and rules fading toward the right. Titles and two-line recommendation
-excerpts stay below each cover; the complete reason remains in the accessible name and quick view.
+excerpts stay below each cover; the complete reason remains in the accessible name.
 
 Hover or keyboard focus reveals a bottom action strip inside the cover: **Add to list**,
 **Not now**, and **Not interested**, with 36px targets, named tooltips and neutral text-colored
 icons. Geometry does not change when actions appear. Recently played offers only Add to list.
 Feedback retains the in-place Undo receipt, countdown hold and history behavior.
 
-Click, Enter or Space opens an anchored quick-details flyout, never hover alone. It presents
-the title, complete recommendation reason, store and play metadata, an optional short summary,
-Play / Install when available, and **Open details**. Escape, light dismiss or its close button
-closes the flyout. Rebinding or removing a card closes it too; an open quick view holds that
-card's feedback countdown. The flyout stays within the window's available size and scrolls
-long content. Opening full details closes quick details first. No hero backdrop is fetched
-for desktop feed cards; portrait covers retain shared Fit/Fill and dormancy behavior.
+Hovering a cover for 300ms opens a compact quick-details bubble to its right, flipping left
+when space is tighter on the right. A connected triangular pointer aims at the cover. A 220ms
+close delay lets the pointer cross into the bubble; leaving both surfaces closes it. Click,
+Enter or Space also opens it, with keyboard focus available for its actions. Only one preview
+opens at a time. It presents a bold title, quieter store and play metadata, an optional
+four-line summary, Play / Install when available, and **Open details**. The recommendation
+reason stays below the cover rather than repeating in the preview.
+
+Hero artwork fills the bubble at 18% opacity, clipped into the same rounded shape and pointer
+as its surface and outline. Artwork is leased only while the preview is open. Escape, light
+dismiss or its close button closes it. Rebinding or removing a card closes it too; an open
+quick view holds that card's feedback countdown. The bubble stays within the window's
+available size and scrolls long content. Opening full details closes quick details first.
+Portrait covers retain shared Fit/Fill and dormancy behavior.
 Fullscreen retains its page hero, shelves and controller action panel.
 
 In a static list, the game context menu offers **Remove from list**, acting on the selected

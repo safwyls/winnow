@@ -39,10 +39,13 @@ public sealed class FeedShelfVisualTests
                 var file = Path.Combine(source ?? "", $"steam_{ids[i]}.src.jpg");
                 var bitmap = source is not null && File.Exists(file) ? new Bitmap(file) : null;
                 if (bitmap is not null) bitmaps.Add(bitmap);
+                var heroFile = Path.Combine(source ?? "", $"steam-hero_{ids[i]}.src.jpg");
+                var hero = source is not null && File.Exists(heroFile) ? new Bitmap(heroFile) : null;
+                if (hero is not null) bitmaps.Add(hero);
                 var tile = TileFixture.Tile(DateTime.UtcNow, title: titles[i], steamAppId: ids[i],
                     ownership: new Winnow.Core.Domain.Ownership { ReleaseId = i + 1, Store = "steam", Installed = true },
-                    work: new Winnow.Core.Domain.Work { Id = i + 1, Name = titles[i], Summary = i == 2 ? "Explore a solar system trapped in a time loop." : null },
-                    covers: bitmap is null ? null : new ArtLeaseSource(bitmap), coverKey: CoverKey.Steam(ids[i]));
+                    work: new Winnow.Core.Domain.Work { Id = i + 1, Name = titles[i], Summary = i == 3 ? "Defy the god of the dead as you battle out of the Underworld." : null },
+                    covers: bitmap is null ? null : new ArtLeaseSource(bitmap, hero), coverKey: CoverKey.Steam(ids[i]));
                 tile.OpenDetailsCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() => { });
                 cards.Add(new FeedCardViewModel(tile, reasons[i], new PreviewFeedService(), _ => { }));
             }
@@ -58,7 +61,7 @@ public sealed class FeedShelfVisualTests
             var cards = view.GetVisualDescendants().OfType<FeedCardView>().ToArray();
             Assert.Equal(12, cards.Length);
             Save("shelves");
-            var card = cards[2].FindControl<Button>("Card")!;
+            var card = cards[3].FindControl<Button>("Card")!;
             card.Focus();
             Assert.IsType<Flyout>(card.Flyout).ShowAt(card);
             Dispatcher.UIThread.RunJobs();
@@ -79,17 +82,18 @@ public sealed class FeedShelfVisualTests
         }
     }
 
-    private sealed class ArtLeaseSource(Bitmap bitmap) : ICoverLeases
+    private sealed class ArtLeaseSource(Bitmap bitmap, Bitmap? hero) : ICoverLeases
     {
         public ICoverLease Acquire(CoverKey key, double displayWidthPixels, CoverLayers layers = CoverLayers.VividAndFloor) =>
-            new Lease(key, CoverImaging.SnapWidth(displayWidthPixels), layers, new CoverArt(bitmap, bitmap));
+            new Lease(key, CoverImaging.SnapWidth(displayWidthPixels), layers,
+                key.Provider == CoverProviders.Steam ? new CoverArt(bitmap, bitmap) : hero is null ? null : new CoverArt(hero, hero));
     }
-    private sealed class Lease(CoverKey key, int width, CoverLayers layers, CoverArt art) : ICoverLease
+    private sealed class Lease(CoverKey key, int width, CoverLayers layers, CoverArt? art) : ICoverLease
     {
         public CoverKey Key => key;
         public int Width => width;
         public CoverLayers Layers => layers;
-        public bool TryGetArt(out CoverArt value) { value = art; return true; }
+        public bool TryGetArt(out CoverArt value) { value = art!; return art is not null; }
         public Task<CoverArt?> GetAsync(CancellationToken ct = default) => Task.FromResult<CoverArt?>(art);
         public void Dispose() { }
     }

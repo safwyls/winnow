@@ -6,12 +6,14 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Data;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Winnow.App.ViewModels;
 
 namespace Winnow.App.Views;
 
-/// <summary>Portrait recommendation with independent artwork and an explicitly opened quick view.</summary>
+/// <summary>Portrait recommendation with an art-backed hover preview and independent artwork leases.</summary>
 public partial class FeedCardView : UserControl
 {
     private FeedCardViewModel? _card;
@@ -19,27 +21,72 @@ public partial class FeedCardView : UserControl
     private CoverPresenter? _cover;
     private bool _hovered;
     private bool _focused;
-    private readonly Flyout _quickDetails = new() { Placement = PlacementMode.Bottom };
+    private bool _previewHovered;
+    private bool _hoverSuppressed;
+    private bool _keyboardOpened;
+    private readonly DispatcherTimer _openTimer = new() { Interval = TimeSpan.FromMilliseconds(300) };
+    private readonly DispatcherTimer _closeTimer = new() { Interval = TimeSpan.FromMilliseconds(220) };
+    private static WeakReference<FeedCardView>? _activePreview;
+    private FeedPreviewBubble? _bubble;
+    private readonly Flyout _quickDetails = new()
+    {
+        Placement = PlacementMode.RightEdgeAlignedTop,
+        ShowMode = FlyoutShowMode.Transient,
+        OverlayDismissEventPassThrough = true,
+    };
 
     public FeedCardView()
     {
         InitializeComponent();
         Card.Flyout = _quickDetails;
+        _openTimer.Tick += (_, _) =>
+        {
+            _openTimer.Stop();
+            if (_hovered && !_hoverSuppressed && IsEffectivelyVisible && _card?.ShowActions == true)
+            {
+                _keyboardOpened = false;
+                _quickDetails.ShowMode = FlyoutShowMode.Transient;
+                _quickDetails.ShowAt(Card);
+            }
+        };
+        _closeTimer.Tick += (_, _) =>
+        {
+            _closeTimer.Stop();
+            if (!_hovered && !_previewHovered && !(_keyboardOpened && (_focused || _bubble?.IsKeyboardFocusWithin == true)))
+                _quickDetails.Hide();
+        };
+        Card.KeyDown += (_, e) =>
+        {
+            if (e.Key is Key.Enter or Key.Space && ReferenceEquals(e.Source, Card))
+            {
+                _openTimer.Stop();
+                _keyboardOpened = true;
+                _quickDetails.ShowMode = FlyoutShowMode.Standard;
+            }
+            if (e.Key == Key.Escape) SuppressPreview();
+        };
         _quickDetails.Opening += (_, _) => BuildQuickDetails();
         _quickDetails.Opened += (_, _) =>
         {
             if (_quickDetails.Content is Control content && content.GetVisualAncestors().OfType<FlyoutPresenter>().FirstOrDefault() is { } presenter)
             {
-                presenter.Background = Resource<IBrush>("SurfaceRaised", Brushes.DarkSlateGray);
-                presenter.BorderBrush = Resource<IBrush>("Line", Brushes.Gray);
-                presenter.BorderThickness = new Thickness(1);
-                presenter.CornerRadius = new CornerRadius(6);
-                presenter.Padding = new Thickness(18);
+                presenter.Background = Brushes.Transparent;
+                presenter.BorderThickness = new Thickness(0);
+                presenter.Padding = new Thickness(0);
             }
+            UpdateBubblePointer();
             Card.Classes.Set("open", true);
             Apply();
         };
-        _quickDetails.Closed += (_, _) => { Card.Classes.Set("open", false); Apply(); };
+        _quickDetails.Closed += (_, _) =>
+        {
+            _openTimer.Stop(); _closeTimer.Stop();
+            _previewHovered = false;
+            _card?.ReleaseBackdrop();
+            if (_activePreview?.TryGetTarget(out var active) == true && ReferenceEquals(active, this)) _activePreview = null;
+            Card.Classes.Set("open", false);
+            Apply();
+        };
         SizeChanged += (_, _) => RequestCover();
         if (Avalonia.Controls.Design.IsDesignMode) DataContext = Design.PreviewData.FeedCard;
     }
@@ -57,6 +104,8 @@ public partial class FeedCardView : UserControl
     {
         base.OnPointerEntered(e);
         _hovered = true;
+        _closeTimer.Stop();
+        if (!_quickDetails.IsOpen && !_hoverSuppressed) _openTimer.Start();
         Apply();
     }
 
@@ -64,6 +113,9 @@ public partial class FeedCardView : UserControl
     {
         base.OnPointerExited(e);
         _hovered = false;
+        _hoverSuppressed = false;
+        _openTimer.Stop();
+        _closeTimer.Start();
         Apply();
     }
 
@@ -80,8 +132,11 @@ public partial class FeedCardView : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
+        _openTimer.Stop(); _closeTimer.Stop();
         _quickDetails.Hide();
         _quickDetails.Content = null;
+        _bubble = null;
+        _hoverSuppressed = false;
         if (_card is not null)
         {
             _card.IsPointerOver = false;
@@ -98,13 +153,16 @@ public partial class FeedCardView : UserControl
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+        _quickDetails.OverlayInputPassThroughElement = TopLevel.GetTopLevel(this);
         RequestCover();
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
+        _openTimer.Stop(); _closeTimer.Stop();
         _quickDetails.Hide();
         _quickDetails.Content = null;
+        _bubble = null;
         _hovered = false;
         _focused = false;
         Apply();
@@ -144,9 +202,18 @@ public partial class FeedCardView : UserControl
     private void BuildQuickDetails()
     {
         if (_card is not { } card) return;
+        _openTimer.Stop(); _closeTimer.Stop();
+        if (_activePreview?.TryGetTarget(out var previous) == true && !ReferenceEquals(previous, this)) previous._quickDetails.Hide();
+        _activePreview = new WeakReference<FeedCardView>(this);
         var tile = card.Tile;
-        var width = Math.Min(380, Math.Max(200, (TopLevel.GetTopLevel(this)?.Bounds.Width ?? 420) - 48));
-        var rows = new StackPanel { Spacing = 12, Width = width };
+        var top = TopLevel.GetTopLevel(this);
+        _quickDetails.OverlayInputPassThroughElement = top;
+        var origin = top is not null ? CoverFrame.TranslatePoint(default, top) ?? default : default;
+        var rightSpace = (top?.Bounds.Width ?? 900) - origin.X - CoverFrame.Bounds.Width;
+        var leftSide = rightSpace < 362 && origin.X > rightSpace;
+        _quickDetails.Placement = leftSide ? PlacementMode.LeftEdgeAlignedTop : PlacementMode.RightEdgeAlignedTop;
+        var width = Math.Clamp((leftSide ? origin.X : rightSpace) - 46, 180, 320);
+        var rows = new StackPanel { Spacing = 10, Width = width };
         TextBlock Text(string? value, int size = 13, bool quiet = false, bool title = false) => new()
         {
             Text = value, FontSize = size, TextWrapping = TextWrapping.Wrap,
@@ -155,16 +222,13 @@ public partial class FeedCardView : UserControl
             Foreground = Resource<IBrush>(quiet ? "TextDim" : "Text", Brushes.White),
         };
         var heading = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        heading.Children.Add(Text("WHY THIS GAME", 11, quiet: true));
+        heading.Children.Add(Text(tile.Title, 22, title: true));
         var close = new Button { Name = "CloseQuickDetails", Content = "×", Padding = new Thickness(6, 0) };
         close.Classes.Add("act"); close.Classes.Add("quiet");
         AutomationProperties.SetName(close, "Close quick details");
-        close.Click += (_, _) => _quickDetails.Hide();
+        close.Click += (_, _) => SuppressPreview();
         Grid.SetColumn(close, 1); heading.Children.Add(close);
         rows.Children.Add(heading);
-        rows.Children.Add(Text(tile.Title, 24, title: true));
-        rows.Children.Add(Text(card.Reason));
-        rows.Children.Add(new Border { Height = 1, Background = Resource<IBrush>("Line", Brushes.Gray) });
         rows.Children.Add(Text($"{tile.StoreNames} · {tile.StatText}", quiet: true));
         if (!string.IsNullOrWhiteSpace(tile.Summary))
         {
@@ -185,7 +249,7 @@ public partial class FeedCardView : UserControl
         primary.FontWeight = FontWeight.SemiBold;
         primary.Padding = new Thickness(18, 9);
         ToolTip.SetTip(primary, tile.PrimaryActionHint);
-        primary.Click += (_, _) => _quickDetails.Hide();
+        primary.Click += (_, _) => SuppressPreview();
         var details = new Button { Name = "OpenDetails", Content = "Open details →" };
         details.Classes.Add("act"); details.Classes.Add("quiet");
         details.Background = Brushes.Transparent;
@@ -198,16 +262,47 @@ public partial class FeedCardView : UserControl
         }
         details.Click += (_, _) =>
         {
-            _quickDetails.Hide();
+            SuppressPreview();
             if (tile.OpenDetailsCommand?.CanExecute(tile) == true) tile.OpenDetailsCommand.Execute(tile);
         };
         actions.Children.Add(primary); actions.Children.Add(details);
         rows.Children.Add(actions);
-        _quickDetails.Content = new ScrollViewer
+        _bubble = new FeedPreviewBubble
         {
-            Content = rows, MaxHeight = Math.Max(160, (TopLevel.GetTopLevel(this)?.Bounds.Height ?? 600) - 100),
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            Name = "FeedPreviewBubble", ArrowOnRight = leftSide,
+            Background = Resource<IBrush>("SurfaceRaised", Brushes.DarkSlateGray),
+            BorderBrush = Resource<IBrush>("Line", Brushes.Gray),
+            Child = new ScrollViewer
+            {
+                Content = rows, MaxHeight = Math.Max(120, (top?.Bounds.Height ?? 600) - 100),
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            },
         };
+        _bubble.Bind(FeedPreviewBubble.SourceProperty, new Binding(nameof(FeedCardViewModel.Backdrop)) { Source = card });
+        _bubble.PointerEntered += (_, _) => { _previewHovered = true; _closeTimer.Stop(); };
+        _bubble.PointerExited += (_, _) => { _previewHovered = false; _closeTimer.Start(); };
+        _bubble.KeyDown += (_, e) => { if (e.Key == Key.Escape) SuppressPreview(); };
+        _bubble.LayoutUpdated += (_, _) => UpdateBubblePointer();
+        _quickDetails.Content = _bubble;
+        var scaling = top?.RenderScaling ?? 1;
+        card.RequestBackdrop((width + 32) * scaling, 220 * scaling);
+    }
+
+    private void SuppressPreview()
+    {
+        _hoverSuppressed = true;
+        _openTimer.Stop(); _closeTimer.Stop();
+        _quickDetails.Hide();
+    }
+
+    private void UpdateBubblePointer()
+    {
+        if (_bubble is not { Bounds.Width: > 0, Bounds.Height: > 0 } bubble || bubble.GetVisualRoot() is null || CoverFrame.GetVisualRoot() is null) return;
+        var anchor = CoverFrame.PointToScreen(new Point(CoverFrame.Bounds.Width / 2, CoverFrame.Bounds.Height / 2));
+        var panel = bubble.PointToScreen(default);
+        var scale = TopLevel.GetTopLevel(bubble)?.RenderScaling ?? 1;
+        bubble.ArrowOnRight = panel.X < anchor.X;
+        bubble.ArrowOffset = (anchor.Y - panel.Y) / scale;
     }
 
     private T Resource<T>(string name, T fallback) => this.TryFindResource(name, out var value) && value is T resource ? resource : fallback;
