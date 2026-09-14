@@ -136,6 +136,16 @@
             <StackPanel Margin="24,16,24,28" MaxWidth="920"
                         HorizontalAlignment="Left" Spacing="14">
 
+                <Border Classes="card">
+                    <StackPanel Spacing="12">
+                        <TextBlock Classes="label" Text="DEFAULT LIBRARY SORT" AutomationProperties.HeadingLevel="2"/>
+                        <TextBlock Classes="para" Text="The order used when Winnow starts. You can still change the sort while browsing." TextWrapping="Wrap"/>
+                        <ComboBox Name="DefaultLibrarySort" ItemsSource="{Binding DefaultSortOptions}"
+                                  SelectedIndex="{Binding DefaultSortIndex, Mode=TwoWay}" MinWidth="240"
+                                  AutomationProperties.Name="Default library sort"/>
+                    </StackPanel>
+                </Border>
+
                 <Border Classes="card" IsVisible="{Binding CanExportAcquisitions}"
                         AutomationProperties.Name="Acquisition export"
                         AutomationProperties.AccessibilityView="Control">

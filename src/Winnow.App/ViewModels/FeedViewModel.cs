@@ -377,8 +377,8 @@ public partial class FeedViewModel : ObservableObject, IDisposable
         foreach (var shelf in shelves)
         {
             // TV can show the full scored shelf horizontally; desktop keeps replacements hidden.
-            var shown = _includeReserve ? shelf.Items.Concat(shelf.Reserve).ToArray() : shelf.Items;
-            var cards = new List<FeedCardViewModel>(shown.Count);
+            var shown = (_includeReserve ? shelf.Items.Concat(shelf.Reserve) : shelf.Items.Take(5)).ToArray();
+            var cards = new List<FeedCardViewModel>(shown.Length);
             foreach (var item in shown)
             {
                 // Drop items with no matching tile (no cover to draw).
@@ -396,7 +396,7 @@ public partial class FeedViewModel : ObservableObject, IDisposable
             // A reserve item with no tile is dropped here for the same reason a
             // visible one is, and here rather than at the swap: a receipt that
             // offers a replacement has to have one.
-            var reserve = (_includeReserve ? [] : shelf.Reserve)
+            var reserve = (_includeReserve ? [] : shelf.Items.Skip(5).Concat(shelf.Reserve))
                 .Where(item => _tiles?.TileForOwnership(item.OwnershipId) is not null)
                 .ToList();
 

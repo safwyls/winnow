@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
+             xmlns:views="using:Winnow.App.Views"
              x:Class="Winnow.App.Views.RowCoverView"
              x:DataType="vm:GameTileViewModel"
              Name="Root"
@@ -33,8 +34,10 @@
 
             <!-- Real art: floor variant under vivid, the same two layers
                  the grid tile draws. -->
-            <Image Source="{Binding #Root.Cover.Floor}" Stretch="UniformToFill"/>
-            <Image Source="{Binding #Root.Cover.Vivid}" Stretch="UniformToFill"
+            <views:CoverPadding Source="{Binding #Root.Cover.Floor}" IsHitTestVisible="False"/>
+            <views:CoverPadding Name="VividPadding" Source="{Binding #Root.Cover.Vivid}" Opacity="{Binding DormancyAlpha}" IsHitTestVisible="False"/>
+            <Image views:CoverPresentation.IsCover="True" Source="{Binding #Root.Cover.Floor}"/>
+            <Image views:CoverPresentation.IsCover="True" Source="{Binding #Root.Cover.Vivid}"
                    Opacity="{Binding DormancyAlpha}"/>
         </Panel>
     </Border>

@@ -33,13 +33,18 @@ public sealed class FullscreenScaleTests
             var canvas = Assert.IsType<Grid>(Assert.IsType<Viewbox>(view.Content).Child);
             var navigation = view.GetVisualDescendants().OfType<StackPanel>().Single(p => p.Name == "FullscreenRootNavigation");
             var baseline = PhysicalWidth(navigation, window);
+            Assert.Equal(1, context.UiScale);
+            Assert.Equal(1080 / .85, canvas.Height, 5);
+            Assert.Equal((wide ? 1080 * width / height : 1920) / .85, canvas.Width, 5);
+            // Canvas layout rounds to device pixels before the Viewbox applies its transform.
+            Assert.InRange(Math.Abs(height / 1080 * .85 - navigation.TransformToVisual(window)!.Value.M11) * canvas.Height, 0, 1);
             foreach (var scale in new[] { .8, 1.2, 1d })
             {
                 context.UiScale = scale; Dispatcher.UIThread.RunJobs();
-                Assert.Equal(1080 / scale, canvas.Height, 5);
-                Assert.Equal(baseline * scale, PhysicalWidth(navigation, window), 1);
+                Assert.Equal(1080 / (.85 * scale), canvas.Height, 5);
+                Assert.InRange(Math.Abs(baseline * scale - PhysicalWidth(navigation, window)), 0, 1);
                 var backdrop = view.GetVisualDescendants().OfType<ContentControl>().Single(p => p.Name == "FullscreenPageBackdrop");
-                Assert.Equal(width, PhysicalWidth(backdrop, window), 1);
+                Assert.InRange(Math.Abs(width - PhysicalWidth(backdrop, window)), 0, 1);
                 var safe = canvas.Children.OfType<Grid>().Single();
                 Assert.InRange(Math.Abs(width * .05 - safe.TranslatePoint(default, window)!.Value.X), 0, 1);
                 Assert.InRange(Math.Abs(height * .05 - safe.TranslatePoint(default, window)!.Value.Y), 0, 1);
@@ -63,7 +68,7 @@ public sealed class FullscreenScaleTests
         using var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell, services);
         Assert.Equal(1, context.UiScale);
         context.UiScale = 1.15;
-        Assert.Equal("1.15", settings.Values["fullscreen.ui-scale"]);
+        Assert.Equal("1.15", settings.Values["fullscreen.ui-scale-v2"]);
         using var reloaded = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell, services);
         await reloaded.LoadAsync(); Assert.Equal(1.15, reloaded.UiScale);
         context.UiScale = 5; Assert.Equal(1.2, context.UiScale);
@@ -87,8 +92,36 @@ public sealed class FullscreenScaleTests
             Assert.Equal(1.1, context.UiScale);
             view.Handle(GamepadButtons.Accept); Dispatcher.UIThread.RunJobs();
             Assert.Equal(1, context.UiScale); Assert.Equal(1, context.TextScale);
+            Assert.Equal("1", settings.Values["fullscreen.ui-scale-v2"]);
+            Assert.Equal(.85, context.EffectiveUiScale, 5);
         }
         finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData("0.85")]
+    [InlineData("1.2")]
+    public async Task Legacy_scale_switches_to_new_baseline_while_other_preferences_and_new_adjustments_survive(string legacyScale)
+    {
+        var settings = new MemorySettings();
+        settings.Values["fullscreen.ui-scale"] = legacyScale;
+        settings.Values["fullscreen.text-scale"] = "1.3";
+        settings.Values["fullscreen.safe-margin"] = "3";
+        using var services = new ServiceCollection().AddSingleton<ISettingsRepository>(settings).BuildServiceProvider();
+        using var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell, services);
+        await context.LoadAsync();
+        Assert.Equal(1, context.UiScale);
+        Assert.Equal(.85, context.EffectiveUiScale, 5);
+        Assert.Equal(1.3, context.TextScale);
+        Assert.Equal(3, context.SafeMarginPercent);
+
+        context.UiScale = 1.1;
+        using var reloaded = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell, services);
+        await reloaded.LoadAsync();
+        Assert.Equal(1.1, reloaded.UiScale);
+        Assert.Equal(.935, reloaded.EffectiveUiScale, 5);
+        Assert.Equal(1.3, reloaded.TextScale);
+        Assert.Equal(3, reloaded.SafeMarginPercent);
     }
 
     private static double PhysicalWidth(Control control, Window window) =>

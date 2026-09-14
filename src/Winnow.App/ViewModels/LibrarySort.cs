@@ -3,10 +3,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Winnow.App.ViewModels;
 
 /// <summary>
-/// The orders the library can be read in. The default is
-/// <see cref="DormantLongest"/> because the product's whole claim is that the
-/// forgotten end of the library is the interesting end (§1) — the first screen
-/// has to open on what the user has not seen, not on an alphabet.
+/// The library orders. Users choose a startup default in Library settings;
+/// DormantLongest is the fallback when no preference has been saved.
 /// <para>Sort is view-agnostic: the grid and the list are two renderings of the
 /// same ordered sequence, so a column header in list view and the command-bar
 /// menu write the same state (§6 — the list is the power-user view of the same

@@ -671,6 +671,34 @@ Background services run as `IHostedService` implementations under the generic ho
 Avalonia UI resolves view models from the same DI container. **The UI never calls an ingest or
 enrichment component directly; it reads the database and raises commands.**
 
+One process owns each data directory, enforced by a named mutex before the host starts.
+A repeated launch sends a bounded request over a current-user named pipe and exits without
+starting another host or showing an error. The owner queues requests until the UI is ready,
+then restores and activates its existing desktop or fullscreen window, preserving its
+presentation and navigation state. Separate `--data-dir` libraries remain independent.
+On Windows the mutex and pipe explicitly belong to the current user's SID, deny network
+logons, and carry medium integrity so Explorer can contact a session started from an
+administrator terminal. The client verifies the pipe owner's SID before exchanging requests.
+Other platforms retain the runtime's current-user-only pipe restriction.
+On Windows the launcher grants the owner foreground permission before requesting activation;
+other desktops use Avalonia activation subject to the window manager's focus policy.
+An unavailable or older owner's activation channel times out quietly after three seconds.
+
+Windows taskbar jump lists use the same channel for typed fullscreen and ownership-launch
+requests. Links contain a positive local ownership id, never an arbitrary launch target;
+the receiving library resolves the current playable entry through its normal launch command.
+Cold-start launches wait for the window's library and presentation settings to finish loading.
+The taskbar publishes up to ten launchable games ordered by last play and a fullscreen task,
+refreshing when the library tiles change. Shell COM work runs on an STA worker. Removed
+destinations are retained in `jump-list-removed.json` under the data directory. Isolated
+libraries use distinct AppUserModelIDs and every task forwards its data directory. Shell
+failures leave the application usable; other platforms do not publish a jump list.
+Game icons are center-cropped from the shared cover pipeline on a background worker and
+encoded as multi-size ICO files under `jump-list-icons` in the active data directory.
+Content-addressed filenames let the shell pick up changed artwork while retaining files
+referenced by existing destinations. The list publishes immediately with cached or app icons,
+then refreshes when artwork resolves; missing or timed-out artwork keeps the app fallback.
+
 ```mermaid
 graph TB
     subgraph UI["Avalonia UI (MVVM)"]
@@ -879,9 +907,22 @@ shared repositories and action services. It never scales or navigates the deskto
 Fullscreen pages may supply a backdrop for the shell to mount behind its safe area and
 header. Browsing reuses that layer across selections, retaining the displayed artwork lease
 while a replacement loads and through its short crossfade. Generation checks discard stale
-loads. Detaching releases displayed, outgoing and pending leases; the detail page still owns its
+loads. Backdrop metadata reads run off the dispatcher after capturing the selected identity;
+superseding selections cancel those reads. A replacement ready during a crossfade waits
+in a single latest-result slot until the visible blend finishes. Detaching releases
+displayed, outgoing, ready and pending leases; the detail page still owns its
 content and focus rows. Browse page capacity is presentation state and reflows around the
 selected release identity when the available columns change.
+Fullscreen Home, Library and Search share a clipped virtual row viewport. It retains the
+visible rows and one neighboring row on either side, plus outgoing rows during a bounded
+vertical transition. Home shows one shelf row; grids show two rows and retain the selected
+release and first visible row independently of desktop state. Only destination rows accept
+input. Detaching clears realized controls and releases their cover presenters; returning
+recreates the viewport around the remembered selection. Feed impression checks inspect
+the active shelf's actual clipped hit targets, never the offscreen buffered shelves.
+Row movement uses render-frame timestamps and the last arranged row origin, so input
+preparation does not consume the animation and retargeting cannot jump before layout.
+Fullscreen covers wait for nonzero bounds before requesting their display-width bucket.
 Its feed view-model exposes both the primary recommendations and the scored reserve as
 cards, while desktop retains the reserve for replacements. The shared scoring pass and its
 ordering remain unchanged. Both surfaces record surfacing only on actual viewport entry.
@@ -1751,6 +1792,29 @@ dimensions above 8192 on either axis or 32 Mi pixels total. Negative cache entri
 the source-set identity; capability refresh runs before suppressing a miss so configuring
 IGDB can reopen it in the same session. Existing positive disk art remains reusable.
 
+Steam portrait and hero lookups first try their legacy app-ID filenames. If those
+return 404, `SteamLibraryAssetLookup` reads `common.library_assets_full` through the
+existing cached, rate-limited appinfo client with a seven-day artwork TTL. It selects published relative paths,
+preferring English within each rendition. Capsules reserve up to four candidates per
+rendition and try 2x then standard; high-resolution
+and standard heroes remain separate keys. Paths stay beneath the configured Steam asset
+CDN root: absolute URLs, traversal, encoded path components and query strings are rejected.
+Metadata outages and CDN failures do not become missing-art markers. The expanded
+source capability invalidates older negative markers on demand.
+
+Cached Steam-keyed portraits with a nonstandard ratio are eligible for a bounded
+background upgrade, with one active request and at most sixteen queued keys. A cached
+image still answers immediately, and a failed check leaves
+its bytes intact. A validated 2:3 replacement invalidates the old derived floor before
+publication. Refresh outcome sidecars suppress repeated checks for seven days after a
+definite miss and one hour after a failure. No startup cache sweep is required. Existing
+decoded images and leases remain stable; replacements appear on a later disk load after
+memory eviction or restart. Explicit IGDB pins and user-art keys are excluded. Desktop
+and fullscreen share this selection/cache policy and the persisted `display.cover_art_mode`
+preference. Fit (the default) shows nonstandard art with edge-color padding; Fill crops
+to the unchanged card bounds. Switching mode updates realized portrait images without
+replacing their bitmap leases or refetching artwork. Heroes and screenshots are unaffected.
+
 **List membership resolution.** Membership in `list_items` is stored per release: adding
 a game to a list records the entry the user picked. A list contains a game when any release of any work
 in that game's live `same_game` group is a member. `kind` is `same_game` only, so an
@@ -1813,5 +1877,6 @@ Winnow presents the library through covers, lists and recommendation shelves. A 
 "games on a shelf" browsing view is out of scope. Recommendation shelves are ordinary UI
 groups of cards and do not require a 3D renderer.
 
-Automatic cover thumbnails come from IGDB covers and Steam's `library_600x900` portrait
-capsule. User artwork and provider plugins use the shared artwork pipeline in §5.1.
+Automatic cover thumbnails come from IGDB covers and Steam library portrait capsules,
+including published hashed asset paths. User artwork and provider plugins use the shared
+artwork pipeline in §5.1.

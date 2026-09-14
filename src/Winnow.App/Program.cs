@@ -48,12 +48,13 @@ public static class Program
 
     /// <summary>
     /// The single-instance mutex held for this run (TASK-23): null in a second
-    /// copy, which refuses to start. A static field, not a local in <see
+    /// copy, which activates the existing session. A static field, not a local in <see
     /// cref="Main"/>, because the mutex protects the process only while the
     /// handle stays open, and a local the JIT considered dead would release it
     /// mid-run.
     /// </summary>
     private static Mutex? SingleInstance;
+    internal static SingleInstanceActivation? InstanceActivation { get; private set; }
     private static IDisposable? UpdateLease;
     private static string? UpdateJournalPath;
     private static bool PortableLeaseAvailable = true;
@@ -86,6 +87,8 @@ public static class Program
         finally
         {
             AppHost = null;
+            InstanceActivation?.Dispose();
+            InstanceActivation = null;
             SingleInstance?.Dispose();
             SingleInstance = null;
             UpdateLease?.Dispose();
@@ -177,12 +180,16 @@ public static class Program
         // copy pointed at a throwaway --data-dir still runs — that is the
         // documented safe way to click around, and it is not the two-copies
         // failure this guard exists to prevent.
+        var activationRequest = AppActivationRequest.FromArguments(args);
         SingleInstance = Services.SingleInstanceGuard.TryAcquire(DataLocation.Root);
         if (SingleInstance is null)
         {
-            Services.SingleInstanceGuard.RefuseToStart(DataLocation.Root);
+            if (!SingleInstanceActivation.RequestAsync(DataLocation.Root, activationRequest).GetAwaiter().GetResult())
+                System.Diagnostics.Trace.TraceWarning("The existing Winnow session did not acknowledge activation.");
             return;
         }
+        InstanceActivation = new SingleInstanceActivation(DataLocation.Root);
+        if (activationRequest.Kind != AppActivationKind.Activate) InstanceActivation.Enqueue(activationRequest);
 
         DiagnosticLogging.Configure(builder.Logging, DataLocation.Root);
 
@@ -749,6 +756,7 @@ public static class Program
         // procedural placeholder art — the grid still works, which is exactly
         // what makes the omission easy to miss.
         services.AddCoverCache(o => o.CacheDirectory = Path.Combine(data.Root, "covers"));
+        services.AddSingleton<ISteamLibraryAssetLookup, SteamLibraryAssetLookup>();
 
         // MUST come after AddCoverCache(): CoverPipeline takes the first source
         // that answers, in registration order. Steam's 600x900 portrait capsule

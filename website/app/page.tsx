@@ -21,6 +21,7 @@ export default function Home() {
         <nav aria-label="Primary navigation">
           <a href="#why">Why Winnow</a>
           <a href={sitePath('/developers/')}>For developers</a>
+          <a className="nav-docs" href={sitePath('/docs/')}>Docs</a>
           <a className="nav-cta" href={releasesUrl}>Download</a>
         </nav>
       </header>
@@ -66,7 +67,7 @@ export default function Home() {
         <p>Free during beta · source available on GitHub</p>
       </section>
 
-      <footer><Brand /><p>Local-first game discovery for the library you already own.</p><div><a href={sitePath('/developers/')}>Developers</a><a href="https://github.com/safwyls/winnow">GitHub</a></div></footer>
+      <footer><Brand /><p>Local-first game discovery for the library you already own.</p><div><a href={sitePath('/docs/')}>Docs</a><a href={sitePath('/developers/')}>Developers</a><a href="https://github.com/safwyls/winnow">GitHub</a></div></footer>
     </main>
   );
 }

@@ -6,6 +6,7 @@
         x:Class="Winnow.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Winnow"
+        views:CoverPresentation.Fit="{Binding Display.FitCoverArt}"
         Icon="/Assets/Icons/dragon.ico"
         Width="1280" Height="820"
         MinWidth="1200" MinHeight="640"
@@ -1426,7 +1427,16 @@
                             <Flyout Placement="BottomEdgeAlignedRight"
                                     FlyoutPresenterClasses="prefs"
                                     Opened="OnDisplayFlyoutOpened">
+                                <ScrollViewer MaxHeight="520" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                                 <StackPanel Width="264" Spacing="8">
+                                    <TextBlock Text="Cover art" Classes="body"/>
+                                    <ComboBox Name="CoverArtFitSelector" HorizontalAlignment="Stretch"
+                                              AutomationProperties.Name="Cover art"
+                                              SelectedIndex="{Binding Display.CoverArtFitIndex, Mode=TwoWay}">
+                                        <ComboBoxItem Content="Fit — show entire artwork"/>
+                                        <ComboBoxItem Content="Fill — crop to card"/>
+                                    </ComboBox>
+                                    <Border Height="1" Margin="0,4" Background="{StaticResource Line}"/>
                                     <CheckBox Name="DimCoversToggle"
                                               Classes="pref"
                                               Content="Dim dormant covers"
@@ -1537,6 +1547,7 @@
                                                Foreground="{StaticResource TextDim}"
                                                Text="Off by default. A small card appears after a game ends."/>
                                 </StackPanel>
+                                </ScrollViewer>
                             </Flyout>
                         </Button.Flyout>
                     </Button>

@@ -51,6 +51,7 @@ public partial class MainWindowViewModel : ObservableObject
         AccountStats = accountStats;
         Stats = stats ?? new StatsViewModel(accountStats, new GameplayStatsViewModel(new GameplayStatsUnavailableRepository(), library));
         LibrarySettings = librarySettings;
+        librarySettings.ApplyDefaultSort = library.ApplyDefaultSort;
         ApplicationSettings = applicationSettings ?? new ApplicationSettingsViewModel();
         EnrichmentSettings = enrichmentSettings ?? new(ApplicationSettings.Igdb);
         Setup = setup ?? new FirstRunSetupViewModel(Stores, Appearance, ApplicationSettings, LibrarySettings);

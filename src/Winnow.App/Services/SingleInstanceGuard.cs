@@ -21,7 +21,7 @@ internal static class SingleInstanceGuard
     /// <summary>
     /// Acquires the guard, or returns <c>null</c> when the name already exists —
     /// which means another copy is running against this data directory, and is
-    /// the caller's cue to show a sentence and exit. The caller must keep the
+    /// the caller's cue to activate that copy and exit. The caller must keep the
     /// returned mutex alive for the process lifetime: a collected <see
     /// cref="Mutex"/>'s finalizer would close the handle and release the mutex
     /// while the process was still running.
@@ -38,7 +38,10 @@ internal static class SingleInstanceGuard
         // A crashed holder needs no AbandonedMutexException handling either:
         // the named mutex is destroyed when the last handle closes with the
         // process, so the next launch finds no name and starts clean.
-        var mutex = new Mutex(initiallyOwned: true, NameFor(dataDirectory), out var createdNew);
+        bool createdNew;
+        var mutex = OperatingSystem.IsWindows()
+            ? WindowsActivationSecurity.CreateMutex(NameFor(dataDirectory), out createdNew)
+            : new Mutex(initiallyOwned: true, NameFor(dataDirectory), out createdNew);
         if (!createdNew)
         {
             // Another copy created it first: this process is the second one.
@@ -49,18 +52,7 @@ internal static class SingleInstanceGuard
         return mutex;
     }
 
-    /// <summary>
-    /// The sentence a second copy shows before it exits. Channel selection —
-    /// console when a terminal is present, message box when there is none —
-    /// is <see cref="StartupAlert"/>'s concern.
-    /// </summary>
-    public static void RefuseToStart(string dataDirectory)
-    {
-        var text = $"Winnow is already running against {dataDirectory}." +
-            " Close the other copy and try again.";
-
-        StartupAlert.Notice("Winnow is already running", text);
-    }
+    internal static string ActivationNameFor(string dataDirectory) => NameFor(dataDirectory).Replace("Local\\", "") + ".Activate";
 
     private static string NameFor(string dataDirectory)
     {

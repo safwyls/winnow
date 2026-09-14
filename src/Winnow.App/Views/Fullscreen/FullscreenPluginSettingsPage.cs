@@ -17,34 +17,39 @@ public sealed class FullscreenPluginSettingsPage : FullscreenPage
     public FullscreenPluginSettingsPage(FullscreenContext context, PluginCardViewModel model) : base(context)
     {
         _model = model;
-        var controls = FullscreenUi.Stack(FullscreenUi.Text(model.Name, 64),
-            FullscreenHistoryTypography.Data(model.Version, 28), FullscreenUi.Text(model.Description, 28),
-            FullscreenUi.Text(model.Capabilities, 24, "TextDim"));
+        var controls = FullscreenInformation.Column();
+        controls.Children.Add(FullscreenUi.Text(model.Name, 64));
+        controls.Children.Add(FullscreenInformation.Metadata(model.Version));
+        controls.Children.Add(FullscreenInformation.Text(model.Description));
+        controls.Children.Add(FullscreenInformation.Metadata(model.Capabilities));
+        if (model.CanConfigure) FullscreenInformation.AddSection(controls, "Activation");
         var focus = new List<Control[]>();
         Button Action(string label, System.Windows.Input.ICommand command, string? accessibleName = null)
         {
             var button = FullscreenUi.Button(label, () => { });
+            button.FontSize = 24;
             button.Command = command;
             AutomationProperties.SetName(button, accessibleName ?? label);
             controls.Children.Add(button); focus.Add([button]);
             return button;
         }
-        var enabled = new ToggleSwitch { FontSize = 28, MinHeight = 72,
+        var enabled = new ToggleSwitch { FontSize = 24, MinHeight = 72,
             OnContent = "Enabled", OffContent = "Disabled", Command = model.ToggleEnabledCommand };
         controls.Children.Add(enabled); focus.Add([enabled]);
         enabled.IsVisible = model.CanConfigure;
         enabled.Bind(ToggleSwitch.IsCheckedProperty, new Binding(nameof(model.ActivationSelected)) { Source = model, Mode = BindingMode.TwoWay });
         enabled.Bind(AutomationProperties.NameProperty, new Binding(nameof(model.ToggleAccessibleName)) { Source = model });
         enabled.Bind(AutomationProperties.ItemStatusProperty, new Binding(nameof(model.EnabledStatus)) { Source = model });
-        var restart = FullscreenUi.Text("Restart Winnow to apply the enable or disable change.", 28, "Amber");
+        var restart = FullscreenInformation.Text("Restart Winnow to apply the enable or disable change.", 24, "Amber");
         restart.Bind(IsVisibleProperty, new Binding(nameof(model.RestartRequired)) { Source = model });
         controls.Children.Add(restart);
         if (model.HasWebsite) Action("Provider website     Browser ↗", model.OpenWebsiteCommand, model.WebsiteAccessibleName);
         foreach (var field in model.Fields)
         {
-            controls.Children.Add(FullscreenUi.Text(field.Label, 28));
-            if (field.HasDescription) controls.Children.Add(FullscreenUi.Text(field.Description!, 28));
-            var editor = new TextBox { FontSize = 28, MinHeight = 72, PasswordChar = field.PasswordChar, Watermark = field.Watermark };
+            controls.Children.Add(FullscreenInformation.Rule());
+            controls.Children.Add(FullscreenInformation.Title(field.Label));
+            if (field.HasDescription) controls.Children.Add(FullscreenInformation.Metadata(field.Description!));
+            var editor = new TextBox { FontSize = 24, MinHeight = 72, PasswordChar = field.PasswordChar, Watermark = field.Watermark };
             editor.Bind(TextBox.TextProperty, new Binding(nameof(field.Value)) { Source = field, Mode = BindingMode.TwoWay });
             editor.Bind(IsEnabledProperty, new Binding(nameof(field.IsEnabled)) { Source = field });
             AutomationProperties.SetName(editor, field.AccessibleName);
@@ -52,10 +57,11 @@ public sealed class FullscreenPluginSettingsPage : FullscreenPage
             if (field.HasSetup) Action(field.SetupLabel + "     Browser ↗", field.OpenSetupCommand, field.SetupAccessibleName);
             if (field.IsSecret) Action("Remove saved secret", field.RemoveSecretCommand, field.RemoveAccessibleName);
         }
-        if (model.HasSecrets) controls.Children.Add(FullscreenUi.Text(PluginSettingsViewModel.SecretNote, 28));
+        if (model.HasSecrets) controls.Children.Add(FullscreenInformation.Metadata(PluginSettingsViewModel.SecretNote));
+        if (model.HasSettings || model.CanConfigure) FullscreenInformation.AddSection(controls, "Apply changes");
         if (model.HasSettings) Action("Save settings", model.SaveCommand, model.SaveAccessibleName);
         if (model.CanConfigure) Action("Refresh now     Run", model.RefreshCommand, model.RefreshAccessibleName);
-        var status = FullscreenUi.Text("", 28, "TextDim");
+        var status = FullscreenInformation.Metadata("");
         status.Bind(TextBlock.TextProperty, new Binding(nameof(model.Status)) { Source = model });
         status.Bind(IsVisibleProperty, new Binding(nameof(model.Status)) { Source = model,
             Converter = Avalonia.Data.Converters.StringConverters.IsNotNullOrEmpty });

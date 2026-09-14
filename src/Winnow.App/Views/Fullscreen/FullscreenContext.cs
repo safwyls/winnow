@@ -15,6 +15,7 @@ namespace Winnow.App.Views.Fullscreen;
 /// <summary>TV presentation state is independent; persistence and domain operations are shared.</summary>
 public sealed class FullscreenContext : IDisposable
 {
+    public const double InterfaceScaleBaseline = .85;
     public LibraryViewModel Library { get; }
     public FeedViewModel Feed { get; }
     public MainWindowViewModel Shared { get; }
@@ -34,7 +35,8 @@ public sealed class FullscreenContext : IDisposable
     private bool _disposed, _refreshPending, _active;
     private Task? _refreshTask;
     public double TextScale { get => _textScale; set { _textScale = Math.Clamp(value, .7, 1.4); Preference("text-scale", _textScale.ToString(CultureInfo.InvariantCulture)); } }
-    public double UiScale { get => _uiScale; set { _uiScale = NormalizeUiScale(value); Preference("ui-scale", _uiScale.ToString(CultureInfo.InvariantCulture)); } }
+    public double UiScale { get => _uiScale; set { _uiScale = NormalizeUiScale(value); Preference("ui-scale-v2", _uiScale.ToString(CultureInfo.InvariantCulture)); } }
+    public double EffectiveUiScale => UiScale * InterfaceScaleBaseline;
     private static double NormalizeUiScale(double value) => double.IsFinite(value) ? Math.Clamp(value, .8, 1.2) : 1;
     public double SafeMarginPercent { get => _safeMargin; set { _safeMargin = Math.Clamp(value, 0, 10); Preference("safe-margin", _safeMargin.ToString(CultureInfo.InvariantCulture)); } }
     public bool ReducedMotion { get => _reducedMotion; set { _reducedMotion = value; Library.Ramp.ReducedMotion = value; Preference("reduced-motion", value.ToString()); } }
@@ -55,6 +57,8 @@ public sealed class FullscreenContext : IDisposable
         feed.PropertyChanged += FeedChanged;
         shared.Appearance.Service.Applied += ThemeChanged;
         shared.Display.PropertyChanged += DisplayChanged;
+        shared.LibrarySettings.PropertyChanged += LibrarySettingsChanged;
+        Library.ApplyDefaultSort(shared.LibrarySettings.DefaultSort);
         Library.Ramp.DimsDormantCovers = DimCovers;
         if (!ReferenceEquals(shared.Library, library)) shared.Library.TilesChanged += SharedTilesChanged;
     }
@@ -72,7 +76,8 @@ public sealed class FullscreenContext : IDisposable
         if (Services?.GetService<ISettingsRepository>() is { } settings)
         {
             if (double.TryParse(await settings.GetAsync("fullscreen.text-scale"), CultureInfo.InvariantCulture, out var scale)) _textScale = Math.Clamp(scale, .7, 1.4);
-            if (double.TryParse(await settings.GetAsync("fullscreen.ui-scale"), CultureInfo.InvariantCulture, out var uiScale)) _uiScale = NormalizeUiScale(uiScale);
+            // The new baseline intentionally replaces legacy scale choices; subsequent adjustments persist here.
+            if (double.TryParse(await settings.GetAsync("fullscreen.ui-scale-v2"), CultureInfo.InvariantCulture, out var uiScale)) _uiScale = NormalizeUiScale(uiScale);
             if (double.TryParse(await settings.GetAsync("fullscreen.safe-margin"), CultureInfo.InvariantCulture, out var margin)) _safeMargin = Math.Clamp(margin, 0, 10);
             if (bool.TryParse(await settings.GetAsync("fullscreen.reduced-motion"), out var motion)) _reducedMotion = motion;
             if (bool.TryParse(await settings.GetAsync("fullscreen.fit-ultrawide"), out var fit)) _fitUltrawide = fit;
@@ -95,9 +100,15 @@ public sealed class FullscreenContext : IDisposable
     private void ThemeChanged(object? sender, EventArgs e) => PreferencesChanged?.Invoke(this, EventArgs.Empty);
     private void DisplayChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(DisplaySettingsViewModel.DimDormantCovers)) return;
-        Library.Ramp.DimsDormantCovers = DimCovers;
+        if (e.PropertyName == nameof(DisplaySettingsViewModel.DimDormantCovers))
+            Library.Ramp.DimsDormantCovers = DimCovers;
+        else if (e.PropertyName != nameof(DisplaySettingsViewModel.FitCoverArt)) return;
         PreferencesChanged?.Invoke(this, EventArgs.Empty);
+    }
+    private void LibrarySettingsChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(LibrarySettingsViewModel.DefaultSort))
+            Library.ApplyDefaultSort(Shared.LibrarySettings.DefaultSort);
     }
     private void FeedChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -151,6 +162,7 @@ public sealed class FullscreenContext : IDisposable
         Feed.PropertyChanged -= FeedChanged;
         Shared.Appearance.Service.Applied -= ThemeChanged;
         Shared.Display.PropertyChanged -= DisplayChanged;
+        Shared.LibrarySettings.PropertyChanged -= LibrarySettingsChanged;
         Shared.Library.TilesChanged -= SharedTilesChanged;
         if (!ReferenceEquals(Feed, Shared.Feed)) Feed.Dispose();
         if (!ReferenceEquals(Library, Shared.Library))

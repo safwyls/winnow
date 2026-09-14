@@ -145,7 +145,9 @@ public sealed class FullscreenActionOverlayTests
             new("Open installation folder", () => { }, false), new("View recorded sessions", () => { }),
             new("Manage store links", () => { }), new("Add to a collection", () => { }),
             new("Hide this game", () => { }), new("Open store page", () => { }),
-            new("Show related games", () => { }), new("Close", () => { })]);
+            new("Show related games", () => { }), new("Manage launch options", () => { }),
+            new("Choose controller layout", () => { }), new("View achievements", () => { }),
+            new("Close", () => { })]);
         if (!reducedMotion)
         {
             Assert.True((fixture.Panel.RenderTransform?.Value.M31 ?? 0) > 0, "The panel should begin entering from the right edge.");
@@ -167,7 +169,7 @@ public sealed class FullscreenActionOverlayTests
         fixture.Capture($"fullscreen-actions-{textScale * 100:0}-{(reducedMotion ? "reduced" : "animated")}");
         var scroll = fixture.Shell.CurrentPage.GetVisualDescendants().OfType<ScrollViewer>().OrderByDescending(x => x.Viewport.Height).First();
         Assert.True(scroll.Extent.Height > scroll.Viewport.Height);
-        for (var i = 0; i < 12; i++) fixture.Shell.Handle(GamepadButtons.Down);
+        for (var i = 0; i < 15; i++) fixture.Shell.Handle(GamepadButtons.Down);
         fixture.Flush(); Assert.True(scroll.Offset.Y > 0);
         fixture.Capture($"fullscreen-actions-{textScale * 100:0}-scrolled");
     }

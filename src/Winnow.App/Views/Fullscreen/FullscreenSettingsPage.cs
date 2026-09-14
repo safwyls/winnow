@@ -90,7 +90,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         _updateActions.Clear();
         _initial = null;
         var tabs = Sections.Select(label =>
-            FullscreenUi.Button(label, () => { _section = label; Render(); FocusInitial(); })).ToArray();
+            FullscreenUi.Tab(label, () => { _section = label; Render(); FocusInitial(); })).ToArray();
         var nav = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
         foreach (var tab in tabs)
         {
@@ -106,22 +106,23 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         };
         var selectedTab = tabs[Array.IndexOf(Sections, _section)];
         tabStrip.Loaded += (_, _) => selectedTab.BringIntoView();
-        var rows = new StackPanel { Spacing = 16 };
+        var rows = new StackPanel { Spacing = 14 };
         var focus = new List<Control[]> { tabs };
         void Group(string label)
         {
-            var heading = FullscreenUi.Text(label.ToUpperInvariant(), 24, "TextDim");
-            heading.Margin = new Thickness(24, rows.Children.Count == 0 ? 0 : 24, 0, 0);
+            if (rows.Children.Count > 0) rows.Children.Add(FullscreenInformation.Rule());
+            var heading = FullscreenInformation.Heading(label);
+            heading.Margin = new Thickness(24, 0, 0, 0);
             AutomationProperties.SetHeadingLevel(heading, 2);
             rows.Children.Add(heading);
         }
         Button Action(string label, Action action, string kind = "Open")
         {
             var button = FullscreenUi.Button(label, action); button.MinHeight = 88;
-            var name = FullscreenUi.Text(label, 28);
+            var name = FullscreenInformation.Text(label);
             var cue = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12,
                 VerticalAlignment = VerticalAlignment.Center };
-            var cueLabel = FullscreenUi.Text(kind, 24, "TextDim");
+            var cueLabel = FullscreenInformation.Metadata(kind);
             cueLabel.VerticalAlignment = VerticalAlignment.Center;
             cue.Children.Add(cueLabel);
             if (kind == "Open")
@@ -162,7 +163,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             }
             var button = FullscreenUi.Button(label, () => Change(1));
             var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 24 };
-            grid.Children.Add(FullscreenUi.Stack(FullscreenUi.Text(label, 32), FullscreenUi.Text(description, 24, "TextDim")));
+            grid.Children.Add(FullscreenUi.Stack(FullscreenInformation.Title(label), FullscreenInformation.Metadata(description)));
             Grid.SetColumn(text, 1); text.VerticalAlignment = VerticalAlignment.Center; grid.Children.Add(text);
             button.Content = grid; button.MinHeight = 104;
             _valueRefreshers.Add(() => { text.Text = $"‹   {value()}   ›"; AutomationProperties.SetItemStatus(button, value()); });
@@ -191,7 +192,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         }
         void Toggle(string label, string description, Func<bool> value, Action<bool> change)
         {
-            var state = FullscreenUi.Text("", 28);
+            var state = FullscreenInformation.Text("");
             var thumb = new Border { Width = 32, Height = 32, CornerRadius = new CornerRadius(16) };
             thumb[!Border.BackgroundProperty] = new DynamicResourceExtension("Text");
             var track = new Border { Width = 80, Height = 44, CornerRadius = new CornerRadius(22), Padding = new Thickness(4), BorderThickness = new Thickness(2), Child = thumb };
@@ -216,7 +217,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             var valueRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24, VerticalAlignment = VerticalAlignment.Center };
             valueRow.Children.Add(state); valueRow.Children.Add(track); state.VerticalAlignment = VerticalAlignment.Center;
             var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 24 };
-            grid.Children.Add(FullscreenUi.Stack(FullscreenUi.Text(label, 32), FullscreenUi.Text(description, 24, "TextDim")));
+            grid.Children.Add(FullscreenUi.Stack(FullscreenInformation.Title(label), FullscreenInformation.Metadata(description)));
             Grid.SetColumn(valueRow, 1); grid.Children.Add(valueRow); button.Content = grid; button.MinHeight = 104;
             _valueRefreshers.Add(Refresh); _adjustments[button] = direction => Set(direction > 0);
             _initial ??= button; button.GotFocus += (_, _) => _focused = button;
@@ -234,6 +235,9 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             Toggle("Fit ultrawide displays", "Use the full width of your display.", () => Context.FitUltrawide, Context.SetFitUltrawide);
             Toggle("Reduce motion", "Minimise animations and motion effects.", () => Context.ReducedMotion, value => Context.ReducedMotion = value);
             Toggle("Dim dormant covers", "Slightly dim games you haven’t played recently.", () => Context.DimCovers, value => Context.DimCovers = value);
+            Adjust("Cover art", "Fit shows the whole image. Fill crops it to the card.",
+                () => Context.Shared.Display.FitCoverArt ? "Fit" : "Fill",
+                _ => Context.Shared.Display.FitCoverArt = !Context.Shared.Display.FitCoverArt);
         }
         else if (_section == "Controller")
         {
@@ -243,6 +247,9 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         else if (_section == "Library")
         {
             Group("Library preferences");
+            var librarySettings = Context.Shared.LibrarySettings;
+            Adjust("Default library sort", "The order used when Winnow starts.", () => librarySettings.DefaultSortLabel,
+                d => librarySettings.DefaultSortIndex = Math.Clamp(librarySettings.DefaultSortIndex + d, 0, librarySettings.DefaultSortOptions.Count - 1));
             var display = Context.Shared.Display;
             Toggle("Journal after playing", "Ask for a note after a session.", () => display.PromptAfterPlay, value => display.PromptAfterPlay = value);
             Toggle("Non-game entries", "Include tools and other library entries.", () => display.ShowNonGameEntries, value => display.ShowNonGameEntries = value);
@@ -269,12 +276,12 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             Group("Sources");
             Action("IGDB metadata", () => Context.Push(new FullscreenIgdbSettingsPage(Context)));
             Action("Artwork source order", () => Context.Push(new FullscreenArtworkOrderPage(Context)));
-            rows.Children.Add(FullscreenUi.Text(ArtworkOrderViewModel.Explanation, 28, "TextDim"));
+            rows.Children.Add(FullscreenInformation.Metadata(ArtworkOrderViewModel.Explanation));
         }
         else if (_section == "Plugins")
         {
             Group("Loaded plugins");
-            var loadedPlugins = FullscreenUi.Text("", 28, "TextDim");
+            var loadedPlugins = FullscreenInformation.Metadata("");
             loadedPlugins.Bind(TextBlock.TextProperty, new Binding(nameof(PluginSettingsViewModel.LoadedPluginSummary)) { Source = Context.Shared.EnrichmentSettings.Plugins });
             AutomationProperties.SetAutomationId(loadedPlugins, "LoadedPluginsSummary");
             AutomationProperties.SetLiveSetting(loadedPlugins, AutomationLiveSetting.Polite);
@@ -283,8 +290,8 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             foreach (var plugin in Context.Shared.EnrichmentSettings.Plugins.Plugins)
                 Action(plugin.Name, () => Context.Push(new FullscreenPluginSettingsPage(Context, plugin)));
             Action("Open plugins folder", async () => await OpenPluginsFolderAsync(), "Run");
-            rows.Children.Add(FullscreenUi.Text(PluginSettingsViewModel.InstallationNote, 28));
-            var pluginStatus = FullscreenUi.Text("", 28, "TextDim");
+            rows.Children.Add(FullscreenInformation.Text(PluginSettingsViewModel.InstallationNote));
+            var pluginStatus = FullscreenInformation.Metadata("");
             pluginStatus.Bind(TextBlock.TextProperty, new Binding(nameof(PluginSettingsViewModel.Status)) { Source = Context.Shared.EnrichmentSettings.Plugins });
             AutomationProperties.SetLiveSetting(pluginStatus, AutomationLiveSetting.Polite);
             rows.Children.Add(pluginStatus);
@@ -301,7 +308,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             Group("Links");
             Adjust("Open links in", app.LinkDestinationNote, () => app.LinkDestinationOptions[app.LinkDestinationIndex],
                 direction => app.LinkDestinationIndex = (app.LinkDestinationIndex + direction + app.LinkDestinationOptions.Count) % app.LinkDestinationOptions.Count);
-            var problem = FullscreenUi.Text("", 28, "Amber");
+            var problem = FullscreenInformation.Text("", 24, "Amber");
             problem.Bind(TextBlock.TextProperty, new Binding(nameof(app.Problem)) { Source = app });
             problem.Bind(IsVisibleProperty, new Binding(nameof(app.HasProblem)) { Source = app });
             AutomationProperties.SetLiveSetting(problem, AutomationLiveSetting.Polite);
@@ -312,14 +319,14 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             if (app.HasUpdater)
             {
                 Group("Updates");
-                rows.Children.Add(FullscreenUi.Text($"Winnow {app.ApplicationVersion}", 24, "TextDim"));
+                rows.Children.Add(FullscreenInformation.Metadata($"Winnow {app.ApplicationVersion}"));
                 Toggle("Automatic background updates", app.AutomaticUpdatesNote, () => app.AutomaticUpdates, value => app.AutomaticUpdates = value);
                 Toggle("Include beta releases", app.BetaUpdatesNote, () => app.IncludeBetaReleases, value => app.IncludeBetaReleases = value);
-                var status = FullscreenUi.Text(app.UpdateStatus, 28);
+                var status = FullscreenInformation.Text(app.UpdateStatus);
                 status.Bind(TextBlock.TextProperty, new Binding(nameof(app.UpdateStatus)) { Source = app });
                 AutomationProperties.SetLiveSetting(status, AutomationLiveSetting.Polite);
                 rows.Children.Add(status);
-                var recovery = FullscreenUi.Text("", 28);
+                var recovery = FullscreenInformation.Text("");
                 recovery.Name = "UpdateRecoveryStatus";
                 recovery.Bind(TextBlock.TextProperty, new Binding(nameof(app.UpdateRecoveryStatus)) { Source = app });
                 recovery.Bind(IsVisibleProperty, new Binding(nameof(app.HasUpdateRecoveryStatus)) { Source = app });
@@ -348,7 +355,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
                 UpdateAction("Release notes", app.OpenReleaseNotesCommand, nameof(app.HasReleaseNotes), "Browser");
                 UpdateAction("Download in browser", app.OpenManualDownloadCommand, nameof(app.HasManualDownload), "Browser");
             }
-            else rows.Children.Add(FullscreenUi.Text($"Winnow {app.ApplicationVersion}", 24, "TextDim"));
+            else rows.Children.Add(FullscreenInformation.Metadata($"Winnow {app.ApplicationVersion}"));
         }
         var main = new Grid { ColumnDefinitions = new ColumnDefinitions("2*,*"), ColumnSpacing = 56 };
         if (_section == "Controller")
@@ -362,19 +369,19 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             main.Children.Add(guide);
         }
         else main.Children.Add(FullscreenUi.Scroll(rows));
-        var preview = FullscreenUi.Stack(FullscreenUi.Text(_section == "Appearance" ? "PREVIEW" : _section.ToUpperInvariant(), 24, "TextDim"),
+        var preview = FullscreenUi.Stack(FullscreenInformation.Heading(_section == "Appearance" ? "Preview" : _section),
             FullscreenUi.Text("Your next game is already here.", 48),
-            FullscreenUi.Text(_section == "Appearance" ? "Theme applies to both views. Other appearance settings apply to fullscreen." : "Library and account settings apply to both desktop and fullscreen.", 28, "TextDim"));
+            FullscreenInformation.Metadata(_section == "Appearance" ? "Theme, cover art and cover dimming apply to both views. Other appearance settings apply to fullscreen." : "Library and account settings apply to both desktop and fullscreen."));
         if (_section == "Controller") Grid.SetColumnSpan(main.Children[0], 2);
         else { Grid.SetColumn(preview, 1); main.Children.Add(preview); }
         if (_section == "Appearance" && Context.Library.VisibleTiles.FirstOrDefault() is { } sample)
         {
             preview.Children.Clear();
-            preview.Children.Add(FullscreenUi.Text("PREVIEW", 24, "TextDim"));
+            preview.Children.Add(FullscreenInformation.Heading("Preview"));
             preview.Children.Add(new FullscreenCover(sample) { Height = 320, HorizontalAlignment = HorizontalAlignment.Stretch });
             preview.Children.Add(FullscreenUi.Text(sample.Title, 48));
-            preview.Children.Add(FullscreenUi.Text(sample.UnreadText, 28));
-            preview.Children.Add(FullscreenUi.Text("Theme applies to both views. Other appearance settings apply to fullscreen.", 28, "TextDim"));
+            preview.Children.Add(FullscreenInformation.Text(sample.UnreadText));
+            preview.Children.Add(FullscreenInformation.Metadata("Theme, cover art and cover dimming apply to both views. Other appearance settings apply to fullscreen."));
         }
         var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*"), RowSpacing = 24 };
         var navigation = FullscreenUi.TriggerNavigation(tabStrip);

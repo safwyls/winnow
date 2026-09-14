@@ -251,9 +251,13 @@ public partial class MainWindow : Window
             ? WindowState.Normal
             : WindowState.Maximized;
 
+    private WindowState _restoreWindowState = WindowState.Normal;
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
+        if (change.Property == WindowStateProperty && WindowState != WindowState.Minimized)
+            _restoreWindowState = WindowState;
         if (_chromeReady && (change.Property == WindowStateProperty || change.Property == BoundsProperty))
             UpdateFullscreenPresentation();
 
@@ -290,7 +294,7 @@ public partial class MainWindow : Window
             Show();
         }
 
-        WindowState = WindowState.Normal;
+        if (WindowState == WindowState.Minimized) WindowState = _restoreWindowState;
         IsHiddenInTray = false;
         Activate();
         TrayStateChanged?.Invoke(this, EventArgs.Empty);
@@ -370,6 +374,9 @@ public partial class MainWindow : Window
         }
     }
 
+    private readonly TaskCompletionSource<bool> _startupLibraryReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    internal Task<bool> StartupLibraryReady => _startupLibraryReady.Task;
+
     protected override async void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
@@ -395,15 +402,18 @@ public partial class MainWindow : Window
         try
         {
             await LoadOnOpenAsync();
+            _startupLibraryReady.TrySetResult(true);
             if (_shell is not null) await _shell.Setup.LoadAsync();
         }
         catch (OperationCanceledException)
         {
+            _startupLibraryReady.TrySetResult(false);
             // The window closed mid-load. Nothing was half-written that the
             // next launch does not resume, and a shutdown is not a failure.
         }
         catch (Exception ex)
         {
+            _startupLibraryReady.TrySetResult(false);
             LogStartupLoadFailure(ex);
         }
     }
@@ -463,6 +473,7 @@ public partial class MainWindow : Window
         if (_shell?.LibrarySettings is { } librarySettings)
         {
             await librarySettings.RefreshAsync();
+            _library?.ApplyDefaultSort(librarySettings.DefaultSort);
 
             if (_library is { } grid
                 && grid.ShowExplicitContent != librarySettings.ShowExplicitContent)
@@ -1060,7 +1071,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// A click selects the card; a double click opens the detail modal.
+    /// Select the card on press; the shared tile opens details on release.
     /// Buttons own their presses, including repeated clicks.
     /// </summary>
     private void OnTilePressed(object? sender, PointerPressedEventArgs e)
@@ -1086,13 +1097,6 @@ public partial class MainWindow : Window
             || source.FindAncestorOfType<RangeBase>(includeSelf: true) is not null)
         {
             library.SelectTile(tile);
-            return;
-        }
-
-        if (e.ClickCount >= 2)
-        {
-            library.OpenDetailsCommand.Execute(tile);
-            e.Handled = true;
             return;
         }
 

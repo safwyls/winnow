@@ -129,7 +129,8 @@ works; recommendation handles identify eligible owned entries. Use `ExternalIds`
 lookups. Feed inputs include grouped installation/playtime facts, last-played dates, genres and
 tags. They exclude hidden account entries, non-games, provisional names, retired/derelict games
 and active dismissal/snooze groups. Confirmed duplicates appear once. A returned handle cannot
-reintroduce a suppressed game. Each shelf displays six cards with four reserves.
+reintroduce a suppressed game. The shared shelf holds six cards with four reserves;
+desktop displays the first five, while fullscreen uses the shared shelf.
 
 For library and artwork lists, `null` means unavailable and preserves previous observations;
 an empty list means a confirmed empty result. The host never infers unownership from absence.

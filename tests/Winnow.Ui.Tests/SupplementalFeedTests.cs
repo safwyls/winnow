@@ -61,7 +61,12 @@ public sealed class SupplementalFeedTests
                 Assert.False(recent.FindControl<Button>("NotInterested")!.IsEffectivelyVisible);
                 var open = Assert.Single(recent.GetVisualDescendants().OfType<Button>(), b => b.Classes.Contains("feedcard"));
                 Assert.True(open.Focus());
-                Assert.True(open.Command!.CanExecute(open.CommandParameter));
+                var quickDetails = Assert.IsType<Flyout>(Avalonia.Controls.Primitives.FlyoutBase.GetAttachedFlyout(open));
+                quickDetails.ShowAt(open);
+                Dispatcher.UIThread.RunJobs();
+                Assert.True(quickDetails.IsOpen);
+                Assert.Empty(Assert.IsAssignableFrom<Control>(quickDetails.Content).GetVisualDescendants().OfType<Button>());
+                quickDetails.Hide();
                 var recommended = Assert.Single(cards, c => ReferenceEquals(c.DataContext, feed.Shelves[1].Cards[0]));
                 Assert.True(recommended.FindControl<Button>("NotInterested")!.IsEffectivelyVisible);
             }

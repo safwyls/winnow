@@ -119,6 +119,14 @@ public sealed record FullscreenAction(string Label, Action Invoke, bool IsEnable
 
 public static class FullscreenUi
 {
+    public static Button Tab(string label, Action action)
+    {
+        var tab = Button(label, action);
+        tab[!Avalonia.Controls.Button.FontFamilyProperty] = new DynamicResourceExtension("BodyFont");
+        tab.Classes.Add("tv-navigation");
+        return tab;
+    }
+
     public static Control TriggerNavigation(Control choices, bool stretch = false)
     {
         var row = new Grid { Name = "FullscreenSectionNavigation", ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"),

@@ -109,8 +109,8 @@ public sealed class IgdbCoverSource : ICoverSource
     /// <summary>
     /// Picks the CDN size token. Screenshots get
     /// <see cref="IgdbCoverOptions.ScreenshotSizeToken"/> (16:9 landscape);
-    /// covers get <see cref="IgdbCoverOptions.ImageSizeToken"/> (3:4
-    /// portrait).
+    /// covers get <see cref="IgdbCoverOptions.ImageSizeToken"/> (fit to a maximum
+    /// size, preserving the original cover's proportions).
     /// </summary>
     private string SizeTokenFor(CoverKey key)
         => key.Provider switch

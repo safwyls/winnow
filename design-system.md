@@ -104,9 +104,11 @@ renders at its default light instance and every bold display style comes out wro
 consequently no `wdth` to set; Bricolage's static Bold is `wdth` 100, which is the widest cut
 the face has. `src/Winnow.App/Assets/Fonts/README.md` lists the exact files.
 
-**Every number is Plex Mono with tabular figures** (`FontFeatures="tnum"`). This is not
+**Desktop data uses Plex Mono with tabular figures** (`FontFeatures="tnum"`). This is not
 optional in list view, where a playtime column that does not align vertically is unreadable
-at scan speed.
+at scan speed. Fullscreen information uses BodyFont for dates, supporting facts and
+prominent personal metrics as specified below; charts and aligned numeric controls retain
+their data typography. Do not set an entire sentence in Mono merely because it contains a number.
 
 ### Scale
 
@@ -185,7 +187,13 @@ button with the standard visible focus treatment.
 
 4px base unit. Spacing: `4 · 8 · 12 · 16 · 24 · 32 · 48`.
 
-**Tile geometry.** 2:3 portrait, matching Steam's `library_600x900` capsule and IGDB covers.
+**Tile geometry.** 2:3 portrait, matching Steam's library capsule. IGDB and user artwork
+can have other proportions. The shared **Cover art** preference defaults to **Fit**:
+show the whole image and extend its edge colors into the remaining space. **Fill**
+crops artwork to the card. Both modes retain the same 2:3 geometry and apply immediately
+to portrait covers on desktop and fullscreen. Set this in desktop Display or fullscreen
+Settings → Appearance; it persists across launches. Heroes and screenshots keep their
+own presentation. Reset fullscreen appearance leaves this shared preference intact.
 Default 148×222, gutter 16px. The density slider spans 108×162 → 200×300; the grid reflows on
 available width and does not use fixed column counts.
 
@@ -304,7 +312,7 @@ overlay transition. Pointer focus from clicking an action does not pin the revea
 The realized `GameTileView` owns that distinction and clears hover, focus and hit targets when
 it is rebound or detached; pointer capture is resolved from the pointer's actual tile geometry.
 Each icon has at least a 32px square hit target at the 108px density floor. A press on an icon
-belongs only to that control; a double click elsewhere on the tile opens Details. Selection,
+belongs only to that control; a single click elsewhere on the tile opens Details on release. Selection,
 store marks, expansion marks and the unread badge remain available without revealing actions.
 Hover and keyboard action focus also draw the promo site's 2px Volt border highlight. The
 ring sits inside the tile with a 1px Ground separator so edge tiles remain unclipped. It
@@ -674,27 +682,105 @@ features must be maintained and verified in both presentations.
 
 The shared identity is the teal palette, three font families, cover art, dormancy and unread
 markers. Fullscreen gets its own type and spacing scale. Start with a 1920×1080 reference
-canvas, 5% safe margins, 64px game titles, 32px section headings and 28px body text; essential
-labels start at 24px at 100% text size. The user's text scale adjusts body labels from that
-reference. These are design starting points, not measured distance guarantees.
+canvas and 5% safe margins. Browsing heroes start at 64px; information surfaces use the
+hierarchy below. Primary navigation and compact adjustment controls retain their 28px
+labels. The user's text scale adjusts text from that reference. These are design starting
+points, not measured distance guarantees.
 4K increases rendering resolution rather than content density. Fit ultrawide is an optional
 fullscreen preference: it expands the reference canvas horizontally to the display aspect
 ratio at the default 1080px reference height. Overall UI scale adjusts both reference dimensions
 inversely, uniformly scaling text, controls and artwork while retaining percentage safe margins.
+The interface-scale control is centered on an effective scale of 0.85: displayed 100%
+matches the former 85% layout. At 16:9 this gives a roughly 2259×1271 logical canvas;
+the underlying component sizes remain authored against 1920×1080. Displayed 80–120%
+scales proportionally around that baseline in 5% steps. Existing saved interface scales
+restart at the new 100% baseline once; subsequent choices persist independently of the
+legacy setting. Text size, margins, motion and display-fit preferences are retained.
 Library grids reflow within the changed layout space. Home uses cover dimensions from its
-100% layout as a stable target: reducing interface scale shrinks covers and admits more
+unscaled 1920×1080 layout as a stable target: reducing interface scale shrinks covers and admits more
 games, rather than enlarging art to fill the extra height. Available height still limits
 covers when increasing scale or using large margins. The default retains the
 16:9 composition. Validate readability from the actual seating position before accepting the scale.
 
+**Information hierarchy.** Use the following roles wherever a fullscreen surface mixes
+titles, facts, prose and actions. The reader should find the subject first, its supporting
+facts second, and the next action without reading an undifferentiated block. Use BodyFont
+with explicit weights for these roles; a larger size does not switch information to
+DisplayFont.
+
+| Role | Reference treatment | Use |
+|---|---|---|
+| Section label | 18px regular, uppercase, TextDim | Names a meaningful group; expose it as a heading |
+| Item title | 32px bold, Text | Game, event or subject name within a section |
+| Body and secondary action | 24px regular, Text | Descriptions, notes, explanations and links |
+| Metadata | 22px regular, TextDim | Dates, durations, sources and supporting status |
+| Prominent figure | 60px bold, Text, with 22px caption | A small set of useful personal metrics |
+
+Keep navigation tabs stable: reserve the larger regular/bold label dimensions, with identical
+padding, margins and border thickness in every selection and focus state. Root navigation
+and LT/RT section strips must not shift when emphasis changes; font and text-scale changes
+may remeasure the strip.
+
+Group related text with 10–14px spacing. Start information beneath local navigation with
+a 20px inset. Separate distinct groups or chronological entries with a 1px Line rule and
+12px space above and below it, in addition to the group's normal spacing. Do not insert
+rules between a heading and its first item, or around every control. A vertical rule can
+separate two complementary columns; a rule near hero art should fade before crossing it.
+Use existing theme brushes and their contrast rules. Flare still means unread, Amber
+means a warning or problem, and Volt marks an active choice or action; muted metadata
+must never hide an error or be the only carrier of meaning.
+
+Keep prose and information lists left aligned, normally within a 1320px maximum column
+at the reference scale. Short content keeps the same column width as long content.
+Use the available viewport width when narrower, wrap long names and action labels, and
+scroll vertically when content grows. Item previews may truncate only when opening the
+item reveals the complete text. Long-form reading pages show the full text. Preserve
+explicit controller focus paths and bring offscreen actions into view after layout.
+
+Put secondary navigation below the content it explains, using a text label and an arrow.
+Keep primary actions visibly prominent. Save, Cancel, checkboxes, rating choices, toggles
+and left/right adjustments keep their control affordances; they are not arrow links.
+Separate an item's title from date/source/status metadata rather than joining everything
+into one large label. Keep binding-driven labels, disabled states, progress and errors live.
+An empty section explains what belongs there using normal body copy; it does not invent
+entries or add decorative placeholder groups.
+
+Apply this pattern by role, not by reducing every font or adding dividers everywhere.
+Cover shelves and grids remain artwork-led; tab strips, menus, keyboards and file pickers
+retain compact navigation. Charts keep axis labels, numeric alignment and chart-specific
+type scales. Editors keep their fields and button grouping. Existing hero titles and
+specialized metric compositions remain surface-specific. Desktop uses its own scale and
+layout, with the same shared operations. Verify populated, empty, error and enlarged-text
+states, including controller reachability; rendered tests do not establish seating-distance
+readability or physical-controller behavior.
+
+`FullscreenInformation` supplies the reusable text roles, rules, bounded columns and
+wrapping secondary links. Use these for new information compositions rather than copying
+screen-specific font values. `FullscreenUi` continues to provide compact controls and
+navigation primitives.
+
 **For you** opens on a focused game in a horizontal cover shelf.
 Fullscreen makes the complete scored shelf available: up to six primary recommendations
 plus four reserve items. Show as many as fit at the chosen scale, with left/right navigation
-to overflow games; do not enlarge covers just to fill a short shelf. Desktop retains six
+to overflow games; do not enlarge covers just to fill a short shelf. Desktop retains five
 cards with a hidden replacement reserve. Only actual viewport entry records an impression.
 
+Fullscreen cards show cover art without a title caption beneath it in For you, Library and
+Search. Missing-art placeholders and accessible card names still identify the game.
+Fullscreen cards stay opaque. In For you, moving to the next shelf slides the current cover
+row upward and the incoming row up from below; moving back reverses that direction.
+Library and Search keep two rows in view and scroll by one row when selection moves past
+the visible edge. These transitions take 220ms from the first render-frame callback,
+with an ease-out curve inside a clipped
+cover area. Nearby rows stay realized so their art remains available during the slide.
+The heading, hero and shelf indicator follow the selected shelf immediately.
+Focus belongs to the destination immediately; outgoing rows cannot receive input.
+Rapid input retargets the current movement. Reduce motion, layout changes and distant shelf
+jumps snap to the destination. Leaving a page stops the movement and releases its covers.
+There is no card entrance fade. Desktop shelves use ordinary scrolling rather than this row transition.
+
 Recently played is the first shelf when play dates are available, ordered newest first.
-It holds up to ten games: six desktop cards and four additional games available in fullscreen.
+It holds up to ten games: five desktop cards and five additional games available in fullscreen.
 This collection has no recommendation verdict controls and records no feed impressions.
 Its order does not change with recommendation feedback or daily rotation.
 
@@ -703,11 +789,13 @@ two lines at the chosen text size and truncates overflow with an ellipsis, so de
 length does not resize the cover shelf. Titles keep one line at the reference title size and
 ellipsize overflow; opening game details reveals the full title. Title length never consumes
 a second row or reduces the preferred cover size. Up/down changes
-shelves; left/right moves among their games. The selected cover has the only focus ring.
+shelves; left/right moves among their games. Changing shelves carries the current visible
+column, clamping to the last card in a shorter row. Each shelf retains its overflow page,
+but does not restore a separate selected column. The selected cover has the only focus ring.
 The shelf title has no numeric fraction. A vertical rail at the right shows previous/next
 chevrons and one dot per shelf: the current dot is filled with Volt, the others are outlined
 in TextDim. Endpoint arrows dim when unavailable. Mouse users can click arrows or dots;
-controller up/down and LT/RT keep selecting shelves without extra focus stops.
+controller up/down, LT/RT and the mouse wheel keep selecting shelves without extra focus stops.
 The cover row anchors to the bottom of the Home content area above the footer. The shelf
 rail shares its vertical center and follows that bottom anchor; it scales down to fit when
 space is tight. The shelf heading stays directly above the covers with a 12px gap. Spare
@@ -720,7 +808,8 @@ rail, density control, hover actions or small cover buttons appear here.
 **Library** uses a regular cover grid and a short row of collection choices. A dedicated
 filter page groups large choices with persistent actions: Y applies and closes from anywhere,
 and B discards the draft. Search is a dedicated page
-with its own keyboard and results. **Game details** is a full page, with Play as its initial
+with its own keyboard and results. In Search, LT/RT moves two rows and the footer shows the
+visible row range. The mouse wheel moves through rows in both grids. **Game details** is a full page, with Play as its initial
 focus and overview, updates and journal as separate sections. **Activity** and **Settings**
 use large ordered rows, with focused values changed directly. Long content is paged or
 scrolled within an explicit reading region. Each section remembers its game and focus
@@ -734,7 +823,7 @@ position; Back restores the exact origin, including after viewing details.
 | A | Open the focused game or activate the focused action; opening details never launches |
 | B | Close the top layer or return one level; root never exits immediately |
 | X | Play the selected installed game from a browse screen; unavailable shortcuts are omitted |
-| Y | Invoke the labelled contextual action: More on For you, Filter & sort in Library, or Reset page in appearance; confirmation protects destructive changes |
+| Y | Invoke the labelled contextual action: More on For you, Library options in Library, or Reset page in appearance; confirmation protects destructive changes |
 | View | Open search from browsing |
 | Menu | Open a quick menu with Settings and Exit fullscreen; controller help is in Settings |
 
@@ -778,19 +867,24 @@ Home, Library, Activity, Settings and setup place decorative backdrops on the fu
 outside the display margins and behind the header and footer. Safe margins constrain text
 and controls, not artwork. Game selection updates the background without moving the content.
 When changing games, retain the displayed landscape while the next landscape loads, then
-crossfade over 180ms. Reduced motion swaps the loaded art immediately. A cover fallback
+crossfade over 180ms. If another replacement becomes ready during that blend, retain
+only the latest ready image and finish the visible blend before starting the next one.
+Reduced motion swaps the loaded art immediately. A cover fallback
 appears only after landscape metadata or loading fails, never as an intermediate image
 between two landscapes. Ignore results from earlier selections.
 Game artwork fades in further to the right to keep the left content area quiet: browsing
-backdrops reveal between 30% and 85% of the canvas width, and the details veil stays dense
-through 58% before opening toward the right edge.
+backdrops reveal between 30% and 85% of the canvas width. The details veil stays dense
+through 32% before opening toward the right edge, leaving the hero artwork visible beside
+the title; its top veil keeps controller status and the clock legible.
 
 Below 21:9, fullscreen Steam and SteamGridDB heroes fill the canvas with a centered crop and the
 canvas-wide vertical fade. Request enough source pixels to fill the crop's height.
 At 21:9 and wider, these heroes retain their whole composition. Fit them across the
 canvas width, preserve their aspect ratio and align them at the top; exceptionally wide
 canvases fit the whole image within the height and center it horizontally. Fade the final
-15% of the image height into Ground, with Ground filling the canvas below. Each crossfade
+35% of the image height with an artwork opacity mask and a Ground veil, reaching transparent
+artwork over solid Ground at 98% so the
+image boundary disappears before the canvas below. Each crossfade
 layer keeps its own image geometry. Desktop detail backdrops continue to fill their card
 with a crop and request enough source pixels for that crop.
 
@@ -812,7 +906,13 @@ Resizing recomputes page capacity while keeping the selected release anchored. U
 first row on the first page reaches the collection choices. At grid edges, down advances a
 page and up returns to the previous page, preserving the column where possible. Triggers
 cycle All games, Installed, Never played and Patched collections; My lists remains an explicit
-picker. Y opens Filter & sort; View opens Search. Opening a game
+picker. Y opens the Library options side panel from any row, with My lists and Filter & sort
+first, followed by search and library/list actions, including actions for the selected game.
+The footer always labels this shortcut. The grid stays in place behind the panel; B closes
+it and restores the same selected game and viewport. Choosing lists or filters replaces
+the panel, so backing out without changes returns directly to that position. Header controls
+remain available for pointer access, and More opens the same panel. Repeated Y does not stack
+panels. Start keeps the app-wide Quick menu. View opens Search. Opening a game
 and returning restores the collection and selected game.
 
 **Game details** uses a landscape backdrop across the full canvas, including the header.
@@ -826,14 +926,50 @@ and high-resolution cache entry; its source quality remains the upper limit on s
 The header shows B and the previous page name plus controller status and the clock. The
 root navigation and wordmark return when leaving details.
 
-The game title starts at 96px, uses 72px for long names and wraps to at most two lines in a bounded left region. The
-primary action is larger than adjacent actions while retaining transparent underline focus.
-Overview is a bounded composition without a scroll fold. A vertical rule separates the
-history/return reason and Play history/About game actions from a two-line synopsis and two
-visible screenshot previews. About game opens the full description, publisher and reception
-in a reading page. LT/RT changes local sections; all management actions remain controller-accessible.
-Play history, About game and screenshot previews form one left-to-right focus row matching
-their placement; Up returns to the section tabs.
+Details uses BodyFont throughout, with explicit weights rather than switching large figures
+to DisplayFont. The bold game title starts at 76px, uses 64px for long names and wraps to
+at most two lines in a bounded left region. The
+primary action uses a filled Volt treatment with VoltInk text and an icon; More remains
+secondary. The compact hero brings the section tabs closer to the actions. The active tab
+has a persistent underline; controller focus has a separate treatment.
+Overview gives 28% of its width to personal history and 72% to About. A horizontal rule
+below the tabs and a vertical rule between the columns establish the content area. The tab
+rule stays solid through the final trigger, then fades to transparent over 96px, starting
+24px beyond it, so it does not cross the hero artwork. Horizontal section rules in details
+share that same fade position and gradient, aligned with the tab rule. Hours
+played and time since last played use 60px bold figures, 22px regular captions and a short
+vertical rule between them. Keep these figures grouped rather than spreading them across
+the whole column. The date uses 22px regular text; the status uses 32px bold text.
+Play history follows as a left-aligned arrow link. A horizontal rule separates the journal
+region below it. Show the latest saved note when present, otherwise a quiet Journal heading;
+Open journal remains available in either case. Never substitute an example note.
+Section labels use 18px regular text, body copy and arrow links use 24px. Read more sits
+below the two-line synopsis. Two screenshot previews sit beneath the Screenshots label,
+with View gallery below the images. Previews retain the complete source image and its aspect
+ratio; they do not crop into fixed-height strips. The remaining overview height constrains
+their size, and each preview leases artwork at its physical display width independently of
+desktop thumbnails. Read more opens the full description, publisher and reception in a
+reading page. Missing screenshots leave no empty frames. The overview can scroll when
+large text or a long title needs more room. The cinematic backdrop settles into Ground
+behind the overview even when a wide hero preserves its whole composition.
+LT/RT changes local sections; directional focus follows the content groups and keeps
+offscreen actions reachable. Desktop details retain their existing composition.
+
+Updates, Journal and Library continue Overview's BodyFont, explicit weights and 20px
+inset beneath the tab rule. Their content is left aligned and bounded to 1320px for readable
+lines. Section labels use 18px uppercase TextDim, body and arrow actions use 24px, and
+dates and supporting facts use 22px TextDim. Line rules separate entries and related
+groups without adding card backgrounds.
+Updates puts each date above its 32px bold headline, with a Flare dot only while unread;
+the accessible row name states that same unread status. Headlines preview up to two
+lines. Patch notes and read-state actions follow the update list. Journal separates the
+date and optional Volt rating from the saved note's three-line preview. Opening an entry
+retains the shared editor and full note. Missing notes or ratings reserve no blank text.
+Library uses 32px bold store or game names above supporting copy facts, then separated
+sections for coverage, expansions, acquisition, status, technical facts and lists when
+available. List membership and save status remain live. Empty Updates and Journal use
+24px TextDim copy rather than inventing entries. These sections scroll with controller
+focus; desktop keeps its existing section layouts and shared operations.
 
 **Activity** is a personal history view. Sessions, Updates and Journal are local choices
 reached with directional navigation; bumpers continue switching the main screens. Large
@@ -934,7 +1070,7 @@ an external website workflow, while entering and saving it stays inside the TV i
 | Library tools | Reachable from Library actions: hidden games, add game, possible identity matches and metadata corrections; one focused operation per page |
 | Library summary | Reachable from Activity; readable summary pages, with detailed analytics progressively disclosed |
 | Platforms / sign-in | Large status, configuration and action rows; controller browser input and fullscreen file selection use separate adapters over shared operations |
-| Quick menu | Resume, Exit fullscreen and confirmed Quit; Settings is available at root level so switching cannot discard a nested editor; B restores focus |
+| Quick menu | Resume, Exit fullscreen and confirmed Quit; Settings is available at root level so switching cannot discard a nested editor; repeated Menu presses keep the existing menu and selection; B restores focus |
 | Empty / unavailable / disconnected | One clear explanation and recovery action; preserve selection and never redirect input to an obscured surface |
 
 The image concepts cover the five main screens. Supporting views implement the contracts
@@ -1187,12 +1323,14 @@ wheel, Shift-wheel and horizontal trackpad input scroll the strip horizontally, 
 stays with the strip at either edge. The image path remains `CoverKey.IgdbScreenshot` through
 the existing cache and `t_screenshot_huge` rendition.
 
-**Reception follows the screenshots in Overview.** Up to three attributed figures appear in
-this order: IGDB users, IGDB critics, Steam. Each shows its value and respondent count on the
-line. They are never blended into a Winnow verdict. Steam's descriptive label appears in the
-tooltip alongside its percentage and count. A source with no figure contributes nothing.
-Values take `Text`; attribution and counts take `TextDim`. A `WrapPanel` lets complete figures
-wrap without dropping counts. A base-game relationship remains a single visible row;
+**Desktop reception sits beside the year and publisher in the details header.** Up to three
+attributed figures appear in this order: IGDB users, IGDB critics, Steam, on one line separated
+by middle dots. IGDB shows scores; Steam shows its published label, such as “Very Positive”.
+Respondent counts and Steam's percentage remain in the hover tooltip and accessible name.
+They are never blended into a Winnow verdict. A source with no figure contributes nothing.
+The line moves below the identity text when necessary and trims at narrow widths; the tooltip
+retains every figure. Fullscreen keeps percentages and counts in its About reading page,
+where controller users can read them without hovering. A base-game relationship remains a single visible row;
 expansion rows open behind a collapsed disclosure so long collections do not crowd Overview.
 
 **Activity retains the play evidence.** The tracker follows §10.2. Updates and Journal have dedicated tabs. UPDATES is
@@ -2184,17 +2322,58 @@ returns to the saved membership and shows **Couldn't save list changes. Try agai
 the control. List actions use the same error copy beside the library actions, while modal
 actions keep their prompt and draft. Refreshing the library preserves a pending choice.
 
-Desktop feed cards group feedback beside Install / Play beneath the card text, separated
-by a quiet vertical divider: bookmark-plus **Add to list** in Azure, clock **Not now** in
-Amber, and circle-minus **Not interested** in TextDim. Each 32px icon button has a tooltip
-and accessible name. The secondary group wraps together when space is tight; no divider
-appears without a primary action. Recently played offers only Add to list.
-Hero artwork sits behind the card at 22% opacity, fading from transparent on the left to
-its strongest point on the right. Rounded clipping contains the art; missing artwork leaves
-the ordinary Surface background. Artwork uses the shared source preferences and leased cache.
-Fullscreen retains its existing page hero and controller action panel.
-The bookmark and its inset plus use a 1px optical correction to share the apparent centerline
-of the circular feedback icons.
+Desktop For you uses five curated portrait covers per shelf, with a 180–240px cover
+width, 18px gaps and fixed 2:3 artwork bounds. Five covers fit the default 1280×820 window
+without horizontal scrolling. Narrower available areas can still scroll each shelf horizontally;
+Up/Down preserves the card column between shelves and Left/Right brings overflow into view.
+Short shelves keep the same slot sizes. Additional desktop candidates enter the replacement
+queue ahead of the existing reserve and are not recorded as seen until displayed. Fullscreen
+keeps its full scored shelf. The page scrolls vertically through shelf headings,
+short explanations and rules fading toward the right. Titles and two-line recommendation
+excerpts stay below each cover; the complete reason remains in the accessible name.
+
+Hover or keyboard focus reveals a bottom action strip inside the cover: **Add to list**,
+**Not now**, and **Not interested**, with 36px targets and named tooltips. Their icons use
+Azure, Amber and TextDim respectively. Geometry does not change when actions appear.
+Recently played offers only Add to list.
+Feedback retains the in-place Undo receipt, countdown hold and history behavior.
+
+Desktop feed and library covers use `GameTileView` for artwork, dormancy, Fit/Fill, unread
+badges, the details dogear and the Play/Install overlay. The face fills its host at the same
+2:3 ratio; the library density and feed column width determine its size. Actions retain
+minimum hit sizes rather than shrinking with the artwork. The feed reserves 48px below the
+shared overlay for its feedback strip, with its title and reason beneath the cover.
+Both surfaces open details with a single click outside an action; Play/Install and feed
+feedback buttons execute only their own commands. The feed also opens details from its
+caption and reason. Library selection still updates on press.
+
+Both surfaces share the hover-preview component, including artwork and ratings loading,
+layout, dismissal and window-bound positioning. Recycling a library tile
+closes its preview and releases its independent artwork lease. Fullscreen continues to show
+the selected game's information in its hero area rather than a pointer-hover bubble.
+
+Hovering a tile immediately opens a compact quick-details bubble to its right, flipping left
+when space is tighter on the right. A connected triangular pointer aims at the cover.
+Leaving the tile immediately closes the bubble, including when moving onto the bubble itself.
+On feed cards, clicking the artwork, Enter or Space opens full details directly. Only one preview opens at
+a time. It presents a bold title, quieter store and play metadata, available IGDB user and
+critic scores and Steam's published review label, and an optional four-line summary, with no
+actions. Ratings occupy one subdued `TextDim` line with middle-dot separators; counts and
+Steam's percentage remain in accessible text. Review tooltips appear only in desktop details,
+not on feed tiles or previews. Ratings use shared reception formatting and are
+loaded from local storage while the preview is open; absent sources occupy no space.
+The recommendation reason stays below the cover rather than
+repeating in the preview.
+
+Hero artwork fills the bubble at 18% opacity, clipped into the same rounded shape and pointer
+as its surface and outline. Artwork is leased only while the preview is open. Escape or light
+dismiss closes it. Rebinding or removing a card closes it too; an open
+quick view holds that card's feedback countdown. The bubble stays within the window's
+client area with an 8px inset, shifting upward at the bottom edge even when the originating
+tile is partially scrolled out of view. Placement uses the measured bubble size rather than
+the monitor bounds. Opening full details closes quick details first.
+Portrait covers retain shared Fit/Fill and dormancy behavior.
+Fullscreen retains its page hero, shelves and controller action panel.
 
 In a static list, the game context menu offers **Remove from list**, acting on the selected
 games and leaving them in the library. Live lists determine their own membership.
@@ -2765,6 +2944,15 @@ on. Its **STARTUP** card offers **Start with Windows**. That registration is per
 starts Winnow quietly in the notification area after sign-in. Unsupported systems disable
 the toggle and say why.
 
+On Windows, the taskbar jump list offers **Recently Played**, containing up to ten installed,
+launchable games ordered by last play, and **Switch to Fullscreen Mode** under Tasks. Game
+entries launch through the current library; fullscreen entry restores the existing window
+without toggling back to desktop when already fullscreen. Both actions also work from a
+closed application. Windows supplies pinning and close-window commands. Its privacy and
+removed-item choices are respected. Game entries use square thumbnails of their cover artwork,
+cached as Windows icons at several display sizes. Missing artwork falls back to Winnow's
+application icon; the fullscreen task always uses that icon.
+
 Application settings on both desktop and fullscreen also offer **Start in fullscreen**,
 off by default. It opens the TV interface on the next normal launch; changing it does not
 switch the current view. Windows sign-in and explicit background launches retain tray-first
@@ -2845,6 +3033,13 @@ The acquisition export card offers **Export acquisition CSV**, followed by a pol
 line for completion, cancellation or failure. Its explanation states that missing facts stay
 blank and prices are stored cents without a recorded currency. It uses the same card and
 action-button styles as its neighbours. Price stays out of the game details modal (§10.5).
+
+**Default library sort** in Library settings is shared by desktop and fullscreen.
+Choices are Dormant longest, Recently played, Playtime high→low, Playtime low→high,
+Name A–Z and Name Z–A. Changes apply immediately and set the order for future starts.
+Temporary browsing sorts do not overwrite this preference. Manual lists keep their
+current order; changing the default while a list is open sets the order used on exit.
+Missing or invalid preferences use Dormant longest.
 
 ### 16.1 Explicit content
 

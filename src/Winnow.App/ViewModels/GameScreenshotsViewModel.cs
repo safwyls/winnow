@@ -121,6 +121,10 @@ public sealed partial class GameScreenshotsViewModel : ObservableObject, IDispos
     /// </summary>
     public ScreenshotLightboxViewModel? Lightbox => _lightbox;
 
+    /// <summary>A larger surface owns its own decode without changing desktop thumbnails.</summary>
+    internal LeasedCover CreatePreview(GameScreenshotViewModel shot, Action<CoverArt?> apply)
+        => new(_covers, shot.Key, CoverLayers.Vivid, apply);
+
     /// <summary>
     /// Builds the strip from the stored image rows. Returns null when no
     /// screenshot ids exist, which is what makes "nothing rather than an empty

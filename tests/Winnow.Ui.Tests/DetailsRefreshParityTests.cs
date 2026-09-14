@@ -131,6 +131,18 @@ public sealed class DetailsRefreshParityTests
             Assert.Equal("1 unread update", tracker.UpdateSummary);
             Assert.Equal(2, details.Updates.Count);
             Assert.Equal("90", Assert.Single(details.Reception!.Figures).Value);
+            if (!fullscreen)
+            {
+                var headerRatings = view.FindControl<TextBlock>("HeaderRatings")!;
+                Assert.True(headerRatings.IsEffectivelyVisible);
+                var figure = Assert.Single(details.Reception.Figures);
+                Assert.DoesNotContain(figure.Count, headerRatings.Text!);
+                Assert.Equal(figure.Tooltip, ToolTip.GetTip(headerRatings));
+                var ratingsGroup = view.FindControl<Border>("HeaderRatingsGroup")!;
+                var ratingsPeer = Avalonia.Automation.Peers.ControlAutomationPeer.CreatePeerForElement(ratingsGroup)!;
+                Assert.True(ratingsPeer.IsControlElement());
+                Assert.Equal(details.Reception.CompactAutomationName, ratingsPeer.GetName());
+            }
             Assert.Single(details.Screenshots!.Shots);
             Assert.Equal("newshot", details.Screenshots.Shots[0].Key.Id);
 

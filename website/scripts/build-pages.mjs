@@ -19,23 +19,32 @@ mkdirSync(output, { recursive: true });
 cpSync('public', output, { recursive: true });
 // Vinext places assetPrefix in the output tree; Pages supplies that mount path.
 cpSync(`dist/client${basePath}/_next`, `${output}/_next`, { recursive: true });
-for (const page of ['index.html', 'developers.html', '404.html']) {
-  const destination = page === 'developers.html' ? 'developers/index.html' : page;
+const routes = ['developers', 'docs', 'docs/setup', 'docs/configuration', 'docs/plugins', 'docs/plugin-sdk'];
+const pages = [
+  ['index.html', 'index.html'], ['404.html', '404.html'],
+  ...routes.map(route => [`${route}.html`, `${route}/index.html`]),
+];
+for (const [page, destination] of pages) {
   mkdirSync(path.dirname(`${output}/${destination}`), { recursive: true });
   cpSync(`dist/client/${page}`, `${output}/${destination}`);
 }
 writeFileSync(`${output}/.nojekyll`, '');
 
 function verifyUrl(raw, source) {
-  if (!raw || /^(?:[a-z]+:|\/\/|#)/i.test(raw)) return;
+  if (!raw || /^(?:[a-z]+:|\/\/)/i.test(raw)) return;
   const url = new URL(raw, `https://pages.invalid${basePath}/${source}`);
   if (!url.pathname.startsWith(`${basePath}/`)) throw new Error(`Unprefixed URL ${raw} in ${source}`);
   let target = `${output}/${decodeURIComponent(url.pathname.slice(basePath.length + 1))}`;
   if (url.pathname.endsWith('/')) target += 'index.html';
   if (!existsSync(target)) throw new Error(`Missing asset ${raw} in ${source}`);
+  if (url.hash && target.endsWith('.html')) {
+    const id = decodeURIComponent(url.hash.slice(1));
+    const ids = [...readFileSync(target, 'utf8').matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
+    if (!ids.includes(id)) throw new Error(`Missing anchor ${raw} in ${source}`);
+  }
 }
 
-for (const source of ['index.html', 'developers/index.html', '404.html']) {
+for (const [, source] of pages) {
   const html = readFileSync(`${output}/${source}`, 'utf8');
   for (const tag of html.matchAll(/<(?:a|link|script|img|iframe)\b[^>]*>/g)) {
     for (const attribute of tag[0].matchAll(/(?:href|src)="([^"]+)"/g)) verifyUrl(attribute[1], source);

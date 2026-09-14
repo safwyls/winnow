@@ -50,15 +50,21 @@ public sealed class FullscreenHomeLayoutTests
             { SafeMarginPercent = margin, TextScale = textScale };
         using var view = new FullscreenView(context);
         var window = new Window { Width = 1920, Height = 1080, Content = view };
+        FullscreenCover CurrentCover()
+        {
+            var viewport = view.CurrentPage.GetVisualDescendants().OfType<FullscreenRowViewport>().Single();
+            viewport.AdvanceAnimation(TimeSpan.FromMilliseconds(220));
+            return viewport.GetRow(viewport.FirstRow).GetVisualDescendants().OfType<FullscreenCover>().First();
+        }
         double CoverHeight()
         {
-            var cover = view.CurrentPage.GetVisualDescendants().OfType<FullscreenCover>().First();
+            var cover = CurrentCover();
             return cover.Bounds.Height * cover.TransformToVisual(window)!.Value.M22;
         }
         void AssertBottomAlignment()
         {
             var page = view.CurrentPage;
-            var cover = page.GetVisualDescendants().OfType<FullscreenCover>().First();
+            var cover = CurrentCover();
             var tile = cover.GetVisualAncestors().OfType<Button>().First();
             var wall = Assert.IsType<Grid>(tile.GetVisualParent());
             var bottom = wall.TranslatePoint(new Point(0, wall.Bounds.Height), page)!.Value.Y;
@@ -147,8 +153,9 @@ public sealed class FullscreenHomeLayoutTests
                 var origin = backdrop.TranslatePoint(default, television)!.Value;
                 Assert.Equal(0, origin.X, 4);
                 Assert.Equal(0, origin.Y, 4);
-                Assert.Equal(television.Bounds.Width, backdrop.Bounds.Width, 4);
-                Assert.Equal(1080, backdrop.Bounds.Height, 4);
+                var backdropEnd = backdrop.TranslatePoint(new Point(backdrop.Bounds.Width, backdrop.Bounds.Height), television)!.Value;
+                Assert.InRange(Math.Abs(television.Bounds.Width - backdropEnd.X), 0, 1);
+                Assert.InRange(Math.Abs(television.Bounds.Height - backdropEnd.Y), 0, 1);
                 var pageOrigin = television.CurrentPage.TranslatePoint(default, television)!.Value;
                 Assert.True(pageOrigin.X > 0);
                 Assert.True(pageOrigin.Y > 0);

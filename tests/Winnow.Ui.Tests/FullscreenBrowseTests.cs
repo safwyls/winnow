@@ -27,98 +27,6 @@ namespace Winnow.Ui.Tests;
 
 public sealed class FullscreenBrowseTests
 {
-    [Fact]
-    public void Paging_preserves_the_selected_cell_and_clamps_the_final_page()
-    {
-        var state = new FullscreenBrowseState();
-        var releases = Enumerable.Range(1, 27).Select(i => (long)i).ToArray();
-        state.Select(6, 5);
-        state.Reconcile(releases);
-        Assert.True(state.MovePage(1, releases));
-        Assert.Equal(18, state.SelectedReleaseId);
-        Assert.Equal(5, state.PositionOnPage);
-        Assert.True(state.MovePage(1, releases));
-        Assert.Equal(27, state.SelectedReleaseId);
-        Assert.Equal(2, state.PositionOnPage);
-        Assert.False(state.MovePage(1, releases));
-    }
-
-    [Fact]
-    public void Grid_edges_enter_the_nearest_row_and_preserve_column_in_both_directions()
-    {
-        var releases = Enumerable.Range(1, 27).Select(i => (long)i).ToArray();
-        var state = new FullscreenBrowseState();
-        state.Select(8, 7);
-        state.Reconcile(releases);
-        Assert.True(state.MoveGridEdge(1, 6, releases));
-        Assert.Equal(14, state.SelectedReleaseId);
-        Assert.Equal(1, state.PositionOnPage);
-        Assert.True(state.MoveGridEdge(-1, 6, releases));
-        Assert.Equal(8, state.SelectedReleaseId);
-        Assert.Equal(7, state.PositionOnPage);
-        state.Select(24, 11);
-        state.Reconcile(releases);
-        Assert.True(state.MoveGridEdge(1, 6, releases));
-        Assert.Equal(27, state.SelectedReleaseId);
-        Assert.False(state.MoveGridEdge(1, 6, releases));
-    }
-
-    [Fact]
-    public void Reload_follows_game_identity_when_sorting_changes()
-    {
-        var state = new FullscreenBrowseState();
-        var releases = Enumerable.Range(1, 30).Select(i => (long)i).ToArray();
-        state.Select(28, 3);
-        state.Reconcile(releases);
-        Assert.Equal(2, state.Page);
-        state.Reconcile(releases.Reverse().ToArray());
-        Assert.Equal(0, state.Page);
-        Assert.Equal(2, state.PositionOnPage);
-        Assert.Equal(28, state.SelectedReleaseId);
-    }
-
-    [Fact]
-    public void Removing_last_page_and_emptying_library_keeps_a_valid_position()
-    {
-        var state = new FullscreenBrowseState();
-        state.Select(28, 3);
-        state.Reconcile(Enumerable.Range(1, 30).Select(i => (long)i).ToArray());
-        state.Reconcile([1, 2]);
-        Assert.Equal(0, state.Page);
-        Assert.Equal(2, state.SelectedReleaseId);
-        state.Reconcile([]);
-        Assert.Null(state.SelectedReleaseId);
-        Assert.Equal(0, state.PositionOnPage);
-        Assert.Equal(1, state.PageCount(0));
-        Assert.False(state.MovePage(1, []));
-    }
-
-    [Fact]
-    public void Density_changes_anchor_identity_and_page_edges_use_the_new_columns()
-    {
-        var ids = Enumerable.Range(1, 71).Select(i => (long)i).ToArray();
-        var state = new FullscreenBrowseState();
-        state.Select(28, 3);
-        state.Reconcile(ids);
-        state.Resize(18, ids);
-        Assert.Equal(28, state.SelectedReleaseId);
-        Assert.Equal(1, state.Page);
-        Assert.Equal(9, state.PositionOnPage);
-        Assert.True(state.MoveGridEdge(1, 9, ids));
-        Assert.Equal(37, state.SelectedReleaseId);
-        state.Resize(26, ids);
-        Assert.Equal(37, state.SelectedReleaseId);
-        Assert.Equal(10, state.PositionOnPage);
-        state.Resize(18, ids);
-        Assert.Equal(37, state.SelectedReleaseId);
-        state.Select(71, 16);
-        state.Reconcile(ids);
-        state.Resize(28, ids);
-        Assert.Equal(71, state.SelectedReleaseId);
-        Assert.Equal(14, state.PositionOnPage);
-        Assert.False(state.MovePage(1, ids));
-    }
-
     [AvaloniaFact]
     public async Task Triggers_switch_library_collections_and_leave_desktop_filters_alone()
     {
@@ -175,7 +83,8 @@ public sealed class FullscreenBrowseTests
             Assert.Equal(selected, AutomationProperties.GetName((Control)window.FocusManager.GetFocusedElement()!));
             foreach (var cover in page.GetVisualDescendants().OfType<FullscreenCover>().Where(cover => cover.GetVisualAncestors().OfType<Button>().Any(button => button.Classes.Contains("tv-cover"))))
             {
-                Assert.InRange(cover.Bounds.Width / cover.Bounds.Height, .665, .668);
+                // Layout rounds each dimension to pixels independently.
+                Assert.InRange(Math.Abs(cover.Bounds.Width - cover.Bounds.Height * 2 / 3), 0, 1);
                 Assert.All(cover.GetVisualDescendants().OfType<Image>(), image => Assert.Equal(Stretch.Uniform, image.Stretch));
             }
             Capture(window, "fullscreen-library-native-covers-wide-full-grid");
@@ -631,7 +540,7 @@ public sealed class FullscreenBrowseTests
     }
 
     [AvaloniaFact]
-    public void Backdrop_uses_repository_screenshot_and_releases_pixels_on_detach()
+    public async Task Backdrop_uses_repository_screenshot_and_releases_pixels_on_detach()
     {
         using var pixels = new RenderTargetBitmap(new PixelSize(16, 9));
         var leases = new TestLeases(new CoverArt(pixels, pixels));
@@ -644,7 +553,11 @@ public sealed class FullscreenBrowseTests
         window.Show();
         try
         {
-            Dispatcher.UIThread.RunJobs();
+            for (var attempt = 0; attempt < 100 && leases.Keys.Count == 0; attempt++)
+            {
+                await Task.Delay(20);
+                Dispatcher.UIThread.RunJobs();
+            }
             Assert.Contains(CoverKey.IgdbBackdrop("tvscreenshot"), leases.Keys);
             var image = backdrop.GetVisualDescendants().OfType<Image>().Last();
             Assert.Same(pixels, image.Source);

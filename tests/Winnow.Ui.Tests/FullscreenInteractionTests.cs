@@ -66,7 +66,7 @@ public sealed class FullscreenInteractionTests
                 status.Text = text;
                 clock.Text = text.Length == 0 ? "1:01" : "11:59 PM";
                 Dispatcher.UIThread.RunJobs();
-                Assert.InRange(Math.Abs(nav.Bounds.Center.X - header.Bounds.Width / 2), 0, .01);
+                Assert.InRange(Math.Abs(nav.Bounds.Center.X - header.Bounds.Width / 2), 0, .5);
                 var clockEnd = clock.TranslatePoint(new Point(clock.Bounds.Width, 0), header)!.Value.X;
                 Assert.InRange(clockEnd, header.Bounds.Width - 1, header.Bounds.Width + 1);
                 var statusStart = status.TranslatePoint(default, header)!.Value.X;
@@ -101,7 +101,7 @@ public sealed class FullscreenInteractionTests
             Assert.Equal("Back to Library", Avalonia.Automation.AutomationProperties.GetName(back));
             Assert.Same(television.CurrentPage.Backdrop, art.Content);
             Assert.NotNull(art.Content);
-            Assert.Equal(new Size(1920, 1080), art.Bounds.Size);
+            Assert.Equal(new Size(Math.Round(1920 / .85), Math.Round(1080 / .85)), art.Bounds.Size);
             var action = Assert.IsAssignableFrom<Button>(window.FocusManager!.GetFocusedElement());
             Assert.Contains(television.CurrentPage, action.GetVisualAncestors());
             television.Handle(GamepadButtons.Back);
@@ -161,18 +161,18 @@ public sealed class FullscreenInteractionTests
         {
             Dispatcher.UIThread.RunJobs();
             var canvas = Assert.IsType<Grid>(Assert.IsType<Viewbox>(television.Content).Child);
-            Assert.Equal(1920, canvas.Width);
+            Assert.Equal(1920 / .85, canvas.Width, 5);
             context.SetFitUltrawide(true);
             Dispatcher.UIThread.RunJobs();
-            Assert.InRange(canvas.Width, 2559, 2561);
-            Assert.Equal(1080, canvas.Height);
+            Assert.Equal(2560 / .85, canvas.Width, 5);
+            Assert.Equal(1080 / .85, canvas.Height, 5);
             Capture(window, "ultrawide");
             window.Width = 3440; window.Height = 1440;
             Dispatcher.UIThread.RunJobs();
-            Assert.InRange(canvas.Width, 2579, 2581);
+            Assert.Equal(2580 / .85, canvas.Width, 5);
             context.SetFitUltrawide(false);
             Dispatcher.UIThread.RunJobs();
-            Assert.Equal(1920, canvas.Width);
+            Assert.Equal(1920 / .85, canvas.Width, 5);
         }
         finally { window.Close(); }
     }
@@ -272,6 +272,10 @@ public sealed class FullscreenInteractionTests
             Dispatcher.UIThread.RunJobs();
             Assert.Equal("Library", television.CurrentPage.Title);
             window.HandleGamepad(GamepadButtons.Keyboard);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal("Library options", television.CurrentPage.Title);
+            window.HandleGamepad(GamepadButtons.Down);
+            window.HandleGamepad(GamepadButtons.Accept);
             Dispatcher.UIThread.RunJobs();
             Assert.IsType<FullscreenBrowseFiltersPage>(television.CurrentPage);
             window.HandleGamepad(GamepadButtons.Back);

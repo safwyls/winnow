@@ -37,13 +37,14 @@ public sealed class FullscreenView : UserControl, IDisposable
     private Border? _actionOverlay;
     private Border? _actionPanel;
     private FullscreenPage? _shownPage;
+    private FullscreenActionsPage? _quickMenu;
     private readonly Dictionary<FullscreenPage, Control?> _actionReturnFocus = [];
     private readonly Grid _safe = new() { RowDefinitions = new RowDefinitions("80,*,64") };
     private readonly Grid _canvas = new() { Width = 1920, Height = 1080 };
     private readonly TextBlock _clock = FullscreenUi.Text("", 24);
     private readonly TextBlock _status = FullscreenUi.Text("Controller disconnected", 24, "Text");
-    private readonly ContentControl _hints = new();
-    private readonly ContentControl _rightHints = new() { HorizontalAlignment = HorizontalAlignment.Right };
+    private readonly ContentControl _hints = new() { Name = "FullscreenHints" };
+    private readonly ContentControl _rightHints = new() { Name = "FullscreenRightHints", HorizontalAlignment = HorizontalAlignment.Right };
     private readonly TextBlock _launch = FullscreenUi.Text("", 28);
     private readonly Button[] _tabs;
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(15) };
@@ -51,6 +52,7 @@ public sealed class FullscreenView : UserControl, IDisposable
     private int _section;
     private bool _disposed;
     private readonly ConditionalWeakTable<Control, TypeSize> _typeSizes = new();
+    private string? _shownHints, _shownRightHints;
     private sealed record TypeSize(double Value);
     public event Action? ExitRequested;
     public event Action? QuitRequested;
@@ -59,6 +61,10 @@ public sealed class FullscreenView : UserControl, IDisposable
     public FullscreenView(FullscreenContext context)
     {
         _context = context;
+        this.Bind(CoverPresentation.FitProperty, new Binding(nameof(DisplaySettingsViewModel.FitCoverArt))
+        {
+            Source = context.Shared.Display,
+        });
         AddHandler(PointerPressedEvent, (_, e) =>
         {
             if (e.GetCurrentPoint(this).Properties.PointerUpdateKind != PointerUpdateKind.RightButtonPressed) return;
@@ -83,6 +89,9 @@ public sealed class FullscreenView : UserControl, IDisposable
                     border.Bind(Border.BorderThicknessProperty, new Binding(nameof(Button.BorderThickness)) { Source = button });
                     border.Bind(Border.PaddingProperty, new Binding(nameof(Button.Padding)) { Source = button });
                     var presenter = new ContentPresenter { VerticalContentAlignment = VerticalAlignment.Center };
+                    if (button.Classes.Contains("tv-navigation"))
+                        presenter.DataTemplates.Add(new FuncDataTemplate<string>((text, _) =>
+                            new FullscreenNavigationLabel { Text = text }));
                     presenter.Bind(ContentPresenter.ContentProperty, new Binding(nameof(Button.Content)) { Source = button });
                     presenter.Bind(ContentPresenter.ContentTemplateProperty, new Binding(nameof(Button.ContentTemplate)) { Source = button });
                     border.Child = presenter; return border;
@@ -96,11 +105,9 @@ public sealed class FullscreenView : UserControl, IDisposable
         { Setters = { new Setter(TemplatedControl.BorderBrushProperty, new DynamicResourceExtension("Volt")), new Setter(TemplatedControl.ForegroundProperty, new DynamicResourceExtension("Volt")) } });
         _roots = [new FullscreenBrowsePage(context, true), new FullscreenBrowsePage(context, false), new FullscreenActivityPage(context), new FullscreenSettingsPage(context)];
         _setup = new FullscreenSetupPage(context);
-        _tabs = new[] { "For you", "Library", "Activity", "Settings" }.Select((label, index) => FullscreenUi.Button(label, () => SelectSection(index))).ToArray();
+        _tabs = new[] { "For you", "Library", "Activity", "Settings" }.Select((label, index) => FullscreenUi.Tab(label, () => SelectSection(index))).ToArray();
         foreach (var tab in _tabs)
         {
-            var label = FullscreenUi.Text(tab.Content?.ToString() ?? "", 28);
-            tab.Content = label;
             tab.Background = Brushes.Transparent;
             tab.Padding = new Thickness(12, 8);
         }
@@ -195,8 +202,8 @@ public sealed class FullscreenView : UserControl, IDisposable
         // A smaller reference canvas enlarges every control through the same uniform Viewbox transform.
         var referenceWidth = _context.FitUltrawide && Bounds.Height > 0
             ? Math.Max(1920, 1080 * Bounds.Width / Bounds.Height) : 1920;
-        _canvas.Width = referenceWidth / _context.UiScale;
-        _canvas.Height = 1080 / _context.UiScale;
+        _canvas.Width = referenceWidth / _context.EffectiveUiScale;
+        _canvas.Height = 1080 / _context.EffectiveUiScale;
         _safe.Margin = new Thickness(_canvas.Width * _context.SafeMarginPercent / 100, _canvas.Height * _context.SafeMarginPercent / 100);
         if (_actionPanel is not null) { _actionPanel.Width = ActionPanelWidth; _actionPanel.Padding = ActionPanelPadding; }
     }
@@ -294,6 +301,7 @@ public sealed class FullscreenView : UserControl, IDisposable
         }
         if (_stack.Count == 0) { QuickMenu(); return; }
         var page = _stack[^1]; _stack.RemoveAt(_stack.Count - 1); page.Dispose();
+        if (ReferenceEquals(page, _quickMenu)) _quickMenu = null;
         _actionReturnFocus.Remove(page, out var returnFocus);
         if (page is FullscreenDetailsPage) _context.Library.CloseDetailsCommand.Execute(null);
         ShowPage();
@@ -377,8 +385,18 @@ public sealed class FullscreenView : UserControl, IDisposable
     }
     private void PageChanged(object? sender, EventArgs e)
     {
-        _hints.Content = FullscreenGlyphs.Hints(CurrentPage.Hints);
-        _rightHints.Content = FullscreenGlyphs.Hints(CurrentPage.RightHints);
+        var hints = CurrentPage.Hints;
+        var rightHints = CurrentPage.RightHints;
+        if (_shownHints != hints)
+        {
+            _shownHints = hints;
+            _hints.Content = FullscreenGlyphs.Hints(hints);
+        }
+        if (_shownRightHints != rightHints)
+        {
+            _shownRightHints = rightHints;
+            _rightHints.Content = FullscreenGlyphs.Hints(rightHints);
+        }
     }
     public void FocusPage() => Dispatcher.UIThread.Post(() =>
     {
@@ -408,7 +426,7 @@ public sealed class FullscreenView : UserControl, IDisposable
     }
     private void QuickMenu()
     {
-        if (_context.Shared.Setup.IsOpen) return;
+        if (_context.Shared.Setup.IsOpen || (_quickMenu is not null && _stack.Contains(_quickMenu))) return;
         var actions = new List<FullscreenAction> { new("Resume", () => { }) };
         var updates = _context.Shared.ApplicationSettings;
         if (updates.HasUpdateAction)
@@ -420,7 +438,8 @@ public sealed class FullscreenView : UserControl, IDisposable
         actions.Add(new("Exit fullscreen", () => ExitRequested?.Invoke()));
         actions.Add(new("Quit Winnow", () => _context.ShowActions("Quit Winnow? Unsaved edits will be lost.",
             [new("Cancel", () => { }), new("Quit Winnow", () => QuitRequested?.Invoke())])));
-        _context.ShowActions("Quick menu", actions);
+        _quickMenu = new FullscreenActionsPage(_context, "Quick menu", actions);
+        Push(_quickMenu);
     }
     private void Notice(string text) => _context.ShowActions(text, [new("Continue", () => { })]);
     private void SetupChanged(object? sender, PropertyChangedEventArgs e)

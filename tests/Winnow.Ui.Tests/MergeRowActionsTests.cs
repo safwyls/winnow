@@ -49,7 +49,7 @@ public sealed class MergeRowActionsTests
             window.Show();
             context.Push(page);
             var deadline = DateTime.UtcNow.AddSeconds(5);
-            while (!page.GetVisualDescendants().OfType<Button>().Any(button => button.Content?.ToString()?.Contains("entries ·", StringComparison.Ordinal) == true) && DateTime.UtcNow < deadline)
+            while (!page.GetVisualDescendants().OfType<Button>().Any(button => AutomationProperties.GetName(button)?.Contains("entries ·", StringComparison.Ordinal) == true) && DateTime.UtcNow < deadline)
             { await Task.Delay(10); Dispatcher.UIThread.RunJobs(); }
             var proposal = Find("entries ·");
             AssertFitsHorizontally(proposal, window);

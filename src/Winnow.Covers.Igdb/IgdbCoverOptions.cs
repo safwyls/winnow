@@ -20,9 +20,9 @@ public sealed class IgdbCoverOptions
     /// resolution as Steam's 1200x1800 <c>library_600x900_2x.jpg</c>, so the two
     /// sources do not produce visibly different sharpness in one grid.</para>
     ///
-    /// <para>IGDB covers are 3:4 where Steam capsules are 2:3. The tile renders
-    /// <c>Stretch="UniformToFill"</c>, so the difference costs a small
-    /// top-and-bottom crop, not a letterbox.</para>
+    /// <para>IGDB preserves the original image ratio, which need not match Steam's
+    /// 2:3 capsule. Desktop crops to fill; fullscreen fits the whole image and
+    /// fills the remaining space with edge colors.</para>
     /// </summary>
     public string ImageSizeToken { get; set; } = "t_cover_big_2x";
 
@@ -36,8 +36,8 @@ public sealed class IgdbCoverOptions
     /// <c>t_screenshot_huge</c> 1280x720 58,654 B; a fabricated
     /// <c>t_not_a_real_token</c> 404, so the CDN discriminates between
     /// tokens rather than serving anything for any path). A separate
-    /// rendition from <see cref="ImageSizeToken"/> because covers are
-    /// 3:4 portrait and screenshots are 16:9 landscape.</para>
+    /// rendition from <see cref="ImageSizeToken"/> because covers preserve their
+    /// original proportions while screenshot renditions target a landscape frame.</para>
     /// </summary>
     public string ScreenshotSizeToken { get; set; } = "t_screenshot_huge";
 

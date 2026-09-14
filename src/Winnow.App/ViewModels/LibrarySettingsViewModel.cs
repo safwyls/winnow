@@ -24,6 +24,31 @@ namespace Winnow.App.ViewModels;
 /// </summary>
 public partial class LibrarySettingsViewModel : ObservableObject
 {
+    public const string DefaultSortSettingKey = "library.default-sort";
+    public IReadOnlyList<string> DefaultSortOptions { get; } =
+        ["Dormant longest", "Recently played", "Playtime high→low", "Playtime low→high", "Name A–Z", "Name Z–A"];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DefaultSort), nameof(DefaultSortLabel))]
+    public partial int DefaultSortIndex { get; set; }
+
+    public LibrarySort DefaultSort => DefaultSortIndex is >= 0 and < 6 ? (LibrarySort)DefaultSortIndex : LibrarySort.DormantLongest;
+    public string DefaultSortLabel => DefaultSortOptions[(int)DefaultSort];
+    public Action<LibrarySort>? ApplyDefaultSort { get; set; }
+
+    partial void OnDefaultSortIndexChanged(int value)
+    {
+        if (_loading) return;
+        ApplyDefaultSort?.Invoke(DefaultSort);
+        PendingSave = SaveDefaultSortAsync(PendingSave, DefaultSort);
+    }
+
+    private async Task SaveDefaultSortAsync(Task previous, LibrarySort sort)
+    {
+        await previous;
+        if (_settings is not null) await _settings.SetAsync(DefaultSortSettingKey, sort.ToString());
+    }
+
     private readonly IHiddenGameRepository? _hidden;
     private readonly IManualEntryRepository? _manual;
     private readonly ILibraryQueryRepository? _libraryQueries;
@@ -416,10 +441,13 @@ public partial class LibrarySettingsViewModel : ObservableObject
             var stored = await Task.Run(() => _settings.GetAsync(
                 BucketThresholds.ShowExplicitContentSettingKey, ct), ct);
 
+            var storedSort = await Task.Run(() => _settings.GetAsync(DefaultSortSettingKey, ct), ct);
             _loading = true;
             try
             {
                 ShowExplicitContent = BucketThresholds.ParseShowExplicitContent(stored);
+                DefaultSortIndex = Enum.TryParse<LibrarySort>(storedSort, out var sort)
+                    && sort is >= LibrarySort.DormantLongest and <= LibrarySort.NameDescending ? (int)sort : 0;
             }
             finally
             {

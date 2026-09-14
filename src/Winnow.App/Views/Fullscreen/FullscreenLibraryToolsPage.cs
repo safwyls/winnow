@@ -19,7 +19,9 @@ public sealed class FullscreenLibraryToolsPage : FullscreenPage
 
     private void Render()
     {
-        var body = FullscreenUi.Stack(FullscreenUi.Text("Library tools", 64));
+        var body = FullscreenInformation.Column("FullscreenLibraryTools");
+        body.Children.Add(FullscreenInformation.Title("Library tools"));
+        FullscreenInformation.AddSection(body, "Manage your library");
         var focus = new List<Control[]>();
         void Add(string label, Action action) { var b = FullscreenUi.Button(label, action); body.Children.Add(b); focus.Add([b]); }
         Add("Add game", () => { _model.BeginAddCommand.Execute(null); Context.Push(new FullscreenManualGamePage(Context, _model)); });
@@ -29,12 +31,12 @@ public sealed class FullscreenLibraryToolsPage : FullscreenPage
             Context.Notify(_model.AcquisitionExportStatus);
         });
         Add("Possible identity matches", () => Context.Push(new FullscreenIdentityPage(Context)));
-        body.Children.Add(FullscreenUi.Text("Hidden games", 32));
-        if (_model.HiddenGames.Count == 0) body.Children.Add(FullscreenUi.Text(_model.HiddenEmptyMessage, 28, "TextDim"));
+        FullscreenInformation.AddSection(body, "Hidden games");
+        if (_model.HiddenGames.Count == 0) body.Children.Add(FullscreenInformation.Text(_model.HiddenEmptyMessage));
         foreach (var row in _model.HiddenGames)
             Add($"{row.Title}     Unhide", async () => { try { await _model.UnhideCommand.ExecuteAsync(row); Render(); FocusInitial(); } catch (Exception) { Context.Notify("Couldn't unhide this game. Try again."); } });
-        body.Children.Add(FullscreenUi.Text("Games you added", 32));
-        if (_model.ManualEntries.Count == 0) body.Children.Add(FullscreenUi.Text(_model.ManualEmptyMessage, 28, "TextDim"));
+        FullscreenInformation.AddSection(body, "Games you added");
+        if (_model.ManualEntries.Count == 0) body.Children.Add(FullscreenInformation.Text(_model.ManualEmptyMessage));
         foreach (var row in _model.ManualEntries)
             Add(row.Title, () => Context.ShowActions(row.Title, [new("Edit game", async () => { await _model.BeginEditCommand.ExecuteAsync(row); Context.Push(new FullscreenManualGamePage(Context, _model)); }),
                 new("Remove entry", () => { _model.BeginDeleteCommand.Execute(row); Context.ShowActions(_model.DeleteConfirmMessage, [new("Remove entry", async () => { await _model.ConfirmDeleteCommand.ExecuteAsync(null); Render(); FocusInitial(); }), new("Cancel", () => _model.CancelDeleteCommand.Execute(null))]); })]));
@@ -127,7 +129,8 @@ public sealed class FullscreenIdentityPage : FullscreenPage
     private void Render()
     {
         if (_disposed) return;
-        var body = FullscreenUi.Stack(FullscreenUi.Text(Title, 64));
+        var body = FullscreenInformation.Column("FullscreenIdentityMatches");
+        body.Children.Add(FullscreenInformation.Title(Title));
         var focus = new List<Control[]>();
         var count = 0;
         if (_model is not null)
@@ -140,14 +143,20 @@ public sealed class FullscreenIdentityPage : FullscreenPage
                     async () => await Apply(() => _model.SelectPlatformCommand.ExecuteAsync(option)))).ToArray()));
             if (_model.CanAcceptExact) Add(_model.AcceptExactLabel, () => Confirm(_model.AcceptExactTooltip, () => _model.AcceptExactCommand.ExecuteAsync(null)));
             if (_model.CanMergeSelected) Add(_model.MergeSelectedLabel, () => Confirm(_model.MergeSelectedTooltip, () => _model.MergeSelectedCommand.ExecuteAsync(null)));
+            FullscreenInformation.AddSection(body, "Proposals");
             foreach (var card in _model.Sections.Where(section => section.IsVisible).SelectMany(s => s.Cards))
             {
+                if (count > 0) body.Children.Add(FullscreenInformation.Rule());
                 count++;
                 var button = FullscreenUi.Button($"{(card.IsSelected ? "Selected · " : "")}{card.HeaderTitle}     {card.ConfidenceLabel}\n{card.EntryCountText} entries · {card.TotalPlaytimeText}", () => Open(card));
+                var row = new StackPanel { Spacing = 8 };
+                row.Children.Add(FullscreenInformation.Title(card.HeaderTitle));
+                row.Children.Add(FullscreenInformation.Metadata($"{(card.IsSelected ? "Selected · " : "")}{card.ConfidenceLabel} · {card.EntryCountText} entries · {card.TotalPlaytimeText}"));
+                button.Content = row;
                 body.Children.Add(button); focus.Add([button]);
             }
         }
-        if (count == 0) body.Children.Add(FullscreenUi.Text(_status));
+        if (count == 0) body.Children.Add(FullscreenInformation.Text(_status));
         var back = FullscreenUi.Button("Back", Context.Back); body.Children.Add(back); focus.Add([back]);
         Content = FullscreenUi.Scroll(body); SetFocusRows(focus.ToArray());
     }

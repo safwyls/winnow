@@ -30,6 +30,8 @@ public sealed class FullscreenBackdrop : Panel
     private readonly DispatcherTimer _fade = new() { Interval = TimeSpan.FromMilliseconds(16) };
     private readonly Stopwatch _fadeTime = new();
     private ICoverLease? _pending;
+    private (ICoverLease Lease, CoverArt Art)? _ready;
+    private bool _fallbackReady;
     private readonly FullscreenContext _context;
     private readonly ArtworkPreferences? _artworkPreferences;
     private GameTileViewModel _tile;
@@ -45,6 +47,7 @@ public sealed class FullscreenBackdrop : Panel
     private bool _attached;
     private bool _wideHeroLayout;
     private int _generation;
+    private CancellationTokenSource? _selectionCancellation;
     public FullscreenBackdrop(FullscreenContext context, GameTileViewModel tile, bool cinematic = false)
     {
         IsHitTestVisible = false; ClipToBounds = true;
@@ -65,7 +68,7 @@ public sealed class FullscreenBackdrop : Panel
         {
             var progress = _context.ReducedMotion ? 1 : Math.Clamp(_fadeTime.Elapsed.TotalMilliseconds / 180, 0, 1);
             _surface.Opacity = progress;
-            if (progress >= 1) FinishFade();
+            if (progress >= 1) FinishFade(presentReady: true);
         };
         if (!cinematic) OpacityMask = new LinearGradientBrush
         {
@@ -86,17 +89,23 @@ public sealed class FullscreenBackdrop : Panel
         Children.Add(_fallbackVeil);
         if (cinematic)
         {
+            // Overview text rests on Ground even when a wide hero keeps its whole composition.
+            Children.Add(new Border { Background = new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(.5, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(.5, 1, RelativeUnit.Relative),
+                GradientStops = [new GradientStop(clearGround, .25), new GradientStop(ground, .48)]
+            } });
             // The title reads against a solid left edge while landscape detail survives on the right.
             Children.Add(new Border { Background = new LinearGradientBrush
             {
                 StartPoint = new RelativePoint(0, .5, RelativeUnit.Relative), EndPoint = new RelativePoint(1, .5, RelativeUnit.Relative),
-                GradientStops = [new GradientStop(ground, 0), new GradientStop(Color.FromArgb(220, ground.R, ground.G, ground.B), .58),
-                    new GradientStop(Color.FromArgb(55, ground.R, ground.G, ground.B), .85), new GradientStop(clearGround, 1)]
+                GradientStops = [new GradientStop(ground, 0), new GradientStop(Color.FromArgb(220, ground.R, ground.G, ground.B), .32),
+                    new GradientStop(Color.FromArgb(55, ground.R, ground.G, ground.B), .7), new GradientStop(clearGround, 1)]
             } });
             Children.Add(new Border { Background = new LinearGradientBrush
             {
                 StartPoint = new RelativePoint(.5, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(.5, 1, RelativeUnit.Relative),
-                GradientStops = [new GradientStop(ground, 0), new GradientStop(Color.FromArgb(220, ground.R, ground.G, ground.B), .1),
+                GradientStops = [new GradientStop(ground, 0), new GradientStop(Color.FromArgb(150, ground.R, ground.G, ground.B), .1),
                     new GradientStop(clearGround, .2)]
             } });
         }
@@ -138,6 +147,10 @@ public sealed class FullscreenBackdrop : Panel
             if (_artworkPreferences is not null) _artworkPreferences.Changed -= ArtworkPreferencesChanged;
             context.Shared.Appearance.Service.Applied -= RefreshTint;
             _attached = false;
+            _selectionCancellation?.Cancel();
+            _selectionCancellation?.Dispose();
+            _selectionCancellation = null;
+            ClearReady();
             FinishFade();
             _generation++;
             _pending?.Dispose(); _pending = null;
@@ -161,13 +174,17 @@ public sealed class FullscreenBackdrop : Panel
     private void BeginSelection()
     {
         var generation = ++_generation;
+        _selectionCancellation?.Cancel();
+        _selectionCancellation?.Dispose();
+        _selectionCancellation = new CancellationTokenSource();
+        ClearReady();
         _pending?.Dispose(); _pending = null;
         _key = null;
         _rows = [];
         _backgroundUrl = null;
         _selectionRatio = 0;
         _requestedWidth = 0;
-        _ = ResolveAsync(_tile, generation);
+        _ = ResolveAsync(_tile, generation, _selectionCancellation.Token);
     }
 
     private void ArtworkPreferencesChanged() => Dispatcher.UIThread.Post(() =>
@@ -175,16 +192,25 @@ public sealed class FullscreenBackdrop : Panel
         if (_attached) BeginSelection();
     });
 
-    private async Task ResolveAsync(GameTileViewModel tile, int generation)
+    private async Task ResolveAsync(GameTileViewModel tile, int generation, CancellationToken ct)
     {
+        var workId = tile.Game.ResolvedWorkId;
+        var memberWorkIds = tile.Entries.Select(entry => entry.WorkId).ToArray();
+        var works = _context.Services?.GetService<IWorkRepository>();
+        var images = _context.Services?.GetService<IWorkImageRepository>();
         string? backgroundUrl = null;
         IReadOnlyList<WorkImages> rows = [];
         try
         {
-            if (_context.Services?.GetService<IWorkRepository>() is { } works)
-                backgroundUrl = (await works.GetAsync(tile.Game.ResolvedWorkId))?.BackgroundUrl;
-            if (_context.Services?.GetService<IWorkImageRepository>() is { } images)
-                rows = await BackdropImages.LoadAsync(images, tile.Game.ResolvedWorkId, tile.Entries.Select(entry => entry.WorkId));
+            // SQLite's async methods still execute synchronously. Capture presentation
+            // identity above, then perform metadata reads away from focus and animation.
+            await Task.Run(async () =>
+            {
+                if (works is not null)
+                    backgroundUrl = (await works.GetAsync(workId, ct).ConfigureAwait(false))?.BackgroundUrl;
+                if (images is not null)
+                    rows = await BackdropImages.LoadAsync(images, workId, memberWorkIds, ct).ConfigureAwait(false);
+            }, ct);
         }
         catch (Exception) { /* Missing metadata uses available art, then the selected game's cover. */ }
         if (!_attached || generation != _generation) return;
@@ -207,6 +233,12 @@ public sealed class FullscreenBackdrop : Panel
 
     private void ShowFallback()
     {
+        ClearReady();
+        if (_outgoingLease is not null && !_context.ReducedMotion)
+        {
+            _fallbackReady = true;
+            return;
+        }
         FinishFade();
         _image.Source = null;
         _veil.Background = null;
@@ -233,9 +265,23 @@ public sealed class FullscreenBackdrop : Panel
             var key = lease.Key;
             lease.Dispose();
             // A failed resolution upgrade should not discard usable artwork.
-            if (_held?.Key != key) NextCandidate();
+            if (_held?.Key != key && _ready?.Lease.Key != key) NextCandidate();
             return;
         }
+        // A new result must not promote a partly visible image to full opacity.
+        // Finish the visible blend, retaining only the latest ready replacement.
+        if (_outgoingLease is not null && !_context.ReducedMotion)
+        {
+            ClearReady();
+            _ready = (lease, art);
+            return;
+        }
+        Present(lease, art);
+    }
+
+    private void Present(ICoverLease lease, CoverArt art)
+    {
+        ClearReady();
         FinishFade();
         var previous = _held;
         var previousImage = _image.Source;
@@ -256,7 +302,14 @@ public sealed class FullscreenBackdrop : Panel
         else previous?.Dispose();
     }
 
-    private void FinishFade()
+    private void ClearReady()
+    {
+        _ready?.Lease.Dispose();
+        _ready = null;
+        _fallbackReady = false;
+    }
+
+    private void FinishFade(bool presentReady = false)
     {
         _fade.Stop();
         _fadeTime.Reset();
@@ -265,6 +318,17 @@ public sealed class FullscreenBackdrop : Panel
         _outgoingVeil.Background = null;
         _outgoingSurface.Background = null;
         _outgoingLease?.Dispose(); _outgoingLease = null;
+        if (!presentReady) return;
+        if (_ready is { } ready)
+        {
+            _ready = null;
+            Present(ready.Lease, ready.Art);
+        }
+        else if (_fallbackReady)
+        {
+            _fallbackReady = false;
+            ShowFallback();
+        }
     }
 
     private void RequestDisplaySize()
@@ -279,6 +343,7 @@ public sealed class FullscreenBackdrop : Panel
                 _tile.SteamBackdropAppIds, _artworkPreferences?.SourceOrder);
             if (!_candidates.SequenceEqual(candidates))
             {
+                ClearReady();
                 _candidates = candidates;
                 _candidateIndex = 0;
                 _requestedWidth = 0;
@@ -310,7 +375,10 @@ public sealed class FullscreenBackdrop : Panel
         {
             StartPoint = new RelativePoint(.5, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(.5, 1, RelativeUnit.Relative),
             GradientStops = FitsWholeHero(key)
-                ? [new GradientStop(clear, 0), new GradientStop(clear, .85), new GradientStop(ground, 1)]
+                ? [new GradientStop(clear, 0), new GradientStop(clear, .65),
+                    new GradientStop(Color.FromArgb(72, ground.R, ground.G, ground.B), .78),
+                    new GradientStop(Color.FromArgb(200, ground.R, ground.G, ground.B), .9),
+                    new GradientStop(ground, .98), new GradientStop(ground, 1)]
                 : _cinematic
                     ? [new GradientStop(clear, 0), new GradientStop(Color.FromArgb(35, ground.R, ground.G, ground.B), .25),
                         new GradientStop(ground, .55), new GradientStop(ground, 1)]
@@ -322,6 +390,15 @@ public sealed class FullscreenBackdrop : Panel
     {
         if (FitsWholeHero(key) && image.Source is { } source)
         {
+            image.OpacityMask ??= new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(.5, 0, RelativeUnit.Relative),
+                EndPoint = new RelativePoint(.5, 1, RelativeUnit.Relative),
+                GradientStops = [new GradientStop(Colors.White, 0), new GradientStop(Colors.White, .65),
+                    new GradientStop(Color.FromArgb(183, 255, 255, 255), .78),
+                    new GradientStop(Color.FromArgb(55, 255, 255, 255), .9),
+                    new GradientStop(Colors.Transparent, .98), new GradientStop(Colors.Transparent, 1)]
+            };
             // Each transition layer retains its own aspect ratio and lower-edge fade.
             var ratio = source.Size.Width / source.Size.Height;
             var width = Math.Min(Bounds.Width, Bounds.Height * ratio);
@@ -332,6 +409,7 @@ public sealed class FullscreenBackdrop : Panel
         }
         else
         {
+            image.OpacityMask = null;
             surface.Width = double.NaN;
             surface.Height = double.NaN;
             surface.HorizontalAlignment = HorizontalAlignment.Stretch;

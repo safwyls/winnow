@@ -18,9 +18,9 @@ public sealed class FullscreenSessionJournalPage : FullscreenPage
     public FullscreenSessionJournalPage(FullscreenContext context, JournalPromptViewModel prompt) : base(context)
     {
         _prompt = prompt;
-        var title = FullscreenUi.Text(prompt.Title, 64);
+        var title = FullscreenInformation.Text(prompt.Title, 48, weight: FontWeight.Bold);
         title.Bind(TextBlock.TextProperty, new Binding(nameof(JournalPromptViewModel.Title)) { Source = prompt });
-        var duration = FullscreenUi.Text(prompt.DurationText, 28, "TextDim");
+        var duration = FullscreenInformation.Metadata(prompt.DurationText);
         duration.Bind(TextBlock.TextProperty, new Binding(nameof(JournalPromptViewModel.DurationText)) { Source = prompt });
         _note = new TextBox { FontSize = 28, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 240,
             Watermark = "What were you doing? (helps when you come back)" };
@@ -36,9 +36,9 @@ public sealed class FullscreenSessionJournalPage : FullscreenPage
             stars.Children.Add(button);
             choices.Add(button);
         }
-        var current = FullscreenUi.Text("", 28, "TextDim");
+        var current = FullscreenInformation.Metadata("");
         current.Bind(TextBlock.TextProperty, new Binding(nameof(JournalPromptViewModel.Rating)) { Source = prompt, StringFormat = "Rating: {0} / 5" });
-        var problem = FullscreenUi.Text("", 28, "Amber");
+        var problem = FullscreenInformation.Text("", brush: "Amber");
         problem.Bind(TextBlock.TextProperty, new Binding(nameof(JournalPromptViewModel.Problem)) { Source = prompt });
         var save = FullscreenUi.Button("Save", async () => await prompt.SaveCommand.ExecuteAsync(null));
         save.Bind(ContentControl.ContentProperty, new Binding(nameof(JournalPromptViewModel.SaveLabel)) { Source = prompt });
@@ -46,8 +46,21 @@ public sealed class FullscreenSessionJournalPage : FullscreenPage
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24 };
         actions.Children.Add(save);
         actions.Children.Add(dismiss);
-        Content = FullscreenUi.Scroll(FullscreenUi.Stack(title, duration, _note, edit,
-            FullscreenUi.Text("How was that?"), stars, current, problem, actions));
+        var body = FullscreenInformation.Column("FullscreenSessionJournal");
+        body.Children.Add(FullscreenInformation.Heading("Your last session"));
+        body.Children.Add(title);
+        body.Children.Add(duration);
+        FullscreenInformation.AddSection(body, "Journal");
+        body.Children.Add(_note);
+        body.Children.Add(edit);
+        FullscreenInformation.AddSection(body, "Rating");
+        body.Children.Add(FullscreenInformation.Title("How was that?"));
+        body.Children.Add(stars);
+        body.Children.Add(current);
+        body.Children.Add(problem);
+        body.Children.Add(FullscreenInformation.Rule());
+        body.Children.Add(actions);
+        Content = FullscreenUi.Scroll(body);
         SetFocusRows([edit], choices.ToArray(), [save, dismiss]);
         prompt.PropertyChanged += PromptChanged;
     }

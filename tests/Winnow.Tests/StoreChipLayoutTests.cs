@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Reflection;
 using System.Xml.Linq;
-using Winnow.App.Views;
 using Xunit;
 
 namespace Winnow.Tests;
@@ -9,7 +8,7 @@ namespace Winnow.Tests;
 /// <summary>
 /// Source guards for the store-chip layout. There is no headless Avalonia
 /// renderer in this project, so these tests hold the markup's own attributes
-/// and arithmetic over <see cref="FeedGrid.GeometryFor"/> rather than
+/// rather than
 /// measuring a rendered frame. They are guards on what the markup declares,
 /// not on what a renderer draws.
 /// </summary>
@@ -17,7 +16,6 @@ public sealed class StoreChipLayoutTests
 {
     private static readonly XNamespace Avalonia = "https://github.com/avaloniaui";
 
-    private static readonly XNamespace Xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
 
     // ══ The measured figures ═════════════════════════════════════════════════
     //
@@ -25,60 +23,8 @@ public sealed class StoreChipLayoutTests
     // Jakarta Sans, IBM Plex Mono) at the exact sizes, weights, letter-spacing
     // and padding the markup sets, not estimated.
 
-    /// <summary>Install (66.1) + its 8px margin + Not interested (97.0) + Not now (64.7).</summary>
-    private const double FeedActionLineWidth = 235.8;
-
-    /// <summary>Card margin 14+14, cover 108, gutter 14.</summary>
-    private const double FeedCardChrome = 150;
-
     /// <summary>STEAM 44.0 + 4 + EPIC 34.8 + 4 + GOG 36.3.</summary>
     private const double ThreeChips = 123.1;
-
-    // ══ Feed card ════════════════════════════════════════════════════════════
-
-    // The chips moved from the action line to the title block, where they
-    // have the full content width rather than sharing one line with three
-    // controls.
-    [Fact]
-    public void The_feed_store_chips_are_not_in_the_action_line()
-    {
-        var grid = FeedActionGrid();
-        Assert.DoesNotContain(grid.Descendants(), e => Binds("Tile.StoreChips")(e));
-
-        var card = Load("src/Winnow.App/Views/FeedCardView.axaml");
-        Assert.Contains(card.Descendants(), e => Binds("Tile.StoreChips")(e));
-    }
-
-    // At every width FeedGrid draws a card at, the content column must hold
-    // both the action line and three chips. This is arithmetic over
-    // GeometryFor, not a rendered frame; it verifies the budget the move
-    // from the action line to the title block buys.
-    [Fact]
-    public void The_narrowest_feed_card_fits_its_action_line_and_three_chips()
-    {
-        var minimum = FeedGridMinItemWidth();
-
-        for (var width = 200d; width <= 4000d; width += 1d)
-        {
-            var (_, itemWidth) = FeedGrid.GeometryFor(width, minimum, 14);
-            if (itemWidth < minimum)
-            {
-                // A pane narrower than one whole card. Nothing to assert about
-                // a card that was never given its own width.
-                continue;
-            }
-
-            var content = itemWidth - FeedCardChrome;
-            Assert.True(
-                content >= FeedActionLineWidth,
-                $"At {width}px the card is {itemWidth}px and leaves {content}px, under the "
-                + $"{FeedActionLineWidth}px the action line measures.");
-            Assert.True(
-                content >= ThreeChips,
-                $"At {width}px the card leaves {content}px, under the {ThreeChips}px three "
-                + "store chips measure.");
-        }
-    }
 
     // ══ The list column ══════════════════════════════════════════════════════
 
@@ -137,22 +83,6 @@ public sealed class StoreChipLayoutTests
 
     private static Func<XElement, bool> Binds(string path)
         => element => element.Attribute("ItemsSource")?.Value == $"{{Binding {path}}}";
-
-    private static XElement FeedActionGrid()
-    {
-        var card = Load("src/Winnow.App/Views/FeedCardView.axaml");
-        return card
-            .Descendants(Avalonia + "Button")
-            .Single(g => g.Attribute("Command")?.Value == "{Binding NotNowCommand}").Parent!;
-    }
-
-    /// <summary>The FeedGrid.MinItemWidth the feed's own markup sets.</summary>
-    private static double FeedGridMinItemWidth()
-    {
-        var feed = Load("src/Winnow.App/Views/FeedView.axaml");
-        var grid = feed.Descendants().Single(e => e.Name.LocalName == "FeedGrid");
-        return double.Parse(grid.Attribute("MinItemWidth")!.Value, CultureInfo.InvariantCulture);
-    }
 
     private static XElement Load(string relativePath)
     {

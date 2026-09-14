@@ -51,6 +51,41 @@ public sealed class LibrarySettingsViewModelTests : IDisposable
 
     public void Dispose() => _db.Dispose();
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public async Task Default_sort_round_trips_without_overwriting_temporary_sort(int index)
+    {
+        using var library = new LibraryViewModel(_queries, _ownerships, _releases, _works, _updates);
+        var settings = new LibrarySettingsViewModel(settings: _settings)
+        {
+            ApplyDefaultSort = library.ApplyDefaultSort,
+        };
+        settings.DefaultSortIndex = index;
+        await settings.PendingSave;
+        Assert.Equal((LibrarySort)index, library.Sort);
+        library.Sort = LibrarySort.NameDescending;
+        var restored = new LibrarySettingsViewModel(settings: _settings);
+        await restored.RefreshAsync();
+        Assert.Equal((LibrarySort)index, restored.DefaultSort);
+    }
+
+    [Theory]
+    [InlineData("ListOrder")]
+    [InlineData("unknown")]
+    [InlineData("999")]
+    public async Task Invalid_default_sort_uses_dormancy(string stored)
+    {
+        await _settings.SetAsync(LibrarySettingsViewModel.DefaultSortSettingKey, stored);
+        var settings = new LibrarySettingsViewModel(settings: _settings);
+        await settings.RefreshAsync();
+        Assert.Equal(LibrarySort.DormantLongest, settings.DefaultSort);
+    }
+
     // ══ TASK-87 ═══════════════════════════════════════════════════════════
 
     /// <summary>

@@ -9,6 +9,32 @@ namespace Winnow.Ui.Tests;
 
 public sealed class TrayWindowInteractionTests
 {
+    [AvaloniaTheory]
+    [InlineData(WindowState.Normal)]
+    [InlineData(WindowState.Maximized)]
+    [InlineData(WindowState.FullScreen)]
+    public void Reactivation_preserves_presentation_and_restores_minimized_or_hidden_sessions(WindowState state)
+    {
+        var window = new MainWindow { DataContext = PreviewData.Shell };
+        try
+        {
+            window.Show();
+            window.WindowState = state;
+            window.RestoreFromTray();
+            Assert.Equal(state, window.WindowState);
+            window.WindowState = WindowState.Minimized;
+            window.RestoreFromTray();
+            Assert.Equal(state, window.WindowState);
+            window.Hide();
+            window.RestoreFromTray();
+            Assert.True(window.IsVisible);
+            Assert.True(window.ShowInTaskbar);
+            Assert.Equal(state, window.WindowState);
+            Assert.Equal(state == WindowState.FullScreen, window.FindControl<Control>("TvHost")!.IsVisible);
+        }
+        finally { window.ExitFromTray(); }
+    }
+
     [AvaloniaFact]
     public void Fullscreen_startup_opens_tv_and_can_return_to_desktop_without_reapplying_preference()
     {

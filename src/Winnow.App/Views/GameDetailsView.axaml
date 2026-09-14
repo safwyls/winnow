@@ -379,22 +379,34 @@
                                         <TextBlock Classes="body-l" Foreground="{StaticResource TextDim}" Text="×"/>
                                     </Button>
                                 </Grid>
-                                <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding HasIdentityLine}">
-                                    <SelectableTextBlock Grid.Column="0" Classes="data copyable"
-                                                         Focusable="False"
-                                                         FontSize="12"
-                                                         VerticalAlignment="Center"
-                                                         Foreground="{StaticResource TextDim}"
-                                                         Text="{Binding IdentityYearText}"/>
-                                    <SelectableTextBlock Grid.Column="1" Classes="body copyable"
-                                                         TextWrapping="Wrap"
-                                                         Focusable="False"
-                                                         FontSize="12"
-                                                         VerticalAlignment="Center"
-                                                         Foreground="{StaticResource TextDim}"
-                                                         IsVisible="{Binding HasPublisher}"
-                                                         Text="{Binding Publisher}"/>
-                                </Grid>
+                                <WrapPanel ItemSpacing="14" LineSpacing="4">
+                                    <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding HasIdentityLine}">
+                                        <SelectableTextBlock Grid.Column="0" Classes="data copyable"
+                                                             Focusable="False"
+                                                             FontSize="12"
+                                                             VerticalAlignment="Center"
+                                                             Foreground="{StaticResource TextDim}"
+                                                             Text="{Binding IdentityYearText}"/>
+                                        <SelectableTextBlock Grid.Column="1" Classes="body copyable"
+                                                             TextWrapping="Wrap"
+                                                             Focusable="False"
+                                                             FontSize="12"
+                                                             VerticalAlignment="Center"
+                                                             Foreground="{StaticResource TextDim}"
+                                                             IsVisible="{Binding HasPublisher}"
+                                                             Text="{Binding Publisher}"/>
+                                    </Grid>
+                                    <Border Name="HeaderRatingsGroup" IsVisible="{Binding ShowReception}"
+                                            AutomationProperties.AccessibilityView="Control"
+                                            AutomationProperties.Name="{Binding Reception.CompactAutomationName}">
+                                    <TextBlock Name="HeaderRatings" Classes="body" FontSize="12"
+                                               Text="{Binding Reception.CompactText}"
+                                               IsVisible="{Binding ShowReception}"
+                                               ToolTip.Tip="{Binding Reception.Tooltip}"
+                                               AutomationProperties.AccessibilityView="Raw"
+                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                                    </Border>
+                                </WrapPanel>
                                 <TextBlock Classes="body"
                                            FontSize="12"
                                            LineHeight="17"
@@ -641,40 +653,7 @@
                                                        TextWrapping="Wrap"
                                                        IsVisible="{Binding HasLifecycle}"
                                                        Text="{Binding LifecycleText}"/>
-                                            <ItemsControl ItemsSource="{Binding Reception.Figures}"
-                                                          IsVisible="{Binding ShowReception}"
-                                                          AutomationProperties.Name="{Binding Reception.AutomationName}"
-                                                          AutomationProperties.AccessibilityView="Control"
-                                                          AutomationProperties.ControlTypeOverride="Group">
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate>
-                                                        <WrapPanel Orientation="Horizontal"/>
-                                                    </ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate DataType="vm:ReceptionFigureViewModel">
-                                                        <StackPanel Orientation="Horizontal"
-                                                                    Spacing="6"
-                                                                    Margin="0,0,14,0"
-                                                                    ToolTip.Tip="{Binding Tooltip}"
-                                                                    AutomationProperties.Name="{Binding AutomationName}"
-                                                                    AutomationProperties.AccessibilityView="Control">
-                                                            <TextBlock Classes="label"
-                                                                       FontSize="10"
-                                                                       VerticalAlignment="Center"
-                                                                       Text="{Binding Source}"/>
-                                                            <TextBlock Classes="data"
-                                                                       FontSize="13"
-                                                                       VerticalAlignment="Center"
-                                                                       Foreground="{StaticResource Text}"
-                                                                       Text="{Binding Value}"/>
-                                                            <TextBlock Classes="data-s"
-                                                                       VerticalAlignment="Center"
-                                                                       Text="{Binding Count}"/>
-                                                        </StackPanel>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
+
                                             <StackPanel Spacing="7">
                                                 <TextBlock Classes="label section"
                                                            Text="{Binding AboutHeading}"
