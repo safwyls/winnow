@@ -351,6 +351,10 @@ public sealed class FullscreenBackdropTests
     public async Task Steam_hero_adapts_crop_and_crossfades_independent_geometry(bool cinematic, int width)
     {
         using var hero = new RenderTargetBitmap(new PixelSize(384, 124));
+        var white = new Border { Background = Brushes.White, Width = 384, Height = 124 };
+        white.Measure(new Size(384, 124));
+        white.Arrange(new Rect(0, 0, 384, 124));
+        hero.Render(white);
         using var landscape = new RenderTargetBitmap(new PixelSize(160, 90));
         var leases = new DelayedLeases();
         using var services = new ServiceCollection().AddSingleton<ICoverLeases>(leases)
@@ -382,6 +386,25 @@ public sealed class FullscreenBackdropTests
             Assert.Equal(fitted ? .98 : cinematic ? .55 : .85,
                 gradient.GradientStops.First(stop => stop.Color.A == 255).Offset);
             Assert.Equal(255, gradient.GradientStops[^1].Color.A);
+            if (fitted)
+            {
+                Assert.NotNull(current.OpacityMask);
+                using var rendered = new RenderTargetBitmap(new PixelSize((int)art.Bounds.Width, (int)art.Bounds.Height));
+                rendered.Render(art);
+                var pixels = new byte[rendered.PixelSize.Width * rendered.PixelSize.Height * 4];
+                var pin = System.Runtime.InteropServices.GCHandle.Alloc(pixels, System.Runtime.InteropServices.GCHandleType.Pinned);
+                try { rendered.CopyPixels(new PixelRect(rendered.PixelSize), pin.AddrOfPinnedObject(), pixels.Length, rendered.PixelSize.Width * 4); }
+                finally { pin.Free(); }
+                var offset = ((rendered.PixelSize.Height - 2) * rendered.PixelSize.Width + rendered.PixelSize.Width / 2) * 4;
+                var ground = context.Shared.Appearance.Service.Theme.Ground;
+                Assert.InRange((int)pixels[offset + 2], ground.R - 2, ground.R + 2);
+                using var imageOnly = new RenderTargetBitmap(rendered.PixelSize);
+                imageOnly.Render(current);
+                pin = System.Runtime.InteropServices.GCHandle.Alloc(pixels, System.Runtime.InteropServices.GCHandleType.Pinned);
+                try { imageOnly.CopyPixels(new PixelRect(imageOnly.PixelSize), pin.AddrOfPinnedObject(), pixels.Length, imageOnly.PixelSize.Width * 4); }
+                finally { pin.Free(); }
+                Assert.Equal(0, pixels[offset + 3]);
+            }
 
             await Select(backdrop, TileFixture.Tile(DateTime.UtcNow, workId: 2), leases);
             leases.Last.Complete(new CoverArt(landscape, landscape));
@@ -415,6 +438,7 @@ public sealed class FullscreenBackdropTests
             window.Width = 1920;
             Dispatcher.UIThread.RunJobs();
             Assert.Equal(new Size(1920, 1080), art.Bounds.Size);
+            Assert.Null(current.OpacityMask);
             Assert.Equal(new Size(1920, 1080), Assert.IsType<Panel>(outgoing.Parent).Bounds.Size);
             gradient = Assert.IsType<LinearGradientBrush>(Assert.Single(art.Children.OfType<Border>()).Background);
             Assert.Equal(cinematic ? .55 : .85, gradient.GradientStops.First(stop => stop.Color.A == 255).Offset);

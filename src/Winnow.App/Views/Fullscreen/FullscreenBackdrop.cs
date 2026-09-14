@@ -390,6 +390,15 @@ public sealed class FullscreenBackdrop : Panel
     {
         if (FitsWholeHero(key) && image.Source is { } source)
         {
+            image.OpacityMask ??= new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(.5, 0, RelativeUnit.Relative),
+                EndPoint = new RelativePoint(.5, 1, RelativeUnit.Relative),
+                GradientStops = [new GradientStop(Colors.White, 0), new GradientStop(Colors.White, .65),
+                    new GradientStop(Color.FromArgb(183, 255, 255, 255), .78),
+                    new GradientStop(Color.FromArgb(55, 255, 255, 255), .9),
+                    new GradientStop(Colors.Transparent, .98), new GradientStop(Colors.Transparent, 1)]
+            };
             // Each transition layer retains its own aspect ratio and lower-edge fade.
             var ratio = source.Size.Width / source.Size.Height;
             var width = Math.Min(Bounds.Width, Bounds.Height * ratio);
@@ -400,6 +409,7 @@ public sealed class FullscreenBackdrop : Panel
         }
         else
         {
+            image.OpacityMask = null;
             surface.Width = double.NaN;
             surface.Height = double.NaN;
             surface.HorizontalAlignment = HorizontalAlignment.Stretch;
