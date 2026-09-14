@@ -216,6 +216,20 @@ public sealed class ListsViewModelTests
     }
 
     [Fact]
+    public async Task Default_sort_change_preserves_manual_list_and_applies_on_exit()
+    {
+        using var fixture = new ListFixture();
+        var hades = await fixture.SeedAsync("Hades");
+        var library = await fixture.LoadAsync();
+        var list = await library.Lists.CreateListAsync("Friday night", [hades]);
+        library.OpenListCommand.Execute(list);
+        library.ApplyDefaultSort(LibrarySort.RecentlyPlayed);
+        Assert.Equal(LibrarySort.ListOrder, library.Sort);
+        library.CloseListCommand.Execute(null);
+        Assert.Equal(LibrarySort.RecentlyPlayed, library.Sort);
+    }
+
+    [Fact]
     public async Task Adding_the_same_title_twice_does_not_move_it()
     {
         using var fixture = new ListFixture();

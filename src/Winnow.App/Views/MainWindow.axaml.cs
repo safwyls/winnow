@@ -473,6 +473,7 @@ public partial class MainWindow : Window
         if (_shell?.LibrarySettings is { } librarySettings)
         {
             await librarySettings.RefreshAsync();
+            _library?.ApplyDefaultSort(librarySettings.DefaultSort);
 
             if (_library is { } grid
                 && grid.ShowExplicitContent != librarySettings.ShowExplicitContent)

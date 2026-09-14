@@ -57,6 +57,8 @@ public sealed class FullscreenContext : IDisposable
         feed.PropertyChanged += FeedChanged;
         shared.Appearance.Service.Applied += ThemeChanged;
         shared.Display.PropertyChanged += DisplayChanged;
+        shared.LibrarySettings.PropertyChanged += LibrarySettingsChanged;
+        Library.ApplyDefaultSort(shared.LibrarySettings.DefaultSort);
         Library.Ramp.DimsDormantCovers = DimCovers;
         if (!ReferenceEquals(shared.Library, library)) shared.Library.TilesChanged += SharedTilesChanged;
     }
@@ -102,6 +104,11 @@ public sealed class FullscreenContext : IDisposable
             Library.Ramp.DimsDormantCovers = DimCovers;
         else if (e.PropertyName != nameof(DisplaySettingsViewModel.FitCoverArt)) return;
         PreferencesChanged?.Invoke(this, EventArgs.Empty);
+    }
+    private void LibrarySettingsChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(LibrarySettingsViewModel.DefaultSort))
+            Library.ApplyDefaultSort(Shared.LibrarySettings.DefaultSort);
     }
     private void FeedChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -155,6 +162,7 @@ public sealed class FullscreenContext : IDisposable
         Feed.PropertyChanged -= FeedChanged;
         Shared.Appearance.Service.Applied -= ThemeChanged;
         Shared.Display.PropertyChanged -= DisplayChanged;
+        Shared.LibrarySettings.PropertyChanged -= LibrarySettingsChanged;
         Shared.Library.TilesChanged -= SharedTilesChanged;
         if (!ReferenceEquals(Feed, Shared.Feed)) Feed.Dispose();
         if (!ReferenceEquals(Library, Shared.Library))

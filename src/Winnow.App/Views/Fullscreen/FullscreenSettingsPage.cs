@@ -247,6 +247,9 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         else if (_section == "Library")
         {
             Group("Library preferences");
+            var librarySettings = Context.Shared.LibrarySettings;
+            Adjust("Default library sort", "The order used when Winnow starts.", () => librarySettings.DefaultSortLabel,
+                d => librarySettings.DefaultSortIndex = Math.Clamp(librarySettings.DefaultSortIndex + d, 0, librarySettings.DefaultSortOptions.Count - 1));
             var display = Context.Shared.Display;
             Toggle("Journal after playing", "Ask for a note after a session.", () => display.PromptAfterPlay, value => display.PromptAfterPlay = value);
             Toggle("Non-game entries", "Include tools and other library entries.", () => display.ShowNonGameEntries, value => display.ShowNonGameEntries = value);

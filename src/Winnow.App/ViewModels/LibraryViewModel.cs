@@ -325,6 +325,12 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// <summary>The order in force before a manual list was opened, to restore on the way out.</summary>
     private LibrarySort _sortBeforeList = LibrarySort.DormantLongest;
 
+    public void ApplyDefaultSort(LibrarySort sort)
+    {
+        if (SortOptions.Contains(_listOrderOption)) _sortBeforeList = sort;
+        else Sort = sort;
+    }
+
     /// <summary>The "List order" row, added to the menu only while one is open.</summary>
     private readonly SortOptionViewModel _listOrderOption =
         new(LibrarySort.ListOrder, "List order");

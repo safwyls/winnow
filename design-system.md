@@ -3018,6 +3018,13 @@ line for completion, cancellation or failure. Its explanation states that missin
 blank and prices are stored cents without a recorded currency. It uses the same card and
 action-button styles as its neighbours. Price stays out of the game details modal (§10.5).
 
+**Default library sort** in Library settings is shared by desktop and fullscreen.
+Choices are Dormant longest, Recently played, Playtime high→low, Playtime low→high,
+Name A–Z and Name Z–A. Changes apply immediately and set the order for future starts.
+Temporary browsing sorts do not overwrite this preference. Manual lists keep their
+current order; changing the default while a list is open sets the order used on exit.
+Missing or invalid preferences use Dormant longest.
+
 ### 16.1 Explicit content
 
 A toggle, off by default. Off, works whose stored maturity evidence reads as adults-only are dropped

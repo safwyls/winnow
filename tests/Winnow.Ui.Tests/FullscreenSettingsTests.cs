@@ -17,6 +17,37 @@ namespace Winnow.Ui.Tests;
 public sealed class FullscreenSettingsTests
 {
     [AvaloniaFact]
+    public void Default_sort_setting_is_shared_by_desktop_and_controller_controls()
+    {
+        using var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell);
+        var settings = context.Shared.LibrarySettings;
+        var original = settings.DefaultSortIndex;
+        using var page = new FullscreenSettingsPage(context);
+        var desktop = new Winnow.App.Views.LibrarySettingsView { DataContext = settings };
+        var window = new Window { Width = 1280, Height = 820, Content = desktop };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            var selector = desktop.FindControl<ComboBox>("DefaultLibrarySort")!;
+            selector.SelectedIndex = 4;
+            Assert.Equal(LibrarySort.NameAscending, context.Library.Sort);
+            Assert.Equal(4, settings.DefaultSortIndex);
+            window.Content = page;
+            Dispatcher.UIThread.RunJobs();
+            page.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Content, "Library"))
+                .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Dispatcher.UIThread.RunJobs();
+            var control = page.GetVisualDescendants().OfType<Button>()
+                .Single(b => AutomationProperties.GetName(b) == "Default library sort");
+            control.Focus();
+            page.Handle(GamepadButtons.Right);
+            Assert.Equal(LibrarySort.NameDescending, context.Library.Sort);
+            Assert.Equal(5, settings.DefaultSortIndex);
+        }
+        finally { window.Close(); settings.DefaultSortIndex = original; }
+    }
+
+    [AvaloniaFact]
     public void Cover_art_setting_tracks_shared_preference_and_controller_input()
     {
         using var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell);
