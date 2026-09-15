@@ -470,12 +470,12 @@
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <ControlTemplate>
-                    <Grid ColumnDefinitions="16,10,*" Background="Transparent">
+                    <Grid ColumnDefinitions="22,7,*" Background="Transparent">
                         <!-- Volt focus ring drawn in-template because flyouts
-                             have no adorner layer. Negative margin keeps it
-                             outside the 16px box. -->
+                             have no adorner layer. Reserve its full width inside
+                             the control so keyboard focus is not clipped. -->
                         <Border Grid.Column="0" Name="Ring"
-                                Width="22" Height="22" Margin="-3,0,0,0"
+                                Width="22" Height="22"
                                 CornerRadius="5"
                                 BorderBrush="{StaticResource Volt}"
                                 BorderThickness="2"
@@ -1443,7 +1443,7 @@
                                               Content="Dim dormant covers"
                                               IsChecked="{Binding Display.DimDormantCovers, Mode=TwoWay}"/>
                                     <TextBlock Classes="body" FontSize="12"
-                                               Margin="26,0,0,0"
+                                               Margin="29,0,0,0"
                                                LineHeight="17"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource TextDim}"
@@ -1457,7 +1457,7 @@
                                               Content="Show non-game entries"
                                               IsChecked="{Binding Display.ShowNonGameEntries, Mode=TwoWay}"/>
                                     <TextBlock Classes="body" FontSize="12"
-                                               Margin="26,0,0,0"
+                                               Margin="29,0,0,0"
                                                LineHeight="17"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource TextDim}"
@@ -1526,7 +1526,7 @@
                                               Content="Group expansions under the base game"
                                               IsChecked="{Binding Display.GroupExpansions, Mode=TwoWay}"/>
                                     <TextBlock Classes="body" FontSize="12"
-                                               Margin="26,0,0,0"
+                                               Margin="29,0,0,0"
                                                LineHeight="17"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource TextDim}"
@@ -1542,7 +1542,7 @@
                                               Content="Ask for a note after playing"
                                               IsChecked="{Binding Display.PromptAfterPlay, Mode=TwoWay}"/>
                                     <TextBlock Classes="body" FontSize="12"
-                                               Margin="26,0,0,0"
+                                               Margin="29,0,0,0"
                                                LineHeight="17"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource TextDim}"
