@@ -462,7 +462,9 @@
             <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
             <Setter Property="Padding" Value="14"/>
             <Setter Property="MinWidth" Value="0"/>
-            <Setter Property="MaxWidth" Value="420"/>
+            <Setter Property="MaxWidth" Value="460"/>
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
         </Style>
         <Style Selector="CheckBox.pref">
             <Setter Property="Padding" Value="0"/>
@@ -1428,7 +1430,6 @@
                             <Flyout Placement="BottomEdgeAlignedRight"
                                     FlyoutPresenterClasses="prefs"
                                     Opened="OnDisplayFlyoutOpened">
-                                <ScrollViewer MaxHeight="520" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                                 <StackPanel Margin="3,0,12,0" Spacing="8">
                                     <TextBlock Text="Cover art" Classes="body"/>
                                     <ComboBox Name="CoverArtFitSelector" HorizontalAlignment="Stretch"
@@ -1548,7 +1549,6 @@
                                                Foreground="{StaticResource TextDim}"
                                                Text="Off by default. A small card appears after a game ends."/>
                                 </StackPanel>
-                                </ScrollViewer>
                             </Flyout>
                         </Button.Flyout>
                     </Button>

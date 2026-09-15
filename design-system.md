@@ -3063,8 +3063,9 @@ Unrated as within every cap. The chosen tier is named in words beside the slider
 number of titles the cap is hiding is stated underneath; a thumb position is not a value
 anyone can read off a track (§8). When the cap is at its top step while the 18+ toggle here
 is off, a note names which control is still hiding adults-only content, so the user can tell
-where a game went. The popover sizes to its content up to 420px, with wrapping labels and
-space beside the vertical scrollbar so controls remain inside the viewport.
+where a game went. The popover sizes to its content up to 460px wide, with wrapping labels
+and no fixed height cap. All options fit without scrollbars when screen space allows;
+the presenter scrolls vertically only when the available screen height requires it.
 
 ### 16.2 Hidden games
 
