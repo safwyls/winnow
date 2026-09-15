@@ -137,10 +137,21 @@ public sealed class CoverCache : ICoverCache, IDisposable, IAsyncDisposable
                 // Creation and publication share one lock: task factories cannot race.
                 load.Task = Task.Run(() => LoadAsync(slot, load), CancellationToken.None);
             }
-            if (load.Cancellation.IsCancellationRequested) return Task.FromResult<CoverArt?>(null);
+            // A replacement view can ask for this slot while its last owner's
+            // cancellation is still unwinding. Wait for that load to retire
+            // before admitting another, rather than leaving the new view blank.
+            if (load.Cancellation.IsCancellationRequested)
+                return ReloadAfterRetirementAsync(load, key, displayWidthPixels, layers, ct);
             load.Waiters++;
             return AwaitLoadAsync(load, ct);
         }
+    }
+
+    private async Task<CoverArt?> ReloadAfterRetirementAsync(
+        Load retiring, CoverKey key, double displayWidthPixels, CoverLayers layers, CancellationToken ct)
+    {
+        await retiring.Task.WaitAsync(ct).ConfigureAwait(false);
+        return await GetAsync(key, displayWidthPixels, layers, ct).ConfigureAwait(false);
     }
 
     private async Task<CoverArt?> AwaitLoadAsync(Load load, CancellationToken ct)

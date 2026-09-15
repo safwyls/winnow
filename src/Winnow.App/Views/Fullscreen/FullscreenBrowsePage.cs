@@ -246,6 +246,9 @@ public sealed class FullscreenBrowsePage : FullscreenPage
 
     private void Rebuild()
     {
+        // A synchronous navigation rebuild also consumes queued model changes;
+        // replaying them would detach the new covers and cancel their loads.
+        _pending = false;
         _tiles.Clear();
         if (_feed) BuildHome(); else BuildLibrary();
         Changed();

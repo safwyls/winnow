@@ -462,7 +462,9 @@
             <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
             <Setter Property="Padding" Value="14"/>
             <Setter Property="MinWidth" Value="0"/>
-            <Setter Property="MaxWidth" Value="360"/>
+            <Setter Property="MaxWidth" Value="460"/>
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
         </Style>
         <Style Selector="CheckBox.pref">
             <Setter Property="Padding" Value="0"/>
@@ -470,12 +472,12 @@
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <ControlTemplate>
-                    <Grid ColumnDefinitions="16,10,*" Background="Transparent">
+                    <Grid ColumnDefinitions="22,7,*" Background="Transparent">
                         <!-- Volt focus ring drawn in-template because flyouts
-                             have no adorner layer. Negative margin keeps it
-                             outside the 16px box. -->
+                             have no adorner layer. Reserve its full width inside
+                             the control so keyboard focus is not clipped. -->
                         <Border Grid.Column="0" Name="Ring"
-                                Width="22" Height="22" Margin="-3,0,0,0"
+                                Width="22" Height="22"
                                 CornerRadius="5"
                                 BorderBrush="{StaticResource Volt}"
                                 BorderThickness="2"
@@ -500,6 +502,7 @@
                         </Panel>
                         <ContentPresenter Grid.Column="2"
                                           Content="{TemplateBinding Content}"
+                                          TextBlock.TextWrapping="Wrap"
                                           VerticalAlignment="Center"
                                           FontFamily="{StaticResource BodyFont}"
                                           FontSize="{StaticResource BodySize}"
@@ -1427,8 +1430,7 @@
                             <Flyout Placement="BottomEdgeAlignedRight"
                                     FlyoutPresenterClasses="prefs"
                                     Opened="OnDisplayFlyoutOpened">
-                                <ScrollViewer MaxHeight="520" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                                <StackPanel Width="264" Spacing="8">
+                                <StackPanel Margin="3,0,12,0" Spacing="8">
                                     <TextBlock Text="Cover art" Classes="body"/>
                                     <ComboBox Name="CoverArtFitSelector" HorizontalAlignment="Stretch"
                                               AutomationProperties.Name="Cover art"
@@ -1442,7 +1444,7 @@
                                               Content="Dim dormant covers"
                                               IsChecked="{Binding Display.DimDormantCovers, Mode=TwoWay}"/>
                                     <TextBlock Classes="body" FontSize="12"
-                                               Margin="26,0,0,0"
+                                               Margin="29,0,0,0"
                                                LineHeight="17"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource TextDim}"
@@ -1456,7 +1458,7 @@
                                               Content="Show non-game entries"
                                               IsChecked="{Binding Display.ShowNonGameEntries, Mode=TwoWay}"/>
                                     <TextBlock Classes="body" FontSize="12"
-                                               Margin="26,0,0,0"
+                                               Margin="29,0,0,0"
                                                LineHeight="17"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource TextDim}"
@@ -1525,7 +1527,7 @@
                                               Content="Group expansions under the base game"
                                               IsChecked="{Binding Display.GroupExpansions, Mode=TwoWay}"/>
                                     <TextBlock Classes="body" FontSize="12"
-                                               Margin="26,0,0,0"
+                                               Margin="29,0,0,0"
                                                LineHeight="17"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource TextDim}"
@@ -1541,13 +1543,12 @@
                                               Content="Ask for a note after playing"
                                               IsChecked="{Binding Display.PromptAfterPlay, Mode=TwoWay}"/>
                                     <TextBlock Classes="body" FontSize="12"
-                                               Margin="26,0,0,0"
+                                               Margin="29,0,0,0"
                                                LineHeight="17"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource TextDim}"
                                                Text="Off by default. A small card appears after a game ends."/>
                                 </StackPanel>
-                                </ScrollViewer>
                             </Flyout>
                         </Button.Flyout>
                     </Button>

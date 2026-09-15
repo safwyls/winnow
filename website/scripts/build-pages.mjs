@@ -46,8 +46,8 @@ function verifyUrl(raw, source) {
 
 for (const [, source] of pages) {
   const html = readFileSync(`${output}/${source}`, 'utf8');
-  for (const tag of html.matchAll(/<(?:a|link|script|img|iframe)\b[^>]*>/g)) {
-    for (const attribute of tag[0].matchAll(/(?:href|src)="([^"]+)"/g)) verifyUrl(attribute[1], source);
+  for (const tag of html.matchAll(/<(?:a|link|script|img|iframe|video|source|track)\b[^>]*>/g)) {
+    for (const attribute of tag[0].matchAll(/(?:href|src|poster)="([^"]+)"/g)) verifyUrl(attribute[1], source);
   }
 }
 for (const entry of readdirSync(`${output}/_next`, { recursive: true })) {

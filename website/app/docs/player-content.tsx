@@ -1,4 +1,5 @@
 import { sitePath } from '@/lib/site-path';
+import DocFigure from './DocFigure';
 import type { DocArticle } from './content-types';
 
 export const setupArticle: DocArticle = {
@@ -26,6 +27,7 @@ export const setupArticle: DocArticle = {
         <li>Allow the first background pass time to finish. A large library can take a minute or two to begin filling out.</li>
       </ol>
       <p>If you close the app during setup, it resumes the unfinished step. To revisit it later, use <strong>Settings → Application → Run setup again</strong> on either desktop or fullscreen.</p>
+      <DocFigure name="setup" alt="Setup welcome screen with Get started and Skip setup controls" caption="The first-run wizard introduces the optional connections and preferences." />
     </> },
     { id: 'steam', title: '3. Connect Steam', content: <>
       <p>Local Steam files provide installed games and locally recorded playtime and last-played information. An optional connection adds owned games that have never been installed on this PC.</p>
@@ -60,6 +62,7 @@ export const setupArticle: DocArticle = {
         <li>Use the full library when you already know what you want. Search, filter, and choose a <a href={sitePath('/docs/configuration/#library-sort')}>default sort</a> that suits your collection.</li>
       </ol>
       <p>The <strong>Patched</strong> group builds gradually: the update poller spreads a sweep across seven days. An empty group on the first day does not mean setup failed.</p>
+      <DocFigure name="preview" alt="Desktop feed with a Balatro hover preview and cover actions" caption="Hover to preview; click the cover to open details. This sample library uses fictional play history." />
     </> },
     { id: 'setup-troubleshooting', title: 'If something is missing', content: <>
       <dl>
@@ -90,6 +93,7 @@ export const configurationArticle: DocArticle = {
         <li>In fullscreen Appearance, use <strong>Dim dormant covers</strong> to choose whether games you have not played recently look quieter. This preference also applies to desktop.</li>
       </ol>
       <p>Cover dimming is a visual cue, not a filter: it does not hide games or change their play history. To change which games appear, use the library controls below.</p>
+      <DocFigure name="appearance" alt="Appearance settings with theme swatches and the Winnow theme selected" caption="Theme previews help you compare palettes before returning to your library." />
     </> },
     { id: 'metadata', title: 'Add IGDB metadata and artwork', content: <>
       <p>Winnow works without IGDB credentials. Adding them provides another source of game details and artwork alongside the built-in Steam sources.</p>
@@ -117,11 +121,13 @@ export const configurationArticle: DocArticle = {
         <li>The preference saves immediately and is used when Winnow starts. Use browsing sort controls whenever you want a different order for the current view.</li>
       </ol>
       <p>For a familiar alphabetical collection, try Name A–Z. For a quick return to a current game, try Recently played.</p>
+      <DocFigure name="library-settings" alt="Library settings showing the default sort selector" caption="Set the order used when Winnow starts; browsing controls can change it for the current view." />
     </> },
     { id: 'library-visibility', title: 'Decide what your library shows', content: <>
       <p><strong>Settings → Library</strong> contains hidden-game management and hand-added games. On fullscreen, open <strong>Library tools</strong> for those management screens. Choose <strong>Unhide</strong> to bring a hidden entry back.</p>
       <p>For a game outside a supported launcher, use <strong>Add from a file</strong> or the hand-added game form. Review the title and optional metadata before saving. An executable path lets Winnow time its sessions; optional Steam or IGDB IDs help find artwork.</p>
       <p>Desktop’s <strong>Display</strong> menu and fullscreen’s Library settings also expose non-game visibility, expansion grouping, the content age limit, and the post-play journal prompt. The explicit-content setting filters adults-only sexual content; it is separate from an age rating for violence. Games without rating data remain visible.</p>
+      <DocFigure name="library" alt="All games displayed as a grid with search, sort, and display controls" caption="The full library keeps browsing controls above the cover grid." />
     </> },
     { id: 'fullscreen', title: 'Configure fullscreen for your display', content: <>
       <ol>
@@ -142,11 +148,13 @@ export const configurationArticle: DocArticle = {
         <tr><td>Right stick up / down</td><td>Scroll long content</td></tr>
       </tbody></table>
       <p>The footer reflects the current screen. For example, while the on-screen keyboard is open, X backspaces and RT presses Enter. Use F11 or <strong>Exit fullscreen</strong> in the quick menu to return to the desktop window.</p>
+      <DocFigure name="fullscreen" alt="Fullscreen For you shelf with Against the Storm selected and navigation hints below" caption="Fullscreen gives the selected game room for its hero artwork and keeps navigation hints in the footer." fullscreen />
     </> },
     { id: 'updates', title: 'Keep Winnow up to date', content: <>
       <p>Open <strong>Settings → Application</strong> and find the update controls. Automatic checks and downloads are enabled by default; <strong>Include beta releases</strong> is off. Use <strong>Check for updates</strong> for a manual check.</p>
       <p>Supported Windows installations and portable Windows/Ubuntu copies offer <strong>Update and restart</strong>. Downloading alone does not close Winnow. Debian packages use the package manager; other unsupported portable locations offer a release link for manual replacement. Development and CI builds do not offer release upgrades.</p>
       <p>If an upgrade is interrupted, keep the data directory and update workspace. Install the same or a newer release, or follow the <a href="https://github.com/safwyls/winnow/blob/main/docs/releases.md#portable-replacement-and-recovery">recovery instructions</a>. Do not open an older binary against a database a newer version may have migrated.</p>
+      <DocFigure name="updates" alt="Application settings showing automatic update checks, beta releases, and manual update checking" caption="Update controls live in Application settings. This isolated development copy has automatic checks turned off; released builds enable them by default." />
     </> },
     { id: 'data', title: 'Back up or isolate your library', content: <>
       <p>On Windows, the default data folder is <code>{'%LOCALAPPDATA%\\Winnow'}</code>. It contains <code>winnow.db</code>, artwork caches, themes, plugins, and logs. A portable application still uses the normal user data directory unless you explicitly choose another.</p>
@@ -183,6 +191,7 @@ export const pluginsArticle: DocArticle = {
         <li>Confirm the plugin’s name and version appear in the loaded-plugins summary. Enter its settings and credentials, then choose <strong>Save</strong>. For an active provider, saving queues a background refresh.</li>
       </ol>
       <p>Enabling or disabling takes effect after restart. The loaded-plugins summary describes this session, so it will not change just because you toggled a pending preference. Successful ZIP imports move the original archive into <code>plugins/.archives</code>.</p>
+      <DocFigure name="plugins" alt="Plugins settings with the Open plugins folder button and no plugins installed" caption="Open the plugins folder for the active library. This isolated source build has no packaged providers; release packages include SteamGridDB." />
     </> },
     { id: 'steamgriddb', title: 'Example: configure SteamGridDB', content: <>
       <ol>
