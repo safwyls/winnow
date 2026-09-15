@@ -185,6 +185,44 @@ public sealed class CoverLifetimeTests
         await Until(() => shown is not null);
     }
 
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Reattached_covers_wait_for_retiring_loads_instead_of_staying_blank(bool fullscreen)
+    {
+        await using var fixture = new Fixture();
+        fixture.Source.CancellationRelease = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var tile = TileFixture.Tile(DateTime.UtcNow, coverKey: Key, covers: fixture.Pool);
+        Control cover = fullscreen ? new FullscreenCover(tile) : new GameTileView { DataContext = tile };
+        cover.Width = 160;
+        cover.Height = 240;
+        var window = new Window { Width = 400, Height = 400, Content = cover };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            await fixture.Source.Entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            window.Content = null;
+            await fixture.Source.Cancelled.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.Equal(1, fixture.Cache.PendingCount);
+
+            fixture.Source.Release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            fixture.Source.Release.SetResult(Bytes());
+            window.Content = cover;
+            Dispatcher.UIThread.RunJobs();
+            fixture.Source.CancellationRelease.SetResult();
+
+            await Until(() => cover.GetVisualDescendants().OfType<Image>().Any(image => image.Source is not null));
+            Assert.Equal(2, fixture.Source.Calls);
+        }
+        finally
+        {
+            fixture.Source.CancellationRelease.TrySetResult();
+            window.Close();
+        }
+        Assert.Equal(0, fixture.Pool.LiveSlots);
+    }
+
     private static async Task ObserveCancellation(Task<CoverArt?> pending)
     { try { await pending; } catch (OperationCanceledException) { } }
 
@@ -226,6 +264,7 @@ public sealed class CoverLifetimeTests
         }
         public async ValueTask DisposeAsync()
         {
+            Source.CancellationRelease?.TrySetResult();
             Source.Release.TrySetResult(null);
             await Cache.DisposeAsync();
             var root = Path.GetFullPath(Options.CacheDirectory);
@@ -242,6 +281,7 @@ public sealed class CoverLifetimeTests
         public bool IgnoreCancellation;
         public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource Cancelled { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource? CancellationRelease { get; set; }
         public TaskCompletionSource<byte[]?> Release { get; set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public bool CanHandle(CoverKey key) => true;
         public async Task<byte[]?> TryFetchAsync(CoverKey key, CancellationToken ct = default)
@@ -249,7 +289,12 @@ public sealed class CoverLifetimeTests
             Interlocked.Increment(ref Calls);
             Entered.TrySetResult();
             try { return await Release.Task.WaitAsync(IgnoreCancellation ? CancellationToken.None : ct); }
-            catch (OperationCanceledException) { Cancelled.TrySetResult(); throw; }
+            catch (OperationCanceledException)
+            {
+                Cancelled.TrySetResult();
+                if (CancellationRelease is { } release) await release.Task;
+                throw;
+            }
         }
     }
 }

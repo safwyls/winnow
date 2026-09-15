@@ -881,6 +881,10 @@ The cover cache admits at most 128 running or queued slots by default, with sepa
 and decode concurrency limits. Excess requests return retryable placeholders. One task is
 created per slot, and the final consumer releasing its lease cancels pending work for that
 slot. A different consumer's cancellation does not cancel art that still has a live lease.
+If a replacement view requests the same slot while cancellation is unwinding, it waits
+for that load to retire and then retries instead of settling on an empty cover. Fullscreen
+collection changes consume queued refreshes when rebuilding so the new cards are not
+immediately detached and rebuilt a second time.
 Shutdown refuses new admissions, cancels and drains work, then clears the LRU and disposes
 the pipeline. Outstanding leases keep their pixels valid until released; cancelled work
 cannot publish new decoded art after shutdown begins.

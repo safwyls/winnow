@@ -28,6 +28,36 @@ namespace Winnow.Ui.Tests;
 public sealed class FullscreenBrowseTests
 {
     [AvaloniaFact]
+    public async Task Switching_collections_keeps_the_new_covers_after_queued_notifications_settle()
+    {
+        var library = CreateLibrary();
+        await library.LoadCommand.ExecuteAsync(null);
+        using var context = new FullscreenContext(library, new FeedViewModel(new PreviewFeedService(), library), PreviewData.Shell);
+        using var page = new FullscreenBrowsePage(context, false);
+        var window = new Window { Width = 1920, Height = 1080, Content = page };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs(); page.FocusInitial();
+            for (var collection = 0; collection < 4; collection++)
+            {
+                page.Handle(GamepadButtons.PageNext);
+                window.UpdateLayout();
+                var viewport = Assert.Single(page.GetVisualDescendants().OfType<FullscreenRowViewport>());
+                var covers = viewport.GetVisualDescendants().OfType<FullscreenCover>().ToArray();
+                Assert.NotEmpty(covers);
+                var detached = 0;
+                foreach (var cover in covers) cover.DetachedFromVisualTree += (_, _) => detached++;
+
+                Dispatcher.UIThread.RunJobs();
+
+                Assert.Same(viewport, Assert.Single(page.GetVisualDescendants().OfType<FullscreenRowViewport>()));
+                Assert.Equal(0, detached);
+            }
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
     public async Task Triggers_switch_library_collections_and_leave_desktop_filters_alone()
     {
         var library = CreateLibrary();
