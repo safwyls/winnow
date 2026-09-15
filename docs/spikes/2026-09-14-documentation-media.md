@@ -1,7 +1,7 @@
 # Documentation media capture — 14 September 2026
 
 Recorded the running Windows app at source commit `929f3d5`, using an isolated
-sample library. The documentation homepage includes a silent 60-second walkthrough;
+sample library. The documentation homepage includes separate silent desktop (1:44) and fullscreen (1:53) walkthroughs;
 setup, configuration, and plugin installation include eight screenshots. Media lives
 in `website/public/docs/media/`.
 
@@ -31,26 +31,35 @@ to avoid GDI's black square around the app's custom pointer. The app-drawn point
 can remain visible. For a still, replace encoding options with `-frames:v 1 image.png`.
 Fullscreen capture uses offsets 440/0, size 2560x1440, and `-vf scale=1920:1080`.
 
-The final edit uses these raw recording segments, in order. Idle time between
-interactions is removed; navigation is not sped up.
+The desktop edit reuses the original raw footage. Fullscreen was recorded again
+with longer pauses and the sample library's Rosé Pine theme. Neither edit speeds up
+navigation. These are the raw segments retained in playback order:
 
 | Source | Start (seconds) | Duration | Subject |
 | --- | ---: | ---: | --- |
-| Desktop | 0 | 5 | Feed |
-| Desktop | 75 | 7 | Hover preview |
-| Desktop | 22 | 7 | Open details |
-| Desktop | 57 | 5 | Screenshot gallery |
-| Desktop | 94 | 8 | Library sort menu |
-| Desktop | 110 | 9 | Recently played sort |
-| Desktop | 149 | 5 | Appearance |
-| Fullscreen | 16 | 7 | Horizontal selection |
-| Fullscreen | 35 | 7 | Change shelf |
+| Desktop | 0 | 12 | Feed |
+| Desktop | 75 | 12 | Hover preview |
+| Desktop | 24 | 18 | Details |
+| Desktop | 57 | 8 | Screenshot gallery |
+| Desktop | 94 | 20 | Library sort menu |
+| Desktop | 114 | 12 | Recently played |
+| Desktop | 148 | 10 | Appearance |
+| Desktop | 160 | 12 | Default library sort settings |
+| Fullscreen, new main take | 0 | 25 | Horizontal browsing |
+| Fullscreen, new main take | 30 | 16 | Change shelf |
+| Fullscreen, new main take | 58 | 24 | Overview and history |
+| Fullscreen, new main take | 120 | 28 | Screenshot gallery |
+| Fullscreen, Appearance take | 0 | 20 | Text size |
 
-Each segment is scaled proportionally into a 1280 × 900 frame with a dark footer
-and a chapter label, encoded H.264/yuv420p at 30 fps, CRF 21, then concatenated with
-`-movflags +faststart`. The video has no audio. A WebVTT caption track and HTML
-transcript provide the same chapter descriptions. Stills use WebP quality 88 and
-retain their captured resolution; the docs offer full-size links and lazy loading.
+Desktop is 1280 × 900 and fullscreen is 1920 × 1160, including a dark chapter-label
+footer below the uncropped app canvas. Both use H.264/yuv420p at 30 fps, CRF 21,
+and `-movflags +faststart`, with no audio. Each has its own WebVTT chapter captions,
+HTML transcript, poster, and video controls. Stills use WebP quality 88 and retain
+their captured resolution; the docs offer full-size links and lazy loading.
+
+An additional fullscreen Library take had missing cover artwork and was excluded.
+The fullscreen walkthrough instead ends with Appearance. Text size was restored to
+100% after recording. The missing artwork's cause was not investigated in this media task.
 
 ## Sample data and limits
 
@@ -79,8 +88,8 @@ Fullscreen was driven with keyboard input; controller hardware was disconnected.
 - Inspected the app after each interaction and reviewed screenshot contact sheets.
 - Reviewed video chapter frames and adjusted the edit boundaries to include preview,
   sort selection, and vertical shelf transition.
-- ffmpeg reports exactly 60.00 seconds, 1280 × 900, 30 fps, H.264/yuv420p. A full
-  decode checks the finished media for errors.
+- ffmpeg reports 104.00 seconds for desktop and 112.97 seconds for fullscreen,
+  both 30 fps H.264/yuv420p. Both finished files decode without errors.
 - Static Pages build verifies screenshot, video, poster, and caption URLs. The
   verification now includes `video`, `source`, and `track` elements.
 - Scoped documentation lint passes. The full website lint remains blocked by
