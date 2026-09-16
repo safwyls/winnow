@@ -901,7 +901,9 @@ Reduced motion swaps the loaded art immediately. A cover fallback
 appears only after landscape metadata or loading fails, never as an intermediate image
 between two landscapes. Ignore results from earlier selections.
 Game artwork fades in further to the right to keep the left content area quiet: browsing
-backdrops reveal between 30% and 85% of the canvas width. The details veil stays dense
+backdrops reveal between 30% and 85% of the canvas width. Their horizontal Ground veil
+covers full-opacity artwork, using the details overlay approach instead of combining a
+whole-backdrop opacity mask with artwork dimming. The details veil stays dense
 through 32% before opening toward the right edge, leaving the hero artwork visible beside
 the title; its top veil keeps controller status and the clock legible.
 
