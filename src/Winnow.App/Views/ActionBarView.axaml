@@ -246,6 +246,8 @@
 
             <TextBlock Classes="body" FontSize="12" Foreground="{StaticResource AmberForeground}"
                        TextWrapping="Wrap" Text="{Binding Lists.Problem}" IsVisible="{Binding Lists.HasProblem}"/>
+            <TextBlock Classes="body" FontSize="12" Foreground="{StaticResource AmberForeground}"
+                       TextWrapping="Wrap" Text="{Binding PatchReadProblem}" IsVisible="{Binding HasPatchReadProblem}"/>
         </StackPanel>
     </Border>
 </UserControl>

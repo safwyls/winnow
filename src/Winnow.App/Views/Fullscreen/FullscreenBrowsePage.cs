@@ -463,6 +463,10 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         problem.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding(nameof(ListsViewModel.Problem)) { Source = library.Lists });
         problem.Bind(IsVisibleProperty, new Avalonia.Data.Binding(nameof(ListsViewModel.HasProblem)) { Source = library.Lists });
         headingStack.Children.Add(problem);
+        var patchProblem = FullscreenUi.Text("", 24, "AmberForeground");
+        patchProblem.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding(nameof(LibraryViewModel.PatchReadProblem)) { Source = library });
+        patchProblem.Bind(IsVisibleProperty, new Avalonia.Data.Binding(nameof(LibraryViewModel.HasPatchReadProblem)) { Source = library });
+        headingStack.Children.Add(patchProblem);
         grid.Children.Add(headingStack);
         var collections = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"),
             Margin = new Thickness(0, 4, 0, 8) };
@@ -708,6 +712,9 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         {
             actions.Add(new("Add selected game to list", () => { Context.Library.SelectTile(tile); Context.Library.BeginAddToListCommand.Execute(null); }));
             Context.Library.SelectTile(tile);
+            if (Context.Library.CanMarkSelectionAsRead)
+                actions.Add(new("Mark as read", () => Context.Library.MarkSelectionAsReadCommand.Execute(null),
+                    Context.Library.MarkSelectionAsReadCommand.CanExecute(null)));
             if (Context.Library.CanEditOpenList)
             {
                 actions.Add(new("Remove selected game from list", () => Context.Library.RemoveFromOpenListCommand.Execute(null)));

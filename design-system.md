@@ -266,6 +266,11 @@ push and its announcement count as one patch, and unrelated announcements remain
 The Patched bucket also applies the shared dormancy and playtime eligibility rules. Details
 uses the same patch count and release watermarks on desktop and fullscreen.
 
+In Patched, the desktop game context menu and fullscreen Library options offer **Mark as read**
+for the selected games. Desktop list multi-selection applies it to every selected unread game,
+including its linked releases. It refreshes the library and collection counts; failures remain
+visible so the user can retry. Patches newer than those represented by the selected tiles stay unread.
+
 **Mark as read** acknowledges the latest qualifying push actually displayed for each
 contributing release. It never reads a newer push into the operation. **Show it again**
 revokes those releases' standing acknowledgements. Each event row retains its release's
