@@ -76,6 +76,14 @@ internal sealed class FullscreenRowViewport : Panel, IDisposable
 
     public Control GetRow(int index) => _rows[index];
 
+    public bool AppendRows(int rowCount)
+    {
+        if (_disposed || _createRow is null || rowCount <= _rowCount) return false;
+        _rowCount = rowCount;
+        Realize();
+        return true;
+    }
+
     public void InvalidateRow(int index)
     {
         if (_disposed || !_rows.Remove(index, out var row)) return;

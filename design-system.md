@@ -800,6 +800,9 @@ The cover row anchors to the bottom of the Home content area above the footer. T
 rail shares its vertical center and follows that bottom anchor; it scales down to fit when
 space is tight. The shelf heading stays directly above the covers with a 12px gap. Spare
 height shows backdrop between the hero information and the entire bottom-anchored shelf group.
+Resolve that geometry during layout, before showing the row. Background feed refreshes must
+not briefly stretch the replacement shelf and then move it back down. Appending other shelves
+keeps the current row, its covers and focus in place; the shelf indicator gains the new entries.
 Text actions have transparent backgrounds and a mint underline on focus. Hover leaves
 no underline; current sections and collections use bold text and a neutral underline.
 The focused cover retains its outline. No desktop
