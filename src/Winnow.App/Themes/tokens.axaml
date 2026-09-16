@@ -539,6 +539,7 @@
     <x:Double x:Key="BadgeSize">10</x:Double>
     <CornerRadius x:Key="RadiusTile">6</CornerRadius>
     <CornerRadius x:Key="RadiusControl">4</CornerRadius>
+    <CornerRadius x:Key="RadiusControlInner">3</CornerRadius>
     <!-- The floating layout's pane corner (§15). ABOVE the tile's 6 and the
          control's 4, so the three radii rank by the size of the object they
          round: radius reads as a proportion of the corner it turns, and 6px on a

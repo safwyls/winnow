@@ -1383,30 +1383,32 @@
                             CornerRadius="{StaticResource RadiusControl}"
                             Background="{StaticResource ChromeFieldOnGround}"
                             ClipToBounds="True" Height="30">
-                        <StackPanel Orientation="Horizontal">
-                            <Button AutomationProperties.Name="Grid" Classes="seg"
-                                    Classes.on="{Binding Library.IsGridView}"
-                                    Command="{Binding Library.ShowGridViewCommand}"
-                                    ToolTip.Tip="Grid">
-                                <UniformGrid Rows="2" Columns="2" Width="13" Height="13">
-                                    <Rectangle Width="5" Height="5" Margin="0,0,1,1"/>
-                                    <Rectangle Width="5" Height="5" Margin="1,0,0,1"/>
-                                    <Rectangle Width="5" Height="5" Margin="0,1,1,0"/>
-                                    <Rectangle Width="5" Height="5" Margin="1,1,0,0"/>
-                                </UniformGrid>
-                            </Button>
-                            <Button AutomationProperties.Name="List" Classes="seg"
-                                    Classes.on="{Binding !Library.IsGridView}"
-                                    Command="{Binding Library.ShowListViewCommand}"
-                                    ToolTip.Tip="List">
-                                <StackPanel Width="13" Height="13" Spacing="3"
-                                            VerticalAlignment="Center">
-                                    <Rectangle Height="2" Width="13"/>
-                                    <Rectangle Height="2" Width="13"/>
-                                    <Rectangle Height="2" Width="13"/>
-                                </StackPanel>
-                            </Button>
-                        </StackPanel>
+                        <Border Classes="segment-clip">
+                            <StackPanel Orientation="Horizontal">
+                                <Button AutomationProperties.Name="Grid" Classes="seg"
+                                        Classes.on="{Binding Library.IsGridView}"
+                                        Command="{Binding Library.ShowGridViewCommand}"
+                                        ToolTip.Tip="Grid">
+                                    <UniformGrid Rows="2" Columns="2" Width="13" Height="13">
+                                        <Rectangle Width="5" Height="5" Margin="0,0,1,1"/>
+                                        <Rectangle Width="5" Height="5" Margin="1,0,0,1"/>
+                                        <Rectangle Width="5" Height="5" Margin="0,1,1,0"/>
+                                        <Rectangle Width="5" Height="5" Margin="1,1,0,0"/>
+                                    </UniformGrid>
+                                </Button>
+                                <Button AutomationProperties.Name="List" Classes="seg"
+                                        Classes.on="{Binding !Library.IsGridView}"
+                                        Command="{Binding Library.ShowListViewCommand}"
+                                        ToolTip.Tip="List">
+                                    <StackPanel Width="13" Height="13" Spacing="3"
+                                                VerticalAlignment="Center">
+                                        <Rectangle Height="2" Width="13"/>
+                                        <Rectangle Height="2" Width="13"/>
+                                        <Rectangle Height="2" Width="13"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
                     </Border>
 
                     <TextBlock Classes="label" FontSize="10" Text="DENSITY"
@@ -2015,54 +2017,56 @@
                                 Background="{StaticResource ChromeFieldOnGround}"
                                 ClipToBounds="True"
                                 Height="30">
-                            <StackPanel Orientation="Horizontal">
-                                <!-- Bound rather than written in as a literal.
-                                     The label went from STORES to PLATFORMS once
-                                     before and drifted back, because the only
-                                     place it existed was this attribute and no
-                                     test could see it (TASK-60). -->
-                                <Button AutomationProperties.Name="{Binding Stores.SegmentLabel}" Classes="seg tab"
-                                        Classes.on="{Binding IsStoresVisible}"
-                                        Command="{Binding ShowStoresCommand}"
-                                        ToolTip.Tip="{Binding Stores.SegmentTooltip}">
-                                    <TextBlock Classes="display-s" Text="{Binding Stores.SegmentLabel}"/>
-                                </Button>
-                                <!-- SETTINGS › LIBRARY. What the library
-                                     shows: hidden games, explicit content,
-                                     hand-added games. Label is bound rather
-                                     than written in, for TASK-60's reason. -->
-                                <Button AutomationProperties.Name="{Binding LibrarySettings.SegmentLabel}" Classes="seg tab"
-                                        Classes.on="{Binding IsLibrarySettingsVisible}"
-                                        Command="{Binding ShowLibrarySettingsCommand}"
-                                        ToolTip.Tip="{Binding LibrarySettings.SegmentTooltip}">
-                                    <TextBlock Classes="display-s"
-                                               Text="{Binding LibrarySettings.SegmentLabel}"/>
-                                </Button>
-                                <Button AutomationProperties.Name="APPEARANCE" Classes="seg tab"
-                                        Classes.on="{Binding IsAppearanceVisible}"
-                                        Command="{Binding ShowAppearanceCommand}"
-                                        ToolTip.Tip="Theme and transparency">
-                                    <TextBlock Classes="display-s" Text="APPEARANCE"/>
-                                </Button>
-                                <Button AutomationProperties.Name="{Binding EnrichmentSettings.SegmentLabel}" Classes="seg tab"
-                                        Classes.on="{Binding IsEnrichmentSettingsVisible}" Command="{Binding ShowEnrichmentSettingsCommand}"
-                                        ToolTip.Tip="{Binding EnrichmentSettings.SegmentTooltip}">
-                                    <TextBlock Classes="display-s" Text="{Binding EnrichmentSettings.SegmentLabel}"/>
-                                </Button>
-                                <Button AutomationProperties.Name="{Binding PluginSettings.SegmentLabel}" Classes="seg tab"
-                                        Classes.on="{Binding IsPluginSettingsVisible}" Command="{Binding ShowPluginSettingsCommand}"
-                                        ToolTip.Tip="{Binding PluginSettings.SegmentTooltip}">
-                                    <TextBlock Classes="display-s" Text="{Binding PluginSettings.SegmentLabel}"/>
-                                </Button>
-                                <Button AutomationProperties.Name="{Binding ApplicationSettings.SegmentLabel}"
-                                        Classes="seg tab"
-                                        Classes.on="{Binding IsApplicationSettingsVisible}"
-                                        Command="{Binding ShowApplicationSettingsCommand}"
-                                        ToolTip.Tip="{Binding ApplicationSettings.SegmentTooltip}">
-                                    <TextBlock Classes="display-s"
-                                               Text="{Binding ApplicationSettings.SegmentLabel}"/>
-                                </Button>
-                            </StackPanel>
+                            <Border Classes="segment-clip">
+                                <StackPanel Orientation="Horizontal">
+                                    <!-- Bound rather than written in as a literal.
+                                         The label went from STORES to PLATFORMS once
+                                         before and drifted back, because the only
+                                         place it existed was this attribute and no
+                                         test could see it (TASK-60). -->
+                                    <Button AutomationProperties.Name="{Binding Stores.SegmentLabel}" Classes="seg tab"
+                                            Classes.on="{Binding IsStoresVisible}"
+                                            Command="{Binding ShowStoresCommand}"
+                                            ToolTip.Tip="{Binding Stores.SegmentTooltip}">
+                                        <TextBlock Classes="display-s" Text="{Binding Stores.SegmentLabel}"/>
+                                    </Button>
+                                    <!-- SETTINGS › LIBRARY. What the library
+                                         shows: hidden games, explicit content,
+                                         hand-added games. Label is bound rather
+                                         than written in, for TASK-60's reason. -->
+                                    <Button AutomationProperties.Name="{Binding LibrarySettings.SegmentLabel}" Classes="seg tab"
+                                            Classes.on="{Binding IsLibrarySettingsVisible}"
+                                            Command="{Binding ShowLibrarySettingsCommand}"
+                                            ToolTip.Tip="{Binding LibrarySettings.SegmentTooltip}">
+                                        <TextBlock Classes="display-s"
+                                                   Text="{Binding LibrarySettings.SegmentLabel}"/>
+                                    </Button>
+                                    <Button AutomationProperties.Name="APPEARANCE" Classes="seg tab"
+                                            Classes.on="{Binding IsAppearanceVisible}"
+                                            Command="{Binding ShowAppearanceCommand}"
+                                            ToolTip.Tip="Theme and transparency">
+                                        <TextBlock Classes="display-s" Text="APPEARANCE"/>
+                                    </Button>
+                                    <Button AutomationProperties.Name="{Binding EnrichmentSettings.SegmentLabel}" Classes="seg tab"
+                                            Classes.on="{Binding IsEnrichmentSettingsVisible}" Command="{Binding ShowEnrichmentSettingsCommand}"
+                                            ToolTip.Tip="{Binding EnrichmentSettings.SegmentTooltip}">
+                                        <TextBlock Classes="display-s" Text="{Binding EnrichmentSettings.SegmentLabel}"/>
+                                    </Button>
+                                    <Button AutomationProperties.Name="{Binding PluginSettings.SegmentLabel}" Classes="seg tab"
+                                            Classes.on="{Binding IsPluginSettingsVisible}" Command="{Binding ShowPluginSettingsCommand}"
+                                            ToolTip.Tip="{Binding PluginSettings.SegmentTooltip}">
+                                        <TextBlock Classes="display-s" Text="{Binding PluginSettings.SegmentLabel}"/>
+                                    </Button>
+                                    <Button AutomationProperties.Name="{Binding ApplicationSettings.SegmentLabel}"
+                                            Classes="seg tab"
+                                            Classes.on="{Binding IsApplicationSettingsVisible}"
+                                            Command="{Binding ShowApplicationSettingsCommand}"
+                                            ToolTip.Tip="{Binding ApplicationSettings.SegmentTooltip}">
+                                        <TextBlock Classes="display-s"
+                                                   Text="{Binding ApplicationSettings.SegmentLabel}"/>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
                         </Border>
                     </StackPanel>
                 </Border>

@@ -230,43 +230,45 @@
                         ClipToBounds="True"
                         HorizontalAlignment="Left"
                         Height="30">
-                    <StackPanel Orientation="Horizontal">
-                        <Button Classes="seg tab"
-                                Classes.on="{Binding IsSteamVisible}"
-                                Command="{Binding ShowSteamCommand}"
-                                AutomationProperties.Name="{Binding SteamTabLabel}">
-                            <StackPanel Orientation="Horizontal" Spacing="6"
-                                        VerticalAlignment="Center">
-                                <TextBlock Classes="display-s" Text="{Binding SteamTabLabel}"
+                    <Border Classes="segment-clip">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Classes="seg tab"
+                                    Classes.on="{Binding IsSteamVisible}"
+                                    Command="{Binding ShowSteamCommand}"
+                                    AutomationProperties.Name="{Binding SteamTabLabel}">
+                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                            VerticalAlignment="Center">
+                                    <TextBlock Classes="display-s" Text="{Binding SteamTabLabel}"
+                                               VerticalAlignment="Center"/>
+                                    <Ellipse Width="6" Height="6"
+                                             VerticalAlignment="Center"
+                                             Fill="{StaticResource AmberForeground}"
+                                             IsVisible="{Binding SteamTabNeedsAttention}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="seg tab"
+                                    Classes.on="{Binding IsEpicVisible}"
+                                    Command="{Binding ShowEpicCommand}"
+                                    AutomationProperties.Name="{Binding EpicTabLabel}">
+                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                            VerticalAlignment="Center">
+                                    <TextBlock Classes="display-s" Text="{Binding EpicTabLabel}"
+                                               VerticalAlignment="Center"/>
+                                    <Ellipse Width="6" Height="6"
+                                             VerticalAlignment="Center"
+                                             Fill="{StaticResource AmberForeground}"
+                                             IsVisible="{Binding EpicTabNeedsAttention}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="seg tab"
+                                    Classes.on="{Binding IsGogVisible}"
+                                    Command="{Binding ShowGogCommand}"
+                                    AutomationProperties.Name="{Binding GogTabLabel}">
+                                <TextBlock Classes="display-s" Text="{Binding GogTabLabel}"
                                            VerticalAlignment="Center"/>
-                                <Ellipse Width="6" Height="6"
-                                         VerticalAlignment="Center"
-                                         Fill="{StaticResource AmberForeground}"
-                                         IsVisible="{Binding SteamTabNeedsAttention}"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Classes="seg tab"
-                                Classes.on="{Binding IsEpicVisible}"
-                                Command="{Binding ShowEpicCommand}"
-                                AutomationProperties.Name="{Binding EpicTabLabel}">
-                            <StackPanel Orientation="Horizontal" Spacing="6"
-                                        VerticalAlignment="Center">
-                                <TextBlock Classes="display-s" Text="{Binding EpicTabLabel}"
-                                           VerticalAlignment="Center"/>
-                                <Ellipse Width="6" Height="6"
-                                         VerticalAlignment="Center"
-                                         Fill="{StaticResource AmberForeground}"
-                                         IsVisible="{Binding EpicTabNeedsAttention}"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Classes="seg tab"
-                                Classes.on="{Binding IsGogVisible}"
-                                Command="{Binding ShowGogCommand}"
-                                AutomationProperties.Name="{Binding GogTabLabel}">
-                            <TextBlock Classes="display-s" Text="{Binding GogTabLabel}"
-                                       VerticalAlignment="Center"/>
-                        </Button>
-                    </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
                 </Border>
             </StackPanel>
         </Border>

@@ -383,23 +383,25 @@
                 Padding="16,0">
             <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
                 <Border Grid.Column="0" Classes="field" VerticalAlignment="Center">
-                    <ItemsControl ItemsSource="{Binding KindOptions}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="vm:MergeKindOptionViewModel">
-                                <Button AutomationProperties.Name="{Binding Label}" Classes="seg tab"
-                                        Classes.on="{Binding IsSelected}"
-                                        Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).SelectKindCommand}"
-                                        CommandParameter="{Binding}">
-                                    <TextBlock Classes="display-s" Text="{Binding Label}"/>
-                                </Button>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <Border Classes="segment-clip">
+                        <ItemsControl ItemsSource="{Binding KindOptions}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:MergeKindOptionViewModel">
+                                    <Button AutomationProperties.Name="{Binding Label}" Classes="seg tab"
+                                            Classes.on="{Binding IsSelected}"
+                                            Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).SelectKindCommand}"
+                                            CommandParameter="{Binding}">
+                                        <TextBlock Classes="display-s" Text="{Binding Label}"/>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
                 </Border>
 
                 <!-- The cut chip: the shown kind's full name and a ✕ back to ALL. -->

@@ -197,6 +197,13 @@ own presentation. Reset fullscreen appearance leaves this shared preference inta
 Default 148×222, gutter 16px. The density slider spans 108×162 → 200×300; the grid reflows on
 available width and does not use fixed column counts.
 
+Segmented selectors keep every selected, hover and pressed fill inside the enclosing rule.
+The grid/list switch, Settings sections, platform tabs and merge-kind filter use an inner
+3px rounded clip inside their 1px border and 4px outer radius. The keyboard focus outline sits
+2px inside its segment so the group does not clip it;
+selection never changes segment dimensions. Borderless underline tabs on desktop and
+fullscreen keep their own focus treatment.
+
 **Radius:** 6px on tiles, 4px on controls, 8px on a floating pane (§15.3). The three rank by
 the size of the object they round.
 
