@@ -20,6 +20,47 @@ namespace Winnow.Ui.Tests;
 
 public sealed class FeedCardActionTests
 {
+    [AvaloniaFact]
+    public void Hover_lifts_the_complete_feed_cover_without_separating_its_chrome()
+    {
+        var ramp = new DormancyRamp { ReducedMotion = true };
+        using var model = new FeedCardViewModel(
+            TileFixture.Tile(DateTime.UtcNow, steamAppId: "123", ramp: ramp),
+            "A reason", new FeedbackService(), _ => { });
+        var view = new FeedCardView { DataContext = model, Width = 220,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top };
+        var window = new Window { Width = 1000, Height = 700, Content = view };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            var card = view.FindControl<Button>("Card")!;
+            var frame = view.FindControl<Border>("CoverFrame")!;
+            var cover = view.FindControl<GameTileView>("CoverTile")!;
+            var lift = cover.FindControl<Border>("Lift")!;
+            var face = cover.FindControl<Border>("Face")!;
+            var details = cover.FindControl<Border>("DetailsActionHost")!;
+            var scrim = cover.FindControl<Border>("Scrim")!;
+            var actions = view.FindControl<Border>("ActionStrip")!;
+            var ring = view.FindControl<Border>("FocusRing")!;
+            Assert.Equal(2, frame.TranslatePoint(default, view)!.Value.Y);
+
+            window.MouseMove(card.TranslatePoint(new Point(50, 50), window)!.Value);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(-2, frame.RenderTransform!.Value.M32);
+            Assert.Equal(0, frame.TranslatePoint(default, view)!.Value.Y);
+            Assert.Equal(0, lift.RenderTransform!.Value.M32);
+            Assert.Equal(face.TranslatePoint(default, frame), ring.TranslatePoint(default, frame));
+            Assert.True(details.TranslatePoint(default, frame)!.Value.Y
+                > ring.TranslatePoint(default, frame)!.Value.Y);
+            Assert.Equal(actions.TranslatePoint(default, frame)!.Value.Y,
+                scrim.TranslatePoint(new Point(0, scrim.Bounds.Height), frame)!.Value.Y);
+        }
+        finally { window.Close(); }
+    }
+
     [AvaloniaTheory]
     [InlineData(180, false)]
     [InlineData(240, true)]
@@ -183,6 +224,7 @@ public sealed class FeedCardActionTests
             Assert.True(card.Focus(NavigationMethod.Tab));
             Dispatcher.UIThread.RunJobs();
             Assert.Equal(before, view.Bounds.Size);
+            Assert.Equal(0, view.FindControl<Border>("CoverFrame")!.RenderTransform!.Value.M32);
             var names = new[] { "AddToList", "NotNow", "NotInterested" };
             var labels = new[] { "Add to list", "Not now", "Not interested" };
             var inks = new[] { "Azure", "Amber", "TextDim" };

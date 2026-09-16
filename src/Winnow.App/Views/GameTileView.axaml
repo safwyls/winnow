@@ -50,6 +50,14 @@
             <Setter Property="RenderTransform" Value="translateY(-2px)"/>
             <Setter Property="BoxShadow" Value="0 8 24 0 #8C000000"/>
         </Style>
+        <!-- An embedded feed tile sits inside a larger cover frame that also
+             owns its feedback strip and highlight. The frame lifts as one
+             surface; lifting this inner face separately tears those layers
+             apart by 2px. -->
+        <Style Selector="Border#Lift.embedded:pointerover">
+            <Setter Property="RenderTransform" Value="translateY(0px)"/>
+            <Setter Property="BoxShadow" Value="0 0 0 0 #00000000"/>
+        </Style>
         <!-- Resting scrim opacity has to come from a style, not a local value:
              a local value outranks a style setter in Avalonia's precedence, so
              Opacity="0" on the element would pin the overlay shut forever. -->

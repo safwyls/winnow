@@ -19,6 +19,23 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
+        <Style Selector="Border#CoverFrame">
+            <Setter Property="RenderTransform" Value="translateY(0px)"/>
+            <Setter Property="BoxShadow" Value="0 0 0 0 #00000000"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.14" Easing="CubicEaseOut"/>
+                    <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.14" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.feedcard:pointerover Border#CoverFrame">
+            <Setter Property="RenderTransform" Value="translateY(-2px)"/>
+            <Setter Property="BoxShadow" Value="0 8 24 0 #8C000000"/>
+        </Style>
+        <Style Selector="Border#CoverFrame.snap">
+            <Setter Property="Transitions"><Transitions/></Setter>
+        </Style>
         <Style Selector="Border#FocusRing">
             <Setter Property="Opacity" Value="0"/>
         </Style>
@@ -65,7 +82,11 @@
     <Button Name="Card" Classes="feedcard" Classes.setaside="{Binding IsSetAside}"
             AutomationProperties.Name="{Binding AutomationName}" AutomationProperties.ItemStatus="{Binding StatusAnnouncement}">
         <StackPanel Spacing="8">
-            <Panel Name="CoverFrame" Height="270">
+            <!-- Reserve the hover lift above the face so the shelf viewport
+                 does not clip the highlighted top edge on its first row. -->
+            <Border Name="CoverFrame" Height="270" Margin="0,2,0,0"
+                    Classes.snap="{Binding Tile.SnapDormancy}">
+                <Panel>
                 <views:GameTileView Name="CoverTile" DataContext="{Binding Tile}" Embedded="True"/>
                 <Panel IsVisible="{Binding HasSecondaryActions}">
                 <Border Name="ActionStrip" Background="{StaticResource Surface}" CornerRadius="0,0,6,6"
@@ -105,7 +126,8 @@
                          Stroke="{StaticResource Azure}" StrokeThickness="2"/>
                 </Panel>
                 <Border Name="FocusRing" BorderBrush="{StaticResource Volt}" BorderThickness="2" CornerRadius="6" IsHitTestVisible="False"/>
-            </Panel>
+                </Panel>
+            </Border>
             <TextBlock Text="{Binding Tile.Title}" FontFamily="{StaticResource DisplayFont}" FontWeight="Bold"
                        FontSize="15" LineHeight="19" Height="19" TextTrimming="CharacterEllipsis" Foreground="{StaticResource Text}"/>
             <TextBlock Name="Reason" Classes="body" FontFeatures="tnum" TextWrapping="Wrap" MaxLines="2" Height="36"

@@ -147,6 +147,8 @@ public partial class GameTileView : UserControl
     {
         base.OnPropertyChanged(change);
 
+        if (change.Property == EmbeddedProperty) Lift.Classes.Set("embedded", change.NewValue is true);
+
         if (change.Property == InteractionActiveProperty) ApplyInteractionState();
 
         if (change.Property == IsKeyboardFocusWithinProperty && change.NewValue is false)
