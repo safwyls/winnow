@@ -681,7 +681,8 @@ navigation and focus model. This section specifies its current composition and i
 features must be maintained and verified in both presentations.
 
 **Entry transitions.** On every fullscreen entry, show the Winnow mark and “Preparing
-fullscreen…” on `Ground` before loading or refreshing the page. Keep **Back to desktop**
+fullscreen…” on `Ground` before loading or refreshing the page. The mark is 160px square
+on the fullscreen reference canvas and 144px square on desktop. Keep **Back to desktop**
 available to mouse, keyboard and controller. Retain the current page on re-entry, prepare
 its library, primary feed and layout beneath this screen, then reveal it with a 180ms fade.
 The loading screen stays until the glow has rendered at least one complete 1.8-second

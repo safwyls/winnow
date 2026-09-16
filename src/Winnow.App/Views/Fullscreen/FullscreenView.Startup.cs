@@ -29,7 +29,7 @@ public sealed partial class FullscreenView
     private void InitializeStartup(bool preparing)
     {
         IsPrepared = !preparing;
-        _startupMark = new LoadingDragon { Width = 100, Height = 100 };
+        _startupMark = new LoadingDragon { Width = 160, Height = 160 };
         _startupMark.Name = "FullscreenStartupMark";
         _startupMark.HorizontalAlignment = HorizontalAlignment.Center;
         var title = FullscreenUi.Text("WINNOW", 48);
