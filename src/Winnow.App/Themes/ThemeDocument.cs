@@ -39,6 +39,8 @@ internal sealed class ThemeDocument
     /// to when it is picked. Optional, and never binding.</summary>
     public ThemeDefaultsDocument? Defaults { get; set; }
 
+    public ThemeTypographyDocument? Typography { get; set; }
+
     /// <summary>Derived colours the author would rather state outright.
     /// Optional, and the reason the format can express a hand-tuned theme at
     /// all.</summary>
@@ -60,6 +62,24 @@ internal sealed class ThemeDefaultsDocument
     public string? Reach { get; set; }
 
     public string? Layout { get; set; }
+}
+
+/// <summary>Mutable read contract preserves defaults for omitted JSON members.
+/// Explicit null font names remain invalid when the resulting value is validated.</summary>
+internal sealed class ThemeTypographyDocument
+{
+    public string HeadingFont { get; set; } = ThemeTypography.Default.HeadingFont;
+    public string InterfaceFont { get; set; } = ThemeTypography.Default.InterfaceFont;
+    public string DataFont { get; set; } = ThemeTypography.Default.DataFont;
+    public int SizePercent { get; set; } = ThemeTypography.Default.SizePercent;
+
+    public ThemeTypography ToTypography() => new()
+    {
+        HeadingFont = HeadingFont,
+        InterfaceFont = InterfaceFont,
+        DataFont = DataFont,
+        SizePercent = SizePercent,
+    };
 }
 
 /// <summary>The exported template. Ordered as an author reads it: what the file
@@ -87,6 +107,8 @@ internal sealed class ThemeExportDocument
     public ThemeDefaultsDocument? Defaults { get; set; }
 
     public Dictionary<string, string> Overrides { get; set; } = [];
+
+    public ThemeTypography Typography { get; set; } = ThemeTypography.Default;
 }
 
 /// <summary>
@@ -103,4 +125,7 @@ internal sealed class ThemeExportDocument
     WriteIndented = true)]
 [JsonSerializable(typeof(ThemeDocument))]
 [JsonSerializable(typeof(ThemeExportDocument))]
+[JsonSerializable(typeof(ThemeTypography))]
+[JsonSerializable(typeof(ThemeTypographyDocument))]
+[JsonSerializable(typeof(Dictionary<string, ThemeTypography>))]
 internal sealed partial class ThemeJsonContext : JsonSerializerContext;

@@ -30,9 +30,9 @@
             <Setter Property="Padding" Value="12"/>
         </Style>
         <Style Selector="TextBlock.shelf">
-            <Setter Property="FontFamily" Value="{StaticResource DisplayFont}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource DisplayFont}"/>
             <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="FontSize" Value="17"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize17}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
 
@@ -52,10 +52,10 @@
 
         <!-- The header title: Bricolage at the body-l size. -->
         <Style Selector="TextBlock.headline">
-            <Setter Property="FontFamily" Value="{StaticResource DisplayFont}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource DisplayFont}"/>
             <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="FontSize" Value="15"/>
-            <Setter Property="LineHeight" Value="22"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize15}"/>
+            <Setter Property="LineHeight" Value="{DynamicResource TextLineHeight22}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
             <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
         </Style>
@@ -69,9 +69,9 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style Selector="Border.badge > :is(TextBlock)">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize10}"/>
             <Setter Property="LetterSpacing" Value="0.4"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
@@ -110,9 +110,9 @@
 
         <!-- The title: Text when promoted, TextDim otherwise. -->
         <Style Selector="TextBlock.rowtitle">
-            <Setter Property="FontFamily" Value="{StaticResource DisplayFont}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource DisplayFont}"/>
             <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize13}"/>
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
             <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
         </Style>
@@ -123,9 +123,9 @@
         <!-- HEADER in Volt on the promoted row, NESTS UNDER in TextFaint on
              every other. -->
         <Style Selector="TextBlock.mark">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
             <Setter Property="FontWeight" Value="Normal"/>
-            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize11}"/>
             <Setter Property="LetterSpacing" Value="0.44"/>
             <Setter Property="Foreground" Value="{StaticResource TextFaint}"/>
         </Style>
@@ -281,7 +281,7 @@
         <!-- ══ Small buttons ════════════════════════════════════════════════
              The app's action pair at the 26px height the card and strip use. -->
         <Style Selector="Button.act.sm">
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize12}"/>
             <Setter Property="Padding" Value="10,3"/>
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
@@ -322,7 +322,7 @@
                     ToolTip.Tip="{Binding SortTooltip}"
                     AutomationProperties.Name="{Binding SortAutomationName}">
                 <StackPanel Orientation="Horizontal" Spacing="7">
-                    <TextBlock Classes="body" FontSize="12"
+                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                                Foreground="{StaticResource TextDim}"
                                Text="{Binding SortLabel}"/>
                     <Path Data="M 0,0 L 8,0 L 4,5 Z"
@@ -360,14 +360,14 @@
                     IsEnabled="{Binding CanAcceptExact}"
                     ToolTip.Tip="{Binding AcceptExactTooltip}"
                     Command="{Binding AcceptExactCommand}">
-                <TextBlock Classes="body" FontSize="12"
+                <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                            Foreground="{StaticResource TextDim}"
                            Text="{Binding AcceptExactLabel}"/>
             </Button>
 
             <!-- The selection's primary, the one filled button on the screen. -->
             <Button Grid.Column="5" Classes="act primary"
-                    FontSize="12" Padding="12,5"
+                    FontSize="{DynamicResource FontSize12}" Padding="12,5"
                     VerticalAlignment="Center"
                     IsEnabled="{Binding CanMergeSelected}"
                     ToolTip.Tip="{Binding MergeSelectedTooltip}"
@@ -410,7 +410,7 @@
                         IsVisible="{Binding IsKindFiltered}"
                         ToolTip.Tip="{Binding KindChipTooltip}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Classes="label" FontSize="10"
+                        <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}"
                                    VerticalAlignment="Center"
                                    Foreground="{StaticResource Text}"
                                    Text="{Binding KindChipLabel}"/>
@@ -428,7 +428,7 @@
                         AutomationProperties.Name="{Binding PreferredPlatformLabel}"
                         AutomationProperties.ItemStatus="{Binding PreferredPlatformLabel}">
                     <StackPanel Orientation="Horizontal" Spacing="7">
-                        <TextBlock Classes="body" FontSize="12" Foreground="{StaticResource TextDim}"
+                        <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}" Foreground="{StaticResource TextDim}"
                                    Text="{Binding PreferredPlatformLabel}"/>
                         <Path Data="M 0,0 L 8,0 L 4,5 Z" Fill="{StaticResource TextDim}"
                               VerticalAlignment="Center"/>

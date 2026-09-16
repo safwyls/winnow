@@ -139,7 +139,7 @@ public sealed class VisualDisciplineTests
     [Theory]
     [InlineData("data")]
     [InlineData("data-s")]
-    public void The_numeric_text_style_sets_the_mono_face_and_tabular_figures(string styleClass)
+    public void The_numeric_text_style_tracks_the_data_face_and_tabular_figures(string styleClass)
     {
         // A playtime column whose digits do not align vertically is unreadable
         // at scan speed, which is the whole reason the app carries a third
@@ -157,8 +157,8 @@ public sealed class VisualDisciplineTests
         var body = style.Groups["body"].Value;
 
         Assert.True(
-            body.Contains("StaticResource DataFont", StringComparison.Ordinal),
-            $"The .{styleClass} style does not set FontFamily to DataFont (IBM Plex Mono).");
+            body.Contains("DynamicResource DataFont", StringComparison.Ordinal),
+            $"The .{styleClass} style does not track the theme's DataFont.");
 
         Assert.True(
             Regex.IsMatch(body, @"FontFeatures""\s+Value=""\+?tnum"""),
@@ -168,10 +168,8 @@ public sealed class VisualDisciplineTests
     [Fact]
     public void The_mono_face_resolves_to_a_bundled_font()
     {
-        // There is no system-font fallback anywhere in the app: a variable TTF
-        // renders at its default light instance because Avalonia 11 cannot set
-        // fvar axes, so the static cuts are bundled and the styles must reach
-        // them by resource URI rather than by family name.
+        // The default faces are bundled static cuts: Avalonia 11 cannot set
+        // variable-font axes. Themes may override them with installed families.
         var tokens = RepositoryTree.Read("src/Winnow.App/Themes/tokens.axaml");
 
         foreach (var key in new[] { "DisplayFont", "BodyFont", "DataFont" })

@@ -154,6 +154,8 @@ public sealed record WinnowTheme
     /// </summary>
     public ThemeAppearanceDefaults? Defaults { get; init; }
 
+    public ThemeTypography Typography { get; init; } = ThemeTypography.Default;
+
     /// <summary>
     /// The file this theme was read out of, as a bare file name (null for
     /// built-ins). A name, not a path; nothing in the app dereferences it.

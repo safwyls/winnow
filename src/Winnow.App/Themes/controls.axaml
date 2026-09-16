@@ -63,6 +63,13 @@
         the application behind it and read differently at every position.
     -->
 
+    <!-- Plain inputs participate in theme typography too. More specific authored roles below
+         retain their own sizes; the 14px baseline is Fluent's inherited control content size. -->
+    <Style Selector=":is(Button), TextBox, ComboBox, ToggleSwitch, NumericUpDown, MenuItem">
+        <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+        <Setter Property="FontSize" Value="{DynamicResource FontSize14}"/>
+    </Style>
+
     <!-- ══ Actions ════════════════════════════════════════════════════════════
          The focus ring is a BRUSH SWAP on PART_ContentPresenter, never a
          thickness change (§10.7). Thickening a border on focus reflows the row
@@ -73,7 +80,7 @@
     <Style Selector="Button.act">
         <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontSize" Value="{DynamicResource FontSize13}"/>
         <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}"/>
         <Setter Property="Padding" Value="16,8"/>
         <Setter Property="BorderThickness" Value="2"/>
@@ -138,8 +145,8 @@
         <Setter Property="MaxWidth" Value="{DynamicResource ProseMeasure}"/>
         <Setter Property="HorizontalAlignment" Value="Left"/>
         <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
-        <Setter Property="FontSize" Value="12"/>
-        <Setter Property="LineHeight" Value="18"/>
+        <Setter Property="FontSize" Value="{DynamicResource FontSize12}"/>
+        <Setter Property="LineHeight" Value="{DynamicResource TextLineHeight18}"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
         <Setter Property="Foreground" Value="{DynamicResource TextDim}"/>
     </Style>
@@ -253,7 +260,7 @@
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="HorizontalAlignment" Value="Left"/>
         <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
-        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontSize" Value="{DynamicResource FontSize12}"/>
         <Setter Property="Foreground" Value="{DynamicResource AzureForeground}"/>
     </Style>
     <Style Selector="Button.disclose /template/ ContentPresenter#PART_ContentPresenter">
@@ -316,7 +323,7 @@
         <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
         <Setter Property="FontSize" Value="{DynamicResource BodyLSize}"/>
         <Setter Property="FontWeight" Value="Medium"/>
-        <Setter Property="LineHeight" Value="22"/>
+        <Setter Property="LineHeight" Value="{DynamicResource TextLineHeight22}"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
         <Setter Property="Foreground" Value="{DynamicResource Text}"/>
     </Style>
@@ -374,7 +381,7 @@
     </Style>
     <Style Selector="Border.store-chip > :is(TextBlock)">
         <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
-        <Setter Property="FontSize" Value="9"/>
+        <Setter Property="FontSize" Value="{DynamicResource FontSize9}"/>
         <Setter Property="LetterSpacing" Value="0.54"/>
         <Setter Property="Foreground" Value="{DynamicResource TextDim}"/>
     </Style>
@@ -397,7 +404,7 @@
     <Style Selector="Border.store-pip > :is(TextBlock)">
         <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="FontSize" Value="9"/>
+        <Setter Property="FontSize" Value="{DynamicResource FontSize9}"/>
         <Setter Property="LetterSpacing" Value="0.4"/>
         <Setter Property="TextAlignment" Value="Center"/>
         <Setter Property="Foreground" Value="{DynamicResource Text}"/>

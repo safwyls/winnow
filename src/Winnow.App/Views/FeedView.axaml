@@ -23,9 +23,9 @@
              app's own voice making a claim — but not display-l, which is the
              screen's own name and has to outrank it. -->
         <Style Selector="TextBlock.shelf">
-            <Setter Property="FontFamily" Value="{StaticResource DisplayFont}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource DisplayFont}"/>
             <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="FontSize" Value="23"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize23}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
 
@@ -42,7 +42,7 @@
                 BorderThickness="0,0,0,1">
             <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
                 <StackPanel Grid.Column="0" Spacing="7">
-                    <TextBlock AutomationProperties.HeadingLevel="1" Classes="display-l" FontSize="36" LineHeight="42" Text="{Binding Title}"/>
+                    <TextBlock AutomationProperties.HeadingLevel="1" Classes="display-l" FontSize="{DynamicResource FontSize36}" LineHeight="{DynamicResource TextLineHeight42}" Text="{Binding Title}"/>
 
                     <StackPanel Orientation="Horizontal" Spacing="6"
                                 IsVisible="{Binding ShowCandidates}">
@@ -56,11 +56,11 @@
 
                     <!-- Confidence note from the scoring engine; hidden once
                          the library has enough history. -->
-                    <TextBlock Classes="body" FontSize="12"
+                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                                MaxWidth="640"
                                HorizontalAlignment="Left"
                                TextWrapping="Wrap"
-                               LineHeight="18"
+                               LineHeight="{DynamicResource TextLineHeight18}"
                                Foreground="{StaticResource TextDim}"
                                IsVisible="{Binding HasConfidenceNote}"
                                Text="{Binding ConfidenceNote}"/>
@@ -71,7 +71,7 @@
                 <Button AutomationProperties.Name="{Binding HistoryLabel}" Grid.Column="1"
                         Classes="act quiet"
                         Padding="12,6"
-                        FontSize="12"
+                        FontSize="{DynamicResource FontSize12}"
                         VerticalAlignment="Top"
                         Command="{Binding ToggleHistoryCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
@@ -100,7 +100,7 @@
                 <TextBlock Classes="body-l"
                            TextWrapping="Wrap"
                            TextAlignment="Center"
-                           LineHeight="22"
+                           LineHeight="{DynamicResource TextLineHeight22}"
                            Foreground="{StaticResource TextDim}"
                            Text="{Binding Message}"/>
                 <!-- Retry shown only on failure. -->
@@ -156,7 +156,7 @@
                                                MaxWidth="720"
                                                HorizontalAlignment="Left"
                                                TextWrapping="Wrap"
-                                               LineHeight="19"
+                                               LineHeight="{DynamicResource TextLineHeight19}"
                                                Foreground="{StaticResource TextDim}"
                                                Text="{Binding Blurb}"/>
                                 </StackPanel>
@@ -217,7 +217,7 @@
                                    MaxWidth="720"
                                    HorizontalAlignment="Left"
                                    TextWrapping="Wrap"
-                                   LineHeight="19"
+                                   LineHeight="{DynamicResource TextLineHeight19}"
                                    Foreground="{StaticResource TextDim}"
                                    Text="Your feed responses, newest first."/>
                     </StackPanel>
@@ -230,7 +230,7 @@
                                MaxWidth="620"
                                HorizontalAlignment="Left"
                                TextWrapping="Wrap"
-                               LineHeight="19"
+                               LineHeight="{DynamicResource TextLineHeight19}"
                                Foreground="{StaticResource TextDim}"
                                IsVisible="{Binding History.ShowMessage}"
                                Text="{Binding History.Message}"/>
@@ -246,8 +246,8 @@
                                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="14">
                                         <StackPanel Grid.Column="0" Spacing="4">
                                             <TextBlock Text="{Binding Title}"
-                                                       FontFamily="{StaticResource DisplayFont}"
-                                                       FontWeight="Bold" FontSize="14"
+                                                       FontFamily="{DynamicResource DisplayFont}"
+                                                       FontWeight="Bold" FontSize="{DynamicResource FontSize14}"
                                                        TextWrapping="Wrap"
                                                        Foreground="{StaticResource Text}"/>
 
@@ -273,7 +273,7 @@
                                         <!-- Undo only on standing verdicts. -->
                                         <Button Grid.Column="1"
                                                 Classes="act quiet"
-                                                FontSize="12"
+                                                FontSize="{DynamicResource FontSize12}"
                                                 Padding="14,6"
                                                 VerticalAlignment="Center"
                                                 Content="Undo"

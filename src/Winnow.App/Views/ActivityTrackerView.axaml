@@ -8,8 +8,8 @@
              AutomationProperties.AccessibilityView="Control">
     <UserControl.Styles>
         <Style Selector="RadioButton.range">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize12}"/>
             <Setter Property="Padding" Value="10,6"/>
             <Setter Property="MinHeight" Value="30"/>
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
@@ -52,8 +52,8 @@
             </Setter>
         </Style>
         <Style Selector="ToggleButton.records-toggle">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize12}"/>
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
@@ -94,15 +94,15 @@
             </StackPanel>
         </Grid>
         <WrapPanel Orientation="Horizontal">
-            <TextBlock Classes="data" FontSize="30" LineHeight="34" Text="{Binding TotalText}"/>
-            <TextBlock Classes="body" FontSize="12" Foreground="{StaticResource TextDim}"
+            <TextBlock Classes="data" FontSize="{DynamicResource FontSize30}" LineHeight="{DynamicResource TextLineHeight34}" Text="{Binding TotalText}"/>
+            <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}" Foreground="{StaticResource TextDim}"
                        Text="{Binding TotalLabel}" VerticalAlignment="Center" Margin="10,0,20,0"/>
-            <TextBlock Classes="body" FontSize="12" Text="{Binding LastPlayedText}"
+            <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}" Text="{Binding LastPlayedText}"
                        VerticalAlignment="Center" TextWrapping="Wrap"/>
         </WrapPanel>
         <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0" IsVisible="{Binding ShowPlot}">
-            <TextBlock Classes="data-s" FontSize="11" Text="{Binding ScaleText}"/>
-            <TextBlock Grid.Column="1" Classes="data-s" FontSize="11" Text="{Binding Series.PeriodLabel}"/>
+            <TextBlock Classes="data-s" FontSize="{DynamicResource FontSize11}" Text="{Binding ScaleText}"/>
+            <TextBlock Grid.Column="1" Classes="data-s" FontSize="{DynamicResource FontSize11}" Text="{Binding Series.PeriodLabel}"/>
         </Grid>
         <views:ActivityTimelinePlot Name="TimelinePlot" IsVisible="{Binding ShowPlot}"
                                     Series="{Binding Series}" Updates="{Binding Updates}"
@@ -113,35 +113,35 @@
         <WrapPanel IsVisible="{Binding ShowPlot}" Orientation="Horizontal">
             <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,16,4" IsVisible="{Binding ShowHistoricalLegend}">
                 <Border Width="13" Height="9" Background="{StaticResource VoltEdgeSoft}"/>
-                <TextBlock Classes="body" FontSize="11" Text="Steam · monthly"/>
+                <TextBlock Classes="body" FontSize="{DynamicResource FontSize11}" Text="Steam · monthly"/>
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,16,4">
                 <Border Width="10" Height="9" Background="{StaticResource Volt}"/>
-                <TextBlock Classes="body" FontSize="11" Text="{Binding TrackedLegend}"/>
+                <TextBlock Classes="body" FontSize="{DynamicResource FontSize11}" Text="{Binding TrackedLegend}"/>
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,16,4">
                 <Border Width="7" Height="7" CornerRadius="4" Background="{StaticResource Flare}"/>
-                <TextBlock Classes="body" FontSize="11" Text="Unread update"/>
+                <TextBlock Classes="body" FontSize="{DynamicResource FontSize11}" Text="Unread update"/>
             </StackPanel>
-            <TextBlock Classes="body" FontSize="11" Text="╱╱ No monthly record" Margin="0,0,0,4"/>
+            <TextBlock Classes="body" FontSize="{DynamicResource FontSize11}" Text="╱╱ No monthly record" Margin="0,0,0,4"/>
         </WrapPanel>
         <Border BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="0,8,0,0">
-            <TextBlock Name="TimelineDetail" Classes="body" FontSize="12" TextWrapping="Wrap"
+            <TextBlock Name="TimelineDetail" Classes="body" FontSize="{DynamicResource FontSize12}" TextWrapping="Wrap"
                        Text="{Binding DetailText}" AutomationProperties.LiveSetting="Polite"/>
         </Border>
-        <TextBlock Classes="body" FontSize="11" TextWrapping="Wrap" Text="{Binding Series.CoverageNote}"/>
-        <TextBlock Classes="body" FontSize="11" Text="{Binding UpdateSummary}"/>
+        <TextBlock Classes="body" FontSize="{DynamicResource FontSize11}" TextWrapping="Wrap" Text="{Binding Series.CoverageNote}"/>
+        <TextBlock Classes="body" FontSize="{DynamicResource FontSize11}" Text="{Binding UpdateSummary}"/>
         <Expander Name="RecordedHoursDisclosure" Classes="recorded-hours" Header="Recorded hours" IsVisible="{Binding HasRecords}">
             <ItemsControl ItemsSource="{Binding Series.Bars}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:ActivityTimelineBar">
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16" Margin="0,0,0,6"
                               ToolTip.Tip="{Binding Label}">
-                            <TextBlock FontFamily="{StaticResource DataFont}" FontFeatures="tnum"
-                                       Foreground="{StaticResource TextDim}" FontSize="12"
+                            <TextBlock FontFamily="{DynamicResource DataFont}" FontFeatures="tnum"
+                                       Foreground="{StaticResource TextDim}" FontSize="{DynamicResource FontSize12}"
                                        Text="{Binding RecordDate}" TextWrapping="Wrap"/>
-                            <TextBlock Grid.Column="1" FontFamily="{StaticResource DataFont}" FontFeatures="tnum"
-                                       Foreground="{StaticResource TextDim}" FontSize="12"
+                            <TextBlock Grid.Column="1" FontFamily="{DynamicResource DataFont}" FontFeatures="tnum"
+                                       Foreground="{StaticResource TextDim}" FontSize="{DynamicResource FontSize12}"
                                        Text="{Binding RecordedHours}" HorizontalAlignment="Right"/>
                         </Grid>
                     </DataTemplate>

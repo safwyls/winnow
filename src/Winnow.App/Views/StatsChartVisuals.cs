@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
+using Winnow.App.Services;
 using Winnow.App.ViewModels;
 
 namespace Winnow.App.Views;
@@ -16,6 +17,7 @@ internal sealed class StatsChartVisuals(bool fullscreen)
     public TextBlock Text(string text, double size = 13, string ink = "TextDim", bool data = false)
     {
         var block = new TextBlock { Text = text, FontSize = Fullscreen ? Math.Max(24, size * Scale) : size * Scale, TextWrapping = TextWrapping.Wrap };
+        if (!Fullscreen) ThemeTypographyResources.BindSize(block, size);
         block[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(ink);
         block[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension(data ? "DataFont" : "BodyFont");
         if (data) block.FontFeatures = new FontFeatureCollection { FontFeature.Parse("tnum") };

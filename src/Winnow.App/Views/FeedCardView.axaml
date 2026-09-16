@@ -128,11 +128,11 @@
                 <Border Name="FocusRing" BorderBrush="{StaticResource VoltForeground}" BorderThickness="2" CornerRadius="6" IsHitTestVisible="False"/>
                 </Panel>
             </Border>
-            <TextBlock Text="{Binding Tile.Title}" FontFamily="{StaticResource DisplayFont}" FontWeight="Bold"
-                       FontSize="15" LineHeight="19" Height="19" TextTrimming="CharacterEllipsis" Foreground="{StaticResource Text}"/>
+            <TextBlock Text="{Binding Tile.Title}" FontFamily="{DynamicResource DisplayFont}" FontWeight="Bold"
+                       FontSize="{DynamicResource FontSize15}" LineHeight="{DynamicResource TextLineHeight19}" Height="19" TextTrimming="CharacterEllipsis" Foreground="{StaticResource Text}"/>
             <TextBlock Name="Reason" Classes="body" FontFeatures="tnum" TextWrapping="Wrap" MaxLines="2" Height="36"
-                       TextTrimming="CharacterEllipsis" LineHeight="18" Foreground="{StaticResource TextDim}"/>
-            <TextBlock Classes="body" FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource AmberForeground}"
+                       TextTrimming="CharacterEllipsis" LineHeight="{DynamicResource TextLineHeight18}" Foreground="{StaticResource TextDim}"/>
+            <TextBlock Classes="body" FontSize="{DynamicResource FontSize11}" TextWrapping="Wrap" Foreground="{StaticResource AmberForeground}"
                        IsVisible="{Binding HasProblem}" Text="{Binding Problem}"/>
         </StackPanel>
     </Button>

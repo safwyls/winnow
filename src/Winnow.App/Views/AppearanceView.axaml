@@ -163,7 +163,7 @@
                            MaxWidth="640"
                            HorizontalAlignment="Left"
                            TextWrapping="Wrap"
-                           LineHeight="19"
+                           LineHeight="{DynamicResource TextLineHeight19}"
                            Foreground="{StaticResource TextDim}"
                            Text="{Binding IntroMessage}"/>
             </StackPanel>
@@ -177,7 +177,7 @@
             <StackPanel Margin="24,16,24,28" MaxWidth="920"
                         HorizontalAlignment="Left" Spacing="14">
 
-                <TextBlock AutomationProperties.HeadingLevel="2" Classes="label" FontSize="10" LetterSpacing="1.4" Text="THEME"/>
+                <TextBlock AutomationProperties.HeadingLevel="2" Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1.4" Text="THEME"/>
 
                 <ItemsControl ItemsSource="{Binding Themes}">
                     <ItemsControl.ItemsPanel>
@@ -279,7 +279,7 @@
                                     <StackPanel Margin="16,12,16,14" Spacing="6">
                                         <Grid ColumnDefinitions="*,Auto">
                                             <TextBlock AutomationProperties.HeadingLevel="2" Grid.Column="0"
-                                                       Classes="display-l" FontSize="17"
+                                                       Classes="display-l" FontSize="{DynamicResource FontSize17}"
                                                        Text="{Binding Name}"
                                                        VerticalAlignment="Center"/>
                                             <!-- Selected state in word + edge (§8). -->
@@ -288,7 +288,7 @@
                                                     Background="{StaticResource Volt}"
                                                     CornerRadius="9" Padding="8,2"
                                                     VerticalAlignment="Center">
-                                                <TextBlock Classes="label" FontSize="9" LetterSpacing="1"
+                                                <TextBlock Classes="label" FontSize="{DynamicResource FontSize9}" LetterSpacing="1"
                                                            Foreground="{StaticResource VoltInk}"
                                                            Text="IN USE"/>
                                             </Border>
@@ -317,9 +317,56 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
+                <TextBlock AutomationProperties.HeadingLevel="2" Classes="label" Text="TYPOGRAPHY" Margin="0,10,0,0"/>
+                <Border BorderBrush="{StaticResource Line}" BorderThickness="1"
+                        CornerRadius="{StaticResource RadiusControl}" Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Classes="para" Text="{Binding TypographyThemeNote}"/>
+                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="12">
+                            <TextBlock Classes="body" Text="Heading font" VerticalAlignment="Center"/>
+                            <ComboBox Name="HeadingFontPicker" Grid.Column="1" HorizontalAlignment="Stretch"
+                                      FontFamily="{DynamicResource BodyFont}" FontSize="{DynamicResource BodySize}"
+                                      AutomationProperties.Name="Heading font" ItemsSource="{Binding FontChoices}"
+                                      SelectedItem="{Binding HeadingFont, Mode=TwoWay}"/>
+                            <TextBlock Grid.Row="1" Classes="body" Text="Interface font" VerticalAlignment="Center"/>
+                            <ComboBox Name="InterfaceFontPicker" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch"
+                                      FontFamily="{DynamicResource BodyFont}" FontSize="{DynamicResource BodySize}"
+                                      AutomationProperties.Name="Interface font" ItemsSource="{Binding FontChoices}"
+                                      SelectedItem="{Binding InterfaceFont, Mode=TwoWay}"/>
+                            <TextBlock Grid.Row="2" Classes="body" Text="Data font" VerticalAlignment="Center"/>
+                            <ComboBox Name="DataFontPicker" Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch"
+                                      FontFamily="{DynamicResource BodyFont}" FontSize="{DynamicResource BodySize}"
+                                      AutomationProperties.Name="Data font" ItemsSource="{Binding FontChoices}"
+                                      SelectedItem="{Binding DataFont, Mode=TwoWay}"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="12">
+                            <TextBlock Classes="body" Text="Theme text size" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Classes="act quiet" Content="−" Command="{Binding DecreaseThemeTextSizeCommand}"
+                                    AutomationProperties.Name="Decrease theme text size"/>
+                            <Slider Name="ThemeTextSizeSlider" Grid.Column="2" Minimum="80" Maximum="120"
+                                    TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding ThemeTextSize, Mode=TwoWay}"
+                                    AutomationProperties.Name="Theme text size"/>
+                            <Button Grid.Column="3" Classes="act quiet" Content="+" Command="{Binding IncreaseThemeTextSizeCommand}"
+                                    AutomationProperties.Name="Increase theme text size"/>
+                            <TextBlock Grid.Column="4" Classes="data" Text="{Binding ThemeTextSizeReading}" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Border Background="{StaticResource ChromeFieldOnGround}" CornerRadius="{StaticResource RadiusControl}" Padding="14">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Your next game is already here" FontFamily="{DynamicResource DisplayFont}"
+                                           FontSize="{DynamicResource FontSize22}" FontWeight="Bold" TextWrapping="Wrap"/>
+                                <TextBlock Classes="body" Text="A familiar library, in your own type." TextWrapping="Wrap"/>
+                                <TextBlock Classes="data" Text="12 games · 48.5 hours · 2026" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Classes="para" Text="{Binding FontAvailabilityNote}"/>
+                        <Button Classes="act quiet" Content="Reset theme typography" HorizontalAlignment="Left"
+                                Command="{Binding ResetTypographyCommand}" AutomationProperties.Name="Reset theme typography"/>
+                    </StackPanel>
+                </Border>
+
                 <!-- YOUR THEMES: folder path, contrast report, and file
                      problems. No colour picker; themes are JSON files. -->
-                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1.4"
                            Margin="0,10,0,0" Text="YOUR THEMES"/>
 
                 <Border Classes="card" MaxWidth="720" HorizontalAlignment="Left"
@@ -361,7 +408,7 @@
                         <StackPanel Spacing="10" IsVisible="{Binding ShowThemeReport}">
                             <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
 
-                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                            <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1.4"
                                        Text="WHAT THIS THEME MEASURES"/>
 
                             <Grid ColumnDefinitions="Auto,10,*">
@@ -412,7 +459,7 @@
                         <StackPanel Spacing="10" IsVisible="{Binding HasErrors}">
                             <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
 
-                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                            <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1.4"
                                        Text="{Binding ProblemsHeading}"/>
 
                             <ItemsControl ItemsSource="{Binding Errors}">
@@ -430,7 +477,7 @@
                                                                TextTrimming="CharacterEllipsis"
                                                                Text="{Binding Where}"/>
                                                     <TextBlock Grid.Column="1"
-                                                               Classes="label verdict" FontSize="9" LetterSpacing="1"
+                                                               Classes="label verdict" FontSize="{DynamicResource FontSize9}" LetterSpacing="1"
                                                                VerticalAlignment="Center"
                                                                Text="{Binding Verdict}"/>
                                                 </Grid>
@@ -463,7 +510,7 @@
                                                                TextTrimming="CharacterEllipsis"
                                                                Text="{Binding Where}"/>
                                                     <TextBlock Grid.Column="1"
-                                                               Classes="label verdict" FontSize="9" LetterSpacing="1"
+                                                               Classes="label verdict" FontSize="{DynamicResource FontSize9}" LetterSpacing="1"
                                                                VerticalAlignment="Center"
                                                                Text="{Binding Verdict}"/>
                                                 </Grid>
@@ -481,7 +528,7 @@
                      Sits between THEME and TRANSPARENCY because it is a peer of
                      THEME (applies at every slider position), not a transparency
                      qualifier. Two cards with 1/8-scale miniatures. -->
-                <TextBlock AutomationProperties.HeadingLevel="2" Classes="label" FontSize="10" LetterSpacing="1.4"
+                <TextBlock AutomationProperties.HeadingLevel="2" Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1.4"
                            Margin="0,10,0,0" Text="LAYOUT"/>
 
                 <ItemsControl ItemsSource="{Binding Layouts}">
@@ -598,7 +645,7 @@
                                     <StackPanel Margin="16,12,16,14" Spacing="6">
                                         <Grid ColumnDefinitions="*,Auto">
                                             <TextBlock AutomationProperties.HeadingLevel="2" Grid.Column="0"
-                                                       Classes="display-l" FontSize="17"
+                                                       Classes="display-l" FontSize="{DynamicResource FontSize17}"
                                                        Text="{Binding Name}"
                                                        VerticalAlignment="Center"/>
                                             <Border Grid.Column="1"
@@ -606,7 +653,7 @@
                                                     Background="{StaticResource Volt}"
                                                     CornerRadius="9" Padding="8,2"
                                                     VerticalAlignment="Center">
-                                                <TextBlock Classes="label" FontSize="9" LetterSpacing="1"
+                                                <TextBlock Classes="label" FontSize="{DynamicResource FontSize9}" LetterSpacing="1"
                                                            Foreground="{StaticResource VoltInk}"
                                                            Text="IN USE"/>
                                             </Border>
@@ -620,7 +667,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <TextBlock AutomationProperties.HeadingLevel="2" Classes="label" FontSize="10" LetterSpacing="1.4"
+                <TextBlock AutomationProperties.HeadingLevel="2" Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1.4"
                            Margin="0,10,0,0" Text="TRANSPARENCY"/>
 
                 <Border Classes="card" MaxWidth="720" HorizontalAlignment="Left">
@@ -650,10 +697,10 @@
 
                                 <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,2,0,0">
                                     <!-- Zero is a position, so it is named. -->
-                                    <TextBlock Grid.Column="0" Classes="label" FontSize="9"
+                                    <TextBlock Grid.Column="0" Classes="label" FontSize="{DynamicResource FontSize9}"
                                                Foreground="{StaticResource TextFaint}"
                                                Text="SOLID"/>
-                                    <TextBlock Grid.Column="2" Classes="label" FontSize="9"
+                                    <TextBlock Grid.Column="2" Classes="label" FontSize="{DynamicResource FontSize9}"
                                                Foreground="{StaticResource TextFaint}"
                                                Text="MOST DESKTOP"/>
                                 </Grid>
@@ -671,7 +718,7 @@
                                 BorderThickness="1"
                                 CornerRadius="{StaticResource RadiusControl}"
                                 Padding="14,12">
-                            <TextBlock Classes="body" FontSize="12" LineHeight="18"
+                            <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}" LineHeight="{DynamicResource TextLineHeight18}"
                                        TextWrapping="Wrap"
                                        Text="{Binding LegibilityWarning}"/>
                         </Border>
@@ -684,7 +731,7 @@
 
                             <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
 
-                            <TextBlock Classes="label" FontSize="9" LetterSpacing="1.2"
+                            <TextBlock Classes="label" FontSize="{DynamicResource FontSize9}" LetterSpacing="1.2"
                                        Text="WHAT WINDOWS PUTS BEHIND THE WINDOW"/>
 
                             <ItemsControl ItemsSource="{Binding Backdrops}">
@@ -714,7 +761,7 @@
                                                             Background="{StaticResource Volt}"
                                                             CornerRadius="9" Padding="8,2"
                                                             VerticalAlignment="Center">
-                                                        <TextBlock Classes="label" FontSize="9"
+                                                        <TextBlock Classes="label" FontSize="{DynamicResource FontSize9}"
                                                                    LetterSpacing="1"
                                                                    Foreground="{StaticResource VoltInk}"
                                                                    Text="IN USE"/>
@@ -735,14 +782,14 @@
                                     BorderThickness="1"
                                     CornerRadius="{StaticResource RadiusControl}"
                                     Padding="14,12">
-                                <TextBlock Classes="body" FontSize="12" LineHeight="18"
+                                <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}" LineHeight="{DynamicResource TextLineHeight18}"
                                            TextWrapping="Wrap"
                                            Text="{Binding BackdropSubstitutedNote}"/>
                             </Border>
 
                             <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
 
-                            <TextBlock Classes="label" FontSize="9" LetterSpacing="1.2"
+                            <TextBlock Classes="label" FontSize="{DynamicResource FontSize9}" LetterSpacing="1.2"
                                        Text="HOW FAR IT REACHES"/>
 
                             <ItemsControl ItemsSource="{Binding Reach}">
@@ -769,7 +816,7 @@
                                                             Background="{StaticResource Volt}"
                                                             CornerRadius="9" Padding="8,2"
                                                             VerticalAlignment="Center">
-                                                        <TextBlock Classes="label" FontSize="9"
+                                                        <TextBlock Classes="label" FontSize="{DynamicResource FontSize9}"
                                                                    LetterSpacing="1"
                                                                    Foreground="{StaticResource VoltInk}"
                                                                    Text="IN USE"/>
@@ -792,7 +839,7 @@
                                 BorderThickness="1"
                                 CornerRadius="{StaticResource RadiusControl}"
                                 Padding="14,12">
-                            <TextBlock Classes="body" FontSize="12" LineHeight="18"
+                            <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}" LineHeight="{DynamicResource TextLineHeight18}"
                                        TextWrapping="Wrap"
                                        Text="Not available here. The compositor refused the backdrop."/>
                         </Border>

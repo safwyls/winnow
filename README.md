@@ -251,6 +251,14 @@ supported data contracts, compatibility and current limits.
 
 ### Writing a theme
 
+**Settings → Appearance → Typography** lets you choose heading, interface and data fonts,
+plus a text size from 80% to 120%. Choices apply live, are saved separately for each theme,
+and are included in theme exports. The same controls are available in fullscreen.
+**Reset theme typography** restores the theme's original choices.
+
+Exports store font names rather than font files. Install matching fonts on another computer;
+unavailable families use Winnow's bundled fallback and are identified in Appearance.
+
 Drop a `.json` file in `%LOCALAPPDATA%\Winnow\themes\`. A complete theme is eight colours and
 a few numbers; everything else is derived:
 
@@ -266,12 +274,19 @@ a few numbers; everything else is derived:
     "azure": "#6FB8E8", "danger": "#E04B45"
   },
   "structure": { "edge": 1.75, "wellDepth": 0.5 },
-  "defaults": { "transparency": 40, "backdrop": "acrylic", "layout": "floating" }
+  "defaults": { "transparency": 40, "backdrop": "acrylic", "layout": "floating" },
+  "typography": {
+    "headingFont": "Bricolage Grotesque",
+    "interfaceFont": "Plus Jakarta Sans",
+    "dataFont": "IBM Plex Mono",
+    "sizePercent": 100
+  }
 }
 ```
 
 Winnow reports each theme's measured contrast so you can see the impact on readability. Broken
 themes are skipped with a diagnostic. The app writes an annotated example on first run.
+The typography block is optional; older files keep the default fonts and size.
 
 Set `"variant": "light"` for a light palette or `"variant": "dark"` for a dark one.
 This selects the matching control templates. If omitted, Winnow compares the ground and

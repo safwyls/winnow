@@ -35,8 +35,8 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize12}"/>
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
         </Style>
         <Style Selector="Button.strip /template/ ContentPresenter#PART_ContentPresenter">
@@ -146,14 +146,14 @@
                                          a Volt edge; this says it in words, and
                                          a word survives being scrolled past. -->
                                     <TextBlock Classes="label"
-                                               FontSize="9"
+                                               FontSize="{DynamicResource FontSize9}"
                                                LetterSpacing="1.2"
                                                Margin="0,0,3,0"
                                                Foreground="{StaticResource TextFaint}"
                                                Text="{Binding Dimension}"
                                                IsVisible="{Binding IsContext}"
                                                VerticalAlignment="Center"/>
-                                    <TextBlock Classes="body" FontSize="12"
+                                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                                                Text="{Binding Label}"
                                                VerticalAlignment="Center"/>
                                     <Button AutomationProperties.Name="{Binding RemoveTip}" Classes="chipx"
@@ -244,9 +244,9 @@
                 </StackPanel>
             </Grid>
 
-            <TextBlock Classes="body" FontSize="12" Foreground="{StaticResource AmberForeground}"
+            <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}" Foreground="{StaticResource AmberForeground}"
                        TextWrapping="Wrap" Text="{Binding Lists.Problem}" IsVisible="{Binding Lists.HasProblem}"/>
-            <TextBlock Classes="body" FontSize="12" Foreground="{StaticResource AmberForeground}"
+            <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}" Foreground="{StaticResource AmberForeground}"
                        TextWrapping="Wrap" Text="{Binding PatchReadProblem}" IsVisible="{Binding HasPatchReadProblem}"/>
         </StackPanel>
     </Border>

@@ -53,8 +53,8 @@
             <Setter Property="Padding" Value="10,0"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize12}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
             <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
             <Setter Property="CaretBrush" Value="{StaticResource VoltForeground}"/>
@@ -82,8 +82,8 @@
         </Style>
 
         <Style Selector=":is(TextBlock).fielderror">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize11}"/>
             <Setter Property="Foreground" Value="{StaticResource AmberForeground}"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
@@ -123,7 +123,7 @@
                            MaxWidth="640"
                            HorizontalAlignment="Left"
                            TextWrapping="Wrap"
-                           LineHeight="19"
+                           LineHeight="{DynamicResource TextLineHeight19}"
                            Foreground="{StaticResource TextDim}"
                            Text="{Binding IntroMessage}"/>
             </StackPanel>
@@ -169,7 +169,7 @@
                      with no rating data is not explicit and stays visible. The
                      count says what turning it on would remove — the number of
                      tiles that actually disappear. -->
-                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1.4"
                            AutomationProperties.HeadingLevel="2" Text="{Binding ExplicitSectionLabel}"/>
 
                 <Border Classes="card">
@@ -192,7 +192,7 @@
                              account count uses. -->
                         <StackPanel Orientation="Horizontal" Spacing="6"
                                     IsVisible="{Binding ShowExplicitHiddenCount}">
-                            <TextBlock Classes="data" FontSize="12"
+                            <TextBlock Classes="data" FontSize="{DynamicResource FontSize12}"
                                        Foreground="{StaticResource TextDim}"
                                        VerticalAlignment="Center"
                                        Text="{Binding ExplicitHiddenCountText}"/>
@@ -212,7 +212,7 @@
                      The one place a hidden game can be found and put back, one
                      at a time. Each row shows the title, how many store entries
                      come back with it, and when it was hidden. -->
-                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1.4"
                            Margin="0,10,0,0"
                            AutomationProperties.HeadingLevel="2" Text="{Binding HiddenSectionLabel}"/>
 
@@ -241,7 +241,7 @@
                                                                Foreground="{StaticResource TextDim}"
                                                                VerticalAlignment="Center"
                                                                Text="{Binding StoreEntryCountText}"/>
-                                                    <TextBlock Classes="body" FontSize="11"
+                                                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize11}"
                                                                Foreground="{StaticResource TextDim}"
                                                                VerticalAlignment="Center"
                                                                Text="{Binding StoreEntryUnitLabel}"/>
@@ -278,7 +278,7 @@
                      the message lands under the field it is about. -->
                 <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,10,0,0">
                     <TextBlock Grid.Column="0"
-                               Classes="label" FontSize="10" LetterSpacing="1.4"
+                               Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1.4"
                                VerticalAlignment="Center"
                                AutomationProperties.HeadingLevel="2" Text="{Binding ManualSectionLabel}"/>
                     <!-- The file route leads because it asks for less than
@@ -319,7 +319,7 @@
                                                 <TextBlock Classes="body-l"
                                                            TextTrimming="CharacterEllipsis"
                                                            Text="{Binding Title}"/>
-                                                <TextBlock Classes="body" FontSize="11"
+                                                <TextBlock Classes="body" FontSize="{DynamicResource FontSize11}"
                                                            Foreground="{StaticResource TextDim}"
                                                            IsVisible="{Binding HasDetail}"
                                                            Text="{Binding Detail}"/>
@@ -385,12 +385,12 @@
                         <Border Classes="note" IsVisible="{Binding IsFormOpen}">
                             <StackPanel Spacing="14">
                                 <TextBlock Classes="body-l"
-                                           FontFamily="{StaticResource DisplayFont}"
+                                           FontFamily="{DynamicResource DisplayFont}"
                                            FontWeight="Bold"
                                            Text="{Binding FormTitle}"/>
 
                                 <StackPanel Spacing="5">
-                                    <TextBlock Classes="label" FontSize="10"
+                                    <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}"
                                                Text="{Binding TitleFieldLabel}"/>
                                     <TextBox Classes="field"
                                              Classes.wrong="{Binding HasTitleError}"
@@ -406,7 +406,7 @@
 
                                 <StackPanel Orientation="Horizontal" Spacing="14">
                                     <StackPanel Spacing="5">
-                                        <TextBlock Classes="label" FontSize="10"
+                                        <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}"
                                                    Text="{Binding YearFieldLabel}"/>
                                         <TextBox Classes="field"
                                                  Classes.wrong="{Binding HasYearError}"
@@ -420,7 +420,7 @@
                                     </StackPanel>
 
                                     <StackPanel Spacing="5">
-                                        <TextBlock Classes="label" FontSize="10"
+                                        <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}"
                                                    Text="{Binding PlatformFieldLabel}"/>
                                         <TextBox Classes="field"
                                                  Width="250"
@@ -436,7 +436,7 @@
                                      field is still typed into when there is no
                                      file to point at. -->
                                 <StackPanel Spacing="5">
-                                    <TextBlock Classes="label" FontSize="10"
+                                    <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}"
                                                Text="{Binding ExecutableFieldLabel}"/>
                                     <Grid ColumnDefinitions="480,Auto" ColumnSpacing="8"
                                           HorizontalAlignment="Left">
@@ -454,17 +454,17 @@
                                                 AutomationProperties.Name="{Binding BrowseButtonText}"
                                                 Command="{Binding BrowseForExecutableCommand}"/>
                                     </Grid>
-                                    <TextBlock Classes="body" FontSize="11"
+                                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize11}"
                                                Foreground="{StaticResource TextDim}"
                                                Text="{Binding ExecutableHint}"/>
                                     <!-- What the file yielded, in words, so the
                                          user can judge the proposal before
                                          saving. -->
-                                    <TextBlock Classes="body" FontSize="11"
+                                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize11}"
                                                MaxWidth="560"
                                                HorizontalAlignment="Left"
                                                TextWrapping="Wrap"
-                                               LineHeight="16"
+                                               LineHeight="{DynamicResource TextLineHeight16}"
                                                Foreground="{StaticResource TextDim}"
                                                IsVisible="{Binding HasExecutableNote}"
                                                Text="{Binding ExecutableNote}"/>
@@ -473,7 +473,7 @@
                                 <StackPanel Spacing="5">
                                     <StackPanel Orientation="Horizontal" Spacing="14">
                                         <StackPanel Spacing="5">
-                                            <TextBlock Classes="label" FontSize="10"
+                                            <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}"
                                                        Text="{Binding IgdbFieldLabel}"/>
                                             <TextBox Classes="field"
                                                      Classes.wrong="{Binding HasIgdbIdError}"
@@ -488,7 +488,7 @@
                                         </StackPanel>
 
                                         <StackPanel Spacing="5">
-                                            <TextBlock Classes="label" FontSize="10"
+                                            <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}"
                                                        Text="{Binding SteamAppIdFieldLabel}"/>
                                             <TextBox Classes="field"
                                                      Classes.wrong="{Binding HasSteamAppIdError}"
@@ -502,7 +502,7 @@
                                                        Text="{Binding SteamAppIdError}"/>
                                         </StackPanel>
                                     </StackPanel>
-                                    <TextBlock Classes="body" FontSize="11"
+                                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize11}"
                                                Foreground="{StaticResource TextDim}"
                                                Text="{Binding CoverHint}"/>
                                 </StackPanel>
@@ -534,28 +534,28 @@
                                     <!-- §8: the control says what it is doing
                                          in words. No spinner, so reduced
                                          motion has nothing to disable. -->
-                                    <TextBlock Classes="body" FontSize="11"
+                                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize11}"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource TextDim}"
                                                IsVisible="{Binding HasMatchStatus}"
                                                Text="{Binding MatchStatus}"/>
 
-                                    <TextBlock Classes="body" FontSize="11"
+                                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize11}"
                                                MaxWidth="560"
                                                HorizontalAlignment="Left"
                                                TextWrapping="Wrap"
-                                               LineHeight="16"
+                                               LineHeight="{DynamicResource TextLineHeight16}"
                                                Foreground="{StaticResource TextDim}"
                                                IsVisible="{Binding HasMatchNote}"
                                                Text="{Binding MatchNote}"/>
 
                                     <!-- A search that matched nothing is not a
                                          failure and does not read as one. -->
-                                    <TextBlock Classes="body" FontSize="11"
+                                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize11}"
                                                MaxWidth="560"
                                                HorizontalAlignment="Left"
                                                TextWrapping="Wrap"
-                                               LineHeight="16"
+                                               LineHeight="{DynamicResource TextLineHeight16}"
                                                Foreground="{StaticResource TextDim}"
                                                IsVisible="{Binding ShowNoMatches}"
                                                Text="{Binding MatchNoMatchesText}"/>
@@ -626,7 +626,7 @@
                                                                                VerticalAlignment="Center"
                                                                                Text="{Binding YearText}"/>
                                                                     <TextBlock Grid.Column="1"
-                                                                               Classes="body" FontSize="11"
+                                                                               Classes="body" FontSize="{DynamicResource FontSize11}"
                                                                                VerticalAlignment="Center"
                                                                                Foreground="{StaticResource TextDim}"
                                                                                TextTrimming="CharacterEllipsis"

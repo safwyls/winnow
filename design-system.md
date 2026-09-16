@@ -86,8 +86,9 @@ except through the saturation ramp in §5.
 
 ## 3. Typography
 
-Three roles, three families. All SIL OFL, bundled as `AvaloniaResource`. There is no
-system-font fallback: the display face is load-bearing.
+Three roles, with three bundled default families. All are SIL OFL, bundled as
+`AvaloniaResource`. Themes may choose installed font families for each role; an unavailable
+family falls back to that role's bundled face.
 
 | Role | Face | Usage |
 |---|---|---|
@@ -104,13 +105,28 @@ renders at its default light instance and every bold display style comes out wro
 consequently no `wdth` to set; Bricolage's static Bold is `wdth` 100, which is the widest cut
 the face has. `src/Winnow.App/Assets/Fonts/README.md` lists the exact files.
 
-**Desktop data uses Plex Mono with tabular figures** (`FontFeatures="tnum"`). This is not
-optional in list view, where a playtime column that does not align vertically is unreadable
+**Desktop data defaults to Plex Mono with tabular figures** (`FontFeatures="tnum"`). Keep the
+tabular-figure setting in list view, where a playtime column that does not align vertically is unreadable
 at scan speed. Fullscreen information uses BodyFont for dates, supporting facts and
 prominent personal metrics as specified below; charts and aligned numeric controls retain
 their data typography. Do not set an entire sentence in Mono merely because it contains a number.
 
 ### Scale
+
+Appearance offers **Heading font**, **Interface font**, **Data font** and **Theme text size**
+for the current theme on desktop and fullscreen. Text size runs from 80% to 120% in 5% steps;
+it scales the authored font sizes and text line heights, preserving their hierarchy rather
+than resizing covers or the window. Changes apply live and persist separately for each theme.
+**Reset theme typography** restores the theme file's choices, or the bundled defaults when
+the theme does not specify typography. Fullscreen's separate accessibility text-size and
+interface-scale preferences remain independent.
+
+Exports include family names and the size percentage, not font files. The controls retain a
+missing family's saved name and explain the bundled fallback, so moving a theme between
+computers does not discard its choices. Data fonts should support tabular figures for aligned
+numeric columns. Existing themes without typography retain the default families and 100% scale.
+
+The following values are the 100% baseline:
 
 ```
 Display L    22px / 26  Bricolage Bold

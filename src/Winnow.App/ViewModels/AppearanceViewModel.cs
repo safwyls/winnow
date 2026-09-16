@@ -88,6 +88,59 @@ public partial class AppearanceViewModel : ObservableObject
     public string IntroMessage =>
         "Theme and window appearance.";
 
+    private IReadOnlyList<string> _fontChoices = [];
+    public IReadOnlyList<string> FontChoices => _fontChoices;
+    public string TypographyThemeNote => $"Saved for {_service.Theme.Name} and included when you export it.";
+
+    private static string PickerFont(string name) => ThemeTypographyResources.AvailableFontNames
+        .FirstOrDefault(font => font.Equals(name, StringComparison.OrdinalIgnoreCase)) ?? name;
+
+    public string HeadingFont
+    {
+        get => PickerFont(_service.Typography.HeadingFont);
+        set { if (!string.IsNullOrWhiteSpace(value) && value != HeadingFont) _service.SetTypography(_service.Typography with { HeadingFont = value }); }
+    }
+
+    public string InterfaceFont
+    {
+        get => PickerFont(_service.Typography.InterfaceFont);
+        set { if (!string.IsNullOrWhiteSpace(value) && value != InterfaceFont) _service.SetTypography(_service.Typography with { InterfaceFont = value }); }
+    }
+
+    public string DataFont
+    {
+        get => PickerFont(_service.Typography.DataFont);
+        set { if (!string.IsNullOrWhiteSpace(value) && value != DataFont) _service.SetTypography(_service.Typography with { DataFont = value }); }
+    }
+
+    public double ThemeTextSize
+    {
+        get => _service.Typography.SizePercent;
+        set => _service.SetTypography(_service.Typography with { SizePercent = Math.Clamp((int)Math.Round(value / 5) * 5, 80, 120) });
+    }
+
+    public string ThemeTextSizeReading => $"{_service.Typography.SizePercent}%";
+    public string FontAvailabilityNote
+    {
+        get
+        {
+            var missing = new[] { HeadingFont, InterfaceFont, DataFont }
+                .Distinct(StringComparer.OrdinalIgnoreCase).Where(name => !ThemeTypographyResources.IsFontAvailable(name)).ToArray();
+            return missing.Length == 0
+                ? "Exports contain font names. Install the same fonts on another computer, or Winnow uses its bundled fonts."
+                : $"Unavailable here: {string.Join(", ", missing)}. Winnow uses its bundled fonts until you install them.";
+        }
+    }
+
+    [RelayCommand]
+    private void ResetTypography() => _service.ResetTypography();
+
+    [RelayCommand]
+    private void IncreaseThemeTextSize() => ThemeTextSize += 5;
+
+    [RelayCommand]
+    private void DecreaseThemeTextSize() => ThemeTextSize -= 5;
+
     // ══ The transparency slider ═════════════════════════════════════════════
     // Mica is a binary window hint, but nothing anyone can SEE is: the perceived
     // translucency is entirely the alpha on our own surfaces over that backdrop,
@@ -376,6 +429,22 @@ public partial class AppearanceViewModel : ObservableObject
 
     private void Refresh()
     {
+        var fonts = ThemeTypographyResources.AvailableFontNames
+            .Where(ThemeTypography.IsValidFamily)
+            .Concat(new[] { HeadingFont, InterfaceFont, DataFont }).Distinct(StringComparer.OrdinalIgnoreCase)
+            .Order(StringComparer.CurrentCultureIgnoreCase).ToArray();
+        if (!_fontChoices.SequenceEqual(fonts))
+        {
+            _fontChoices = fonts;
+            OnPropertyChanged(nameof(FontChoices));
+        }
+        OnPropertyChanged(nameof(HeadingFont));
+        OnPropertyChanged(nameof(InterfaceFont));
+        OnPropertyChanged(nameof(DataFont));
+        OnPropertyChanged(nameof(ThemeTextSize));
+        OnPropertyChanged(nameof(ThemeTextSizeReading));
+        OnPropertyChanged(nameof(TypographyThemeNote));
+        OnPropertyChanged(nameof(FontAvailabilityNote));
         foreach (var choice in Themes)
         {
             choice.IsSelected = ReferenceEquals(choice.Theme, _service.Theme);

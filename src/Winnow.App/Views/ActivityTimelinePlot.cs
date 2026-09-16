@@ -4,6 +4,7 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Input;
+using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using Winnow.App.ViewModels;
 
@@ -34,6 +35,14 @@ public sealed class ActivityTimelinePlot : Panel
     public static readonly StyledProperty<IBrush?> TextBrushProperty = AvaloniaProperty.Register<ActivityTimelinePlot, IBrush?>(nameof(TextBrush));
     public static readonly StyledProperty<IBrush?> UpdateBrushProperty = AvaloniaProperty.Register<ActivityTimelinePlot, IBrush?>(nameof(UpdateBrush));
     public static readonly StyledProperty<IBrush?> SurfaceBrushProperty = AvaloniaProperty.Register<ActivityTimelinePlot, IBrush?>(nameof(SurfaceBrush));
+    private static readonly StyledProperty<double> TextScaleProperty = AvaloniaProperty.Register<ActivityTimelinePlot, double>("TextScale", 1);
+    private static readonly StyledProperty<FontFamily> DataFontProperty = AvaloniaProperty.Register<ActivityTimelinePlot, FontFamily>("DataFont", FontFamily.Default);
+
+    public ActivityTimelinePlot()
+    {
+        this[!TextScaleProperty] = new DynamicResourceExtension("ThemeTextScale");
+        this[!DataFontProperty] = new DynamicResourceExtension("DataFont");
+    }
 
     static ActivityTimelinePlot() => AffectsRender<ActivityTimelinePlot>(SeriesProperty,
         LastPlayedUtcProperty, HistoryBrushProperty, TrackedBrushProperty, LineBrushProperty,
@@ -60,7 +69,8 @@ protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs chang
             change.Property == IsTrackedSessionsProperty || change.Property == LastPlayedUtcProperty ||
             change.Property == HistoryBrushProperty || change.Property == TrackedBrushProperty ||
             change.Property == LineBrushProperty || change.Property == TextBrushProperty ||
-            change.Property == UpdateBrushProperty || change.Property == SurfaceBrushProperty)
+            change.Property == UpdateBrushProperty || change.Property == SurfaceBrushProperty ||
+            change.Property == TextScaleProperty || change.Property == DataFontProperty)
         {
             _dirty = true;
             InvalidateMeasure();
@@ -177,7 +187,8 @@ protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs chang
             BorderBrush = TrackedBrush,
             Foreground = SurfaceBrush,
             RingBrush = SurfaceBrush,
-            FontFamily = (FontFamily)this.FindResource("DataFont")!,
+            FontFamily = GetValue(DataFontProperty),
+            CountScale = GetValue(TextScaleProperty),
         };
         AutomationProperties.SetName(button, label);
         ToolTip.SetTip(button, label);
@@ -198,7 +209,7 @@ protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs chang
         var rightLabel = Tick("Today");
         rightLabel.Measure(Size.Infinity);
         var right = width - Inset - rightLabel.DesiredSize.Width;
-        Add(rightLabel, new Rect(right, PlotHeight + 14, rightLabel.DesiredSize.Width, 16));
+        Add(rightLabel, new Rect(right, PlotHeight + 14, rightLabel.DesiredSize.Width, Math.Max(16, rightLabel.DesiredSize.Height)));
         var previousRight = Inset - 8;
         var longRange = (series.EndUtc - series.StartUtc).TotalDays > 730;
         var cursor = longRange ? new DateTime(series.StartUtc.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc) :
@@ -212,7 +223,7 @@ protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs chang
                 var left = Math.Max(Inset, X(cursor, width) - label.DesiredSize.Width / 2);
                 if (left >= previousRight + 8 && left + label.DesiredSize.Width <= right - 12)
                 {
-                    Add(label, new Rect(left, PlotHeight + 14, label.DesiredSize.Width, 16));
+                    Add(label, new Rect(left, PlotHeight + 14, label.DesiredSize.Width, Math.Max(16, label.DesiredSize.Height)));
                     previousRight = left + label.DesiredSize.Width;
                 }
             }
@@ -223,8 +234,8 @@ protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs chang
 
     private TextBlock Tick(string text) => new()
     {
-        Text = text, FontSize = 11, Foreground = TextBrush,
-        FontFamily = (FontFamily)this.FindResource("DataFont")!,
+        Text = text, FontSize = 11 * GetValue(TextScaleProperty), Foreground = TextBrush,
+        FontFamily = GetValue(DataFontProperty),
         FontFeatures = new FontFeatureCollection { FontFeature.Parse("tnum") },
     };
 
@@ -295,6 +306,7 @@ protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs chang
         public double BarFraction { get; set; }
         public bool IsUpdate { get; set; }
         public int Count { get; set; }
+        public double CountScale { get; init; } = 1;
         public IBrush? RingBrush { get; init; }
 
         public MarkButton()
@@ -322,7 +334,7 @@ protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs chang
                 if (Count > 1)
                 {
                     var count = new FormattedText(Count > 99 ? "99+" : Count.ToString(CultureInfo.CurrentCulture),
-                        CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface(FontFamily), 10, Foreground);
+                        CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface(FontFamily), 10 * CountScale, Foreground);
                     context.DrawText(count, new Point(centre.X - count.Width / 2, centre.Y - count.Height / 2));
                 }
             }
@@ -333,7 +345,7 @@ protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs chang
                 if (Count > 1)
                 {
                     var count = new FormattedText(Count > 9 ? "9+" : Count.ToString(CultureInfo.CurrentCulture),
-                        CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface(FontFamily), 8, Foreground);
+                        CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface(FontFamily), 8 * CountScale, Foreground);
                     count.SetFontFeatures(new FontFeatureCollection { FontFeature.Parse("tnum") });
                     var top = Math.Max(0, Bounds.Height - height);
                     context.FillRectangle(Background ?? Brushes.Transparent, new Rect(0, top, Bounds.Width, count.Height));

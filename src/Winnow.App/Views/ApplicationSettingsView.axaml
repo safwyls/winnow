@@ -15,8 +15,8 @@
             <Setter Property="Padding" Value="20"/>
         </Style>
         <Style Selector=":is(TextBlock).problem">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize11}"/>
             <Setter Property="Foreground" Value="{StaticResource AmberForeground}"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
@@ -29,7 +29,7 @@
                 <TextBlock AutomationProperties.HeadingLevel="1"
                            Classes="display-l" Text="{Binding Title}"/>
                 <TextBlock Classes="body" MaxWidth="640" HorizontalAlignment="Left"
-                           TextWrapping="Wrap" LineHeight="19"
+                           TextWrapping="Wrap" LineHeight="{DynamicResource TextLineHeight19}"
                            Foreground="{StaticResource TextDim}"
                            Text="{Binding IntroMessage}"/>
             </StackPanel>
@@ -39,7 +39,7 @@
                       VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="24,16,24,28" MaxWidth="920"
                         HorizontalAlignment="Left" Spacing="14">
-                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1.4"
                            AutomationProperties.HeadingLevel="2"
                            Text="NOTIFICATION AREA"/>
                 <Border Classes="card" AutomationProperties.Name="Notification area behavior"
@@ -71,7 +71,7 @@
                     </StackPanel>
                 </Border>
 
-                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1.4"
                            Margin="0,6,0,0" AutomationProperties.HeadingLevel="2"
                            Text="STARTUP"/>
                 <Border Classes="card" AutomationProperties.Name="Fullscreen startup"
@@ -192,7 +192,7 @@
                     </StackPanel>
                 </Border>
 
-                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1.4"
                            Margin="0,6,0,0" AutomationProperties.HeadingLevel="2"
                            Name="AboutHeading" Text="ABOUT WINNOW"/>
                 <Border Name="AboutCard" Classes="card" AutomationProperties.Name="About Winnow"
@@ -200,12 +200,12 @@
                     <StackPanel Spacing="12">
                         <StackPanel Spacing="5">
                             <TextBlock Classes="body-l" Text="Version"/>
-                            <SelectableTextBlock FontFamily="{StaticResource DataFont}"
+                            <SelectableTextBlock FontFamily="{DynamicResource DataFont}"
                                                  Text="{Binding ApplicationVersion}"/>
                         </StackPanel>
                         <StackPanel Spacing="5">
                             <TextBlock Classes="body" Foreground="{StaticResource TextDim}" Text="Source commit"/>
-                            <SelectableTextBlock FontFamily="{StaticResource DataFont}"
+                            <SelectableTextBlock FontFamily="{DynamicResource DataFont}"
                                                  Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
                                                  Text="{Binding BuildCommit}"/>
                         </StackPanel>

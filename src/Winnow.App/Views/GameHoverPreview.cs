@@ -5,7 +5,9 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Primitives.PopupPositioning;
 using Avalonia.Media;
 using Avalonia.Data;
+using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.VisualTree;
+using Winnow.App.Services;
 using Winnow.App.ViewModels;
 
 namespace Winnow.App.Views;
@@ -87,13 +89,18 @@ internal sealed class GameHoverPreview
         var width = Math.Min(Math.Clamp((leftSide ? origin.X : rightSpace) - 46, 180, 320),
             Math.Max(1, (top?.Bounds.Width ?? 900) - 58));
         var rows = new StackPanel { Spacing = 10, Width = width };
-        TextBlock Text(string? value, int size = 13, bool quiet = false, bool title = false) => new()
+        TextBlock Text(string? value, int size = 13, bool quiet = false, bool title = false)
         {
-            Text = value, FontSize = size, TextWrapping = TextWrapping.Wrap,
-            FontFamily = Resource<FontFamily>(title ? "DisplayFont" : "BodyFont", FontFamily.Default),
-            FontWeight = title ? FontWeight.Bold : FontWeight.Normal,
-            Foreground = Resource<IBrush>(quiet ? "TextDim" : "Text", Brushes.White),
-        };
+            var block = new TextBlock
+            {
+                Text = value, TextWrapping = TextWrapping.Wrap,
+                FontWeight = title ? FontWeight.Bold : FontWeight.Normal,
+                Foreground = Resource<IBrush>(quiet ? "TextDim" : "Text", Brushes.White),
+            };
+            block[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension(title ? "DisplayFont" : "BodyFont");
+            ThemeTypographyResources.BindSize(block, size);
+            return block;
+        }
         rows.Children.Add(Text(tile.Title, 22, title: true));
         rows.Children.Add(Text($"{tile.StoreNames} · {tile.StatText}", quiet: true));
         var ratings = Text(null, 12, quiet: true);

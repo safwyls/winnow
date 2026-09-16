@@ -61,6 +61,7 @@ public sealed partial class FullscreenView : UserControl, IDisposable
     public FullscreenView(FullscreenContext context, bool preparing = false)
     {
         _context = context;
+        ThemeTypographyResources.UseUnscaledSizes(Resources);
         this.Bind(CoverPresentation.FitProperty, new Binding(nameof(DisplaySettingsViewModel.FitCoverArt))
         {
             Source = context.Shared.Display,
@@ -71,8 +72,8 @@ public sealed partial class FullscreenView : UserControl, IDisposable
             e.Handled = true;
             Handle(GamepadButtons.Back);
         }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
-        _body.LayoutUpdated += (_, _) => ApplyTextSize();
-        _overlay.LayoutUpdated += (_, _) => ApplyTextSize();
+        _canvas.LayoutUpdated += (_, _) => ApplyTextSize();
+        this[!FontFamilyProperty] = new DynamicResourceExtension("BodyFont");
         Styles.Add(new Style(s => s.OfType<Button>().Class("tv-action"))
         {
             Setters = {
@@ -219,17 +220,21 @@ public sealed partial class FullscreenView : UserControl, IDisposable
     }
     private void ApplyTextSize()
     {
-        // Typography grows inside the page; stable chrome and safe margins keep navigation reachable.
-        foreach (var control in _body.GetVisualDescendants().Concat(_actionPanel?.GetVisualDescendants() ?? [])
-            .Concat(_startup?.GetVisualDescendants() ?? []).OfType<Control>())
+        // Theme typography reaches every surface. The separate viewing-distance preference still
+        // grows page copy only, preserving its existing stable chrome and large-heading behavior.
+        var pageControls = _body.GetVisualDescendants().Concat(_actionPanel?.GetVisualDescendants() ?? [])
+            .Concat(_startup?.GetVisualDescendants() ?? []).OfType<Control>().ToHashSet();
+        var themeScale = _context.Shared.Appearance.Service.Typography.SizePercent / 100.0;
+        foreach (var control in _canvas.GetVisualDescendants().OfType<Control>())
         {
+            var pageScale = pageControls.Contains(control) ? _context.TextScale : 1;
             if (control is TextBlock block && block.IsSet(TextBlock.FontSizeProperty))
             {
                 var original = _typeSizes.GetValue(block, c => new(((TextBlock)c).FontSize)).Value;
-                block.FontSize = original >= 48 ? original : original * _context.TextScale;
+                block.FontSize = original * themeScale * (original >= 48 ? 1 : pageScale);
             }
             else if (control is TemplatedControl templated && templated.IsSet(TemplatedControl.FontSizeProperty))
-                templated.FontSize = _typeSizes.GetValue(templated, c => new(((TemplatedControl)c).FontSize)).Value * _context.TextScale;
+                templated.FontSize = _typeSizes.GetValue(templated, c => new(((TemplatedControl)c).FontSize)).Value * themeScale * pageScale;
         }
     }
     private void Push(FullscreenPage page)
@@ -357,7 +362,7 @@ public sealed partial class FullscreenView : UserControl, IDisposable
         }
         PageChanged(this, EventArgs.Empty); FocusPage();
     }
-    private double ActionPanelWidth => Math.Min(_canvas.Width * .65, 620 * _context.TextScale);
+    private double ActionPanelWidth => Math.Min(_canvas.Width * .65, 620 * _context.TextScale * _context.Shared.Appearance.Service.Typography.SizePercent / 100.0);
     private Thickness ActionPanelPadding => new(32, Math.Max(40, _canvas.Height * _context.SafeMarginPercent / 100),
         Math.Max(32, _canvas.Width * _context.SafeMarginPercent / 100), Math.Max(40, _canvas.Height * _context.SafeMarginPercent / 100));
     private void RemoveActionOverlay()

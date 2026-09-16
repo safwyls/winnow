@@ -176,17 +176,15 @@ public sealed class FullscreenSettingsPage : FullscreenPage
                 var increase = FullscreenUi.Button($"Increase {label.ToLowerInvariant()}", () => Change(1));
                 decrease.Content = "−"; increase.Content = "+";
                 decrease.MinWidth = increase.MinWidth = 64;
+                // Keyboard and controller adjust the named row with left/right; these duplicate
+                // actions are pointer targets and must not create unreachable focus stops.
+                decrease.Focusable = increase.Focusable = false;
                 var adjustment = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), ColumnSpacing = 8 };
                 adjustment.Children.Add(button);
                 Grid.SetColumn(decrease, 1); adjustment.Children.Add(decrease);
                 Grid.SetColumn(increase, 2); adjustment.Children.Add(increase);
                 rows.Children.Add(adjustment);
-                foreach (var step in new[] { decrease, increase })
-                {
-                    _adjustments[step] = Change;
-                    step.GotFocus += (_, _) => _focused = step;
-                }
-                focus.Add([button, decrease, increase]);
+                focus.Add([button]);
             }
             else { rows.Children.Add(button); focus.Add([button]); }
         }
@@ -238,6 +236,32 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             Adjust("Cover art", "Fit shows the whole image. Fill crops it to the card.",
                 () => Context.Shared.Display.FitCoverArt ? "Fit" : "Fill",
                 _ => Context.Shared.Display.FitCoverArt = !Context.Shared.Display.FitCoverArt);
+
+            Group("Typography");
+            var appearance = Context.Shared.Appearance;
+            var typographyNote = FullscreenInformation.Metadata(appearance.TypographyThemeNote);
+            rows.Children.Add(typographyNote);
+            _valueRefreshers.Add(() => typographyNote.Text = appearance.TypographyThemeNote);
+            void FontChoice(string label, Func<string> current, Action<string> select)
+            {
+                var choice = Action($"{label}     {current()}", () => Context.ShowActions(label,
+                    appearance.FontChoices.Select(font => new FullscreenAction(font, () => select(font))).ToArray()));
+                AutomationProperties.SetName(choice, label);
+                _valueRefreshers.Add(() =>
+                {
+                    ((TextBlock)choice.Tag!).Text = $"{label}     {current()}";
+                    AutomationProperties.SetItemStatus(choice, current());
+                });
+            }
+            FontChoice("Heading font", () => appearance.HeadingFont, font => appearance.HeadingFont = font);
+            FontChoice("Interface font", () => appearance.InterfaceFont, font => appearance.InterfaceFont = font);
+            FontChoice("Data font", () => appearance.DataFont, font => appearance.DataFont = font);
+            Adjust("Theme text size", "Saved with the theme. Combines with your fullscreen text size.",
+                () => appearance.ThemeTextSizeReading, direction => appearance.ThemeTextSize += direction * 5, mouseStepper: true);
+            var fontNote = FullscreenInformation.Metadata(appearance.FontAvailabilityNote);
+            rows.Children.Add(fontNote);
+            _valueRefreshers.Add(() => fontNote.Text = appearance.FontAvailabilityNote);
+            Action("Reset theme typography", () => appearance.ResetTypographyCommand.Execute(null), "Run");
         }
         else if (_section == "Controller")
         {
@@ -380,7 +404,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         else main.Children.Add(FullscreenUi.Scroll(rows));
         var preview = FullscreenUi.Stack(FullscreenInformation.Heading(_section == "Appearance" ? "Preview" : _section),
             FullscreenUi.Text("Your next game is already here.", 48),
-            FullscreenInformation.Metadata(_section == "Appearance" ? "Theme, cover art and cover dimming apply to both views. Other appearance settings apply to fullscreen." : "Library and account settings apply to both desktop and fullscreen."));
+            FullscreenInformation.Metadata(_section == "Appearance" ? "Theme, typography, cover art and cover dimming apply to both views. Other appearance settings apply to fullscreen." : "Library and account settings apply to both desktop and fullscreen."));
         if (_section == "Controller") Grid.SetColumnSpan(main.Children[0], 2);
         else { Grid.SetColumn(preview, 1); main.Children.Add(preview); }
         if (_section == "Appearance" && Context.Library.VisibleTiles.FirstOrDefault() is { } sample)
@@ -390,7 +414,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             preview.Children.Add(new FullscreenCover(sample) { Height = 320, HorizontalAlignment = HorizontalAlignment.Stretch });
             preview.Children.Add(FullscreenUi.Text(sample.Title, 48));
             preview.Children.Add(FullscreenInformation.Text(sample.UnreadText));
-            preview.Children.Add(FullscreenInformation.Metadata("Theme, cover art and cover dimming apply to both views. Other appearance settings apply to fullscreen."));
+            preview.Children.Add(FullscreenInformation.Metadata("Theme, typography, cover art and cover dimming apply to both views. Other appearance settings apply to fullscreen."));
         }
         var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*"), RowSpacing = 24 };
         var navigation = FullscreenUi.TriggerNavigation(tabStrip);
