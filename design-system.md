@@ -1349,6 +1349,9 @@ tabs remain present when data is sparse; absent integrations do not change their
 positions. A refresh or correction that rebuilds details on the same ownership keeps the
 selected tab. A new ordinary opening starts on Overview again.
 
+Desktop tabs use Volt text and a 2px underline for selection, without an enclosing border.
+Keyboard focus adds another 2px beneath the underline without changing the tab dimensions.
+
 **Overview keeps the reason to return visible.** Its summary reuses the stored hours and
 last-played date; no date keeps the distinction between never opened and a session whose date
 is not recorded. The update shortcut counts unread updates and disappears when none remain.
