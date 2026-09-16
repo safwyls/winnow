@@ -54,6 +54,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         InitializeFullscreen();
         InitializeGamepad();
+        InitializeDesktopStartup();
 
         // The modal and the lightbox are built the first time they are shown
         // (LazyPane), so their events are wired when they appear rather than
@@ -401,9 +402,16 @@ public partial class MainWindow : Window
         // one layer down).
         try
         {
-            await LoadOnOpenAsync();
+            if (EnableDesktopStartup)
+            {
+                if (!await PrepareDesktopAsync(LoadInitialDesktopAsync))
+                {
+                    return;
+                }
+            }
+            else await LoadOnOpenAsync();
             _startupLibraryReady.TrySetResult(true);
-            if (_shell is not null) await _shell.Setup.LoadAsync();
+            if (!EnableDesktopStartup && _shell is not null) await _shell.Setup.LoadAsync();
         }
         catch (OperationCanceledException)
         {
@@ -687,6 +695,7 @@ public partial class MainWindow : Window
             if (_tvView?.HandleKey(e) == true) e.Handled = true;
             return;
         }
+        if (DesktopStartupVisible) return;
         base.OnKeyDown(e);
 
         if (e.Handled)

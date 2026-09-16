@@ -293,8 +293,38 @@ public sealed class FullscreenInteractionTests
             window.ToggleFullscreen();
             window.ToggleFullscreen();
             Assert.Same(television, window.FindControl<ContentControl>("TvHost")!.Content);
-            Assert.True(television.IsPrepared);
+            Assert.False(television.IsPrepared);
+            Assert.True(television.StartupVisible);
+            await FullscreenStartupTests.WaitPreparedAsync(television);
             Assert.False(television.StartupVisible);
+            Assert.Equal("Library", television.CurrentPage.Title);
+        }
+        finally { window.ExitFromTray(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Returning_to_desktop_covers_refresh_until_the_feed_is_ready()
+    {
+        var window = new MainWindow { DataContext = PreviewData.Shell };
+        try
+        {
+            window.Show();
+            window.ToggleFullscreen();
+            var television = Assert.IsType<FullscreenView>(window.FindControl<ContentControl>("TvHost")!.Content);
+            await FullscreenStartupTests.WaitPreparedAsync(television);
+            window.ToggleFullscreen();
+            Assert.False(window.IsFullscreen);
+            Assert.True(window.DesktopStartupVisible);
+            var timeout = System.Diagnostics.Stopwatch.StartNew();
+            while (window.DesktopStartupVisible && timeout.Elapsed < TimeSpan.FromSeconds(5))
+            {
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                Dispatcher.UIThread.RunJobs();
+                await Task.Delay(10);
+            }
+            Assert.False(window.DesktopStartupVisible);
+            Assert.False(PreviewData.Shell.Library.LoadCommand.IsRunning);
+            Assert.False(PreviewData.Shell.Feed.LoadCommand.IsRunning);
         }
         finally { window.ExitFromTray(); }
     }

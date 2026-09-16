@@ -15,11 +15,10 @@ namespace Winnow.App.Views.Fullscreen;
 public sealed partial class FullscreenView
 {
     private Border? _startup;
-    private Control? _startupMark;
+    private LoadingDragon? _startupMark;
     private TextBlock? _startupMessage;
     private Button? _startupBack, _startupRetry;
     private CancellationTokenSource? _startupPresentation;
-    private CancellationTokenSource? _startupPulse;
     private Task? _startupLoad;
     private Func<Task>? _prepare;
     private bool _startupWaiting;
@@ -30,7 +29,7 @@ public sealed partial class FullscreenView
     private void InitializeStartup(bool preparing)
     {
         IsPrepared = !preparing;
-        _startupMark = FullscreenGlyphs.Icon("Winnow", 100);
+        _startupMark = new LoadingDragon { Width = 100, Height = 100 };
         _startupMark.Name = "FullscreenStartupMark";
         _startupMark.HorizontalAlignment = HorizontalAlignment.Center;
         var title = FullscreenUi.Text("WINNOW", 48);
@@ -79,17 +78,19 @@ public sealed partial class FullscreenView
         {
             // Frame callbacks run before rendering. Resume at Background so the loading
             // presentation gets its first paint before any synchronously completing reads.
-            await StartupFrameAsync(token);
-            StartStartupPulse();
-            if (_startupLoad is null || _startupLoad.IsFaulted || _startupLoad.IsCanceled)
+            var firstPaint = await StartupFrameAsync(token);
+            StartStartupTrace();
+            if (_startupLoad is null || _startupLoad.IsCompleted)
                 _startupLoad = prepare();
             await _startupLoad.WaitAsync(token);
             // Library and primary feed are ready. Their queued layout/text-scaling work
             // must be presented beneath the veil; optional artwork and shelves can follow.
             await StartupFrameAsync(token);
             await StartupFrameAsync(token);
+            // Keep even a warm entry legible while the restored viewport settles.
+            while (!_context.ReducedMotion && (await StartupFrameAsync(token) - firstPaint).TotalMilliseconds < 350) { }
             _startupWaiting = false;
-            StopStartupPulse();
+            StopStartupTrace();
             if (!_context.ReducedMotion)
             {
                 var start = await StartupFrameAsync(token);
@@ -102,6 +103,9 @@ public sealed partial class FullscreenView
                 }
             }
             token.ThrowIfCancellationRequested();
+            // Re-entry shares only unfinished preparation. A later entry must join
+            // a fresh refresh, including changes queued while this view was detached.
+            _startupLoad = null;
             IsPrepared = true;
             _startup.IsVisible = false;
             _safe.IsEnabled = CurrentPage is not FullscreenActionsPage;
@@ -115,7 +119,7 @@ public sealed partial class FullscreenView
         {
             if (token.IsCancellationRequested || _disposed) return;
             _startupWaiting = false;
-            StopStartupPulse();
+            StopStartupTrace();
             if (_context.Services?.GetService<ILogger<FullscreenView>>() is { } logger)
                 logger.LogError(ex, "Fullscreen preparation failed after {ElapsedMilliseconds} ms", timing.ElapsedMilliseconds);
             else System.Diagnostics.Trace.TraceError($"Fullscreen preparation failed: {ex}");
@@ -156,38 +160,16 @@ public sealed partial class FullscreenView
         return completion.Task;
     }
 
-    private void StartStartupPulse()
+    private void StartStartupTrace()
     {
-        if (!_startupWaiting || !_context.HasLoadedPreferences || _context.ReducedMotion || _startupPulse is not null ||
-            _startupPresentation is not { IsCancellationRequested: false } presentation || !StartupVisible) return;
-        _startupPulse = CancellationTokenSource.CreateLinkedTokenSource(presentation.Token);
-        PulseStartup(_startupPulse.Token);
+        if (_startupMark is not null)
+            _startupMark.IsTracing = _startupWaiting && _context.HasLoadedPreferences && !_context.ReducedMotion &&
+                _startupPresentation is { IsCancellationRequested: false } && StartupVisible;
     }
 
-    private void StopStartupPulse()
+    private void StopStartupTrace()
     {
-        _startupPulse?.Cancel();
-        _startupPulse?.Dispose();
-        _startupPulse = null;
-        if (_startupMark is not null) _startupMark.Opacity = 1;
-    }
-
-    private async void PulseStartup(CancellationToken token)
-    {
-        if (_context.ReducedMotion) return;
-        try
-        {
-            var start = await StartupFrameAsync(token);
-            while (!token.IsCancellationRequested && StartupVisible && !_context.ReducedMotion)
-            {
-                var now = await StartupFrameAsync(token);
-                var progress = Math.Clamp((now - start).TotalMilliseconds / 600, 0, 1);
-                _startupMark!.Opacity = 1 - .25 * Math.Sin(progress * Math.PI);
-                if (progress >= 1) break;
-            }
-            if (!token.IsCancellationRequested) _startupMark!.Opacity = 1;
-        }
-        catch (OperationCanceledException) { }
+        if (_startupMark is not null) _startupMark.IsTracing = false;
     }
 
     private void FocusStartup()
@@ -216,7 +198,7 @@ public sealed partial class FullscreenView
     internal void CancelStartupPresentation()
     {
         _startupWaiting = false;
-        StopStartupPulse();
+        StopStartupTrace();
         _startupPresentation?.Cancel();
         _startupPresentation?.Dispose();
         _startupPresentation = null;

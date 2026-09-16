@@ -205,8 +205,7 @@ public sealed partial class FullscreenView : UserControl, IDisposable
         if (_context.ReducedMotion && _actionPanel?.RenderTransform is TranslateTransform slide)
         { slide.Transitions = null; slide.X = 0; }
         ApplyTextSize();
-        if (_context.ReducedMotion && _startupMark is not null) _startupMark.Opacity = 1;
-        StartStartupPulse();
+        StartStartupTrace();
     }
     private void FitCanvas()
     {

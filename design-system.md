@@ -680,15 +680,25 @@ Fullscreen is a separate TV-distance interface with its own composition, compone
 navigation and focus model. This section specifies its current composition and interactions;
 features must be maintained and verified in both presentations.
 
-**First entry.** Show the Winnow mark and “Preparing fullscreen…” on `Ground` before
-initialization starts. Once the saved motion preference is known, the mark may pulse gently
-once; stop that pulse before the reveal. Keep **Back to desktop** available to mouse, keyboard and controller
-while the initial library and feed load. Prepare their layout beneath this screen, then reveal
-the usable page with a brief 180ms fade. There is no minimum splash duration and no wait for
-optional artwork downloads or later recommendation shelves. Reduced motion keeps the mark
-still and reveals the page immediately. A failed load offers **Try again** and **Back to
-desktop**. Returning to an already prepared fullscreen view keeps its page and refreshes in
-the background; it does not repeat the splash. Desktop entry retains its existing presentation.
+**Entry transitions.** On every fullscreen entry, show the Winnow mark and “Preparing
+fullscreen…” on `Ground` before loading or refreshing the page. Keep **Back to desktop**
+available to mouse, keyboard and controller. Retain the current page on re-entry, prepare
+its library, primary feed and layout beneath this screen, then reveal it with a 180ms fade.
+The loading screen stays for at least 350ms so quick transitions do not flash. It does not
+wait for optional artwork downloads or later recommendation shelves. A failed load offers
+**Try again** and **Back to desktop**.
+
+Desktop startup and returning from fullscreen use the same mark on `Ground` with “Preparing
+your library…” while the library, primary feed and layout settle. The window caption remains
+available.
+The same minimum duration and fade apply; a failure offers **Try again**.
+
+Once the surface's motion preference is known (the system setting on desktop, the saved
+fullscreen setting in fullscreen), a soft `Volt` glow traces the dragon's outer
+head contour on a repeating 1.8-second circuit. The existing vector remains legible beneath
+it; the glow indicates activity, not percentage progress. Stop the trace when preparation
+ends or the presentation closes. Reduced motion keeps the mark still and skips the minimum
+duration and fade, while retaining the data and layout readiness checks.
 
 The shared identity is the teal palette, three font families, cover art, dormancy and unread
 markers. Fullscreen gets its own type and spacing scale. Start with a 1920×1080 reference

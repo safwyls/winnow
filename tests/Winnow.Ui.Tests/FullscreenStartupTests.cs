@@ -11,6 +11,7 @@ using Winnow.App.Design;
 using Winnow.App.Services;
 using Winnow.App.ViewModels;
 using Winnow.App.Views.Fullscreen;
+using Winnow.App.Views;
 using Winnow.Core.Repositories;
 using Xunit;
 
@@ -40,7 +41,7 @@ public sealed class FullscreenStartupTests
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Saved_motion_preference_is_known_before_pulsing_and_pulse_stops_before_reveal(bool reducedMotion)
+    public async Task Saved_motion_preference_is_known_before_tracing_and_trace_stops_before_reveal(bool reducedMotion)
     {
         var settings = new DelayedSettings(reducedMotion);
         using var services = new ServiceCollection().AddSingleton<ISettingsRepository>(settings).BuildServiceProvider();
@@ -54,16 +55,15 @@ public sealed class FullscreenStartupTests
         {
             await context.LoadAsync(); preferences.SetResult(); await ready.Task;
         });
-        var mark = fixture.View.GetVisualDescendants().OfType<Control>().Single(c => c.Name == "FullscreenStartupMark");
+        var mark = fixture.View.GetVisualDescendants().OfType<LoadingDragon>().Single(c => c.Name == "FullscreenStartupMark");
         fixture.Frame(); fixture.Frame();
         Assert.False(context.HasLoadedPreferences);
-        Assert.Equal(1, mark.Opacity);
+        Assert.False(mark.IsTracing);
         settings.Ready.SetResult();
         await preferences.Task;
         fixture.Frame(); fixture.Frame();
         Assert.Equal(reducedMotion, context.ReducedMotion);
-        if (reducedMotion) Assert.Equal(1, mark.Opacity);
-        else Assert.InRange(mark.Opacity, .75, .99);
+        Assert.Equal(!reducedMotion, mark.IsTracing);
         context.TextScale = 1.4;
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(28 * 1.4, fixture.View.GetVisualDescendants().OfType<TextBlock>()
@@ -72,7 +72,7 @@ public sealed class FullscreenStartupTests
         ready.SetResult(); Dispatcher.UIThread.RunJobs();
         for (var i = 0; i < 12 && !preparation.IsCompleted; i++) fixture.Frame();
         await preparation;
-        Assert.Equal(1, mark.Opacity);
+        Assert.False(mark.IsTracing);
         Assert.True(fixture.View.IsPrepared);
     }
 
@@ -111,6 +111,44 @@ public sealed class FullscreenStartupTests
         Assert.NotNull(fixture.Window.FocusManager!.GetFocusedElement());
     }
 
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Warm_entry_refreshes_under_cover_and_preserves_the_page(bool reducedMotion)
+    {
+        using var fixture = new Fixture(reducedMotion);
+        var first = fixture.View.PrepareAsync(() => Task.CompletedTask);
+        for (var i = 0; i < 20 && !first.IsCompleted; i++) fixture.Frame();
+        await first;
+        fixture.View.Handle(GamepadButtons.Next);
+        var page = fixture.View.CurrentPage;
+        fixture.Window.Content = null;
+        var refreshed = false;
+        var ready = new TaskCompletionSource();
+        var second = fixture.View.PrepareAsync(() => { refreshed = true; return ready.Task; });
+        Assert.True(fixture.View.StartupVisible);
+        Assert.False(fixture.View.IsPrepared);
+        fixture.Window.Content = fixture.View;
+        fixture.Frame();
+        Assert.True(refreshed);
+        Assert.True(fixture.View.StartupVisible);
+        ready.SetResult();
+        Dispatcher.UIThread.RunJobs();
+        fixture.Frame(); fixture.Frame();
+        if (!reducedMotion)
+        {
+            // Three 60ms frames cannot satisfy the 350ms minimum presentation.
+            Assert.True(fixture.View.StartupVisible);
+            Assert.False(second.IsCompleted);
+        }
+        else Assert.True(second.IsCompleted);
+        for (var i = 0; i < 20 && !second.IsCompleted; i++) fixture.Frame();
+        await second;
+        Assert.True(fixture.View.IsPrepared);
+        Assert.Same(page, fixture.View.CurrentPage);
+        Assert.False(fixture.View.StartupVisible);
+    }
+
     [AvaloniaFact]
     public async Task Failure_stays_actionable_and_retry_loads_again()
     {
@@ -131,8 +169,10 @@ public sealed class FullscreenStartupTests
         Assert.True(fixture.View.IsPrepared);
     }
 
-    [AvaloniaFact]
-    public async Task Exit_and_reentry_share_inflight_load_without_a_stale_reveal()
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Exit_and_reentry_share_inflight_load_without_a_stale_reveal(bool completeBeforeReentry)
     {
         using var fixture = new Fixture(true);
         var ready = new TaskCompletionSource();
@@ -142,16 +182,18 @@ public sealed class FullscreenStartupTests
         fixture.Frame();
         fixture.Window.Content = null;
         await first;
-        ready.SetResult();
+        if (completeBeforeReentry) ready.SetResult();
         fixture.Frame();
         Assert.False(fixture.View.IsPrepared);
         Assert.True(fixture.View.StartupVisible);
         fixture.Window.Content = fixture.View;
         Dispatcher.UIThread.RunJobs();
         var second = fixture.View.PrepareAsync(Load);
+        fixture.Frame();
+        if (!completeBeforeReentry) ready.SetResult();
         for (var i = 0; i < 8 && !second.IsCompleted; i++) fixture.Frame();
         await second;
-        Assert.Equal(1, attempts);
+        Assert.Equal(completeBeforeReentry ? 2 : 1, attempts);
         Assert.True(fixture.View.IsPrepared);
     }
 

@@ -73,13 +73,15 @@ public partial class MainWindow
     {
         if (_tvView is not null)
         {
-            TvHost.Content = _tvView;
             try
             {
                 if (_tvContext is not null)
                 {
-                    if (_tvView.IsPrepared) await _tvContext.RefreshAsync();
-                    else await _tvView.PrepareAsync(_tvContext.LoadAsync);
+                    // Arm the opaque presentation before reattaching a cached view.
+                    var preparation = _tvView.PrepareAsync(_tvContext.HasLoadedPreferences
+                        ? _tvContext.RefreshAsync : _tvContext.LoadAsync);
+                    TvHost.Content = _tvView;
+                    await preparation;
                 }
             }
             catch (Exception) { _tvContext?.Notify("Could not refresh your library. Try again."); }
@@ -104,7 +106,13 @@ public partial class MainWindow
     }
     private async void RefreshDesktopAfterFullscreen()
     {
-        try { if (_shell is not null) await _shell.Library.LoadCommand.ExecuteAsync(null); }
-        catch (Exception ex) { System.Diagnostics.Trace.TraceError($"Library refresh after fullscreen failed: {ex}"); }
+        // An initial load or its recovery screen already owns readiness. Do not
+        // replace it with a competing refresh when returning before startup finishes.
+        if (_shell is null || DesktopStartupVisible) return;
+        await PrepareDesktopAsync(async () =>
+        {
+            await _shell.Library.LoadCommand.ExecuteAsync(null);
+            if (_shell.Feed.LoadCommand.ExecutionTask is { } feed) await feed;
+        });
     }
 }

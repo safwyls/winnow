@@ -912,12 +912,16 @@ Share palette and font identities; keep layout, spacing and type scales surface-
 The fullscreen host reuses the input-source/filter code and dispatches to explicit focus rows
 owned by each page. It creates independent library, feed, list and motion state over the
 shared repositories and action services. It never scales or navigates the desktop tree.
-First entry paints a loading presentation before starting the initial context load. Its
-readiness boundary is the initial library and primary feed result followed by layout/render
-opportunities, not completion of optional artwork or supplemental shelves. Detaching cancels
-the presentation; re-entry can share its in-flight load without allowing the old presentation
-to reveal a detached view. Once prepared, the view keeps its current page on re-entry and
-refreshes quietly. The visual spec owns the loading screen, motion and recovery controls.
+Every entry paints a loading presentation before starting the initial context load or a
+refresh. Its readiness boundary is the library and primary feed result followed by
+layout/render opportunities, not completion of optional artwork or supplemental shelves.
+Detaching cancels the presentation; re-entry can share its in-flight load without allowing
+the old presentation to reveal a detached view. A completed prior load triggers a fresh
+refresh on re-entry, with the current page retained beneath the loading layer. Desktop
+startup and return from fullscreen also await the primary feed execution triggered by library
+publication before revealing its prepared layout. Both presentations use the shared vector loading mark;
+their layout and input lifetimes remain separate. The visual spec owns timing, motion and
+recovery controls.
 Fullscreen pages may supply a backdrop for the shell to mount behind its safe area and
 header. Browsing reuses that layer across selections, retaining the displayed artwork lease
 while a replacement loads and through its short crossfade. Generation checks discard stale
