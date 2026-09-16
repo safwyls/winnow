@@ -684,23 +684,26 @@ features must be maintained and verified in both presentations.
 fullscreen…” on `Ground` before loading or refreshing the page. Keep **Back to desktop**
 available to mouse, keyboard and controller. Retain the current page on re-entry, prepare
 its library, primary feed and layout beneath this screen, then reveal it with a 180ms fade.
-The loading screen stays for at least 350ms so quick transitions do not flash. It does not
+The loading screen stays until the glow has rendered at least one complete 1.8-second
+circuit, counted from its first animated frame rather than the start of data loading. It does not
 wait for optional artwork downloads or later recommendation shelves. A failed load offers
 **Try again** and **Back to desktop**.
 
 Desktop startup and returning from fullscreen use the same mark on `Ground` with “Preparing
 your library…” while the library, primary feed and layout settle. The window caption remains
 available.
-The same minimum duration and fade apply; a failure offers **Try again**.
+The same complete-circuit requirement and fade apply; a failure offers **Try again**.
 
 Once the surface's motion preference is known (the system setting on desktop, the saved
 fullscreen setting in fullscreen), a separate soft `Volt` glow trail traces every closed
 contour of the dragon, including detached pieces and inner details. Each trail completes
 the full circumference on a repeating 1.8-second circuit and wraps continuously across
 its starting point. The existing vector remains legible beneath
-it; the glow indicates activity, not percentage progress. Stop the trace when preparation
-ends or the presentation closes. Reduced motion keeps the mark still and skips the minimum
-duration and fade, while retaining the data and layout readiness checks.
+it; the glow indicates activity, not percentage progress. It runs on the compositor so
+UI-thread layout work cannot pause it. Data readiness does not restart or stop the trace:
+keep it moving through the fade, then stop when the presentation closes. Reduced motion
+keeps the mark still and skips the circuit wait and fade, while retaining data and layout
+readiness checks. Hidden desktop preparation does not wait for an invisible animation.
 
 The shared identity is the teal palette, three font families, cover art, dormancy and unread
 markers. Fullscreen gets its own type and spacing scale. Start with a 1920×1080 reference

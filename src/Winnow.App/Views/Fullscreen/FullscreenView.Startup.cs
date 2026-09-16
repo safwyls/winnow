@@ -78,7 +78,7 @@ public sealed partial class FullscreenView
         {
             // Frame callbacks run before rendering. Resume at Background so the loading
             // presentation gets its first paint before any synchronously completing reads.
-            var firstPaint = await StartupFrameAsync(token);
+            await StartupFrameAsync(token);
             StartStartupTrace();
             if (_startupLoad is null || _startupLoad.IsCompleted)
                 _startupLoad = prepare();
@@ -87,10 +87,10 @@ public sealed partial class FullscreenView
             // must be presented beneath the veil; optional artwork and shelves can follow.
             await StartupFrameAsync(token);
             await StartupFrameAsync(token);
-            // Keep even a warm entry legible while the restored viewport settles.
-            while (!_context.ReducedMotion && (await StartupFrameAsync(token) - firstPaint).TotalMilliseconds < 350) { }
-            _startupWaiting = false;
-            StopStartupTrace();
+            // Count a circuit from the animation's first rendered frame, not the
+            // start of data loading; preferences may have delayed the trace.
+            while (!_context.ReducedMotion && !_startupMark.HasCompletedCircuit)
+                await StartupFrameAsync(token);
             if (!_context.ReducedMotion)
             {
                 var start = await StartupFrameAsync(token);
@@ -103,6 +103,8 @@ public sealed partial class FullscreenView
                 }
             }
             token.ThrowIfCancellationRequested();
+            _startupWaiting = false;
+            StopStartupTrace();
             // Re-entry shares only unfinished preparation. A later entry must join
             // a fresh refresh, including changes queued while this view was detached.
             _startupLoad = null;

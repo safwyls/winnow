@@ -20,6 +20,28 @@ namespace Winnow.Ui.Tests;
 public sealed class FullscreenStartupTests
 {
     [AvaloniaFact]
+    public async Task Finishing_load_after_a_circuit_keeps_trace_running_through_the_fade()
+    {
+        using var fixture = new Fixture(false);
+        var ready = new TaskCompletionSource();
+        var preparation = fixture.View.PrepareAsync(() => ready.Task);
+        var dragon = fixture.View.GetVisualDescendants().OfType<LoadingDragon>().Single();
+        for (var i = 0; i < 36; i++) fixture.Frame();
+        Assert.True(dragon.HasCompletedCircuit);
+        Assert.False(preparation.IsCompleted);
+        var before = dragon.Phase;
+        ready.SetResult(); Dispatcher.UIThread.RunJobs();
+        for (var i = 0; i < 4; i++) fixture.Frame();
+        Assert.True(dragon.IsTracing);
+        Assert.True(dragon.Phase > before);
+        Assert.InRange(fixture.View.GetVisualDescendants().OfType<Border>()
+            .Single(b => b.Name == "FullscreenStartup").Opacity, .01, .99);
+        for (var i = 0; i < 10 && !preparation.IsCompleted; i++) fixture.Frame();
+        await preparation;
+        Assert.False(dragon.IsTracing);
+    }
+
+    [AvaloniaFact]
     public async Task Leaving_before_attachment_cancels_first_paint_wait_without_loading()
     {
         var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell);
@@ -41,7 +63,7 @@ public sealed class FullscreenStartupTests
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Saved_motion_preference_is_known_before_tracing_and_trace_stops_before_reveal(bool reducedMotion)
+    public async Task Saved_motion_preference_is_known_before_tracing_and_trace_continues_through_reveal(bool reducedMotion)
     {
         var settings = new DelayedSettings(reducedMotion);
         using var services = new ServiceCollection().AddSingleton<ISettingsRepository>(settings).BuildServiceProvider();
@@ -70,7 +92,7 @@ public sealed class FullscreenStartupTests
             .Single(t => t.Name == "FullscreenStartupStatus").FontSize);
         fixture.Capture($"fullscreen-startup-large-{reducedMotion}.png");
         ready.SetResult(); Dispatcher.UIThread.RunJobs();
-        for (var i = 0; i < 12 && !preparation.IsCompleted; i++) fixture.Frame();
+        for (var i = 0; i < 60 && !preparation.IsCompleted; i++) fixture.Frame();
         await preparation;
         Assert.False(mark.IsTracing);
         Assert.True(fixture.View.IsPrepared);
@@ -104,7 +126,7 @@ public sealed class FullscreenStartupTests
         Assert.True(fixture.View.StartupVisible);
         fixture.Frame();
         Assert.True(fixture.View.StartupVisible);
-        for (var i = 0; i < 12 && !preparation.IsCompleted; i++) fixture.Frame();
+        for (var i = 0; i < 60 && !preparation.IsCompleted; i++) fixture.Frame();
         await preparation;
         Assert.True(fixture.View.IsPrepared);
         Assert.False(fixture.View.StartupVisible);
@@ -118,7 +140,7 @@ public sealed class FullscreenStartupTests
     {
         using var fixture = new Fixture(reducedMotion);
         var first = fixture.View.PrepareAsync(() => Task.CompletedTask);
-        for (var i = 0; i < 20 && !first.IsCompleted; i++) fixture.Frame();
+        for (var i = 0; i < 60 && !first.IsCompleted; i++) fixture.Frame();
         await first;
         fixture.View.Handle(GamepadButtons.Next);
         var page = fixture.View.CurrentPage;
@@ -137,12 +159,12 @@ public sealed class FullscreenStartupTests
         fixture.Frame(); fixture.Frame();
         if (!reducedMotion)
         {
-            // Three 60ms frames cannot satisfy the 350ms minimum presentation.
+            // Three 60ms frames cannot complete a glow circuit.
             Assert.True(fixture.View.StartupVisible);
             Assert.False(second.IsCompleted);
         }
         else Assert.True(second.IsCompleted);
-        for (var i = 0; i < 20 && !second.IsCompleted; i++) fixture.Frame();
+        for (var i = 0; i < 60 && !second.IsCompleted; i++) fixture.Frame();
         await second;
         Assert.True(fixture.View.IsPrepared);
         Assert.Same(page, fixture.View.CurrentPage);
@@ -257,6 +279,8 @@ public sealed class FullscreenStartupTests
             if (scheduled) View.StartupFrameScheduler = callback => _frames.Add(callback);
             Window = new Window { Width = 1280, Height = 720, Content = View };
             Window.Show(); Dispatcher.UIThread.RunJobs();
+            if (scheduled)
+                View.GetVisualDescendants().OfType<LoadingDragon>().Single().FrameScheduler = callback => _frames.Add(callback);
         }
         public void Frame()
         {

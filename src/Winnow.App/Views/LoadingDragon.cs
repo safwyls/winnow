@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using Avalonia.Platform;
+using Avalonia.Rendering.Composition;
 
 namespace Winnow.App.Views;
 
@@ -22,8 +23,30 @@ public sealed class LoadingDragon : Control
     internal static IReadOnlyList<Geometry> TraceContours => Artwork.Value.Contours;
     private int _generation;
     private TimeSpan? _started;
-    internal double Phase { get; private set; }
-    internal Action<Action<TimeSpan>>? FrameScheduler { get; set; }
+    private LoadingDragonProgress _progress = new();
+    private CompositionCustomVisual? _visual;
+    internal bool HasCompletedCircuit => _progress.HasCompletedCircuit;
+    internal int RenderedFrameCount => _progress.RenderedFrameCount;
+    internal int RenderThreadId => _progress.RenderThreadId;
+    private double _phase;
+    internal double Phase { get => _visual is not null ? _progress.Phase : _phase; private set => _phase = value; }
+    private Action<Action<TimeSpan>>? _frameScheduler;
+    internal Action<Action<TimeSpan>>? FrameScheduler
+    {
+        get => _frameScheduler;
+        set
+        {
+            _frameScheduler = value;
+            if (value is not null && _visual is not null)
+            {
+                _visual.SendHandlerMessage(LoadingDragonRenderer.Stop);
+                ElementComposition.SetElementChildVisual(this, null);
+                _visual = null;
+            }
+            Restart();
+        }
+    }
+    private AvaloniaObject? _observedInk, _observedGlow;
 
     public bool IsTracing { get => GetValue(IsTracingProperty); set => SetValue(IsTracingProperty, value); }
     public IBrush? Ink { get => GetValue(InkProperty); set => SetValue(InkProperty, value); }
@@ -41,6 +64,12 @@ public sealed class LoadingDragon : Control
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+        ObserveBrushes();
+        if (FrameScheduler is null && ElementComposition.GetElementVisual(this) is { } element)
+        {
+            _visual = element.Compositor.CreateCustomVisual(new LoadingDragonRenderer(ReadPathData()));
+            ElementComposition.SetElementChildVisual(this, _visual);
+        }
         Restart();
     }
 
@@ -48,6 +77,11 @@ public sealed class LoadingDragon : Control
     {
         _generation++;
         _started = null;
+        _progress = new();
+        _visual?.SendHandlerMessage(LoadingDragonRenderer.Stop);
+        ElementComposition.SetElementChildVisual(this, null);
+        _visual = null;
+        UnobserveBrushes();
         base.OnDetachedFromVisualTree(e);
     }
 
@@ -55,16 +89,56 @@ public sealed class LoadingDragon : Control
     {
         base.OnPropertyChanged(change);
         if (change.Property == IsTracingProperty) Restart();
+        else if (change.Property == InkProperty || change.Property == GlowProperty)
+        {
+            if (TopLevel.GetTopLevel(this) is not null) ObserveBrushes();
+            UpdateRenderer();
+        }
+        else if (change.Property == BoundsProperty)
+            UpdateRenderer();
     }
+
+    private void ObserveBrushes()
+    {
+        UnobserveBrushes();
+        _observedInk = Ink as AvaloniaObject;
+        _observedGlow = Glow as AvaloniaObject;
+        if (_observedInk is not null) _observedInk.PropertyChanged += BrushChanged;
+        if (_observedGlow is not null) _observedGlow.PropertyChanged += BrushChanged;
+    }
+
+    private void UnobserveBrushes()
+    {
+        if (_observedInk is not null) _observedInk.PropertyChanged -= BrushChanged;
+        if (_observedGlow is not null) _observedGlow.PropertyChanged -= BrushChanged;
+        _observedInk = _observedGlow = null;
+    }
+
+    private void BrushChanged(object? sender, AvaloniaPropertyChangedEventArgs e) => UpdateRenderer();
 
     private void Restart()
     {
         var generation = ++_generation;
         _started = null;
+        _progress = new();
         Phase = 0;
         InvalidateVisual();
+        UpdateRenderer();
         if (!IsTracing || TopLevel.GetTopLevel(this) is null) return;
-        QueueFrame(generation);
+        if (FrameScheduler is not null) QueueFrame(generation);
+    }
+
+    private void UpdateRenderer()
+    {
+        if (_visual is null) return;
+        _visual.Size = new Vector(Bounds.Width, Bounds.Height);
+        _visual.SendHandlerMessage(new LoadingDragonRenderer.State(IsTracing,
+            Snapshot(Ink), Snapshot(Glow), _progress));
+
+        static Color Snapshot(IBrush? brush) => brush is ISolidColorBrush solid
+            ? Color.FromArgb((byte)Math.Clamp(Math.Round(solid.Color.A * solid.Opacity), 0, 255),
+                solid.Color.R, solid.Color.G, solid.Color.B)
+            : Colors.Transparent;
     }
 
     private void QueueFrame(int generation)
@@ -73,6 +147,7 @@ public sealed class LoadingDragon : Control
         {
             if (generation != _generation || !IsTracing || TopLevel.GetTopLevel(this) is null) return;
             _started ??= now;
+            _progress.Frame(now - _started.Value);
             Phase = (now - _started.Value).TotalMilliseconds % 1800 / 1800;
             InvalidateVisual();
             QueueFrame(generation);
@@ -84,6 +159,7 @@ public sealed class LoadingDragon : Control
     public override void Render(DrawingContext context)
     {
         base.Render(context);
+        if (_visual is not null) return;
         var scale = Math.Min(Bounds.Width, Bounds.Height) / 560;
         if (scale <= 0) return;
         var (mark, contours) = Artwork.Value;
@@ -114,13 +190,18 @@ public sealed class LoadingDragon : Control
             yield return wrapped;
     }
 
-    private static (Geometry, IReadOnlyList<Geometry>) ReadArtwork()
+    private static string ReadPathData()
     {
         using var stream = AssetLoader.Open(new Uri("avares://Winnow/Assets/Icons/dragon.svg"));
         using var reader = XmlReader.Create(stream, new XmlReaderSettings { DtdProcessing = DtdProcessing.Ignore, XmlResolver = null });
         var paths = XDocument.Load(reader).Descendants().Where(e => e.Name.LocalName == "path")
             .Select(e => (string)e.Attribute("d")!).ToArray();
-        var mark = PathGeometry.Parse(string.Join(" ", paths));
+        return string.Join(" ", paths);
+    }
+
+    private static (Geometry, IReadOnlyList<Geometry>) ReadArtwork()
+    {
+        var mark = PathGeometry.Parse(ReadPathData());
         mark.FillRule = FillRule.EvenOdd;
         // Give detached pieces and inner details their own perimeter measurement;
         // extracting segments from a combined path can stop at its first contour.

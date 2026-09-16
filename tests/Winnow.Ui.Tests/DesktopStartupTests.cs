@@ -105,7 +105,7 @@ public sealed class DesktopStartupTests
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Motion_setting_controls_trace_minimum_hold_and_reveal(bool reducedMotion)
+    public async Task Motion_setting_controls_full_circuit_hold_and_continuous_trace_through_reveal(bool reducedMotion)
     {
         var shell = PreviewData.Shell;
         var oldMotion = shell.Library.Ramp.ReducedMotion;
@@ -124,9 +124,10 @@ public sealed class DesktopStartupTests
         try
         {
             window.Show();
+            var dragon = window.GetVisualDescendants().OfType<LoadingDragon>().Single();
+            dragon.FrameScheduler = callback => frames.Add(callback);
             var ready = new TaskCompletionSource();
             var preparation = window.PrepareDesktopAsync(() => ready.Task);
-            var dragon = window.GetVisualDescendants().OfType<LoadingDragon>().Single();
             Assert.Equal(!reducedMotion, dragon.IsTracing);
             Frame(); Capture(window, $"desktop-startup-{reducedMotion}.png");
             ready.SetResult(); Dispatcher.UIThread.RunJobs();
@@ -139,9 +140,15 @@ public sealed class DesktopStartupTests
             else
             {
                 Assert.False(preparation.IsCompleted);
-                Frame(); Frame(); Frame();
+                for (var i = 0; i < 26; i++) Frame();
+                Assert.False(dragon.HasCompletedCircuit);
                 Assert.Equal(1, window.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "DesktopStartup").Opacity);
-                Frame(); Frame();
+                for (var i = 0; i < 10 && !dragon.HasCompletedCircuit; i++) Frame();
+                Assert.True(dragon.HasCompletedCircuit);
+                Assert.True(dragon.IsTracing);
+                var veil = window.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "DesktopStartup");
+                for (var i = 0; i < 4 && veil.Opacity == 1; i++) Frame();
+                Assert.True(dragon.IsTracing);
                 Assert.InRange(window.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "DesktopStartup").Opacity, .01, .99);
                 for (var i = 0; i < 10 && !preparation.IsCompleted; i++) Frame();
             }

@@ -919,8 +919,12 @@ Detaching cancels the presentation; re-entry can share its in-flight load withou
 the old presentation to reveal a detached view. A completed prior load triggers a fresh
 refresh on re-entry, with the current page retained beneath the loading layer. Desktop
 startup and return from fullscreen also await the primary feed execution triggered by library
-publication before revealing its prepared layout. Both presentations use the shared vector loading mark;
-their layout and input lifetimes remain separate. The visual spec owns timing, motion and
+publication before revealing its prepared layout. Both presentations use the shared vector loading mark.
+Its custom compositor visual owns its Skia paths, contour measurement, animation clock and
+paints on the rendering thread. The UI sends immutable color/state snapshots and reads an
+atomic completed-circuit flag to gate reveal. Theme changes preserve the current circuit;
+new presentations reset it. Data readiness does not stop animation before the fade ends.
+The presentations' layout and input lifetimes remain separate. The visual spec owns timing, motion and
 recovery controls.
 Fullscreen pages may supply a backdrop for the shell to mount behind its safe area and
 header. Browsing reuses that layer across selections, retaining the displayed artwork lease

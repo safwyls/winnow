@@ -50,11 +50,19 @@ public sealed class LoadingDragonTests
             window.Show(); Dispatcher.UIThread.RunJobs();
             Frame(0); Frame(450);
             Assert.Equal(.25, dragon.Phase);
+            Assert.False(dragon.HasCompletedCircuit);
+            Frame(1800);
+            Assert.True(dragon.HasCompletedCircuit);
+            Frame(2250);
+            Assert.Equal(.25, dragon.Phase);
+            Assert.True(dragon.HasCompletedCircuit);
             Assert.Single(callbacks);
             dragon.IsTracing = false;
             Frame(900);
             Assert.Equal(0, dragon.Phase);
+            Assert.False(dragon.HasCompletedCircuit);
             Assert.Empty(callbacks);
+            Assert.False(dragon.HasCompletedCircuit);
             dragon.IsTracing = true;
             Frame(1000); Frame(1450);
             Assert.Equal(.25, dragon.Phase);
@@ -69,6 +77,55 @@ public sealed class LoadingDragonTests
             var frame = callbacks.ToArray(); callbacks.Clear();
             foreach (var callback in frame) callback(TimeSpan.FromMilliseconds(milliseconds));
         }
+    }
+
+    [AvaloniaFact]
+    public async Task Compositor_draws_continuous_circuits_and_keeps_progress_across_theme_changes()
+    {
+        var dragon = new LoadingDragon { Width = 100, Height = 100, IsTracing = true };
+        var window = new Window { Width = 320, Height = 260, Content = dragon,
+            Background = new SolidColorBrush(Color.Parse("#0F1C1E")) };
+        var ink = new SolidColorBrush(Colors.AntiqueWhite);
+        var glow = new SolidColorBrush(Colors.Turquoise);
+        window.Resources["Text"] = ink;
+        window.Resources["Volt"] = glow;
+        try
+        {
+            window.Show();
+            var deadline = DateTime.UtcNow.AddSeconds(5);
+            while (!dragon.HasCompletedCircuit && DateTime.UtcNow < deadline)
+            {
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick(); Dispatcher.UIThread.RunJobs();
+                await Task.Delay(16);
+            }
+            Assert.True(dragon.HasCompletedCircuit);
+            Assert.True(dragon.RenderedFrameCount > 2);
+            var before = dragon.RenderedFrameCount;
+            ink.Color = Colors.White;
+            glow.Color = Colors.Teal;
+            dragon.Width = 140;
+            for (var i = 0; i < 3; i++)
+            {
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick(); Dispatcher.UIThread.RunJobs();
+                await Task.Delay(16);
+            }
+            Assert.True(dragon.HasCompletedCircuit);
+            Assert.True(dragon.RenderedFrameCount > before);
+            using var image = window.CaptureRenderedFrame();
+            Assert.NotNull(image);
+            if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
+            {
+                Directory.CreateDirectory(directory);
+                image.Save(Path.Combine(directory, "dragon-compositor.png"));
+            }
+            dragon.IsTracing = false;
+            Assert.False(dragon.HasCompletedCircuit);
+            dragon.IsTracing = true;
+            Assert.False(dragon.HasCompletedCircuit);
+            window.Content = null;
+            Assert.False(dragon.HasCompletedCircuit);
+        }
+        finally { window.Close(); }
     }
 
     [AvaloniaTheory]

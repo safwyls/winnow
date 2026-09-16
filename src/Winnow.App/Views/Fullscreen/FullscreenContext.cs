@@ -54,6 +54,7 @@ public sealed class FullscreenContext : IDisposable
     public FullscreenContext(LibraryViewModel library, FeedViewModel feed, MainWindowViewModel shared, IServiceProvider? services = null)
     {
         Library = library; Feed = feed; Shared = shared; Services = services;
+        HasLoadedPreferences = services?.GetService<ISettingsRepository>() is null;
         library.PropertyChanged += LibraryChanged;
         feed.PropertyChanged += FeedChanged;
         shared.Appearance.Service.Applied += ThemeChanged;

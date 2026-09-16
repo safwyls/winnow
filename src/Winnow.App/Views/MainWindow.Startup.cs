@@ -82,13 +82,14 @@ public partial class MainWindow
         _desktopStartupDragon.IsTracing = _library?.Ramp.ReducedMotion != true;
         try
         {
-            var start = await DesktopFrameAsync(token);
+            await DesktopFrameAsync(token);
             await prepare().WaitAsync(token);
             await DesktopFrameAsync(token);
             var now = await DesktopFrameAsync(token);
             if (_library?.Ramp.ReducedMotion != true && IsVisible && DesktopHost.IsVisible)
             {
-                while (now - start < TimeSpan.FromMilliseconds(350) && IsVisible && DesktopHost.IsVisible)
+                while (!_desktopStartupDragon.HasCompletedCircuit && IsVisible && DesktopHost.IsVisible &&
+                    _library?.Ramp.ReducedMotion != true)
                     now = await DesktopFrameAsync(token);
                 var fadeStart = now;
                 while (IsVisible && DesktopHost.IsVisible && _library?.Ramp.ReducedMotion != true &&
