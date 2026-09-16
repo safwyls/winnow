@@ -8,7 +8,7 @@ using Avalonia.Platform;
 
 namespace Winnow.App.Views;
 
-/// <summary>The shared loading mark. A short light follows the dragon's outer contour.</summary>
+/// <summary>The shared loading mark. A short light follows each closed contour of the dragon.</summary>
 public sealed class LoadingDragon : Control
 {
     public static readonly StyledProperty<bool> IsTracingProperty =
@@ -18,7 +18,8 @@ public sealed class LoadingDragon : Control
     public static readonly StyledProperty<IBrush?> GlowProperty =
         AvaloniaProperty.Register<LoadingDragon, IBrush?>(nameof(Glow));
 
-    private static readonly Lazy<(Geometry Mark, Geometry Outline)> Artwork = new(ReadArtwork);
+    private static readonly Lazy<(Geometry Mark, IReadOnlyList<Geometry> Contours)> Artwork = new(ReadArtwork);
+    internal static IReadOnlyList<Geometry> TraceContours => Artwork.Value.Contours;
     private int _generation;
     private TimeSpan? _started;
     internal double Phase { get; private set; }
@@ -85,21 +86,15 @@ public sealed class LoadingDragon : Control
         base.Render(context);
         var scale = Math.Min(Bounds.Width, Bounds.Height) / 560;
         if (scale <= 0) return;
-        var (mark, outline) = Artwork.Value;
+        var (mark, contours) = Artwork.Value;
         // Leave space around the original 512-unit drawing for the soft outer strokes.
         using var transform = context.PushTransform(Matrix.CreateScale(scale, scale) *
             Matrix.CreateTranslation((Bounds.Width - 512 * scale) / 2, (Bounds.Height - 512 * scale) / 2));
         using (context.PushOpacity(IsTracing ? .65 : 1)) context.DrawGeometry(Ink, null, mark);
         if (!IsTracing) return;
-        var length = outline.ContourLength;
-        var head = Phase * length;
-        var tail = head - length * .13;
-        DrawTrace(Math.Max(0, tail), head);
-        if (tail < 0) DrawTrace(length + tail, length);
-
-        void DrawTrace(double from, double to)
+        foreach (var contour in contours)
+        foreach (var segment in TraceSegments(contour, Phase))
         {
-            if (to <= from || !outline.TryGetSegment(from, to, true, out var segment)) return;
             using (context.PushOpacity(.10)) context.DrawGeometry(null, new Pen(Glow, 32, lineCap: PenLineCap.Round), segment);
             using (context.PushOpacity(.22)) context.DrawGeometry(null, new Pen(Glow, 18, lineCap: PenLineCap.Round), segment);
             using (context.PushOpacity(.65)) context.DrawGeometry(null, new Pen(Glow, 8, lineCap: PenLineCap.Round), segment);
@@ -107,7 +102,19 @@ public sealed class LoadingDragon : Control
         }
     }
 
-    private static (Geometry, Geometry) ReadArtwork()
+    internal static IEnumerable<Geometry> TraceSegments(Geometry contour, double phase)
+    {
+        var length = contour.ContourLength;
+        var head = phase * length;
+        var tail = head - length * .13;
+        if (head > 0 && contour.TryGetSegment(Math.Max(0, tail), head, true, out var segment))
+            yield return segment;
+        // Split at the seam so the trail retains its length as its head starts a new lap.
+        if (tail < 0 && contour.TryGetSegment(length + tail, length, true, out var wrapped))
+            yield return wrapped;
+    }
+
+    private static (Geometry, IReadOnlyList<Geometry>) ReadArtwork()
     {
         using var stream = AssetLoader.Open(new Uri("avares://Winnow/Assets/Icons/dragon.svg"));
         using var reader = XmlReader.Create(stream, new XmlReaderSettings { DtdProcessing = DtdProcessing.Ignore, XmlResolver = null });
@@ -115,9 +122,10 @@ public sealed class LoadingDragon : Control
             .Select(e => (string)e.Attribute("d")!).ToArray();
         var mark = PathGeometry.Parse(string.Join(" ", paths));
         mark.FillRule = FillRule.EvenOdd;
-        // The second bundled path is the head; its first contour excludes eye/jaw detail.
-        var head = PathGeometry.Parse(paths[1]);
-        var outline = new PathGeometry { Figures = new PathFigures { head.Figures![0] } };
-        return (mark, outline);
+        // Give detached pieces and inner details their own perimeter measurement;
+        // extracting segments from a combined path can stop at its first contour.
+        var contours = mark.Figures!.Select(figure => (Geometry)new PathGeometry
+            { Figures = new PathFigures { figure } }).ToArray();
+        return (mark, Array.AsReadOnly(contours));
     }
 }

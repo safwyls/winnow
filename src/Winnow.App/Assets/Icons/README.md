@@ -4,13 +4,15 @@ Winnow's dragon head is the shared application mark.
 
 | Representation | Use |
 |---|---|
-| `dragon.svg` | Source drawing; read by `FullscreenGlyphs` for the fullscreen mark |
+| `dragon.svg` | Source drawing; read by `FullscreenGlyphs` for the fullscreen mark and `LoadingDragon` for both loading screens |
 | `dragon.ico` | Seven frames, 16–256px; executable, taskbar, Alt-Tab and window icon |
 | `DragonMark` in `Views/MainWindow.axaml` | Desktop caption geometry, painted with `TextDim` |
 
 `FullscreenGlyphs` reads the SVG paths with EvenOdd fill and applies the theme's `Text`
 brush. The desktop caption embeds the same geometry to keep the mark sharp at any DPI and
 recolour it with the theme. Keep both representations aligned when editing the drawing.
+`LoadingDragon` traces each closed figure separately so detached pieces and inner details
+receive a complete glow circuit. Keep the contour coverage test aligned with vector edits.
 The asset name `dragon` describes the subject; the mascot's name is Winnow.
 
 ## Regenerating dragon.ico

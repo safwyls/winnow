@@ -694,8 +694,10 @@ available.
 The same minimum duration and fade apply; a failure offers **Try again**.
 
 Once the surface's motion preference is known (the system setting on desktop, the saved
-fullscreen setting in fullscreen), a soft `Volt` glow traces the dragon's outer
-head contour on a repeating 1.8-second circuit. The existing vector remains legible beneath
+fullscreen setting in fullscreen), a separate soft `Volt` glow trail traces every closed
+contour of the dragon, including detached pieces and inner details. Each trail completes
+the full circumference on a repeating 1.8-second circuit and wraps continuously across
+its starting point. The existing vector remains legible beneath
 it; the glow indicates activity, not percentage progress. Stop the trace when preparation
 ends or the presentation closes. Reduced motion keeps the mark still and skips the minimum
 duration and fade, while retaining the data and layout readiness checks.
