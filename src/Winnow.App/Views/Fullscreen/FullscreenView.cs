@@ -20,7 +20,7 @@ using Winnow.App.ViewModels;
 namespace Winnow.App.Views.Fullscreen;
 
 /// <summary>The TV shell owns its stack and never navigates the desktop shell.</summary>
-public sealed class FullscreenView : UserControl, IDisposable
+public sealed partial class FullscreenView : UserControl, IDisposable
 {
     private readonly FullscreenContext _context;
     private readonly List<FullscreenPage> _stack = [];
@@ -58,7 +58,7 @@ public sealed class FullscreenView : UserControl, IDisposable
     public event Action? QuitRequested;
     public FullscreenPage CurrentPage => _stack.Count > 0 ? _stack[^1] : _context.Shared.Setup.IsOpen ? _setup : _roots[_section];
 
-    public FullscreenView(FullscreenContext context)
+    public FullscreenView(FullscreenContext context, bool preparing = false)
     {
         _context = context;
         this.Bind(CoverPresentation.FitProperty, new Binding(nameof(DisplaySettingsViewModel.FitCoverArt))
@@ -174,6 +174,7 @@ public sealed class FullscreenView : UserControl, IDisposable
         _launch.Margin = new Thickness(0, 125, 0, 0);
         _launch.IsHitTestVisible = false;
         _canvas.Children.Add(_launch);
+        InitializeStartup(preparing);
         _canvas[!Panel.BackgroundProperty] = new DynamicResourceExtension("Ground");
         Content = new Viewbox { Stretch = Stretch.Uniform, Child = _canvas };
         SizeChanged += (_, _) => FitCanvas();
@@ -192,7 +193,7 @@ public sealed class FullscreenView : UserControl, IDisposable
         context.SaveFilePicker = SaveFile;
         _timer.Tick += (_, _) => _clock.Text = DateTime.Now.ToString("t");
         AttachedToVisualTree += (_, _) => { _clock.Text = DateTime.Now.ToString("t"); _timer.Start(); _context.SetActive(true); FocusPage(); JournalChanged(this, new PropertyChangedEventArgs(null)); LaunchChanged(this, new PropertyChangedEventArgs(null)); };
-        DetachedFromVisualTree += (_, _) => { _timer.Stop(); _context.SetActive(false); };
+        DetachedFromVisualTree += (_, _) => { _timer.Stop(); _context.SetActive(false); CancelStartupPresentation(); };
         Preferences(this, EventArgs.Empty);
         ShowPage();
     }
@@ -204,6 +205,8 @@ public sealed class FullscreenView : UserControl, IDisposable
         if (_context.ReducedMotion && _actionPanel?.RenderTransform is TranslateTransform slide)
         { slide.Transitions = null; slide.X = 0; }
         ApplyTextSize();
+        if (_context.ReducedMotion && _startupMark is not null) _startupMark.Opacity = 1;
+        StartStartupPulse();
     }
     private void FitCanvas()
     {
@@ -218,7 +221,8 @@ public sealed class FullscreenView : UserControl, IDisposable
     private void ApplyTextSize()
     {
         // Typography grows inside the page; stable chrome and safe margins keep navigation reachable.
-        foreach (var control in _body.GetVisualDescendants().Concat(_actionPanel?.GetVisualDescendants() ?? []).OfType<Control>())
+        foreach (var control in _body.GetVisualDescendants().Concat(_actionPanel?.GetVisualDescendants() ?? [])
+            .Concat(_startup?.GetVisualDescendants() ?? []).OfType<Control>())
         {
             if (control is TextBlock block && block.IsSet(TextBlock.FontSizeProperty))
             {
@@ -338,7 +342,7 @@ public sealed class FullscreenView : UserControl, IDisposable
         if (!ReferenceEquals(_body.Content, underneath)) _body.Content = underneath;
         RemoveActionOverlay();
         if (page is FullscreenActionsPage) ShowActionOverlay(page);
-        _safe.IsEnabled = page is not FullscreenActionsPage;
+        _safe.IsEnabled = !StartupVisible && page is not FullscreenActionsPage;
         _backdrop.Content = underneath.Backdrop;
         var details = underneath is FullscreenDetailsPage;
         _brand.IsVisible = !details;
@@ -408,12 +412,17 @@ public sealed class FullscreenView : UserControl, IDisposable
     }
     public void FocusPage() => Dispatcher.UIThread.Post(() =>
     {
-        if (!_disposed && _keyboard is null && IsEffectivelyVisible && TopLevel.GetTopLevel(this) is not null) CurrentPage.FocusInitial();
+        if (!_disposed && _keyboard is null && IsEffectivelyVisible && TopLevel.GetTopLevel(this) is not null)
+        {
+            if (StartupVisible) FocusStartup();
+            else CurrentPage.FocusInitial();
+        }
     }, DispatcherPriority.Loaded);
     public void UpdateController(string? status) => _status.Text = status ?? "Controller disconnected";
     public void Handle(GamepadButtons buttons)
     {
         if (_disposed || !IsEffectivelyVisible || TopLevel.GetTopLevel(this) is null) return;
+        if (StartupVisible) { HandleStartup(buttons); return; }
         if (_keyboard is { } keyboard) { keyboard.Handle(buttons); return; }
         if (buttons.HasFlag(GamepadButtons.Menu)) { QuickMenu(); return; }
         if (CurrentPage.Handle(buttons)) return;
@@ -423,13 +432,15 @@ public sealed class FullscreenView : UserControl, IDisposable
     }
     public bool HandleKey(KeyEventArgs e)
     {
-        if (e.Source is TextBox && _keyboard is null && e.Key is not (Key.Escape or Key.Tab)) return false;
+        if (StartupVisible && (e.Key == Key.F11 || (e.Key == Key.F4 && e.KeyModifiers.HasFlag(KeyModifiers.Alt)))) return false;
+        if (!StartupVisible && e.Source is TextBox && _keyboard is null && e.Key is not (Key.Escape or Key.Tab)) return false;
         var buttons = e.Key switch { Key.Up => GamepadButtons.Up, Key.Down => GamepadButtons.Down, Key.Left => GamepadButtons.Left, Key.Right => GamepadButtons.Right,
-            Key.Enter => GamepadButtons.Accept, Key.Escape => GamepadButtons.Back, Key.Q => GamepadButtons.Previous, Key.E => GamepadButtons.Next,
+            Key.Enter => GamepadButtons.Accept, Key.Space when StartupVisible => GamepadButtons.Accept,
+            Key.Escape => GamepadButtons.Back, Key.Q => GamepadButtons.Previous, Key.E => GamepadButtons.Next,
             Key.X => GamepadButtons.Play, Key.Y => GamepadButtons.Keyboard, Key.F => GamepadButtons.Search,
             Key.PageUp => GamepadButtons.PagePrevious, Key.PageDown => GamepadButtons.PageNext,
             Key.Tab => e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? GamepadButtons.Up : GamepadButtons.Down, _ => GamepadButtons.None };
-        if (buttons == GamepadButtons.None) return false;
+        if (buttons == GamepadButtons.None) return StartupVisible;
         Handle(buttons); return true;
     }
     private void QuickMenu()
@@ -489,6 +500,7 @@ public sealed class FullscreenView : UserControl, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        CancelStartupPresentation();
         RemoveActionOverlay(); _actionReturnFocus.Clear();
         _timer.Stop(); _keyboard?.Close();
         _context.PageRequested -= Push; _context.BackRequested -= Back; _context.TextRequested -= EditText;

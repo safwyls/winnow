@@ -680,6 +680,16 @@ Fullscreen is a separate TV-distance interface with its own composition, compone
 navigation and focus model. This section specifies its current composition and interactions;
 features must be maintained and verified in both presentations.
 
+**First entry.** Show the Winnow mark and “Preparing fullscreen…” on `Ground` before
+initialization starts. Once the saved motion preference is known, the mark may pulse gently
+once; stop that pulse before the reveal. Keep **Back to desktop** available to mouse, keyboard and controller
+while the initial library and feed load. Prepare their layout beneath this screen, then reveal
+the usable page with a brief 180ms fade. There is no minimum splash duration and no wait for
+optional artwork downloads or later recommendation shelves. Reduced motion keeps the mark
+still and reveals the page immediately. A failed load offers **Try again** and **Back to
+desktop**. Returning to an already prepared fullscreen view keeps its page and refreshes in
+the background; it does not repeat the splash. Desktop entry retains its existing presentation.
+
 The shared identity is the teal palette, three font families, cover art, dormancy and unread
 markers. Fullscreen gets its own type and spacing scale. Start with a 1920×1080 reference
 canvas and 5% safe margins. Browsing heroes start at 64px; information surfaces use the

@@ -178,7 +178,7 @@ public sealed class FullscreenInteractionTests
     }
 
     [AvaloniaFact]
-    public void Fullscreen_hosts_a_separate_interface_and_search_keyboard_at_minimum_window_size()
+    public async Task Fullscreen_hosts_a_separate_interface_and_search_keyboard_at_minimum_window_size()
     {
         var window = new MainWindow { DataContext = PreviewData.Shell, Width = 1200, Height = 688 };
         try
@@ -187,6 +187,7 @@ public sealed class FullscreenInteractionTests
             window.ToggleFullscreen();
             Dispatcher.UIThread.RunJobs();
             var television = Assert.IsType<FullscreenView>(window.FindControl<ContentControl>("TvHost")!.Content);
+            await FullscreenStartupTests.WaitPreparedAsync(television);
             Assert.False(window.FindControl<TextBox>("SearchBox")!.IsEffectivelyVisible);
             Assert.DoesNotContain(television.GetVisualDescendants(), control => control is GameTileView or FeedCardView);
             window.HandleGamepad(GamepadButtons.Search);
@@ -254,7 +255,7 @@ public sealed class FullscreenInteractionTests
     }
 
     [AvaloniaFact]
-    public void Controller_quick_menu_and_browse_navigation_leave_desktop_state_untouched()
+    public async Task Controller_quick_menu_and_browse_navigation_leave_desktop_state_untouched()
     {
         var shell = PreviewData.Shell;
         var originalSearch = shell.Library.SearchText;
@@ -268,6 +269,7 @@ public sealed class FullscreenInteractionTests
             window.ToggleFullscreen();
             Dispatcher.UIThread.RunJobs();
             var television = Assert.IsType<FullscreenView>(window.FindControl<ContentControl>("TvHost")!.Content);
+            await FullscreenStartupTests.WaitPreparedAsync(television);
             window.HandleGamepad(GamepadButtons.Next);
             Dispatcher.UIThread.RunJobs();
             Assert.Equal("Library", television.CurrentPage.Title);
@@ -288,6 +290,11 @@ public sealed class FullscreenInteractionTests
             Assert.Equal(originalSearch, shell.Library.SearchText);
             Assert.Equal(originalSort, shell.Library.Sort);
             Assert.Same(originalBucket, shell.Library.SelectedBucket);
+            window.ToggleFullscreen();
+            window.ToggleFullscreen();
+            Assert.Same(television, window.FindControl<ContentControl>("TvHost")!.Content);
+            Assert.True(television.IsPrepared);
+            Assert.False(television.StartupVisible);
         }
         finally { window.ExitFromTray(); }
     }

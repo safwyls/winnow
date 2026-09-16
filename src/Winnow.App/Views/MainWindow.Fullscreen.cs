@@ -64,6 +64,7 @@ public partial class MainWindow
         {
             RestoreMouseCursor();
             _presentingTv = false;
+            _tvView?.CancelStartupPresentation();
             TvHost.Content = null;
             RefreshDesktopAfterFullscreen();
         }
@@ -72,7 +73,15 @@ public partial class MainWindow
     {
         if (_tvView is not null)
         {
-            try { if (_tvContext is not null) await _tvContext.RefreshAsync(); }
+            TvHost.Content = _tvView;
+            try
+            {
+                if (_tvContext is not null)
+                {
+                    if (_tvView.IsPrepared) await _tvContext.RefreshAsync();
+                    else await _tvView.PrepareAsync(_tvContext.LoadAsync);
+                }
+            }
             catch (Exception) { _tvContext?.Notify("Could not refresh your library. Try again."); }
             return;
         }
@@ -87,12 +96,11 @@ public partial class MainWindow
                 new Design.PreviewWorkRepository(), new Design.PreviewUpdateEventRepository());
             _tvContext = new FullscreenContext(library, new FeedViewModel(new Design.PreviewFeedService(), library), shared);
         }
-        _tvView = new FullscreenView(_tvContext);
+        _tvView = new FullscreenView(_tvContext, preparing: true);
         _tvView.ExitRequested += ToggleFullscreen;
         _tvView.QuitRequested += ExitFromTray;
         TvHost.Content = _tvView;
-        try { await _tvContext.LoadAsync(); }
-        catch (Exception) { _tvContext.Notify("Could not load your library. Return to fullscreen to try again."); }
+        await _tvView.PrepareAsync(_tvContext.LoadAsync);
     }
     private async void RefreshDesktopAfterFullscreen()
     {

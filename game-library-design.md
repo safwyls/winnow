@@ -763,6 +763,10 @@ uses the same rules as standalone bucket reads. Library and startup Review, Disp
 Library settings loads perform repository work on a worker thread, then publish view-model
 state on the UI thread. Facets, identity maps, pins and storefront caches remain fixed-count
 bulk reads. This does not change the pre-window appearance bootstrap or unrelated edit commands.
+Tile preparation on the UI thread yields to input and rendering after roughly 8ms or 128
+items, whichever comes first. All prepared models remain local, and cancellation, disposal
+and publication generation are checked again after each yield. Publishing tiles, filters,
+lists and counts remains one uninterrupted update so readers never see a partial library.
 
 Every library refresh trigger shares one publication generation. Each request captures its
 presentation preferences before reading, assembles tile and open-details projections locally,
@@ -908,6 +912,12 @@ Share palette and font identities; keep layout, spacing and type scales surface-
 The fullscreen host reuses the input-source/filter code and dispatches to explicit focus rows
 owned by each page. It creates independent library, feed, list and motion state over the
 shared repositories and action services. It never scales or navigates the desktop tree.
+First entry paints a loading presentation before starting the initial context load. Its
+readiness boundary is the initial library and primary feed result followed by layout/render
+opportunities, not completion of optional artwork or supplemental shelves. Detaching cancels
+the presentation; re-entry can share its in-flight load without allowing the old presentation
+to reveal a detached view. Once prepared, the view keeps its current page on re-entry and
+refreshes quietly. The visual spec owns the loading screen, motion and recovery controls.
 Fullscreen pages may supply a backdrop for the shell to mount behind its safe area and
 header. Browsing reuses that layer across selections, retaining the displayed artwork lease
 while a replacement loads and through its short crossfade. Generation checks discard stale
