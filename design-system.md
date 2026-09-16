@@ -559,7 +559,8 @@ the header, `S`/`Enter` answers Same game, `D` answers Different games, and `Esc
 the library. The radio, Details button and checkbox are Tab stops of their own.
 
 **Session journal prompt.** Off by default through `journal.prompt_after_play`. After a
-qualifying finished session, Windows offers a silent notification naming the game and
+qualifying finished session, Windows offers a silent notification with Winnow's transparent
+dragon icon, naming the game and
 inviting a note or rating. Activating it restores Winnow and opens that session's existing
 desktop dock or fullscreen journal editor. Save records the note and optional one-to-five
 rating; dismissing or ignoring the notification records nothing.

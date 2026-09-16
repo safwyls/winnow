@@ -5,7 +5,7 @@ Winnow's dragon head is the shared application mark.
 | Representation | Use |
 |---|---|
 | `dragon.svg` | Source drawing; read by `FullscreenGlyphs` for the fullscreen mark and `LoadingDragon` for both loading screens |
-| `dragon.ico` | Seven transparent frames, 16–256px; executable, taskbar, Alt-Tab, window and tray icon |
+| `dragon.ico` | Seven transparent frames, 16–256px; executable, taskbar, Alt-Tab, window, tray and Windows journal notification icon |
 | `DragonMark` in `Views/MainWindow.axaml` | Desktop caption geometry, painted with `TextDim` |
 
 `FullscreenGlyphs` reads the SVG paths with EvenOdd fill and applies the theme's `Text`
