@@ -400,7 +400,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     private void SelectBackdrop(GameTileViewModel tile)
     {
         if (_art.Content is FullscreenBackdrop backdrop) backdrop.Select(tile);
-        else _art.Content = new FullscreenBackdrop(Context, tile);
+        else _art.Content = new FullscreenBackdrop(Context, tile, cinematic: _feed);
     }
 
     private void SetHero(FeedCardViewModel card, FeedShelfViewModel shelf)

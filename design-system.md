@@ -900,7 +900,9 @@ only the latest ready image and finish the visible blend before starting the nex
 Reduced motion swaps the loaded art immediately. A cover fallback
 appears only after landscape metadata or loading fails, never as an intermediate image
 between two landscapes. Ignore results from earlier selections.
-Game artwork fades in further to the right to keep the left content area quiet: browsing
+Home uses the same cinematic backdrop as game details: artwork remains visible behind
+the hero text, with a dense left veil, a top veil for navigation, and a vertical fade
+into Ground above the lower content. Library
 backdrops reveal between 30% and 85% of the canvas width. Their horizontal Ground veil
 covers full-opacity artwork, using the details overlay approach instead of combining a
 whole-backdrop opacity mask with artwork dimming. The details veil stays dense
