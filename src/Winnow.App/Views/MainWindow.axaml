@@ -1063,7 +1063,8 @@
                             Classes.selected="{Binding Library.AllGames.IsSelected}"
                             Command="{Binding SelectBucketCommand}"
                             CommandParameter="{Binding Library.AllGames}"
-                            ToolTip.Tip="Every title you own">
+                            ToolTip.Tip="{Binding Library.AllGames.Description}"
+                            AutomationProperties.HelpText="{Binding Library.AllGames.Description}">
                         <Grid ColumnDefinitions="2,16,*,Auto,16">
                             <Border Grid.Column="0"
                                     Background="{StaticResource Volt}"
@@ -1102,6 +1103,8 @@
                                         Classes.rule="{Binding IsRule}"
                                         Opacity="{Binding RowOpacity}"
                                         AutomationProperties.Name="{Binding AutomationName}"
+                                        AutomationProperties.HelpText="{Binding Description}"
+                                        ToolTip.Tip="{Binding Description}"
                                         Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectBucketCommand}"
                                         CommandParameter="{Binding}">
                                     <Grid ColumnDefinitions="2,16,Auto,*,Auto,16">

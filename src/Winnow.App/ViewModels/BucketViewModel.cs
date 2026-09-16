@@ -7,17 +7,19 @@ namespace Winnow.App.ViewModels;
 /// </summary>
 public partial class BucketViewModel : ObservableObject
 {
-    public BucketViewModel(string key, string name, bool showsFlarePip = false)
+    public BucketViewModel(string key, string name, bool showsFlarePip = false, string description = "")
     {
         Key = key;
         Name = name;
         ShowsFlarePip = showsFlarePip;
+        Description = description;
     }
 
     /// <summary>The derived-bucket query key (LibraryBuckets.*), or a stub key with no members.</summary>
     public string Key { get; }
 
     public string Name { get; }
+    public string Description { get; }
 
     public string RailLabel => Name.ToUpperInvariant();
 

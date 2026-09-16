@@ -638,12 +638,15 @@ never trimmed for brevity. Reasoning goes in the design documents; where a parag
 carries one fact wrapped in reasoning, the fact stays and the reasoning moves here or to
 `game-library-design.md`. Automation names name the control; they do not explain it.
 
+Built-in collection rail rows carry a one-line explanation as a tooltip and accessible help.
+Fullscreen collection choices show the same explanation beneath the label.
+
 | Context | Write | Don't write |
 |---|---|---|
 | Bucket: updates missed | `Patched` | `Needs attention` |
 | Bucket: never opened | `Never played` | `Pile of shame` |
 | Bucket: refund line to retired | `Started` | `Barely played`, `Bounced off` |
-| Bucket: high playtime | `Played out` | `Completed` |
+| Bucket: high playtime | `Invested` | `Completed` |
 | Bucket: lifecycle evidence of closure, delisting or abandonment | `Derelict` | `Won't run`, `Dead` |
 | Statistics rail row | `STATS` | `STEAM STATS` |
 | Badge tooltip | `3 updates since you played` | `New content available!` |

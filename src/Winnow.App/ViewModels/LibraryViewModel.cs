@@ -304,11 +304,16 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         // §7 copy, exactly. Order matches the mock rail.
         Buckets =
         [
-            new BucketViewModel(LibraryBuckets.StaleButPatched, "Patched", showsFlarePip: true),
-            new BucketViewModel(LibraryBuckets.NeverPlayed, "Never played"),
-            new BucketViewModel(LibraryBuckets.Bounced, "Started"),
-            new BucketViewModel(LibraryBuckets.Retired, "Played out"),
-            new BucketViewModel(LibraryBuckets.Derelict, "Derelict"),
+            new BucketViewModel(LibraryBuckets.StaleButPatched, "Patched", showsFlarePip: true,
+                description: "Games with unread updates after a long break from playing."),
+            new BucketViewModel(LibraryBuckets.NeverPlayed, "Never played",
+                description: "Games with no recorded playtime or last-played date."),
+            new BucketViewModel(LibraryBuckets.Bounced, "Started",
+                description: "Games you've played beyond a brief trial."),
+            new BucketViewModel(LibraryBuckets.Retired, "Invested",
+                description: "Games you've spent a lot of time playing."),
+            new BucketViewModel(LibraryBuckets.Derelict, "Derelict",
+                description: "Games with evidence of closure, delisting or abandoned development."),
         ];
 
         // §4: the view mode is remembered per session — and so is the order, for
@@ -351,7 +356,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// treatment, but it is deliberately NOT in <see cref="Buckets"/>: nothing
     /// counts it, filters by it, or labels a tile with it.
     /// </summary>
-    public BucketViewModel AllGames { get; } = new(AllGamesKey, "All games") { IsSelected = true };
+    public BucketViewModel AllGames { get; } = new(AllGamesKey, "All games", description: "Every title you own.") { IsSelected = true };
 
     /// <summary>
     /// The filter panel — every axis the rail does not carry. It sits beside the
