@@ -3008,6 +3008,14 @@ Application's **ABOUT WINNOW** card shows **Version** and **Source commit** as s
 text. The version retains prerelease labels; builds without source metadata say `Unavailable`
 for the commit.
 
+Application's **Diagnostics** card offers **Open logs folder**, a selectable local path and
+brief bug-report guidance. Fullscreen exposes the same command and path under **Diagnostics**.
+Session-watcher failures show a persistent, polite notice without moving focus: desktop
+places it below the title bar with **Open logs folder**; fullscreen places subdued text below
+the header and adds the action to the quick menu. Recovery removes the notice; ordinary
+successful polls cannot dismiss a failure in another watcher operation. No modal or repeated
+toast interrupts play. If the folder cannot open, show its path for manual access.
+
 The **UPDATES** card offers **Automatic background updates**, on by default, and **Include
 beta releases**, off by default. The descriptions read “Check GitHub Releases and download
 updates in the background. Restart when you are ready.” and “Include preview releases. Turn

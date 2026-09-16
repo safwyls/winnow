@@ -954,6 +954,7 @@ public static class Program
         services.AddSingleton<ArtworkPreferences>();
         services.AddSingleton<ArtworkOrderViewModel>();
         services.AddSingleton<EnrichmentSettingsViewModel>();
+        services.AddSingleton(sp => new DiagnosticsViewModel(sp.GetRequiredService<SessionWatcherHealth>(), data.Root));
         services.AddSingleton<ApplicationSettingsViewModel>();
         services.AddSingleton<FirstRunSetupService>();
         services.AddSingleton<FirstRunSetupViewModel>();

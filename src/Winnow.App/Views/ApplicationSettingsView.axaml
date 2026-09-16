@@ -168,6 +168,19 @@
                 <TextBlock Classes="problem" IsVisible="{Binding HasProblem}"
                            Text="{Binding Problem}" AutomationProperties.LiveSetting="Polite"/>
 
+                <Border Name="DiagnosticsCard" Classes="card" AutomationProperties.Name="Diagnostics"
+                        AutomationProperties.AccessibilityView="Control">
+                    <StackPanel Spacing="12">
+                        <TextBlock Classes="body-l" Text="Diagnostics"/>
+                        <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Diagnostics.ReportHelp}"/>
+                        <SelectableTextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Diagnostics.LogsDirectory}"/>
+                        <Button Name="OpenLogsButton" Classes="act" Content="Open logs folder"
+                                HorizontalAlignment="Left" Command="{Binding Diagnostics.OpenLogsCommand}"/>
+                        <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Diagnostics.Problem}"
+                                   IsVisible="{Binding Diagnostics.HasProblem}"
+                                   AutomationProperties.LiveSetting="Polite"/>
+                    </StackPanel>
+                </Border>
                 <Border Name="SetupCard" Classes="card" AutomationProperties.Name="Setup wizard"
                         AutomationProperties.AccessibilityView="Control">
                     <StackPanel Spacing="12">

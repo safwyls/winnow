@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
@@ -35,11 +36,25 @@ internal static class DiagnosticLogging
 /// <summary>Only the privacy-filtered text reaches the file sink; scopes and arbitrary objects are never rendered.</summary>
 internal sealed partial class DiagnosticFormatter : ITextFormatter
 {
+    // Repeat build/run context so a rotated file can stand on its own in a bug report.
+    // These values come from the binary/runtime, never from log properties or scopes.
+    private readonly string _context = BuildContext();
+
+    private static string BuildContext()
+    {
+        var build = ApplicationBuildInfo.Current;
+        var version = Regex.IsMatch(build.Version, @"\A[0-9]+(?:\.[0-9]+){1,3}(?:-[A-Za-z0-9.-]{1,40})?\z")
+            ? build.Version : "unknown";
+        var commit = Regex.IsMatch(build.Commit, @"\A[0-9a-fA-F]{7,64}\z") ? build.Commit : "unknown";
+        var platform = OperatingSystem.IsWindows() ? "windows" : OperatingSystem.IsLinux() ? "linux" : "other";
+        return $" [run={Guid.NewGuid():N} build={version} commit={commit} os={platform} arch={RuntimeInformation.ProcessArchitecture} runtime={Environment.Version}] ";
+    }
+
     public void Format(LogEvent logEvent, TextWriter output)
     {
         var line = new StringBuilder();
         line.Append(logEvent.Timestamp.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture))
-            .Append(' ').Append(logEvent.Level).Append(' ');
+            .Append(_context).Append(logEvent.Level).Append(' ');
         if (logEvent.Properties.TryGetValue("SourceContext", out var context)
             && context is ScalarValue { Value: string category }
             && Category().IsMatch(category))
@@ -89,6 +104,7 @@ internal sealed partial class DiagnosticFormatter : ITextFormatter
         {
             null => "null",
             bool boolean => boolean ? "true" : "false",
+            Winnow.Monitor.SessionWatcherOperation operation when Enum.IsDefined(operation) => operation.ToString(),
             byte or sbyte or short or ushort or int or uint or long or ulong or float or double or decimal
                 => Convert.ToString(scalar.Value, CultureInfo.InvariantCulture) ?? "null",
             _ => "[redacted]",

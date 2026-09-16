@@ -60,9 +60,23 @@ path attribution have Ubuntu smoke coverage; actual Wine/Proton game compatibili
 Diagnostics are saved under `%LOCALAPPDATA%\Winnow\logs` (or the selected `--data-dir`).
 Five rolling files retain roughly 5 MiB. Logs omit identity values, paths, credentials and
 exception messages while retaining operation names, counts, timings and exception types.
+Each entry includes the app build, commit, operating system, runtime and a random run identifier
+so reports can be traced across rolling files without identifying the user.
 
 The window opens after the local scan. Titles, cover art and update signals fill in behind it;
 startup time depends on the library and device.
+
+#### Reporting a problem
+
+Open **Settings → Application → Diagnostics → Open logs folder** on desktop or fullscreen.
+Copy the `diagnostic*.log` files soon after the problem occurs, before they rotate out.
+Include those files with your bug report, the approximate time and time zone, the steps you
+took, and what you expected versus what happened. For session tracking, include the game,
+launcher, approximate start/end times, and whether Winnow was running throughout.
+Review attachments before sharing; you do not need to send your library database or credentials.
+
+If session tracking fails, a quiet notice links to the logs and disappears after recovery.
+Winnow retries automatically, but it cannot reconstruct play that it did not observe.
 
 ### First run
 

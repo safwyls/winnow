@@ -39,7 +39,7 @@ public sealed class FullscreenView : UserControl, IDisposable
     private FullscreenPage? _shownPage;
     private FullscreenActionsPage? _quickMenu;
     private readonly Dictionary<FullscreenPage, Control?> _actionReturnFocus = [];
-    private readonly Grid _safe = new() { RowDefinitions = new RowDefinitions("80,*,64") };
+    private readonly Grid _safe = new() { RowDefinitions = new RowDefinitions("80,Auto,*,64") };
     private readonly Grid _canvas = new() { Width = 1920, Height = 1080 };
     private readonly TextBlock _clock = FullscreenUi.Text("", 24);
     private readonly TextBlock _status = FullscreenUi.Text("Controller disconnected", 24, "Text");
@@ -155,11 +155,19 @@ public sealed class FullscreenView : UserControl, IDisposable
         updateNotice.Bind(AutomationProperties.ItemStatusProperty, new Binding(nameof(ApplicationSettingsViewModel.UpdateStatus)) { Source = context.Shared.ApplicationSettings });
         statusGroup.Children.Add(updateNotice);
         Grid.SetColumn(statusGroup, 2); header.Children.Add(statusGroup);
-        _safe.Children.Add(header); Grid.SetRow(_body, 1); _safe.Children.Add(_body);
+        _safe.Children.Add(header); Grid.SetRow(_body, 2); _safe.Children.Add(_body);
+        var diagnostics = context.Shared.ApplicationSettings.Diagnostics;
+        var watcherNotice = FullscreenUi.Text("Session tracking needs attention · Logs: Menu", 24, "TextDim");
+        watcherNotice.Name = "FullscreenSessionWatcherNotice";
+        watcherNotice.Margin = new Thickness(0, 8);
+        watcherNotice.Bind(IsVisibleProperty, new Binding(nameof(DiagnosticsViewModel.HasWatcherFailure)) { Source = diagnostics });
+        AutomationProperties.SetLiveSetting(watcherNotice, AutomationLiveSetting.Polite);
+        AutomationProperties.SetHelpText(watcherNotice, diagnostics.WatcherNotice);
+        Grid.SetRow(watcherNotice, 1); _safe.Children.Add(watcherNotice);
         var footer = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), VerticalAlignment = VerticalAlignment.Bottom };
         footer.Children.Add(_hints);
         Grid.SetColumn(_rightHints, 1); footer.Children.Add(_rightHints);
-        Grid.SetRow(footer, 2); _safe.Children.Add(footer);
+        Grid.SetRow(footer, 3); _safe.Children.Add(footer);
         _canvas.Children.Add(_backdrop); _canvas.Children.Add(_safe); _canvas.Children.Add(_overlay);
         _launch.HorizontalAlignment = HorizontalAlignment.Center;
         _launch.VerticalAlignment = VerticalAlignment.Top;
@@ -429,6 +437,12 @@ public sealed class FullscreenView : UserControl, IDisposable
         if (_context.Shared.Setup.IsOpen || (_quickMenu is not null && _stack.Contains(_quickMenu))) return;
         var actions = new List<FullscreenAction> { new("Resume", () => { }) };
         var updates = _context.Shared.ApplicationSettings;
+        if (updates.Diagnostics.HasWatcherFailure)
+            actions.Add(new("Open logs folder", () =>
+            {
+                updates.Diagnostics.OpenLogsCommand.Execute(null);
+                if (updates.Diagnostics.Problem is { } problem) Notice(problem);
+            }));
         if (updates.HasUpdateAction)
             actions.Add(new("Update and restart", () =>
             {

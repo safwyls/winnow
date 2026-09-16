@@ -872,7 +872,7 @@
     <Panel Margin="{Binding $parent[Window].OffScreenMargin}">
     <!-- ShellGround here (not on Row=1) so every pane composites over it
          exactly once. A second coat would break MinPaneAlpha's arithmetic. -->
-    <Grid Name="DesktopHost" RowDefinitions="36,*" Background="{StaticResource ShellGround}">
+    <Grid Name="DesktopHost" RowDefinitions="36,Auto,*" Background="{StaticResource ShellGround}">
 
         <!-- ══ TITLE BAR ═══════════════════════════════════════════════════
              CaptionFill: ground in floating layout, rail tone in flush (see
@@ -968,7 +968,22 @@
          (not an overlay). Element order = reading order = Tab walk order.
          Auto rail column so floating margins widen the column, not the content.
          No Background: ShellGround is on the Grid above (see note there). -->
-    <Grid Name="ShellContent" Grid.Row="1" ColumnDefinitions="Auto,*,Auto">
+    <Border Name="SessionWatcherNotice" Grid.Row="1" Padding="16,8" Background="{StaticResource Surface}"
+            BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1"
+            IsVisible="{Binding ApplicationSettings.Diagnostics.HasWatcherFailure}">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+            <StackPanel Spacing="4" VerticalAlignment="Center">
+                <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding ApplicationSettings.Diagnostics.WatcherNotice}"
+                           AutomationProperties.LiveSetting="Polite"/>
+                <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding ApplicationSettings.Diagnostics.Problem}"
+                           IsVisible="{Binding ApplicationSettings.Diagnostics.HasProblem}"
+                           AutomationProperties.LiveSetting="Polite"/>
+            </StackPanel>
+            <Button Grid.Column="1" Content="Open logs folder" VerticalAlignment="Center"
+                    Command="{Binding ApplicationSettings.Diagnostics.OpenLogsCommand}"/>
+        </Grid>
+    </Border>
+    <Grid Name="ShellContent" Grid.Row="2" ColumnDefinitions="Auto,*,Auto">
 
         <!-- ══ RAIL (220px) ════════════════════════════════════════════════ -->
         <!-- BorderThickness in a style so the floating layout can override it. -->

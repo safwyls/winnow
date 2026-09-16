@@ -42,6 +42,7 @@ public static class ServiceCollectionExtensions
         // failure would be silent — every session would simply keep being
         // attributed by inference and nobody would notice the seam was dead.
         services.TryAddSingleton<LaunchIntents>();
+        services.TryAddSingleton<SessionWatcherHealth>();
         services.TryAddSingleton<SessionWatcher>();
         services.AddHostedService<SessionWatcherService>();
 

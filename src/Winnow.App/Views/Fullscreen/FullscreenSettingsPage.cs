@@ -313,6 +313,15 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             problem.Bind(IsVisibleProperty, new Binding(nameof(app.HasProblem)) { Source = app });
             AutomationProperties.SetLiveSetting(problem, AutomationLiveSetting.Polite);
             rows.Children.Add(problem);
+            Group("Diagnostics");
+            Action("Open logs folder", () => app.Diagnostics.OpenLogsCommand.Execute(null));
+            rows.Children.Add(FullscreenInformation.Text(app.Diagnostics.ReportHelp));
+            rows.Children.Add(FullscreenInformation.Metadata(app.Diagnostics.LogsDirectory));
+            var diagnosticProblem = FullscreenInformation.Text("");
+            diagnosticProblem.Bind(TextBlock.TextProperty, new Binding(nameof(DiagnosticsViewModel.Problem)) { Source = app.Diagnostics });
+            diagnosticProblem.Bind(IsVisibleProperty, new Binding(nameof(DiagnosticsViewModel.HasProblem)) { Source = app.Diagnostics });
+            AutomationProperties.SetLiveSetting(diagnosticProblem, AutomationLiveSetting.Polite);
+            rows.Children.Add(diagnosticProblem);
             Group("Tools");
             if (!Context.Shared.Setup.IsOpen)
                 Action("Run setup again", () => app.OpenSetupCommand.Execute(null));

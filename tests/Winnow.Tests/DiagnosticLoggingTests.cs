@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Text.RegularExpressions;
 using Winnow.App.Services;
 using Xunit;
 
@@ -70,6 +71,18 @@ public sealed class DiagnosticLoggingTests : IDisposable
     }
 
     [Fact]
+    public void Watcher_operation_is_identifiable_without_allowing_arbitrary_operation_strings()
+    {
+        using var factory = LoggerFactory.Create(logging => DiagnosticLogging.Configure(logging, _root));
+        var logger = factory.CreateLogger("Winnow.Tests.Diagnostics");
+        logger.LogWarning("Watcher operation {Operation}", Winnow.Monitor.SessionWatcherOperation.ExecutableIndex);
+        logger.LogWarning("Untrusted operation {Operation}", "private-person");
+        var text = ReadAll();
+        Assert.Contains("Watcher operation ExecutableIndex", text);
+        Assert.DoesNotContain("private-person", text);
+    }
+
+    [Fact]
     public void Rotation_bounds_file_count_and_bytes_even_for_giant_events_and_restart()
     {
         const int threshold = 256;
@@ -93,6 +106,32 @@ public sealed class DiagnosticLoggingTests : IDisposable
         using (var logger = DiagnosticLogging.Create(_root)) logger.Warning("second-run diagnostic");
         Assert.Contains("first-run diagnostic", ReadAll());
         Assert.Contains("second-run diagnostic", ReadAll());
+    }
+
+    [Fact]
+    public void Every_event_identifies_the_build_and_run_even_after_rotation()
+    {
+        using (var logger = DiagnosticLogging.Create(_root, fileSizeBytes: 256))
+        {
+            logger.Warning("first diagnostic");
+            logger.Warning("second diagnostic");
+        }
+        var firstRun = ReadAll();
+        var identifiers = Regex.Matches(firstRun, @"run=([a-f0-9]{32})");
+        Assert.Equal(2, identifiers.Count);
+        Assert.Equal(identifiers[0].Groups[1].Value, identifiers[1].Groups[1].Value);
+        foreach (var line in firstRun.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            Assert.Contains(" build=", line);
+            Assert.Contains(" commit=", line);
+            Assert.Contains(" os=", line);
+            Assert.Contains(" arch=", line);
+            Assert.Contains(" runtime=", line);
+        }
+
+        using (var logger = DiagnosticLogging.Create(_root)) logger.Warning("new run diagnostic");
+        Assert.Equal(2, Regex.Matches(ReadAll(), @"run=([a-f0-9]{32})")
+            .Select(match => match.Groups[1].Value).Distinct().Count());
     }
 
     private string ReadAll() => string.Join("\n", Directory.GetFiles(Path.Combine(_root, "logs"))

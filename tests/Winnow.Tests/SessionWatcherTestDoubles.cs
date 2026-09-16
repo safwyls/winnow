@@ -4,6 +4,24 @@ using Winnow.Monitor;
 
 namespace Winnow.Tests;
 
+public sealed class FlakyWatcherOwnershipRepository(IOwnershipRepository inner) : IOwnershipRepository
+{
+    public int ReadAttempts { get; private set; }
+    public bool FailReads { get; set; }
+    public Task<IReadOnlyList<Ownership>> GetAllAsync(CancellationToken ct = default)
+    {
+        ReadAttempts++;
+        ct.ThrowIfCancellationRequested();
+        if (FailReads) throw new InvalidCastException("Simulated invalid SQLite value.");
+        return inner.GetAllAsync(ct);
+    }
+    public Task<long> InsertAsync(Ownership ownership, CancellationToken ct = default) => inner.InsertAsync(ownership, ct);
+    public Task<Ownership?> GetAsync(long id, CancellationToken ct = default) => inner.GetAsync(id, ct);
+    public Task<IReadOnlyList<Ownership>> GetByReleaseAsync(long releaseId, CancellationToken ct = default) => inner.GetByReleaseAsync(releaseId, ct);
+    public Task<long> UpsertAsync(OwnershipUpsert ownership, CancellationToken ct = default) => inner.UpsertAsync(ownership, ct);
+    public Task<bool> FillAcquisitionFactsAsync(OwnershipAcquisitionFill fill, CancellationToken ct = default) => inner.FillAcquisitionFactsAsync(fill, ct);
+}
+
 /// <summary>
 /// A scripted <see cref="IProcessSource"/>: the seam that lets the whole §5.2
 /// watcher be tested with no game, no timer and no real process anywhere.
@@ -31,6 +49,7 @@ namespace Winnow.Tests;
 /// </summary>
 public sealed class ScriptedProcessSource : IProcessSource
 {
+    public bool FailEnumeration { get; set; }
     private readonly Dictionary<int, FakeProcess> _running = [];
     private readonly Dictionary<int, FakeProcess> _handles = [];
 
@@ -78,6 +97,7 @@ public sealed class ScriptedProcessSource : IProcessSource
     public IReadOnlyList<ProcessListing> List()
     {
         ListCalls++;
+        if (FailEnumeration) throw new InvalidOperationException("Process enumeration failed.");
 
         // Number, not Pid: the OS enumeration keeps reporting a process whose
         // handle this process happens to have closed. Only the handle wrapper
@@ -205,6 +225,7 @@ public sealed class FakeProcess : ITrackedProcess
 /// </summary>
 public sealed class FlakySessionRepository(ISessionRepository inner) : ISessionRepository
 {
+    public Action? BeforeSave { get; set; }
     public int FailAfterCommit { get; set; }
     public int FailRecoveryReads { get; set; }
 
@@ -223,6 +244,8 @@ public sealed class FlakySessionRepository(ISessionRepository inner) : ISessionR
         IReadOnlyList<MonitoredProcessIdentity> processes, CancellationToken ct = default)
     {
         InsertAttempts++;
+        BeforeSave?.Invoke();
+        ct.ThrowIfCancellationRequested();
         if (FailNextInserts > 0)
         {
             FailNextInserts--;

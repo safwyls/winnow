@@ -45,7 +45,8 @@ public sealed class SessionWatcherHarness : IDisposable
         configure?.Invoke(options);
         var wrapped = Options.Create(options);
         _options = wrapped;
-        IndexBuilder = new GameExecutableIndexBuilder(_ownerships, _releases, wrapped, Clock);
+        IndexReads = new FlakyWatcherOwnershipRepository(_ownerships);
+        IndexBuilder = new GameExecutableIndexBuilder(IndexReads, _releases, wrapped, Clock);
 
         // M3b: the registry the UI declares launches on. Real rather than
         // faked — it is a few fields and a lock, and the thing worth testing is
@@ -60,6 +61,7 @@ public sealed class SessionWatcherHarness : IDisposable
     public ScriptedProcessSource Processes { get; }
 
     public GameExecutableIndexBuilder IndexBuilder { get; }
+    public FlakyWatcherOwnershipRepository IndexReads { get; }
 
     /// <summary>The launch-intent registry the watcher consults (M3b).</summary>
     public LaunchIntents Intents { get; }

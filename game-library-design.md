@@ -1120,6 +1120,15 @@ has been observed leaves no checkpoint. A replacement child not observed before 
 cannot prove continuity with the prior sitting. These boundaries preserve uncertainty
 instead of fabricating playtime.
 
+**Watcher failures remain visible until recovery.** Shared health tracks executable-index,
+process-discovery, recovery, persistence and poll failures independently. A successful poll
+does not clear a failed index or write; a cancelled write is not a successful retry. Failed
+index rebuilds retain the last usable index and retry after one minute while discovery and
+queued writes continue. Repeated failures log at most once per operation every five minutes;
+recovery logs the failure count and elapsed time. Both shells expose a quiet persistent notice
+and local log access. Intentionally disabling the watcher is not a failure. Missing sessions
+that were never observed cannot be reconstructed from Steam's cumulative playtime.
+
 **Session indexing follows the platform.** Windows indexes `.exe` files; Linux and
 macOS index files with Unix execute permission. Linux discovery also recognises the
 kernel's 15-byte process-name alias. Native processes match their installed path.
@@ -1847,6 +1856,10 @@ five files, rolling at 1 MiB; events are capped at 8 KiB, so managed logs stay b
 properties and scopes, scrubs path/account/credential patterns in templates, and records
 exception types and method frames without messages or source filenames. Counts and timings
 remain. Log templates must remain static; put user and service values in named properties.
+Each event repeats a random per-logger-run identifier, app version and commit, OS family,
+process architecture and runtime version so rotated files retain build and run context.
+Build strings are format-validated before rendering; these fields come from the binary and
+runtime, not arbitrary event properties or scopes.
 Bootstrap data-location resolution precedes file logging.
 
 **A source's silence is not an answer.** A field a source cannot provide arrives `null`, never
