@@ -221,10 +221,10 @@
             <Setter Property="TextElement.Foreground" Value="{StaticResource Text}"/>
         </Style>
         <Style Selector="Button.alphaindex.alphalocation3 /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="TextElement.Foreground" Value="{StaticResource Volt}"/>
+            <Setter Property="TextElement.Foreground" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="Button.alphaindex.alphalocation4 /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="TextElement.Foreground" Value="{StaticResource VoltHover}"/>
+            <Setter Property="TextElement.Foreground" Value="{StaticResource VoltHoverForeground}"/>
         </Style>
         <Style Selector="Button.alphaindex.alphalocation4 Border.alphaglyph">
             <Setter Property="Background" Value="{StaticResource VoltSelectionSoft}"/>
@@ -373,7 +373,7 @@
             <Setter Property="Fill" Value="{StaticResource Text}"/>
         </Style>
         <Style Selector="Button.railglyph.on Path">
-            <Setter Property="Fill" Value="{StaticResource Volt}"/>
+            <Setter Property="Fill" Value="{StaticResource VoltForeground}"/>
         </Style>
 
         <!-- ══ Command bar ═════════════════════════════════════════════════ -->
@@ -403,7 +403,7 @@
             <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
             <Setter Property="FontSize" Value="{StaticResource BodySize}"/>
             <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
-            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="TextBox.search /template/ Border#PART_BorderElement">
             <Setter Property="Background" Value="{StaticResource ChromeFieldOnGround}"/>
@@ -423,7 +423,7 @@
              of the two, which is the same property that lets it open at all. -->
         <Style Selector="TextBox.search:focus /template/ Border#PART_BorderElement">
             <Setter Property="Background" Value="{StaticResource ChromeFieldOnGround}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
         <!-- The placeholder is the dimmest ink a field ever carries, so it is
@@ -479,7 +479,7 @@
                         <Border Grid.Column="0" Name="Ring"
                                 Width="22" Height="22"
                                 CornerRadius="5"
-                                BorderBrush="{StaticResource Volt}"
+                                BorderBrush="{StaticResource VoltForeground}"
                                 BorderThickness="2"
                                 IsHitTestVisible="False"
                                 HorizontalAlignment="Left"
@@ -657,7 +657,7 @@
             <Setter Property="Margin" Value="-6,0,-6,0"/>
         </Style>
         <Style Selector="Border.capframe:focus-within">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
 
 
@@ -744,7 +744,7 @@
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
         <Style Selector="Button.dockclose:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
 
         <!-- Rating: five dots, not stars or numbers. Reads as optional when unset. -->
@@ -761,7 +761,7 @@
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
         <Style Selector="Button.rate:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="Button.rate Ellipse">
             <Setter Property="Width" Value="11"/>
@@ -774,8 +774,8 @@
             <Setter Property="Stroke" Value="{StaticResource TextDim}"/>
         </Style>
         <Style Selector="Button.rate.on Ellipse">
-            <Setter Property="Fill" Value="{StaticResource Volt}"/>
-            <Setter Property="Stroke" Value="{StaticResource Volt}"/>
+            <Setter Property="Fill" Value="{StaticResource VoltForeground}"/>
+            <Setter Property="Stroke" Value="{StaticResource VoltForeground}"/>
         </Style>
 
         <!-- The note field. One line, no scrollbar, no formatting: §5.2 asks for
@@ -789,7 +789,7 @@
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="Background" Value="{StaticResource ChromeFieldOnSurface}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
-            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource VoltForeground}"/>
             <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="6"/>
@@ -799,7 +799,7 @@
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
         <Style Selector="TextBox.note:focus /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
 
         <!-- ══ THE FLOATING LAYOUT (§15) ═════════════════════
@@ -1570,7 +1570,7 @@
 
                     <!-- Multi-select readout: shows how many are selected. -->
                     <TextBlock Classes="data" FontSize="11"
-                               Foreground="{StaticResource Volt}"
+                               Foreground="{StaticResource VoltForeground}"
                                VerticalAlignment="Center"
                                IsVisible="{Binding Library.HasMultiSelection}"
                                Text="{Binding Library.SelectedCountText}"/>
@@ -1735,10 +1735,10 @@
                                     Command="{Binding Library.SortByTitleCommand}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <TextBlock Classes="label" FontSize="10" Text="TITLE"/>
-                                    <Path Data="M 0,5 L 8,5 L 4,0 Z" Fill="{StaticResource Volt}"
+                                    <Path Data="M 0,5 L 8,5 L 4,0 Z" Fill="{StaticResource VoltForeground}"
                                           VerticalAlignment="Center"
                                           IsVisible="{Binding Library.ShowTitleSortUp}"/>
-                                    <Path Data="M 0,0 L 8,0 L 4,5 Z" Fill="{StaticResource Volt}"
+                                    <Path Data="M 0,0 L 8,0 L 4,5 Z" Fill="{StaticResource VoltForeground}"
                                           VerticalAlignment="Center"
                                           IsVisible="{Binding Library.ShowTitleSortDown}"/>
                                 </StackPanel>
@@ -1752,10 +1752,10 @@
                                     Command="{Binding Library.SortByPlaytimeCommand}">
                                 <StackPanel Orientation="Horizontal" Spacing="6"
                                             HorizontalAlignment="Right">
-                                    <Path Data="M 0,5 L 8,5 L 4,0 Z" Fill="{StaticResource Volt}"
+                                    <Path Data="M 0,5 L 8,5 L 4,0 Z" Fill="{StaticResource VoltForeground}"
                                           VerticalAlignment="Center"
                                           IsVisible="{Binding Library.ShowPlaytimeSortUp}"/>
-                                    <Path Data="M 0,0 L 8,0 L 4,5 Z" Fill="{StaticResource Volt}"
+                                    <Path Data="M 0,0 L 8,0 L 4,5 Z" Fill="{StaticResource VoltForeground}"
                                           VerticalAlignment="Center"
                                           IsVisible="{Binding Library.ShowPlaytimeSortDown}"/>
                                     <TextBlock Classes="label" FontSize="10" Text="PLAYTIME"/>
@@ -1768,10 +1768,10 @@
                                     ToolTip.Tip="Time since you last played">
                                 <StackPanel Orientation="Horizontal" Spacing="6"
                                             HorizontalAlignment="Right">
-                                    <Path Data="M 0,5 L 8,5 L 4,0 Z" Fill="{StaticResource Volt}"
+                                    <Path Data="M 0,5 L 8,5 L 4,0 Z" Fill="{StaticResource VoltForeground}"
                                           VerticalAlignment="Center"
                                           IsVisible="{Binding Library.ShowIdleSortUp}"/>
-                                    <Path Data="M 0,0 L 8,0 L 4,5 Z" Fill="{StaticResource Volt}"
+                                    <Path Data="M 0,0 L 8,0 L 4,5 Z" Fill="{StaticResource VoltForeground}"
                                           VerticalAlignment="Center"
                                           IsVisible="{Binding Library.ShowIdleSortDown}"/>
                                     <TextBlock Classes="label" FontSize="10" Text="IDLE"/>
@@ -2227,7 +2227,7 @@
                          never Flare — that colour is reserved for unread updates. -->
                     <TextBlock Classes="body" FontSize="11"
                                TextWrapping="Wrap"
-                               Foreground="{StaticResource Amber}"
+                               Foreground="{StaticResource AmberForeground}"
                                IsVisible="{Binding HasError}"
                                Text="{Binding Problem}"/>
 

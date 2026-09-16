@@ -52,7 +52,7 @@
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
         </Style>
         <Style Selector="Button.strip:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="Button.strip:disabled">
             <Setter Property="Opacity" Value="0.4"/>
@@ -184,7 +184,7 @@
                                    VerticalAlignment="Center"/>
                         <TextBlock Classes="data"
                                    FontWeight="Medium"
-                                   Foreground="{StaticResource Volt}"
+                                   Foreground="{StaticResource VoltForeground}"
                                    Text="{Binding VisibleCountText}"
                                    VerticalAlignment="Center"/>
                     </StackPanel>
@@ -244,7 +244,7 @@
                 </StackPanel>
             </Grid>
 
-            <TextBlock Classes="body" FontSize="12" Foreground="{StaticResource Amber}"
+            <TextBlock Classes="body" FontSize="12" Foreground="{StaticResource AmberForeground}"
                        TextWrapping="Wrap" Text="{Binding Lists.Problem}" IsVisible="{Binding Lists.HasProblem}"/>
         </StackPanel>
     </Border>

@@ -76,6 +76,9 @@ public sealed record WinnowTheme
     /// <summary>What the settings screen calls it.</summary>
     public required string Name { get; init; }
 
+    /// <summary>Use light control templates and contrast-safe accent foregrounds.</summary>
+    public bool IsLight { get; init; }
+
     /// <summary>
     /// Why this theme exists, in one sentence, written for the person choosing
     /// (§7). Not a mood: each one names a condition or a register a reader can
@@ -331,6 +334,11 @@ public sealed record WinnowTheme
             ["DangerHover"] = DangerHover,
             ["DangerPress"] = DangerPress,
             ["DangerInk"] = DangerInk,
+            ["VoltForeground"] = AccentForeground(Volt),
+            ["VoltHoverForeground"] = AccentForeground(VoltHover),
+            ["AmberForeground"] = AccentForeground(Amber),
+            ["AzureForeground"] = AccentForeground(Azure),
+            ["DangerForeground"] = AccentForeground(Danger),
 
             // ── The grounds, and where the line between them falls ──────────
             // ShellGround backs the WHOLE client area, the caption's 36px
@@ -586,6 +594,21 @@ public sealed record WinnowTheme
     /// Ground at 92% across the bottom third. It rides the theme because the
     /// facts under it are read against the theme's own ground.</summary>
     public (Color Top, Color Bottom) TileScrim() => (A(Ground, 0), A(Ground, 0.92));
+
+    private Color AccentForeground(Color accent)
+    {
+        if (!IsLight) return accent;
+        // Filled actions keep the authored accent. Text and focus strokes need
+        // enough contrast against every neutral surface they can sit on.
+        var surfaces = new[] { Well, Ground, Surface, SurfaceRaised, SurfaceHigh };
+        for (var step = 0; step <= 255; step++)
+        {
+            var candidate = Mix(accent, Colors.Black, step / 255d);
+            if (surfaces.All(surface => Colorimetry.Contrast(candidate, surface) >= 4.5))
+                return candidate;
+        }
+        return Text; // A malformed palette still loads; ThemeAudit reports it.
+    }
 
     /// <summary>The role colours, by the name of the role. Used by the settings
     /// screen's swatch row and by the test that holds Flare to one job.</summary>

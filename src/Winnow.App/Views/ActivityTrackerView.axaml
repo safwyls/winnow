@@ -28,11 +28,11 @@
             </Setter>
         </Style>
         <Style Selector="RadioButton.range:checked">
-            <Setter Property="Foreground" Value="{StaticResource Volt}"/>
+            <Setter Property="Foreground" Value="{StaticResource VoltForeground}"/>
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
         </Style>
         <Style Selector="RadioButton.range:focus-visible /template/ Border#RangeBorder">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="Expander.recorded-hours">
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
@@ -80,7 +80,7 @@
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
         <Style Selector="ToggleButton.records-toggle:focus-visible /template/ Border#DisclosureBorder">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
     </UserControl.Styles>
     <StackPanel Spacing="8">

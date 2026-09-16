@@ -71,7 +71,7 @@
             <Setter Property="BorderBrush" Value="Transparent"/>
         </Style>
         <Style Selector="Button.cardaside:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="Button.feedcard.setaside views|GameTileView"><Setter Property="Opacity" Value="0.42"/></Style>
         <Style Selector="Arc#CountdownSweep"><Setter Property="Transitions"><Transitions>
@@ -94,12 +94,12 @@
                     <StackPanel Name="FeedbackActions" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
                         <Button Name="AddToList" Classes="cardaside" ToolTip.Tip="Add to list" AutomationProperties.Name="Add to list"
                                 IsVisible="{Binding CanAddToList}" Command="{Binding AddToListCommand}">
-                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource Azure}" StrokeThickness="1.6"
+                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource AzureForeground}" StrokeThickness="1.6"
                                   Data="M 2,3 L 12,3 M 2,8 L 8,8 M 2,13 L 8,13 M 12,9 L 12,15 M 9,12 L 15,12"/>
                         </Button>
                         <Button Name="NotNow" Classes="cardaside" ToolTip.Tip="Not now" AutomationProperties.Name="Not now"
                                 IsVisible="{Binding CanGiveFeedback}" Command="{Binding NotNowCommand}">
-                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource Amber}" StrokeThickness="1.6"
+                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource AmberForeground}" StrokeThickness="1.6"
                                   Data="M 8,1 A 7,7 0 1 1 7.99,1 Z M 8,4 L 8,8 L 11,10"/>
                         </Button>
                         <Button Name="NotInterested" Classes="cardaside" ToolTip.Tip="Not interested" AutomationProperties.Name="Not interested"
@@ -123,16 +123,16 @@
                        ToolTip.Tip="Replaced by the next suggestion. Undo is on the history screen.">
                     <Ellipse Width="14" Height="14" Stroke="{StaticResource LineSoft}" StrokeThickness="2"/>
                     <Arc Name="CountdownSweep" Width="14" Height="14" StartAngle="-90" SweepAngle="{Binding CountdownSweep}"
-                         Stroke="{StaticResource Azure}" StrokeThickness="2"/>
+                         Stroke="{StaticResource AzureForeground}" StrokeThickness="2"/>
                 </Panel>
-                <Border Name="FocusRing" BorderBrush="{StaticResource Volt}" BorderThickness="2" CornerRadius="6" IsHitTestVisible="False"/>
+                <Border Name="FocusRing" BorderBrush="{StaticResource VoltForeground}" BorderThickness="2" CornerRadius="6" IsHitTestVisible="False"/>
                 </Panel>
             </Border>
             <TextBlock Text="{Binding Tile.Title}" FontFamily="{StaticResource DisplayFont}" FontWeight="Bold"
                        FontSize="15" LineHeight="19" Height="19" TextTrimming="CharacterEllipsis" Foreground="{StaticResource Text}"/>
             <TextBlock Name="Reason" Classes="body" FontFeatures="tnum" TextWrapping="Wrap" MaxLines="2" Height="36"
                        TextTrimming="CharacterEllipsis" LineHeight="18" Foreground="{StaticResource TextDim}"/>
-            <TextBlock Classes="body" FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource Amber}"
+            <TextBlock Classes="body" FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource AmberForeground}"
                        IsVisible="{Binding HasProblem}" Text="{Binding Problem}"/>
         </StackPanel>
     </Button>

@@ -50,7 +50,7 @@ public sealed class FullscreenDetailsMatchPage : FullscreenPage
     {
         _results.Children.Clear();
         var rows = _search.Select(control => new[] { control }).ToList();
-        if (_match.Problem is { } problem) _results.Children.Add(FullscreenUi.Text(problem, 28, "Amber"));
+        if (_match.Problem is { } problem) _results.Children.Add(FullscreenUi.Text(problem, 28, "AmberForeground"));
         if (_match.ShowNoMatches) _results.Children.Add(FullscreenUi.Text(_match.NoMatchesText));
         if (_match.ShowIdMiss) _results.Children.Add(FullscreenUi.Text(_match.IdMissText));
         if (_match.Claim is { } claim)

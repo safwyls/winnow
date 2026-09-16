@@ -102,7 +102,7 @@ public sealed partial class FullscreenView : UserControl, IDisposable
         { Setters = { new Setter(TemplatedControl.FontWeightProperty, FontWeight.Bold),
             new Setter(TemplatedControl.BorderBrushProperty, new DynamicResourceExtension("TextDim")) } });
         Styles.Add(new Style(s => s.OfType<Button>().Class("tv-action").Class(":focus"))
-        { Setters = { new Setter(TemplatedControl.BorderBrushProperty, new DynamicResourceExtension("Volt")), new Setter(TemplatedControl.ForegroundProperty, new DynamicResourceExtension("Volt")) } });
+        { Setters = { new Setter(TemplatedControl.BorderBrushProperty, new DynamicResourceExtension("VoltForeground")), new Setter(TemplatedControl.ForegroundProperty, new DynamicResourceExtension("VoltForeground")) } });
         _roots = [new FullscreenBrowsePage(context, true), new FullscreenBrowsePage(context, false), new FullscreenActivityPage(context), new FullscreenSettingsPage(context)];
         _setup = new FullscreenSetupPage(context);
         _tabs = new[] { "For you", "Library", "Activity", "Settings" }.Select((label, index) => FullscreenUi.Tab(label, () => SelectSection(index))).ToArray();
@@ -300,7 +300,7 @@ public sealed partial class FullscreenView : UserControl, IDisposable
         var status = _context.Library.LaunchStatus.IsOpen ? _context.Library.LaunchStatus : _context.Shared.Library.LaunchStatus;
         _launch.Text = status.IsOpen ? status.Message : string.Empty;
         _launch.IsVisible = status.IsOpen;
-        _launch[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(status.IsProblem ? "Amber" : "Text");
+        _launch[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(status.IsProblem ? "AmberForeground" : "Text");
     }
     public void Back()
     {

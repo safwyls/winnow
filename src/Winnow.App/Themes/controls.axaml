@@ -123,7 +123,7 @@
         <Setter Property="Foreground" Value="{DynamicResource Text}"/>
     </Style>
     <Style Selector="Button.act.quiet:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="BorderBrush" Value="{DynamicResource Volt}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource VoltForeground}"/>
     </Style>
 
     <!-- ══ Prose ══════════════════════════════════════════════════════════════
@@ -184,7 +184,7 @@
         <Setter Property="Fill" Value="{DynamicResource TextDim}"/>
     </Style>
     <Style Selector="Button.seg.on Rectangle">
-        <Setter Property="Fill" Value="{DynamicResource Volt}"/>
+        <Setter Property="Fill" Value="{DynamicResource VoltForeground}"/>
     </Style>
 
     <!-- The same grammar with words instead of glyphs. Padding and alignment
@@ -200,7 +200,7 @@
         <Setter Property="Foreground" Value="{DynamicResource Text}"/>
     </Style>
     <Style Selector="Button.seg.tab.on TextBlock">
-        <Setter Property="Foreground" Value="{DynamicResource Volt}"/>
+        <Setter Property="Foreground" Value="{DynamicResource VoltForeground}"/>
     </Style>
 
     <!-- ══ Disclosure toggle ══════════════════════════════════════════════════
@@ -227,7 +227,7 @@
         <Setter Property="HorizontalAlignment" Value="Left"/>
         <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
         <Setter Property="FontSize" Value="12"/>
-        <Setter Property="Foreground" Value="{DynamicResource Azure}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AzureForeground}"/>
     </Style>
     <Style Selector="Button.disclose /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="Transparent"/>
@@ -243,7 +243,7 @@
         <Setter Property="Foreground" Value="{DynamicResource Text}"/>
     </Style>
     <Style Selector="Button.disclose:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="BorderBrush" Value="{DynamicResource Volt}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource VoltForeground}"/>
     </Style>
 
     <!-- ══ The consent window ═════════════════════════════════════════════════
@@ -280,7 +280,7 @@
          (§8) — the emphasis is never colour alone. -->
     <Style Selector="Border.consent-quote">
         <Setter Property="Background" Value="{DynamicResource Well}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource Amber}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AmberForeground}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}"/>
         <Setter Property="Padding" Value="18,16"/>
@@ -316,7 +316,7 @@
         <Setter Property="Padding" Value="16,8"/>
     </Style>
     <Style Selector=":is(TextBlock).notes-problem">
-        <Setter Property="Foreground" Value="{DynamicResource Amber}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AmberForeground}"/>
     </Style>
 
     <Style Selector="Border.consent-actions">
@@ -402,7 +402,7 @@
         <Setter Property="Foreground" Value="{DynamicResource Text}"/>
     </Style>
     <Style Selector="Button.ctl.on Path">
-        <Setter Property="Fill" Value="{DynamicResource Volt}"/>
+        <Setter Property="Fill" Value="{DynamicResource VoltForeground}"/>
     </Style>
 
     <!-- ══ The .actions menu ═══════════════════════════════════════════════
@@ -458,7 +458,7 @@
         <!-- SurfaceHigh: one step above the menu's own SurfaceRaised
              ground. SurfaceRaised on SurfaceRaised is no step at all. -->
         <Setter Property="Background" Value="{DynamicResource SurfaceHigh}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource Volt}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource VoltForeground}"/>
     </Style>
     <Style Selector="ContextMenu.actions MenuItem:selected /template/ ContentPresenter#PART_HeaderPresenter,
                      ContextMenu.actions MenuItem:focus /template/ ContentPresenter#PART_HeaderPresenter,
@@ -550,7 +550,7 @@
         <Setter Property="Background" Value="{DynamicResource VoltSelectionSoft}"/>
     </Style>
     <Style Selector="Button.chipx:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="BorderBrush" Value="{DynamicResource Volt}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource VoltForeground}"/>
     </Style>
     <Style Selector="Button.chipx Path">
         <Setter Property="Stroke" Value="{DynamicResource TextDim}"/>
@@ -575,16 +575,16 @@
             <Setter Property="Foreground" Value="{DynamicResource TextDim}"/>
         </Style>
         <Style Selector="Border.provider-status.live">
-            <Setter Property="BorderBrush" Value="{DynamicResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource VoltForeground}"/>
         </Style>
         <Style Selector="Border.provider-status.live TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource Volt}"/>
+            <Setter Property="Foreground" Value="{DynamicResource VoltForeground}"/>
         </Style>
         <Style Selector="Border.provider-status.attention">
-            <Setter Property="BorderBrush" Value="{DynamicResource Amber}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AmberForeground}"/>
         </Style>
         <Style Selector="Border.provider-status.attention TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource Amber}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AmberForeground}"/>
         </Style>
 
 </Styles>

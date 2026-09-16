@@ -2523,8 +2523,17 @@ against the art field, `Azure` a mid steel.
 
 **Five authored themes also ship:** Bottle green, SilkCircuit, SilkCircuit Dawn, Rosé Pine,
 and Rosé Pine Dawn. Their palettes and appearance defaults match the authored theme files.
-The Dawn variants are light and default to solid backgrounds. The contrast and dormancy
-measurements for the original four do not certify these authored palettes: §5.1's dormancy
+The Dawn variants declare `"variant": "light"` and default to solid backgrounds. The optional
+JSON variant selects Fluent's light or dark control templates; older files infer it from
+ground and text luminance. Export preserves the resolved variant. Light themes use
+`VoltForeground`, `AmberForeground`, `AzureForeground` and `DangerForeground` for accent
+labels, glyphs and focus outlines on neutral surfaces. These darken toward black until they
+reach 4.5:1 on the neutral palette; filled actions keep the authored accent and its paired ink.
+Dark themes keep their original accent colors. The Dawn palettes use stronger control borders
+and destructive fills so boundaries reach 3:1 and button labels reach 4.5:1 in normal,
+hover and pressed states. These checks apply at their default opaque setting.
+The contrast and dormancy measurements for the original four do not certify these authored
+palettes over arbitrary wallpaper or artwork: §5.1's dormancy
 floor was calibrated against dark capsules on a dark field. Theme audit warnings remain
 available in one disclosure, collapsed by default, labelled **Some themes may affect legibility.**
 Theme file errors remain visible without expanding it.

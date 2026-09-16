@@ -90,7 +90,7 @@
                         BorderThickness="0,1,0,0" Background="{StaticResource Surface}">
                     <StackPanel Spacing="12">
                         <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Problem}" IsVisible="{Binding !!Problem}"
-                                   Foreground="{StaticResource Amber}" AutomationProperties.LiveSetting="Polite"/>
+                                   Foreground="{StaticResource AmberForeground}" AutomationProperties.LiveSetting="Polite"/>
                         <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="12">
                             <Button Name="SkipSetupButton" Classes="act quiet" Content="Skip setup"
                                     Command="{Binding SkipAllCommand}"/>

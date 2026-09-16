@@ -49,6 +49,7 @@ public class ThemeJsonTests
 
         Assert.NotNull(loaded);
         Assert.DoesNotContain(diagnostics, d => d.IsError);
+        Assert.Equal(original.IsLight, loaded.IsLight);
 
         foreach (var (role, colour) in ColoursOf(original))
         {

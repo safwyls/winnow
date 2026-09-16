@@ -79,7 +79,7 @@
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
         </Style>
         <Style Selector="Border.badge.look > :is(TextBlock)">
-            <Setter Property="Foreground" Value="{StaticResource Amber}"/>
+            <Setter Property="Foreground" Value="{StaticResource AmberForeground}"/>
         </Style>
 
         <!-- ══ Candidate row ════════════════════════════════════════════════
@@ -131,7 +131,7 @@
         </Style>
         <Style Selector="Border.row.header TextBlock.mark">
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="{StaticResource Volt}"/>
+            <Setter Property="Foreground" Value="{StaticResource VoltForeground}"/>
         </Style>
 
         <!-- ══ Reason slot ══════════════════════════════════════════════════
@@ -184,7 +184,7 @@
                         <Border Name="Ring"
                                 Width="24" Height="24"
                                 CornerRadius="{StaticResource RadiusControl}"
-                                BorderBrush="{StaticResource Volt}"
+                                BorderBrush="{StaticResource VoltForeground}"
                                 BorderThickness="2"
                                 Opacity="0"
                                 IsHitTestVisible="False"/>
@@ -236,7 +236,7 @@
                         <Border Name="Ring"
                                 Width="24" Height="24"
                                 CornerRadius="12"
-                                BorderBrush="{StaticResource Volt}"
+                                BorderBrush="{StaticResource VoltForeground}"
                                 BorderThickness="2"
                                 Opacity="0"
                                 IsHitTestVisible="False"/>
@@ -263,7 +263,7 @@
         </Style>
         <Style Selector="RadioButton.pick:checked /template/ Ellipse#Dial">
             <Setter Property="Fill" Value="{StaticResource Volt}"/>
-            <Setter Property="Stroke" Value="{StaticResource Volt}"/>
+            <Setter Property="Stroke" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="RadioButton.pick:checked /template/ Ellipse#Dot">
             <Setter Property="Opacity" Value="1"/>

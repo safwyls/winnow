@@ -72,6 +72,11 @@
     <SolidColorBrush x:Key="TextDim"       Color="{StaticResource TextDimColor}"/>
     <SolidColorBrush x:Key="Flare"         Color="{StaticResource FlareColor}"/>
     <SolidColorBrush x:Key="Volt"          Color="{StaticResource VoltColor}"/>
+    <SolidColorBrush x:Key="VoltForeground" Color="{StaticResource VoltColor}"/>
+    <SolidColorBrush x:Key="VoltHoverForeground" Color="#6FEDCE"/>
+    <SolidColorBrush x:Key="AmberForeground" Color="{StaticResource AmberColor}"/>
+    <SolidColorBrush x:Key="AzureForeground" Color="{StaticResource AzureColor}"/>
+    <SolidColorBrush x:Key="DangerForeground" Color="{StaticResource DangerColor}"/>
     <SolidColorBrush x:Key="Amber"         Color="{StaticResource AmberColor}"/>
     <SolidColorBrush x:Key="Azure"         Color="{StaticResource AzureColor}"/>
     <!-- Destructive affordances only. Today that is one control: the window

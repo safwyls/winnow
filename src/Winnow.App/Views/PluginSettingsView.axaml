@@ -63,7 +63,7 @@
                                             <Button Classes="act" Content="Provider website" IsVisible="{Binding HasWebsite}"
                                                     Command="{Binding OpenWebsiteCommand}" AutomationProperties.Name="{Binding WebsiteAccessibleName}"/>
                                         </WrapPanel>
-                                        <TextBlock Classes="body" Foreground="{StaticResource Amber}" IsVisible="{Binding RestartRequired}"
+                                        <TextBlock Classes="body" Foreground="{StaticResource AmberForeground}" IsVisible="{Binding RestartRequired}"
                                                    Text="Restart Winnow to apply the enable or disable change."/>
                                         <ItemsControl ItemsSource="{Binding Fields}">
                                             <ItemsControl.ItemTemplate>

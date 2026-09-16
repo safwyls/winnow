@@ -273,7 +273,7 @@ public sealed class GamepadKeyboardView : Border
                 _ => key.Action ? key.Label : _uppercase ? key.Shifted : key.Label
             };
             Avalonia.Automation.AutomationProperties.SetName(button, key.Action ? key.Label : button.Content?.ToString());
-            button[!Button.BorderBrushProperty] = new DynamicResourceExtension(row == _row && column == _column ? "Volt" : "Line");
+            button[!Button.BorderBrushProperty] = new DynamicResourceExtension(row == _row && column == _column ? "VoltForeground" : "Line");
         }
     }
 }

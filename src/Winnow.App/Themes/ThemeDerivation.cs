@@ -100,6 +100,7 @@ public static class ThemeDerivation
             Id = id,
             Name = name,
             Reason = reason,
+            IsLight = Colorimetry.Luminance(seeds.Ground) > Colorimetry.Luminance(seeds.Text),
 
             Well = Pick("Well"),
             Ground = seeds.Ground,

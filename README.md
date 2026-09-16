@@ -257,6 +257,7 @@ a few numbers; everything else is derived:
 ```json
 {
   "schemaVersion": 1,
+  "variant": "dark",
   "id": "bottle-green",
   "name": "Bottle green",
   "seeds": {
@@ -271,6 +272,12 @@ a few numbers; everything else is derived:
 
 Winnow reports each theme's measured contrast so you can see the impact on readability. Broken
 themes are skipped with a diagnostic. The app writes an annotated example on first run.
+
+Set `"variant": "light"` for a light palette or `"variant": "dark"` for a dark one.
+This selects the matching control templates. If omitted, Winnow compares the ground and
+text brightness, so existing light-theme files also receive light controls. Exported themes
+include the variant. Light themes retain their authored accent fills while deriving darker
+accent labels and focus outlines for readability; the audit checks action states and borders.
 
 ---
 

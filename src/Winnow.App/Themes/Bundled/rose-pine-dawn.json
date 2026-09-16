@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "variant": "light",
   "id": "rose-pine-dawn",
   "name": "Rosé Pine Dawn",
   "reason": "Rosé Pine at first light: warm porcelain chrome, gold selection, and iris reserved for unread updates.",
@@ -11,7 +12,7 @@
     "volt": "#EA9D34",
     "amber": "#D7827E",
     "azure": "#56949F",
-    "danger": "#B4637A"
+    "danger": "#A34F68"
   },
   "structure": {
     "elevation": 0.05,
@@ -36,13 +37,13 @@
     "Well": "#F2E9E1",
     "SurfaceRaised": "#F2E9E1",
     "SurfaceHigh": "#DFDAD9",
-    "Line": "#CECACD",
+    "Line": "#7C7287",
     "TextDim": "#5F5B78",
     "TextFaint": "#9893A5",
     "VoltInk": "#2A1B08",
     "VoltHover": "#F0AF50",
     "VoltPress": "#C98222",
-    "DangerHover": "#C4778D",
+    "DangerHover": "#A9536D",
     "DangerPress": "#955066",
     "DangerInk": "#FFF7F9",
     "TranslucentSurface": "#FFFFFF",

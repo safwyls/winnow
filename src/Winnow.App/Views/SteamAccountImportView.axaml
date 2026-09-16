@@ -38,10 +38,10 @@
             <Setter Property="Padding" Value="14,12"/>
         </Style>
         <Style Selector="Border.note.attention">
-            <Setter Property="BorderBrush" Value="{StaticResource Amber}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AmberForeground}"/>
         </Style>
         <Style Selector="Border.note.working">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
 
         <!-- ══ Count row ════════════════════════════════════════════════════
@@ -161,7 +161,7 @@
     <Border Classes="note attention" IsVisible="{Binding ShowProblem}">
         <StackPanel Spacing="10">
             <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                       Foreground="{StaticResource Amber}"
+                       Foreground="{StaticResource AmberForeground}"
                        Text="LAST ATTEMPT"/>
             <TextBlock Classes="para lead" Text="{Binding ProblemMessage}"/>
         </StackPanel>

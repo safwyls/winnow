@@ -32,10 +32,10 @@
         </Style>
         <Style Selector="Button.themecard.picked /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="Button.themecard:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
 
         <!-- ══ A text-only choice ═════════════════════════════════════════
@@ -64,10 +64,10 @@
         </Style>
         <Style Selector="Button.optioncard.picked /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource Ground}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="Button.optioncard:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
 
         <!-- The miniature. Fixed geometry so four of them line up exactly:
@@ -120,7 +120,7 @@
             <Setter Property="HorizontalAlignment" Value="Left"/>
         </Style>
         <Style Selector="Border.sliderframe:focus-within">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
 
         <!-- ══ One line of the themes folder's report ══════════════════════
@@ -131,13 +131,13 @@
             <Setter Property="BorderThickness" Value="2,0,0,0"/>
         </Style>
         <Style Selector="Border.problem.failed">
-            <Setter Property="BorderBrush" Value="{StaticResource Amber}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AmberForeground}"/>
         </Style>
         <Style Selector="Border.problem TextBlock.verdict">
             <Setter Property="Foreground" Value="{StaticResource TextFaint}"/>
         </Style>
         <Style Selector="Border.problem.failed TextBlock.verdict">
-            <Setter Property="Foreground" Value="{StaticResource Amber}"/>
+            <Setter Property="Foreground" Value="{StaticResource AmberForeground}"/>
         </Style>
 
         <Style Selector="Border.card">
@@ -353,7 +353,7 @@
 
                         <TextBlock Classes="para"
                                    IsVisible="{Binding HasThemeActionStatus}"
-                                   Foreground="{StaticResource Volt}"
+                                   Foreground="{StaticResource VoltForeground}"
                                    Text="{Binding ThemeActionStatus}"/>
 
                         <!-- ══ What this theme measures ═══════════════════
@@ -443,7 +443,7 @@
                         </StackPanel>
                         <StackPanel Spacing="10" IsVisible="{Binding HasWarnings}">
                             <Button Name="ThemeWarningsToggle" Classes="act quiet"
-                                    Foreground="{StaticResource Amber}"
+                                    Foreground="{StaticResource AmberForeground}"
                                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                     Command="{Binding ToggleThemeWarningsCommand}"
                                     Content="{Binding ThemeWarningsLabel}"
@@ -667,7 +667,7 @@
                              an error. -->
                         <Border IsVisible="{Binding UnderAa}"
                                 Background="{StaticResource Ground}"
-                                BorderBrush="{StaticResource Amber}"
+                                BorderBrush="{StaticResource AmberForeground}"
                                 BorderThickness="1"
                                 CornerRadius="{StaticResource RadiusControl}"
                                 Padding="14,12">
@@ -731,7 +731,7 @@
                                  attention (not an error). -->
                             <Border IsVisible="{Binding BackdropSubstituted}"
                                     Background="{StaticResource Ground}"
-                                    BorderBrush="{StaticResource Amber}"
+                                    BorderBrush="{StaticResource AmberForeground}"
                                     BorderThickness="1"
                                     CornerRadius="{StaticResource RadiusControl}"
                                     Padding="14,12">
@@ -788,7 +788,7 @@
                              Amber for attention (not an error). -->
                         <Border IsVisible="{Binding TransparencyUnavailable}"
                                 Background="{StaticResource Ground}"
-                                BorderBrush="{StaticResource Amber}"
+                                BorderBrush="{StaticResource AmberForeground}"
                                 BorderThickness="1"
                                 CornerRadius="{StaticResource RadiusControl}"
                                 Padding="14,12">

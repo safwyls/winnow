@@ -53,13 +53,13 @@ public sealed class FullscreenDetailsPage : FullscreenPage
         Styles.Add(new Style(s => s.OfType<Button>().Class("tv-details-primary").Class(":pressed"))
         { Setters = { new Setter(Button.BackgroundProperty, new DynamicResourceExtension("VoltPress")) } });
         Styles.Add(new Style(s => s.OfType<Button>().Class("tv-details-tab").Class("current"))
-        { Setters = { new Setter(Button.BorderBrushProperty, new DynamicResourceExtension("Volt")) } });
+        { Setters = { new Setter(Button.BorderBrushProperty, new DynamicResourceExtension("VoltForeground")) } });
         Styles.Add(new Style(s => s.OfType<Button>().Class("tv-details-tab").Class(":focus"))
         { Setters = {
             new Setter(Button.BackgroundProperty, new DynamicResourceExtension("SurfaceRaised")),
             new Setter(Button.BorderBrushProperty, Brushes.Transparent) } });
         Styles.Add(new Style(s => s.OfType<Button>().Class("tv-details-tab").Class("current").Class(":focus"))
-        { Setters = { new Setter(Button.BorderBrushProperty, new DynamicResourceExtension("Volt")) } });
+        { Setters = { new Setter(Button.BorderBrushProperty, new DynamicResourceExtension("VoltForeground")) } });
         var actions = _actions;
         RefreshHero();
         var title = DetailText(details.Title, details.Title.Length > 45 ? 64 : 76, weight: FontWeight.Bold);
@@ -455,7 +455,7 @@ public sealed class FullscreenDetailsPage : FullscreenPage
             AutomationProperties.SetAutomationId(button, $"journal-{entry.SessionId}");
             var metadata = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24 };
             metadata.Children.Add(DetailText(entry.DateText, 22, "TextDim"));
-            var rating = DetailText(entry.RatingText, 22, "Volt");
+            var rating = DetailText(entry.RatingText, 22, "VoltForeground");
             rating.Bind(TextBlock.TextProperty, new Binding(nameof(entry.RatingText)) { Source = entry });
             rating.Bind(IsVisibleProperty, new Binding(nameof(entry.HasRating)) { Source = entry });
             metadata.Children.Add(rating);
@@ -551,7 +551,7 @@ public sealed class FullscreenDetailsPage : FullscreenPage
                 button.Bind(AutomationProperties.NameProperty, new Binding(nameof(list.AutomationName)) { Source = list });
                 button.Bind(AutomationProperties.ItemStatusProperty, new Binding(nameof(list.StatusText)) { Source = list });
                 content.Children.Add(button);
-                var status = DetailText("", 22, "Amber");
+                var status = DetailText("", 22, "AmberForeground");
                 status.Bind(TextBlock.TextProperty, new Binding(nameof(list.StatusText)) { Source = list });
                 status.Bind(IsVisibleProperty, new Binding(nameof(list.HasStatus)) { Source = list });
                 content.Children.Add(status);

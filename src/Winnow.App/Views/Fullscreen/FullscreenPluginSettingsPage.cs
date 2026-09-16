@@ -40,7 +40,7 @@ public sealed class FullscreenPluginSettingsPage : FullscreenPage
         enabled.Bind(ToggleSwitch.IsCheckedProperty, new Binding(nameof(model.ActivationSelected)) { Source = model, Mode = BindingMode.TwoWay });
         enabled.Bind(AutomationProperties.NameProperty, new Binding(nameof(model.ToggleAccessibleName)) { Source = model });
         enabled.Bind(AutomationProperties.ItemStatusProperty, new Binding(nameof(model.EnabledStatus)) { Source = model });
-        var restart = FullscreenInformation.Text("Restart Winnow to apply the enable or disable change.", 24, "Amber");
+        var restart = FullscreenInformation.Text("Restart Winnow to apply the enable or disable change.", 24, "AmberForeground");
         restart.Bind(IsVisibleProperty, new Binding(nameof(model.RestartRequired)) { Source = model });
         controls.Children.Add(restart);
         if (model.HasWebsite) Action("Provider website     Browser ↗", model.OpenWebsiteCommand, model.WebsiteAccessibleName);

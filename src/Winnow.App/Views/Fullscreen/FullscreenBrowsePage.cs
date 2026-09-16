@@ -459,7 +459,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         heading.Children.Add(count);
         var headingStack = new StackPanel { Spacing = 4 };
         headingStack.Children.Add(heading);
-        var problem = FullscreenUi.Text("", 24, "Amber");
+        var problem = FullscreenUi.Text("", 24, "AmberForeground");
         problem.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding(nameof(ListsViewModel.Problem)) { Source = library.Lists });
         problem.Bind(IsVisibleProperty, new Avalonia.Data.Binding(nameof(ListsViewModel.HasProblem)) { Source = library.Lists });
         headingStack.Children.Add(problem);
@@ -810,7 +810,7 @@ public sealed class FullscreenCover : Border
     public void SetSelected(bool selected)
     {
         _selected = selected;
-        if (selected) this[!BorderBrushProperty] = new DynamicResourceExtension("Volt");
+        if (selected) this[!BorderBrushProperty] = new DynamicResourceExtension("VoltForeground");
         else BorderBrush = Brushes.Transparent;
         Paint();
     }
@@ -1079,7 +1079,7 @@ public sealed class FullscreenBrowseFiltersPage : FullscreenPage
                 Context.Push(new FullscreenBrowseFilterGroupPage(Context, group, () => Build(), ApplyFromGroup)));
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*") };
             row.Children.Add(FullscreenUi.Text(group.Header, 28));
-            var selected = FullscreenUi.Text(value, 24, count == 0 ? "TextDim" : "Volt");
+            var selected = FullscreenUi.Text(value, 24, count == 0 ? "TextDim" : "VoltForeground");
             selected.MaxLines = 2;
             selected.TextTrimming = TextTrimming.WordEllipsis;
             Grid.SetColumn(selected, 1);

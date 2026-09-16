@@ -564,6 +564,8 @@ public sealed class ThemeService
         if (app is not null)
         {
             ApplyTo(app.Resources, _theme, ActiveTransparency, ActiveWallTranslucency, _layout);
+            app.RequestedThemeVariant = _theme.IsLight
+                ? Avalonia.Styling.ThemeVariant.Light : Avalonia.Styling.ThemeVariant.Dark;
         }
 
         Applied?.Invoke(this, EventArgs.Empty);

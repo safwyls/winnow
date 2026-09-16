@@ -37,7 +37,7 @@
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
         </Style>
         <Style Selector="Button.quiet:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
         </Style>
         <Style Selector="Button.quiet :is(TextBlock)">
@@ -62,7 +62,7 @@
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
         </Style>
         <Style Selector="Button.secondary:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
         </Style>
         <Style Selector="Button.secondary :is(TextBlock)">
@@ -83,7 +83,7 @@
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
             <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
-            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="TextBox.field.numeric">
             <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
@@ -100,7 +100,7 @@
         </Style>
         <Style Selector="TextBox.field:focus /template/ Border#PART_BorderElement">
             <Setter Property="Background" Value="{StaticResource Well}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="TextBox.field /template/ TextBlock#PART_Watermark">
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
@@ -110,7 +110,7 @@
              a service wrote and a field on automatic both take the plain
              Line-edged chip and are told apart by the word inside (§12.1). -->
         <Style Selector="Border.store-chip.owned">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="Border.store-chip.owned > :is(TextBlock)">
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
@@ -194,7 +194,7 @@
         <TextBlock Classes="body" FontSize="11"
                    TextWrapping="Wrap"
                    LineHeight="16"
-                   Foreground="{StaticResource Amber}"
+                   Foreground="{StaticResource AmberForeground}"
                    IsVisible="{Binding HasProblem}"
                    Text="{Binding Problem}"/>
 
@@ -259,7 +259,7 @@
                                        IsVisible="{Binding HasNote}"
                                        Text="{Binding Note}"/>
                             <TextBlock Classes="rowline"
-                                       Foreground="{StaticResource Amber}"
+                                       Foreground="{StaticResource AmberForeground}"
                                        IsVisible="{Binding HasProblem}"
                                        Text="{Binding Problem}"/>
                         </StackPanel>
@@ -351,7 +351,7 @@
                                        IsVisible="{Binding HasNote}"
                                        Text="{Binding Note}"/>
                             <TextBlock Classes="rowline"
-                                       Foreground="{StaticResource Amber}"
+                                       Foreground="{StaticResource AmberForeground}"
                                        IsVisible="{Binding HasProblem}"
                                        Text="{Binding Problem}"/>
                         </StackPanel>
