@@ -26,7 +26,7 @@ public partial class MainWindow
     private void InitializeDesktopStartup()
     {
         _desktopStartupDragon = new LoadingDragon { Width = 144, Height = 144, HorizontalAlignment = HorizontalAlignment.Center };
-        var title = new TextBlock { Text = "WINNOW", FontSize = 36, HorizontalAlignment = HorizontalAlignment.Center };
+        var title = new TextBlock { Text = "WINNOW", FontSize = 60, HorizontalAlignment = HorizontalAlignment.Center };
         title[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension("DisplayFont");
         title[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("Text");
         _desktopStartupStatus = new TextBlock { Text = "Preparing your library…", FontSize = 18,

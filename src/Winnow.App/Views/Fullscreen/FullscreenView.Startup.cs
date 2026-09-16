@@ -32,7 +32,7 @@ public sealed partial class FullscreenView
         _startupMark = new LoadingDragon { Width = 160, Height = 160 };
         _startupMark.Name = "FullscreenStartupMark";
         _startupMark.HorizontalAlignment = HorizontalAlignment.Center;
-        var title = FullscreenUi.Text("WINNOW", 48);
+        var title = FullscreenUi.Text("WINNOW", 78);
         title[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension("DisplayFont");
         title.HorizontalAlignment = HorizontalAlignment.Center;
         _startupMessage = FullscreenUi.Text("Preparing fullscreen…", 28, "TextDim");
