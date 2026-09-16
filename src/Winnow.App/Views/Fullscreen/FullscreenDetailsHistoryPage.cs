@@ -9,11 +9,16 @@ namespace Winnow.App.Views.Fullscreen;
 public sealed class FullscreenDetailsHistoryPage : FullscreenPage
 {
     private readonly ActivityTrackerViewModel _tracker;
+    private readonly SteamReportedActivityViewModel? _steam;
+    private readonly Func<bool>? _showSteamActivity;
     private int _page;
     private const int PageSize = 6;
-    public FullscreenDetailsHistoryPage(FullscreenContext context, ActivityTrackerViewModel tracker) : base(context)
+    public FullscreenDetailsHistoryPage(FullscreenContext context, ActivityTrackerViewModel tracker,
+        SteamReportedActivityViewModel? steam = null, Func<bool>? showSteamActivity = null) : base(context)
     {
         _tracker = tracker;
+        _steam = steam;
+        _showSteamActivity = showSteamActivity;
         tracker.SnapshotChanged += TrackerSnapshotChanged;
         Render();
     }
@@ -52,6 +57,12 @@ public sealed class FullscreenDetailsHistoryPage : FullscreenPage
         content.Children.Add(FullscreenInformation.Text(_tracker.Series.Summary));
         content.Children.Add(FullscreenInformation.Metadata(_tracker.Series.CoverageNote));
         List<Control[]> rows = [[lifetime, tracked]];
+        if (_steam is not null && (_showSteamActivity?.Invoke() ?? true))
+        {
+            var steam = FullscreenInformation.Link(SteamReportedActivityViewModel.Heading,
+                () => Context.Push(new FullscreenSteamActivityPage(Context, _steam)));
+            content.Children.Add(steam); rows.Add([steam]);
+        }
         foreach (var bar in _tracker.Series.Bars.Reverse().Skip(_page * PageSize).Take(PageSize))
         {
             var record = FullscreenUi.Button(bar.Label, () => Context.Push(new FullscreenDetailsReadingPage(Context,

@@ -46,15 +46,17 @@ public sealed class SessionWatcherService : BackgroundService
             // and, unhandled in a BackgroundService, takes the host down.
             // Misconfiguration should cost sessions, not the app.
             _logger.LogWarning(
-                "Session watcher poll interval {Interval} is not positive; the watcher will not run.",
-                interval);
+                "Session watcher poll interval {IntervalSeconds}s is not positive; the watcher will not run.",
+                interval.TotalSeconds);
+            _watcher.Health.ReportFailure(SessionWatcherOperation.Configuration,
+                new InvalidOperationException("The session watcher poll interval must be positive."));
             return;
         }
 
         _logger.LogInformation(
-            "Session watcher started; polling every {Interval}, debounce {Debounce:n0}s, "
+            "Session watcher started; polling every {IntervalSeconds}s, debounce {Debounce:n0}s, "
             + "relaunch grace {Grace:n0}s.",
-            interval,
+            interval.TotalSeconds,
             _options.MinimumSessionDuration.TotalSeconds,
             _options.RelaunchGrace.TotalSeconds);
 
@@ -90,6 +92,7 @@ public sealed class SessionWatcherService : BackgroundService
         try
         {
             var tick = await _watcher.TickAsync(ct).ConfigureAwait(false);
+            _watcher.Health.ReportSuccess(SessionWatcherOperation.Tick);
 
             // At a five-second poll this runs seventeen thousand times a day, so
             // the quiet case says nothing at all and only a tick that changed
@@ -109,7 +112,7 @@ public sealed class SessionWatcherService : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Session watcher tick failed; detection resumes at the next poll.");
+            _watcher.Health.ReportFailure(SessionWatcherOperation.Tick, ex);
         }
     }
 
@@ -125,7 +128,7 @@ public sealed class SessionWatcherService : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Could not write in-flight sessions during shutdown.");
+            _watcher.Health.ReportFailure(SessionWatcherOperation.Shutdown, ex);
         }
     }
 }

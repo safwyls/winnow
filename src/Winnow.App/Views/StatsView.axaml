@@ -8,7 +8,7 @@
       <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
     </Style>
     <Style Selector="Button.stats-section.selected">
-      <Setter Property="BorderBrush" Value="{DynamicResource Volt}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource VoltForeground}"/>
       <Setter Property="Background" Value="{DynamicResource SurfaceRaised}"/>
     </Style>
   </UserControl.Styles>
@@ -29,7 +29,7 @@
       </StackPanel>
       <StackPanel Grid.Row="1" Margin="24,0,24,0" Spacing="4">
         <TextBlock Classes="body" Text="Reading Steam spending…" IsVisible="{Binding IsSpendingLoading}"/>
-        <TextBlock Classes="body" Foreground="{DynamicResource Amber}" TextWrapping="Wrap" Text="{Binding SpendingProblem}" IsVisible="{Binding SpendingProblem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+        <TextBlock Classes="body" Foreground="{DynamicResource AmberForeground}" TextWrapping="Wrap" Text="{Binding SpendingProblem}" IsVisible="{Binding SpendingProblem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
       </StackPanel>
       <views:AccountStatsView Grid.Row="2" DataContext="{Binding Spending}" ShowHeader="False"/>
     </Grid>

@@ -84,6 +84,7 @@ public sealed class FirstRunSetupShellTests
             Assert.Empty(shell.ApplicationSettings.Igdb.ClientSecret);
             window.ToggleFullscreen();
             Dispatcher.UIThread.RunJobs();
+            await DesktopStartupTests.WaitPreparedAsync(window);
             var setup = Assert.Single(window.GetVisualDescendants().OfType<FirstRunSetupView>());
             Assert.Contains(window.FocusManager!.GetFocusedElement() as Control, setup.GetVisualDescendants());
             await shell.Setup.SkipAllCommand.ExecuteAsync(null);

@@ -1,0 +1,29 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Winnow.App.ViewModels" x:Class="Winnow.App.Views.SteamReportedActivityView"
+             x:DataType="vm:SteamReportedActivityViewModel">
+    <StackPanel Spacing="12">
+        <TextBlock Classes="label section" Text="{x:Static vm:SteamReportedActivityViewModel.Heading}" AutomationProperties.HeadingLevel="2"/>
+        <TextBlock Classes="body" TextWrapping="Wrap" Text="{x:Static vm:SteamReportedActivityViewModel.Explanation}"/>
+        <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Status}" IsVisible="{Binding HasStatus}" AutomationProperties.LiveSetting="Polite"/>
+        <ItemsControl ItemsSource="{Binding Entries}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:SteamReportedActivityRow">
+                    <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="0,12"
+                            AutomationProperties.Name="{Binding AutomationName}" AutomationProperties.AccessibilityView="Control">
+                        <StackPanel Spacing="6">
+                            <TextBlock Classes="body-l" Text="{Binding Duration}" TextWrapping="Wrap"/>
+                            <TextBlock Classes="body" Text="{Binding ObservationBounds}" TextWrapping="Wrap"/>
+                            <TextBlock Classes="body" Foreground="{DynamicResource TextDim}" Text="{Binding Uncertainty}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <StackPanel Orientation="Horizontal" Spacing="12">
+            <Button Content="Refresh" Command="{Binding RefreshCommand}" IsEnabled="{Binding !IsLoading}"/>
+            <Button Content="Previous" Command="{Binding PreviousPageCommand}" IsVisible="{Binding HasPrevious}"/>
+            <Button Content="Next" Command="{Binding NextPageCommand}" IsVisible="{Binding HasNext}"/>
+            <TextBlock Classes="body" Text="{Binding PageLabel}" VerticalAlignment="Center"/>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

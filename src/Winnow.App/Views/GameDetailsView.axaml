@@ -40,16 +40,16 @@
                 </ControlTemplate>
             </Setter>
             <Style Selector="^:selected">
-                <Setter Property="Foreground" Value="{StaticResource Volt}"/>
+                <Setter Property="Foreground" Value="{StaticResource VoltForeground}"/>
             </Style>
             <Style Selector="^:selected /template/ Border#TabSelectionBorder">
-                <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
             </Style>
             <Style Selector="^:pointerover /template/ Border#TabFocusBorder">
                 <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
             </Style>
             <Style Selector="^:focus-visible /template/ Border#TabFocusBorder">
-                <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
             </Style>
         </ControlTheme>
     </UserControl.Resources>
@@ -97,7 +97,7 @@
             <Setter Property="Background" Value="Transparent"/>
         </Style>
         <Style Selector="Expander.gog-notes /template/ ToggleButton#ExpanderHeader:focus-visible /template/ Border#ToggleButtonBackground">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="ScrollViewer.inner /template/ ScrollBar">
             <Setter Property="Margin" Value="0"/>
@@ -121,7 +121,7 @@
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
         </Style>
         <Style Selector="Button.quiet:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
         </Style>
         <Style Selector="CheckBox.listtick">
@@ -136,7 +136,7 @@
                         <Border Name="Ring"
                                 Margin="-4,0"
                                 CornerRadius="{StaticResource RadiusControl}"
-                                BorderBrush="{StaticResource Volt}"
+                                BorderBrush="{StaticResource VoltForeground}"
                                 BorderThickness="2"
                                 Opacity="0"
                                 IsHitTestVisible="False"/>
@@ -206,11 +206,11 @@
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
         </Style>
         <Style Selector="Button.link:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
         </Style>
         <Style Selector="Button.link :is(TextBlock)">
-            <Setter Property="Foreground" Value="{StaticResource Azure}"/>
+            <Setter Property="Foreground" Value="{StaticResource AzureForeground}"/>
         </Style>
         <Style Selector="Button.secondary">
             <Setter Property="Background" Value="Transparent"/>
@@ -227,7 +227,7 @@
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
         </Style>
         <Style Selector="Button.secondary:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
         </Style>
         <Style Selector="Button.secondary :is(TextBlock)">
@@ -280,7 +280,7 @@
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
             <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
-            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="TextBox.field /template/ Border#PART_BorderElement">
             <Setter Property="Background" Value="{StaticResource Well}"/>
@@ -293,7 +293,7 @@
         </Style>
         <Style Selector="TextBox.field:focus /template/ Border#PART_BorderElement">
             <Setter Property="Background" Value="{StaticResource Well}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="TextBox.field /template/ TextBlock#PART_Watermark">
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
@@ -302,7 +302,7 @@
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
         </Style>
         <Style Selector="TextBlock.actstatus.problem">
-            <Setter Property="Foreground" Value="{StaticResource Amber}"/>
+            <Setter Property="Foreground" Value="{StaticResource AmberForeground}"/>
         </Style>
         <Style Selector="Button.shot">
             <Setter Property="Background" Value="Transparent"/>
@@ -321,10 +321,10 @@
             <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
         </Style>
         <Style Selector="Button.shot.picked /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="Button.shot:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
     </UserControl.Styles>
     <Panel>
@@ -643,7 +643,7 @@
                                                             <TextBlock Classes="body"
                                                                        Text="{Binding UpdatesShortcutText}"/>
                                                             <TextBlock Classes="body"
-                                                                       Foreground="{StaticResource Azure}"
+                                                                       Foreground="{StaticResource AzureForeground}"
                                                                        Text="→"/>
                                                         </StackPanel>
                                                     </Button>
@@ -839,7 +839,7 @@
                                                             <TextBlock Classes="body"
                                                                        FontSize="11"
                                                                        TextWrapping="Wrap"
-                                                                       Foreground="{StaticResource Amber}"
+                                                                       Foreground="{StaticResource AmberForeground}"
                                                                        IsVisible="{Binding HasProblem}"
                                                                        Text="{Binding Problem}"/>
                                                         </StackPanel>
@@ -855,6 +855,9 @@
                                     <StackPanel Margin="{StaticResource InnerScrollGutter}">
                                         <StackPanel Spacing="24" Margin="0,24,0,24">
                                             <views:ActivityTrackerView DataContext="{Binding Tracker}"/>
+                                            <Border IsVisible="{Binding ShowSteamActivity}">
+                                                <views:SteamReportedActivityView DataContext="{Binding SteamActivity}"/>
+                                            </Border>
                                         </StackPanel>
                                     </StackPanel>
                                 </ScrollViewer>
@@ -921,7 +924,7 @@
                                                                             ToolTip.Tip="{Binding Link.Tooltip}">
                                                                         <TextBlock Classes="body"
                                                                                    FontSize="12"
-                                                                                   Foreground="{StaticResource Azure}"
+                                                                                   Foreground="{StaticResource AzureForeground}"
                                                                                    Text="Patch notes"/>
                                                                     </Button>
                                                                 </Grid>
@@ -987,7 +990,7 @@
                                                 <TextBlock Classes="body"
                                                            FontSize="11"
                                                            TextWrapping="Wrap"
-                                                           Foreground="{StaticResource Amber}"
+                                                           Foreground="{StaticResource AmberForeground}"
                                                            IsVisible="{Binding HasFlagProblem}"
                                                            Text="{Binding FlagProblem}"/>
                                             </StackPanel>
@@ -1129,7 +1132,7 @@
                                                     <TextBlock Classes="body"
                                                                FontSize="11"
                                                                TextWrapping="Wrap"
-                                                               Foreground="{StaticResource Amber}"
+                                                               Foreground="{StaticResource AmberForeground}"
                                                                IsVisible="{Binding HasProblem}"
                                                                Text="{Binding Problem}"/>
                                                 </StackPanel>
@@ -1212,7 +1215,7 @@
                                                                                Text="{Binding Name}"/>
                                                                 </CheckBox>
                                                                 <TextBlock Classes="body" FontSize="12" TextWrapping="Wrap"
-                                                                           Foreground="{StaticResource Amber}"
+                                                                           Foreground="{StaticResource AmberForeground}"
                                                                            Text="{Binding StatusText}" IsVisible="{Binding HasStatus}"/>
                                                               </StackPanel>
                                                             </DataTemplate>
@@ -1503,7 +1506,7 @@
                                                                Margin="0,18,0,0"
                                                                TextWrapping="Wrap"
                                                                LineHeight="16"
-                                                               Foreground="{StaticResource Amber}"
+                                                               Foreground="{StaticResource AmberForeground}"
                                                                IsVisible="{Binding HasProblem}"
                                                                Text="{Binding Problem}"/>
                                                 </StackPanel>
@@ -1538,7 +1541,7 @@
                             <TextBlock Classes="body actstatus"
                                        FontSize="12"
                                        TextWrapping="Wrap"
-                                       Foreground="{StaticResource Amber}"
+                                       Foreground="{StaticResource AmberForeground}"
                                        IsVisible="{Binding IgdbMatch.HasProblem, FallbackValue=False}"
                                        Text="{Binding IgdbMatch.Problem}"/>
                             <TextBlock Classes="body actstatus"

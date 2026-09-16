@@ -23,7 +23,7 @@ public sealed class FullscreenDetailsMetadataPage : FullscreenPage
             content.Children.Add(button);
             rows.Add([button]);
         }
-        var problem = FullscreenUi.Text("", 28, "Amber");
+        var problem = FullscreenUi.Text("", 28, "AmberForeground");
         problem.Bind(TextBlock.TextProperty, new Binding(nameof(GameMetadataEditorViewModel.Problem)) { Source = editor });
         content.Children.Add(problem);
         var back = FullscreenUi.Button("Back", Context.Back);
@@ -75,7 +75,7 @@ public sealed class FullscreenDetailsFieldPage : FullscreenPage
         actions.Children.Add(save);
         actions.Children.Add(reset);
         actions.Children.Add(cancel);
-        var error = FullscreenUi.Text("", 28, "Amber");
+        var error = FullscreenUi.Text("", 28, "AmberForeground");
         error.Bind(TextBlock.TextProperty, new Binding(nameof(MetadataFieldRowViewModel.Problem)) { Source = field });
         var content = FullscreenUi.Stack(FullscreenUi.Text(field.Label, 32),
             FullscreenUi.Text(field.SourceTooltip, 24, "TextDim"), _text, edit, error, actions);

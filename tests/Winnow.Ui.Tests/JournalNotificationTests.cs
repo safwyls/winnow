@@ -20,6 +20,15 @@ namespace Winnow.Ui.Tests;
 
 public sealed class JournalNotificationTests
 {
+    [AvaloniaFact]
+    public void Bundled_dragon_decodes_to_an_owned_native_notification_icon()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        var icon = WindowsJournalNotification.LoadDragonIcon();
+        Assert.NotEqual(0, icon);
+        Assert.True(WindowsJournalNotification.DestroyIcon(icon));
+    }
+
     [AvaloniaTheory]
     [InlineData(false, JournalNotificationDelivery.Submitted)]
     [InlineData(true, JournalNotificationDelivery.Submitted)]

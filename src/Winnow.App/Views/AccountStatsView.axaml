@@ -21,7 +21,7 @@
             <Setter Property="Padding" Value="14,12"/>
         </Style>
         <Style Selector="Border.note.attention">
-            <Setter Property="BorderBrush" Value="{StaticResource Amber}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AmberForeground}"/>
         </Style>
         <Style Selector="TextBlock.count">
             <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
@@ -173,7 +173,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="14">
                                 <TextBlock Classes="data"
                                            FontSize="22"
-                                           Foreground="{StaticResource Volt}"
+                                           Foreground="{StaticResource VoltForeground}"
                                            IsVisible="{Binding ShowBiggestAmount}"
                                            Text="{Binding BiggestAmountText}"
                                            VerticalAlignment="Center"/>

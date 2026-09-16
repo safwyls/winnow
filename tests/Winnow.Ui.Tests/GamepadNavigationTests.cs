@@ -138,7 +138,7 @@ public sealed class GamepadNavigationTests
     }
 
     [AvaloniaFact]
-    public void Controller_opens_keyboard_and_Escape_closes_only_text_entry()
+    public async Task Controller_opens_keyboard_and_Escape_closes_only_text_entry()
     {
         var shell = PreviewData.Shell;
         shell.Library.Lightbox.CloseCommand.Execute(null);
@@ -164,9 +164,10 @@ public sealed class GamepadNavigationTests
             window.HandleGamepad(GamepadButtons.Menu);
             Assert.True(window.IsFullscreen);
             Dispatcher.UIThread.RunJobs();
+            var television = Assert.IsType<App.Views.Fullscreen.FullscreenView>(window.FindControl<ContentControl>("TvHost")!.Content);
+            await FullscreenStartupTests.WaitPreparedAsync(television);
             window.HandleGamepad(GamepadButtons.Menu);
             Assert.True(window.IsFullscreen);
-            var television = Assert.IsType<App.Views.Fullscreen.FullscreenView>(window.FindControl<ContentControl>("TvHost")!.Content);
             Assert.Equal("Quick menu", television.CurrentPage.Title);
             window.KeyPressQwerty(PhysicalKey.F11, RawInputModifiers.None);
             window.KeyReleaseQwerty(PhysicalKey.F11, RawInputModifiers.None);

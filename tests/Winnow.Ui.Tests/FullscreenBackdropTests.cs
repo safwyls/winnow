@@ -373,6 +373,13 @@ public sealed class FullscreenBackdropTests
             leases.Last.Complete(new CoverArt(hero, hero));
             await Flush();
             var images = backdrop.GetVisualDescendants().OfType<Image>().ToArray();
+            if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
+            {
+                Directory.CreateDirectory(directory);
+                using var capture = new RenderTargetBitmap(new PixelSize(width, 1080));
+                capture.Render(backdrop);
+                capture.Save(Path.Combine(directory, $"fullscreen-backdrop-{cinematic}-{width}.png"));
+            }
             var outgoing = images[0];
             var current = images[1];
             var art = Assert.IsType<Panel>(current.Parent);

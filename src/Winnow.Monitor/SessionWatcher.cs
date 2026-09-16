@@ -35,6 +35,9 @@ public sealed class SessionWatcher : IDisposable
     private readonly SessionWatcherOptions _options;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<SessionWatcher> _logger;
+    private readonly SessionWatcherHealth _health;
+    private bool _persistenceAttempted;
+    private bool _persistenceFailed;
 
     /// <summary>Upper bound on <see cref="_pending"/>. See <see cref="Enqueue"/>.</summary>
     private const int MaxPendingSessions = 4096;
@@ -62,6 +65,7 @@ public sealed class SessionWatcher : IDisposable
 
     private GameExecutableIndex _index = GameExecutableIndex.Empty;
     private DateTime _indexBuiltAtUtc = DateTime.MinValue;
+    private DateTime? _indexFailedAtUtc;
     private long _discoveryPass;
     private bool _disposed;
 
@@ -72,7 +76,8 @@ public sealed class SessionWatcher : IDisposable
         IOptions<SessionWatcherOptions> options,
         TimeProvider? timeProvider = null,
         ILogger<SessionWatcher>? logger = null,
-        LaunchIntents? intents = null)
+        LaunchIntents? intents = null,
+        SessionWatcherHealth? health = null)
     {
         ArgumentNullException.ThrowIfNull(options);
 
@@ -82,6 +87,7 @@ public sealed class SessionWatcher : IDisposable
         _options = options.Value;
         _timeProvider = timeProvider ?? TimeProvider.System;
         _logger = logger ?? NullLogger<SessionWatcher>.Instance;
+        _health = health ?? new SessionWatcherHealth(timeProvider: _timeProvider);
 
         // Optional, and a private empty registry when absent, so a host that
         // never wired the UI still watches exactly as M3a did. Nothing declares
@@ -95,20 +101,40 @@ public sealed class SessionWatcher : IDisposable
 
     /// <summary>The executable index as of the last rebuild. Exposed for diagnostics and tests.</summary>
     public GameExecutableIndex Index => _index;
+    public SessionWatcherHealth Health => _health;
 
     /// <summary>One pass: refresh index, discover new game processes, write completed sessions. Not thread-safe for concurrent callers.</summary>
     public async Task<SessionWatcherTick> TickAsync(CancellationToken ct = default)
     {
+        _persistenceAttempted = false;
+        _persistenceFailed = false;
         var now = _timeProvider.GetUtcNow().UtcDateTime;
         await EnsureIndexAsync(now, ct).ConfigureAwait(false);
         await DescribeIntentsAsync(now, ct).ConfigureAwait(false);
 
-        var started = Discover(now);
+        var started = 0;
+        try
+        {
+            started = Discover(now);
+            _health.ReportSuccess(SessionWatcherOperation.ProcessDiscovery);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // Existing handles still report exits; discovery failure must not
+            // prevent their checkpoints or completed sessions from being saved.
+            _health.ReportFailure(SessionWatcherOperation.ProcessDiscovery, ex);
+        }
         await RecoverLiveAsync(ct).ConfigureAwait(false);
         var debounced = Collect(now);
         await CheckpointLiveAsync(now, ct).ConfigureAwait(false);
         _intents.Sweep(now);
         var recorded = await DrainPendingAsync(ct).ConfigureAwait(false);
+        if (_persistenceAttempted && !_persistenceFailed)
+            _health.ReportSuccess(SessionWatcherOperation.SessionPersistence);
 
         int running, queued;
         lock (_gate)
@@ -140,6 +166,7 @@ public sealed class SessionWatcher : IDisposable
 
             if (ct.IsCancellationRequested)
             {
+                _persistenceFailed = true;
                 break;
             }
 
@@ -148,17 +175,17 @@ public sealed class SessionWatcher : IDisposable
             try
             {
                 saved = await _sessions.SaveMonitoredAsync(session, pending.Processes, ct).ConfigureAwait(false);
+                _persistenceAttempted = true;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                _persistenceFailed = true;
+                break;
             }
             catch (Exception ex)
             {
-                // Left queued deliberately. Logged at Warning because a session
-                // that cannot be written is the one failure in this module a
-                // user would actually care about.
-                _logger.LogWarning(
-                    ex,
-                    "Could not write a session for ownership {OwnershipId}; {Queued} session(s) "
-                    + "are queued and will be retried.",
-                    session.OwnershipId, PendingCount);
+                _persistenceFailed = true;
+                _health.ReportFailure(SessionWatcherOperation.SessionPersistence, ex);
                 break;
             }
 
@@ -200,6 +227,7 @@ public sealed class SessionWatcher : IDisposable
             candidates = _live.Values.Where(live => !live.Recovered).ToList();
         }
 
+        var failed = false;
         foreach (var live in candidates)
         {
             try
@@ -216,13 +244,18 @@ public sealed class SessionWatcher : IDisposable
                     live.Recovered = true;
                 }
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex,
-                    "Could not recover the sitting for ownership {OwnershipId}; recovery will retry before recording it.",
-                    live.OwnershipId);
+                failed = true;
+                _health.ReportFailure(SessionWatcherOperation.SessionRecovery, ex);
             }
         }
+        if (candidates.Count > 0 && !failed)
+            _health.ReportSuccess(SessionWatcherOperation.SessionRecovery);
     }
 
     private async Task CheckpointLiveAsync(DateTime now, CancellationToken ct)
@@ -245,16 +278,21 @@ public sealed class SessionWatcher : IDisposable
             try
             {
                 var saved = await _sessions.SaveMonitoredAsync(write.Session, write.Processes, ct).ConfigureAwait(false);
+                _persistenceAttempted = true;
                 lock (_gate)
                 {
                     write.Live.Restore(saved);
                     write.Live.SavedRevision = write.Revision;
                 }
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Could not checkpoint the sitting for ownership {OwnershipId}; the next tick will retry.",
-                    write.Session.OwnershipId);
+                _persistenceFailed = true;
+                _health.ReportFailure(SessionWatcherOperation.SessionPersistence, ex);
             }
         }
     }
@@ -329,6 +367,8 @@ public sealed class SessionWatcher : IDisposable
     /// </summary>
     public async Task<int> FlushAsync(CancellationToken ct = default)
     {
+        _persistenceAttempted = false;
+        _persistenceFailed = false;
         var now = _timeProvider.GetUtcNow().UtcDateTime;
         await RecoverLiveAsync(ct).ConfigureAwait(false);
 
@@ -360,6 +400,8 @@ public sealed class SessionWatcher : IDisposable
         }
 
         var written = await DrainPendingAsync(ct).ConfigureAwait(false);
+        if (_persistenceAttempted && !_persistenceFailed)
+            _health.ReportSuccess(SessionWatcherOperation.SessionPersistence);
 
         if (written > 0)
         {
@@ -423,6 +465,11 @@ public sealed class SessionWatcher : IDisposable
 
     private async Task EnsureIndexAsync(DateTime now, CancellationToken ct)
     {
+        // Keep discovery and queued writes running against the last good index
+        // while a broken database read retries at most once per minute.
+        if (_indexFailedAtUtc is { } failedAt && now >= failedAt
+            && now - failedAt < TimeSpan.FromMinutes(1))
+            return;
         // A clock that jumps backwards — an NTP correction, a VM resuming from a
         // snapshot, a user fixing their timezone — makes `now - builtAt`
         // negative, which is trivially less than any interval. Left as a plain
@@ -440,6 +487,8 @@ public sealed class SessionWatcher : IDisposable
         {
             _index = await _indexBuilder.BuildAsync(ct).ConfigureAwait(false);
             _indexBuiltAtUtc = now;
+            _indexFailedAtUtc = null;
+            _health.ReportSuccess(SessionWatcherOperation.ExecutableIndex);
 
             // The negative cache holds verdicts reached against the old index.
             // A game whose install path was wrong, or missing, when the previous
@@ -458,11 +507,8 @@ public sealed class SessionWatcher : IDisposable
         }
         catch (Exception ex)
         {
-            // A failed rebuild keeps the previous index, which is better than
-            // both alternatives: an empty one would silently stop watching every
-            // game, and rethrowing would take the hosted service down. The
-            // stamp is not advanced, so the next tick retries.
-            _logger.LogWarning(ex, "Executable index rebuild failed; keeping the previous index.");
+            _indexFailedAtUtc = now;
+            _health.ReportFailure(SessionWatcherOperation.ExecutableIndex, ex);
         }
     }
 

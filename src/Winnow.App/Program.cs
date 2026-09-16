@@ -522,6 +522,7 @@ public static class Program
         services.AddSingleton<IOwnershipInventoryRepository, OwnershipInventoryRepository>();
         services.AddSingleton<IPlayRecordRepository, PlayRecordRepository>();
         services.AddSingleton<IPlaytimeSnapshotRepository, PlaytimeSnapshotRepository>();
+        services.AddSingleton<ISteamPlaytimeObservationRepository, SteamPlaytimeObservationRepository>();
         services.AddSingleton<ISessionRepository, SessionRepository>();
         services.AddSingleton<IActivityRepository, ActivityRepository>();
         services.AddSingleton<IUpdateEventRepository, UpdateEventRepository>();
@@ -954,6 +955,7 @@ public static class Program
         services.AddSingleton<ArtworkPreferences>();
         services.AddSingleton<ArtworkOrderViewModel>();
         services.AddSingleton<EnrichmentSettingsViewModel>();
+        services.AddSingleton(sp => new DiagnosticsViewModel(sp.GetRequiredService<SessionWatcherHealth>(), data.Root));
         services.AddSingleton<ApplicationSettingsViewModel>();
         services.AddSingleton<FirstRunSetupService>();
         services.AddSingleton<FirstRunSetupViewModel>();

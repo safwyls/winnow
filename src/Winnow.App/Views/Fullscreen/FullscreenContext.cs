@@ -20,6 +20,7 @@ public sealed class FullscreenContext : IDisposable
     public FeedViewModel Feed { get; }
     public MainWindowViewModel Shared { get; }
     public IServiceProvider? Services { get; }
+    internal bool HasLoadedPreferences { get; private set; }
     public event Action<FullscreenPage>? PageRequested;
     public event Action? BackRequested;
     public event Action<TextBox>? TextRequested;
@@ -53,6 +54,7 @@ public sealed class FullscreenContext : IDisposable
     public FullscreenContext(LibraryViewModel library, FeedViewModel feed, MainWindowViewModel shared, IServiceProvider? services = null)
     {
         Library = library; Feed = feed; Shared = shared; Services = services;
+        HasLoadedPreferences = services?.GetService<ISettingsRepository>() is null;
         library.PropertyChanged += LibraryChanged;
         feed.PropertyChanged += FeedChanged;
         shared.Appearance.Service.Applied += ThemeChanged;
@@ -75,14 +77,24 @@ public sealed class FullscreenContext : IDisposable
         if (_disposed) return;
         if (Services?.GetService<ISettingsRepository>() is { } settings)
         {
-            if (double.TryParse(await settings.GetAsync("fullscreen.text-scale"), CultureInfo.InvariantCulture, out var scale)) _textScale = Math.Clamp(scale, .7, 1.4);
+            // SQLite's async reads may complete synchronously. Keep startup settings IO
+            // off the presentation thread, then apply the saved values here.
+            var saved = await Task.Run(async () => (
+                Text: await settings.GetAsync("fullscreen.text-scale"),
+                Ui: await settings.GetAsync("fullscreen.ui-scale-v2"),
+                Margin: await settings.GetAsync("fullscreen.safe-margin"),
+                Motion: await settings.GetAsync("fullscreen.reduced-motion"),
+                Ultrawide: await settings.GetAsync("fullscreen.fit-ultrawide")));
+            if (_disposed) return;
+            if (double.TryParse(saved.Text, CultureInfo.InvariantCulture, out var scale)) _textScale = Math.Clamp(scale, .7, 1.4);
             // The new baseline intentionally replaces legacy scale choices; subsequent adjustments persist here.
-            if (double.TryParse(await settings.GetAsync("fullscreen.ui-scale-v2"), CultureInfo.InvariantCulture, out var uiScale)) _uiScale = NormalizeUiScale(uiScale);
-            if (double.TryParse(await settings.GetAsync("fullscreen.safe-margin"), CultureInfo.InvariantCulture, out var margin)) _safeMargin = Math.Clamp(margin, 0, 10);
-            if (bool.TryParse(await settings.GetAsync("fullscreen.reduced-motion"), out var motion)) _reducedMotion = motion;
-            if (bool.TryParse(await settings.GetAsync("fullscreen.fit-ultrawide"), out var fit)) _fitUltrawide = fit;
+            if (double.TryParse(saved.Ui, CultureInfo.InvariantCulture, out var uiScale)) _uiScale = NormalizeUiScale(uiScale);
+            if (double.TryParse(saved.Margin, CultureInfo.InvariantCulture, out var margin)) _safeMargin = Math.Clamp(margin, 0, 10);
+            if (bool.TryParse(saved.Motion, out var motion)) _reducedMotion = motion;
+            if (bool.TryParse(saved.Ultrawide, out var fit)) _fitUltrawide = fit;
         }
         if (_disposed) return;
+        HasLoadedPreferences = true;
         PreferencesChanged?.Invoke(this, EventArgs.Empty);
         Library.ShowExplicitContent = Shared.LibrarySettings.ShowExplicitContent;
         Library.ShowNonGameEntries = Shared.Library.ShowNonGameEntries;

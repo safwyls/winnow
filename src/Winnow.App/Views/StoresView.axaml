@@ -54,11 +54,11 @@
              the text stays legible ink rather than becoming a coloured
              paragraph. -->
         <Style Selector="Border.note.attention">
-            <Setter Property="BorderBrush" Value="{StaticResource Amber}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AmberForeground}"/>
         </Style>
         <!-- A flow the user is in the middle of. -->
         <Style Selector="Border.note.working">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
 
         <!-- The console command. Selectable (copy is the point) and a Tab
@@ -67,7 +67,7 @@
             <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
             <Setter Property="FontSize" Value="{StaticResource DataSize}"/>
             <Setter Property="FontFeatures" Value="tnum"/>
-            <Setter Property="Foreground" Value="{StaticResource Azure}"/>
+            <Setter Property="Foreground" Value="{StaticResource AzureForeground}"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="Padding" Value="8,6"/>
             <Setter Property="Background" Value="Transparent"/>
@@ -96,7 +96,7 @@
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
             <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
-            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="TextBox.key /template/ Border#PART_BorderElement">
             <Setter Property="Background" Value="{StaticResource Well}"/>
@@ -109,7 +109,7 @@
         </Style>
         <Style Selector="TextBox.key:focus /template/ Border#PART_BorderElement">
             <Setter Property="Background" Value="{StaticResource Well}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="TextBox.key /template/ TextBlock#PART_Watermark">
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
@@ -134,7 +134,7 @@
                         <Border Grid.Column="0" Name="Ring"
                                 Width="22" Height="22" Margin="-3,0,0,0"
                                 CornerRadius="5"
-                                BorderBrush="{StaticResource Volt}"
+                                BorderBrush="{StaticResource VoltForeground}"
                                 BorderThickness="2"
                                 IsHitTestVisible="False"
                                 HorizontalAlignment="Left"
@@ -241,7 +241,7 @@
                                            VerticalAlignment="Center"/>
                                 <Ellipse Width="6" Height="6"
                                          VerticalAlignment="Center"
-                                         Fill="{StaticResource Amber}"
+                                         Fill="{StaticResource AmberForeground}"
                                          IsVisible="{Binding SteamTabNeedsAttention}"/>
                             </StackPanel>
                         </Button>
@@ -255,7 +255,7 @@
                                            VerticalAlignment="Center"/>
                                 <Ellipse Width="6" Height="6"
                                          VerticalAlignment="Center"
-                                         Fill="{StaticResource Amber}"
+                                         Fill="{StaticResource AmberForeground}"
                                          IsVisible="{Binding EpicTabNeedsAttention}"/>
                             </StackPanel>
                         </Button>
@@ -380,7 +380,7 @@
                                 <TextBlock Grid.Column="2"
                                            Classes="para lead"
                                            VerticalAlignment="Center"
-                                           Foreground="{StaticResource Volt}"
+                                           Foreground="{StaticResource VoltForeground}"
                                            Text="{Binding SteamLocalStateText}"/>
                                 <Button Grid.Column="4"
                                         Classes="disclose"
@@ -439,7 +439,7 @@
                             <TextBlock Grid.Column="2"
                                        Classes="para lead"
                                        VerticalAlignment="Center"
-                                       Foreground="{StaticResource Volt}"
+                                       Foreground="{StaticResource VoltForeground}"
                                        IsVisible="{Binding SteamWebApiIsOn}"
                                        Text="{Binding SteamWebApiStateText}"/>
                             <TextBlock Grid.Column="2"
@@ -567,7 +567,7 @@
                                     IsVisible="{Binding ShowSteamSignInProblem}">
                                 <StackPanel Spacing="10">
                                     <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                               Foreground="{StaticResource Amber}"
+                                               Foreground="{StaticResource AmberForeground}"
                                                Text="LAST ATTEMPT"/>
                                     <TextBlock Classes="para lead"
                                                Text="{Binding SteamSignInProblemMessage}"/>
@@ -999,7 +999,7 @@
                             <Border Classes="note attention" IsVisible="{Binding EpicIsLapsed}">
                                 <StackPanel Spacing="6">
                                     <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                               Foreground="{StaticResource Amber}"
+                                               Foreground="{StaticResource AmberForeground}"
                                                Text="{Binding EpicAccountLine}"
                                                IsVisible="{Binding ShowEpicAccountLine}"/>
                                     <TextBlock Classes="para lead" Text="{Binding EpicLapsedMessage}"/>
@@ -1039,7 +1039,7 @@
                         <Border Classes="note attention" IsVisible="{Binding ShowEpicProblem}">
                             <StackPanel Spacing="10">
                                 <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                           Foreground="{StaticResource Amber}"
+                                           Foreground="{StaticResource AmberForeground}"
                                            Text="LAST ATTEMPT"/>
                                 <TextBlock Classes="para lead" Text="{Binding EpicProblemMessage}"/>
 

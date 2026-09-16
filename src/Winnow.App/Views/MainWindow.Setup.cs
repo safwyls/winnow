@@ -18,7 +18,7 @@ public partial class MainWindow
     {
         if (SetupPanel is null || ShellContent is null) return;
         var open = _shell?.Setup.IsOpen == true;
-        ShellContent.IsEnabled = !open;
+        ShellContent.IsEnabled = !open && !DesktopStartupVisible;
         SetupPanel.IsVisible = open && !IsFullscreen;
         SetupInputHost.IsVisible = open && !IsFullscreen;
     }

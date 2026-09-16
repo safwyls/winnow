@@ -3,6 +3,7 @@ using Winnow.Core.Ingest;
 using Winnow.Core.Repositories;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Globalization;
 
 namespace Winnow.Resolve;
 
@@ -87,6 +88,7 @@ public sealed class ExternalIdResolver
     private readonly IPlaytimeSnapshotRepository _snapshots;
     private readonly IUnitOfWorkFactory _unitOfWork;
     private readonly IOwnershipAccountRepository _ownershipAccounts;
+    private readonly ISteamPlaytimeObservationRepository? _steamObservations;
     private readonly ILogger<ExternalIdResolver> _logger;
 
     public ExternalIdResolver(
@@ -97,7 +99,8 @@ public sealed class ExternalIdResolver
         IPlaytimeSnapshotRepository snapshots,
         IUnitOfWorkFactory unitOfWork,
         IOwnershipAccountRepository ownershipAccounts,
-        ILogger<ExternalIdResolver>? logger = null)
+        ILogger<ExternalIdResolver>? logger = null,
+        ISteamPlaytimeObservationRepository? steamObservations = null)
     {
         _works = works;
         _releases = releases;
@@ -106,6 +109,7 @@ public sealed class ExternalIdResolver
         _snapshots = snapshots;
         _unitOfWork = unitOfWork;
         _ownershipAccounts = ownershipAccounts;
+        _steamObservations = steamObservations;
         _logger = logger ?? NullLogger<ExternalIdResolver>.Instance;
     }
 
@@ -125,6 +129,12 @@ public sealed class ExternalIdResolver
     {
         // Collapse duplicate sources into one observation per ownership.
         var observations = CandidateOwnershipMerge.Coalesce(candidates);
+        // Reconciliation needs each source/account's unmodified reading, before
+        // household coalescing or the lower-bound clamp combines their facts.
+        var rawSteam = _steamObservations is null ? null : candidates
+            .Where(candidate => candidate.Provider == ExternalIdProviders.Steam
+                && candidate.Source is "steam_local" or "steam_web_api")
+            .ToLookup(candidate => candidate.ProviderId, StringComparer.Ordinal);
 
         var matched = 0;
         var created = 0;
@@ -171,6 +181,9 @@ public sealed class ExternalIdResolver
             // are additive, so a pass that names fewer accounts than the last one
             // narrows nothing.
             await UpsertAccountsAsync(ownershipId, candidate, ct);
+
+            if (rawSteam is not null && candidate.Provider == ExternalIdProviders.Steam)
+                await CaptureSteamObservationsAsync(ownershipId, rawSteam[candidate.ProviderId], ct);
 
             // Neither minutes nor date means "no observation". A date without
             // minutes IS an observation (appmanifest LastPlayed with no userdata).
@@ -325,6 +338,38 @@ public sealed class ExternalIdResolver
             AcquiredAt: candidate.AcquiredAt,
             InstallPath: candidate.InstallPath,
             Installed: candidate.Installed), ct);
+
+    private async Task CaptureSteamObservationsAsync(long ownershipId,
+        IEnumerable<CandidateOwnership> candidates, CancellationToken ct)
+    {
+        // Remote inventory has no install opinion; consult the resolved local
+        // state instead of treating a null remote flag as an uninstall.
+        var ownership = await _ownerships.GetAsync(ownershipId, ct);
+        if (ownership?.Installed != true) return;
+
+        foreach (var candidate in candidates)
+        {
+            IEnumerable<CandidateAccount> accounts = candidate.Accounts.Count > 0
+                ? candidate.Accounts
+                : string.IsNullOrWhiteSpace(candidate.AccountRef) ? []
+                    : [new(candidate.AccountRef, candidate.PlaytimeMinutes, candidate.LastPlayedAt)];
+            foreach (var account in accounts)
+            {
+                if (!uint.TryParse(account.AccountRef, NumberStyles.None, CultureInfo.InvariantCulture, out var accountNumber)
+                    || accountNumber == 0 || account.PlaytimeMinutes is null or < 0)
+                    continue;
+                await _steamObservations!.ObserveAsync(new SteamPlaytimeObservation
+                {
+                    OwnershipId = ownershipId,
+                    AccountRef = accountNumber.ToString(CultureInfo.InvariantCulture),
+                    Source = candidate.Source,
+                    PlaytimeMinutes = account.PlaytimeMinutes,
+                    LastPlayedAt = account.LastPlayedAt,
+                    ObservedAt = candidate.PlaytimeObservedAt ?? candidate.ObservedAt,
+                }, ct);
+            }
+        }
+    }
 
     /// <summary>
     /// Records what each account this candidate named holds, one row per

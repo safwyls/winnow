@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Avalonia.Media;
@@ -14,6 +15,111 @@ namespace Winnow.Ui.Tests;
 
 public sealed class FullscreenHomeLayoutTests
 {
+    [AvaloniaFact]
+    public void Inserting_and_replacing_hidden_shelves_uses_the_current_cards()
+    {
+        using var feed = new FeedViewModel(new PreviewFeedService(), PreviewData.Library);
+        FeedShelfViewModel Shelf(string id) => new(id, id, "", [new FeedCardViewModel(PreviewData.Tile, id)]);
+        feed.Shelves.Add(Shelf("First")); feed.Shelves.Add(Shelf("Original next")); feed.Shelves.Add(Shelf("Last"));
+        using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell);
+        using var view = new FullscreenView(context);
+        var window = new Window { Width = 1920, Height = 1080, Content = view };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            feed.Shelves.Insert(1, Shelf("Inserted"));
+            Dispatcher.UIThread.RunJobs();
+            view.Handle(GamepadButtons.Down); Dispatcher.UIThread.RunJobs();
+            Assert.Equal("Inserted", view.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == "FullscreenHomeReason").Text);
+            view.Handle(GamepadButtons.Next); Dispatcher.UIThread.RunJobs();
+            feed.Shelves.Clear(); feed.Shelves.Add(Shelf("Replacement"));
+            view.Handle(GamepadButtons.Previous); Dispatcher.UIThread.RunJobs();
+            Assert.Equal("Replacement", view.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == "FullscreenHomeReason").Text);
+            var viewport = Assert.Single(view.CurrentPage.GetVisualDescendants().OfType<FullscreenRowViewport>());
+            Assert.Equal(0, viewport.FirstRow);
+            Assert.Single(viewport.RealizedRows);
+            Assert.NotNull(window.FocusManager!.GetFocusedElement());
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(1, false)]
+    [InlineData(1.4, false)]
+    [InlineData(1.4, true)]
+    public void Same_content_refresh_never_arranges_a_displaced_shelf(double scale, bool reducedMotion)
+    {
+        using var feed = new FeedViewModel(new PreviewFeedService(), PreviewData.Library);
+        FeedShelfViewModel Shelf() => new("recent", "Recently played", "",
+            Enumerable.Range(0, 10).Select(_ => new FeedCardViewModel(PreviewData.Tile, "Ready to play.")));
+        feed.Shelves.Add(Shelf());
+        using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell)
+            { TextScale = scale, ReducedMotion = reducedMotion };
+        using var view = new FullscreenView(context);
+        var window = new Window { Width = 1920, Height = 1080, Content = view };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
+            Rect ShelfBounds()
+            {
+                var viewport = Assert.Single(view.CurrentPage.GetVisualDescendants().OfType<FullscreenRowViewport>());
+                return new Rect(viewport.TranslatePoint(default, view)!.Value, viewport.Bounds.Size);
+            }
+            var expected = ShelfBounds();
+            var arranged = new List<Rect>();
+            view.CurrentPage.LayoutUpdated += (_, _) => arranged.Add(ShelfBounds());
+            for (var i = 0; i < 3; i++)
+            {
+                feed.Shelves.Clear(); feed.Shelves.Add(Shelf());
+                Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick(); Dispatcher.UIThread.RunJobs();
+            }
+            Assert.NotEmpty(arranged);
+            Assert.All(arranged, bounds => Assert.Equal(expected, bounds));
+            if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
+            {
+                Directory.CreateDirectory(directory);
+                using var frame = window.CaptureRenderedFrame();
+                frame?.Save(Path.Combine(directory, $"fullscreen-home-refresh-{scale}-{reducedMotion}.png"));
+            }
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(1)]
+    [InlineData(1.4)]
+    public void Deferred_shelves_preserve_the_visible_row_and_focus(double scale)
+    {
+        using var feed = new FeedViewModel(new PreviewFeedService(), PreviewData.Library);
+        FeedShelfViewModel Shelf(string id) => new(id, id, "",
+            Enumerable.Range(0, 10).Select(_ => new FeedCardViewModel(PreviewData.Tile, "Ready to play.")));
+        feed.Shelves.Add(Shelf("Recently played"));
+        using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell) { TextScale = scale };
+        using var view = new FullscreenView(context);
+        var window = new Window { Width = 1920, Height = 1080, Content = view };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
+            var viewport = Assert.Single(view.CurrentPage.GetVisualDescendants().OfType<FullscreenRowViewport>());
+            var row = viewport.GetRow(0);
+            var focus = window.FocusManager!.GetFocusedElement();
+            var bounds = viewport.Bounds;
+            for (var i = 0; i < 3; i++)
+            {
+                feed.Shelves.Add(Shelf($"Deferred {i}"));
+                Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
+                Assert.Same(viewport, Assert.Single(view.CurrentPage.GetVisualDescendants().OfType<FullscreenRowViewport>()));
+                Assert.Same(row, viewport.GetRow(0));
+                Assert.Equal(bounds, viewport.Bounds);
+                Assert.Same(focus, window.FocusManager.GetFocusedElement());
+            }
+            view.Handle(GamepadButtons.Down); Dispatcher.UIThread.RunJobs();
+            Assert.Equal(1, viewport.FirstRow);
+        }
+        finally { window.Close(); }
+    }
+
     [AvaloniaFact]
     public void Wide_home_can_show_and_navigate_all_ten_recommendations()
     {

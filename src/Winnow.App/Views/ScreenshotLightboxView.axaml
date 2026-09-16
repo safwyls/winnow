@@ -62,7 +62,7 @@
             <Setter Property="Background" Value="{StaticResource LightboxControlActiveFill}"/>
         </Style>
         <Style Selector="Button.lightbox:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
             <Setter Property="Background" Value="{StaticResource LightboxControlActiveFill}"/>
         </Style>
 

@@ -91,7 +91,7 @@ public sealed class FullscreenManualGamePage : FullscreenPage
             });
             body.Children.Add(search); focus.Add([search]);
         }
-        var status = FullscreenUi.Text("", 28, "Amber"); body.Children.Add(status);
+        var status = FullscreenUi.Text("", 28, "AmberForeground"); body.Children.Add(status);
         var save = FullscreenUi.Button("Save", async () =>
         {
             try

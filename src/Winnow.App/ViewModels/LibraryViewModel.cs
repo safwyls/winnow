@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -56,6 +57,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// simply absent.
     /// </summary>
     private readonly ISessionRepository? _sessions;
+    private readonly ISteamPlaytimeObservationRepository? _steamObservations;
+    private readonly ISettingsRepository? _activitySettings;
 
     /// <summary>
     /// §1's longitudinal playtime series, read only when a detail panel opens.
@@ -239,7 +242,9 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         Services.IUpdateFlagService? updateFlags = null,
         IAccountAcquisitionReader? acquisitionReader = null,
         IGroupHeaderPreferenceRepository? groupHeaders = null,
-        Services.IGameLinkRouter? linkRouter = null)
+        Services.IGameLinkRouter? linkRouter = null,
+        ISteamPlaytimeObservationRepository? steamObservations = null,
+        ISettingsRepository? activitySettings = null)
     {
         _storefrontCache = storefrontCache;
         _workRatings = workRatings;
@@ -263,6 +268,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         _acquisitionReader = acquisitionReader;
         _groupHeaders = groupHeaders;
         _sessions = sessions;
+        _steamObservations = steamObservations;
+        _activitySettings = activitySettings;
         _leases = leases;
         _snapshots = snapshots;
         _facetRepository = facets;
@@ -877,6 +884,21 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             return (snapshot, identity, facets, pins, epic, storefronts, headers);
         }, ct);
         if (_disposed || ct.IsCancellationRequested || generation != Volatile.Read(ref _loadGeneration)) return;
+        var prepareOnUi = Avalonia.Application.Current is not null && Avalonia.Threading.Dispatcher.UIThread.CheckAccess();
+        var preparationSlice = Stopwatch.StartNew();
+        var preparedItems = 0;
+        async ValueTask<bool> ContinuePreparingAsync()
+        {
+            if (_disposed || ct.IsCancellationRequested || generation != Volatile.Read(ref _loadGeneration)) return false;
+            if (prepareOnUi && (++preparedItems >= 128 || preparationSlice.ElapsedMilliseconds >= 8))
+            {
+                // Models are still local. Let input and rendering run without exposing a partial library.
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(static () => { }, Avalonia.Threading.DispatcherPriority.Background);
+                preparationSlice.Restart();
+                preparedItems = 0;
+            }
+            return !_disposed && !ct.IsCancellationRequested && generation == Volatile.Read(ref _loadGeneration);
+        }
         var bucketRows = loaded.snapshot.Buckets;
         var ownerships = loaded.snapshot.Ownerships;
         var works = loaded.snapshot.Works;
@@ -915,6 +937,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
         foreach (var work in works)
         {
+            if (!await ContinuePreparingAsync()) return;
             foreach (var release in releasesByWork[work.Id])
             {
                 workByRelease[release.Id] = work;
@@ -953,6 +976,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         var coverKeyByWork = new Dictionary<long, CoverKey>();
         foreach (var releaseId in coverKeyByRelease.Keys.OrderBy(id => id))
         {
+            if (!await ContinuePreparingAsync()) return;
             if (workByRelease.TryGetValue(releaseId, out var owner))
             {
                 coverKeyByWork.TryAdd(owner.Id, coverKeyByRelease[releaseId]);
@@ -980,6 +1004,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         var groupOrder = new List<long>();
         foreach (var row in bucketRows)
         {
+            if (!await ContinuePreparingAsync()) return;
             if (!groups.TryGetValue(row.ResolvedWorkId, out var members))
             {
                 groups[row.ResolvedWorkId] = members = [];
@@ -1007,6 +1032,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         {
             foreach (var resolvedWorkId in groupOrder)
             {
+                if (!await ContinuePreparingAsync()) return;
                 if (expansions.BaseOf(resolvedWorkId) is not { } baseWorkId)
                 {
                     continue;
@@ -1026,6 +1052,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         var tiles = new List<GameTileViewModel>(groupOrder.Count);
         foreach (var resolvedWorkId in groupOrder)
         {
+            if (!await ContinuePreparingAsync()) return;
             // The selected header's entry leads; remaining members retain a
             // total order so store chips and launch choices do not shuffle.
             var members = groups[resolvedWorkId];
@@ -1209,6 +1236,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         // instead: you have this, and something you own for it is untouched.
         foreach (var (baseResolvedWorkId, packTile) in folded)
         {
+            if (!await ContinuePreparingAsync()) return;
             if (!tileByResolvedWorkId.TryGetValue(baseResolvedWorkId, out var baseTile))
             {
                 continue;
@@ -1403,7 +1431,9 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                 journal: _sessions is null ? null : new GameJournalViewModel(snapshot.JournalEntries, Journal.PromptEnabled, _sessions),
                 addToList: new RelayCommand(() => BeginAddToListFor([Details?.Tile ?? target])),
                 sessions: snapshot.Sessions, backgroundUrl: snapshot.BackgroundUrl, artworkPreferences: _artworkPreferences,
-                linkRouter: _linkRouter);
+                linkRouter: _linkRouter,
+                steamActivity: new SteamReportedActivityViewModel(_steamObservations,
+                    target.OwnershipIds.ToDictionary(id => id, _ => target.Title), _activitySettings));
             if (_disposed || ct.IsCancellationRequested || generation != Volatile.Read(ref _detailsGeneration)) { details.Dispose(); return; }
             if (libraryGeneration == _publishedGeneration) { Details = details; return; }
 

@@ -19,6 +19,23 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
+        <Style Selector="Border#CoverFrame">
+            <Setter Property="RenderTransform" Value="translateY(0px)"/>
+            <Setter Property="BoxShadow" Value="0 0 0 0 #00000000"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.14" Easing="CubicEaseOut"/>
+                    <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.14" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.feedcard:pointerover Border#CoverFrame">
+            <Setter Property="RenderTransform" Value="translateY(-2px)"/>
+            <Setter Property="BoxShadow" Value="0 8 24 0 #8C000000"/>
+        </Style>
+        <Style Selector="Border#CoverFrame.snap">
+            <Setter Property="Transitions"><Transitions/></Setter>
+        </Style>
         <Style Selector="Border#FocusRing">
             <Setter Property="Opacity" Value="0"/>
         </Style>
@@ -54,7 +71,7 @@
             <Setter Property="BorderBrush" Value="Transparent"/>
         </Style>
         <Style Selector="Button.cardaside:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="Button.feedcard.setaside views|GameTileView"><Setter Property="Opacity" Value="0.42"/></Style>
         <Style Selector="Arc#CountdownSweep"><Setter Property="Transitions"><Transitions>
@@ -65,7 +82,11 @@
     <Button Name="Card" Classes="feedcard" Classes.setaside="{Binding IsSetAside}"
             AutomationProperties.Name="{Binding AutomationName}" AutomationProperties.ItemStatus="{Binding StatusAnnouncement}">
         <StackPanel Spacing="8">
-            <Panel Name="CoverFrame" Height="270">
+            <!-- Reserve the hover lift above the face so the shelf viewport
+                 does not clip the highlighted top edge on its first row. -->
+            <Border Name="CoverFrame" Height="270" Margin="0,2,0,0"
+                    Classes.snap="{Binding Tile.SnapDormancy}">
+                <Panel>
                 <views:GameTileView Name="CoverTile" DataContext="{Binding Tile}" Embedded="True"/>
                 <Panel IsVisible="{Binding HasSecondaryActions}">
                 <Border Name="ActionStrip" Background="{StaticResource Surface}" CornerRadius="0,0,6,6"
@@ -73,12 +94,12 @@
                     <StackPanel Name="FeedbackActions" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
                         <Button Name="AddToList" Classes="cardaside" ToolTip.Tip="Add to list" AutomationProperties.Name="Add to list"
                                 IsVisible="{Binding CanAddToList}" Command="{Binding AddToListCommand}">
-                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource Azure}" StrokeThickness="1.6"
+                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource AzureForeground}" StrokeThickness="1.6"
                                   Data="M 2,3 L 12,3 M 2,8 L 8,8 M 2,13 L 8,13 M 12,9 L 12,15 M 9,12 L 15,12"/>
                         </Button>
                         <Button Name="NotNow" Classes="cardaside" ToolTip.Tip="Not now" AutomationProperties.Name="Not now"
                                 IsVisible="{Binding CanGiveFeedback}" Command="{Binding NotNowCommand}">
-                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource Amber}" StrokeThickness="1.6"
+                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource AmberForeground}" StrokeThickness="1.6"
                                   Data="M 8,1 A 7,7 0 1 1 7.99,1 Z M 8,4 L 8,8 L 11,10"/>
                         </Button>
                         <Button Name="NotInterested" Classes="cardaside" ToolTip.Tip="Not interested" AutomationProperties.Name="Not interested"
@@ -102,15 +123,16 @@
                        ToolTip.Tip="Replaced by the next suggestion. Undo is on the history screen.">
                     <Ellipse Width="14" Height="14" Stroke="{StaticResource LineSoft}" StrokeThickness="2"/>
                     <Arc Name="CountdownSweep" Width="14" Height="14" StartAngle="-90" SweepAngle="{Binding CountdownSweep}"
-                         Stroke="{StaticResource Azure}" StrokeThickness="2"/>
+                         Stroke="{StaticResource AzureForeground}" StrokeThickness="2"/>
                 </Panel>
-                <Border Name="FocusRing" BorderBrush="{StaticResource Volt}" BorderThickness="2" CornerRadius="6" IsHitTestVisible="False"/>
-            </Panel>
+                <Border Name="FocusRing" BorderBrush="{StaticResource VoltForeground}" BorderThickness="2" CornerRadius="6" IsHitTestVisible="False"/>
+                </Panel>
+            </Border>
             <TextBlock Text="{Binding Tile.Title}" FontFamily="{StaticResource DisplayFont}" FontWeight="Bold"
                        FontSize="15" LineHeight="19" Height="19" TextTrimming="CharacterEllipsis" Foreground="{StaticResource Text}"/>
             <TextBlock Name="Reason" Classes="body" FontFeatures="tnum" TextWrapping="Wrap" MaxLines="2" Height="36"
                        TextTrimming="CharacterEllipsis" LineHeight="18" Foreground="{StaticResource TextDim}"/>
-            <TextBlock Classes="body" FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource Amber}"
+            <TextBlock Classes="body" FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource AmberForeground}"
                        IsVisible="{Binding HasProblem}" Text="{Binding Problem}"/>
         </StackPanel>
     </Button>

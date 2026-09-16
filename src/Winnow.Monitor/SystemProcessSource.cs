@@ -68,7 +68,7 @@ public sealed class SystemProcessSource : IProcessSource
             {
                 if (!TryFillSnapshot(out var length))
                 {
-                    return [];
+                    throw new InvalidOperationException("The process snapshot could not be read.");
                 }
 
                 var entrySize = Unsafe.SizeOf<Win32.SystemProcessInformation>();
@@ -98,9 +98,7 @@ public sealed class SystemProcessSource : IProcessSource
             }
             catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException)
             {
-                // A failed enumeration costs one poll, never the watcher.
-                _logger.LogDebug(ex, "Process enumeration failed; skipping this discovery pass.");
-                return [];
+                throw new InvalidOperationException("Native process enumeration is unavailable.", ex);
             }
         }
     }
@@ -231,9 +229,7 @@ public sealed class SystemProcessSource : IProcessSource
         }
         catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException)
         {
-            // A failed enumeration costs one poll, never the watcher.
-            _logger.LogDebug(ex, "Process enumeration failed; skipping this discovery pass.");
-            return [];
+            throw new InvalidOperationException("Process enumeration is unavailable.", ex);
         }
 
         var listings = new List<ProcessListing>(processes.Length);

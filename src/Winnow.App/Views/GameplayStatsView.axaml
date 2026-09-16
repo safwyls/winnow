@@ -29,7 +29,7 @@
       </WrapPanel>
       <TextBlock Classes="body" Text="Reading gameplay statistics…" IsVisible="{Binding IsLoading}"/>
       <StackPanel Spacing="10" IsVisible="{Binding Problem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-        <TextBlock Classes="body" Foreground="{DynamicResource Amber}" Text="{Binding Problem}" TextWrapping="Wrap"/>
+        <TextBlock Classes="body" Foreground="{DynamicResource AmberForeground}" Text="{Binding Problem}" TextWrapping="Wrap"/>
         <Button Content="Try again" Command="{Binding RefreshCommand}"/>
       </StackPanel>
       <views:GameplayStatsDashboard/>

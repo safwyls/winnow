@@ -60,9 +60,37 @@ path attribution have Ubuntu smoke coverage; actual Wine/Proton game compatibili
 Diagnostics are saved under `%LOCALAPPDATA%\Winnow\logs` (or the selected `--data-dir`).
 Five rolling files retain roughly 5 MiB. Logs omit identity values, paths, credentials and
 exception messages while retaining operation names, counts, timings and exception types.
+Each entry includes the app build, commit, operating system, runtime and a random run identifier
+so reports can be traced across rolling files without identifying the user.
 
 The window opens after the local scan. Titles, cover art and update signals fill in behind it;
 startup time depends on the library and device.
+
+#### Reporting a problem
+
+Open **Settings → Application → Diagnostics → Open logs folder** on desktop or fullscreen.
+Copy the `diagnostic*.log` files soon after the problem occurs, before they rotate out.
+Include those files with your bug report, the approximate time and time zone, the steps you
+took, and what you expected versus what happened. For session tracking, include the game,
+launcher, approximate start/end times, and whether Winnow was running throughout.
+Review attachments before sharing; you do not need to send your library database or credentials.
+
+If session tracking fails, a quiet notice links to the logs and disappears after recovery.
+Winnow retries automatically. Exact session times cannot be recovered from cumulative totals.
+
+#### Steam-reported activity
+
+Winnow also keeps changes to Steam's playtime readings for installed games, separately for
+each account and source. After 30 minutes, it compares an increase with recorded sessions.
+Unmatched time appears under **Game details → Activity → Steam-reported activity** on desktop
+and in fullscreen Activity and game history. It shows approximate minutes and the observation
+window, rather than invented start and end times. These entries do not add to session totals.
+
+Tracking starts with a new baseline after upgrading. Cached responses keep their original
+observation time; unchanged checks add no history rows. Shared accounts or incomplete sessions
+can prevent a reliable comparison, which the entry explains. Steam activity may include play
+on another device. Smaller counter readings are retained, but do not create new activity until
+the total exceeds its previous high. This avoids counting corrections as new play.
 
 ### First run
 
@@ -229,6 +257,7 @@ a few numbers; everything else is derived:
 ```json
 {
   "schemaVersion": 1,
+  "variant": "dark",
   "id": "bottle-green",
   "name": "Bottle green",
   "seeds": {
@@ -243,6 +272,12 @@ a few numbers; everything else is derived:
 
 Winnow reports each theme's measured contrast so you can see the impact on readability. Broken
 themes are skipped with a diagnostic. The app writes an annotated example on first run.
+
+Set `"variant": "light"` for a light palette or `"variant": "dark"` for a dark one.
+This selects the matching control templates. If omitted, Winnow compares the ground and
+text brightness, so existing light-theme files also receive light controls. Exported themes
+include the variant. Light themes retain their authored accent fills while deriving darker
+accent labels and focus outlines for readability; the audit checks action states and borders.
 
 ---
 

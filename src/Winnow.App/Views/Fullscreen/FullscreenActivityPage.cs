@@ -190,7 +190,7 @@ public sealed class FullscreenActivityPage : FullscreenPage
         }
         if (_problem is { } problem)
         {
-            list.Children.Add(FullscreenInformation.Text(problem, 24, "Amber"));
+            list.Children.Add(FullscreenInformation.Text(problem, 24, "AmberForeground"));
             var retry = FullscreenUi.Button("Try again", () =>
             {
                 if (_loading) return;
@@ -223,6 +223,11 @@ public sealed class FullscreenActivityPage : FullscreenPage
             list.Children.Add(more); buttons.Add([more]);
         }
         var summary = FullscreenInformation.Link("Library summary", () => Context.Push(new FullscreenLibrarySummaryPage(Context)));
+        var steam = FullscreenInformation.Link(SteamReportedActivityViewModel.Heading,
+            () => Context.Push(new FullscreenSteamActivityPage(Context)));
+        steam.GotFocus += (_, _) => { _tabsFocused = false; _initial = steam; };
+        list.Children.Add(FullscreenInformation.Rule());
+        list.Children.Add(steam); buttons.Add([steam]);
         summary.GotFocus += (_, _) => { _tabsFocused = false; _initial = summary; };
         _initial ??= summary;
         list.Children.Add(FullscreenInformation.Rule());
@@ -358,7 +363,7 @@ public sealed class FullscreenSessionNotePage : FullscreenPage
             .Append(new("No rating", () => _entry.ClearRatingCommand.Execute(null))).ToArray()));
         var rating = FullscreenInformation.Metadata("");
         rating.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding(nameof(JournalEntryViewModel.DraftRatingText)) { Source = _entry });
-        var status = FullscreenInformation.Text("", 24, "Amber");
+        var status = FullscreenInformation.Text("", 24, "AmberForeground");
         status.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding(nameof(JournalEntryViewModel.Problem)) { Source = _entry });
         var save = FullscreenUi.Button("Save", async () =>
         {
@@ -472,7 +477,7 @@ public sealed class FullscreenLibrarySummaryPage : FullscreenPage
         {
         body.Children.Add(FullscreenUi.Text("Source: Steam account pages. Spending imports for other stores are not available.", 28, "TextDim"));
         if (_stats.SpendingProblem is { } problem)
-            body.Children.Add(FullscreenInformation.Text(problem, 24, "Amber"));
+            body.Children.Add(FullscreenInformation.Text(problem, 24, "AmberForeground"));
         if (_stats.IsSpendingLoading)
             body.Children.Add(FullscreenUi.Text("Reading your account statistics…", 28, "TextDim"));
         var refresh = FullscreenUi.Button(_stats.SpendingProblem is null ? "Refresh Steam spending" : "Try again", () => _ = _stats.ActivateAsync());
@@ -573,7 +578,7 @@ public sealed class FullscreenLibrarySummaryPage : FullscreenPage
             body.Children.Add(apply); focus.Add([apply]);
         }
         if (model.IsLoading) body.Children.Add(FullscreenUi.Text("Reading gameplay statistics…", 28, "TextDim"));
-        if (model.Problem is { } problem) body.Children.Add(FullscreenInformation.Text(problem, 24, "Amber"));
+        if (model.Problem is { } problem) body.Children.Add(FullscreenInformation.Text(problem, 24, "AmberForeground"));
         var refresh = FullscreenUi.Button(model.Problem is null ? "Refresh gameplay" : "Try again", () => _ = model.RefreshAsync());
         refresh.HorizontalAlignment = HorizontalAlignment.Left;
         body.Children.Add(refresh); focus.Add([refresh]);

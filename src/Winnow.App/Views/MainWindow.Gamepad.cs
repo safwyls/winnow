@@ -88,6 +88,16 @@ public partial class MainWindow
             ToggleFullscreen();
             return;
         }
+        if (DesktopStartupVisible)
+        {
+            if (_desktopStartupRetry.IsVisible)
+            {
+                _desktopStartupRetry.Focus();
+                if (buttons.HasFlag(GamepadButtons.Accept) && _desktopPrepare is { } prepare)
+                    _ = PrepareDesktopAsync(prepare);
+            }
+            return;
+        }
         if (_gamepadKeyboard is { } keyboard)
         {
             keyboard.Handle(buttons);

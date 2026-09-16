@@ -4,38 +4,43 @@ Winnow's dragon head is the shared application mark.
 
 | Representation | Use |
 |---|---|
-| `dragon.svg` | Source drawing; read by `FullscreenGlyphs` for the fullscreen mark |
-| `dragon.ico` | Seven frames, 16–256px; executable, taskbar, Alt-Tab and window icon |
+| `dragon.svg` | Source drawing; read by `FullscreenGlyphs` for the fullscreen mark and `LoadingDragon` for both loading screens |
+| `dragon.ico` | Seven transparent frames, 16–256px; executable, taskbar, Alt-Tab, window, tray and Windows journal notification icon |
 | `DragonMark` in `Views/MainWindow.axaml` | Desktop caption geometry, painted with `TextDim` |
 
 `FullscreenGlyphs` reads the SVG paths with EvenOdd fill and applies the theme's `Text`
 brush. The desktop caption embeds the same geometry to keep the mark sharp at any DPI and
 recolour it with the theme. Keep both representations aligned when editing the drawing.
+`LoadingDragon` traces each closed figure separately so detached pieces and inner details
+receive a complete glow circuit. Keep the contour coverage test aligned with vector edits.
 The asset name `dragon` describes the subject; the mascot's name is Winnow.
 
 ## Regenerating dragon.ico
 
-Render the thirteen SVG paths with SkiaSharp (`SKPath.ParseSvgPathData`, then `SKCanvas`)
-at each frame size and package the bitmaps in an ICO container. SkiaSharp is already an
-Avalonia dependency. There is no checked-in icon-generation tool.
+From the repository root, run:
 
-- **Composition.** The artwork is scaled into a rounded tile (radius 0.1875 × size,
-  the Windows 11 metric), `Ground #0F1C1E` behind, `Text #F0EDE7` in front. The
-  tile is not decoration: a transparent icon in this palette is invisible on one
-  of the two Windows taskbar themes, and which one is the user's choice.
+```powershell
+dotnet run --file scripts/Generate-AppIcon.cs -- C:/Temp/winnow-icon-preview
+```
+
+The .NET 10 file-based tool renders the thirteen SVG paths with SkiaSharp at each frame
+size and packages them in an ICO container. The optional output directory receives
+transparent PNGs and light/dark contrast previews.
+
+- **Composition.** The background is transparent, with no tile. `Text #F0EDE7` fills
+  the dragon and a thin `Ground #0F1C1E` outline follows its contours so it remains
+  readable on a light taskbar. A 5.5% inset leaves space for the outline.
 - **Every frame is rendered from the vector at its own size.** None is a downscale
-  of a larger one. This is the whole reason the file is 44KB rather than one PNG:
+  of a larger one. The file contains 16, 24, 32, 48, 64, 128 and 256px frames:
   the shell picks the frame that matches the surface, and a 256 stretched to 24 is
-  mud. Verified with `PrivateExtractIconsW` against the built exe — Windows pulls
-  16, 24, 32, 48 and 256 out at their native sizes.
+  mud. Check the executable frames with `PrivateExtractIconsW` after changing them.
 - **16 and 24 carry a hairline dilation** (0.50px and 0.40px, stroked in the fill
   colour) because the mane and jaw details fall below one device pixel there.
-  Measured rather than guessed: at 16px, 0.0 speckles into grey noise and 1.1
-  merges the two horns into one lump; 0.4–0.55 keeps two distinct horns, the snout
-  and the eye. 32 and up take no dilation and do not need it.
+  32 and up take no dilation. Inspect both light and dark previews when changing
+  the outline or small-frame weight.
 - **At 16px the mark reads as a horned head.** The mane texture and jaw detail are not
   distinguishable at that size.
-- **DIB below 48, PNG at 64 and above.** Windows has read PNG frames since Vista,
+- **DIB through 48, PNG at 64 and above.** Windows has read PNG frames since Vista,
   but the small sizes are where the widest range of shell surfaces look, and a DIB
   is what every one of them has always understood. `System.Drawing.Icon` cannot
   read the PNG 256 frame — that is GDI+ predating PNG-in-ICO, not a defect in the

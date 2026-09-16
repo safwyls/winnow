@@ -96,9 +96,11 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         string? backgroundUrl = null,
         ArtworkPreferences? artworkPreferences = null,
         IReadOnlyDictionary<long, DateTime>? acknowledgedByRelease = null,
-        IGameLinkRouter? linkRouter = null)
+        IGameLinkRouter? linkRouter = null,
+        SteamReportedActivityViewModel? steamActivity = null)
     {
         _covers = covers;
+        SteamActivity = steamActivity ?? new SteamReportedActivityViewModel();
         _lightbox = lightbox;
         Reception = GameReceptionViewModel.From(ratings);
         Screenshots = GameScreenshotsViewModel.From(images, covers, lightbox);
@@ -246,6 +248,8 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
             Tile.Entries.Count > 1 ? $"{Tile.StoreBadge} copy" : string.Empty);
         RecordLine = BuildRecordLine(_snapshots, _nowUtc);
         Journal?.ApplySnapshot(snapshot.JournalEntries);
+        SteamActivity.UpdateScope(Tile.OwnershipIds.ToDictionary(id => id, _ => Tile.Title));
+        _ = SteamActivity.RefreshAsync();
         (PrimaryAction, Links, NoWayInSentence) = BuildLinks(Tile);
         GogPatchNotes = Tile.PlayableEntry.Store == "gog" ? Tile.PlayableEntry.Storefront?.PatchNotes : null;
         _images = snapshot.Images;
@@ -412,6 +416,8 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     public string PlaytimeText => Tile.PlaytimeText;
 
     public ActivityTrackerViewModel Tracker { get; }
+    public SteamReportedActivityViewModel SteamActivity { get; }
+    public bool ShowSteamActivity => Tile.Entries.Any(entry => entry.Store == "steam");
 
     public DateTime? LastPlayedUtc { get; private set; }
 
@@ -982,6 +988,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         Screenshots?.Dispose();
         IgdbMatch?.Dispose();
         MetadataEditor?.Dispose();
+        SteamActivity.Dispose();
     }
 
     // ── Construction helpers ────────────────────────────────────────────────

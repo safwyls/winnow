@@ -64,6 +64,7 @@ public partial class MainWindow
         {
             RestoreMouseCursor();
             _presentingTv = false;
+            _tvView?.CancelStartupPresentation();
             TvHost.Content = null;
             RefreshDesktopAfterFullscreen();
         }
@@ -72,7 +73,17 @@ public partial class MainWindow
     {
         if (_tvView is not null)
         {
-            try { if (_tvContext is not null) await _tvContext.RefreshAsync(); }
+            try
+            {
+                if (_tvContext is not null)
+                {
+                    // Arm the opaque presentation before reattaching a cached view.
+                    var preparation = _tvView.PrepareAsync(_tvContext.HasLoadedPreferences
+                        ? _tvContext.RefreshAsync : _tvContext.LoadAsync);
+                    TvHost.Content = _tvView;
+                    await preparation;
+                }
+            }
             catch (Exception) { _tvContext?.Notify("Could not refresh your library. Try again."); }
             return;
         }
@@ -87,16 +98,21 @@ public partial class MainWindow
                 new Design.PreviewWorkRepository(), new Design.PreviewUpdateEventRepository());
             _tvContext = new FullscreenContext(library, new FeedViewModel(new Design.PreviewFeedService(), library), shared);
         }
-        _tvView = new FullscreenView(_tvContext);
+        _tvView = new FullscreenView(_tvContext, preparing: true);
         _tvView.ExitRequested += ToggleFullscreen;
         _tvView.QuitRequested += ExitFromTray;
         TvHost.Content = _tvView;
-        try { await _tvContext.LoadAsync(); }
-        catch (Exception) { _tvContext.Notify("Could not load your library. Return to fullscreen to try again."); }
+        await _tvView.PrepareAsync(_tvContext.LoadAsync);
     }
     private async void RefreshDesktopAfterFullscreen()
     {
-        try { if (_shell is not null) await _shell.Library.LoadCommand.ExecuteAsync(null); }
-        catch (Exception ex) { System.Diagnostics.Trace.TraceError($"Library refresh after fullscreen failed: {ex}"); }
+        // An initial load or its recovery screen already owns readiness. Do not
+        // replace it with a competing refresh when returning before startup finishes.
+        if (_shell is null || DesktopStartupVisible) return;
+        await PrepareDesktopAsync(async () =>
+        {
+            await _shell.Library.LoadCommand.ExecuteAsync(null);
+            if (_shell.Feed.LoadCommand.ExecutionTask is { } feed) await feed;
+        });
     }
 }

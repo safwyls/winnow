@@ -62,7 +62,7 @@ public sealed class FullscreenPlatformPage : FullscreenPage
             Text(nameof(stores.SteamSignInUnavailableMessage), nameof(stores.ShowSteamSignInUnavailable), "TextDim");
             Text(nameof(stores.SteamSignInBusyMessage), nameof(stores.ShowSteamSignInBusy), "TextDim");
             Text(nameof(stores.SteamSignInNoticeMessage), nameof(stores.ShowSteamSignInNotice), "TextDim");
-            Text(nameof(stores.SteamSignInProblemMessage), nameof(stores.ShowSteamSignInProblem), "Amber");
+            Text(nameof(stores.SteamSignInProblemMessage), nameof(stores.ShowSteamSignInProblem), "AmberForeground");
             Add("Steam Web API key", () => context.Push(new FullscreenSteamApiKeyPage(context)));
             Add("Purchase history", () => context.Push(new FullscreenPurchaseHistoryPage(context)), nameof(stores.ShowPurchaseImport));
             Text(nameof(stores.AccountScopeMessage));
@@ -84,8 +84,8 @@ public sealed class FullscreenPlatformPage : FullscreenPage
             Text(nameof(stores.EpicLocalMessage), resource: "TextDim");
             Text(nameof(stores.EpicGapMessage), nameof(stores.EpicCanSignIn), "TextDim");
             Text(nameof(stores.EpicConsentPromiseMessage), nameof(stores.EpicCanSignIn), "TextDim");
-            Text(nameof(stores.EpicSessionNotPersistedMessage), nameof(stores.EpicSessionNotPersisted), "Amber");
-            Text(nameof(stores.EpicProblemMessage), nameof(stores.ShowEpicProblem), "Amber");
+            Text(nameof(stores.EpicSessionNotPersistedMessage), nameof(stores.EpicSessionNotPersisted), "AmberForeground");
+            Text(nameof(stores.EpicProblemMessage), nameof(stores.ShowEpicProblem), "AmberForeground");
             Add("Sign out of Epic", () => context.ShowActions(stores.EpicSignOutMessage,
                 [new("Sign out", () => _ = Run(() => stores.SignOutOfEpicCommand.ExecuteAsync(null), "Couldn't sign out of Epic. Try again.")), new("Cancel", () => { })]), nameof(stores.EpicIsSignedIn));
             var signIn = Add(stores.EpicSignInButtonText,

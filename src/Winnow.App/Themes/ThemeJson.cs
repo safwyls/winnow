@@ -186,6 +186,9 @@ public static class ThemeJson
         // ── The theme's own opening position ────────────────────────────────
         var defaults = ReadDefaults(doc.Defaults, Warn);
 
+        if (doc.Variant is not null and not "light" and not "dark")
+            Error("variant", "expected light or dark.");
+
         if (log.Any(d => d.IsError) || seeds is null)
         {
             return (null, log);
@@ -193,6 +196,8 @@ public static class ThemeJson
 
         var theme = ThemeDerivation.Compose(
             id, name, reason, seeds, shape, overrides, defaults, fileName);
+        if (doc.Variant is not null)
+            theme = theme with { IsLight = doc.Variant == "light" };
 
         log.AddRange(ThemeAudit.Inspect(theme, fileName));
         return (theme, log);
@@ -211,6 +216,7 @@ public static class ThemeJson
         var document = new ThemeExportDocument
         {
             SchemaVersion = SchemaVersion,
+            Variant = theme.IsLight ? "light" : "dark",
             Id = theme.IsUserTheme ? theme.Id : theme.Id + "-copy",
             Name = theme.IsUserTheme ? theme.Name : theme.Name + " (copy)",
             Reason = theme.Reason,
@@ -681,7 +687,7 @@ public static class ThemeJson
 
         if (message.Contains("could not be mapped", StringComparison.Ordinal))
         {
-            return $"not a field this build reads{where}. A theme file holds: schemaVersion, id, name, reason, seeds, structure, translucency, defaults, overrides.";
+            return $"not a field this build reads{where}. A theme file holds: schemaVersion, id, name, reason, variant, seeds, structure, translucency, defaults, overrides.";
         }
 
         if (message.Contains("could not be converted", StringComparison.Ordinal)

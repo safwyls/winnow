@@ -914,7 +914,7 @@ public partial class FeedViewModel : ObservableObject, IDisposable
             FeedConfidence.EarlyDays =>
                 "Based on playtime and patch history. Improves as you play.",
             FeedConfidence.Settling =>
-                "Session tracking active. Picks improve from here.",
+                "Recorded sessions help refine your picks.",
             _ => null,
         },
     };

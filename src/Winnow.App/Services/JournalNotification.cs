@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using Avalonia.Controls;
+using Avalonia.Platform;
 using Avalonia.Threading;
 
 namespace Winnow.App.Services;
@@ -23,6 +24,7 @@ public sealed class WindowsJournalNotification : IJournalNotification, IDisposab
     private Action? _unavailable;
     private DispatcherTimer? _deliveryTimer;
     private bool _shown;
+    private nint _notificationIcon;
 
     public void Attach(Window window)
     {
@@ -42,14 +44,17 @@ public sealed class WindowsJournalNotification : IJournalNotification, IDisposab
             var query = SHQueryUserNotificationState(out var state);
             if (query != 0) return JournalNotificationDelivery.Unavailable;
             if (state != 5) return JournalNotificationDelivery.Suppressed;
+            _notificationIcon = LoadDragonIcon();
+            if (_notificationIcon == 0) return JournalNotificationDelivery.Unavailable;
             _data = new NotifyIconData
             {
                 Size = (uint)Marshal.SizeOf<NotifyIconData>(), Window = handle, Id = ++_nextId,
                 Flags = 0x1 | 0x2 | 0x4 | 0x10 | 0x40,
-                Callback = CallbackMessage, Icon = LoadIconW(0, (nint)32512), Tip = "Winnow journal",
+                Callback = CallbackMessage, Icon = _notificationIcon, Tip = "Winnow journal",
                 Info = "Your session finished. Select to add a note or rating.",
                 Title = title.Length > 63 ? title[..60] + "…" : title,
-                InfoFlags = 0x1 | 0x10 | 0x80,
+                // NIIF_USER | NIIF_NOSOUND | NIIF_LARGE_ICON | NIIF_RESPECT_QUIET_TIME.
+                InfoFlags = 0x4 | 0x10 | 0x20 | 0x80, BalloonIcon = _notificationIcon,
             };
             _activate = activate;
             _unavailable = unavailable;
@@ -61,7 +66,7 @@ public sealed class WindowsJournalNotification : IJournalNotification, IDisposab
             _deliveryTimer.Start();
             return JournalNotificationDelivery.Submitted;
         }
-        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or ExternalException)
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or ExternalException or IOException)
         {
             Dismiss();
             return JournalNotificationDelivery.Unavailable;
@@ -104,6 +109,11 @@ public sealed class WindowsJournalNotification : IJournalNotification, IDisposab
         _deliveryTimer?.Stop();
         _deliveryTimer = null;
         if (_data.Window != 0 && OperatingSystem.IsWindows()) Shell_NotifyIconW(2, ref _data);
+        if (_notificationIcon != 0)
+        {
+            DestroyIcon(_notificationIcon);
+            _notificationIcon = 0;
+        }
         _data = default;
         _activate = null;
         _unavailable = null;
@@ -144,6 +154,44 @@ public sealed class WindowsJournalNotification : IJournalNotification, IDisposab
     private static extern bool Shell_NotifyIconW(uint message, ref NotifyIconData data);
     [DllImport("shell32.dll")]
     private static extern int SHQueryUserNotificationState(out int state);
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern nint LoadIconW(nint instance, nint name);
+    // Read the bundled ICO rather than the window icon, which can show the
+    // selected game's cover. The notification always represents Winnow.
+    internal static nint LoadDragonIcon()
+    {
+        using var stream = AssetLoader.Open(new Uri("avares://Winnow/Assets/Icons/dragon.ico"));
+        using var buffer = new MemoryStream();
+        stream.CopyTo(buffer);
+        buffer.Position = 0;
+        using var reader = new BinaryReader(buffer);
+        reader.ReadUInt16(); reader.ReadUInt16();
+        var count = reader.ReadUInt16();
+        var size = GetSystemMetrics(11); // SM_CXICON: custom balloons require a large icon.
+        if (size <= 0) size = 32;
+        var closest = int.MaxValue;
+        uint length = 0, offset = 0;
+        for (var i = 0; i < count; i++)
+        {
+            var width = (int)reader.ReadByte();
+            if (width == 0) width = 256;
+            reader.ReadBytes(7);
+            var frameLength = reader.ReadUInt32();
+            var frameOffset = reader.ReadUInt32();
+            if (Math.Abs(width - size) >= closest) continue;
+            closest = Math.Abs(width - size);
+            length = frameLength; offset = frameOffset;
+        }
+        if (length == 0) return 0;
+        buffer.Position = offset;
+        var pixels = reader.ReadBytes(checked((int)length));
+        return CreateIconFromResourceEx(pixels, (uint)pixels.Length, true, 0x00030000, size, size, 0);
+    }
+
+    [DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int index);
+    [DllImport("user32.dll")]
+    private static extern nint CreateIconFromResourceEx(byte[] bits, uint size,
+        [MarshalAs(UnmanagedType.Bool)] bool icon, uint version, int width, int height, uint flags);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool DestroyIcon(nint icon);
 }

@@ -9,7 +9,7 @@
         <Style Selector="TextBox">
             <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
-            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource VoltForeground}"/>
             <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
         </Style>
         <Style Selector="TextBox /template/ Border#PART_BorderElement">
@@ -18,7 +18,7 @@
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
         <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="TextBox /template/ TextBlock#PART_Watermark">
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
@@ -68,7 +68,7 @@
                                                    Foreground="{StaticResource TextDim}" VerticalAlignment="Center"/>
                                         <Canvas Grid.Column="3" Width="16" Height="16" Margin="16,0,0,0" VerticalAlignment="Center"
                                                 IsHitTestVisible="False">
-                                            <Path Data="M 8,2 V 14 M 2,8 H 14" Stroke="{StaticResource Azure}" StrokeThickness="1.5"/>
+                                            <Path Data="M 8,2 V 14 M 2,8 H 14" Stroke="{StaticResource AzureForeground}" StrokeThickness="1.5"/>
                                         </Canvas>
                                     </Grid>
                                 </Button>

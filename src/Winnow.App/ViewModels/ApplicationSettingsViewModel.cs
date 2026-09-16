@@ -27,12 +27,14 @@ public partial class ApplicationSettingsViewModel : ObservableObject
         IApplicationUpdater? updater = null,
         IUriDispatcher? uris = null,
         IgdbSettingsViewModel? igdb = null,
-        IStoreClientAvailability? storeClients = null)
+        IStoreClientAvailability? storeClients = null,
+        DiagnosticsViewModel? diagnostics = null)
     {
         _settings = settings;
         _startup = startup;
         _updater = updater;
         _uris = uris;
+        Diagnostics = diagnostics ?? new DiagnosticsViewModel();
         LinkDestinationOptions = storeClients?.IsAvailable(GameLink.SteamScheme) == true
             ? ["In Winnow", "System browser", "Store client"] : ["In Winnow", "System browser"];
         Igdb = igdb ?? new IgdbSettingsViewModel();
@@ -48,6 +50,7 @@ public partial class ApplicationSettingsViewModel : ObservableObject
     }
 
     public string Title => "Application";
+    public DiagnosticsViewModel Diagnostics { get; }
     public IgdbSettingsViewModel Igdb { get; }
     public event Action? SetupRequested;
     [RelayCommand]

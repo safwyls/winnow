@@ -100,7 +100,9 @@ public partial class FeedCardView : UserControl
         }
         _card = DataContext as FeedCardViewModel;
         _tile = _card?.Tile;
-        CoverTile.ActionInset = new Thickness(0, 0, 0, _card?.HasSecondaryActions == true ? 48 : 0);
+        // Face owns a 1px inner border, so a 47px content inset meets the
+        // 48px feed action strip at its top edge without exposing that seam.
+        CoverTile.ActionInset = new Thickness(0, 0, 0, _card?.HasSecondaryActions == true ? 47 : 0);
         _preview.Target(_card?.Preview);
         Apply();
         WriteReason(_card);

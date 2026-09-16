@@ -308,11 +308,20 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             Group("Links");
             Adjust("Open links in", app.LinkDestinationNote, () => app.LinkDestinationOptions[app.LinkDestinationIndex],
                 direction => app.LinkDestinationIndex = (app.LinkDestinationIndex + direction + app.LinkDestinationOptions.Count) % app.LinkDestinationOptions.Count);
-            var problem = FullscreenInformation.Text("", 24, "Amber");
+            var problem = FullscreenInformation.Text("", 24, "AmberForeground");
             problem.Bind(TextBlock.TextProperty, new Binding(nameof(app.Problem)) { Source = app });
             problem.Bind(IsVisibleProperty, new Binding(nameof(app.HasProblem)) { Source = app });
             AutomationProperties.SetLiveSetting(problem, AutomationLiveSetting.Polite);
             rows.Children.Add(problem);
+            Group("Diagnostics");
+            Action("Open logs folder", () => app.Diagnostics.OpenLogsCommand.Execute(null));
+            rows.Children.Add(FullscreenInformation.Text(app.Diagnostics.ReportHelp));
+            rows.Children.Add(FullscreenInformation.Metadata(app.Diagnostics.LogsDirectory));
+            var diagnosticProblem = FullscreenInformation.Text("");
+            diagnosticProblem.Bind(TextBlock.TextProperty, new Binding(nameof(DiagnosticsViewModel.Problem)) { Source = app.Diagnostics });
+            diagnosticProblem.Bind(IsVisibleProperty, new Binding(nameof(DiagnosticsViewModel.HasProblem)) { Source = app.Diagnostics });
+            AutomationProperties.SetLiveSetting(diagnosticProblem, AutomationLiveSetting.Polite);
+            rows.Children.Add(diagnosticProblem);
             Group("Tools");
             if (!Context.Shared.Setup.IsOpen)
                 Action("Run setup again", () => app.OpenSetupCommand.Execute(null));

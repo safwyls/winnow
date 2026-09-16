@@ -31,7 +31,7 @@
             <Setter Property="Padding" Value="14,12"/>
         </Style>
         <Style Selector="Border.note.attention">
-            <Setter Property="BorderBrush" Value="{StaticResource Amber}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AmberForeground}"/>
         </Style>
 
         <!-- One entry of either list. Constant border thickness so a hover
@@ -57,7 +57,7 @@
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
             <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
-            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="TextBox.field /template/ Border#PART_BorderElement">
             <Setter Property="Background" Value="{StaticResource Well}"/>
@@ -70,7 +70,7 @@
         </Style>
         <Style Selector="TextBox.field:focus /template/ Border#PART_BorderElement">
             <Setter Property="Background" Value="{StaticResource Well}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="TextBox.field /template/ TextBlock#PART_Watermark">
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
@@ -78,13 +78,13 @@
         <!-- A field the user has to come back to. Amber on the edge only; the
              sentence under it is what actually says what is wrong (§8). -->
         <Style Selector="TextBox.field.wrong /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="{StaticResource Amber}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AmberForeground}"/>
         </Style>
 
         <Style Selector=":is(TextBlock).fielderror">
             <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
             <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Foreground" Value="{StaticResource Amber}"/>
+            <Setter Property="Foreground" Value="{StaticResource AmberForeground}"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
 

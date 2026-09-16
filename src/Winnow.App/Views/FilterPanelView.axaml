@@ -35,7 +35,7 @@
                         <Border Name="Ring"
                                 Margin="-4,0"
                                 CornerRadius="{StaticResource RadiusControl}"
-                                BorderBrush="{StaticResource Volt}"
+                                BorderBrush="{StaticResource VoltForeground}"
                                 BorderThickness="2"
                                 Opacity="0"
                                 IsHitTestVisible="False"/>
@@ -112,7 +112,7 @@
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
             <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
-            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <!-- ChromeFieldOnSurface, not Ground: the panel behind it opens up
              with the rest of the chrome, and a solid well cut into a translucent
@@ -134,7 +134,7 @@
              count under them. -->
         <Style Selector="TextBox.find:focus /template/ Border#PART_BorderElement">
             <Setter Property="Background" Value="{StaticResource ChromeFieldOnSurface}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="TextBox.find /template/ TextBlock#PART_Watermark">
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
@@ -155,7 +155,7 @@
             <Setter Property="FontFeatures" Value="tnum"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
             <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
-            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="TextBox.year /template/ Border#PART_BorderElement">
             <Setter Property="Background" Value="{StaticResource ChromeFieldOnSurface}"/>
@@ -168,7 +168,7 @@
         </Style>
         <Style Selector="TextBox.year:focus /template/ Border#PART_BorderElement">
             <Setter Property="Background" Value="{StaticResource ChromeFieldOnSurface}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <!-- TextDim, not TextFaint. This was the one placeholder in the app that
              read in the faint ink, and measuring it to decide whether the field
@@ -304,7 +304,7 @@
                                             Command="{Binding ToggleShowAllCommand}"
                                             IsVisible="{Binding CanExpand}">
                                         <TextBlock Classes="body" FontSize="11"
-                                                   Foreground="{StaticResource Azure}"
+                                                   Foreground="{StaticResource AzureForeground}"
                                                    Text="{Binding ShowAllText}"/>
                                     </Button>
                                 </StackPanel>

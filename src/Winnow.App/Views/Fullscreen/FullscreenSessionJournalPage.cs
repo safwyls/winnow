@@ -38,7 +38,7 @@ public sealed class FullscreenSessionJournalPage : FullscreenPage
         }
         var current = FullscreenInformation.Metadata("");
         current.Bind(TextBlock.TextProperty, new Binding(nameof(JournalPromptViewModel.Rating)) { Source = prompt, StringFormat = "Rating: {0} / 5" });
-        var problem = FullscreenInformation.Text("", brush: "Amber");
+        var problem = FullscreenInformation.Text("", brush: "AmberForeground");
         problem.Bind(TextBlock.TextProperty, new Binding(nameof(JournalPromptViewModel.Problem)) { Source = prompt });
         var save = FullscreenUi.Button("Save", async () => await prompt.SaveCommand.ExecuteAsync(null));
         save.Bind(ContentControl.ContentProperty, new Binding(nameof(JournalPromptViewModel.SaveLabel)) { Source = prompt });

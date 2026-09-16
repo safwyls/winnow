@@ -26,6 +26,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     private readonly Dictionary<string, int> _shelfPositions = [];
     private readonly List<FeedShelfViewModel> _observedShelves = [];
     private readonly List<FeedCardViewModel> _observedCards = [];
+    private List<(FeedShelfViewModel Shelf, FeedCardViewModel[] Cards)> _homeRows = [];
     private readonly List<Button> _tiles = [];
     private Button[] _collectionButtons = [];
     private int _headerFocus = -1;
@@ -214,7 +215,24 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     {
         if (_feed && e.PropertyName is nameof(FeedViewModel.Message) or nameof(FeedViewModel.IsLoading)) QueueRebuild();
     }
-    private void OnShelvesChanged(object? sender, NotifyCollectionChangedEventArgs e) { ObserveShelves(); if (_feed) QueueRebuild(); }
+    private void OnShelvesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        ObserveShelves();
+        if (!_feed) return;
+        // Supplemental shelves arrive after Home is already visible. Its current row and
+        // cover leases still represent the same cards; only the navigation range grew.
+        if (!_pending && ReferenceEquals(sender, Context.Feed.Shelves) &&
+            e.Action == NotifyCollectionChangedAction.Add && e.NewStartingIndex > _shelf &&
+            e.NewStartingIndex == Context.Feed.Shelves.Count - e.NewItems!.Count &&
+            e.NewStartingIndex == _homeRows.Count && _rowViewport is { } viewport)
+        {
+            _homeRows.AddRange(Context.Feed.Shelves.Skip(e.NewStartingIndex).Select(s => (s, s.Cards.ToArray())));
+            viewport.AppendRows(_homeRows.Count);
+            UpdateHomeIndicator();
+            return;
+        }
+        QueueRebuild();
+    }
     private void ObserveShelves()
     {
         foreach (var shelf in _observedShelves) shelf.Cards.CollectionChanged -= OnShelvesChanged;
@@ -276,7 +294,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         _shelf = Math.Clamp(_shelf, 0, Context.Feed.Shelves.Count - 1);
         var shelf = Context.Feed.Shelves[_shelf];
         _card = Math.Clamp(_shelfPositions.GetValueOrDefault(shelf.Id), 0, Math.Max(0, shelf.Cards.Count - 1));
-        var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,*") };
+        var grid = new FullscreenHomeLayout(ResizeHome) { RowDefinitions = new RowDefinitions("Auto,*") };
         var shelfLayout = new Grid { RowDefinitions = new RowDefinitions("Auto,*"),
             ColumnDefinitions = new ColumnDefinitions("*,64"), ColumnSpacing = 12 };
         _homeShelf = shelfLayout;
@@ -288,9 +306,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         _wall = shelfGrid;
         shelfGrid.SizeChanged += (_, _) => SizeWall();
         shelfGrid.RowsChanged += (_, _) => Changed();
-        var shelves = Context.Feed.Shelves.Select(s => (Shelf: s, Cards: s.Cards.ToArray())).ToArray();
-        var capacity = _shelfCapacity;
-        shelfGrid.Configure(shelves.Length, 1, index => CreateHomeRow(shelves[index].Shelf, shelves[index].Cards, capacity), _shelf);
+        ConfigureHomeRows();
         Grid.SetRow(shelfGrid, 1);
         _hero.Margin = new Thickness(0, 0, 600, 0);
         grid.Children.Add(_hero);
@@ -356,18 +372,35 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         foreach (var (button, card) in _tiles.Zip(shelf.Cards.Skip(_card / _shelfCapacity * _shelfCapacity)))
             _visibleCards.Add(button, card);
         if (_homeHeading is not null) _homeHeading.Text = shelf.Title;
-        if (_homeIndicatorHost?.Child is Viewbox box)
-            box.Child = new FullscreenShelfIndicator(Context.Feed.Shelves.Select(s => s.Title).ToArray(), _shelf, SelectShelf);
+        UpdateHomeIndicator();
         SetFocusRows(_tiles.Cast<Control>().ToArray());
         if (shelf.Cards.Count > 0) SetHero(shelf.Cards[_card], shelf);
         else { _selected = null; _art.Content = null; Changed(); }
         QueueObservation();
     }
 
+    private void UpdateHomeIndicator()
+    {
+        if (_homeIndicatorHost?.Child is Viewbox box)
+            box.Child = new FullscreenShelfIndicator(Context.Feed.Shelves.Select(s => s.Title).ToArray(), _shelf, SelectShelf);
+    }
+
+    private void ConfigureHomeRows()
+    {
+        var capacity = _shelfCapacity;
+        var rows = Context.Feed.Shelves.Select(s => (Shelf: s, Cards: s.Cards.ToArray())).ToList();
+        _homeRows = rows;
+        _rowViewport!.Configure(rows.Count, 1, index =>
+        {
+            var row = rows[index];
+            return CreateHomeRow(row.Shelf, row.Cards, capacity);
+        }, _shelf);
+    }
+
     private void SelectBackdrop(GameTileViewModel tile)
     {
         if (_art.Content is FullscreenBackdrop backdrop) backdrop.Select(tile);
-        else _art.Content = new FullscreenBackdrop(Context, tile);
+        else _art.Content = new FullscreenBackdrop(Context, tile, cinematic: _feed);
     }
 
     private void SetHero(FeedCardViewModel card, FeedShelfViewModel shelf)
@@ -426,7 +459,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         heading.Children.Add(count);
         var headingStack = new StackPanel { Spacing = 4 };
         headingStack.Children.Add(heading);
-        var problem = FullscreenUi.Text("", 24, "Amber");
+        var problem = FullscreenUi.Text("", 24, "AmberForeground");
         problem.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding(nameof(ListsViewModel.Problem)) { Source = library.Lists });
         problem.Bind(IsVisibleProperty, new Avalonia.Data.Binding(nameof(ListsViewModel.HasProblem)) { Source = library.Lists });
         headingStack.Children.Add(problem);
@@ -513,6 +546,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
 
     private void SizeWall()
     {
+        if (_feed) return; // Home owns its geometry in measure, before any frame is arranged.
         if (_sizePending) return;
         _sizePending = true;
         // The shell applies text scaling after first layout. Read the settled wall size,
@@ -527,43 +561,47 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     private void ResizeWall()
     {
         if (_wall is null || _wall.Bounds.Height <= 0 || Bounds.Width <= 0) return;
-        int columns;
-        if (_feed && _homeHeading is not null)
+        var columns = FullscreenCoverLayout.Columns(Bounds.Width, _wall.Bounds.Height, 2);
+        _wallWidth = Bounds.Width;
+        if (Math.Abs(_wall.Width - _wallWidth) > 1 || double.IsNaN(_wall.Width)) _wall.Width = _wallWidth;
+        if (columns == _columns) return;
+        _columns = columns;
+        _state.Resize(columns, Context.Library.VisibleTiles.Select(tile => tile.ReleaseId).ToArray());
+        QueueRebuild();
+    }
+
+    private void ResizeHome(Size availableSize)
+    {
+        if (_wall is null || _homeHeading is null || !double.IsFinite(availableSize.Width) ||
+            !double.IsFinite(availableSize.Height) || availableSize.Width <= 76) return;
+        _hero.Measure(new Size(availableSize.Width, double.PositiveInfinity));
+        _homeHeading.Measure(new Size(availableSize.Width - 76, double.PositiveInfinity));
+        // Use the unscaled canvas as the sizing reference. Extra space at smaller UI scales
+        // adds columns instead of increasing the cover height and undoing the user's zoom.
+        var availableHeight = Math.Max(1, availableSize.Height - _hero.DesiredSize.Height - _homeHeading.DesiredSize.Height);
+        var referenceHeight = Math.Max(1, availableHeight + (1080 - 1080 / Context.EffectiveUiScale) * (1 - 2 * Context.SafeMarginPercent / 100));
+        var referenceWidth = Math.Max(1, availableSize.Width * Context.EffectiveUiScale - 76);
+        var referenceColumns = FullscreenCoverLayout.Columns(referenceWidth, referenceHeight, 1);
+        var cellWidth = referenceWidth / referenceColumns;
+        const double outsideArt = 20;
+        cellWidth = Math.Min(cellWidth, Math.Max(1, availableHeight - outsideArt) * 2 / 3 + 24);
+        var columns = Math.Max(1, (int)Math.Floor((availableSize.Width - 76 + .01) / cellWidth));
+        _wallWidth = Math.Min(availableSize.Width - 76, columns * cellWidth);
+        _wall.VerticalAlignment = VerticalAlignment.Bottom;
+        _wall.Height = Math.Min(availableHeight, (cellWidth - 24) * 3 / 2 + outsideArt);
+        if (_homeIndicatorHost is not null) _homeIndicatorHost.Height = _wall.Height;
+        if (_homeShelf is not null)
         {
-            // Use the unscaled canvas as the sizing reference. Extra space at smaller UI scales
-            // adds columns instead of increasing the cover height and undoing the user's zoom.
-            var availableHeight = Math.Max(1, Bounds.Height - _hero.DesiredSize.Height - _homeHeading.DesiredSize.Height);
-            var referenceHeight = Math.Max(1, availableHeight + (1080 - 1080 / Context.EffectiveUiScale) * (1 - 2 * Context.SafeMarginPercent / 100));
-            var referenceWidth = Math.Max(1, Bounds.Width * Context.EffectiveUiScale - 76);
-            var referenceColumns = FullscreenCoverLayout.Columns(referenceWidth, referenceHeight, 1);
-            var cellWidth = referenceWidth / referenceColumns;
-            const double outsideArt = 20;
-            cellWidth = Math.Min(cellWidth, Math.Max(1, availableHeight - outsideArt) * 2 / 3 + 24);
-            columns = Math.Max(1, (int)Math.Floor((Bounds.Width - 76 + .01) / cellWidth));
-            _wallWidth = Math.Min(Bounds.Width - 76, columns * cellWidth);
-            _wall.VerticalAlignment = VerticalAlignment.Bottom;
-            _wall.Height = Math.Min(availableHeight, (cellWidth - 24) * 3 / 2 + outsideArt);
-            if (_homeIndicatorHost is not null) _homeIndicatorHost.Height = _wall.Height;
-            if (_homeShelf is not null)
-            {
-                _homeShelf.Height = _wall.Height + _homeHeading.DesiredSize.Height;
-                _homeShelf.VerticalAlignment = VerticalAlignment.Bottom;
-            }
-        }
-        else
-        {
-            columns = FullscreenCoverLayout.Columns(Bounds.Width, _wall.Bounds.Height, 2);
-            _wallWidth = Bounds.Width;
+            _homeShelf.Height = _wall.Height + _homeHeading.DesiredSize.Height;
+            _homeShelf.VerticalAlignment = VerticalAlignment.Bottom;
         }
         if (Math.Abs(_wall.Width - _wallWidth) > 1 || double.IsNaN(_wall.Width)) _wall.Width = _wallWidth;
-        if (columns == (_feed ? _shelfCapacity : _columns)) return;
-        if (_feed) _shelfCapacity = columns;
-        else
-        {
-            _columns = columns;
-            _state.Resize(columns, Context.Library.VisibleTiles.Select(tile => tile.ReleaseId).ToArray());
-        }
-        QueueRebuild();
+        if (columns == _shelfCapacity) return;
+        var focused = IsKeyboardFocusWithin;
+        _shelfCapacity = columns;
+        ConfigureHomeRows();
+        UpdateHomeSelection();
+        if (focused) FocusInitial();
     }
 
     private Button MakeTile(GameTileViewModel tile, Action selected, FeedCardViewModel? feedCard = null)
@@ -772,7 +810,7 @@ public sealed class FullscreenCover : Border
     public void SetSelected(bool selected)
     {
         _selected = selected;
-        if (selected) this[!BorderBrushProperty] = new DynamicResourceExtension("Volt");
+        if (selected) this[!BorderBrushProperty] = new DynamicResourceExtension("VoltForeground");
         else BorderBrush = Brushes.Transparent;
         Paint();
     }
@@ -1041,7 +1079,7 @@ public sealed class FullscreenBrowseFiltersPage : FullscreenPage
                 Context.Push(new FullscreenBrowseFilterGroupPage(Context, group, () => Build(), ApplyFromGroup)));
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*") };
             row.Children.Add(FullscreenUi.Text(group.Header, 28));
-            var selected = FullscreenUi.Text(value, 24, count == 0 ? "TextDim" : "Volt");
+            var selected = FullscreenUi.Text(value, 24, count == 0 ? "TextDim" : "VoltForeground");
             selected.MaxLines = 2;
             selected.TextTrimming = TextTrimming.WordEllipsis;
             Grid.SetColumn(selected, 1);

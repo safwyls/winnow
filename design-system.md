@@ -559,7 +559,8 @@ the header, `S`/`Enter` answers Same game, `D` answers Different games, and `Esc
 the library. The radio, Details button and checkbox are Tab stops of their own.
 
 **Session journal prompt.** Off by default through `journal.prompt_after_play`. After a
-qualifying finished session, Windows offers a silent notification naming the game and
+qualifying finished session, Windows offers a silent notification with Winnow's transparent
+dragon icon, naming the game and
 inviting a note or rating. Activating it restores Winnow and opens that session's existing
 desktop dock or fullscreen journal editor. Save records the note and optional one-to-five
 rating; dismissing or ignoring the notification records nothing.
@@ -679,6 +680,33 @@ verification.
 Fullscreen is a separate TV-distance interface with its own composition, components,
 navigation and focus model. This section specifies its current composition and interactions;
 features must be maintained and verified in both presentations.
+
+**Entry transitions.** On every fullscreen entry, show the Winnow mark and “Preparing
+fullscreen…” on `Ground` before loading or refreshing the page. The mark is 160px square
+on the fullscreen reference canvas and 144px square on desktop, with a matching
+78px fullscreen / 60px desktop WINNOW wordmark. Keep **Back to desktop**
+available to mouse, keyboard and controller. Retain the current page on re-entry, prepare
+its library, primary feed and layout beneath this screen, then reveal it with a 180ms fade.
+The loading screen stays until the glow has rendered at least one complete 1.8-second
+circuit, counted from its first animated frame rather than the start of data loading. It does not
+wait for optional artwork downloads or later recommendation shelves. A failed load offers
+**Try again** and **Back to desktop**.
+
+Desktop startup and returning from fullscreen use the same mark on `Ground` with “Preparing
+your library…” while the library, primary feed and layout settle. The window caption remains
+available.
+The same complete-circuit requirement and fade apply; a failure offers **Try again**.
+
+Once the surface's motion preference is known (the system setting on desktop, the saved
+fullscreen setting in fullscreen), a separate soft `Volt` glow trail traces every closed
+contour of the dragon, including detached pieces and inner details. Each trail completes
+the full circumference on a repeating 1.8-second circuit and wraps continuously across
+its starting point. The existing vector remains legible beneath
+it; the glow indicates activity, not percentage progress. It runs on the compositor so
+UI-thread layout work cannot pause it. Data readiness does not restart or stop the trace:
+keep it moving through the fade, then stop when the presentation closes. Reduced motion
+keeps the mark still and skips the circuit wait and fade, while retaining data and layout
+readiness checks. Hidden desktop preparation does not wait for an invisible animation.
 
 The shared identity is the teal palette, three font families, cover art, dormancy and unread
 markers. Fullscreen gets its own type and spacing scale. Start with a 1920×1080 reference
@@ -800,6 +828,9 @@ The cover row anchors to the bottom of the Home content area above the footer. T
 rail shares its vertical center and follows that bottom anchor; it scales down to fit when
 space is tight. The shelf heading stays directly above the covers with a 12px gap. Spare
 height shows backdrop between the hero information and the entire bottom-anchored shelf group.
+Resolve that geometry during layout, before showing the row. Background feed refreshes must
+not briefly stretch the replacement shelf and then move it back down. Appending other shelves
+keeps the current row, its covers and focus in place; the shelf indicator gains the new entries.
 Text actions have transparent backgrounds and a mint underline on focus. Hover leaves
 no underline; current sections and collections use bold text and a neutral underline.
 The focused cover retains its outline. No desktop
@@ -872,8 +903,12 @@ only the latest ready image and finish the visible blend before starting the nex
 Reduced motion swaps the loaded art immediately. A cover fallback
 appears only after landscape metadata or loading fails, never as an intermediate image
 between two landscapes. Ignore results from earlier selections.
-Game artwork fades in further to the right to keep the left content area quiet: browsing
-backdrops reveal between 30% and 85% of the canvas width. The details veil stays dense
+Home uses the same cinematic backdrop as game details: artwork remains visible behind
+the hero text, with a dense left veil, a top veil for navigation, and a vertical fade
+into Ground above the lower content. Library
+backdrops reveal between 30% and 85% of the canvas width. Their horizontal Ground veil
+covers full-opacity artwork, using the details overlay approach instead of combining a
+whole-backdrop opacity mask with artwork dimming. The details veil stays dense
 through 32% before opening toward the right edge, leaving the hero artwork visible beside
 the title; its top veil keeps controller status and the clock legible.
 
@@ -991,6 +1026,16 @@ events while preserving selection. A failed read says “Couldn't read your acti
 and offers **Try again** beside any retained events. Returning from a note editor keeps loaded
 pages and selection, and updates the saved note's badge and preview. Completing a delayed read
 preserves focus on the section controls or reading actions.
+
+**Steam-reported activity** opens a separate reading page from fullscreen Activity and game
+play history. Desktop game details place the same evidence below the Activity tracker.
+Entries state approximate unmatched minutes, or Steam's reported increase when comparison
+is unavailable, followed by the observation window and uncertainty. They are not editable
+sessions and do not contribute to recorded-session totals. Own-account scope applies to both
+surfaces. Twenty entries form a page with **Previous**, **Next** and **Refresh** actions;
+empty, loading, unavailable and failed reads have distinct plain-language states. Scope
+changes clear the prior rows. Text wraps, theme tokens supply the quiet colors, and updates
+use polite accessibility announcements without animation.
 
 Statistics distinguish pending reads, unavailable sources and failed reads from a completed
 empty result. Gameplay labels its date and store scope beside the figures. Changing scope
@@ -2478,8 +2523,17 @@ against the art field, `Azure` a mid steel.
 
 **Five authored themes also ship:** Bottle green, SilkCircuit, SilkCircuit Dawn, Rosé Pine,
 and Rosé Pine Dawn. Their palettes and appearance defaults match the authored theme files.
-The Dawn variants are light and default to solid backgrounds. The contrast and dormancy
-measurements for the original four do not certify these authored palettes: §5.1's dormancy
+The Dawn variants declare `"variant": "light"` and default to solid backgrounds. The optional
+JSON variant selects Fluent's light or dark control templates; older files infer it from
+ground and text luminance. Export preserves the resolved variant. Light themes use
+`VoltForeground`, `AmberForeground`, `AzureForeground` and `DangerForeground` for accent
+labels, glyphs and focus outlines on neutral surfaces. These darken toward black until they
+reach 4.5:1 on the neutral palette; filled actions keep the authored accent and its paired ink.
+Dark themes keep their original accent colors. The Dawn palettes use stronger control borders
+and destructive fills so boundaries reach 3:1 and button labels reach 4.5:1 in normal,
+hover and pressed states. These checks apply at their default opaque setting.
+The contrast and dormancy measurements for the original four do not certify these authored
+palettes over arbitrary wallpaper or artwork: §5.1's dormancy
 floor was calibrated against dark capsules on a dark field. Theme audit warnings remain
 available in one disclosure, collapsed by default, labelled **Some themes may affect legibility.**
 Theme file errors remain visible without expanding it.
@@ -3007,6 +3061,14 @@ heroes and covers remain fallbacks. This order governs artwork, not unrelated me
 Application's **ABOUT WINNOW** card shows **Version** and **Source commit** as selectable Data-font
 text. The version retains prerelease labels; builds without source metadata say `Unavailable`
 for the commit.
+
+Application's **Diagnostics** card offers **Open logs folder**, a selectable local path and
+brief bug-report guidance. Fullscreen exposes the same command and path under **Diagnostics**.
+Session-watcher failures show a persistent, polite notice without moving focus: desktop
+places it below the title bar with **Open logs folder**; fullscreen places subdued text below
+the header and adds the action to the quick menu. Recovery removes the notice; ordinary
+successful polls cannot dismiss a failure in another watcher operation. No modal or repeated
+toast interrupts play. If the folder cannot open, show its path for manual access.
 
 The **UPDATES** card offers **Automatic background updates**, on by default, and **Include
 beta releases**, off by default. The descriptions read “Check GitHub Releases and download

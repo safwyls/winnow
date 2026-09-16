@@ -97,7 +97,7 @@ public sealed class FullscreenSetupPage : FullscreenPage
                 Open("Choose library settings", () => new FullscreenSettingsPage(Context, "Library"));
                 break;
         }
-        var problem = FullscreenUi.Text("", 28, "Amber");
+        var problem = FullscreenUi.Text("", 28, "AmberForeground");
         problem.Bind(TextBlock.TextProperty, new Binding(nameof(_setup.Problem)) { Source = _setup });
         AutomationProperties.SetLiveSetting(problem, AutomationLiveSetting.Polite);
         body.Children.Add(problem);

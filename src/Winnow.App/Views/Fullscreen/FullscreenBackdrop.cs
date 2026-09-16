@@ -63,17 +63,12 @@ public sealed class FullscreenBackdrop : Panel
         _outgoingSurface.Children.Add(_outgoingArt);
         _surface.Children.Add(_art);
         Children.Add(_fallback);
-        Children.Add(new Panel { Opacity = cinematic ? 1 : .8, Children = { _outgoingSurface, _surface } });
+        Children.Add(new Panel { Children = { _outgoingSurface, _surface } });
         _fade.Tick += (_, _) =>
         {
             var progress = _context.ReducedMotion ? 1 : Math.Clamp(_fadeTime.Elapsed.TotalMilliseconds / 180, 0, 1);
             _surface.Opacity = progress;
             if (progress >= 1) FinishFade(presentReady: true);
-        };
-        if (!cinematic) OpacityMask = new LinearGradientBrush
-        {
-            StartPoint = new RelativePoint(0, .5, RelativeUnit.Relative), EndPoint = new RelativePoint(1, .5, RelativeUnit.Relative),
-            GradientStops = [new GradientStop(Colors.Transparent, .3), new GradientStop(Colors.White, .85)]
         };
         var ground = context.Themes.FirstOrDefault(t => t.Id == context.ThemeId)?.Ground ?? Color.Parse("#0F1C1E");
         Background = new SolidColorBrush(ground);
@@ -87,6 +82,16 @@ public sealed class FullscreenBackdrop : Panel
                 : [new GradientStop(clearGround, 0), new GradientStop(ground, .85)]
         };
         Children.Add(_fallbackVeil);
+        if (!cinematic)
+        {
+            // Fade into the theme ground directly, as details does, instead of
+            // stacking whole-backdrop transparency with dimmed artwork.
+            Children.Add(new Border { Background = new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(0, .5, RelativeUnit.Relative), EndPoint = new RelativePoint(1, .5, RelativeUnit.Relative),
+                GradientStops = [new GradientStop(ground, .3), new GradientStop(clearGround, .85)]
+            } });
+        }
         if (cinematic)
         {
             // Overview text rests on Ground even when a wide hero keeps its whole composition.

@@ -40,7 +40,7 @@ public sealed class FullscreenDetailsJournalPage : FullscreenPage
         }
         var currentRating = FullscreenInformation.Metadata("");
         currentRating.Bind(TextBlock.TextProperty, new Binding(nameof(JournalEntryViewModel.DraftRatingText)) { Source = entry });
-        var problem = FullscreenInformation.Text("", brush: "Amber");
+        var problem = FullscreenInformation.Text("", brush: "AmberForeground");
         problem.Bind(TextBlock.TextProperty, new Binding(nameof(JournalEntryViewModel.Problem)) { Source = entry });
         var save = FullscreenUi.Button("Save", async () =>
         {

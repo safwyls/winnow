@@ -58,9 +58,12 @@ public sealed class GameExecutableIndexBuilder
     public async Task<GameExecutableIndex> BuildAsync(CancellationToken ct = default)
     {
         var ownerships = await _ownerships.GetAllAsync(ct).ConfigureAwait(false);
-        var steamAppIdsByRelease = (await _releases.GetIdentitiesAsync(ct).ConfigureAwait(false))
-            .Where(static r => !string.IsNullOrWhiteSpace(r.SteamAppId))
-            .ToDictionary(static r => r.ReleaseId, static r => r.SteamAppId!, EqualityComparer<long>.Default);
+        var steamAppIdsByRelease = (await _releases.GetAllExternalIdsAsync(ct).ConfigureAwait(false))
+            .Where(static id => id.Provider == Winnow.Core.Domain.ExternalIdProviders.Steam
+                && !string.IsNullOrWhiteSpace(id.ProviderId))
+            .GroupBy(static id => id.ReleaseId)
+            .Where(static group => group.Select(id => id.ProviderId).Distinct(StringComparer.Ordinal).Count() == 1)
+            .ToDictionary(static group => group.Key, static group => group.First().ProviderId);
         var now = _timeProvider.GetUtcNow().UtcDateTime;
 
         var executables = new List<GameExecutable>();
@@ -119,9 +122,9 @@ public sealed class GameExecutableIndexBuilder
         }
 
         var index = new GameExecutableIndex(executables, roots, proton);
-        _logger.LogDebug(
-            "Executable index: {Names} distinct name(s) over {Executables} executable(s) "
-            + "in {Roots} installed game(s); {Scanned} directory scan(s) this pass.",
+        _logger.LogInformation(
+            "Executable index: {ProcessCount} distinct process names over {Executables} executable(s) "
+            + "in {InstalledCount} installed game(s); {Scanned} directory scan(s) this pass.",
             index.ProcessNames.Count, index.ExecutableCount, index.InstallRootCount, scanned);
         return index;
     }

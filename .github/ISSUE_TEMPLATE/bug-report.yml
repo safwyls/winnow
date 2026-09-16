@@ -1,0 +1,39 @@
+name: Bug report
+description: Report a problem with Winnow and include local diagnostic evidence.
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened?
+      description: Explain what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include whether you were using desktop or fullscreen.
+    validations:
+      required: true
+  - type: input
+    id: build
+    attributes:
+      label: Winnow version and operating system
+      description: Include the installation type (installer, portable, Debian package, or source).
+    validations:
+      required: true
+  - type: input
+    id: time
+    attributes:
+      label: When did it happen?
+      description: Approximate date, time, and time zone help locate the relevant log entries.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Diagnostic logs
+      description: Open Settings → Application → Diagnostics → Open logs folder. Copy diagnostic*.log files soon after the problem and attach them here (zip if needed). Logs rotate. Review attachments before sharing; do not attach your database or credentials.
+  - type: textarea
+    id: session
+    attributes:
+      label: For session tracking problems
+      description: Include the game, launcher, approximate start/end times, how you launched it, and whether Winnow was running throughout. Did the session tracking notice appear?

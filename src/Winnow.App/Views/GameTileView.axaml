@@ -50,6 +50,14 @@
             <Setter Property="RenderTransform" Value="translateY(-2px)"/>
             <Setter Property="BoxShadow" Value="0 8 24 0 #8C000000"/>
         </Style>
+        <!-- An embedded feed tile sits inside a larger cover frame that also
+             owns its feedback strip and highlight. The frame lifts as one
+             surface; lifting this inner face separately tears those layers
+             apart by 2px. -->
+        <Style Selector="Border#Lift.embedded:pointerover">
+            <Setter Property="RenderTransform" Value="translateY(0px)"/>
+            <Setter Property="BoxShadow" Value="0 0 0 0 #00000000"/>
+        </Style>
         <!-- Resting scrim opacity has to come from a style, not a local value:
              a local value outranks a style setter in Avalonia's precedence, so
              Opacity="0" on the element would pin the overlay shut forever. -->
@@ -179,7 +187,7 @@
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
         <Style Selector="Button.tile-icon:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="Button.tile-icon.primary">
             <Setter Property="Background" Value="{StaticResource Volt}"/>
@@ -450,7 +458,7 @@
                                       StrokeThickness="1.3"/>
                                 <Path Name="FoldFocus"
                                       Data="M 1,1 L 39,1 L 39,39 Z"
-                                      Stroke="{StaticResource Volt}" StrokeThickness="2"
+                                      Stroke="{StaticResource VoltForeground}" StrokeThickness="2"
                                       Opacity="0"/>
                             </Panel>
                         </Button>
@@ -469,7 +477,7 @@
                  its 1px separator complete on every tile, and costs 3px of art
                  on the highlighted tile only. Tile pitch is untouched, so nothing
                  reflows. -->
-            <Border Name="InteractionRing" BorderBrush="{StaticResource Volt}" BorderThickness="2"
+            <Border Name="InteractionRing" BorderBrush="{StaticResource VoltForeground}" BorderThickness="2"
                     CornerRadius="{StaticResource RadiusTile}"
                     IsHitTestVisible="False"
                     Classes.selected="{Binding IsSelected}">

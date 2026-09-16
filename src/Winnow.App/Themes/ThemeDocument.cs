@@ -22,6 +22,8 @@ internal sealed class ThemeDocument
 
     public string? Reason { get; set; }
 
+    public string? Variant { get; set; }
+
     /// <summary>The eight colours that are the theme. Required.</summary>
     public Dictionary<string, string>? Seeds { get; set; }
 
@@ -72,6 +74,8 @@ internal sealed class ThemeExportDocument
     public string Name { get; set; } = string.Empty;
 
     public string Reason { get; set; } = string.Empty;
+
+    public string Variant { get; set; } = "dark";
 
     public Dictionary<string, string> Seeds { get; set; } = [];
 

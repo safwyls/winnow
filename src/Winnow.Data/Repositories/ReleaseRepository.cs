@@ -143,7 +143,10 @@ public sealed class ReleaseRepository : IReleaseRepository
             JOIN works w ON w.id = r.work_id
             LEFT JOIN work_field_sources ys ON ys.work_id = w.id AND ys.field = 'first_release_year'
             LEFT JOIN (
-                SELECT evidence.release_id, MIN(evidence.year) AS year, MIN(evidence.source) AS source
+                -- HAVING guarantees one year, so select the declared INTEGER column.
+                -- MIN(year) loses its SQLite type when the first joined row is NULL;
+                -- Dapper then tries to unbox later Int64 values directly as int?.
+                SELECT evidence.release_id, evidence.year AS year, MIN(evidence.source) AS source
                 FROM release_year_evidence evidence
                 JOIN external_ids e ON e.release_id = evidence.release_id
                     AND e.provider = 'steam' AND e.provider_id = evidence.source_id

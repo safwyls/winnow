@@ -34,6 +34,8 @@ public interface IProcessSource
     /// lets a Wine loader reach an owned game. It must not open per-process
     /// handles and must not throw for processes it cannot see — an unreadable
     /// process is simply absent from the result.</para>
+    /// <para>A failure to enumerate the process list itself must throw, so the
+    /// watcher can distinguish unavailable discovery from an empty result.</para>
     /// </summary>
     IReadOnlyList<ProcessListing> List();
 

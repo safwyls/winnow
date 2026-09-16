@@ -362,6 +362,9 @@ public sealed class UserThemeStore : IDisposable
         body.AppendLine("// written to a version this build does not know is refused rather than read as");
         body.AppendLine("// best it can be, because a field that moved would load at its default and give");
         body.AppendLine("// you a theme you did not write.");
+        body.AppendLine("// variant selects light or dark control templates. If omitted, the ground and");
+        body.AppendLine("// text brightness decide. Light palettes derive readable accent foregrounds");
+        body.AppendLine("// separately from filled action colors.");
         body.AppendLine();
         body.Append(ThemeJson.Export(WinnowThemes.Default));
 

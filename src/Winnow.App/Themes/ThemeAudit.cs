@@ -74,6 +74,24 @@ public static class ThemeAudit
         Floor("Flare on Surface", t["Flare"], t["Surface"], Colorimetry.AaThreshold, "seeds.flare",
             "the unread dot against the rail it sits on");
 
+        if (theme.IsLight)
+        {
+            foreach (var surface in new[] { "Ground", "Surface", "SurfaceRaised", "SurfaceHigh" })
+            {
+                foreach (var role in new[] { "Volt", "Amber", "Azure", "Danger" })
+                    Floor($"{role}Foreground on {surface}", t[role + "Foreground"], t[surface], 4.5,
+                        $"seeds.{role.ToLowerInvariant()}", "accent labels and focus outlines");
+                Floor($"Line on {surface}", t["Line"], t[surface], 3, "overrides.Line", "control boundaries");
+            }
+            foreach (var state in new[] { "", "Hover", "Press" })
+            {
+                Floor($"VoltInk on Volt{state}", t["VoltInk"], t["Volt" + state], 4.5,
+                    "overrides.VoltInk", "filled primary action labels in every state");
+                Floor($"DangerInk on Danger{state}", t["DangerInk"], t["Danger" + state], 4.5,
+                    "overrides.DangerInk", "filled destructive action labels in every state");
+            }
+        }
+
         // ── §5.5: the art laid behind the detail modal ───────────────────
         // The veil is Surface at ArtVeilAlpha, so how much art reaches the eye
         // is fixed by the theme's own Surface. A Surface too light for the veil

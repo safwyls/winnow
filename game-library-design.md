@@ -763,6 +763,10 @@ uses the same rules as standalone bucket reads. Library and startup Review, Disp
 Library settings loads perform repository work on a worker thread, then publish view-model
 state on the UI thread. Facets, identity maps, pins and storefront caches remain fixed-count
 bulk reads. This does not change the pre-window appearance bootstrap or unrelated edit commands.
+Tile preparation on the UI thread yields to input and rendering after roughly 8ms or 128
+items, whichever comes first. All prepared models remain local, and cancellation, disposal
+and publication generation are checked again after each yield. Publishing tiles, filters,
+lists and counts remains one uninterrupted update so readers never see a partial library.
 
 Every library refresh trigger shares one publication generation. Each request captures its
 presentation preferences before reading, assembles tile and open-details projections locally,
@@ -908,6 +912,20 @@ Share palette and font identities; keep layout, spacing and type scales surface-
 The fullscreen host reuses the input-source/filter code and dispatches to explicit focus rows
 owned by each page. It creates independent library, feed, list and motion state over the
 shared repositories and action services. It never scales or navigates the desktop tree.
+Every entry paints a loading presentation before starting the initial context load or a
+refresh. Its readiness boundary is the library and primary feed result followed by
+layout/render opportunities, not completion of optional artwork or supplemental shelves.
+Detaching cancels the presentation; re-entry can share its in-flight load without allowing
+the old presentation to reveal a detached view. A completed prior load triggers a fresh
+refresh on re-entry, with the current page retained beneath the loading layer. Desktop
+startup and return from fullscreen also await the primary feed execution triggered by library
+publication before revealing its prepared layout. Both presentations use the shared vector loading mark.
+Its custom compositor visual owns its Skia paths, contour measurement, animation clock and
+paints on the rendering thread. The UI sends immutable color/state snapshots and reads an
+atomic completed-circuit flag to gate reveal. Theme changes preserve the current circuit;
+new presentations reset it. Data readiness does not stop animation before the fade ends.
+The presentations' layout and input lifetimes remain separate. The visual spec owns timing, motion and
+recovery controls.
 Fullscreen pages may supply a backdrop for the shell to mount behind its safe area and
 header. Browsing reuses that layer across selections, retaining the displayed artwork lease
 while a replacement loads and through its short crossfade. Generation checks discard stale
@@ -1119,6 +1137,38 @@ match; multiple matching open sittings are refused. A crash before the minimum d
 has been observed leaves no checkpoint. A replacement child not observed before a crash
 cannot prove continuity with the prior sitting. These boundaries preserve uncertainty
 instead of fabricating playtime.
+
+**Watcher failures remain visible until recovery.** Shared health tracks executable-index,
+process-discovery, recovery, persistence and poll failures independently. A successful poll
+does not clear a failed index or write; a cancelled write is not a successful retry. Failed
+index rebuilds retain the last usable index and retry after one minute while discovery and
+queued writes continue. Repeated failures log at most once per operation every five minutes;
+recovery logs the failure count and elapsed time. Both shells expose a quiet persistent notice
+and local log access. Intentionally disabling the watcher is not a failure. Exact sessions
+that were never observed cannot be reconstructed from Steam's cumulative playtime.
+
+**Steam totals provide a second layer of evidence.** For installed Steam ownerships, the
+resolver stores each known account's raw local/API reading before household coalescing or
+lower-bound clamping. Each change point retains its source, cumulative minutes, Last played
+and observation time; identical repeat polls add nothing. API cache reuse retains the original
+fetch time. Unknown accounts/minutes, reconstructed Replay and carried totals are excluded.
+The import and observations commit in the same transaction. Existing household snapshots are
+not backfilled into this account-scoped history because their original account is uncertain.
+
+After a 30-minute settling delay, a read model compares canonical per-account counter increases
+with recorded sessions. A source's first reading establishes a baseline, not new play. Lower
+readings remain as evidence but do not produce another increase until the previous high is
+exceeded. Session duration is credited cumulatively from the baseline and spent once, allowing
+late Steam updates without counting the same session twice. Reads recompute coverage when a
+delayed session write arrives. Steam-reported activity remains outside `sessions`, journal
+prompts and gameplay totals. Its observation bounds are not session start/end times, and the
+play may have occurred on another device. Desktop and fullscreen label it as approximate.
+Residual differences of one minute or less use the existing playtime rounding tolerance.
+Known multiple accounts or an incomplete monitored session make comparison unavailable;
+the Steam increase stays visible without calling it missing play. A new source that raises
+the baseline also restarts the session-credit window. Change-only storage can leave broad
+observation bounds after long idle periods. Account scope filters the result without assigning
+unattributed local sessions to the selected account.
 
 **Session indexing follows the platform.** Windows indexes `.exe` files; Linux and
 macOS index files with Unix execute permission. Linux discovery also recognises the
@@ -1385,6 +1435,9 @@ ownership_acquisition_observations(id, ownership_id FK, account_ref NULL,
 gog_registry_installations(provider_id PK) -- positively observed registry install provenance
 play_records(ownership_id FK, playtime_minutes, last_played_at, source, observed_at)
 playtime_snapshots(id, ownership_id FK, playtime_minutes, observed_at)  -- longitudinal
+steam_playtime_observations(id, ownership_id FK, account_ref, source,
+                           playtime_minutes NULL, last_played_at NULL, observed_at)
+  -- immutable live change points; inferred Steam activity is computed, not a session row
 sessions(id, ownership_id FK, started_at, ended_at, duration_s, detection_method,
          attributed_by, monitor_key NULL UNIQUE)
 monitored_session_keys(monitor_key PK, session_id FK sessions ON DELETE CASCADE)
@@ -1847,6 +1900,10 @@ five files, rolling at 1 MiB; events are capped at 8 KiB, so managed logs stay b
 properties and scopes, scrubs path/account/credential patterns in templates, and records
 exception types and method frames without messages or source filenames. Counts and timings
 remain. Log templates must remain static; put user and service values in named properties.
+Each event repeats a random per-logger-run identifier, app version and commit, OS family,
+process architecture and runtime version so rotated files retain build and run context.
+Build strings are format-validated before rendering; these fields come from the binary and
+runtime, not arbitrary event properties or scopes.
 Bootstrap data-location resolution precedes file logging.
 
 **A source's silence is not an answer.** A field a source cannot provide arrives `null`, never

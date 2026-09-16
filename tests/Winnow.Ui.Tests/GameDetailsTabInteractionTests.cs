@@ -90,7 +90,7 @@ public sealed class GameDetailsTabInteractionTests
         var focusRing = fixture.Find<TabItem>("ActivityTab").GetVisualDescendants()
             .OfType<Border>().Single(border => border.Name == "TabFocusBorder");
         Assert.Equal(new Thickness(2), focusRing.BorderThickness);
-        Assert.True(fixture.View.TryFindResource("Volt", out var volt));
+        Assert.True(fixture.View.TryFindResource("VoltForeground", out var volt));
         Assert.Same(volt, focusRing.BorderBrush);
         fixture.Press(PhysicalKey.ArrowRight);
         Flush();

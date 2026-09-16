@@ -47,7 +47,7 @@ public sealed class FullscreenShelfIndicator : UserControl
                 VerticalAlignment = VerticalAlignment.Center,
                 IsHitTestVisible = false
             };
-            dot[!Border.BorderBrushProperty] = new DynamicResourceExtension(active ? "Volt" : "TextDim");
+            dot[!Border.BorderBrushProperty] = new DynamicResourceExtension(active ? "VoltForeground" : "TextDim");
             if (active) dot[!Border.BackgroundProperty] = new DynamicResourceExtension("Volt");
             var button = Target(dot, $"{titles[index]}, shelf {index + 1} of {titles.Count}", () => select(index));
             AutomationProperties.SetItemStatus(button, active ? "Current shelf" : "");

@@ -19,7 +19,7 @@
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
         <Style Selector="Button.journal-rate:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="Button.journal-rate Ellipse">
             <Setter Property="Width" Value="11"/>
@@ -32,8 +32,8 @@
             <Setter Property="Stroke" Value="{StaticResource TextDim}"/>
         </Style>
         <Style Selector="Button.journal-rate.on Ellipse">
-            <Setter Property="Fill" Value="{StaticResource Volt}"/>
-            <Setter Property="Stroke" Value="{StaticResource Volt}"/>
+            <Setter Property="Fill" Value="{StaticResource VoltForeground}"/>
+            <Setter Property="Stroke" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="Button.journal-action">
             <Setter Property="Padding" Value="9,4"/>
@@ -47,7 +47,7 @@
             <Setter Property="AcceptsReturn" Value="True"/>
             <Setter Property="Background" Value="{StaticResource ChromeFieldOnSurface}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
-            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource VoltForeground}"/>
             <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
         </Style>
         <Style Selector="TextBox.journal-note /template/ Border#PART_BorderElement">
@@ -55,7 +55,7 @@
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
         <Style Selector="TextBox.journal-note:focus /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
     </UserControl.Styles>
 
@@ -140,7 +140,7 @@
                             </StackPanel>
 
                             <TextBlock Classes="body" FontSize="11" LineHeight="16" TextWrapping="Wrap"
-                                       Foreground="{StaticResource Amber}"
+                                       Foreground="{StaticResource AmberForeground}"
                                        IsVisible="{Binding HasProblem}"
                                        Text="{Binding Problem}"/>
                         </StackPanel>

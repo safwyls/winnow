@@ -124,13 +124,16 @@ public sealed record SteamOwnedLibrary(
     /// <see cref="ObservedAt"/> is when the response was fetched, which can be
     /// hours old, and a backdated candidate would sit behind the newest stored
     /// row by <c>observed_at</c>, losing the resolver's latest-record
-    /// comparison on every subsequent sync.
+    /// comparison on every subsequent sync. The original response time is
+    /// retained separately as <see cref="CandidateOwnership.PlaytimeObservedAt"/>
+    /// for reconciliation of raw counters.
     /// </param>
     public IReadOnlyList<CandidateOwnership> ToCandidates(string source, DateTime? observedAt = null)
         => Games.Count == 0
             ? []
             : Games
-                .Select(g => g.ToCandidate(SteamId.AccountRef, source, observedAt ?? ObservedAt))
+                .Select(g => g.ToCandidate(SteamId.AccountRef, source, observedAt ?? ObservedAt)
+                    with { PlaytimeObservedAt = ObservedAt })
                 .ToArray();
 
     /// <summary>Diagnostics. Carries counts, never the key that fetched them.</summary>
