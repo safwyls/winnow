@@ -56,6 +56,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// simply absent.
     /// </summary>
     private readonly ISessionRepository? _sessions;
+    private readonly ISteamPlaytimeObservationRepository? _steamObservations;
+    private readonly ISettingsRepository? _activitySettings;
 
     /// <summary>
     /// §1's longitudinal playtime series, read only when a detail panel opens.
@@ -239,7 +241,9 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         Services.IUpdateFlagService? updateFlags = null,
         IAccountAcquisitionReader? acquisitionReader = null,
         IGroupHeaderPreferenceRepository? groupHeaders = null,
-        Services.IGameLinkRouter? linkRouter = null)
+        Services.IGameLinkRouter? linkRouter = null,
+        ISteamPlaytimeObservationRepository? steamObservations = null,
+        ISettingsRepository? activitySettings = null)
     {
         _storefrontCache = storefrontCache;
         _workRatings = workRatings;
@@ -263,6 +267,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         _acquisitionReader = acquisitionReader;
         _groupHeaders = groupHeaders;
         _sessions = sessions;
+        _steamObservations = steamObservations;
+        _activitySettings = activitySettings;
         _leases = leases;
         _snapshots = snapshots;
         _facetRepository = facets;
@@ -1403,7 +1409,9 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                 journal: _sessions is null ? null : new GameJournalViewModel(snapshot.JournalEntries, Journal.PromptEnabled, _sessions),
                 addToList: new RelayCommand(() => BeginAddToListFor([Details?.Tile ?? target])),
                 sessions: snapshot.Sessions, backgroundUrl: snapshot.BackgroundUrl, artworkPreferences: _artworkPreferences,
-                linkRouter: _linkRouter);
+                linkRouter: _linkRouter,
+                steamActivity: new SteamReportedActivityViewModel(_steamObservations,
+                    target.OwnershipIds.ToDictionary(id => id, _ => target.Title), _activitySettings));
             if (_disposed || ct.IsCancellationRequested || generation != Volatile.Read(ref _detailsGeneration)) { details.Dispose(); return; }
             if (libraryGeneration == _publishedGeneration) { Details = details; return; }
 

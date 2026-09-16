@@ -223,6 +223,11 @@ public sealed class FullscreenActivityPage : FullscreenPage
             list.Children.Add(more); buttons.Add([more]);
         }
         var summary = FullscreenInformation.Link("Library summary", () => Context.Push(new FullscreenLibrarySummaryPage(Context)));
+        var steam = FullscreenInformation.Link(SteamReportedActivityViewModel.Heading,
+            () => Context.Push(new FullscreenSteamActivityPage(Context)));
+        steam.GotFocus += (_, _) => { _tabsFocused = false; _initial = steam; };
+        list.Children.Add(FullscreenInformation.Rule());
+        list.Children.Add(steam); buttons.Add([steam]);
         summary.GotFocus += (_, _) => { _tabsFocused = false; _initial = summary; };
         _initial ??= summary;
         list.Children.Add(FullscreenInformation.Rule());

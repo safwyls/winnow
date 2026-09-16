@@ -246,6 +246,7 @@ public class SteamWebApiClientTests
         var fresh = await host.Client.GetOwnershipCandidatesAsync(Account);
         Assert.NotEmpty(fresh);
         Assert.All(fresh, c => Assert.Equal(host.Clock.Now.UtcDateTime, c.ObservedAt));
+        Assert.All(fresh, c => Assert.Equal(host.Clock.Now.UtcDateTime, c.PlaytimeObservedAt));
 
         var fetchedAt = host.Clock.Now.UtcDateTime;
         host.Clock.Advance(TimeSpan.FromHours(3));
@@ -256,6 +257,12 @@ public class SteamWebApiClientTests
         Assert.Single(host.Handler.Requests);
         Assert.All(cached, c => Assert.Equal(host.Clock.Now.UtcDateTime, c.ObservedAt));
         Assert.All(cached, c => Assert.True(c.ObservedAt > fetchedAt));
+        Assert.All(cached, c => Assert.Equal(fetchedAt, c.PlaytimeObservedAt));
+
+        host.Clock.Advance(TimeSpan.FromHours(4));
+        var refreshed = await host.Client.GetOwnershipCandidatesAsync(Account, cacheTtl: TimeSpan.Zero);
+        Assert.Equal(2, host.Handler.Requests.Count);
+        Assert.All(refreshed, c => Assert.Equal(host.Clock.Now.UtcDateTime, c.PlaytimeObservedAt));
     }
 
     [Fact]
@@ -415,6 +422,7 @@ public class SteamWebApiClientTests
 
         await host.Client.GetOwnedGamesAsync(Account);
 
+        var fetchedAt = host.Clock.Now.UtcDateTime;
         fail = true;
         host.Clock.Advance(TimeSpan.FromDays(30));
         var library = await host.Client.GetOwnedGamesAsync(Account);
@@ -422,6 +430,9 @@ public class SteamWebApiClientTests
         Assert.True(library.Succeeded);
         Assert.True(library.FromCache);
         Assert.Equal(SteamWebFixtures.CapturedAppIds.Length, library.Games.Count);
+        var candidates = library.ToCandidates(SteamWebApiClient.SourceName, host.Clock.Now.UtcDateTime);
+        Assert.All(candidates, c => Assert.Equal(fetchedAt, c.PlaytimeObservedAt));
+        Assert.All(candidates, c => Assert.Equal(host.Clock.Now.UtcDateTime, c.ObservedAt));
     }
 
     [Fact]

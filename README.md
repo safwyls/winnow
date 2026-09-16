@@ -76,7 +76,21 @@ launcher, approximate start/end times, and whether Winnow was running throughout
 Review attachments before sharing; you do not need to send your library database or credentials.
 
 If session tracking fails, a quiet notice links to the logs and disappears after recovery.
-Winnow retries automatically, but it cannot reconstruct play that it did not observe.
+Winnow retries automatically. Exact session times cannot be recovered from cumulative totals.
+
+#### Steam-reported activity
+
+Winnow also keeps changes to Steam's playtime readings for installed games, separately for
+each account and source. After 30 minutes, it compares an increase with recorded sessions.
+Unmatched time appears under **Game details → Activity → Steam-reported activity** on desktop
+and in fullscreen Activity and game history. It shows approximate minutes and the observation
+window, rather than invented start and end times. These entries do not add to session totals.
+
+Tracking starts with a new baseline after upgrading. Cached responses keep their original
+observation time; unchanged checks add no history rows. Shared accounts or incomplete sessions
+can prevent a reliable comparison, which the entry explains. Steam activity may include play
+on another device. Smaller counter readings are retained, but do not create new activity until
+the total exceeds its previous high. This avoids counting corrections as new play.
 
 ### First run
 

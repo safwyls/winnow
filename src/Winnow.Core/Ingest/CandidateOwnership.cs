@@ -29,6 +29,15 @@ public sealed record CandidateOwnership(
     DateTime ObservedAt)
 {
     /// <summary>
+    /// When the source measured the play counters (UTC), if different from the
+    /// ingest observation time. Cached responses retain their original fetch
+    /// time so repeated imports cannot make stale counters look newly measured.
+    /// Null means use <see cref="ObservedAt"/>. Read from the original candidate
+    /// before account lists are coalesced across sources.
+    /// </summary>
+    public DateTime? PlaytimeObservedAt { get; init; }
+
+    /// <summary>
     /// Every account this reader saw holding or playing the app, with that
     /// account's own figures — not the collapsed household answer the columns
     /// above carry.

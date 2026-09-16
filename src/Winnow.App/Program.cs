@@ -522,6 +522,7 @@ public static class Program
         services.AddSingleton<IOwnershipInventoryRepository, OwnershipInventoryRepository>();
         services.AddSingleton<IPlayRecordRepository, PlayRecordRepository>();
         services.AddSingleton<IPlaytimeSnapshotRepository, PlaytimeSnapshotRepository>();
+        services.AddSingleton<ISteamPlaytimeObservationRepository, SteamPlaytimeObservationRepository>();
         services.AddSingleton<ISessionRepository, SessionRepository>();
         services.AddSingleton<IActivityRepository, ActivityRepository>();
         services.AddSingleton<IUpdateEventRepository, UpdateEventRepository>();

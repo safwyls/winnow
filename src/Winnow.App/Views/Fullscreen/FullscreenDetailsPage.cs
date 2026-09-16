@@ -252,7 +252,8 @@ public sealed class FullscreenDetailsPage : FullscreenPage
         history.Children.Add(DetailText(_details.BucketLabel, 32, weight: FontWeight.Bold));
         if (_details.HasUnreadUpdates)
             history.Children.Add(DetailText(_details.UpdatesShortcutText, 24, "Flare"));
-        var historyButton = DetailLink("Play history", () => Context.Push(new FullscreenDetailsHistoryPage(Context, _details.Tracker)));
+        var historyButton = DetailLink("Play history", () => Context.Push(new FullscreenDetailsHistoryPage(Context,
+            _details.Tracker, _details.SteamActivity, () => _details.ShowSteamActivity)));
         history.Children.Add(historyButton);
         var divider = Rule(true);
         divider.Margin = new Thickness(0, 20, 0, 18);

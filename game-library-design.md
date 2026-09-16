@@ -1126,8 +1126,31 @@ does not clear a failed index or write; a cancelled write is not a successful re
 index rebuilds retain the last usable index and retry after one minute while discovery and
 queued writes continue. Repeated failures log at most once per operation every five minutes;
 recovery logs the failure count and elapsed time. Both shells expose a quiet persistent notice
-and local log access. Intentionally disabling the watcher is not a failure. Missing sessions
+and local log access. Intentionally disabling the watcher is not a failure. Exact sessions
 that were never observed cannot be reconstructed from Steam's cumulative playtime.
+
+**Steam totals provide a second layer of evidence.** For installed Steam ownerships, the
+resolver stores each known account's raw local/API reading before household coalescing or
+lower-bound clamping. Each change point retains its source, cumulative minutes, Last played
+and observation time; identical repeat polls add nothing. API cache reuse retains the original
+fetch time. Unknown accounts/minutes, reconstructed Replay and carried totals are excluded.
+The import and observations commit in the same transaction. Existing household snapshots are
+not backfilled into this account-scoped history because their original account is uncertain.
+
+After a 30-minute settling delay, a read model compares canonical per-account counter increases
+with recorded sessions. A source's first reading establishes a baseline, not new play. Lower
+readings remain as evidence but do not produce another increase until the previous high is
+exceeded. Session duration is credited cumulatively from the baseline and spent once, allowing
+late Steam updates without counting the same session twice. Reads recompute coverage when a
+delayed session write arrives. Steam-reported activity remains outside `sessions`, journal
+prompts and gameplay totals. Its observation bounds are not session start/end times, and the
+play may have occurred on another device. Desktop and fullscreen label it as approximate.
+Residual differences of one minute or less use the existing playtime rounding tolerance.
+Known multiple accounts or an incomplete monitored session make comparison unavailable;
+the Steam increase stays visible without calling it missing play. A new source that raises
+the baseline also restarts the session-credit window. Change-only storage can leave broad
+observation bounds after long idle periods. Account scope filters the result without assigning
+unattributed local sessions to the selected account.
 
 **Session indexing follows the platform.** Windows indexes `.exe` files; Linux and
 macOS index files with Unix execute permission. Linux discovery also recognises the
@@ -1394,6 +1417,9 @@ ownership_acquisition_observations(id, ownership_id FK, account_ref NULL,
 gog_registry_installations(provider_id PK) -- positively observed registry install provenance
 play_records(ownership_id FK, playtime_minutes, last_played_at, source, observed_at)
 playtime_snapshots(id, ownership_id FK, playtime_minutes, observed_at)  -- longitudinal
+steam_playtime_observations(id, ownership_id FK, account_ref, source,
+                           playtime_minutes NULL, last_played_at NULL, observed_at)
+  -- immutable live change points; inferred Steam activity is computed, not a session row
 sessions(id, ownership_id FK, started_at, ended_at, duration_s, detection_method,
          attributed_by, monitor_key NULL UNIQUE)
 monitored_session_keys(monitor_key PK, session_id FK sessions ON DELETE CASCADE)

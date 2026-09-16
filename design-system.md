@@ -992,6 +992,16 @@ and offers **Try again** beside any retained events. Returning from a note edito
 pages and selection, and updates the saved note's badge and preview. Completing a delayed read
 preserves focus on the section controls or reading actions.
 
+**Steam-reported activity** opens a separate reading page from fullscreen Activity and game
+play history. Desktop game details place the same evidence below the Activity tracker.
+Entries state approximate unmatched minutes, or Steam's reported increase when comparison
+is unavailable, followed by the observation window and uncertainty. They are not editable
+sessions and do not contribute to recorded-session totals. Own-account scope applies to both
+surfaces. Twenty entries form a page with **Previous**, **Next** and **Refresh** actions;
+empty, loading, unavailable and failed reads have distinct plain-language states. Scope
+changes clear the prior rows. Text wraps, theme tokens supply the quiet colors, and updates
+use polite accessibility announcements without animation.
+
 Statistics distinguish pending reads, unavailable sources and failed reads from a completed
 empty result. Gameplay labels its date and store scope beside the figures. Changing scope
 removes obsolete figures while the new read is pending, and failed reads offer a retry.

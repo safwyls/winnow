@@ -855,6 +855,9 @@
                                     <StackPanel Margin="{StaticResource InnerScrollGutter}">
                                         <StackPanel Spacing="24" Margin="0,24,0,24">
                                             <views:ActivityTrackerView DataContext="{Binding Tracker}"/>
+                                            <Border IsVisible="{Binding ShowSteamActivity}">
+                                                <views:SteamReportedActivityView DataContext="{Binding SteamActivity}"/>
+                                            </Border>
                                         </StackPanel>
                                     </StackPanel>
                                 </ScrollViewer>
