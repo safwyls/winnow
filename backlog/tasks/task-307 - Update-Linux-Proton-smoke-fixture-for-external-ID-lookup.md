@@ -1,11 +1,11 @@
 ---
 id: TASK-307
 title: Update Linux Proton smoke fixture for external-ID lookup
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-16 05:01'
-updated_date: '2026-09-16 05:02'
+updated_date: '2026-09-16 05:03'
 labels: []
 dependencies: []
 type: bug
@@ -20,7 +20,7 @@ PR 20 Linux Proton CI fails because the smoke release repository returns no exte
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Linux smoke repository provides the Steam external ID consumed by executable indexing, and native plus Proton smoke tests pass on Linux.
+- [x] #1 Linux smoke repository provides the Steam external ID consumed by executable indexing, and native plus Proton smoke tests pass on Linux.
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -33,4 +33,12 @@ Update the smoke repository external-ID fixture; run the Linux smoke suite under
 
 <!-- SECTION:NOTES:BEGIN -->
 Corrected SmokeReleases.GetAllExternalIdsAsync to return its Steam app ID. Release build of the Linux smoke project passed locally with zero warnings/errors. WSL Fedora has no dotnet installation; real Linux execution will be verified by the PR job.
+
+Ubuntu CI run 35057943535 passed the native and synthetic Proton process smoke job on aef0539: https://github.com/safwyls/winnow/actions/runs/35057943535/job/104671949865. The previously failing attribution test now passes; Windows validation is still running.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Fixed the stale Linux smoke repository fixture after the external-ID lookup change. Local Release build passed; Ubuntu CI confirmed native and Proton smoke success.
+<!-- SECTION:FINAL_SUMMARY:END -->
