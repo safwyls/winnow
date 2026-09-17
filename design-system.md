@@ -3154,9 +3154,11 @@ available versions use Data typography. **Check for updates**, **Download update
 download** and **Restart to update** expose the current operation. Restart is always explicit.
 When a supported update is detected, the desktop title bar shows **Update and restart** in
 neutral chrome, with the shared update status in its tooltip and accessible item status.
-The button stays visible but disabled during download. Activating it downloads and verifies
+The action is vertically centered in the title bar. During download, **Updating** above a
+determinate progress bar replaces the button in the same slot. Activating the button downloads and verifies
 the update if needed, then restarts only when preparation succeeds; cancellation or failure
 leaves Winnow open. Fullscreen shows **Update available · Menu** in its header and
+replaces that header notice with **Updating** and download progress while downloading, and
 offers the same action in the controller quick menu and Application settings. Both surfaces
 read one shared state and command; background checks never restart the app or move focus.
 Recovery guidance remains in a separate wrapping, polite status line on both Application

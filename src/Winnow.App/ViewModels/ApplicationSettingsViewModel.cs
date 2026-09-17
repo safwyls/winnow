@@ -94,11 +94,16 @@ public partial class ApplicationSettingsViewModel : ObservableObject
     [ObservableProperty] public partial string? AvailableVersion { get; private set; }
     [ObservableProperty] public partial double UpdateProgress { get; private set; }
     [ObservableProperty] public partial bool UpdateBusy { get; private set; }
-    [ObservableProperty] public partial bool CanCancelUpdate { get; private set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowUpdateAction))]
+    public partial bool CanCancelUpdate { get; private set; }
     [ObservableProperty] public partial bool CanCheckUpdate { get; private set; }
     [ObservableProperty] public partial bool CanDownloadUpdate { get; private set; }
     [ObservableProperty] public partial bool CanRestartUpdate { get; private set; }
-    [ObservableProperty] public partial bool HasUpdateAction { get; private set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowUpdateAction))]
+    public partial bool HasUpdateAction { get; private set; }
+    public bool ShowUpdateAction => HasUpdateAction && !CanCancelUpdate;
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(UpdateAndRestartCommand))]
     public partial bool CanUpdateAndRestart { get; private set; }
