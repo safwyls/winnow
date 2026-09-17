@@ -272,6 +272,8 @@ external publishing service, or additional repository secret is required.
 
 A retry can replace assets on an existing draft for the same tag. It refuses to replace an
 already published release. Fix a published build by issuing a new version; do not move its tag.
+Creating or updating the draft release has a seven-minute timeout. If uploads time out,
+rerun the failed job to replace any partially uploaded assets on the draft.
 
 ## Reusing CI validation
 

@@ -249,6 +249,7 @@ jobs:
           done
           sha256sum Winnow-* Winnow.Plugin.*.zip winnow-plugins.json > SHA256SUMS
       - name: Create or update draft release
+        timeout-minutes: 7
         shell: bash
         run: |
           set -euo pipefail
