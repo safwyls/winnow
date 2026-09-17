@@ -107,7 +107,8 @@ internal static class StartupFailure
             if (Path.IsPathFullyQualified(dataDirectory) && Directory.Exists(dataDirectory))
             {
                 using var fallback = DiagnosticLogging.Create(dataDirectory, fileName: "startup-failure.log");
-                fallback.Fatal(exception, "Application startup failed with HRESULT {HResult}.", exception.HResult);
+                fallback.Fatal(exception, "Application startup failed with HRESULT {HResult} and native error {NativeError}.",
+                    exception.HResult, (exception as System.ComponentModel.Win32Exception)?.NativeErrorCode);
             }
         }
         catch (Exception)

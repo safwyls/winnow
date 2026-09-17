@@ -176,7 +176,20 @@ public static class PortableUpdateEngine
     {
         var bytes = JsonSerializer.SerializeToUtf8Bytes(journal, UpdateJsonContext.Default.UpdateJournal);
         using (var output = new FileStream(path + ".tmp", FileMode.Create, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough)) { output.Write(bytes); output.Flush(true); }
-        DurableFiles.Move(path + ".tmp", path, replace: true);
+        // Windows metadata readers and scanners can briefly deny replacement,
+        // even while the helper and app coordinate their own journal writes.
+        // Retry only this atomic rename; never replay an update phase or remove
+        // the old journal to make room. A persistent lock still fails startup.
+        var timer = Stopwatch.StartNew();
+        while (true)
+        {
+            try { DurableFiles.Move(path + ".tmp", path, replace: true); return; }
+            catch (System.ComponentModel.Win32Exception error) when (OperatingSystem.IsWindows() &&
+                error.NativeErrorCode is 5 or 32 or 33 && timer.Elapsed < TimeSpan.FromSeconds(2))
+            {
+                Thread.Sleep(25);
+            }
+        }
     }
     private static IDisposable StateLease(string path)
     {
