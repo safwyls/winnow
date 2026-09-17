@@ -267,8 +267,8 @@
                     <Border Background="{Binding FloorBrush}"
                             IsVisible="{Binding #Root.Cover.ShowPlaceholder}">
                         <TextBlock Classes="art-title" Text="{Binding Title}"
-                                   FontFamily="{StaticResource DisplayFont}"
-                                   FontWeight="Bold" FontSize="19" LineHeight="20"
+                                   FontFamily="{DynamicResource DisplayFont}"
+                                   FontWeight="Bold" FontSize="{DynamicResource FontSize19}" LineHeight="{DynamicResource TextLineHeight20}"
                                    TextWrapping="Wrap"
                                    Foreground="{Binding FloorTitleBrush}"
                                    VerticalAlignment="Bottom" Margin="14"/>
@@ -284,8 +284,8 @@
                             Background="{Binding VividBrush}" Opacity="{Binding DisplayAlpha}"
                             IsVisible="{Binding #Root.Cover.ShowPlaceholder}">
                         <TextBlock Classes="art-title" Text="{Binding Title}"
-                                   FontFamily="{StaticResource DisplayFont}"
-                                   FontWeight="Bold" FontSize="19" LineHeight="20"
+                                   FontFamily="{DynamicResource DisplayFont}"
+                                   FontWeight="Bold" FontSize="{DynamicResource FontSize19}" LineHeight="{DynamicResource TextLineHeight20}"
                                    TextWrapping="Wrap"
                                    Foreground="White"
                                    VerticalAlignment="Bottom" Margin="14"/>
@@ -384,7 +384,7 @@
                                        Text="{Binding Title}"
                                        TextWrapping="Wrap" MaxLines="2"
                                        TextTrimming="CharacterEllipsis"
-                                       LineHeight="18"/>
+                                       LineHeight="{DynamicResource TextLineHeight18}"/>
                             <TextBlock Classes="data-s" Text="{Binding StatText}"
                                        TextWrapping="Wrap" MaxLines="2"
                                        TextTrimming="CharacterEllipsis"

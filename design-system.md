@@ -86,8 +86,9 @@ except through the saturation ramp in §5.
 
 ## 3. Typography
 
-Three roles, three families. All SIL OFL, bundled as `AvaloniaResource`. There is no
-system-font fallback: the display face is load-bearing.
+Three roles, with three bundled default families. All are SIL OFL, bundled as
+`AvaloniaResource`. Themes may choose installed font families for each role; an unavailable
+family falls back to that role's bundled face.
 
 | Role | Face | Usage |
 |---|---|---|
@@ -104,13 +105,28 @@ renders at its default light instance and every bold display style comes out wro
 consequently no `wdth` to set; Bricolage's static Bold is `wdth` 100, which is the widest cut
 the face has. `src/Winnow.App/Assets/Fonts/README.md` lists the exact files.
 
-**Desktop data uses Plex Mono with tabular figures** (`FontFeatures="tnum"`). This is not
-optional in list view, where a playtime column that does not align vertically is unreadable
+**Desktop data defaults to Plex Mono with tabular figures** (`FontFeatures="tnum"`). Keep the
+tabular-figure setting in list view, where a playtime column that does not align vertically is unreadable
 at scan speed. Fullscreen information uses BodyFont for dates, supporting facts and
 prominent personal metrics as specified below; charts and aligned numeric controls retain
 their data typography. Do not set an entire sentence in Mono merely because it contains a number.
 
 ### Scale
+
+Appearance offers **Heading font**, **Interface font**, **Data font** and **Theme text size**
+for the current theme on desktop and fullscreen. Text size runs from 80% to 120% in 5% steps;
+it scales the authored font sizes and text line heights, preserving their hierarchy rather
+than resizing covers or the window. Changes apply live and persist separately for each theme.
+**Reset theme typography** restores the theme file's choices, or the bundled defaults when
+the theme does not specify typography. Fullscreen's separate accessibility text-size and
+interface-scale preferences remain independent.
+
+Exports include family names and the size percentage, not font files. The controls retain a
+missing family's saved name and explain the bundled fallback, so moving a theme between
+computers does not discard its choices. Data fonts should support tabular figures for aligned
+numeric columns. Existing themes without typography retain the default families and 100% scale.
+
+The following values are the 100% baseline:
 
 ```
 Display L    22px / 26  Bricolage Bold
@@ -197,6 +213,13 @@ own presentation. Reset fullscreen appearance leaves this shared preference inta
 Default 148×222, gutter 16px. The density slider spans 108×162 → 200×300; the grid reflows on
 available width and does not use fixed column counts.
 
+Segmented selectors keep every selected, hover and pressed fill inside the enclosing rule.
+The grid/list switch, Settings sections, platform tabs and merge-kind filter use an inner
+3px rounded clip inside their 1px border and 4px outer radius. The keyboard focus outline sits
+2px inside its segment so the group does not clip it;
+selection never changes segment dimensions. Borderless underline tabs on desktop and
+fullscreen keep their own focus treatment.
+
 **Radius:** 6px on tiles, 4px on controls, 8px on a floating pane (§15.3). The three rank by
 the size of the object they round.
 
@@ -265,6 +288,11 @@ maximum across contributing releases, not their sum: copies can carry the same p
 push and its announcement count as one patch, and unrelated announcements remain neutral.
 The Patched bucket also applies the shared dormancy and playtime eligibility rules. Details
 uses the same patch count and release watermarks on desktop and fullscreen.
+
+In Patched, the desktop game context menu and fullscreen Library options offer **Mark as read**
+for the selected games. Desktop list multi-selection applies it to every selected unread game,
+including its linked releases. It refreshes the library and collection counts; failures remain
+visible so the user can retry. Patches newer than those represented by the selected tiles stay unread.
 
 **Mark as read** acknowledges the latest qualifying push actually displayed for each
 contributing release. It never reads a newer push into the operation. **Show it again**
@@ -610,12 +638,15 @@ never trimmed for brevity. Reasoning goes in the design documents; where a parag
 carries one fact wrapped in reasoning, the fact stays and the reasoning moves here or to
 `game-library-design.md`. Automation names name the control; they do not explain it.
 
+Built-in collection rail rows carry a one-line explanation as a tooltip and accessible help.
+Fullscreen collection choices show the same explanation beneath the label.
+
 | Context | Write | Don't write |
 |---|---|---|
 | Bucket: updates missed | `Patched` | `Needs attention` |
 | Bucket: never opened | `Never played` | `Pile of shame` |
 | Bucket: refund line to retired | `Started` | `Barely played`, `Bounced off` |
-| Bucket: high playtime | `Played out` | `Completed` |
+| Bucket: high playtime | `Invested` | `Completed` |
 | Bucket: lifecycle evidence of closure, delisting or abandonment | `Derelict` | `Won't run`, `Dead` |
 | Statistics rail row | `STATS` | `STEAM STATS` |
 | Badge tooltip | `3 updates since you played` | `New content available!` |
@@ -1348,6 +1379,9 @@ Ordinary Details opens Overview. The shortcut opens Updates in the same modal. A
 tabs remain present when data is sparse; absent integrations do not change their names or
 positions. A refresh or correction that rebuilds details on the same ownership keeps the
 selected tab. A new ordinary opening starts on Overview again.
+
+Desktop tabs use Volt text and a 2px underline for selection, without an enclosing border.
+Keyboard focus adds another 2px beneath the underline without changing the tab dimensions.
 
 **Overview keeps the reason to return visible.** Its summary reuses the stored hours and
 last-played date; no date keeps the distinction between never opened and a session whose date
@@ -3190,7 +3224,8 @@ in Application settings reopens Welcome without resetting preferences.
 
 **Desktop.** The wizard sits over the client area, leaving the caption available. A compact
 header carries the step count, title and explanation; the body scrolls inside a bounded
-panel and navigation stays visible at the minimum window height. The normal shell cannot
+panel and navigation stays visible at the minimum window height. Header and footer fills
+sit inside a 7px rounded clip, inset by the frame's 1px border and 8px outer radius. The normal shell cannot
 receive input underneath it. Keyboard Tab cycles inside setup. Embedded platform dialogs
 keep their own focus scope; Escape closes that layer first, then skips an optional setup
 step. Returning from fullscreen restores wizard focus. The controller keyboard appears above

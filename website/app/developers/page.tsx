@@ -28,35 +28,37 @@ export default function Developers() {
 
       <section className="dev-hero shell">
         <div>
-          <p className="eyebrow">LOCAL PROCESS · LOCAL DATA · EXPLICIT BOUNDARIES</p>
-          <h1>Sharp software for a fuzzy problem.</h1>
+          <p className="eyebrow">Free and open source</p>
+          <h1>Build on Winnow.</h1>
         </div>
         <div className="dev-intro">
-          <p>Winnow turns scattered launcher files, public metadata, and years of play history into one trustworthy model—without a service tier or user account.</p>
+          <p>Winnow combines launcher files, game metadata, and play history in a local desktop application. Explore the code, add a provider, or help improve the experience on Windows and Linux.</p>
           <div className="stack-line"><span>.NET 10</span><span>Avalonia 11</span><span>SQLite</span><span>xUnit</span></div>
         </div>
       </section>
 
       <section className="principles shell" aria-label="Engineering principles">
-        <article><LockKeyhole aria-hidden="true" /><strong>Local is the boundary</strong><p>State lives in the user’s data directory. Store files are read, never written.</p></article>
-        <article><Radar aria-hidden="true" /><strong>Background means background</strong><p>Enrichment is cached and soft-failing. No network client sits on first paint.</p></article>
-        <article><Workflow aria-hidden="true" /><strong>Precision over recall</strong><p>External IDs auto-merge. Fuzzy identity matches always wait for a person.</p></article>
-        <article><Layers3 aria-hidden="true" /><strong>Reasons are output</strong><p>The recommender returns the signals behind each pick, not only a score.</p></article>
+        <article><LockKeyhole aria-hidden="true" /><strong>Local data</strong><p>State lives in the user’s data directory. Store files are read, never written.</p></article>
+        <article><Radar aria-hidden="true" /><strong>Optional network services</strong><p>Metadata is fetched in the background and cached. Unavailable providers do not prevent the library from opening.</p></article>
+        <article><Workflow aria-hidden="true" /><strong>Review uncertain matches</strong><p>External IDs auto-merge. Fuzzy identity matches always wait for a person.</p></article>
+        <article><Layers3 aria-hidden="true" /><strong>Explainable recommendations</strong><p>The recommender returns the signals behind each pick, not only a score.</p></article>
       </section>
 
       <section className="architecture-section" id="architecture">
         <div className="shell architecture-heading">
-          <div><p className="eyebrow">Runtime architecture</p><h2>One process.<br />Hard edges.</h2></div>
+          <div><p className="eyebrow">Runtime architecture</p><h2>How the app fits together.</h2></div>
           <p>The Avalonia UI reads one SQLite library and raises commands. Local ingest, identity resolution, session monitoring, enrichment, and recommendations run behind interfaces under the same generic host.</p>
         </div>
-        <div className="diagram-frame shell">
-          <iframe title="Interactive Winnow runtime architecture diagram" src={sitePath('/architecture-diagram.html')} loading="lazy" />
-        </div>
-        <div className="shell diagram-link"><a href={sitePath('/architecture-diagram.html')}>Open the full interactive diagram <ArrowUpRight size={16} aria-hidden="true" /></a><span>Built and validated with Archify</span></div>
+        <figure className="architecture-figure shell">
+          <a href={sitePath('/architecture-diagram.html')} aria-label="Open the architecture diagram with zoom and component details">
+            <img src={sitePath('/assets/architecture-overview.svg')} width="1360" height="650" loading="lazy" alt="Winnow runtime: the Avalonia UI and background services share a local SQLite library. Read-only launcher readers feed identity resolution; external providers supply metadata and covers." />
+          </a>
+          <figcaption className="diagram-link"><a href={sitePath('/architecture-diagram.html')}>Explore with zoom and component details <ArrowUpRight size={16} aria-hidden="true" /></a><span>Architecture snapshot · September 2026</span></figcaption>
+        </figure>
       </section>
 
       <section className="module-section shell" id="modules">
-        <div className="module-heading"><p className="eyebrow">Module map</p><h2>Each assembly gets one job.</h2><p>Dependencies point inward. IO stays at the edges. Derived facts remain queries, never duplicated source-of-truth columns.</p></div>
+        <div className="module-heading"><p className="eyebrow">Module map</p><h2>Where to make a change.</h2><p>The domain layer has no IO dependencies. Separate assemblies handle storage, platform readers, metadata, and presentation.</p></div>
         <div className="module-grid">
           {modules.map(([name, description], index) => <article key={name}><span>{String(index + 1).padStart(2, '0')}</span><h3>{name}</h3><p>{description}</p></article>)}
         </div>

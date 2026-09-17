@@ -89,9 +89,10 @@ public sealed class GameDetailsTabInteractionTests
         Assert.True(fixture.Find<TabItem>("ActivityTab").IsKeyboardFocusWithin);
         var focusRing = fixture.Find<TabItem>("ActivityTab").GetVisualDescendants()
             .OfType<Border>().Single(border => border.Name == "TabFocusBorder");
-        Assert.Equal(new Thickness(2), focusRing.BorderThickness);
+        Assert.Equal(new Thickness(0, 0, 0, 2), focusRing.BorderThickness);
         Assert.True(fixture.View.TryFindResource("VoltForeground", out var volt));
         Assert.Same(volt, focusRing.BorderBrush);
+        Capture(fixture.Window, "details-keyboard-tab-focus");
         fixture.Press(PhysicalKey.ArrowRight);
         Flush();
         Assert.Equal(2, model.SelectedTabIndex);

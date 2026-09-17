@@ -187,8 +187,8 @@
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
-            <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
-            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontFamily" Value="{DynamicResource DataFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize11}"/>
             <Setter Property="HorizontalContentAlignment" Value="Right"/>
             <Setter Property="RenderTransform" Value="translateX(0px)"/>
             <Setter Property="Transitions"><Transitions/></Setter>
@@ -400,8 +400,8 @@
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
             <Setter Property="Background" Value="{StaticResource ChromeFieldOnGround}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontSize" Value="{StaticResource BodySize}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource BodySize}"/>
             <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
             <Setter Property="CaretBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
@@ -504,8 +504,8 @@
                                           Content="{TemplateBinding Content}"
                                           TextBlock.TextWrapping="Wrap"
                                           VerticalAlignment="Center"
-                                          FontFamily="{StaticResource BodyFont}"
-                                          FontSize="{StaticResource BodySize}"
+                                          FontFamily="{DynamicResource BodyFont}"
+                                          FontSize="{DynamicResource BodySize}"
                                           Foreground="{StaticResource Text}"/>
                     </Grid>
                 </ControlTemplate>
@@ -735,7 +735,7 @@
             <Setter Property="CornerRadius" Value="4"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize13}"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
@@ -782,8 +782,8 @@
              a free-text note, and a box that invites an essay after a game is a
              box that gets abandoned half-written. -->
         <Style Selector="TextBox.note">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize12}"/>
             <Setter Property="Height" Value="30"/>
             <Setter Property="Padding" Value="9,0"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
@@ -897,7 +897,7 @@
                           IsHitTestVisible="False"
                           VerticalAlignment="Center"/>
                     <TextBlock Classes="display-s"
-                               FontSize="11"
+                               FontSize="{DynamicResource FontSize11}"
                                LetterSpacing="1.5"
                                Foreground="{StaticResource TextDim}"
                                Text="WINNOW"
@@ -914,19 +914,19 @@
                         AutomationProperties.ItemStatus="{Binding Fetch.AutomationName}"
                         AutomationProperties.AccessibilityView="Control">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                        <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                    VerticalAlignment="Center" Text="{Binding Fetch.Label}"/>
                         <TextBlock Text="·" Foreground="{StaticResource TextDim}"
                                    VerticalAlignment="Center"/>
                         <TextBlock Classes="data-s" Foreground="{StaticResource Text}"
                                    VerticalAlignment="Center" Text="{Binding Fetch.RemainingText}"/>
-                        <TextBlock Classes="body" FontSize="11" Foreground="{StaticResource TextDim}"
+                        <TextBlock Classes="body" FontSize="{DynamicResource FontSize11}" Foreground="{StaticResource TextDim}"
                                    VerticalAlignment="Center" Text="{Binding Fetch.RemainingNote}"/>
                     </StackPanel>
                 </Border>
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
                     <Button Name="TitleBarUpdateButton" Content="Update and restart"
-                            FontFamily="{StaticResource BodyFont}" FontSize="{StaticResource LabelSize}"
+                            FontFamily="{DynamicResource BodyFont}" FontSize="{DynamicResource LabelSize}"
                             Foreground="{StaticResource Text}" Background="{StaticResource ChromeRaised}"
                             BorderBrush="{StaticResource Line}" BorderThickness="1"
                             CornerRadius="{StaticResource RadiusControl}" MinHeight="28" Height="28" Padding="12,0" Margin="0,4,12,4"
@@ -1063,7 +1063,8 @@
                             Classes.selected="{Binding Library.AllGames.IsSelected}"
                             Command="{Binding SelectBucketCommand}"
                             CommandParameter="{Binding Library.AllGames}"
-                            ToolTip.Tip="Every title you own">
+                            ToolTip.Tip="{Binding Library.AllGames.Description}"
+                            AutomationProperties.HelpText="{Binding Library.AllGames.Description}">
                         <Grid ColumnDefinitions="2,16,*,Auto,16">
                             <Border Grid.Column="0"
                                     Background="{StaticResource Volt}"
@@ -1074,7 +1075,7 @@
                                        VerticalAlignment="Center"/>
                             <TextBlock Grid.Column="3"
                                        Classes="data"
-                                       FontSize="11"
+                                       FontSize="{DynamicResource FontSize11}"
                                        Foreground="{StaticResource TextDim}"
                                        Text="{Binding Library.AllGames.CountText}"
                                        VerticalAlignment="Center"/>
@@ -1102,6 +1103,8 @@
                                         Classes.rule="{Binding IsRule}"
                                         Opacity="{Binding RowOpacity}"
                                         AutomationProperties.Name="{Binding AutomationName}"
+                                        AutomationProperties.HelpText="{Binding Description}"
+                                        ToolTip.Tip="{Binding Description}"
                                         Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectBucketCommand}"
                                         CommandParameter="{Binding}">
                                     <Grid ColumnDefinitions="2,16,Auto,*,Auto,16">
@@ -1131,7 +1134,7 @@
                                                    VerticalAlignment="Center"/>
                                         <TextBlock Grid.Column="4"
                                                    Classes="data"
-                                                   FontSize="11"
+                                                   FontSize="{DynamicResource FontSize11}"
                                                    Foreground="{StaticResource TextDim}"
                                                    Text="{Binding CountText}"
                                                    VerticalAlignment="Center"/>
@@ -1156,7 +1159,7 @@
                                 AutomationProperties.ItemStatus="{Binding Library.Lists.ListsSectionState}"
                                 ToolTip.Tip="Expand or collapse lists">
                             <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                                <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1.4"
                                            VerticalAlignment="Center" Text="LISTS"/>
                                 <Panel Grid.Column="1" Width="16" Height="16" VerticalAlignment="Center">
                                     <Path Data="M 4,6 L 8,10 L 12,6" Stroke="{StaticResource TextDim}" StrokeThickness="1.6"
@@ -1188,7 +1191,7 @@
                                                    VerticalAlignment="Center"/>
                                         <TextBlock Grid.Column="4"
                                                    Classes="data"
-                                                   FontSize="11"
+                                                   FontSize="{DynamicResource FontSize11}"
                                                    Foreground="{StaticResource TextDim}"
                                                    Text="{Binding CountText}"
                                                    VerticalAlignment="Center"/>
@@ -1203,8 +1206,8 @@
                     <Panel IsVisible="{Binding Library.Lists.AreListsExpanded}">
                     <TextBlock Margin="18,4,16,0"
                                Classes="body"
-                               FontSize="12"
-                               LineHeight="17"
+                               FontSize="{DynamicResource FontSize12}"
+                               LineHeight="{DynamicResource TextLineHeight17}"
                                TextWrapping="Wrap"
                                Foreground="{StaticResource TextDim}"
                                IsVisible="{Binding Library.Lists.HasNoLists}"
@@ -1223,7 +1226,7 @@
                                 AutomationProperties.ItemStatus="{Binding Library.Lists.LiveListsSectionState}"
                                 ToolTip.Tip="Expand or collapse live lists">
                             <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                                <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1.4"
                                            VerticalAlignment="Center" Text="LIVE LISTS"/>
                                 <Panel Grid.Column="1" Width="16" Height="16" VerticalAlignment="Center">
                                     <Path Data="M 4,6 L 8,10 L 12,6" Stroke="{StaticResource TextDim}" StrokeThickness="1.6"
@@ -1255,7 +1258,7 @@
                                                    VerticalAlignment="Center"/>
                                         <TextBlock Grid.Column="4"
                                                    Classes="data"
-                                                   FontSize="11"
+                                                   FontSize="{DynamicResource FontSize11}"
                                                    Foreground="{StaticResource TextDim}"
                                                    Text="{Binding CountText}"
                                                    VerticalAlignment="Center"/>
@@ -1275,17 +1278,17 @@
                     BorderThickness="0,1,0,0">
                 <StackPanel Spacing="8">
                     <StackPanel IsVisible="{Binding Library.Lists.IsCreateMenuOpen}" Spacing="4">
-                        <Button Classes="listrow" Content="Static list" FontFamily="{StaticResource BodyFont}" FontSize="{StaticResource BodySize}" Padding="8,0"
+                        <Button Classes="listrow" Content="Static list" FontFamily="{DynamicResource BodyFont}" FontSize="{DynamicResource BodySize}" Padding="8,0"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Command="{Binding Library.BeginCreateListCommand}"
                                 ToolTip.Tip="Choose the games yourself. Add or remove titles whenever you like."/>
-                        <Button Classes="listrow" Content="Live list" FontFamily="{StaticResource BodyFont}" FontSize="{StaticResource BodySize}" Padding="8,0"
+                        <Button Classes="listrow" Content="Live list" FontFamily="{DynamicResource BodyFont}" FontSize="{DynamicResource BodySize}" Padding="8,0"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Command="{Binding Library.BeginSaveLiveListCommand}"
                                 ToolTip.Tip="Save the current library filters. Matching games update automatically."/>
                     </StackPanel>
                     <Grid ColumnDefinitions="*,Auto,Auto">
-                        <Button Name="NewListButton" Classes="listrow" FontFamily="{StaticResource BodyFont}" FontSize="{StaticResource BodySize}" Padding="8,0"
+                        <Button Name="NewListButton" Classes="listrow" FontFamily="{DynamicResource BodyFont}" FontSize="{DynamicResource BodySize}" Padding="8,0"
                                 HorizontalAlignment="Left"
                                 Command="{Binding Library.Lists.ToggleCreateMenuCommand}"
                                 AutomationProperties.Name="New list"
@@ -1383,33 +1386,35 @@
                             CornerRadius="{StaticResource RadiusControl}"
                             Background="{StaticResource ChromeFieldOnGround}"
                             ClipToBounds="True" Height="30">
-                        <StackPanel Orientation="Horizontal">
-                            <Button AutomationProperties.Name="Grid" Classes="seg"
-                                    Classes.on="{Binding Library.IsGridView}"
-                                    Command="{Binding Library.ShowGridViewCommand}"
-                                    ToolTip.Tip="Grid">
-                                <UniformGrid Rows="2" Columns="2" Width="13" Height="13">
-                                    <Rectangle Width="5" Height="5" Margin="0,0,1,1"/>
-                                    <Rectangle Width="5" Height="5" Margin="1,0,0,1"/>
-                                    <Rectangle Width="5" Height="5" Margin="0,1,1,0"/>
-                                    <Rectangle Width="5" Height="5" Margin="1,1,0,0"/>
-                                </UniformGrid>
-                            </Button>
-                            <Button AutomationProperties.Name="List" Classes="seg"
-                                    Classes.on="{Binding !Library.IsGridView}"
-                                    Command="{Binding Library.ShowListViewCommand}"
-                                    ToolTip.Tip="List">
-                                <StackPanel Width="13" Height="13" Spacing="3"
-                                            VerticalAlignment="Center">
-                                    <Rectangle Height="2" Width="13"/>
-                                    <Rectangle Height="2" Width="13"/>
-                                    <Rectangle Height="2" Width="13"/>
-                                </StackPanel>
-                            </Button>
-                        </StackPanel>
+                        <Border Classes="segment-clip">
+                            <StackPanel Orientation="Horizontal">
+                                <Button AutomationProperties.Name="Grid" Classes="seg"
+                                        Classes.on="{Binding Library.IsGridView}"
+                                        Command="{Binding Library.ShowGridViewCommand}"
+                                        ToolTip.Tip="Grid">
+                                    <UniformGrid Rows="2" Columns="2" Width="13" Height="13">
+                                        <Rectangle Width="5" Height="5" Margin="0,0,1,1"/>
+                                        <Rectangle Width="5" Height="5" Margin="1,0,0,1"/>
+                                        <Rectangle Width="5" Height="5" Margin="0,1,1,0"/>
+                                        <Rectangle Width="5" Height="5" Margin="1,1,0,0"/>
+                                    </UniformGrid>
+                                </Button>
+                                <Button AutomationProperties.Name="List" Classes="seg"
+                                        Classes.on="{Binding !Library.IsGridView}"
+                                        Command="{Binding Library.ShowListViewCommand}"
+                                        ToolTip.Tip="List">
+                                    <StackPanel Width="13" Height="13" Spacing="3"
+                                                VerticalAlignment="Center">
+                                        <Rectangle Height="2" Width="13"/>
+                                        <Rectangle Height="2" Width="13"/>
+                                        <Rectangle Height="2" Width="13"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
                     </Border>
 
-                    <TextBlock Classes="label" FontSize="10" Text="DENSITY"
+                    <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" Text="DENSITY"
                                VerticalAlignment="Center"/>
                     <!-- The label is the design system's own word; the direction was the part
                          with no spec behind it. IsDirectionReversed was not taken because it
@@ -1434,7 +1439,7 @@
                     <Button AutomationProperties.Name="Display" Name="DisplayButton" Classes="ctl"
                             ToolTip.Tip="Display preferences">
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                            <TextBlock Classes="body" FontSize="12"
+                            <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                                        Foreground="{StaticResource TextDim}"
                                        Text="Display"/>
                             <Path Data="M 0,0 L 8,0 L 4,5 Z"
@@ -1458,9 +1463,9 @@
                                               Classes="pref"
                                               Content="Dim dormant covers"
                                               IsChecked="{Binding Display.DimDormantCovers, Mode=TwoWay}"/>
-                                    <TextBlock Classes="body" FontSize="12"
+                                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                                                Margin="29,0,0,0"
-                                               LineHeight="17"
+                                               LineHeight="{DynamicResource TextLineHeight17}"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource TextDim}"
                                                Text="Covers fade the longer a game sits unplayed."/>
@@ -1472,9 +1477,9 @@
                                               Classes="pref"
                                               Content="Show non-game entries"
                                               IsChecked="{Binding Display.ShowNonGameEntries, Mode=TwoWay}"/>
-                                    <TextBlock Classes="body" FontSize="12"
+                                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                                                Margin="29,0,0,0"
-                                               LineHeight="17"
+                                               LineHeight="{DynamicResource TextLineHeight17}"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource TextDim}"
                                                Text="Tools, servers and soundtracks. Hidden by default."/>
@@ -1498,7 +1503,7 @@
                                         <TextBlock Grid.Column="0" Classes="body"
                                                    VerticalAlignment="Center"
                                                    Text="{x:Static vm:MaturityCapCopy.Heading}"/>
-                                        <TextBlock Grid.Column="1" Classes="body" FontSize="12"
+                                        <TextBlock Grid.Column="1" Classes="body" FontSize="{DynamicResource FontSize12}"
                                                    VerticalAlignment="Center"
                                                    Text="{Binding Display.MaturityCapLabel}"/>
                                     </Grid>
@@ -1517,18 +1522,18 @@
                                                 ToolTip.Tip="{Binding Display.MaturityCapLabel}"/>
                                     </Border>
 
-                                    <TextBlock Classes="body" FontSize="12"
-                                               LineHeight="17"
+                                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
+                                               LineHeight="{DynamicResource TextLineHeight17}"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource TextDim}"
                                                Text="{x:Static vm:MaturityCapCopy.Explanation}"/>
-                                    <TextBlock Classes="body" FontSize="12"
-                                               LineHeight="17"
+                                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
+                                               LineHeight="{DynamicResource TextLineHeight17}"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource TextDim}"
                                                Text="{Binding Display.CapHiddenText}"/>
-                                    <TextBlock Classes="body" FontSize="12"
-                                               LineHeight="17"
+                                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
+                                               LineHeight="{DynamicResource TextLineHeight17}"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource TextDim}"
                                                IsVisible="{Binding Display.IsCapClamped}"
@@ -1541,9 +1546,9 @@
                                               Classes="pref"
                                               Content="Group expansions under the base game"
                                               IsChecked="{Binding Display.GroupExpansions, Mode=TwoWay}"/>
-                                    <TextBlock Classes="body" FontSize="12"
+                                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                                                Margin="29,0,0,0"
-                                               LineHeight="17"
+                                               LineHeight="{DynamicResource TextLineHeight17}"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource TextDim}"
                                                Text="Off by default. Hours are never added together."/>
@@ -1557,9 +1562,9 @@
                                               Classes="pref"
                                               Content="Ask for a note after playing"
                                               IsChecked="{Binding Display.PromptAfterPlay, Mode=TwoWay}"/>
-                                    <TextBlock Classes="body" FontSize="12"
+                                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                                                Margin="29,0,0,0"
-                                               LineHeight="17"
+                                               LineHeight="{DynamicResource TextLineHeight17}"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource TextDim}"
                                                Text="Off by default. A small card appears after a game ends."/>
@@ -1569,7 +1574,7 @@
                     </Button>
 
                     <!-- Multi-select readout: shows how many are selected. -->
-                    <TextBlock Classes="data" FontSize="11"
+                    <TextBlock Classes="data" FontSize="{DynamicResource FontSize11}"
                                Foreground="{StaticResource VoltForeground}"
                                VerticalAlignment="Center"
                                IsVisible="{Binding Library.HasMultiSelection}"
@@ -1587,7 +1592,7 @@
                     <Button AutomationProperties.Name="{Binding Library.SortLabel}" Name="SortButton"
                             Classes="ctl" ToolTip.Tip="Sort order">
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                            <TextBlock Classes="body" FontSize="12"
+                            <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                                        Foreground="{StaticResource TextDim}"
                                        Text="{Binding Library.SortLabel}"/>
                             <Path Data="M 0,0 L 8,0 L 4,5 Z"
@@ -1639,7 +1644,7 @@
                             <Path Data="M 0,0 L 11,0 L 6.7,5 L 6.7,10 L 4.3,8.4 L 4.3,5 Z"
                                   Fill="{StaticResource TextDim}"
                                   VerticalAlignment="Center"/>
-                            <TextBlock Classes="body" FontSize="12"
+                            <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                                        Foreground="{StaticResource TextDim}"
                                        Text="Filters"/>
                             <Border Padding="5,0"
@@ -1678,6 +1683,10 @@
                 <Panel.ContextMenu>
                     <ContextMenu Classes="actions"
                                  Opening="OnLibraryContextMenuOpening">
+                        <MenuItem Header="Mark as read"
+                                  IsVisible="{Binding Library.CanMarkSelectionAsRead}"
+                                  Command="{Binding Library.MarkSelectionAsReadCommand}"
+                                  ToolTip.Tip="Removes selected games from Patched. A newer patch puts them back."/>
                         <MenuItem Header="{Binding Library.AddToListLabel}"
                                   Command="{Binding Library.BeginAddToListCommand}"/>
                         <MenuItem Header="Remove from list"
@@ -1734,7 +1743,7 @@
                             <Button AutomationProperties.Name="TITLE" Grid.Column="3" Classes="colhead"
                                     Command="{Binding Library.SortByTitleCommand}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Classes="label" FontSize="10" Text="TITLE"/>
+                                    <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" Text="TITLE"/>
                                     <Path Data="M 0,5 L 8,5 L 4,0 Z" Fill="{StaticResource VoltForeground}"
                                           VerticalAlignment="Center"
                                           IsVisible="{Binding Library.ShowTitleSortUp}"/>
@@ -1744,7 +1753,7 @@
                                 </StackPanel>
                             </Button>
 
-                            <TextBlock Grid.Column="4" Classes="label" FontSize="10"
+                            <TextBlock Grid.Column="4" Classes="label" FontSize="{DynamicResource FontSize10}"
                                        Text="STORE" VerticalAlignment="Center"/>
 
                             <Button AutomationProperties.Name="PLAYTIME" Grid.Column="5" Classes="colhead"
@@ -1758,7 +1767,7 @@
                                     <Path Data="M 0,0 L 8,0 L 4,5 Z" Fill="{StaticResource VoltForeground}"
                                           VerticalAlignment="Center"
                                           IsVisible="{Binding Library.ShowPlaytimeSortDown}"/>
-                                    <TextBlock Classes="label" FontSize="10" Text="PLAYTIME"/>
+                                    <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" Text="PLAYTIME"/>
                                 </StackPanel>
                             </Button>
 
@@ -1774,7 +1783,7 @@
                                     <Path Data="M 0,0 L 8,0 L 4,5 Z" Fill="{StaticResource VoltForeground}"
                                           VerticalAlignment="Center"
                                           IsVisible="{Binding Library.ShowIdleSortDown}"/>
-                                    <TextBlock Classes="label" FontSize="10" Text="IDLE"/>
+                                    <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" Text="IDLE"/>
                                 </StackPanel>
                             </Button>
                         </Grid>
@@ -1821,7 +1830,7 @@
                                                 ToolTip.Tip="Patched since you played"/>
                                         <TextBlock Grid.Column="3"
                                                    Classes="body-l"
-                                                   FontFamily="{StaticResource DisplayFont}"
+                                                   FontFamily="{DynamicResource DisplayFont}"
                                                    FontWeight="Bold"
                                                    Text="{Binding Title}"
                                                    TextTrimming="CharacterEllipsis"
@@ -1879,7 +1888,7 @@
                                MaxWidth="440"
                                TextWrapping="Wrap"
                                TextAlignment="Center"
-                               LineHeight="22"
+                               LineHeight="{DynamicResource TextLineHeight22}"
                                Foreground="{StaticResource TextDim}"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"
@@ -2001,7 +2010,7 @@
                                 Margin="24,0"
                                 VerticalAlignment="Center">
                         <TextBlock Classes="label"
-                                   FontSize="10"
+                                   FontSize="{DynamicResource FontSize10}"
                                    LetterSpacing="1.4"
                                    Text="SETTINGS"
                                    VerticalAlignment="Center"/>
@@ -2011,54 +2020,56 @@
                                 Background="{StaticResource ChromeFieldOnGround}"
                                 ClipToBounds="True"
                                 Height="30">
-                            <StackPanel Orientation="Horizontal">
-                                <!-- Bound rather than written in as a literal.
-                                     The label went from STORES to PLATFORMS once
-                                     before and drifted back, because the only
-                                     place it existed was this attribute and no
-                                     test could see it (TASK-60). -->
-                                <Button AutomationProperties.Name="{Binding Stores.SegmentLabel}" Classes="seg tab"
-                                        Classes.on="{Binding IsStoresVisible}"
-                                        Command="{Binding ShowStoresCommand}"
-                                        ToolTip.Tip="{Binding Stores.SegmentTooltip}">
-                                    <TextBlock Classes="display-s" Text="{Binding Stores.SegmentLabel}"/>
-                                </Button>
-                                <!-- SETTINGS › LIBRARY. What the library
-                                     shows: hidden games, explicit content,
-                                     hand-added games. Label is bound rather
-                                     than written in, for TASK-60's reason. -->
-                                <Button AutomationProperties.Name="{Binding LibrarySettings.SegmentLabel}" Classes="seg tab"
-                                        Classes.on="{Binding IsLibrarySettingsVisible}"
-                                        Command="{Binding ShowLibrarySettingsCommand}"
-                                        ToolTip.Tip="{Binding LibrarySettings.SegmentTooltip}">
-                                    <TextBlock Classes="display-s"
-                                               Text="{Binding LibrarySettings.SegmentLabel}"/>
-                                </Button>
-                                <Button AutomationProperties.Name="APPEARANCE" Classes="seg tab"
-                                        Classes.on="{Binding IsAppearanceVisible}"
-                                        Command="{Binding ShowAppearanceCommand}"
-                                        ToolTip.Tip="Theme and transparency">
-                                    <TextBlock Classes="display-s" Text="APPEARANCE"/>
-                                </Button>
-                                <Button AutomationProperties.Name="{Binding EnrichmentSettings.SegmentLabel}" Classes="seg tab"
-                                        Classes.on="{Binding IsEnrichmentSettingsVisible}" Command="{Binding ShowEnrichmentSettingsCommand}"
-                                        ToolTip.Tip="{Binding EnrichmentSettings.SegmentTooltip}">
-                                    <TextBlock Classes="display-s" Text="{Binding EnrichmentSettings.SegmentLabel}"/>
-                                </Button>
-                                <Button AutomationProperties.Name="{Binding PluginSettings.SegmentLabel}" Classes="seg tab"
-                                        Classes.on="{Binding IsPluginSettingsVisible}" Command="{Binding ShowPluginSettingsCommand}"
-                                        ToolTip.Tip="{Binding PluginSettings.SegmentTooltip}">
-                                    <TextBlock Classes="display-s" Text="{Binding PluginSettings.SegmentLabel}"/>
-                                </Button>
-                                <Button AutomationProperties.Name="{Binding ApplicationSettings.SegmentLabel}"
-                                        Classes="seg tab"
-                                        Classes.on="{Binding IsApplicationSettingsVisible}"
-                                        Command="{Binding ShowApplicationSettingsCommand}"
-                                        ToolTip.Tip="{Binding ApplicationSettings.SegmentTooltip}">
-                                    <TextBlock Classes="display-s"
-                                               Text="{Binding ApplicationSettings.SegmentLabel}"/>
-                                </Button>
-                            </StackPanel>
+                            <Border Classes="segment-clip">
+                                <StackPanel Orientation="Horizontal">
+                                    <!-- Bound rather than written in as a literal.
+                                         The label went from STORES to PLATFORMS once
+                                         before and drifted back, because the only
+                                         place it existed was this attribute and no
+                                         test could see it (TASK-60). -->
+                                    <Button AutomationProperties.Name="{Binding Stores.SegmentLabel}" Classes="seg tab"
+                                            Classes.on="{Binding IsStoresVisible}"
+                                            Command="{Binding ShowStoresCommand}"
+                                            ToolTip.Tip="{Binding Stores.SegmentTooltip}">
+                                        <TextBlock Classes="display-s" Text="{Binding Stores.SegmentLabel}"/>
+                                    </Button>
+                                    <!-- SETTINGS › LIBRARY. What the library
+                                         shows: hidden games, explicit content,
+                                         hand-added games. Label is bound rather
+                                         than written in, for TASK-60's reason. -->
+                                    <Button AutomationProperties.Name="{Binding LibrarySettings.SegmentLabel}" Classes="seg tab"
+                                            Classes.on="{Binding IsLibrarySettingsVisible}"
+                                            Command="{Binding ShowLibrarySettingsCommand}"
+                                            ToolTip.Tip="{Binding LibrarySettings.SegmentTooltip}">
+                                        <TextBlock Classes="display-s"
+                                                   Text="{Binding LibrarySettings.SegmentLabel}"/>
+                                    </Button>
+                                    <Button AutomationProperties.Name="APPEARANCE" Classes="seg tab"
+                                            Classes.on="{Binding IsAppearanceVisible}"
+                                            Command="{Binding ShowAppearanceCommand}"
+                                            ToolTip.Tip="Theme and transparency">
+                                        <TextBlock Classes="display-s" Text="APPEARANCE"/>
+                                    </Button>
+                                    <Button AutomationProperties.Name="{Binding EnrichmentSettings.SegmentLabel}" Classes="seg tab"
+                                            Classes.on="{Binding IsEnrichmentSettingsVisible}" Command="{Binding ShowEnrichmentSettingsCommand}"
+                                            ToolTip.Tip="{Binding EnrichmentSettings.SegmentTooltip}">
+                                        <TextBlock Classes="display-s" Text="{Binding EnrichmentSettings.SegmentLabel}"/>
+                                    </Button>
+                                    <Button AutomationProperties.Name="{Binding PluginSettings.SegmentLabel}" Classes="seg tab"
+                                            Classes.on="{Binding IsPluginSettingsVisible}" Command="{Binding ShowPluginSettingsCommand}"
+                                            ToolTip.Tip="{Binding PluginSettings.SegmentTooltip}">
+                                        <TextBlock Classes="display-s" Text="{Binding PluginSettings.SegmentLabel}"/>
+                                    </Button>
+                                    <Button AutomationProperties.Name="{Binding ApplicationSettings.SegmentLabel}"
+                                            Classes="seg tab"
+                                            Classes.on="{Binding IsApplicationSettingsVisible}"
+                                            Command="{Binding ShowApplicationSettingsCommand}"
+                                            ToolTip.Tip="{Binding ApplicationSettings.SegmentTooltip}">
+                                        <TextBlock Classes="display-s"
+                                                   Text="{Binding ApplicationSettings.SegmentLabel}"/>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
                         </Border>
                     </StackPanel>
                 </Border>
@@ -2137,7 +2148,7 @@
                 <StackPanel Spacing="8">
                     <Grid ColumnDefinitions="*,Auto">
                         <TextBlock Classes="body-l"
-                                   FontFamily="{StaticResource DisplayFont}"
+                                   FontFamily="{DynamicResource DisplayFont}"
                                    FontWeight="Bold"
                                    TextWrapping="Wrap"
                                    VerticalAlignment="Center"
@@ -2153,7 +2164,7 @@
                                    VerticalAlignment="Center"
                                    Text="{Binding DockNote}"/>
                         <Button Grid.Column="1" Classes="act quiet"
-                                FontSize="12" Padding="10,3" BorderThickness="1"
+                                FontSize="{DynamicResource FontSize12}" Padding="10,3" BorderThickness="1"
                                 VerticalAlignment="Center"
                                 IsVisible="{Binding CanUndoDock}"
                                 Content="{Binding UndoButtonText}"
@@ -2173,7 +2184,7 @@
 
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
-                            <TextBlock Classes="body-l" FontSize="13"
+                            <TextBlock Classes="body-l" FontSize="{DynamicResource FontSize13}"
                                        VerticalAlignment="Center"
                                        TextTrimming="CharacterEllipsis"
                                        Text="{Binding Title}"/>
@@ -2217,7 +2228,7 @@
                                  KeyDown="OnJournalNoteKeyDown"/>
                         <Button Grid.Column="1"
                                 Classes="act primary"
-                                FontSize="12" Padding="12,5"
+                                FontSize="{DynamicResource FontSize12}" Padding="12,5"
                                 Content="{Binding SaveLabel}"
                                 Command="{Binding SaveCommand}"/>
                     </Grid>
@@ -2225,7 +2236,7 @@
                     <!-- A write that did not land. The note and rating above are
                          untouched; Save is the retry. Amber for attention (§2),
                          never Flare — that colour is reserved for unread updates. -->
-                    <TextBlock Classes="body" FontSize="11"
+                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize11}"
                                TextWrapping="Wrap"
                                Foreground="{StaticResource AmberForeground}"
                                IsVisible="{Binding HasError}"
@@ -2245,7 +2256,7 @@
                              Classes.waiting="{Binding IsWaiting}"
                              Classes.problem="{Binding IsProblem}"
                              VerticalAlignment="Center"/>
-                    <TextBlock Classes="body" FontSize="12"
+                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                                VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis"
                                Text="{Binding Message}"/>

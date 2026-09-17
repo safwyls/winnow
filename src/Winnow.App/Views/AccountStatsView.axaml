@@ -24,16 +24,16 @@
             <Setter Property="BorderBrush" Value="{StaticResource AmberForeground}"/>
         </Style>
         <Style Selector="TextBlock.count">
-            <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
-            <Setter Property="FontSize" Value="{StaticResource DataSize}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource DataFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource DataSize}"/>
             <Setter Property="FontFeatures" Value="tnum"/>
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
             <Setter Property="TextAlignment" Value="Right"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style Selector="TextBlock.amount">
-            <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
-            <Setter Property="FontSize" Value="{StaticResource DataSize}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource DataFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource DataSize}"/>
             <Setter Property="FontFeatures" Value="tnum"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
             <Setter Property="TextAlignment" Value="Right"/>
@@ -76,7 +76,7 @@
                 <TextBlock Classes="body prose"
                            HorizontalAlignment="Left"
                            TextWrapping="Wrap"
-                           LineHeight="19"
+                           LineHeight="{DynamicResource TextLineHeight19}"
                            Foreground="{StaticResource TextDim}"
                            Text="{Binding IntroMessage}"/>
             </StackPanel>
@@ -95,7 +95,7 @@
                 <StackPanel Spacing="16" IsVisible="{Binding HasFacts}">
                     <Border Classes="note" IsVisible="{Binding IsMixedCurrency}">
                         <StackPanel Spacing="8">
-                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                            <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                        Foreground="{StaticResource TextDim}"
                                        Text="{Binding MixedCurrencyHeading}"/>
                             <TextBlock Classes="para lead" Text="{Binding MixedCurrencyMessage}"/>
@@ -108,14 +108,14 @@
                     <StackPanel Spacing="16">
                     <Border Classes="card">
                         <StackPanel Spacing="14">
-                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding SpendHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="{DynamicResource FontSize18}" Text="{Binding SpendHeading}"/>
                             <TextBlock Classes="para" Text="{Binding SpendNote}"/>
 
                             <Grid ColumnDefinitions="*,16,96,16,132">
                                 <TextBlock Grid.Column="2" Classes="label colhead"
-                                           FontSize="10" LetterSpacing="1" Text="TRANSACTIONS"/>
+                                           FontSize="{DynamicResource FontSize10}" LetterSpacing="1" Text="TRANSACTIONS"/>
                                 <TextBlock Grid.Column="4" Classes="label colhead"
-                                           FontSize="10" LetterSpacing="1" Text="TOTAL"/>
+                                           FontSize="{DynamicResource FontSize10}" LetterSpacing="1" Text="TOTAL"/>
                             </Grid>
 
                             <ItemsControl ItemsSource="{Binding SpendRows}"
@@ -124,7 +124,7 @@
                     </Border>
                     <Border Classes="card">
                         <StackPanel Spacing="14">
-                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding YearHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="{DynamicResource FontSize18}" Text="{Binding YearHeading}"/>
                             <TextBlock Classes="para" Text="{Binding YearNote}"/>
                             <ItemsControl ItemsSource="{Binding YearRows}"
                                           ItemTemplate="{StaticResource StatRow}"/>
@@ -132,7 +132,7 @@
                     </Border>
                     <Border Classes="card">
                         <StackPanel Spacing="14">
-                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding KindHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="{DynamicResource FontSize18}" Text="{Binding KindHeading}"/>
                             <ItemsControl ItemsSource="{Binding KindRows}"
                                           ItemTemplate="{StaticResource StatRow}"/>
                             <Border Classes="note">
@@ -142,7 +142,7 @@
                     </Border>
                     <Border Classes="card">
                         <StackPanel Spacing="14">
-                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding RefundHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="{DynamicResource FontSize18}" Text="{Binding RefundHeading}"/>
                             <ItemsControl ItemsSource="{Binding RefundRows}"
                                           ItemTemplate="{StaticResource StatRow}"/>
                             <TextBlock Classes="para" Text="{Binding RefundNote}"/>
@@ -150,7 +150,7 @@
                     </Border>
                     <Border Classes="card">
                         <StackPanel Spacing="14">
-                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding BundleHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="{DynamicResource FontSize18}" Text="{Binding BundleHeading}"/>
                             <ItemsControl ItemsSource="{Binding BundleRows}"
                                           ItemTemplate="{StaticResource StatRow}"/>
                             <TextBlock Classes="para" Text="{Binding BundleNote}"/>
@@ -158,7 +158,7 @@
                     </Border>
                     <Border Classes="card">
                         <StackPanel Spacing="14">
-                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding DiscountHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="{DynamicResource FontSize18}" Text="{Binding DiscountHeading}"/>
                             <ItemsControl ItemsSource="{Binding DiscountRows}"
                                           ItemTemplate="{StaticResource StatRow}"/>
                             <Border Classes="note">
@@ -168,11 +168,11 @@
                     </Border>
                     <Border Classes="card" IsVisible="{Binding ShowBiggest}">
                         <StackPanel Spacing="14">
-                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding BiggestHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="{DynamicResource FontSize18}" Text="{Binding BiggestHeading}"/>
 
                             <StackPanel Orientation="Horizontal" Spacing="14">
                                 <TextBlock Classes="data"
-                                           FontSize="22"
+                                           FontSize="{DynamicResource FontSize22}"
                                            Foreground="{StaticResource VoltForeground}"
                                            IsVisible="{Binding ShowBiggestAmount}"
                                            Text="{Binding BiggestAmountText}"
@@ -196,7 +196,7 @@
                     </Border>
                     <Border Classes="card">
                         <StackPanel Spacing="14">
-                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding WalletHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="{DynamicResource FontSize18}" Text="{Binding WalletHeading}"/>
                             <ItemsControl ItemsSource="{Binding WalletRows}"
                                           ItemTemplate="{StaticResource StatRow}"/>
                             <Border Classes="note">
@@ -206,7 +206,7 @@
                     </Border>
                     <Border Classes="card">
                         <StackPanel Spacing="14">
-                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding LicenceHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="{DynamicResource FontSize18}" Text="{Binding LicenceHeading}"/>
                             <TextBlock Classes="para" Text="{Binding LicenceNote}"/>
                             <ItemsControl ItemsSource="{Binding LicenceRows}"
                                           ItemTemplate="{StaticResource StatRow}"/>
@@ -214,7 +214,7 @@
                     </Border>
                     <Border Classes="card" IsVisible="{Binding ShowCurrencies}">
                         <StackPanel Spacing="14">
-                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding CurrencyHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="{DynamicResource FontSize18}" Text="{Binding CurrencyHeading}"/>
                             <TextBlock Classes="para" Text="{Binding CurrencyNote}"/>
                             <ItemsControl ItemsSource="{Binding CurrencyRows}"
                                           ItemTemplate="{StaticResource StatRow}"/>
@@ -222,7 +222,7 @@
                     </Border>
                     <Border Classes="card">
                         <StackPanel Spacing="14">
-                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding CaptureHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="{DynamicResource FontSize18}" Text="{Binding CaptureHeading}"/>
                             <TextBlock Classes="para" Text="{Binding CaptureNote}"/>
                             <ItemsControl ItemsSource="{Binding CaptureRows}"
                                           ItemTemplate="{StaticResource StatRow}"/>

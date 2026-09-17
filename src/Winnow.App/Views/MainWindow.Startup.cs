@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Threading;
+using Winnow.App.Services;
 
 namespace Winnow.App.Views;
 
@@ -27,11 +28,13 @@ public partial class MainWindow
     {
         _desktopStartupDragon = new LoadingDragon { Width = 144, Height = 144, HorizontalAlignment = HorizontalAlignment.Center };
         var title = new TextBlock { Text = "WINNOW", FontSize = 60, HorizontalAlignment = HorizontalAlignment.Center };
+        ThemeTypographyResources.BindSize(title, 60);
         title[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension("DisplayFont");
         title[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("Text");
         _desktopStartupStatus = new TextBlock { Text = "Preparing your library…", FontSize = 18,
             HorizontalAlignment = HorizontalAlignment.Center, TextWrapping = Avalonia.Media.TextWrapping.Wrap };
         _desktopStartupStatus[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("TextDim");
+        ThemeTypographyResources.BindSize(_desktopStartupStatus, 18);
         _desktopStartupStatus[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension("BodyFont");
         AutomationProperties.SetLiveSetting(_desktopStartupStatus, AutomationLiveSetting.Polite);
         _desktopStartupRetry = new Button { Content = "Try again", IsVisible = false, HorizontalAlignment = HorizontalAlignment.Center };

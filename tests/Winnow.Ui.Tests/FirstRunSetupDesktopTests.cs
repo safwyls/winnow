@@ -4,6 +4,8 @@ using Avalonia.Data;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
+using Avalonia.Media.Imaging;
+using System.Runtime.InteropServices;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Winnow.App.Design;
@@ -16,6 +18,68 @@ namespace Winnow.Ui.Tests;
 
 public sealed class FirstRunSetupDesktopTests
 {
+    [AvaloniaTheory]
+    [InlineData("winnow")]
+    [InlineData("rose-pine-dawn")]
+    public async Task Header_and_footer_fills_stay_inside_the_rounded_frame(string themeId)
+    {
+        var service = PreviewData.Appearance.Service;
+        var original = service.Theme;
+        service.SelectTheme(service.Catalogue.Single(t => t.Id == themeId));
+        try
+        {
+            using var fixture = new Fixture();
+            await fixture.OpenAsync();
+            var frame = fixture.View.FindControl<Border>("SetupFrame")!;
+            var clip = fixture.View.FindControl<Border>("SetupContentClip")!;
+            Assert.Equal(new CornerRadius(7), clip.CornerRadius);
+            Assert.Equal(new Thickness(1), frame.BorderThickness);
+            using var corrected = await Capture();
+            if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
+            {
+                Directory.CreateDirectory(directory);
+                corrected.Save(Path.Combine(directory, $"setup-rounded-{themeId}.png"));
+            }
+            var expected = Pixels(corrected);
+            clip.ClipToBounds = false;
+            using var square = await Capture();
+            var actual = Pixels(square);
+            var origin = clip.TranslatePoint(default, fixture.Window)!.Value;
+            foreach (var right in new[] { false, true })
+            foreach (var bottom in new[] { false, true })
+            {
+                var changed = false;
+                for (var y = 0; y < 7; y++)
+                for (var x = 0; x < 7; x++)
+                {
+                    var px = (int)origin.X + (right ? (int)clip.Bounds.Width - 1 - x : x);
+                    var py = (int)origin.Y + (bottom ? (int)clip.Bounds.Height - 1 - y : y);
+                    var offset = (py * corrected.PixelSize.Width + px) * 4;
+                    changed |= !expected.AsSpan(offset, 4).SequenceEqual(actual.AsSpan(offset, 4));
+                }
+                Assert.True(changed, "Removing the inner clip must reproduce corner overpainting.");
+            }
+
+            async Task<Bitmap> Capture()
+            {
+                Flush(); fixture.Window.UpdateLayout();
+                await Task.Delay(100);
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick(); Flush();
+                return fixture.Window.CaptureRenderedFrame()!;
+            }
+        }
+        finally { service.SelectTheme(original); }
+    }
+
+    private static byte[] Pixels(Bitmap bitmap)
+    {
+        var pixels = new byte[bitmap.PixelSize.Width * bitmap.PixelSize.Height * 4];
+        var pin = GCHandle.Alloc(pixels, GCHandleType.Pinned);
+        try { bitmap.CopyPixels(new PixelRect(bitmap.PixelSize), pin.AddrOfPinnedObject(), pixels.Length, bitmap.PixelSize.Width * 4); }
+        finally { pin.Free(); }
+        return pixels;
+    }
+
     [AvaloniaFact]
     public async Task Every_step_keeps_navigation_inside_a_short_desktop_window()
     {

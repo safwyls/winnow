@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Winnow.App.Themes;
@@ -16,6 +17,7 @@ public sealed class ThemeService
     /// <summary>§6's settings table is shared by every module, so the keys are
     /// namespaced (see <see cref="ISettingsRepository"/>).</summary>
     public const string ThemeSettingKey = "appearance.theme";
+    public const string TypographySettingKey = "appearance.typography";
 
     /// <summary>
     /// The same key the boolean toggle used, now holding a whole percent.
@@ -52,6 +54,7 @@ public sealed class ThemeService
     private WinnowLayout _layout = WinnowLayouts.Default;
     private bool _loading;
     private bool _sessionOverride;
+    private readonly Dictionary<string, ThemeTypography> _typographyOverrides = new(StringComparer.Ordinal);
 
     public ThemeService(ISettingsRepository? settings = null, UserThemeStore? userThemes = null)
     {
@@ -70,6 +73,64 @@ public sealed class ThemeService
     public event EventHandler? CatalogueChanged;
 
     public WinnowTheme Theme => _theme;
+    public ThemeTypography Typography => TypographyFor(_theme);
+
+    private ThemeTypography TypographyFor(WinnowTheme theme)
+        => _typographyOverrides.GetValueOrDefault(theme.Id, theme.Typography);
+
+    public void SetTypography(ThemeTypography typography)
+    {
+        ArgumentNullException.ThrowIfNull(typography);
+        if (!typography.IsValid())
+            throw new ArgumentException("Typography requires plain font family names and a size from 80 to 120 percent.", nameof(typography));
+        if (Typography == typography)
+            return;
+        _typographyOverrides[_theme.Id] = typography;
+        Apply();
+        SaveTypography();
+    }
+
+    public void ResetTypography()
+    {
+        if (!_typographyOverrides.Remove(_theme.Id))
+            return;
+        Apply();
+        SaveTypography();
+    }
+
+    private void SaveTypography()
+        => Save(TypographySettingKey, JsonSerializer.Serialize(
+            _typographyOverrides, ThemeJsonContext.Default.DictionaryStringThemeTypography));
+
+    private void LoadTypography(string? stored)
+    {
+        _typographyOverrides.Clear();
+        if (string.IsNullOrWhiteSpace(stored))
+            return;
+        try
+        {
+            using var document = JsonDocument.Parse(stored);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+                return;
+            foreach (var entry in document.RootElement.EnumerateObject())
+            {
+                try
+                {
+                    var typography = entry.Value.Deserialize(ThemeJsonContext.Default.ThemeTypographyDocument)?.ToTypography();
+                    if (typography is not null && typography.IsValid())
+                        _typographyOverrides[entry.Name] = typography;
+                }
+                catch (JsonException)
+                {
+                    // One damaged theme preference must not discard the other themes' choices.
+                }
+            }
+        }
+        catch (JsonException)
+        {
+            // Invalid stored preferences fall back to each theme's authored typography.
+        }
+    }
 
     /// <summary>
     /// Every theme that can be picked: bundled palettes first, with local copies
@@ -163,6 +224,7 @@ public sealed class ThemeService
         var storedBackdrop = await _settings.GetAsync(BackdropSettingKey, ct);
         var storedWall = await _settings.GetAsync(WallSettingKey, ct);
         var storedLayout = await _settings.GetAsync(LayoutSettingKey, ct);
+        LoadTypography(await _settings.GetAsync(TypographySettingKey, ct));
 
         _loading = true;
         try
@@ -339,7 +401,7 @@ public sealed class ThemeService
             return (null, "There is no themes folder on this machine.");
         }
 
-        var (file, problem) = _userThemes.Export(theme);
+        var (file, problem) = _userThemes.Export(theme with { Typography = TypographyFor(theme) });
         if (file is not null)
         {
             ReloadUserThemes();
@@ -564,6 +626,7 @@ public sealed class ThemeService
         if (app is not null)
         {
             ApplyTo(app.Resources, _theme, ActiveTransparency, ActiveWallTranslucency, _layout);
+            ThemeTypographyResources.Apply(app.Resources, Typography);
             app.RequestedThemeVariant = _theme.IsLight
                 ? Avalonia.Styling.ThemeVariant.Light : Avalonia.Styling.ThemeVariant.Dark;
         }

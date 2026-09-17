@@ -16,16 +16,16 @@
         <conv:ScaledLength x:Key="CardWidthCap" Fraction="0.5" Least="860" Most="1582"/>
         <conv:ScaledLength x:Key="CardHeightCap" Fraction="0.667" Least="720"/>
         <ControlTheme x:Key="DetailsTabTheme" TargetType="TabItem">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontSize" Value="{StaticResource BodySize}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource BodySize}"/>
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
             <Setter Property="FocusAdorner" Value="{x:Null}"/>
             <Setter Property="Template">
                 <ControlTemplate>
                     <Border Name="TabFocusBorder"
-                            BorderThickness="2"
+                            BorderThickness="0,0,0,2"
+                            Padding="2,2,2,0"
                             BorderBrush="Transparent"
-                            CornerRadius="{StaticResource RadiusControl}"
                             Background="Transparent"
                             Margin="0,0,18,0">
                         <Border Name="TabSelectionBorder"
@@ -76,8 +76,8 @@
             <Setter Property="Margin" Value="0"/>
         </Style>
         <Style Selector="Expander.gog-notes /template/ ToggleButton#ExpanderHeader">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize13}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
             <Setter Property="Background" Value="{StaticResource Surface}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
@@ -103,8 +103,8 @@
             <Setter Property="Margin" Value="0"/>
         </Style>
         <Style Selector="Button.quiet">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontSize" Value="{StaticResource BodySize}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource BodySize}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="1"/>
@@ -236,9 +236,9 @@
         <Style Selector="Button.launch">
             <Setter Property="Background" Value="{StaticResource Volt}"/>
             <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
             <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize13}"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
             <Setter Property="BorderThickness" Value="2"/>
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
@@ -276,8 +276,8 @@
             <Setter Property="Padding" Value="10,0"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize12}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
             <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
             <Setter Property="CaretBrush" Value="{StaticResource VoltForeground}"/>
@@ -363,11 +363,11 @@
                                     <SelectableTextBlock Grid.Column="0"
                                                          Classes="display-l copyable"
                                                          Focusable="True"
-                                                         FontSize="26"
+                                                         FontSize="{DynamicResource FontSize26}"
                                                          AutomationProperties.HeadingLevel="1"
                                                          Text="{Binding Title}"
                                                          TextWrapping="Wrap"
-                                                         LineHeight="30"
+                                                         LineHeight="{DynamicResource TextLineHeight30}"
                                                          Margin="0,0,12,0"/>
                                     <Button Grid.Column="1"
                                             Classes="quiet"
@@ -383,14 +383,14 @@
                                     <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding HasIdentityLine}">
                                         <SelectableTextBlock Grid.Column="0" Classes="data copyable"
                                                              Focusable="False"
-                                                             FontSize="12"
+                                                             FontSize="{DynamicResource FontSize12}"
                                                              VerticalAlignment="Center"
                                                              Foreground="{StaticResource TextDim}"
                                                              Text="{Binding IdentityYearText}"/>
                                         <SelectableTextBlock Grid.Column="1" Classes="body copyable"
                                                              TextWrapping="Wrap"
                                                              Focusable="False"
-                                                             FontSize="12"
+                                                             FontSize="{DynamicResource FontSize12}"
                                                              VerticalAlignment="Center"
                                                              Foreground="{StaticResource TextDim}"
                                                              IsVisible="{Binding HasPublisher}"
@@ -399,7 +399,7 @@
                                     <Border Name="HeaderRatingsGroup" IsVisible="{Binding ShowReception}"
                                             AutomationProperties.AccessibilityView="Control"
                                             AutomationProperties.Name="{Binding Reception.CompactAutomationName}">
-                                    <TextBlock Name="HeaderRatings" Classes="body" FontSize="12"
+                                    <TextBlock Name="HeaderRatings" Classes="body" FontSize="{DynamicResource FontSize12}"
                                                Text="{Binding Reception.CompactText}"
                                                IsVisible="{Binding ShowReception}"
                                                ToolTip.Tip="{Binding Reception.Tooltip}"
@@ -408,8 +408,8 @@
                                     </Border>
                                 </WrapPanel>
                                 <TextBlock Classes="body"
-                                           FontSize="12"
-                                           LineHeight="17"
+                                           FontSize="{DynamicResource FontSize12}"
+                                           LineHeight="{DynamicResource TextLineHeight17}"
                                            TextWrapping="Wrap"
                                            Foreground="{StaticResource TextDim}"
                                            IsVisible="{Binding TitleIsProvisional}"
@@ -437,7 +437,7 @@
                                         Padding="7,3"
                                         VerticalAlignment="Center">
                                     <TextBlock Classes="body"
-                                               FontSize="11"
+                                               FontSize="{DynamicResource FontSize11}"
                                                Foreground="{StaticResource TextDim}"
                                                Text="{Binding BucketLabel}"/>
                                 </Border>
@@ -447,7 +447,7 @@
                                         VerticalAlignment="Center"
                                         IsVisible="{Binding HasInstallState}">
                                     <TextBlock Classes="body"
-                                               FontSize="11"
+                                               FontSize="{DynamicResource FontSize11}"
                                                Foreground="{StaticResource TextDim}"
                                                Text="{Binding InstallText}"/>
                                 </Border>
@@ -480,7 +480,7 @@
                                                   IsVisible="{Binding Tile.IsInstallAction}"/>
                                         </Panel>
                                         <TextBlock Classes="body"
-                                                   FontSize="13"
+                                                   FontSize="{DynamicResource FontSize13}"
                                                    FontWeight="Bold"
                                                    Foreground="{Binding $parent[Button].Foreground}"
                                                    VerticalAlignment="Center"
@@ -505,7 +505,7 @@
                                               StrokeLineCap="Round"
                                               Data="M 2,4 L 9,4 M 2,8 L 9,8 M 2,12 L 7,12 M 12,9 L 12,15 M 9,12 L 15,12"/>
                                         <TextBlock Classes="body"
-                                                   FontSize="13"
+                                                   FontSize="{DynamicResource FontSize13}"
                                                    Foreground="{Binding $parent[Button].Foreground}"
                                                    VerticalAlignment="Center"
                                                    Text="Add to list"/>
@@ -549,17 +549,17 @@
                                                       ToolTip.Tip="{Binding HideTooltip}"/>
                                         </MenuFlyout>
                                     </Button.Flyout>
-                                    <TextBlock Classes="body" FontSize="12" Text="{Binding MoreActionsLabel}"/>
+                                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}" Text="{Binding MoreActionsLabel}"/>
                                 </Button>
                             </WrapPanel>
                             <TextBlock Classes="body"
                                        Name="NoWayInLine"
-                                       FontSize="12"
-                                       LineHeight="17"
+                                       FontSize="{DynamicResource FontSize12}"
+                                       LineHeight="{DynamicResource TextLineHeight17}"
                                        TextWrapping="Wrap"
                                        IsVisible="{Binding HasNoWayInSentence}"
                                        Text="{Binding NoWayInSentence}"/>
-                            <TextBlock Classes="body" FontSize="12" TextWrapping="Wrap"
+                            <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}" TextWrapping="Wrap"
                                        Foreground="{StaticResource TextDim}" IsVisible="{Binding HasLinkStatus}"
                                        Text="{Binding LinkStatus}" AutomationProperties.LiveSetting="Polite"/>
                         </StackPanel>
@@ -575,10 +575,10 @@
                             <Panel>
                                 <Border Background="{Binding PlaceholderBrush}" IsVisible="{Binding ShowPlaceholder}">
                                     <TextBlock Text="{Binding Title}"
-                                               FontFamily="{StaticResource DisplayFont}"
+                                               FontFamily="{DynamicResource DisplayFont}"
                                                FontWeight="Bold"
-                                               FontSize="12"
-                                               LineHeight="15"
+                                               FontSize="{DynamicResource FontSize12}"
+                                               LineHeight="{DynamicResource TextLineHeight15}"
                                                TextWrapping="Wrap"
                                                Foreground="White"
                                                VerticalAlignment="Bottom"
@@ -617,7 +617,7 @@
                                                 <StackPanel Spacing="8">
                                                     <WrapPanel ItemSpacing="10" LineSpacing="4">
                                                         <TextBlock Classes="data"
-                                                                   FontSize="24"
+                                                                   FontSize="{DynamicResource FontSize24}"
                                                                    Text="{Binding PlaytimeText}"/>
                                                         <TextBlock Classes="body"
                                                                    VerticalAlignment="Center"
@@ -660,7 +660,7 @@
                                                            AutomationProperties.HeadingLevel="2"/>
                                                 <SelectableTextBlock Classes="body prose copyable"
                                                                      Focusable="True"
-                                                                     LineHeight="20"
+                                                                     LineHeight="{DynamicResource TextLineHeight20}"
                                                                      IsVisible="{Binding HasSummary}"
                                                                      Name="SummaryTextBlock"
                                                                      Text="{Binding SummaryText}"/>
@@ -672,7 +672,7 @@
                                                         AutomationProperties.Name="{Binding SummaryDisclosureLabel}"
                                                         Command="{Binding ToggleSummaryCommand}"/>
                                                 <TextBlock Classes="body prose"
-                                                           LineHeight="20"
+                                                           LineHeight="{DynamicResource TextLineHeight20}"
                                                            IsVisible="{Binding ShowEmptyBody}"
                                                            Text="{Binding EmptyBodyText}"/>
                                                 <StackPanel IsVisible="{Binding ShowScreenshots}">
@@ -754,7 +754,7 @@
                                                                             CommandParameter="{Binding}"
                                                                             Command="{Binding $parent[ContentControl].((vm:GameExpansionsViewModel)DataContext).UngroupCommand}">
                                                                         <TextBlock Classes="body"
-                                                                                   FontSize="12"
+                                                                                   FontSize="{DynamicResource FontSize12}"
                                                                                    Text="{Binding UngroupLabel}"/>
                                                                     </Button>
                                                                 </Grid>
@@ -762,7 +762,7 @@
                                                         </ContentControl.ContentTemplate>
                                                     </ContentControl>
                                                     <TextBlock Classes="body"
-                                                               FontSize="12"
+                                                               FontSize="{DynamicResource FontSize12}"
                                                                TextWrapping="Wrap"
                                                                Text="{Binding ExtendsNote}"/>
                                                 </StackPanel>
@@ -778,7 +778,7 @@
                                                               HorizontalAlignment="Stretch">
                                                         <StackPanel Spacing="10" Margin="0,16,0,0">
                                                             <TextBlock Classes="body"
-                                                                       FontSize="12"
+                                                                       FontSize="{DynamicResource FontSize12}"
                                                                        TextWrapping="Wrap"
                                                                        Text="{Binding Note}"/>
                                                             <ItemsControl ItemsSource="{Binding Expansions}">
@@ -828,7 +828,7 @@
                                                                                         CommandParameter="{Binding}"
                                                                                         Command="{Binding $parent[ItemsControl].((vm:GameExpansionsViewModel)DataContext).UngroupCommand}">
                                                                                     <TextBlock Classes="body"
-                                                                                               FontSize="12"
+                                                                                               FontSize="{DynamicResource FontSize12}"
                                                                                                Text="{Binding UngroupLabel}"/>
                                                                                 </Button>
                                                                             </Grid>
@@ -837,7 +837,7 @@
                                                                 </ItemsControl.ItemTemplate>
                                                             </ItemsControl>
                                                             <TextBlock Classes="body"
-                                                                       FontSize="11"
+                                                                       FontSize="{DynamicResource FontSize11}"
                                                                        TextWrapping="Wrap"
                                                                        Foreground="{StaticResource AmberForeground}"
                                                                        IsVisible="{Binding HasProblem}"
@@ -923,7 +923,7 @@
                                                                             Click="OnUpdateLinkPressed"
                                                                             ToolTip.Tip="{Binding Link.Tooltip}">
                                                                         <TextBlock Classes="body"
-                                                                                   FontSize="12"
+                                                                                   FontSize="{DynamicResource FontSize12}"
                                                                                    Foreground="{StaticResource AzureForeground}"
                                                                                    Text="Patch notes"/>
                                                                     </Button>
@@ -933,9 +933,9 @@
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
                                                 <TextBlock Classes="body"
-                                                           FontSize="12"
+                                                           FontSize="{DynamicResource FontSize12}"
                                                            TextWrapping="Wrap"
-                                                           LineHeight="18"
+                                                           LineHeight="{DynamicResource TextLineHeight18}"
                                                            Margin="26,4,0,0"
                                                            Foreground="{StaticResource TextDim}"
                                                            IsVisible="{Binding ShowNoNotesNote}"
@@ -954,13 +954,13 @@
                                                             Command="{Binding DismissFlagCommand}"
                                                             ToolTip.Tip="{Binding DismissFlagNote}">
                                                         <TextBlock Classes="body"
-                                                                   FontSize="12"
+                                                                   FontSize="{DynamicResource FontSize12}"
                                                                    Text="{Binding DismissFlagLabel}"/>
                                                     </Button>
                                                     <TextBlock Grid.Column="1"
                                                                Classes="body"
-                                                               FontSize="12"
-                                                               LineHeight="17"
+                                                               FontSize="{DynamicResource FontSize12}"
+                                                               LineHeight="{DynamicResource TextLineHeight17}"
                                                                TextWrapping="Wrap"
                                                                VerticalAlignment="Center"
                                                                Foreground="{StaticResource TextDim}"
@@ -975,20 +975,20 @@
                                                             Command="{Binding RestoreFlagCommand}"
                                                             ToolTip.Tip="{Binding RestoreFlagNote}">
                                                         <TextBlock Classes="body"
-                                                                   FontSize="12"
+                                                                   FontSize="{DynamicResource FontSize12}"
                                                                    Text="{Binding RestoreFlagLabel}"/>
                                                     </Button>
                                                     <TextBlock Grid.Column="1"
                                                                Classes="body"
-                                                               FontSize="12"
-                                                               LineHeight="17"
+                                                               FontSize="{DynamicResource FontSize12}"
+                                                               LineHeight="{DynamicResource TextLineHeight17}"
                                                                TextWrapping="Wrap"
                                                                VerticalAlignment="Center"
                                                                Foreground="{StaticResource TextDim}"
                                                                Text="{Binding RestoreFlagNote}"/>
                                                 </Grid>
                                                 <TextBlock Classes="body"
-                                                           FontSize="11"
+                                                           FontSize="{DynamicResource FontSize11}"
                                                            TextWrapping="Wrap"
                                                            Foreground="{StaticResource AmberForeground}"
                                                            IsVisible="{Binding HasFlagProblem}"
@@ -1003,7 +1003,7 @@
                                                       Margin="0,12,0,0"
                                                       HorizontalAlignment="Stretch">
                                                 <TextBlock Classes="body"
-                                                           FontSize="13"
+                                                           FontSize="{DynamicResource FontSize13}"
                                                            TextWrapping="Wrap"
                                                            Text="{Binding GogPatchNotes}"/>
                                             </Expander>
@@ -1045,18 +1045,18 @@
                                                           ColumnSpacing="12">
                                                         <TextBlock Grid.Column="0"
                                                                    Classes="label"
-                                                                   FontSize="10"
+                                                                   FontSize="{DynamicResource FontSize10}"
                                                                    VerticalAlignment="Center"
                                                                    Text="{Binding TotalLabel}"/>
                                                         <TextBlock Grid.Column="1"
                                                                    Classes="data"
-                                                                   FontSize="18"
+                                                                   FontSize="{DynamicResource FontSize18}"
                                                                    VerticalAlignment="Center"
                                                                    Foreground="{StaticResource Text}"
                                                                    Text="{Binding TotalPlaytimeText}"/>
                                                         <TextBlock Grid.Column="2"
                                                                    Classes="body"
-                                                                   FontSize="12"
+                                                                   FontSize="{DynamicResource FontSize12}"
                                                                    VerticalAlignment="Center"
                                                                    TextWrapping="Wrap"
                                                                    Foreground="{StaticResource TextDim}"
@@ -1100,7 +1100,7 @@
                                                                                     CommandParameter="{Binding}"
                                                                                     Command="{Binding $parent[ItemsControl].((vm:GameCoverageViewModel)DataContext).SeparateCommand}">
                                                                                 <TextBlock Classes="body"
-                                                                                           FontSize="12"
+                                                                                           FontSize="{DynamicResource FontSize12}"
                                                                                            Text="{Binding SeparateLabel}"/>
                                                                             </Button>
                                                                         </Grid>
@@ -1111,7 +1111,7 @@
                                                                                   x:DataType="vm:ReleaseAchievementRowViewModel">
                                                                                 <TextBlock Grid.Column="1"
                                                                                            Classes="label"
-                                                                                           FontSize="10"
+                                                                                           FontSize="{DynamicResource FontSize10}"
                                                                                            VerticalAlignment="Center"
                                                                                            Text="{Binding Label}"/>
                                                                                 <TextBlock Grid.Column="2"
@@ -1130,7 +1130,7 @@
                                                         </ItemsControl.ItemTemplate>
                                                     </ItemsControl>
                                                     <TextBlock Classes="body"
-                                                               FontSize="11"
+                                                               FontSize="{DynamicResource FontSize11}"
                                                                TextWrapping="Wrap"
                                                                Foreground="{StaticResource AmberForeground}"
                                                                IsVisible="{Binding HasProblem}"
@@ -1194,9 +1194,9 @@
                                                                Text="{Binding Heading}"
                                                                AutomationProperties.HeadingLevel="2"/>
                                                     <TextBlock Classes="body"
-                                                               FontSize="12"
+                                                               FontSize="{DynamicResource FontSize12}"
                                                                TextWrapping="Wrap"
-                                                               LineHeight="18"
+                                                               LineHeight="{DynamicResource TextLineHeight18}"
                                                                IsVisible="{Binding IsEmpty}"
                                                                Text="{Binding EmptyText}"/>
                                                     <ItemsControl IsVisible="{Binding HasLists}"
@@ -1209,12 +1209,12 @@
                                                                           AutomationProperties.Name="{Binding AutomationName}"
                                                                           ToolTip.Tip="{Binding AutomationName}">
                                                                     <TextBlock Classes="body"
-                                                                               FontSize="12"
+                                                                               FontSize="{DynamicResource FontSize12}"
                                                                                VerticalAlignment="Center"
                                                                                TextTrimming="CharacterEllipsis"
                                                                                Text="{Binding Name}"/>
                                                                 </CheckBox>
-                                                                <TextBlock Classes="body" FontSize="12" TextWrapping="Wrap"
+                                                                <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}" TextWrapping="Wrap"
                                                                            Foreground="{StaticResource AmberForeground}"
                                                                            Text="{Binding StatusText}" IsVisible="{Binding HasStatus}"/>
                                                               </StackPanel>
@@ -1225,7 +1225,7 @@
                                             </StackPanel>
                                             <StackPanel Spacing="3" IsVisible="{Binding ShowAcquisition}">
                                                 <TextBlock Classes="label"
-                                                           FontSize="10"
+                                                           FontSize="{DynamicResource FontSize10}"
                                                            Text="{Binding AcquiredLabel}"/>
                                                 <StackPanel Spacing="3"
                                                             DataContext="{Binding Acquisition}"
@@ -1236,7 +1236,7 @@
                                                                          IsVisible="{Binding HasDate}"
                                                                          Text="{Binding DateText}"/>
                                                     <TextBlock Classes="body"
-                                                               FontSize="11"
+                                                               FontSize="{DynamicResource FontSize11}"
                                                                TextWrapping="Wrap"
                                                                Foreground="{StaticResource TextDim}"
                                                                IsVisible="{Binding HasLicence}"
@@ -1254,18 +1254,18 @@
                                                            AutomationProperties.HeadingLevel="2"/>
                                                 <StackPanel Spacing="18">
                                                     <StackPanel Spacing="3" IsVisible="{Binding HasSteamAppId}">
-                                                        <TextBlock Classes="label" FontSize="10" Text="STEAM APPID"/>
+                                                        <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" Text="STEAM APPID"/>
                                                         <SelectableTextBlock Classes="data copyable"
                                                                              Focusable="True"
                                                                              HorizontalAlignment="Left"
                                                                              Text="{Binding SteamAppId}"/>
                                                     </StackPanel>
                                                     <StackPanel Spacing="3" IsVisible="{Binding HasInstallPath}">
-                                                        <TextBlock Classes="label" FontSize="10" Text="ON DISK"/>
+                                                        <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" Text="ON DISK"/>
                                                         <SelectableTextBlock Classes="data-s copyable"
                                                                              Focusable="True"
                                                                              Text="{Binding InstallPath}"
-                                                                             LineHeight="15"
+                                                                             LineHeight="{DynamicResource TextLineHeight15}"
                                                                              TextWrapping="Wrap"/>
                                                     </StackPanel>
                                                     <Button AutomationProperties.Name="{Binding IgdbMatch.ClearLabel}"
@@ -1276,7 +1276,7 @@
                                                             Command="{Binding IgdbMatch.ClearCommand}"
                                                             ToolTip.Tip="{Binding IgdbMatch.ClearTooltip}">
                                                         <TextBlock Classes="body"
-                                                                   FontSize="12"
+                                                                   FontSize="{DynamicResource FontSize12}"
                                                                    Text="{Binding IgdbMatch.ClearLabel}"/>
                                                     </Button>
                                                 </StackPanel>
@@ -1305,10 +1305,10 @@
                                                 <StackPanel DataContext="{Binding IgdbMatch}"
                                                             x:DataType="vm:GameIgdbMatchViewModel">
                                                     <TextBlock Classes="body"
-                                                               FontSize="12"
+                                                               FontSize="{DynamicResource FontSize12}"
                                                                Margin="0,18,0,0"
                                                                TextWrapping="Wrap"
-                                                               LineHeight="17"
+                                                               LineHeight="{DynamicResource TextLineHeight17}"
                                                                Foreground="{StaticResource TextDim}"
                                                                IsVisible="{Binding HasNote}"
                                                                Text="{Binding Note}"/>
@@ -1348,27 +1348,27 @@
                                                                     Classes="secondary"
                                                                     Command="{Binding SearchCommand}">
                                                                 <TextBlock Classes="body"
-                                                                           FontSize="12"
+                                                                           FontSize="{DynamicResource FontSize12}"
                                                                            Text="{Binding SearchLabel}"/>
                                                             </Button>
                                                         </Grid>
                                                         <TextBlock Classes="body"
-                                                                   FontSize="12"
+                                                                   FontSize="{DynamicResource FontSize12}"
                                                                    TextWrapping="Wrap"
                                                                    Foreground="{StaticResource TextDim}"
                                                                    IsVisible="{Binding HasStatus}"
                                                                    Text="{Binding Status}"/>
                                                         <TextBlock Classes="body"
-                                                                   FontSize="12"
+                                                                   FontSize="{DynamicResource FontSize12}"
                                                                    TextWrapping="Wrap"
-                                                                   LineHeight="17"
+                                                                   LineHeight="{DynamicResource TextLineHeight17}"
                                                                    Foreground="{StaticResource TextDim}"
                                                                    IsVisible="{Binding ShowIdMiss}"
                                                                    Text="{Binding IdMissText}"/>
                                                         <TextBlock Classes="body"
-                                                                   FontSize="12"
+                                                                   FontSize="{DynamicResource FontSize12}"
                                                                    TextWrapping="Wrap"
-                                                                   LineHeight="17"
+                                                                   LineHeight="{DynamicResource TextLineHeight17}"
                                                                    Foreground="{StaticResource TextDim}"
                                                                    IsVisible="{Binding ShowNoMatches}"
                                                                    Text="{Binding NoMatchesText}"/>
@@ -1379,9 +1379,9 @@
                                                                 Padding="12">
                                                             <StackPanel Spacing="10">
                                                                 <TextBlock Classes="body"
-                                                                           FontSize="12"
+                                                                           FontSize="{DynamicResource FontSize12}"
                                                                            TextWrapping="Wrap"
-                                                                           LineHeight="17"
+                                                                           LineHeight="{DynamicResource TextLineHeight17}"
                                                                            Text="{Binding Claim.Headline}"/>
                                                                 <Grid ColumnDefinitions="34,*" ColumnSpacing="12">
                                                                     <Border Grid.Column="0"
@@ -1398,7 +1398,7 @@
                                                                                 Spacing="4"
                                                                                 VerticalAlignment="Center">
                                                                         <TextBlock Classes="body"
-                                                                                   FontSize="12"
+                                                                                   FontSize="{DynamicResource FontSize12}"
                                                                                    TextTrimming="CharacterEllipsis"
                                                                                    Text="{Binding Claim.Name}"/>
                                                                         <TextBlock Classes="data-s"
@@ -1412,14 +1412,14 @@
                                                                             ToolTip.Tip="{Binding Claim.LinkAutomationName}"
                                                                             Command="{Binding LinkClaimCommand}">
                                                                         <TextBlock Classes="body"
-                                                                                   FontSize="12"
+                                                                                   FontSize="{DynamicResource FontSize12}"
                                                                                    Text="{Binding ClaimLinkLabel}"/>
                                                                     </Button>
                                                                     <Button AutomationProperties.Name="{Binding ClaimDeclineLabel}"
                                                                             Classes="quiet"
                                                                             Command="{Binding DeclineClaimCommand}">
                                                                         <TextBlock Classes="body"
-                                                                                   FontSize="12"
+                                                                                   FontSize="{DynamicResource FontSize12}"
                                                                                    Text="{Binding ClaimDeclineLabel}"/>
                                                                     </Button>
                                                                 </StackPanel>
@@ -1462,7 +1462,7 @@
                                                                                         </Border>
                                                                                         <TextBlock Grid.Column="1"
                                                                                                    Classes="body"
-                                                                                                   FontSize="12"
+                                                                                                   FontSize="{DynamicResource FontSize12}"
                                                                                                    VerticalAlignment="Center"
                                                                                                    TextTrimming="CharacterEllipsis"
                                                                                                    Text="{Binding Name}"/>
@@ -1475,7 +1475,7 @@
                                                                                                    Text="{Binding YearText}"/>
                                                                                         <TextBlock Grid.Column="1"
                                                                                                    Classes="body"
-                                                                                                   FontSize="11"
+                                                                                                   FontSize="{DynamicResource FontSize11}"
                                                                                                    VerticalAlignment="Center"
                                                                                                    Foreground="{StaticResource TextDim}"
                                                                                                    TextTrimming="CharacterEllipsis"
@@ -1491,7 +1491,7 @@
                                                                                         CommandParameter="{Binding}"
                                                                                         Command="{Binding $parent[ItemsControl].((vm:GameIgdbMatchViewModel)DataContext).AssignCommand}">
                                                                                     <TextBlock Classes="body"
-                                                                                               FontSize="12"
+                                                                                               FontSize="{DynamicResource FontSize12}"
                                                                                                Text="{Binding AssignLabel}"/>
                                                                                 </Button>
                                                                             </Grid>
@@ -1502,10 +1502,10 @@
                                                         </ScrollViewer>
                                                     </StackPanel>
                                                     <TextBlock Classes="body"
-                                                               FontSize="11"
+                                                               FontSize="{DynamicResource FontSize11}"
                                                                Margin="0,18,0,0"
                                                                TextWrapping="Wrap"
-                                                               LineHeight="16"
+                                                               LineHeight="{DynamicResource TextLineHeight16}"
                                                                Foreground="{StaticResource AmberForeground}"
                                                                IsVisible="{Binding HasProblem}"
                                                                Text="{Binding Problem}"/>
@@ -1525,8 +1525,8 @@
                     <StackPanel Grid.Row="2" Spacing="8" Margin="0,0,0,16">
                         <TextBlock Classes="body actstatus"
                                    Name="RefetchStatus"
-                                   FontSize="12"
-                                   LineHeight="17"
+                                   FontSize="{DynamicResource FontSize12}"
+                                   LineHeight="{DynamicResource TextLineHeight17}"
                                    TextWrapping="Wrap"
                                    AutomationProperties.LiveSetting="Polite"
                                    Classes.problem="{Binding Refetch.IsProblem, FallbackValue=False}"
@@ -1534,18 +1534,18 @@
                                    Text="{Binding Refetch.Status}"/>
                         <StackPanel IsVisible="{Binding ShowDetailsTabs}" Spacing="8">
                             <TextBlock Classes="body actstatus"
-                                       FontSize="12"
+                                       FontSize="{DynamicResource FontSize12}"
                                        TextWrapping="Wrap"
                                        IsVisible="{Binding IgdbMatch.HasNote, FallbackValue=False}"
                                        Text="{Binding IgdbMatch.Note}"/>
                             <TextBlock Classes="body actstatus"
-                                       FontSize="12"
+                                       FontSize="{DynamicResource FontSize12}"
                                        TextWrapping="Wrap"
                                        Foreground="{StaticResource AmberForeground}"
                                        IsVisible="{Binding IgdbMatch.HasProblem, FallbackValue=False}"
                                        Text="{Binding IgdbMatch.Problem}"/>
                             <TextBlock Classes="body actstatus"
-                                       FontSize="12"
+                                       FontSize="{DynamicResource FontSize12}"
                                        TextWrapping="Wrap"
                                        IsVisible="{Binding MetadataEditor.HasNote, FallbackValue=False}"
                                        Text="{Binding MetadataEditor.Note}"/>

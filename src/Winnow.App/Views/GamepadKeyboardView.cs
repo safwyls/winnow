@@ -50,12 +50,14 @@ public sealed class GamepadKeyboardView : Border
         var stack = new StackPanel { Spacing = 6 };
         var heading = new TextBlock { Text = "D-pad Move · A Type · X Backspace · RT Enter · B Close", Margin = new Thickness(0, 0, 0, 6) };
         if (television) heading.FontSize = 28;
+        else ThemeTypographyResources.BindSize(heading, 14);
         heading[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("Text");
         heading[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension("BodyFont");
         stack.Children.Add(television
             ? Fullscreen.FullscreenGlyphs.Hints("Dpad  Move    A  Type    X  Backspace    RT  Enter    B  Close") : heading);
         _preview = new TextBlock { Name = "GamepadTextPreview", MaxHeight = 48, TextWrapping = Avalonia.Media.TextWrapping.Wrap };
         if (television) { _preview.FontSize = 28; _preview.MaxHeight = 80; }
+        else ThemeTypographyResources.BindSize(_preview, 14);
         _preview[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("Text");
         _preview[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension("BodyFont");
         stack.Children.Add(_preview);
@@ -88,6 +90,7 @@ public sealed class GamepadKeyboardView : Border
                 };
                 button[!Button.FontFamilyProperty] = new DynamicResourceExtension("BodyFont");
                 if (television) { button.FontSize = 28; button.MinHeight = 64; }
+                else ThemeTypographyResources.BindSize(button, 14);
                 button.Click += (_, _) => { _row = r; _column = c; Activate(); Refresh(); };
                 Grid.SetColumn(button, column);
                 grid.Children.Add(button);

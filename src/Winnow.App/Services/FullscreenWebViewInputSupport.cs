@@ -68,6 +68,7 @@ public sealed class FullscreenWebViewInputSupport : IWebViewInputSupport
         private int _consentIndex;
         private readonly Control _content;
         private readonly ScrollViewer? _consentScroll;
+        private readonly NativeThemeTypography _typography;
 
         public BrowserInputPanel(Window window, Control content, WebView2Host? browser, bool reading)
         {
@@ -84,6 +85,7 @@ public sealed class FullscreenWebViewInputSupport : IWebViewInputSupport
             Grid.SetRow(_keyboardArea, 1); Children.Add(_keyboardArea);
             _status = new ControllerCaption { Text = browser is null ? "← / →  Choose     A  Select     LT / RT  Read     B  Cancel" : reading ? "↑ ↓  Scroll     LB / RB  Links     A  Open     B  Close" : "↑ ↓  Field     A  Select     X  Check     Y  Type     View  Backspace     B Cancel" };
             _status.Margin = new Thickness(48, 16); Grid.SetRow(_status, 2); Children.Add(_status);
+            _typography = new NativeThemeTypography(this, browser is null ? content : null);
             _timer.Tick += Tick;
             if (browser is not null) browser.ControllerNavigationStarted += OnNavigation;
             AttachedToVisualTree += async (_, _) =>
@@ -97,9 +99,8 @@ public sealed class FullscreenWebViewInputSupport : IWebViewInputSupport
                 }
                 else
                 {
-                    foreach (var text in content.GetVisualDescendants().OfType<TextBlock>()) text.FontSize = Math.Max(28, text.FontSize);
                     foreach (var panel in content.GetVisualDescendants().OfType<Panel>()) if (!double.IsPositiveInfinity(panel.MaxWidth)) panel.MaxWidth = 1100;
-                    foreach (var button in content.GetVisualDescendants().OfType<Button>()) { button.FontSize = 28; button.MinHeight = 64; }
+                    foreach (var button in content.GetVisualDescendants().OfType<Button>()) button.MinHeight = 64;
                     FocusConsent(0);
                 }
             };
@@ -198,6 +199,7 @@ public sealed class FullscreenWebViewInputSupport : IWebViewInputSupport
         public void Dispose()
         {
             if (_disposed) return; _disposed = true;
+            _typography.Dispose();
             CancelText(); _timer.Stop(); _source?.Dispose(); _source = null;
             if (_browser is not null) _browser.ControllerNavigationStarted -= OnNavigation;
             _window.Closed -= Closed; _window.RemoveHandler(InputElement.KeyDownEvent, OnKey);

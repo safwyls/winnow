@@ -304,11 +304,16 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         // §7 copy, exactly. Order matches the mock rail.
         Buckets =
         [
-            new BucketViewModel(LibraryBuckets.StaleButPatched, "Patched", showsFlarePip: true),
-            new BucketViewModel(LibraryBuckets.NeverPlayed, "Never played"),
-            new BucketViewModel(LibraryBuckets.Bounced, "Started"),
-            new BucketViewModel(LibraryBuckets.Retired, "Played out"),
-            new BucketViewModel(LibraryBuckets.Derelict, "Derelict"),
+            new BucketViewModel(LibraryBuckets.StaleButPatched, "Patched", showsFlarePip: true,
+                description: "Games with unread updates after a long break from playing."),
+            new BucketViewModel(LibraryBuckets.NeverPlayed, "Never played",
+                description: "Games with no recorded playtime or last-played date."),
+            new BucketViewModel(LibraryBuckets.Bounced, "Started",
+                description: "Games you've played beyond a brief trial."),
+            new BucketViewModel(LibraryBuckets.Retired, "Invested",
+                description: "Games you've spent a lot of time playing."),
+            new BucketViewModel(LibraryBuckets.Derelict, "Derelict",
+                description: "Games with evidence of closure, delisting or abandoned development."),
         ];
 
         // §4: the view mode is remembered per session — and so is the order, for
@@ -351,7 +356,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// treatment, but it is deliberately NOT in <see cref="Buckets"/>: nothing
     /// counts it, filters by it, or labels a tile with it.
     /// </summary>
-    public BucketViewModel AllGames { get; } = new(AllGamesKey, "All games") { IsSelected = true };
+    public BucketViewModel AllGames { get; } = new(AllGamesKey, "All games", description: "Every title you own.") { IsSelected = true };
 
     /// <summary>
     /// The filter panel — every axis the rail does not carry. It sits beside the
@@ -574,6 +579,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     public partial string SearchText { get; set; } = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanMarkSelectionAsRead))]
+    [NotifyCanExecuteChangedFor(nameof(MarkSelectionAsReadCommand))]
     public partial BucketViewModel? SelectedBucket { get; set; }
 
     /// <summary>
@@ -673,16 +680,69 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// an action keeping its name through the whole flow.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSelection), nameof(AddToListLabel), nameof(HideLabel))]
+    [NotifyPropertyChangedFor(nameof(HasSelection), nameof(AddToListLabel), nameof(HideLabel), nameof(CanMarkSelectionAsRead))]
     [NotifyCanExecuteChangedFor(
         nameof(BeginAddToListCommand),
         nameof(RemoveFromOpenListCommand),
         nameof(HideSelectionCommand),
+        nameof(MarkSelectionAsReadCommand),
         nameof(MoveUpInListCommand),
         nameof(MoveDownInListCommand))]
     public partial IReadOnlyList<GameTileViewModel> SelectedTiles { get; set; } = [];
 
     public bool HasSelection => SelectedTiles.Count > 0;
+
+    public bool CanMarkSelectionAsRead => _updateFlags is not null
+        && SelectedBucket?.Key == LibraryBuckets.StaleButPatched
+        && SelectedTiles.Any(tile => tile.HasUnread);
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPatchReadProblem), nameof(ShowActionBar))]
+    public partial string? PatchReadProblem { get; set; }
+
+    public bool HasPatchReadProblem => PatchReadProblem is not null;
+
+    [RelayCommand(CanExecute = nameof(CanMarkSelectionAsRead))]
+    private async Task MarkSelectionAsReadAsync(CancellationToken ct)
+    {
+        if (!CanMarkSelectionAsRead) return;
+        var targets = SelectedTiles.Where(tile => tile.HasUnread).ToArray();
+        PatchReadProblem = null;
+        var saved = 0;
+        var failed = false;
+        var visited = new HashSet<long>();
+        foreach (var tile in targets)
+        {
+            foreach (var releaseId in tile.ReleaseIds.Where(visited.Add))
+            {
+                try
+                {
+                    var events = await Task.Run(() => _updateEvents.GetByReleaseAsync(releaseId, ct), ct);
+                    // The tile's watermark bounds the action to patches represented by
+                    // the selection, even if enrichment has written a newer push.
+                    var shown = events.Where(e => e.Kind != UpdateEventKinds.BuildPush
+                        || (tile.Game.MajorUpdateAt is { } displayed
+                            && UpdateReading.AsUtc(e.OccurredAt) <= UpdateReading.AsUtc(displayed))).ToArray();
+                    var standing = await _updateFlags!.GetStandingAsync(releaseId, ct);
+                    if (!UpdateReading.CorrelatedPushes(shown, BucketThresholds.Default.UpdateCorrelationWindowDays)
+                        .Any(push => UpdateReading.SincePlay(push.OccurredAt, tile.LastPlayedUtc, tile.PlaytimeMinutes)
+                            && UpdateReading.AfterWatermark(push.OccurredAt, standing))) continue;
+                    var outcome = await _updateFlags.DismissAsync(releaseId, shown, ct);
+                    if (outcome.Saved) saved++;
+                    else failed = true;
+                }
+                catch (OperationCanceledException) { throw; }
+                catch { failed = true; }
+            }
+        }
+        if (failed) PatchReadProblem = "Couldn't mark every patch read. Try again.";
+        if (saved > 0)
+        {
+            try { await LoadLibraryAsync(preserveViewport: true, ct: ct); }
+            catch (OperationCanceledException) { throw; }
+            catch { PatchReadProblem = "Patches were marked read, but the library couldn't refresh. Try refreshing it."; }
+        }
+    }
 
     /// <summary>The button names the number it is about once there is more than one.</summary>
     public string AddToListLabel
@@ -782,7 +842,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
     public bool ShowCutBar => IsCut;
 
-    public bool ShowActionBar => IsCut;
+    public bool ShowActionBar => IsCut || HasPatchReadProblem;
 
     /// <summary>Whether saving the current cut as a live list is a meaningful act.</summary>
     public bool CanSaveLiveList => !BuildFilter().IsEmpty;

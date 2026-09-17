@@ -48,19 +48,22 @@ export default function StoryDemos() {
   return (
     <div className="story-grid">
       <article className="story-card">
+        <div className="demo-stage">
         <div className="tile-demo dormancy-demo" aria-label="Three dormant games at different stages of fading">
           {games.map((game) => (
-            <button key={game.id} type="button" className={`demo-tile${awakeId === game.id ? ' awake' : ''}`} style={tileStyle(game)} aria-pressed={awakeId === game.id} aria-label={`${game.title}, ${game.idle}. Wake the cover.`} onClick={() => setAwakeId(awakeId === game.id ? null : game.id)}>
+            <button key={game.id} type="button" className={`demo-tile${awakeId === game.id ? ' awake' : ''}`} style={tileStyle(game)} aria-pressed={awakeId === game.id} aria-label={`${game.title}, ${game.idle}. Show the cover in full colour.`} onClick={() => setAwakeId(awakeId === game.id ? null : game.id)}>
               <TileFace game={game} />
             </button>
           ))}
         </div>
         <p className="demo-hint">Hover, focus, or tap a cover</p>
-        <h3>See what went quiet</h3>
-        <p>Cover art fades as a game sits dormant. Hover it and the colour wakes up—an old intention, made visible again.</p>
+        </div>
+        <div className="story-copy"><p className="eyebrow">At a glance</p><h3>See what you haven’t played lately.</h3>
+        <p>Games fade as time passes since your last session. Hover or focus a cover to see it in full colour, along with your playtime and last-played date.</p><p>It’s a visual cue, not a filter. Your games stay visible, and you can turn the fading off.</p></div>
       </article>
 
       <article className="story-card">
+        <div className="demo-stage">
         <div className="tile-demo single-tile-demo">
           <button type="button" className={`demo-tile feature-tile patch-demo${patchOpen ? ' awake open' : ''}`} style={tileStyle(seaOfStars)} aria-pressed={patchOpen} aria-label="Sea of Stars, 18.2 hours played, patched since you played. Show the unread update." onClick={() => setPatchOpen(!patchOpen)}>
             <TileFace game={seaOfStars} />
@@ -71,24 +74,27 @@ export default function StoryDemos() {
             <p><strong>Update since your last session</strong><small>18.2h played · Steam</small></p>
           </div>
         </div>
-        <p className="demo-hint">Select the unread dot</p>
-        <h3>Notice what changed</h3>
-        <p>A pink unread dot marks a major update since your last session. Open it to read the patch notes you missed.</p>
+        <p className="demo-hint">Select the game to see its update</p>
+        </div>
+        <div className="story-copy"><p className="eyebrow">Update tracking</p><h3>Find out what changed while you were away.</h3>
+        <p>A pink dot marks unread updates since you played. Open the game to read its update history, then mark it as read when you’re caught up.</p><p>The Patched collection brings those games together, so you don’t have to check every store page.</p></div>
       </article>
 
       <article className="story-card">
+        <div className="demo-stage">
         <div className="tile-demo single-tile-demo reason-demo">
           <button type="button" className={`demo-tile feature-tile${reasonOpen ? ' awake open' : ''}`} style={tileStyle(hades)} aria-pressed={reasonOpen} aria-label="Hades, 28.6 hours played, last played two years ago. Show why Winnow surfaced it." onClick={() => setReasonOpen(!reasonOpen)}>
             <TileFace game={hades} />
           </button>
           <div className={`demo-response reason-response${reasonOpen ? ' open' : ''}`} aria-live="polite">
             <span>“</span>
-            <p><strong>You were invested, then the trail went cold.</strong><small>28.6h played · 2 years idle</small></p>
+            <p><strong>You played for 28.6 hours, then haven’t returned in two years.</strong><small>Based on your play history</small></p>
           </div>
         </div>
-        <p className="demo-hint">Ask why it surfaced</p>
-        <h3>Know why it surfaced</h3>
-        <p>Each recommendation names the signals behind it: your playtime, your gap, and what happened while you were away.</p>
+        <p className="demo-hint">Select the game to see the reason</p>
+        </div>
+        <div className="story-copy"><p className="eyebrow">Recommendations</p><h3>Know why a game is in your feed.</h3>
+        <p>Suggestions come with the facts behind them: how much you played, how long it’s been, and whether the game has changed.</p><p>You can decide whether that’s a good reason to return. There’s no need to guess what a score means.</p></div>
       </article>
     </div>
   );

@@ -186,6 +186,16 @@ public static class ThemeJson
         // ── The theme's own opening position ────────────────────────────────
         var defaults = ReadDefaults(doc.Defaults, Warn);
 
+        var typography = doc.Typography?.ToTypography() ?? ThemeTypography.Default;
+        if (!ThemeTypography.IsValidFamily(typography.HeadingFont))
+            Error("typography.headingFont", "expected a font family name, at most 128 characters, without paths or URIs.");
+        if (!ThemeTypography.IsValidFamily(typography.InterfaceFont))
+            Error("typography.interfaceFont", "expected a font family name, at most 128 characters, without paths or URIs.");
+        if (!ThemeTypography.IsValidFamily(typography.DataFont))
+            Error("typography.dataFont", "expected a font family name, at most 128 characters, without paths or URIs.");
+        if (typography.SizePercent is < ThemeTypography.MinSizePercent or > ThemeTypography.MaxSizePercent)
+            Error("typography.sizePercent", "expected a whole percentage from 80 to 120.");
+
         if (doc.Variant is not null and not "light" and not "dark")
             Error("variant", "expected light or dark.");
 
@@ -196,6 +206,7 @@ public static class ThemeJson
 
         var theme = ThemeDerivation.Compose(
             id, name, reason, seeds, shape, overrides, defaults, fileName);
+        theme = theme with { Typography = typography };
         if (doc.Variant is not null)
             theme = theme with { IsLight = doc.Variant == "light" };
 
@@ -250,6 +261,7 @@ public static class ThemeJson
                 ["faintLift"] = shape.FaintLift,
             },
             Defaults = ExportDefaults(theme.Defaults),
+            Typography = theme.Typography,
             Overrides = ThemeDerivation.DerivedFields
                 .Where(residual.ContainsKey)
                 .ToDictionary(f => f, f => Hex(residual[f]), StringComparer.Ordinal),
@@ -687,7 +699,7 @@ public static class ThemeJson
 
         if (message.Contains("could not be mapped", StringComparison.Ordinal))
         {
-            return $"not a field this build reads{where}. A theme file holds: schemaVersion, id, name, reason, variant, seeds, structure, translucency, defaults, overrides.";
+            return $"not a field this build reads{where}. A theme file holds: schemaVersion, id, name, reason, variant, seeds, structure, translucency, defaults, typography, overrides.";
         }
 
         if (message.Contains("could not be converted", StringComparison.Ordinal)

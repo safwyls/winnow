@@ -463,6 +463,10 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         problem.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding(nameof(ListsViewModel.Problem)) { Source = library.Lists });
         problem.Bind(IsVisibleProperty, new Avalonia.Data.Binding(nameof(ListsViewModel.HasProblem)) { Source = library.Lists });
         headingStack.Children.Add(problem);
+        var patchProblem = FullscreenUi.Text("", 24, "AmberForeground");
+        patchProblem.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding(nameof(LibraryViewModel.PatchReadProblem)) { Source = library });
+        patchProblem.Bind(IsVisibleProperty, new Avalonia.Data.Binding(nameof(LibraryViewModel.HasPatchReadProblem)) { Source = library });
+        headingStack.Children.Add(patchProblem);
         grid.Children.Add(headingStack);
         var collections = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"),
             Margin = new Thickness(0, 4, 0, 8) };
@@ -708,6 +712,9 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         {
             actions.Add(new("Add selected game to list", () => { Context.Library.SelectTile(tile); Context.Library.BeginAddToListCommand.Execute(null); }));
             Context.Library.SelectTile(tile);
+            if (Context.Library.CanMarkSelectionAsRead)
+                actions.Add(new("Mark as read", () => Context.Library.MarkSelectionAsReadCommand.Execute(null),
+                    Context.Library.MarkSelectionAsReadCommand.CanExecute(null)));
             if (Context.Library.CanEditOpenList)
             {
                 actions.Add(new("Remove selected game from list", () => Context.Library.RemoveFromOpenListCommand.Execute(null)));
@@ -1047,9 +1054,9 @@ public sealed class FullscreenBrowseFiltersPage : FullscreenPage
         var browse = FullscreenUi.Stack(SectionHeading("Browse", "M 2,2 H 10 V 10 H 2 Z M 14,2 H 22 V 10 H 14 Z M 2,14 H 10 V 22 H 2 Z M 14,14 H 22 V 22 H 14 Z"));
         browse.Margin = new Thickness(0, 0, 32, 0);
         Add(browse, FullscreenUi.Button($"Collection · {_draft.Bucket?.Name ?? "All games"}", () =>
-            Context.ShowActions("Collection", new[] { new FullscreenAction("All games", () => { _draft.Bucket = null; Build(); FocusInitial(); }) }
+            Context.ShowActions("Collection", new[] { new FullscreenAction("All games", () => { _draft.Bucket = null; Build(); FocusInitial(); }, Description: Context.Library.AllGames.Description) }
                 .Concat(Context.Library.Buckets.Select(bucket => new FullscreenAction(bucket.Name,
-                    () => { _draft.Bucket = bucket; Build(); FocusInitial(); }))).ToArray())));
+                    () => { _draft.Bucket = bucket; Build(); FocusInitial(); }, Description: bucket.Description))).ToArray())));
         Add(browse, FullscreenUi.Button($"Sort · {Context.Library.SortOptions.First(s => s.Sort == _draft.Sort).Label}", () =>
             Context.ShowActions("Sort", Context.Library.SortOptions.Select(option => new FullscreenAction(option.Label,
                 () => { _draft.Sort = option.Sort; Build(); FocusInitial(); })).ToArray())));

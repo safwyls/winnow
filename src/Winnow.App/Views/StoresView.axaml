@@ -64,8 +64,8 @@
         <!-- The console command. Selectable (copy is the point) and a Tab
              stop. Focused text gets a raised field, not a ring. -->
         <Style Selector="SelectableTextBlock.cmd">
-            <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
-            <Setter Property="FontSize" Value="{StaticResource DataSize}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource DataFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource DataSize}"/>
             <Setter Property="FontFeatures" Value="tnum"/>
             <Setter Property="Foreground" Value="{StaticResource AzureForeground}"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
@@ -92,8 +92,8 @@
             <Setter Property="Padding" Value="10,0"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize12}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
             <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
             <Setter Property="CaretBrush" Value="{StaticResource VoltForeground}"/>
@@ -158,8 +158,8 @@
                         <ContentPresenter Grid.Column="2"
                                           Content="{TemplateBinding Content}"
                                           VerticalAlignment="Center"
-                                          FontFamily="{StaticResource BodyFont}"
-                                          FontSize="{StaticResource BodySize}"
+                                          FontFamily="{DynamicResource BodyFont}"
+                                          FontSize="{DynamicResource BodySize}"
                                           Foreground="{StaticResource Text}"/>
                     </Grid>
                 </ControlTemplate>
@@ -203,7 +203,7 @@
                                MaxWidth="640"
                                HorizontalAlignment="Left"
                                TextWrapping="Wrap"
-                               LineHeight="19"
+                               LineHeight="{DynamicResource TextLineHeight19}"
                                Foreground="{StaticResource TextDim}"
                                Text="{Binding IntroMessage}"/>
                 </StackPanel>
@@ -230,43 +230,45 @@
                         ClipToBounds="True"
                         HorizontalAlignment="Left"
                         Height="30">
-                    <StackPanel Orientation="Horizontal">
-                        <Button Classes="seg tab"
-                                Classes.on="{Binding IsSteamVisible}"
-                                Command="{Binding ShowSteamCommand}"
-                                AutomationProperties.Name="{Binding SteamTabLabel}">
-                            <StackPanel Orientation="Horizontal" Spacing="6"
-                                        VerticalAlignment="Center">
-                                <TextBlock Classes="display-s" Text="{Binding SteamTabLabel}"
+                    <Border Classes="segment-clip">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Classes="seg tab"
+                                    Classes.on="{Binding IsSteamVisible}"
+                                    Command="{Binding ShowSteamCommand}"
+                                    AutomationProperties.Name="{Binding SteamTabLabel}">
+                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                            VerticalAlignment="Center">
+                                    <TextBlock Classes="display-s" Text="{Binding SteamTabLabel}"
+                                               VerticalAlignment="Center"/>
+                                    <Ellipse Width="6" Height="6"
+                                             VerticalAlignment="Center"
+                                             Fill="{StaticResource AmberForeground}"
+                                             IsVisible="{Binding SteamTabNeedsAttention}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="seg tab"
+                                    Classes.on="{Binding IsEpicVisible}"
+                                    Command="{Binding ShowEpicCommand}"
+                                    AutomationProperties.Name="{Binding EpicTabLabel}">
+                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                            VerticalAlignment="Center">
+                                    <TextBlock Classes="display-s" Text="{Binding EpicTabLabel}"
+                                               VerticalAlignment="Center"/>
+                                    <Ellipse Width="6" Height="6"
+                                             VerticalAlignment="Center"
+                                             Fill="{StaticResource AmberForeground}"
+                                             IsVisible="{Binding EpicTabNeedsAttention}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="seg tab"
+                                    Classes.on="{Binding IsGogVisible}"
+                                    Command="{Binding ShowGogCommand}"
+                                    AutomationProperties.Name="{Binding GogTabLabel}">
+                                <TextBlock Classes="display-s" Text="{Binding GogTabLabel}"
                                            VerticalAlignment="Center"/>
-                                <Ellipse Width="6" Height="6"
-                                         VerticalAlignment="Center"
-                                         Fill="{StaticResource AmberForeground}"
-                                         IsVisible="{Binding SteamTabNeedsAttention}"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Classes="seg tab"
-                                Classes.on="{Binding IsEpicVisible}"
-                                Command="{Binding ShowEpicCommand}"
-                                AutomationProperties.Name="{Binding EpicTabLabel}">
-                            <StackPanel Orientation="Horizontal" Spacing="6"
-                                        VerticalAlignment="Center">
-                                <TextBlock Classes="display-s" Text="{Binding EpicTabLabel}"
-                                           VerticalAlignment="Center"/>
-                                <Ellipse Width="6" Height="6"
-                                         VerticalAlignment="Center"
-                                         Fill="{StaticResource AmberForeground}"
-                                         IsVisible="{Binding EpicTabNeedsAttention}"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Classes="seg tab"
-                                Classes.on="{Binding IsGogVisible}"
-                                Command="{Binding ShowGogCommand}"
-                                AutomationProperties.Name="{Binding GogTabLabel}">
-                            <TextBlock Classes="display-s" Text="{Binding GogTabLabel}"
-                                       VerticalAlignment="Center"/>
-                        </Button>
-                    </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
                 </Border>
             </StackPanel>
         </Border>
@@ -305,7 +307,7 @@
                         <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                             <StackPanel Grid.Column="0" Orientation="Horizontal"
                                         Spacing="10" VerticalAlignment="Center">
-                                <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="Steam"
+                                <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="{DynamicResource FontSize18}" Text="Steam"
                                            VerticalAlignment="Center"/>
                                 <!-- The count and its unit share ONE TextBlock,
                                      as two Runs, because they must share a
@@ -321,14 +323,14 @@
                                      shared optical line. -->
                                 <TextBlock VerticalAlignment="Center"
                                            IsVisible="{Binding ShowSteamCount}">
-                                    <Run FontFamily="{StaticResource DataFont}"
-                                         FontSize="12"
+                                    <Run FontFamily="{DynamicResource DataFont}"
+                                         FontSize="{DynamicResource FontSize12}"
                                          FontFeatures="tnum"
                                          Foreground="{StaticResource TextDim}"
                                          Text="{Binding SteamCountText}"/>
-                                    <Run FontFamily="{StaticResource BodyFont}"
+                                    <Run FontFamily="{DynamicResource BodyFont}"
                                          FontWeight="SemiBold"
-                                         FontSize="10"
+                                         FontSize="{DynamicResource FontSize10}"
                                          Foreground="{StaticResource TextDim}"
                                          Text=" TITLES"/>
                                 </TextBlock>
@@ -354,7 +356,7 @@
                                     VerticalAlignment="Center"
                                     Classes.live="{Binding SteamStatusIsLive}"
                                     Classes.attention="{Binding SteamStatusNeedsAttention}">
-                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                            VerticalAlignment="Center"
                                            Text="{Binding SteamStatusLabel}"/>
                             </Border>
@@ -374,7 +376,7 @@
                                  three near-misses. -->
                             <Grid ColumnDefinitions="Auto,10,Auto,*,Auto">
                                 <TextBlock Grid.Column="0"
-                                           Classes="label" FontSize="10" LetterSpacing="1"
+                                           Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                            VerticalAlignment="Center"
                                            Text="{Binding SteamLocalLabel}"/>
                                 <TextBlock Grid.Column="2"
@@ -433,7 +435,7 @@
                              every visit. -->
                         <Grid ColumnDefinitions="Auto,10,Auto,*,Auto">
                             <TextBlock Grid.Column="0"
-                                       Classes="label" FontSize="10" LetterSpacing="1"
+                                       Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                        VerticalAlignment="Center"
                                        Text="{Binding SteamConnectionSectionLabel}"/>
                             <TextBlock Grid.Column="2"
@@ -468,7 +470,7 @@
                                  API state word uses, so the two cannot
                                  disagree. -->
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="16"
+                                <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="{DynamicResource FontSize16}"
                                            VerticalAlignment="Center"
                                            Text="{Binding SteamSessionHeading}"/>
                                 <TextBlock Classes="para lead"
@@ -478,7 +480,7 @@
                                         VerticalAlignment="Center"
                                         IsVisible="{Binding SteamSignInIsInUse}"
                                         ToolTip.Tip="{Binding MethodInUseTooltip}">
-                                    <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                    <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                                VerticalAlignment="Center"
                                                Text="{Binding MethodInUseText}"/>
                                 </Border>
@@ -566,7 +568,7 @@
                             <Border Classes="note attention"
                                     IsVisible="{Binding ShowSteamSignInProblem}">
                                 <StackPanel Spacing="10">
-                                    <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                    <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                                Foreground="{StaticResource AmberForeground}"
                                                Text="LAST ATTEMPT"/>
                                     <TextBlock Classes="para lead"
@@ -608,10 +610,10 @@
                                            Text="{Binding SteamSessionHealthMessage}"/>
 
                                 <StackPanel Spacing="5" IsVisible="{Binding ShowSteamSignedInAccount}">
-                                    <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                    <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                                Text="{Binding SteamSignedInAsLabel}"/>
                                     <!-- A SteamID64 is a number (§3). -->
-                                    <SelectableTextBlock Classes="data" FontSize="13"
+                                    <SelectableTextBlock Classes="data" FontSize="{DynamicResource FontSize13}"
                                                          FontFeatures="tnum"
                                                          Foreground="{StaticResource Text}"
                                                          Text="{Binding SteamSignedInAccountText}"/>
@@ -621,10 +623,10 @@
                                      Plex Mono with tabular figures (§3, §8). -->
                                 <StackPanel Orientation="Horizontal" Spacing="8"
                                             IsVisible="{Binding ShowSteamSessionExpires}">
-                                    <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                    <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                                VerticalAlignment="Center"
                                                Text="EXPIRES"/>
-                                    <TextBlock Classes="data" FontSize="12"
+                                    <TextBlock Classes="data" FontSize="{DynamicResource FontSize12}"
                                                FontFeatures="tnum"
                                                VerticalAlignment="Center"
                                                Foreground="{StaticResource TextDim}"
@@ -656,7 +658,7 @@
                                     VerticalAlignment="Center"
                                     Background="{StaticResource Line}"/>
                             <TextBlock Grid.Column="1"
-                                       Classes="label" FontSize="10" LetterSpacing="1.4"
+                                       Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1.4"
                                        Margin="12,0"
                                        VerticalAlignment="Center"
                                        Foreground="{StaticResource TextDim}"
@@ -679,7 +681,7 @@
                                  left as one uninterrupted group. -->
                             <Grid ColumnDefinitions="Auto,10,Auto,10,Auto,*,Auto">
                                 <TextBlock AutomationProperties.HeadingLevel="2" Grid.Column="0"
-                                           Classes="display-l" FontSize="16"
+                                           Classes="display-l" FontSize="{DynamicResource FontSize16}"
                                            VerticalAlignment="Center"
                                            Text="{Binding SteamApiKeyHeading}"/>
                                 <!-- The environment branch of this line says at
@@ -699,7 +701,7 @@
                                         VerticalAlignment="Center"
                                         IsVisible="{Binding SteamApiKeyIsInUse}"
                                         ToolTip.Tip="{Binding MethodInUseTooltip}">
-                                    <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                    <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                                VerticalAlignment="Center"
                                                Text="{Binding MethodInUseText}"/>
                                 </Border>
@@ -713,7 +715,7 @@
                             </Grid>
 
                             <StackPanel Spacing="8">
-                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                            Text="{Binding SteamApiKeyFieldLabel}"/>
 
                                 <!-- Masked field, Save, Clear. Clear is disabled
@@ -804,7 +806,7 @@
                                  twice to a user who had not asked yet. -->
                             <Grid ColumnDefinitions="Auto,*,Auto">
                                 <TextBlock Grid.Column="0"
-                                           Classes="label" FontSize="10" LetterSpacing="1"
+                                           Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                            VerticalAlignment="Center"
                                            Text="{Binding SteamPurchaseSectionLabel}"/>
                                 <!-- A button, not a link. The other links on
@@ -853,11 +855,11 @@
                                  toggle tooltip. -->
                             <Grid ColumnDefinitions="Auto,10,Auto,*">
                                 <TextBlock Grid.Column="0"
-                                           Classes="label" FontSize="10" LetterSpacing="1"
+                                           Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                            VerticalAlignment="Center"
                                            Text="{Binding AccountScopeSectionLabel}"/>
                                 <TextBlock Grid.Column="2"
-                                           Classes="label" FontSize="10" LetterSpacing="1"
+                                           Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                            VerticalAlignment="Center"
                                            Foreground="{StaticResource TextDim}"
                                            IsVisible="{Binding ShowSteamAccountsPending}"
@@ -896,7 +898,7 @@
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel Grid.Column="0" Orientation="Horizontal"
                                         Spacing="10" VerticalAlignment="Center">
-                                <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="Epic"
+                                <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="{DynamicResource FontSize18}" Text="Epic"
                                            VerticalAlignment="Center"/>
                                 <!-- The count and its unit share ONE TextBlock,
                                      as two Runs, because they must share a
@@ -912,14 +914,14 @@
                                      shared optical line. -->
                                 <TextBlock VerticalAlignment="Center"
                                            IsVisible="{Binding ShowEpicCount}">
-                                    <Run FontFamily="{StaticResource DataFont}"
-                                         FontSize="12"
+                                    <Run FontFamily="{DynamicResource DataFont}"
+                                         FontSize="{DynamicResource FontSize12}"
                                          FontFeatures="tnum"
                                          Foreground="{StaticResource TextDim}"
                                          Text="{Binding EpicCountText}"/>
-                                    <Run FontFamily="{StaticResource BodyFont}"
+                                    <Run FontFamily="{DynamicResource BodyFont}"
                                          FontWeight="SemiBold"
-                                         FontSize="10"
+                                         FontSize="{DynamicResource FontSize10}"
                                          Foreground="{StaticResource TextDim}"
                                          Text=" TITLES"/>
                                 </TextBlock>
@@ -928,20 +930,20 @@
                             <Border Grid.Column="1" Classes="provider-status"
                                     Classes.live="{Binding EpicStatusIsLive}"
                                     Classes.attention="{Binding EpicStatusNeedsAttention}">
-                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                            Text="{Binding EpicStatusLabel}"/>
                             </Border>
                         </Grid>
 
                         <StackPanel Spacing="5">
-                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                            <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                        Text="LOCAL FILES"/>
                             <TextBlock Classes="para" Text="{Binding EpicLocalMessage}"/>
                         </StackPanel>
 
                         <!-- What Epic local files cannot tell you. -->
                         <StackPanel Spacing="5">
-                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                            <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                        Text="WHAT'S MISSING"/>
                             <TextBlock Classes="para lead" Text="{Binding EpicGapMessage}"/>
                         </StackPanel>
@@ -951,7 +953,7 @@
                         <!-- ── Signed in ──────────────────────────────────── -->
                         <StackPanel Spacing="10" IsVisible="{Binding EpicIsSignedIn}">
                             <StackPanel Spacing="5">
-                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                            Text="CONNECTED AS"
                                            IsVisible="{Binding ShowEpicAccountLine}"/>
                                 <!-- The display name, and nothing else about the
@@ -998,7 +1000,7 @@
                             <!-- A session that expired while the app was closed. -->
                             <Border Classes="note attention" IsVisible="{Binding EpicIsLapsed}">
                                 <StackPanel Spacing="6">
-                                    <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                    <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                                Foreground="{StaticResource AmberForeground}"
                                                Text="{Binding EpicAccountLine}"
                                                IsVisible="{Binding ShowEpicAccountLine}"/>
@@ -1007,7 +1009,7 @@
                             </Border>
 
                             <StackPanel Spacing="5">
-                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                            Text="WHAT SIGNING IN ADDS"/>
                                 <TextBlock Classes="para" Text="{Binding EpicSignInAddsMessage}"/>
                             </StackPanel>
@@ -1038,7 +1040,7 @@
                              visible in every state, not just signed-out. -->
                         <Border Classes="note attention" IsVisible="{Binding ShowEpicProblem}">
                             <StackPanel Spacing="10">
-                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                            Foreground="{StaticResource AmberForeground}"
                                            Text="LAST ATTEMPT"/>
                                 <TextBlock Classes="para lead" Text="{Binding EpicProblemMessage}"/>
@@ -1063,7 +1065,7 @@
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel Grid.Column="0" Orientation="Horizontal"
                                         Spacing="10" VerticalAlignment="Center">
-                                <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="GOG"
+                                <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="{DynamicResource FontSize18}" Text="GOG"
                                            VerticalAlignment="Center"/>
                                 <!-- The count and its unit share ONE TextBlock,
                                      as two Runs, because they must share a
@@ -1079,14 +1081,14 @@
                                      shared optical line. -->
                                 <TextBlock VerticalAlignment="Center"
                                            IsVisible="{Binding ShowGogCount}">
-                                    <Run FontFamily="{StaticResource DataFont}"
-                                         FontSize="12"
+                                    <Run FontFamily="{DynamicResource DataFont}"
+                                         FontSize="{DynamicResource FontSize12}"
                                          FontFeatures="tnum"
                                          Foreground="{StaticResource TextDim}"
                                          Text="{Binding GogCountText}"/>
-                                    <Run FontFamily="{StaticResource BodyFont}"
+                                    <Run FontFamily="{DynamicResource BodyFont}"
                                          FontWeight="SemiBold"
-                                         FontSize="10"
+                                         FontSize="{DynamicResource FontSize10}"
                                          Foreground="{StaticResource TextDim}"
                                          Text=" TITLES"/>
                                 </TextBlock>
@@ -1094,19 +1096,19 @@
 
                             <!-- Volt: this source is complete. -->
                             <Border Grid.Column="1" Classes="provider-status live">
-                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                            Text="{Binding GogStatusLabel}"/>
                             </Border>
                         </Grid>
 
                         <StackPanel Spacing="5">
-                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                            <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                        Text="GALAXY'S DATABASE"/>
                             <TextBlock Classes="para" Text="{Binding GogLocalMessage}"/>
                         </StackPanel>
 
                         <StackPanel Spacing="5">
-                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                            <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                        Text="NOTHING TO SIGN INTO"/>
                             <TextBlock Classes="para lead" Text="{Binding GogNoSignInMessage}"/>
                         </StackPanel>
@@ -1139,7 +1141,7 @@
             <Border Classes="modal"
                     HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel Spacing="16">
-                    <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18"
+                    <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="{DynamicResource FontSize18}"
                                Text="{Binding MethodsModalTitle}"/>
 
                     <ScrollViewer MaxHeight="440"
@@ -1149,14 +1151,14 @@
                             <TextBlock Classes="para" Text="{Binding SteamConnectionIntroMessage}"/>
 
                             <StackPanel Spacing="6">
-                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                            Text="{Binding SteamSignInHeading}"/>
                                 <TextBlock Classes="para" Text="{Binding SteamSignInGivesMessage}"/>
                                 <TextBlock Classes="para" Text="{Binding SteamSignInCostsMessage}"/>
                             </StackPanel>
 
                             <StackPanel Spacing="6">
-                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1"
                                            Text="{Binding SteamApiKeyHeading}"/>
                                 <TextBlock Classes="para" Text="{Binding SteamApiKeyGivesMessage}"/>
                                 <TextBlock Classes="para" Text="{Binding SteamApiKeyCostsMessage}"/>
@@ -1191,7 +1193,7 @@
             <Border Classes="modal"
                     HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel Spacing="16">
-                    <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18"
+                    <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="{DynamicResource FontSize18}"
                                Text="{Binding SignInConsentTitle}"/>
 
                     <ScrollViewer MaxHeight="380"
@@ -1237,7 +1239,7 @@
             <Border Classes="modal"
                     HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel Spacing="16">
-                    <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18"
+                    <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="{DynamicResource FontSize18}"
                                Text="{Binding AccountsModalTitle}"/>
 
                     <StackPanel Spacing="14">
@@ -1255,7 +1257,7 @@
                              [DATA] [words] split the card header uses. -->
                         <StackPanel Orientation="Horizontal" Spacing="6"
                                     IsVisible="{Binding ShowAccountScopeCount}">
-                            <TextBlock Classes="data" FontSize="12"
+                            <TextBlock Classes="data" FontSize="{DynamicResource FontSize12}"
                                        Foreground="{StaticResource TextDim}"
                                        VerticalAlignment="Center"
                                        Text="{Binding AccountScopeHiddenCountText}"/>
@@ -1281,7 +1283,7 @@
             <Border Classes="modal"
                     HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel Spacing="16">
-                    <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18"
+                    <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="{DynamicResource FontSize18}"
                                Text="{Binding PurchaseModalTitle}"/>
 
                     <ScrollViewer MaxHeight="460"

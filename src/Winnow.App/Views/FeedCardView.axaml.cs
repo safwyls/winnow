@@ -2,8 +2,10 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Input;
+using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using Avalonia.VisualTree;
+using Winnow.App.Services;
 using Winnow.App.ViewModels;
 
 namespace Winnow.App.Views;
@@ -129,11 +131,14 @@ public partial class FeedCardView : UserControl
         var inlines = Reason.Inlines ??= new InlineCollection();
         inlines.Clear();
         if (card is null) return;
-        var dataFont = this.TryFindResource("DataFont", out var found) && found is FontFamily family ? family : Reason.FontFamily;
         foreach (var run in card.ReasonRuns)
         {
             var inline = new Run(run.Text);
-            if (run.IsData) { inline.FontFamily = dataFont; inline.FontSize = 12; }
+            if (run.IsData)
+            {
+                inline[!TextElement.FontFamilyProperty] = new DynamicResourceExtension("DataFont");
+                ThemeTypographyResources.BindSize(inline, 12);
+            }
             inlines.Add(inline);
         }
     }

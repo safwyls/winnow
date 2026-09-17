@@ -79,14 +79,14 @@
             <Setter Property="Padding" Value="10,6"/>
             <Setter Property="VerticalContentAlignment" Value="Top"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize12}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
             <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
             <Setter Property="CaretBrush" Value="{StaticResource VoltForeground}"/>
         </Style>
         <Style Selector="TextBox.field.numeric">
-            <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource DataFont}"/>
             <Setter Property="FontFeatures" Value="tnum"/>
         </Style>
         <Style Selector="TextBox.field /template/ Border#PART_BorderElement">
@@ -124,9 +124,9 @@
         </Style>
 
         <Style Selector=":is(TextBlock).rowline">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="LineHeight" Value="16"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize11}"/>
+            <Setter Property="LineHeight" Value="{DynamicResource TextLineHeight16}"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
 
@@ -147,10 +147,10 @@
          ink with no Foreground override. The per-row Status and Note
          lines in the two DataTemplates keep TextDim for the same
          reason as this one. -->
-    <TextBlock Classes="body" FontSize="12"
+    <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                Margin="0,18,0,0"
                TextWrapping="Wrap"
-               LineHeight="17"
+               LineHeight="{DynamicResource TextLineHeight17}"
                Foreground="{StaticResource TextDim}"
                IsVisible="{Binding HasNote}"
                Text="{Binding Note}"/>
@@ -180,20 +180,20 @@
             </Button>
         </Grid>
 
-        <TextBlock Classes="body" FontSize="12"
+        <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                    TextWrapping="Wrap"
-                   LineHeight="17"
+                   LineHeight="{DynamicResource TextLineHeight17}"
                    Text="{Binding Intro}"/>
 
-        <TextBlock Classes="body" FontSize="12"
+        <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                    TextWrapping="Wrap"
                    Foreground="{StaticResource TextDim}"
                    IsVisible="{Binding HasStatus}"
                    Text="{Binding Status}"/>
 
-        <TextBlock Classes="body" FontSize="11"
+        <TextBlock Classes="body" FontSize="{DynamicResource FontSize11}"
                    TextWrapping="Wrap"
-                   LineHeight="16"
+                   LineHeight="{DynamicResource TextLineHeight16}"
                    Foreground="{StaticResource AmberForeground}"
                    IsVisible="{Binding HasProblem}"
                    Text="{Binding Problem}"/>
@@ -226,7 +226,7 @@
                                         AutomationProperties.Name="{Binding ResetAutomationName}"
                                         ToolTip.Tip="{Binding ResetTooltip}"
                                         Command="{Binding ResetCommand}">
-                                    <TextBlock Classes="body" FontSize="12"
+                                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                                                Text="{Binding ResetLabel}"/>
                                 </Button>
                             </Grid>
@@ -245,7 +245,7 @@
                                         AutomationProperties.Name="{Binding SaveAutomationName}"
                                         ToolTip.Tip="{Binding SaveAutomationName}"
                                         Command="{Binding SaveCommand}">
-                                    <TextBlock Classes="body" FontSize="12"
+                                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                                                Text="{Binding SaveLabel}"/>
                                 </Button>
                             </Grid>
@@ -286,7 +286,7 @@
                                         AutomationProperties.Name="{Binding ResetAutomationName}"
                                         ToolTip.Tip="{Binding ResetTooltip}"
                                         Command="{Binding ResetCommand}">
-                                    <TextBlock Classes="body" FontSize="12"
+                                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                                                Text="{Binding ResetLabel}"/>
                                 </Button>
                             </Grid>
@@ -304,7 +304,7 @@
                                         <Image Source="{Binding Preview}"
                                                Stretch="UniformToFill"/>
                                         <TextBlock Classes="rowline"
-                                                   FontSize="10"
+                                                   FontSize="{DynamicResource FontSize10}"
                                                    TextAlignment="Center"
                                                    VerticalAlignment="Center"
                                                    Margin="6,0"
@@ -325,7 +325,7 @@
                                                 AutomationProperties.Name="{Binding SaveAutomationName}"
                                                 ToolTip.Tip="{Binding SaveAutomationName}"
                                                 Command="{Binding SaveCommand}">
-                                            <TextBlock Classes="body" FontSize="12"
+                                            <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                                                        Text="{Binding SaveLabel}"/>
                                         </Button>
                                     </Grid>
@@ -336,7 +336,7 @@
                                             AutomationProperties.Name="{Binding ChooseFileAutomationName}"
                                             ToolTip.Tip="{Binding ChooseFileTooltip}"
                                             Command="{Binding ChooseFileCommand}">
-                                        <TextBlock Classes="body" FontSize="12"
+                                        <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                                                    Text="{Binding ChooseFileLabel}"/>
                                     </Button>
                                 </StackPanel>

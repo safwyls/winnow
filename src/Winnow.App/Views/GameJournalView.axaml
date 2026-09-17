@@ -39,8 +39,8 @@
             <Setter Property="Padding" Value="9,4"/>
         </Style>
         <Style Selector="TextBox.journal-note">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSize12}"/>
             <Setter Property="MinHeight" Value="58"/>
             <Setter Property="Padding" Value="9,7"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
@@ -63,7 +63,7 @@
         <TextBlock Classes="label section" Text="{x:Static vm:GameDetailsCopy.JournalHeading}"
                    AutomationProperties.HeadingLevel="2"/>
 
-        <TextBlock Classes="body" FontSize="12" LineHeight="18" TextWrapping="Wrap"
+        <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}" LineHeight="{DynamicResource TextLineHeight18}" TextWrapping="Wrap"
                    IsVisible="{Binding !HasEntries}"
                    Text="{Binding EmptyText}"/>
 
@@ -85,7 +85,7 @@
                             </Grid>
 
                             <StackPanel Spacing="7" IsVisible="{Binding ShowRead}">
-                                <TextBlock Classes="body" FontSize="12" TextWrapping="Wrap"
+                                <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}" TextWrapping="Wrap"
                                            IsVisible="{Binding HasNote}"
                                            Text="{Binding Note}"/>
                                 <StackPanel Orientation="Horizontal" Spacing="12">
@@ -129,7 +129,7 @@
                             </StackPanel>
 
                             <StackPanel Orientation="Horizontal" Spacing="12" IsVisible="{Binding IsConfirmingDelete}">
-                                <TextBlock Classes="body" FontSize="12" VerticalAlignment="Center"
+                                <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}" VerticalAlignment="Center"
                                            Text="Delete this note?"/>
                                 <Button Classes="act danger" Padding="12,5"
                                         AutomationProperties.Name="Delete journal entry"
@@ -139,7 +139,7 @@
                                         Command="{Binding CancelDeleteCommand}">Keep</Button>
                             </StackPanel>
 
-                            <TextBlock Classes="body" FontSize="11" LineHeight="16" TextWrapping="Wrap"
+                            <TextBlock Classes="body" FontSize="{DynamicResource FontSize11}" LineHeight="{DynamicResource TextLineHeight16}" TextWrapping="Wrap"
                                        Foreground="{StaticResource AmberForeground}"
                                        IsVisible="{Binding HasProblem}"
                                        Text="{Binding Problem}"/>

@@ -7,7 +7,7 @@
              AutomationProperties.ControlTypeOverride="Window">
     <UserControl.Styles>
         <Style Selector="TextBox">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
             <Setter Property="CaretBrush" Value="{StaticResource VoltForeground}"/>
             <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>

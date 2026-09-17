@@ -115,7 +115,7 @@ public abstract class FullscreenPage : UserControl, IDisposable
     }
 }
 
-public sealed record FullscreenAction(string Label, Action Invoke, bool IsEnabled = true, string? IconLabel = null);
+public sealed record FullscreenAction(string Label, Action Invoke, bool IsEnabled = true, string? IconLabel = null, string? Description = null);
 
 public static class FullscreenUi
 {

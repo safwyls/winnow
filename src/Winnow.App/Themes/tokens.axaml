@@ -1,4 +1,4 @@
-﻿<!--
+<!--
     Design tokens — Game Library Manager
     Merge into App.axaml:
 
@@ -11,7 +11,7 @@
         </Application.Resources>
 
     Fonts must be bundled as AvaloniaResource. All three are SIL OFL.
-    Do not fall back to system fonts — the display face is load-bearing.
+    Bundled faces are the defaults and the fallback for unavailable theme-selected fonts.
 -->
 <!-- TODO(data-layer M0): added xmlns:sys and qualified <sys:TimeSpan> below —
      bare <TimeSpan> does not resolve in the Avalonia namespace (AVLN2000). -->
@@ -488,7 +488,7 @@
 
     <!-- ══ Type ═══════════════════════════════════════════════════════════
          All three faces are bundled TTFs under Assets/Fonts (AvaloniaResource).
-         No system-font fallback: the display face is load-bearing.
+         Bundled defaults remain the fallback when a theme's chosen face is unavailable.
 
          TODO(avalonia-ui M0): §3 asks for Bricolage at `wdth` 105–110, but
          Avalonia 11.x exposes no variable-axis API (FontFeatures is HarfBuzz
@@ -510,6 +510,40 @@
     <x:Double x:Key="LabelSize">11</x:Double>
     <x:Double x:Key="DataSize">12</x:Double>
     <x:Double x:Key="DataSSize">10</x:Double>
+    <!-- Authored sizes for compact text and explicit reading line heights. ThemeTypographyResources
+         updates these resources together; artwork and control geometry retain their own dimensions. -->
+    <x:Double x:Key="ThemeTextScale">1</x:Double>
+    <x:Double x:Key="FontSize8">8</x:Double>
+    <x:Double x:Key="FontSize9">9</x:Double>
+    <x:Double x:Key="FontSize10">10</x:Double>
+    <x:Double x:Key="FontSize11">11</x:Double>
+    <x:Double x:Key="FontSize12">12</x:Double>
+    <x:Double x:Key="FontSize13">13</x:Double>
+    <x:Double x:Key="FontSize14">14</x:Double>
+    <x:Double x:Key="FontSize15">15</x:Double>
+    <x:Double x:Key="FontSize16">16</x:Double>
+    <x:Double x:Key="FontSize17">17</x:Double>
+    <x:Double x:Key="FontSize18">18</x:Double>
+    <x:Double x:Key="FontSize19">19</x:Double>
+    <x:Double x:Key="FontSize20">20</x:Double>
+    <x:Double x:Key="FontSize22">22</x:Double>
+    <x:Double x:Key="FontSize23">23</x:Double>
+    <x:Double x:Key="FontSize24">24</x:Double>
+    <x:Double x:Key="FontSize26">26</x:Double>
+    <x:Double x:Key="FontSize28">28</x:Double>
+    <x:Double x:Key="FontSize30">30</x:Double>
+    <x:Double x:Key="FontSize36">36</x:Double>
+    <x:Double x:Key="FontSize60">60</x:Double>
+    <x:Double x:Key="TextLineHeight15">15</x:Double>
+    <x:Double x:Key="TextLineHeight16">16</x:Double>
+    <x:Double x:Key="TextLineHeight17">17</x:Double>
+    <x:Double x:Key="TextLineHeight18">18</x:Double>
+    <x:Double x:Key="TextLineHeight19">19</x:Double>
+    <x:Double x:Key="TextLineHeight20">20</x:Double>
+    <x:Double x:Key="TextLineHeight22">22</x:Double>
+    <x:Double x:Key="TextLineHeight30">30</x:Double>
+    <x:Double x:Key="TextLineHeight34">34</x:Double>
+    <x:Double x:Key="TextLineHeight42">42</x:Double>
     <!-- The reading measure (design-system.md §3). Measured in the
          shipped face: 66 characters of prose measure 410px at Body 13
          and 379px at 12, so one token at 410 is 66 characters at 13/20
@@ -539,11 +573,13 @@
     <x:Double x:Key="BadgeSize">10</x:Double>
     <CornerRadius x:Key="RadiusTile">6</CornerRadius>
     <CornerRadius x:Key="RadiusControl">4</CornerRadius>
+    <CornerRadius x:Key="RadiusControlInner">3</CornerRadius>
     <!-- The floating layout's pane corner (§15). ABOVE the tile's 6 and the
          control's 4, so the three radii rank by the size of the object they
          round: radius reads as a proportion of the corner it turns, and 6px on a
          750px-tall column is a chamfer rather than a round. -->
     <CornerRadius x:Key="RadiusPane">8</CornerRadius>
+    <CornerRadius x:Key="RadiusPaneInner">7</CornerRadius>
     <!-- The gap between one pane and the next, and between a pane and the window
          edge. §4's own spacing step, and exactly the width of the resize band
          §9.1 measures — so a pane inset by it has no control the OS can eat. Its
@@ -572,30 +608,30 @@
              selectable line is indistinguishable from a static one. -->
 
         <Style Selector=":is(TextBlock).display-l">
-            <Setter Property="FontFamily" Value="{StaticResource DisplayFont}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource DisplayFont}"/>
             <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="FontSize" Value="{StaticResource DisplayLSize}"/>
+            <Setter Property="FontSize" Value="{DynamicResource DisplayLSize}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
 
         <Style Selector=":is(TextBlock).display-s">
-            <Setter Property="FontFamily" Value="{StaticResource DisplayFont}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource DisplayFont}"/>
             <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="FontSize" Value="{StaticResource DisplaySSize}"/>
+            <Setter Property="FontSize" Value="{DynamicResource DisplaySSize}"/>
             <Setter Property="LetterSpacing" Value="0.72"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
 
         <Style Selector=":is(TextBlock).body-l">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
             <Setter Property="FontWeight" Value="Medium"/>
-            <Setter Property="FontSize" Value="{StaticResource BodyLSize}"/>
+            <Setter Property="FontSize" Value="{DynamicResource BodyLSize}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
 
         <Style Selector=":is(TextBlock).body">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontSize" Value="{StaticResource BodySize}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource BodySize}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
 
@@ -613,9 +649,9 @@
         </Style>
 
         <Style Selector=":is(TextBlock).label">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="{StaticResource LabelSize}"/>
+            <Setter Property="FontSize" Value="{DynamicResource LabelSize}"/>
             <Setter Property="LetterSpacing" Value="0.44"/>
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
         </Style>
@@ -649,15 +685,15 @@
 
         <!-- Every number in the app. tnum is mandatory in list view. -->
         <Style Selector=":is(TextBlock).data">
-            <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
-            <Setter Property="FontSize" Value="{StaticResource DataSize}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource DataFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource DataSize}"/>
             <Setter Property="FontFeatures" Value="tnum"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
 
         <Style Selector=":is(TextBlock).data-s">
-            <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
-            <Setter Property="FontSize" Value="{StaticResource DataSSize}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource DataFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource DataSSize}"/>
             <Setter Property="FontFeatures" Value="tnum"/>
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
         </Style>

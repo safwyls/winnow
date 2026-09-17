@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Winnow — Find the game you meant to play',
-  description: 'A local-first game library that surfaces the Steam, Epic, and GOG games you own, meant to play, and forgot existed.',
+  description: 'Bring your Steam, Epic, and GOG games into one library. Track play history, find unread updates, and choose what to play. Free and open source for Windows and Linux.',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
