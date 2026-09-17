@@ -316,6 +316,8 @@ public sealed class PluginSettingsInteractionTests
         {
             await page.PendingPluginRefresh;
             Dispatcher.UIThread.RunJobs();
+            Named<Button>(page, "Manage plugins").RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Dispatcher.UIThread.RunJobs(); AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Assert.Equal("Active artwork · 2.0", LoadedPluginSummary(page));
             Assert.NotNull(Named<Button>(page, "Active artwork"));
         }
@@ -333,6 +335,7 @@ public sealed class PluginSettingsInteractionTests
         window.Show();
         try
         {
+            shell.PluginSettings.SelectPlugin(null);
             Assert.Equal("Active artwork · 2.0", LoadedPluginSummary(desktop));
             Assert.Equal(3, shell.PluginSettings.Plugins.Count);
             Capture(window, "desktop-loaded-plugins");
@@ -433,6 +436,8 @@ public sealed class PluginSettingsInteractionTests
             page.Handle(GamepadButtons.PageNext);
             await page.PendingPluginRefresh;
             Dispatcher.UIThread.RunJobs();
+            Named<Button>(page, "Manage plugins").RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Dispatcher.UIThread.RunJobs(); AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Assert.NotNull(Named<Button>(page, "Open plugins folder"));
             Assert.NotNull(Named<Button>(page, "Community artwork"));
             page.Handle(GamepadButtons.PageNext);
@@ -564,6 +569,8 @@ public sealed class PluginSettingsInteractionTests
             window.Content = settings;
             Dispatcher.UIThread.RunJobs();
             Assert.NotNull(Named<Button>(settings, "Community artwork"));
+            Named<Button>(settings, "Manage plugins").RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Dispatcher.UIThread.RunJobs(); AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Assert.NotNull(Named<Button>(settings, "Open plugins folder"));
             await settings.PendingPluginRefresh;
             Capture(window, "fullscreen-plugins");

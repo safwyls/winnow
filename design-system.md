@@ -3111,12 +3111,25 @@ Fullscreen Metadata & artwork opens a dedicated **IGDB metadata** page with the 
 actions, large fields and explicit controller focus rows. A opens the existing on-screen
 keyboard for either field; secret entry retains its masking.
 
-The separate **PLUGINS** tab starts with a list of names and versions loaded in the current
-session, or an explicit empty state. Desktop and fullscreen use the runtime loaded state,
-so pending enable or disable changes do not change the list until restart.
+The separate **PLUGINS** section has one named tab per plugin loaded in the current session,
+followed by **Manage plugins** for installation, unloaded packages and diagnostics. The first
+loaded plugin is selected initially; subsequent visits and catalog refreshes keep the selected
+plugin when it is still loaded. Desktop and fullscreen use the runtime loaded state, so
+pending enable or disable changes do not remove its tab until restart. With no loaded plugins,
+Manage plugins shows the explicit empty state and installation controls.
+
+The plugin tab strip stays above the scrolling settings form. When names exceed the available
+width, left and right arrow buttons appear at opposite ends of the strip and scroll through
+the tabs without changing selection. Each arrow disables at its corresponding edge. The
+selected or keyboard-focused tab scrolls into view, and resizing removes the arrows once all
+tabs fit. Desktop uses native tab semantics with Left/Right and Home/End navigation; fullscreen
+uses a controller focus row with A to select, while the existing section navigation remains
+available. Tab switches retain ordinary field drafts but clear secret drafts and cancel a
+sign-in challenge on the plugin being left.
 Desktop cards stretch across the available pane width up to 1,100 logical pixels and remain
 left-aligned on wider displays, with the version beneath the name
-and an Enabled/Disabled switch at the upper right. The tab shows one card per discovered plugin, with its name, version,
+and an Enabled/Disabled switch at the upper right. A loaded plugin tab shows that plugin alone;
+Manage plugins shows cards for discovered packages that are not loaded, with their name, version,
 description, supported features and status. **Open plugins folder** opens the installation
 directory. ZIP packages unpack automatically at startup; users may also place unpacked packages
 there. Failed ZIP imports appear alongside other package diagnostics. Explain that manually installing and changing enablement requires a restart and that plugins
@@ -3158,8 +3171,9 @@ polling. Connection status uses a polite text announcement. The provider's brows
 authentication; Winnow never asks for its password. History imports that do not establish
 ownership retain an explanatory source line in both game-detail overviews, including groups.
 
-Fullscreen lists discovered plugins under Plugins and opens a dedicated page for
-each one. The page uses the same settings model with large generated fields, explicit focus
+Fullscreen places the selected loaded plugin's form below its own horizontal plugin tabs.
+Manage plugins opens dedicated pages for unloaded packages. Both presentations use the same
+settings model with large generated fields, explicit focus
 rows, masked controller text entry and the same commands. Saving keeps the controls in place
 so controller focus can return to the same action. Plugins do not supply arbitrary UI trees.
 The fullscreen section strip scrolls horizontally when needed and brings the focused tab into view.

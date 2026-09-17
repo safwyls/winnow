@@ -12,11 +12,14 @@ public sealed class FullscreenPluginSettingsPage : FullscreenPage
     private readonly PluginCardViewModel _model;
     private Control? _lastFocused;
     private bool _disposed;
+    private readonly bool _embedded;
+    internal Control[][] FocusRows { get; private set; } = [];
     public override string Title => _model.Name;
 
-    public FullscreenPluginSettingsPage(FullscreenContext context, PluginCardViewModel model) : base(context)
+    public FullscreenPluginSettingsPage(FullscreenContext context, PluginCardViewModel model, bool embedded = false) : base(context)
     {
         _model = model;
+        _embedded = embedded;
         var controls = FullscreenInformation.Column();
         controls.Children.Add(FullscreenUi.Text(model.Name, 64));
         var installation = context.Shared.PluginSettings.Installation;
@@ -126,13 +129,17 @@ public sealed class FullscreenPluginSettingsPage : FullscreenPage
             Converter = Avalonia.Data.Converters.StringConverters.IsNotNullOrEmpty });
         AutomationProperties.SetLiveSetting(status, AutomationLiveSetting.Polite);
         controls.Children.Add(status);
-        var back = FullscreenUi.Button("Back", context.Back);
-        controls.Children.Add(back); focus.Add([back]);
+        if (!embedded)
+        {
+            var back = FullscreenUi.Button("Back", context.Back);
+            controls.Children.Add(back); focus.Add([back]);
+        }
         Content = FullscreenUi.Scroll(controls);
-        SetFocusRows(focus.ToArray());
+        FocusRows = focus.ToArray();
+        SetFocusRows(FocusRows);
         foreach (var control in focus.SelectMany(row => row)) control.GotFocus += (_, _) => _lastFocused = control;
         model.PropertyChanged += ModelChanged;
-        DetachedFromVisualTree += (_, _) => model.Deactivate();
+        DetachedFromVisualTree += (_, _) => { if (!_embedded) model.Deactivate(); };
     }
 
     private void ModelChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -171,7 +178,7 @@ public sealed class FullscreenPluginSettingsPage : FullscreenPage
     {
         _disposed = true;
         _model.PropertyChanged -= ModelChanged;
-        _model.Deactivate();
+        if (!_embedded) _model.Deactivate();
         base.Dispose();
     }
 }

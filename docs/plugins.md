@@ -9,10 +9,11 @@ For an explanation of the design with a SteamGridDB trace and a buildable exampl
 
 ## Install and configure
 
-Desktop and fullscreen Plugins settings list the names and versions of plugins loaded in the
-current session above the configuration controls. Pending enable or disable changes do not
-change this list until restart. When none are loaded, the list says so; discovered packages
-and installation errors remain available below it.
+Desktop and fullscreen Plugins settings give each plugin loaded in the current session its
+own tab. Left and right arrows appear when the tabs exceed the available width. Pending enable
+or disable changes do not change the tabs until restart. **Manage plugins** contains installation
+controls, unloaded packages, errors and the loaded-version summary. When none are loaded,
+it shows an explicit empty state.
 
 ### Install from the website
 

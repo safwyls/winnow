@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
+             xmlns:views="using:Winnow.App.Views"
              xmlns:conv="using:Avalonia.Data.Converters"
              x:Class="Winnow.App.Views.PluginSettingsView"
              x:DataType="vm:PluginSettingsViewModel"
@@ -34,7 +35,7 @@
             <Setter Property="Padding" Value="20"/>
         </Style>
     </UserControl.Styles>
-    <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
+    <Grid RowDefinitions="Auto,Auto,*" Background="{StaticResource PaneGround}">
         <Border Padding="24,20,24,18" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
             <StackPanel Spacing="7">
                 <TextBlock Classes="display-l" Text="{Binding Title}" AutomationProperties.HeadingLevel="1"/>
@@ -42,7 +43,8 @@
                            Foreground="{StaticResource TextDim}" Text="{Binding IntroMessage}"/>
             </StackPanel>
         </Border>
-        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <views:PluginTabStrip Grid.Row="1" Margin="24,8,24,0"/>
+        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <Grid Margin="24,16,24,28">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" MaxWidth="1100"/>
@@ -60,20 +62,22 @@
                                     AutomationProperties.Name="Retry plugin installation"/>
                         </StackPanel>
                     </Border>
-                    <TextBlock Classes="label section" AutomationProperties.HeadingLevel="2" Text="LOADED PLUGINS"/>
-                    <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding LoadedPluginSummary}"
-                               AutomationProperties.AutomationId="LoadedPluginsSummary" AutomationProperties.LiveSetting="Polite"/>
-                    <TextBlock Classes="label section" AutomationProperties.HeadingLevel="2" Text="INSTALL AND CONFIGURE"/>
-                    <Border Classes="card">
-                        <StackPanel Spacing="12">
-                            <TextBlock Classes="body" TextWrapping="Wrap" Text="{x:Static vm:PluginSettingsViewModel.InstallationNote}"/>
-                            <Button Classes="act" HorizontalAlignment="Left" Content="Open plugins folder" Click="OnOpenPluginsFolder"/>
-                            <SelectableTextBlock Classes="data-s" Text="{Binding UserPluginDirectory}" TextWrapping="Wrap" Focusable="False"/>
-                            <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Status}"
-                                       AutomationProperties.LiveSetting="Polite"/>
-                        </StackPanel>
-                    </Border>
-                    <ItemsControl ItemsSource="{Binding Plugins}">
+                    <StackPanel Spacing="14" IsVisible="{Binding IsManagingPlugins}">
+                        <TextBlock Classes="label section" AutomationProperties.HeadingLevel="2" Text="LOADED PLUGINS"/>
+                        <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding LoadedPluginSummary}"
+                                   AutomationProperties.AutomationId="LoadedPluginsSummary" AutomationProperties.LiveSetting="Polite"/>
+                        <TextBlock Classes="label section" AutomationProperties.HeadingLevel="2" Text="INSTALL AND CONFIGURE"/>
+                        <Border Classes="card">
+                            <StackPanel Spacing="12">
+                                <TextBlock Classes="body" TextWrapping="Wrap" Text="{x:Static vm:PluginSettingsViewModel.InstallationNote}"/>
+                                <Button Classes="act" HorizontalAlignment="Left" Content="Open plugins folder" Click="OnOpenPluginsFolder"/>
+                                <SelectableTextBlock Classes="data-s" Text="{Binding UserPluginDirectory}" TextWrapping="Wrap" Focusable="False"/>
+                                <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Status}"
+                                           AutomationProperties.LiveSetting="Polite"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding VisiblePlugins}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="vm:PluginCardViewModel">
                                 <Border Classes="card" Margin="0,0,0,16" AutomationProperties.Name="{Binding Name}"
