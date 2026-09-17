@@ -250,6 +250,13 @@ passing through Winnow infrastructure. This is a reference option, not planned i
   reloads the shared library on the UI thread.
   Settings credentials take precedence over environment/local configuration credentials;
   removing the saved pair preserves that fallback. Saving does not perform network validation.
+- **Sync metadata now** in desktop and fullscreen settings explicitly runs the IGDB-relevant
+  stages of the shared library refresh pipeline, even when automatic sync is suppressed.
+  It checks credential availability, shares the pipeline's serialization gate, reports stage
+  progress and failures, and publishes committed library changes. It never invokes ownership
+  or launcher imports and does not change automatic-sync settings. Existing cache lifetimes,
+  manual match pins, field overrides and saved artwork precedence still apply. Completion
+  means the pass finished; providers can serve cached data or leave unavailable games unmatched.
 - Auth is Twitch client-credentials:
   `POST https://id.twitch.tv/oauth2/token?client_id=…&client_secret=…&grant_type=client_credentials`.
   Send `Client-ID` and `Authorization: Bearer <token>` on every request. Tokens are long-lived

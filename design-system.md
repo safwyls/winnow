@@ -3099,7 +3099,12 @@ switch the current view. Windows sign-in and explicit background launches retain
 behavior. Exiting fullscreen restores the desktop, and reopening a hidden window does not
 reapply the startup preference.
 
-METADATA & ARTWORK groups credentials and automatic backdrop preferences. Its **IGDB METADATA**
+METADATA & ARTWORK groups credentials and automatic backdrop preferences. A **Library metadata**
+card offers **Sync metadata now** for an explicit pass over the existing library. The shared
+command is disabled while running; a polite live status shows waiting, the current stage,
+completion or recovery instructions. Leaving settings does not cancel the pass. Fullscreen
+offers the same action and status in its Metadata & artwork section with controller navigation.
+Its **IGDB METADATA**
 card offers **Get IGDB credentials**, labelled **Client ID** and
 **Client secret** fields, **Save credentials** and **Remove saved credentials**. The secret
 is masked, is cleared after saving or leaving the form, and is never loaded back into the

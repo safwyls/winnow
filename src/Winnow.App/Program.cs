@@ -980,6 +980,9 @@ public static class Program
         services.AddSingleton<IgdbSettingsService>();
         services.AddSingleton<IIgdbSettingsService>(sp => sp.GetRequiredService<IgdbSettingsService>());
         services.AddSingleton<IgdbSettingsViewModel>();
+        services.AddSingleton<IManualMetadataSyncService, ManualMetadataSyncService>();
+        services.AddSingleton(sp => new MetadataSyncViewModel(
+            sp.GetRequiredService<IManualMetadataSyncService>(), Shutdown.Token));
         services.AddSingleton<PluginSettingsViewModel>();
         services.AddSingleton<ArtworkPreferences>();
         services.AddSingleton<ArtworkOrderViewModel>();

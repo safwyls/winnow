@@ -297,6 +297,17 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         }
         else if (_section == "Metadata & artwork")
         {
+            Group("Library metadata");
+            var sync = Context.Shared.EnrichmentSettings.MetadataSync;
+            rows.Children.Add(FullscreenInformation.Metadata(MetadataSyncViewModel.Explanation));
+            var syncButton = Action("Sync metadata now", () => { }, "Run");
+            syncButton.Command = sync.SyncCommand;
+            AutomationProperties.SetAutomationId(syncButton, "MetadataSyncButton");
+            var syncStatus = FullscreenInformation.Metadata("");
+            syncStatus.Name = "MetadataSyncStatus";
+            syncStatus.Bind(TextBlock.TextProperty, new Binding(nameof(sync.Status)) { Source = sync });
+            AutomationProperties.SetLiveSetting(syncStatus, AutomationLiveSetting.Polite);
+            rows.Children.Add(syncStatus);
             Group("Sources");
             Action("IGDB metadata", () => Context.Push(new FullscreenIgdbSettingsPage(Context)));
             Action("Artwork source order", () => Context.Push(new FullscreenArtworkOrderPage(Context)));

@@ -23,6 +23,18 @@
         </Border>
         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="24,16,24,28" MaxWidth="920" HorizontalAlignment="Left" Spacing="14">
+                <Border Classes="card">
+                    <StackPanel Spacing="12">
+                        <TextBlock Classes="label" Text="LIBRARY METADATA" AutomationProperties.HeadingLevel="2"/>
+                        <TextBlock Classes="para" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                                   Text="{x:Static vm:MetadataSyncViewModel.Explanation}"/>
+                        <Button Name="MetadataSyncButton" Classes="act" Content="Sync metadata now"
+                                AutomationProperties.Name="Sync metadata now" AutomationProperties.AutomationId="MetadataSyncButton"
+                                HorizontalAlignment="Left" Command="{Binding MetadataSync.SyncCommand}"/>
+                        <TextBlock Name="MetadataSyncStatus" Classes="body" TextWrapping="Wrap" Text="{Binding MetadataSync.Status}"
+                                   AutomationProperties.LiveSetting="Polite"/>
+                    </StackPanel>
+                </Border>
                 <TextBlock Classes="label" FontSize="{DynamicResource FontSize10}" LetterSpacing="1.4" Text="ARTWORK SOURCE ORDER"
                            AutomationProperties.HeadingLevel="2"/>
                 <Border Classes="card">
