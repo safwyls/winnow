@@ -2158,7 +2158,10 @@ through **Open artwork source** beside the attribution.
 remain next to the operation; there are no required hover controls or transitions.
 
 Fullscreen uses a separate artwork page with TV-sized controls, a persistent preview,
-source controls, and explicit focus rows. A previews or activates the focused action;
+source controls, and explicit focus rows. A previews or activates the focused action.
+LT and RT cycle backward and forward through Hero, Cover and Icon, wrapping at either end
+and focusing the selected slot. The slot row shows the trigger glyphs. Switching retains each
+slot's preview and browsing position and is disabled while artwork is being saved.
 **Use artwork** commits. B returns without committing a preview. Candidate identity retains
 focus when another page of results arrives. File selection and URL entry use the fullscreen
 file browser and keyboard. Both surfaces use the same saved choices and refresh operations.

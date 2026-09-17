@@ -24,6 +24,50 @@ namespace Winnow.Ui.Tests;
 public sealed class ArtworkBrowserTests
 {
     [AvaloniaFact]
+    public async Task Fullscreen_triggers_cycle_artwork_slots_and_preserve_their_browsing_state()
+    {
+        var service = new BrowserService { CandidateCount = 20 };
+        using var model = new ArtworkBrowserViewModel(service, 1, "Game");
+        await model.OpenAsync();
+        using var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell);
+        using var page = new FullscreenArtworkPage(context, model);
+        using var view = new FullscreenView(context);
+        var window = new Window { Width = 1920, Height = 1080, Content = view };
+        window.Show(); context.Push(page);
+        try
+        {
+            Flush();
+            var selected = model.Sources[0].Items[0];
+            model.SelectCommand.Execute(selected); Flush();
+            ScrollViewer Gallery() => page.GetVisualDescendants().OfType<ScrollViewer>().Single(control => control.Name == "ArtworkCandidateScroll");
+            Gallery().Offset = new(0, 150); Flush();
+            var offset = Gallery().Offset.Y;
+            foreach (var slot in new[] { ArtworkSlot.Cover, ArtworkSlot.Icon, ArtworkSlot.Hero })
+            {
+                view.Handle(GamepadButtons.PageNext); Flush();
+                Assert.Equal(slot, model.Slot);
+                Assert.Equal($"slot:{slot}", AutomationProperties.GetAutomationId(Assert.IsAssignableFrom<Control>(window.FocusManager!.GetFocusedElement())));
+            }
+            Assert.Same(selected, model.Selected);
+            Assert.Equal(offset, Gallery().Offset.Y, 1);
+            foreach (var slot in new[] { ArtworkSlot.Icon, ArtworkSlot.Cover, ArtworkSlot.Hero })
+            {
+                view.Handle(GamepadButtons.PagePrevious); Flush();
+                Assert.Equal(slot, model.Slot);
+            }
+            model.IsBusy = true;
+            view.Handle(GamepadButtons.PageNext); Flush();
+            view.Handle(GamepadButtons.PagePrevious); Flush();
+            Assert.Equal(ArtworkSlot.Hero, model.Slot);
+            model.IsBusy = false;
+            Assert.Empty(service.Writes);
+            Assert.Empty(service.Resets);
+            Capture(window, "artwork-fullscreen-trigger-slots");
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
     public async Task Desktop_artwork_source_uses_the_shared_link_router()
     {
         var router = new SourceRouter();

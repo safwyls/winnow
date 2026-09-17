@@ -23,13 +23,14 @@ public sealed class FullscreenArtworkPage : FullscreenPage
     private ScrollViewer? _galleryScroll;
     private ArtworkSlot _gallerySlot;
     private bool _restoringScroll;
+    private bool _focusSlotOnBuild;
     public FullscreenArtworkPage(FullscreenContext context, ArtworkBrowserViewModel model) : base(context)
     {
         _model = model; model.PreviewFullscreen = true; model.PropertyChanged += ModelChanged;
         Build();
     }
     public override string Title => "Change artwork";
-    public override string Hints => "A Preview or select   B Back";
+    public override string Hints => "LT / RT Artwork type   A Preview or select   B Back";
 
     private void ModelChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -64,7 +65,7 @@ public sealed class FullscreenArtworkPage : FullscreenPage
             tab.Bind(IsEnabledProperty, new Binding(nameof(ArtworkBrowserViewModel.CanEdit)) { Source = _model });
             tabs.Children.Add(tab);
         }
-        rows.Add(tabs.Children.OfType<Control>().ToArray()); header.Children.Add(tabs);
+        rows.Add(tabs.Children.OfType<Control>().ToArray()); header.Children.Add(FullscreenUi.TriggerNavigation(tabs));
         var sources = new WrapPanel { Orientation = Orientation.Horizontal };
         sources.Children.Add(Action(_model.SourceId == "all" ? "All sources · Selected" : "All sources", () => _model.ChooseSourceCommand.Execute("all"), "source:all"));
         foreach (var source in _model.Sources)
@@ -160,7 +161,14 @@ public sealed class FullscreenArtworkPage : FullscreenPage
         urlField.Bind(IsEnabledProperty, new Binding(nameof(ArtworkBrowserViewModel.CanEdit)) { Source = _model });
         footer.Children.Insert(0, urlField); rows.Insert(rows.Count - 1, [urlField]);
         Grid.SetRow(footer, 2); root.Children.Add(footer);
-        Content = root; SetFocusRows(rows.ToArray()); restore(); Changed();
+        Content = root; SetFocusRows(rows.ToArray());
+        if (_focusSlotOnBuild)
+        {
+            _focusSlotOnBuild = false;
+            FocusControl(rows[0][Array.IndexOf(Enum.GetValues<ArtworkSlot>(), _model.Slot)]);
+        }
+        else restore();
+        Changed();
         var scroll = _galleryScroll; var offset = _offsets.GetValueOrDefault(_gallerySlot);
         _restoringScroll = true;
         Dispatcher.UIThread.Post(() =>
@@ -197,6 +205,18 @@ public sealed class FullscreenArtworkPage : FullscreenPage
     public override bool Handle(GamepadButtons buttons)
     {
         if (buttons.HasFlag(GamepadButtons.Back)) { if (!_model.IsBusy) { _model.Close(); Context.Back(); } return true; }
+        if ((buttons & (GamepadButtons.PagePrevious | GamepadButtons.PageNext)) != 0)
+        {
+            if (!_disposed && _model.CanEdit)
+            {
+                var slots = Enum.GetValues<ArtworkSlot>();
+                var direction = buttons.HasFlag(GamepadButtons.PageNext) ? 1 : -1;
+                var next = slots[(Array.IndexOf(slots, _model.Slot) + direction + slots.Length) % slots.Length];
+                _focusSlotOnBuild = true;
+                _model.ChooseSlotCommand.Execute(next);
+            }
+            return true;
+        }
         return base.Handle(buttons);
     }
     public override void Dispose()
