@@ -269,6 +269,18 @@ not available through the Xbox history service. Live sign-in and PC/console hist
 checked with Winnow's registration. Reported cumulative minutes and protected WindowsApps
 launch/session behavior still need further device validation.
 
+### Optional: PlayStation
+
+The PlayStation plugin imports Sony's PS4/PS5 account library, with optional played history,
+available playtime and PS3/PS Vita trophy-title history. It uses a Sony NPSSO session token
+saved through the protected plugin settings on desktop or fullscreen. Console entries have
+no local Play action; played and trophy history do not establish purchase ownership.
+
+Build its ZIP with `./plugins/Winnow.Plugin.Psn/Package.ps1`, then install and enable it in
+**Settings → Plugins**. See the [PlayStation plugin guide](plugins/Winnow.Plugin.Psn/README.md)
+for connection steps, source limits and caching. Fixture and UI checks cover the implementation;
+live Sony sign-in and account data still need validation.
+
 ### Writing a theme
 
 **Settings → Appearance → Typography** lets you choose heading, interface and data fonts,

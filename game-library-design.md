@@ -44,7 +44,6 @@ exposed by storefront APIs or not retained by anyone.
 
 ### Out of scope
 
-- PlayStation integration (§4.6)
 - Any hosted service, user accounts, or multi-user features. Winnow has no accounts; it links
   the user's. Signing in to Epic or Steam authenticates the user to *their* service and stores
   the token locally. That is third-party linking, not account creation.
@@ -398,10 +397,7 @@ the news item's `url` on the event row; the badge is clickable.
 
 **Never-opened games are ineligible for the badge, so do not poll them.**
 
-### 4.6 Xbox plugin and excluded platforms
-
-PSN remains out of scope. It requires the user to extract an `npsso` cookie by hand every two
-months, and PSNAWP's documentation warns that use may result in account bans.
+### 4.6 Xbox and PlayStation plugins
 
 Xbox is an optional SDK-only package under `plugins/Winnow.Plugin.Xbox`. Local discovery reads
 the current Windows user's registered Store packages and copies manifests/configuration to
@@ -439,6 +435,30 @@ and inaccessible process paths limit tracking. Live sign-in and PC/console histo
 been validated with Winnow's registration; reported minutes and protected-app launch/session
 tracking still need further device validation. Request,
 cache and registration details are in the [plugin guide](plugins/Winnow.Plugin.Xbox/README.md).
+
+PlayStation is an optional SDK-only package under `plugins/Winnow.Plugin.Psn`. It follows the
+community-documented psn-api and PlayStation-Trophies protocols using the host's bounded HTTP
+service, with no Node runtime. A user supplies NPSSO in the protected plugin settings; the
+provider exchanges it for access and refresh credentials and resolves the numeric account
+through Sony's authenticated profile endpoint. Refresh credentials stay in the secret store,
+access credentials stay in memory, and response caches are scoped by account and credential.
+Changed or removed credentials suppress in-flight publication. Desktop and fullscreen use
+the same secret editor, Save and Remove actions; the device-code account contract is not used.
+
+The active PS4/PS5 purchase-library endpoint supplies inventory. Optional played history adds
+PS4/PS5 titles, cumulative minutes and last played. Optional trophy history supplies PS3/Vita
+sets without inventing playtime or treating trophy synchronization as last played. Sets shared
+with newer platforms are excluded. Exact title IDs join purchase and played observations;
+trophy sets use a separate namespace. Source labels distinguish purchase-library observations
+from history and explain subscription uncertainty. No source creates acquisition dates,
+local installations, launch actions, sessions or achievement records.
+
+Complete endpoint results cache independently for six hours with stale fallback, monotonic
+pagination, at most 10,000 rows and a 2 MiB payload. The provider has a 100-second operation
+budget and preserves imported observations after failures. Available genres and platform tags
+flow through metadata; Sony icon dimensions are measured before offering cover candidates.
+Requests, hosts, limits and setup are in the [PlayStation guide](plugins/Winnow.Plugin.Psn/README.md).
+Fixture and desktop/fullscreen tests cover implementation; live Sony-account validation remains open.
 
 ### 4.7 Steam account pages, sign-in, and what may be stored
 

@@ -1,0 +1,24 @@
+{
+  "id": "psn",
+  "name": "PlayStation",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "entryAssembly": "Winnow.Plugin.Psn.dll",
+  "entryType": "Winnow.Plugin.Psn.PsnPlugin",
+  "description": "PS4 and PS5 account library, with optional played games and PS3/PS Vita trophy history. History does not prove ownership. Console games cannot launch on this PC.",
+  "website": "https://github.com/safwyls/winnow/tree/main/plugins/Winnow.Plugin.Psn",
+  "capabilities": ["library", "metadata", "artwork"],
+  "settings": [
+    { "key": "npsso", "label": "Sony session token (NPSSO)", "secret": true, "help": "Sign in at playstation.com, then open the setup link in the same browser and copy the npsso value. Save to connect. Treat it like a password. Remove the saved token to disconnect; imported games remain.", "setupUrl": "https://ca.account.sony.com/api/v1/ssocookie" },
+    { "key": "import-history", "label": "Include played games", "isBoolean": true, "help": "Adds PS4/PS5 played history and available playtime, including disc, trial and subscription games. Does not prove a purchase or current access." },
+    { "key": "include-legacy", "label": "Include PS3 and PS Vita trophy history", "isBoolean": true, "help": "Adds trophy sets exclusive to PS3/PS Vita. Trophy sync dates are not last-played dates. Shared PS4/PS5 sets are excluded to avoid duplicate games." },
+    { "key": "refresh-token", "label": "Sony connection", "secret": true, "managedByPlugin": true }
+  ],
+  "network": {
+    "allowedHosts": ["ca.account.sony.com", "us-prof.np.community.playstation.net", "m.np.playstation.com", "web.np.playstation.com", "image.api.playstation.com", "psnobj.prod.dl.playstation.net"],
+    "requestsPerSecond": 4,
+    "maxRetries": 2,
+    "maxResponseBytes": 2097152,
+    "timeoutSeconds": 20
+  }
+}

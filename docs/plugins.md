@@ -188,6 +188,14 @@ Its package needs a host with SDK 1.1 support. It is distributed separately and 
 when installed as a user plugin. Played history is opt-in and cannot supply a complete purchase
 inventory. Run `./plugins/Winnow.Plugin.Xbox/Package.ps1` to build its ZIP.
 
+The optional [PlayStation plugin](../plugins/Winnow.Plugin.Psn/README.md) imports the PS4/PS5
+account library, optional played history and PS3/PS Vita trophy-title history. It uses a
+user-editable protected NPSSO field and a hidden managed refresh credential. The existing
+account capability describes device-code flows, so PlayStation uses Save and Remove saved
+secret instead. Desktop and fullscreen share these generated controls. The plugin supplies
+metadata and verified icon dimensions, with no local installation or game actions. Build its
+ZIP with `./plugins/Winnow.Plugin.Psn/Package.ps1`. Live Sony-account validation remains open.
+
 ## Verification and scope
 
 `tests/Winnow.Plugins.Tests` loads a separate fixture DLL through the real loader and tests

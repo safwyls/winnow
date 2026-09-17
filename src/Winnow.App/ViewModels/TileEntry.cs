@@ -134,6 +134,7 @@ public static class StoreNaming
         "gog" => "GOG",
         "epic" => "Epic",
         "plugin:xbox" => "Xbox",
+        "plugin:psn" => "PlayStation",
         var value when value.StartsWith("plugin:", StringComparison.Ordinal) && value.Length > 7
             => string.Concat(char.ToUpperInvariant(store[7]), store[8..]),
         _ => string.Concat(char.ToUpperInvariant(store[0]), store[1..]),
