@@ -1,11 +1,11 @@
 ---
 id: TASK-320
 title: Publish Xbox imports promptly in library filters and statistics
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-17 02:55'
-updated_date: '2026-09-17 03:04'
+updated_date: '2026-09-17 03:09'
 labels: []
 dependencies: []
 priority: high
@@ -21,10 +21,10 @@ During Xbox end-to-end verification the user cannot find Xbox in platform filter
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Xbox and other imported plugin stores appear with readable names in applicable library filters and statistics on desktop and fullscreen.
-- [ ] #2 Store filtering and counts include plugin ownerships and respect existing grouping and visibility rules; built-in store behavior remains covered.
-- [ ] #3 The user receives a title list from the actual imported library, with any difference from the temporary live probe explained.
-- [ ] #4 Focused regression checks cover both presentation paths and an updated isolated local client is built for verification.
+- [x] #1 Xbox and other imported plugin stores appear with readable names in applicable library filters and statistics on desktop and fullscreen.
+- [x] #2 Store filtering and counts include plugin ownerships and respect existing grouping and visibility rules; built-in store behavior remains covered.
+- [x] #3 The user receives a title list from the actual imported library, with any difference from the temporary live probe explained.
+- [x] #4 Focused regression checks cover both presentation paths and an updated isolated local client is built for verification.
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -41,4 +41,12 @@ Current test profile has a protected Xbox credential and both history options en
 Implemented PluginRefreshCoordinator with independent inventory and enrichment queues. Imports wait for plugin discovery only, retain LibrarySyncGate for resolver writes and publish before enrichment. A new account refresh can run while an older metadata sweep is blocked. Completing built-in startup queues another enrichment sweep so early discovery does not miss later Steam/Epic/GOG additions. 21 focused scheduling/import/identity/action checks passed. Presentation audit confirmed library PLATFORM and Gameplay choices already support plugin:xbox; unit regressions for those paths passed separately.
 
 The original running build eventually persisted 70 Xbox entries after the long startup queue cleared, confirming the diagnosed delay. Exported the actual persisted title list to ignored artifacts/xbox-shared-e2e/Imported-Xbox-Titles.md and opened it for the user. Entries include 51 PC package identities and 19 Xbox title identities; history also contains demos/betas and companion apps. 39 filter/Gameplay unit tests and 24 desktop/fullscreen UI tests passed, in addition to the 21 scheduling/import checks.
+
+Published source commit a46c24d as a self-contained Windows Release client at artifacts/xbox-shared-e2e/client-import-fix. Gracefully restarted the prior test client with its existing isolated profile; verified the new process loaded Xbox, retained its stored connection and retained 70 Xbox ownerships. Updated Start-Xbox-Test.cmd to launch this build. Release solution build passed with zero warnings/errors; focused review found no actionable correctness findings. Validation details are recorded in docs/spikes/xbox-integration-validation.md.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Fixed plugin inventory refresh waiting behind built-in startup enrichment and full metadata/artwork sweeps. Imports publish promptly through existing desktop/fullscreen library and Gameplay store controls, while resolver writes remain serialized and later built-in imports still receive enrichment. Verified with 84 focused tests, a clean Release solution build, focused code review, and an updated isolated client retaining the signed-in account and 70 persisted Xbox entries. Delivered the actual imported title list, including demos/betas and companion entries. Gameplay remains based on Winnow-recorded sessions; Spending remains Steam-only.
+<!-- SECTION:FINAL_SUMMARY:END -->

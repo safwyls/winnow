@@ -89,6 +89,28 @@ invalid overrides, clearing an override, account/history isolation, hidden field
 saves, and keyboard/controller disclosure. Desktop and fullscreen captures were inspected.
 The earlier full-UI limitations above remain; no clean full-UI run is claimed for TASK-319.
 
+## Import visibility check
+
+TASK-320 reproduced a startup scheduling delay in the isolated client profile: Xbox sign-in
+and both history options were saved, but no Xbox ownerships or cache rows appeared while
+built-in startup enrichment ran. The same client eventually imported 70 entries after that
+queue cleared. An export of the persisted titles distinguished 51 PC package identities and
+19 additional Xbox title-history identities. The service history included demos, betas,
+a launcher and an artbook, so the count describes entries rather than 70 distinct full games.
+
+The host now publishes plugin inventories independently of startup enrichment and plugin
+metadata/artwork sweeps. Resolver writes remain serialized, and built-in startup completion
+still requests enrichment for its newly added works. The updated Release solution built with
+zero warnings or errors. Focused checks passed: 21 refresh/import/identity/action tests,
+39 filter/Gameplay unit tests and 24 desktop/fullscreen UI tests. A focused review found no
+correctness issues. The client was rebuilt and restarted with the same isolated test profile;
+its saved connection and 70 Xbox ownerships remained present.
+
+Library PLATFORM and Gameplay store options already accepted plugin stores; tests now cover
+Xbox appearing after a reload and being selected on both surfaces. Gameplay hours still
+come from completed Winnow sessions, and Spending remains the Steam account-purchase view.
+Neither can infer sessions or purchase values from Xbox last-played timestamps.
+
 ## Live validation still required
 
 - Cumulative-minute values need validation against an account/title with known service readings.
