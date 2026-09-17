@@ -16,6 +16,43 @@ public sealed class FirstRunSetupShellTests
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task Plugin_handoff_shows_installation_over_a_fresh_optional_setup(bool fullscreen)
+    {
+        var preview = PreviewData.Shell;
+        var progress = new FirstRunSetupService();
+        await progress.InitializeAsync(false, false);
+        var app = new ApplicationSettingsViewModel { StartInFullscreen = fullscreen };
+        var setup = new FirstRunSetupViewModel(preview.Stores, preview.Appearance, app, preview.LibrarySettings, progress);
+        var shell = new MainWindowViewModel(preview.Library, preview.MergeQueue, preview.Stores,
+            preview.Appearance, preview.Feed, preview.AccountStats, preview.LibrarySettings,
+            applicationSettings: app, setup: setup);
+        var opened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        setup.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(setup.IsOpen) && setup.IsOpen) opened.TrySetResult(); };
+        var window = new MainWindow { DataContext = shell };
+        window.Show();
+        try
+        {
+            await opened.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Dispatcher.UIThread.RunJobs();
+            window.ShowPluginInstallation();
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(setup.IsOpen);
+            Assert.Equal(0, await progress.LoadAsync());
+            Assert.True(shell.IsPluginSettingsVisible);
+            Assert.False(window.FindControl<LazyPane>("SetupPanel")!.IsEffectivelyVisible);
+            if (fullscreen)
+            {
+                var television = Assert.IsType<Winnow.App.Views.Fullscreen.FullscreenView>(window.FindControl<ContentControl>("TvHost")!.Content);
+                Assert.IsType<Winnow.App.Views.Fullscreen.FullscreenPluginInstallPage>(television.CurrentPage);
+            }
+            else Assert.True(window.FindControl<Grid>("ShellContent")!.IsEnabled);
+        }
+        finally { window.ExitFromTray(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task New_install_opens_setup_after_startup_in_the_selected_presentation(bool fullscreen)
     {
         var preview = PreviewData.Shell;

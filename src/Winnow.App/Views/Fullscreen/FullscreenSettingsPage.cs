@@ -304,6 +304,8 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         }
         else if (_section == "Plugins")
         {
+            if (Context.Shared.PluginSettings.Installation.HasRequest)
+                Action("Plugin installation", () => Context.Push(new FullscreenPluginInstallPage(Context)));
             Group("Loaded plugins");
             var loadedPlugins = FullscreenInformation.Metadata("");
             loadedPlugins.Bind(TextBlock.TextProperty, new Binding(nameof(PluginSettingsViewModel.LoadedPluginSummary)) { Source = Context.Shared.EnrichmentSettings.Plugins });

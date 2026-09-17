@@ -14,6 +14,30 @@ current session above the configuration controls. Pending enable or disable chan
 change this list until restart. When none are loaded, the list says so; discovered packages
 and installation errors remain available below it.
 
+### Install from the website
+
+The [plugins page](https://winnow.gg/plugins/) lists Winnow's SteamGridDB, Xbox and
+PlayStation providers with downloads from published GitHub releases. **Install in Winnow**
+opens the app, installs and enables a new package, then opens its settings. Desktop and
+fullscreen show progress, the result and a retry action on failure. Complete any required
+account connection or API-key setup there. SteamGridDB already ships with Winnow.
+
+Windows installers and Linux packages register the `winnow:` browser handoff. Update Winnow
+if the browser cannot open it. Portable installations can use the ZIP download below or
+register their executable as the handler. Browsers may ask permission to open an external app.
+A link for an existing plugin opens its settings without replacing its files or changing its
+enabled state; browser installation is not a plugin update mechanism.
+
+The link selects a known plugin ID and exact release tag, for example
+`winnow://plugins/install?id=psn&release=v0.2.0`. Winnow reads that release from
+`safwyls/winnow`, verifies the `winnow-plugins.json` catalogue against GitHub's SHA-256
+digest, then checks the selected ZIP's digest, size, identity and SDK compatibility.
+Downloads accept only the official asset URL and GitHub's release-asset hosts. Requests
+are serialized, wait for initial discovery and use the same bounded archive extraction as
+local ZIPs. New packages load immediately; existing assemblies are never replaced in memory.
+
+### Install a ZIP or unpacked package
+
 1. Open **Settings → Plugins → Open plugins folder**. The folder is `plugins`
    inside Winnow's data directory, including when using `--data-dir`. Winnow creates it
    during startup if it is missing.
@@ -38,7 +62,9 @@ never overwrite existing packages or replace a bundled plugin. To update a user 
 Winnow and replace its package files, or remove its directory before dropping in the replacement
 ZIP. To uninstall, close Winnow and remove the plugin directory.
 Disabling or uninstalling retains imported library facts and cached metadata. It stops future
-provider execution after restart. There is no online gallery, package downloader or hot reload.
+provider execution after restart. The website installer is limited to Winnow's own providers;
+third-party packages use the local installation flow. Automatic plugin updates and reloading
+existing assemblies are not supported.
 
 ## Trust and lifecycle
 

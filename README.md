@@ -242,6 +242,10 @@ effect on desktop and fullscreen without restarting; it does not change metadata
 ### Provider plugins
 
 Plugins can import game libraries, add metadata and artwork, and supply recommendation shelves.
+Find SteamGridDB, Xbox and PlayStation on the [plugins page](https://winnow.gg/plugins/).
+Choose **Install in Winnow** to install a new official plugin and open its settings, or
+download its ZIP. The Windows installer and Linux package register the browser link handler.
+Existing plugins are not replaced by install links.
 Open **Settings → Plugins → Open plugins folder**, drop in a plugin ZIP or copy an unpacked
 package into its own directory, then restart. ZIPs unpack automatically; enable the plugin
 and restart again to activate it. Third-party plugins run trusted code with

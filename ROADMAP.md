@@ -68,7 +68,9 @@ Unowned-game recommendations are outside the current feed. A later wishlist feat
 start from titles the user has explicitly selected, rather than a general purchase feed.
 
 The plugin contract excludes custom screens, UI replacement, an online marketplace and automatic
-plugin updates. SDK 1.1 adds shared account connection and provider game actions. Xbox history
+plugin updates. The website lists first-party providers with release-backed ZIP downloads and
+browser installation into desktop or fullscreen settings. CI packages all three providers with
+the application release and verifies a versioned catalogue. SDK 1.1 adds shared account connection and provider game actions. Xbox history
 does not establish ownership and cannot discover never-played uninstalled purchases. Winnow
 bundles its public Microsoft application ID; users sign in without Entra setup. Live PC/console
 history import is validated; cumulative minutes and protected WindowsApps launch/session

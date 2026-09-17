@@ -335,6 +335,11 @@ public sealed partial class FullscreenView : UserControl, IDisposable
         _context.Library.CloseDetailsCommand.Execute(null);
         _section = (section + _roots.Length) % _roots.Length; ShowPage();
     }
+    internal void ShowPluginInstallation()
+    {
+        SelectSection(3);
+        Push(new FullscreenPluginInstallPage(_context));
+    }
     private void ShowPage()
     {
         foreach (var stale in _actionReturnFocus.Keys.Where(item => !_stack.Contains(item)).ToArray()) _actionReturnFocus.Remove(stale);

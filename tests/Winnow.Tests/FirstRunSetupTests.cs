@@ -31,6 +31,22 @@ public sealed class FirstRunSetupTests : IDisposable
     }
 
     [Fact]
+    public async Task External_install_suspends_setup_without_completing_or_losing_its_cursor()
+    {
+        var progress = new FirstRunSetupService(Settings);
+        await progress.InitializeAsync(false, false);
+        var model = Model(progress);
+        await model.LoadAsync();
+        await model.NextCommand.ExecuteAsync(null);
+        Assert.True(model.SuspendForExternalAction());
+        Assert.False(model.IsOpen);
+        Assert.Equal("1", await Settings.GetAsync(FirstRunSetupService.ProgressKey));
+        await model.ReopenCommand.ExecuteAsync(null);
+        Assert.True(model.IsOpen);
+        Assert.Equal(FirstRunStep.Igdb, model.Step);
+    }
+
+    [Fact]
     public async Task Sample_run_does_not_show_or_destroy_an_existing_unfinished_cursor()
     {
         await Settings.SetAsync(FirstRunSetupService.ProgressKey, "2");

@@ -42,6 +42,18 @@ public partial class MainWindow
         }
         UpdateFullscreenPresentation();
     }
+    internal void ShowPluginInstallation()
+    {
+        if (DataContext is not MainWindowViewModel shared) return;
+        shared.Setup.SuspendForExternalAction();
+        shared.Library.CloseDetailsCommand.Execute(null);
+        shared.ShowPluginSettingsCommand.Execute(null);
+        if (IsFullscreen)
+        {
+            if (_tvView is null) EnsureTelevision();
+            _tvView?.ShowPluginInstallation();
+        }
+    }
     private void OnFullscreenPressed(object? sender, RoutedEventArgs e) => ToggleFullscreen();
     internal void UpdateGamepadStatus(string? status) => _tvView?.UpdateController(status);
     private void UpdateFullscreenPresentation()

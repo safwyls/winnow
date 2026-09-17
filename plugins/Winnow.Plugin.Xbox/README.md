@@ -6,7 +6,11 @@ support. It does not reference Winnow's application or database assemblies.
 
 ## Install
 
-Build an installable archive from the repository root:
+Download Xbox from the [Winnow plugins page](https://winnow.gg/plugins/).
+**Install in Winnow** installs and enables a new package, then opens its settings.
+Use the ZIP download if your installation has no browser link handler.
+
+To build an installable archive from source, run from the repository root:
 
 ```powershell
 .\plugins\Winnow.Plugin.Xbox\Package.ps1

@@ -13,6 +13,7 @@ public partial class FirstRunSetupViewModel : ObservableObject
     private readonly FirstRunSetupService _progress;
     private bool _navigating;
     private bool _loaded;
+    private bool _suspended;
 
     public FirstRunSetupViewModel(StoresViewModel stores, AppearanceViewModel appearance,
         ApplicationSettingsViewModel application, LibrarySettingsViewModel librarySettings,
@@ -97,6 +98,16 @@ public partial class FirstRunSetupViewModel : ObservableObject
     }
 
     private bool CanNavigate() => IsOpen && !IsBusy;
+    internal bool SuspendForExternalAction()
+    {
+        if (IsBusy) return false;
+        if (!IsOpen) return true;
+        // Keep the saved cursor so an external action does not complete optional setup.
+        _suspended = true;
+        ClearDrafts();
+        IsOpen = false;
+        return true;
+    }
     private bool CanReopen() => !IsOpen && !IsBusy;
     [RelayCommand(CanExecute = nameof(CanNavigate))]
     private Task NextAsync() => MoveAsync(Step == FirstRunStep.Ready ? null : (int)Step + 1, waitForPreferences: true);
@@ -112,7 +123,8 @@ public partial class FirstRunSetupViewModel : ObservableObject
     {
         if (!CanReopen()) return;
         _loaded = true;
-        await MoveAsync(0, reopening: true);
+        await MoveAsync(_suspended ? (int)Step : 0, reopening: true);
+        _suspended = false;
     }
 
     private async Task MoveAsync(int? cursor, bool reopening = false, bool waitForPreferences = false)

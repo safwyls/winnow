@@ -6,7 +6,11 @@ public SDK. It needs no Node.js runtime and does not run the npm package.
 
 ## Install and connect
 
-Build the ZIP from the repository root:
+Download PlayStation from the [Winnow plugins page](https://winnow.gg/plugins/).
+**Install in Winnow** installs and enables a new package, then opens its settings.
+Use the ZIP download if your installation has no browser link handler.
+
+To build the ZIP from source, run from the repository root:
 
 ```powershell
 ./plugins/Winnow.Plugin.Psn/Package.ps1

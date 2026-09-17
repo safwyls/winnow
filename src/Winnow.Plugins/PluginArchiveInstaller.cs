@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Text.Json;
+using Winnow.PluginSdk;
 
 namespace Winnow.Plugins;
 
@@ -14,7 +15,7 @@ public static class PluginArchiveInstaller
 
     public static async Task<string?> TryInstallAsync(string archivePath, string userRoot,
         IReadOnlySet<string> installedIds, Action<string, string> reportIssue,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, Action<PluginManifest>? validateManifest = null)
     {
         string? staging = null;
         string? installedDirectory = null;
@@ -71,6 +72,8 @@ public static class PluginArchiveInstaller
 
                 var manifest = await PluginManifestReader.ReadAsync(Path.Combine(staging, "plugin.json"), cancellationToken)
                     .ConfigureAwait(false);
+                // Verified downloads must match their release metadata before anything becomes discoverable.
+                validateManifest?.Invoke(manifest);
                 ValidateComponent(manifest.Id);
                 Require(File.Exists(Path.Combine(staging, manifest.EntryAssembly)), "The plugin ZIP is missing its entry DLL.");
                 Require(!installedIds.Any(id => string.Equals(id, manifest.Id, StringComparison.OrdinalIgnoreCase)),

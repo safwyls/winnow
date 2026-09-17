@@ -77,6 +77,7 @@
 .player-page .closing { padding-block: 90px 104px; border-top: 1px solid var(--line); }
 .player-page .closing > p:last-child { font-size: .95rem; }
 .player-page footer { font-size: .875rem; }
+.player-page footer > div { flex-wrap: wrap; }
 
 @media (min-width: 901px) and (max-width: 1200px) {
   .player-page .hero { grid-template-columns: .85fr 1.15fr; }

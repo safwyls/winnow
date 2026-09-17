@@ -23,7 +23,7 @@ export default function Developers() {
     <main className="dev-page">
       <header className="site-header dev-header">
         <a className="brand" href={sitePath('/')} aria-label="Winnow home"><span className="brand-mark" aria-hidden="true" /><span>Winnow</span><span className="dev-slash">/ developers</span></a>
-        <nav aria-label="Developer navigation"><a href="#architecture">Architecture</a><a href={sitePath('/docs/plugin-sdk/')}>Plugin SDK</a><a className="nav-docs" href={sitePath('/docs/')}>Docs</a><a className="nav-cta" href="https://github.com/safwyls/winnow"><Code2 size={15} aria-hidden="true" /> GitHub</a></nav>
+        <nav aria-label="Developer navigation"><a href="#architecture">Architecture</a><a href={sitePath('/plugins/')}>Plugins</a><a href={sitePath('/docs/plugin-sdk/')}>Plugin SDK</a><a className="nav-docs" href={sitePath('/docs/')}>Docs</a><a className="nav-cta" href="https://github.com/safwyls/winnow"><Code2 size={15} aria-hidden="true" /> GitHub</a></nav>
       </header>
 
       <section className="dev-hero shell">

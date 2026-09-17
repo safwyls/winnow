@@ -9,7 +9,7 @@ export default function DocsFrame({ active, children, toc }: { active?: string; 
     <header className="site-header docs-header">
       <a className="brand" href={sitePath('/')} aria-label="Winnow home"><span className="brand-mark" aria-hidden="true" /><span>Winnow</span></a>
       <a className="docs-header-label" href={sitePath('/docs/')}>Documentation</a>
-      <nav aria-label="Site navigation"><a href={sitePath('/developers/')}>Developers</a><a href="https://github.com/safwyls/winnow">GitHub</a><a className="nav-cta" href="https://github.com/safwyls/winnow/releases">Download</a></nav>
+      <nav aria-label="Site navigation"><a href={sitePath('/plugins/')}>Plugins</a><a href={sitePath('/developers/')}>Developers</a><a href="https://github.com/safwyls/winnow">GitHub</a><a className="nav-cta" href="https://github.com/safwyls/winnow/releases">Download</a></nav>
     </header>
     <div className={`docs-layout shell ${toc ? '' : 'docs-layout-home'}`}>
       <DocsNavigation entries={searchEntries} guides={guideLinks} active={active} />

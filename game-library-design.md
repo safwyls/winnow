@@ -922,6 +922,17 @@ validation. Existing plugin IDs and destination paths cannot be replaced. Succes
 move to `.archives`; failed inputs remain with a settings diagnostic. Discovery ignores
 `.archives` and `.unpack-*` staging directories, including leftovers from interrupted launches.
 
+The official website installer accepts only `winnow://plugins/install?id=<known-id>&release=<tag>`.
+Startup validates this bounded input before resolving configuration or data paths; same-user
+single-instance IPC forwards it to a running app. It verifies a published `safwyls/winnow`
+release's catalogue and ZIP against GitHub asset digests, size limits and package identity,
+with redirects limited to GitHub asset hosts. Catalogue API/SDK requirements are checked before
+publication. Installation waits for discovery and takes the catalogue lifecycle lock. It can
+enable and load a new first-party package immediately, but cannot replace existing plugin
+files or change an existing plugin's activation preference. Incomplete downloads use a
+non-ZIP temporary extension. Desktop and fullscreen share progress and results and open the
+selected provider's settings. Windows installers and Linux packages register the URI scheme.
+
 Plugin code runs in-process with the application's permissions. Assembly load contexts isolate
 dependencies, not filesystem/network access. Initializers and provider calls run on worker
 threads with 30-second and 120-second deadlines. Exceptions use fixed diagnostics; timeouts

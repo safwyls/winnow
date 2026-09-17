@@ -48,6 +48,18 @@
                     <ColumnDefinition Width="*" MaxWidth="1100"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel HorizontalAlignment="Stretch" Spacing="14">
+                    <Border Classes="card" IsVisible="{Binding Installation.HasRequest}">
+                        <StackPanel Spacing="12">
+                            <TextBlock Classes="label section" Text="PLUGIN INSTALLATION"/>
+                            <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Installation.Status}"
+                                       AutomationProperties.AutomationId="PluginInstallStatus" AutomationProperties.LiveSetting="Polite"/>
+                            <ProgressBar IsIndeterminate="True" IsVisible="{Binding Installation.IsBusy}" Height="3"
+                                         Foreground="{StaticResource Volt}" AutomationProperties.Name="Installing plugin"/>
+                            <Button Classes="act" Content="Retry installation" HorizontalAlignment="Left"
+                                    IsVisible="{Binding Installation.CanRetry}" Command="{Binding Installation.RetryCommand}"
+                                    AutomationProperties.Name="Retry plugin installation"/>
+                        </StackPanel>
+                    </Border>
                     <TextBlock Classes="label section" AutomationProperties.HeadingLevel="2" Text="LOADED PLUGINS"/>
                     <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding LoadedPluginSummary}"
                                AutomationProperties.AutomationId="LoadedPluginsSummary" AutomationProperties.LiveSetting="Polite"/>

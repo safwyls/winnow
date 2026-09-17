@@ -1,6 +1,6 @@
 # Winnow promo site
 
-The player page, developer page, documentation guides, and interactive architecture diagram deploy to
+The player page, plugins catalogue, developer page, documentation guides, and interactive architecture diagram deploy to
 https://winnow.gg/ through `.github/workflows/pages.yml`.
 GitHub Pages must use **GitHub Actions** as its publishing source in repository
 Settings → Pages. No deployment secret is required.
@@ -13,9 +13,25 @@ also supports manual runs on `main`.
 
 From this directory, run `npm ci` and `npm run build:pages` with Node 22.13 or newer.
 Upload only `dist/pages` to Pages. The build renders the player and developer routes plus
-`/docs/`, `/docs/setup/`, `/docs/configuration/`, `/docs/plugins/`, and `/docs/plugin-sdk/`.
+`/plugins/`, `/docs/`, `/docs/setup/`, `/docs/configuration/`, `/docs/plugins/`, and `/docs/plugin-sdk/`.
 It arranges routes as directory indexes and checks local HTML/CSS links and HTML anchors.
 Missing rendered pages or assets fail the build.
+
+## Plugin downloads
+
+`/plugins/` lists Xbox, PlayStation and SteamGridDB. It reads the latest 100 published
+GitHub releases in the browser, preferring the newest stable release with verified plugin
+assets and otherwise labeling the newest eligible pre-release. It requires the release
+catalogue and uploaded ZIP metadata with a SHA-256 digest, bounded size and exact official
+download URL. The browser uses GitHub's JSON API; it does not fetch release binaries across
+origins. API failures offer Retry and a releases-page fallback; older releases without
+plugin assets leave all entries visible with an unavailable state. No token is needed.
+
+Install links use `winnow://plugins/install?id=<id>&release=<tag>`. Winnow independently
+verifies the selected release catalogue and package before installing. Existing plugins
+are not replaced by a link. ZIP downloads remain available for portable installations.
+Release selection and failure cases are tested by `scripts/plugin-releases.test.mjs`
+as part of every Pages build. New published releases appear without rebuilding the site.
 
 ## Documentation
 

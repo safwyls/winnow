@@ -1,0 +1,62 @@
+.plugins-page { min-height: 100vh; background: #0d191b; }
+.plugins-page .shell { max-width: 1360px; }
+.plugins-header nav > a[aria-current] { color: var(--volt); }
+.plugins-skip { position: absolute; z-index: 10; top: -100px; left: 16px; padding: 12px 20px; background: var(--volt); color: var(--well); }
+.plugins-skip:focus { top: 16px; }
+.plugins-intro { padding-block: 40px 18px; }
+.plugins-intro .eyebrow { margin-bottom: 12px; font-size: .875rem; }
+.plugins-intro h1 { font-size: clamp(2.75rem, 5vw, 4rem); }
+.plugins-intro > p:last-child { max-width: 46rem; margin: 20px 0 0; color: #c3d0cc; font-size: 1.0625rem; }
+.plugins-release { display: flex; align-items: center; gap: 16px; min-height: 60px; padding-block: 12px 18px; color: var(--dim); font-size: .875rem; }
+.plugins-release p { margin: 0; }
+.plugins-release a, .plugins-noscript a { color: var(--text); text-decoration: underline; text-underline-offset: 4px; }
+.plugins-release button { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; padding: 8px 12px; color: var(--volt); background: transparent; border: 1px solid var(--line); border-radius: 4px; font: inherit; cursor: pointer; }
+.plugins-release button:focus-visible { outline: 2px solid var(--volt); outline-offset: 4px; }
+.plugins-channel { margin-right: 12px; color: var(--volt); font-weight: 600; }
+.plugins-channel.beta { color: var(--amber); }
+.plugin-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-block: 1px solid var(--line); background: var(--surface); }
+.plugin-card { display: flex; flex-direction: column; min-width: 0; padding: clamp(24px, 3vw, 40px); border-right: 1px solid var(--line); }
+.plugin-card:last-child { border-right: 0; }
+.plugin-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; color: var(--volt); }
+.plugin-psn .plugin-heading { color: var(--azure); }
+.plugin-steamgriddb .plugin-heading { color: var(--flare); }
+.plugin-heading span { color: var(--dim); font-size: .875rem; }
+.plugin-card h2 { font-size: clamp(1.8rem, 2.6vw, 2.5rem); line-height: 1.15; margin: 28px 0 16px; }
+.plugin-description { margin: 0; min-height: 5rem; }
+.plugin-setup { margin: 20px 0 0; color: #c3d0cc; }
+.plugin-availability { margin: 16px 0 0; color: var(--dim); font-size: .875rem; }
+.plugin-actions { margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--line); }
+.plugin-version { margin: 0 0 18px; font: .875rem/1.5 'Plex Mono', monospace; }
+.plugin-version span { color: var(--dim); white-space: nowrap; }
+.plugin-actions .button { width: 100%; box-shadow: none; }
+.plugin-zip { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; margin-top: 8px; font-size: .875rem; color: #c3d0cc; }
+.plugin-zip:hover { color: var(--volt); }
+.plugin-unavailable { color: var(--dim); font-size: .875rem; margin: 0; }
+.plugin-handoff { color: var(--volt); min-height: 26px; font-size: .875rem; margin: 20px 0; }
+.plugins-help { display: grid; grid-template-columns: 1.1fr 1fr; gap: clamp(28px, 8vw, 120px); padding-block: 26px 70px; }
+.plugins-help h2 { font-size: 2rem; line-height: 1.15; margin: 0 0 20px; }
+.plugins-help h3 { font-size: 1.25rem; line-height: 1.25; margin: 0 0 12px; }
+.plugins-help h3:not(:first-child) { margin-top: 28px; }
+.plugins-help p { color: #c3d0cc; margin: 0 0 16px; }
+.plugins-help strong { color: var(--text); font-weight: 600; }
+.plugins-help .text-link { color: var(--volt); font-size: 1rem; }
+.plugins-page footer { font-size: .875rem; }
+@media (max-width: 900px) {
+  .plugin-grid { grid-template-columns: 1fr; }
+  .plugin-card { padding: 28px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .plugin-card:last-child { border-bottom: 0; }
+  .plugin-description { min-height: 0; }
+  .plugin-actions .button { width: auto; }
+  .plugin-zip { display: inline-flex; margin: 0 0 0 20px; }
+  .plugins-help { grid-template-columns: 1fr; gap: 32px; }
+}
+@media (max-width: 620px) {
+  .plugins-header { height: auto; min-height: 80px; flex-wrap: wrap; gap: 12px; padding-block: 16px; }
+  .plugins-header nav { flex-wrap: wrap; gap: 16px; }
+  .plugins-header nav a:not(.nav-cta) { display: inline; }
+  .plugins-intro { padding-top: 32px; }
+  .plugins-release { align-items: flex-start; flex-wrap: wrap; }
+  .plugin-actions .button { width: 100%; }
+  .plugin-zip { display: flex; margin: 8px 0 0; }
+  .plugins-page footer > div { flex-wrap: wrap; }
+}

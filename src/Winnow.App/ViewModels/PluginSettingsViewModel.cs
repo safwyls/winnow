@@ -7,13 +7,25 @@ using Winnow.PluginSdk;
 namespace Winnow.App.ViewModels;
 
 public partial class PluginSettingsViewModel(
-    IPluginSettingsBackend? backend = null, IUriDispatcher? uris = null, TimeProvider? timeProvider = null) : ObservableObject
+    IPluginSettingsBackend? backend = null, IUriDispatcher? uris = null, TimeProvider? timeProvider = null,
+    IOfficialPluginInstaller? installer = null) : ObservableObject
 {
+    private readonly SemaphoreSlim _loadGate = new(1, 1);
+    private PluginInstallViewModel? _installation;
+    public PluginInstallViewModel Installation => _installation ??= new(installer, backend, ShowInstalledSettingsAsync);
+    public event Action<PluginCardViewModel>? PluginSettingsRequested;
+    private async Task ShowInstalledSettingsAsync(string id)
+    {
+        await LoadAsync();
+        var plugin = Plugins.FirstOrDefault(plugin => plugin.Id == id)
+            ?? throw new InvalidOperationException("Installed plugin settings are unavailable.");
+        PluginSettingsRequested?.Invoke(plugin);
+    }
     public string Title => "Plugins";
     public string SegmentLabel => "PLUGINS";
     public string SegmentTooltip => "Install and configure provider plugins";
     public string IntroMessage => "Manage plugins for library imports, metadata, artwork and recommendations.";
-    public const string InstallationNote = "Place a plugin ZIP or unpacked plugin in the plugins folder, then restart Winnow. ZIPs unpack automatically. Enable the plugin here and restart to activate it. Only enable plugins from authors you trust: plugins run with Winnow's access to this device.";
+    public const string InstallationNote = "Install official plugins from the Winnow website, or place a plugin ZIP or unpacked plugin in the plugins folder and restart. ZIPs unpack automatically. Manually added plugins need enabling and a restart. Only enable plugins from authors you trust: plugins run with Winnow's access to this device.";
     public const string SecretNote = "Secrets are stored securely on this device and are never shown again. Leave a secret blank to keep its saved value.";
     public ObservableCollection<PluginCardViewModel> Plugins { get; } = [];
     public string UserPluginDirectory => backend?.UserPluginDirectory ?? string.Empty;
@@ -23,7 +35,8 @@ public partial class PluginSettingsViewModel(
 
     public async Task LoadAsync(CancellationToken ct = default)
     {
-        if (IsBusy || backend is null) return;
+        if (backend is null) return;
+        await _loadGate.WaitAsync(ct);
         IsBusy = true;
         foreach (var plugin in Plugins) plugin.ClearSecrets();
         var drafts = Plugins.SelectMany(plugin => plugin.Fields).ToDictionary(editor => editor, editor => editor.Revision);
@@ -50,7 +63,7 @@ public partial class PluginSettingsViewModel(
             LoadedPluginSummary = "Loaded plugins could not be read.";
             Status = "Could not read plugins. Restart Winnow to try again.";
         }
-        finally { IsBusy = false; }
+        finally { IsBusy = false; _loadGate.Release(); }
     }
 
     public void ClearSecrets() { foreach (var plugin in Plugins) plugin.Deactivate(); }

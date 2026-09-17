@@ -3,6 +3,10 @@ import { cpSync, mkdirSync, readFileSync, existsSync, readdirSync, writeFileSync
 import path from 'node:path';
 import './export-architecture.mjs';
 
+const tests = spawnSync(process.execPath, ['--experimental-strip-types', '--test', 'scripts/plugin-releases.test.mjs'], { stdio: 'inherit' });
+if (tests.error) throw tests.error;
+if (tests.status !== 0) process.exit(tests.status ?? 1);
+
 const basePath = process.env.PAGES_BASE_PATH ?? '';
 if (basePath !== '' && !/^\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/.test(basePath)) {
   throw new Error('PAGES_BASE_PATH must be empty or a slash-prefixed path without a trailing slash.');
@@ -20,7 +24,7 @@ mkdirSync(output, { recursive: true });
 cpSync('public', output, { recursive: true });
 // Vinext places assetPrefix in the output tree; Pages supplies that mount path.
 cpSync(`dist/client${basePath}/_next`, `${output}/_next`, { recursive: true });
-const routes = ['developers', 'docs', 'docs/setup', 'docs/configuration', 'docs/plugins', 'docs/plugin-sdk'];
+const routes = ['developers', 'plugins', 'docs', 'docs/setup', 'docs/configuration', 'docs/plugins', 'docs/plugin-sdk'];
 const pages = [
   ['index.html', 'index.html'], ['404.html', '404.html'],
   ...routes.map(route => [`${route}.html`, `${route}/index.html`]),

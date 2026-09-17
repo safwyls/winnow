@@ -3083,9 +3083,22 @@ left-aligned on wider displays, with the version beneath the name
 and an Enabled/Disabled switch at the upper right. The tab shows one card per discovered plugin, with its name, version,
 description, supported features and status. **Open plugins folder** opens the installation
 directory. ZIP packages unpack automatically at startup; users may also place unpacked packages
-there. Failed ZIP imports appear alongside other package diagnostics. Explain that installing and changing enablement requires a restart and that plugins
+there. Failed ZIP imports appear alongside other package diagnostics. Explain that manually installing and changing enablement requires a restart and that plugins
 run with Winnow's access to the device. A malformed or incompatible package states its failure;
 only a package with a valid manifest offers configuration controls.
+
+An **Install in Winnow** link on the official website restores the current desktop or
+fullscreen window and starts installation without another confirmation. Desktop Plugins
+shows a polite status line and an accent progress bar above the cards; fullscreen uses a
+dedicated installation page with the same status and a Back action. Success opens the
+plugin's settings, preserving the completion message. An existing plugin opens its current
+settings without replacing it. Failures keep a **Retry installation** action in keyboard and
+controller reach. Installation continues when leaving the page, without interrupting the
+player’s new location when it finishes. Official plugins activate immediately; account or
+API-key setup still happens in their ordinary settings.
+On a first launch, the optional setup screen pauses for installation and keeps its saved
+step. It can be reopened in Application settings and resumes on the next launch. An active
+setup sign-in finishes before the handoff changes screens.
 
 Winnow generates labelled text fields, boolean toggles and masked secret fields from each
 plugin's manifest. Tokens managed by a connection never appear as editable credential fields.

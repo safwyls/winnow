@@ -117,8 +117,10 @@ package_installed=1
 command -v xvfb-run >/dev/null || fail "xvfb-run was not installed"
 [[ -x /usr/bin/winnow ]] || fail "installed launcher is not executable"
 [[ -x /opt/winnow/Winnow ]] || fail "installed app host is not executable"
-grep -Fqx 'Exec=winnow %U' /usr/share/applications/winnow.desktop \
+grep -Fqx 'Exec=winnow %u' /usr/share/applications/winnow.desktop \
     || fail "installed desktop entry has an unexpected command"
+grep -Fqx 'MimeType=x-scheme-handler/winnow;' /usr/share/applications/winnow.desktop \
+    || fail "installed desktop entry does not register the Winnow URI handler"
 
 # The process owns an isolated path. Seeing its database proves migrations and
 # host startup ran under Xvfb without touching any real user library.

@@ -1,11 +1,13 @@
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace Winnow.App.Services;
 
 /// <summary>A per-library, current-user channel that queues launches until the UI is ready.</summary>
 internal sealed class SingleInstanceActivation : IDisposable
 {
+    internal const int MaximumUriBytes = 512;
     private readonly CancellationTokenSource _stop = new();
     private readonly object _gate = new();
     private readonly Task _listener;
@@ -78,6 +80,19 @@ internal sealed class SingleInstanceActivation : IDisposable
                         var id = System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(payload);
                         if (id > 0) action = AppActivationRequest.ForGame(id);
                     }
+                    if (request[0] == 4)
+                    {
+                        var size = new byte[2];
+                        await pipe.ReadExactlyAsync(size, exchange.Token);
+                        var length = System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(size);
+                        if (length is > 0 and <= MaximumUriBytes)
+                        {
+                            var payload = new byte[length];
+                            await pipe.ReadExactlyAsync(payload, exchange.Token);
+                            if (PluginInstallRequest.TryParseUri(Encoding.UTF8.GetString(payload), out var plugin) && plugin is not null)
+                                action = AppActivationRequest.ForPlugin(plugin);
+                        }
+                    }
                     await pipe.WriteAsync(new byte[] { action is not null && Enqueue(action) ? (byte)1 : (byte)0 }, exchange.Token);
                 }
                 catch (Exception ex) when (ex is IOException or OperationCanceledException) { }
@@ -104,9 +119,17 @@ internal sealed class SingleInstanceActivation : IDisposable
             await pipe.ReadExactlyAsync(process, deadline.Token);
             // A newly launched process can pass its foreground permission to the existing UI.
             if (OperatingSystem.IsWindows()) AllowSetForegroundWindow(BitConverter.ToInt32(process));
-            var payload = new byte[request.Kind == AppActivationKind.LaunchGame ? 9 : 1];
+            var uri = request.Plugin is { } plugin ? Encoding.UTF8.GetBytes(
+                $"winnow://plugins/install?id={plugin.PluginId}&release={plugin.ReleaseTag}") : null;
+            if (uri is { Length: > MaximumUriBytes }) return false;
+            var payload = new byte[uri is not null ? 3 + uri.Length : request.Kind == AppActivationKind.LaunchGame ? 9 : 1];
             payload[0] = (byte)request.Kind;
-            if (payload.Length == 9)
+            if (uri is not null)
+            {
+                System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(1), (ushort)uri.Length);
+                uri.CopyTo(payload, 3);
+            }
+            else if (payload.Length == 9)
                 System.Buffers.Binary.BinaryPrimitives.WriteInt64LittleEndian(payload.AsSpan(1), request.OwnershipId);
             await pipe.WriteAsync(payload, deadline.Token);
             var reply = new byte[1];

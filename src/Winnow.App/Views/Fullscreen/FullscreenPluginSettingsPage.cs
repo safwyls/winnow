@@ -19,6 +19,9 @@ public sealed class FullscreenPluginSettingsPage : FullscreenPage
         _model = model;
         var controls = FullscreenInformation.Column();
         controls.Children.Add(FullscreenUi.Text(model.Name, 64));
+        var installation = context.Shared.PluginSettings.Installation;
+        if (installation.HasRequest && installation.PluginId == model.Id)
+            controls.Children.Add(FullscreenPluginInstallPage.Status(installation));
         controls.Children.Add(FullscreenInformation.Metadata(model.Version));
         controls.Children.Add(FullscreenInformation.Text(model.Description));
         controls.Children.Add(FullscreenInformation.Metadata(model.Capabilities));
