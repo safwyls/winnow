@@ -290,6 +290,7 @@ public sealed class UpdateAcknowledgementCompositionTests
         using var db = new TempDatabase();
         Seed(db);
         await using var services = Services(db);
+        await using var pendingLoads = new PendingFeedLoads(services);
         var library = services.GetRequiredService<LibraryViewModel>();
         await library.LoadCommand.ExecuteAsync(null);
         await library.OpenDetailsCommand.ExecuteAsync(Assert.Single(library.AllTiles, tile => tile.Game.ResolvedWorkId == 1));
@@ -328,12 +329,13 @@ public sealed class UpdateAcknowledgementCompositionTests
         Assert.Equal(expected, Assert.Single(rows, row => row.ReleaseId == 1).Game.UnreadUpdateCount);
     }
 
-    private sealed class PendingFeedLoads(ServiceProvider services, FullscreenContext context) : IAsyncDisposable
+    private sealed class PendingFeedLoads(ServiceProvider services, FullscreenContext? context = null) : IAsyncDisposable
     {
         public async ValueTask DisposeAsync()
         {
             await (services.GetRequiredService<FeedViewModel>().LoadCommand.ExecutionTask ?? Task.CompletedTask);
-            await (context.Feed.LoadCommand.ExecutionTask ?? Task.CompletedTask);
+            if (context is not null)
+                await (context.Feed.LoadCommand.ExecutionTask ?? Task.CompletedTask);
         }
     }
 
