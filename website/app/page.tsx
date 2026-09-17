@@ -1,6 +1,7 @@
 import { sitePath } from '@/lib/site-path';
 import { ArrowRight, Download, ShieldCheck } from 'lucide-react';
 import StoryDemos from './StoryDemos';
+import HeroCarousel from './HeroCarousel';
 
 const releasesUrl = 'https://github.com/safwyls/winnow/releases';
 
@@ -38,9 +39,7 @@ export default function Home() {
           <p className="local-note"><ShieldCheck size={16} aria-hidden="true" /> Local-first. No account. No telemetry.</p>
         </div>
 
-        <div className="library-stage" aria-label="Winnow library showing dormant games as faded cover art">
-          <div className="screenshot-crop"><img src={sitePath('/assets/library-grid.png')} alt="A game cover grid with older, dormant games visibly faded" /></div>
-        </div>
+        <HeroCarousel />
       </section>
 
       <section className="proof-strip" aria-label="Winnow at a glance">

@@ -19,6 +19,12 @@ Missing rendered pages or assets fail the build.
 
 ## Documentation
 
+The home-page hero uses the eight app screenshots in `public/assets/screenshots/`.
+`app/HeroCarousel.tsx` keeps their captions and alternative text together. Slides advance
+every 5.5 seconds, pause during hover or keyboard focus, and stop after manual selection.
+Reduced-motion preferences disable automatic rotation. The fixed image area shows each
+complete screenshot without cropping or shifting the surrounding page.
+
 `app/docs/player-content.tsx` contains player walkthroughs; `sdk-content.tsx` contains the
 API 1 reference. Shared article components supply navigation, section links, and a browser-local
 search index built from the same article content. All prose is prerendered and remains readable
