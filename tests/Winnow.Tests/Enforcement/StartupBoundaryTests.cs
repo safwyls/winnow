@@ -16,6 +16,29 @@ namespace Winnow.Tests.Enforcement;
 /// </summary>
 public sealed class StartupBoundaryTests
 {
+    [Fact]
+    public void Startup_workers_wait_for_native_platform_services()
+    {
+        var text = RepositoryTree.Read("src/Winnow.App/Program.cs");
+        var platformReady = text.IndexOf(".AfterPlatformServicesSetup(", StringComparison.Ordinal);
+        Assert.True(platformReady >= 0, "Startup workers need a native platform initialization boundary.");
+        var open = text.IndexOf('{', platformReady);
+        var depth = 1;
+        var end = open + 1;
+        for (; end < text.Length && depth > 0; end++)
+        {
+            if (text[end] == '{') depth++;
+            else if (text[end] == '}') depth--;
+        }
+
+        // These paths can publish immediately, before application construction has finished.
+        foreach (var marker in new[] { "host.Start();", "startup = Task.Run(", "var pluginStartup = Task.Run(" })
+        {
+            var worker = text.IndexOf(marker, StringComparison.Ordinal);
+            Assert.True(worker > open && worker < end, $"{marker} must wait for native platform services.");
+        }
+    }
+
     /// <summary>
     /// A lifecycle override that is <c>async void</c> has no caller to return a
     /// fault to: the framework raised it and awaits nothing, so an exception

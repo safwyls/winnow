@@ -11,6 +11,46 @@ public sealed class StartupProcessTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task Windows_startup_opens_a_responsive_native_window(bool fullscreen)
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        using var fixture = new StartupDirectory();
+        fixture.CreateLibrary(fullscreen);
+        var start = CreateStartInfo(fixture);
+        // WaitForInputIdle requires a GUI-subsystem executable, rather than dotnet.exe.
+        start.FileName = Path.Combine(AppContext.BaseDirectory, "Winnow.exe");
+        start.ArgumentList.RemoveAt(0);
+        using var process = Process.Start(start)!;
+        var error = process.StandardError.ReadToEndAsync();
+        var output = process.StandardOutput.ReadToEndAsync();
+        try
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            while (!process.HasExited && process.MainWindowHandle == IntPtr.Zero)
+            {
+                await Task.Delay(100, timeout.Token);
+                process.Refresh();
+            }
+            Assert.False(process.HasExited, "Winnow exited before opening its native window.");
+            Assert.True(process.WaitForInputIdle(10_000), "The native message loop never became idle.");
+            // A window can be created before MainLoop throws; give that failure time to surface.
+            await Task.Delay(1000, timeout.Token);
+            process.Refresh();
+            Assert.False(process.HasExited, "Winnow exited after creating its native window.");
+            Assert.True(process.Responding, "The native window is not processing messages.");
+        }
+        finally
+        {
+            if (!process.HasExited) process.Kill(entireProcessTree: true);
+            await process.WaitForExitAsync();
+            await output;
+        }
+        Assert.DoesNotContain("Winnow could not start", await error, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task Malformed_configuration_is_reported_before_the_library_is_opened(bool fullscreen)
     {
         using var fixture = new StartupDirectory();
@@ -83,20 +123,7 @@ public sealed class StartupProcessTests
 
     private static async Task<(int ExitCode, string Error)> LaunchAsync(StartupDirectory fixture)
     {
-        var start = new ProcessStartInfo("dotnet")
-        {
-            WorkingDirectory = fixture.Root,
-            UseShellExecute = false,
-            RedirectStandardError = true,
-            RedirectStandardOutput = true,
-            CreateNoWindow = true,
-        };
-        start.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, "Winnow.dll"));
-        start.ArgumentList.Add("--data-dir");
-        start.ArgumentList.Add(fixture.Data);
-        start.ArgumentList.Add("--no-sync");
-        start.Environment["DOTNET_ENVIRONMENT"] = "Production";
-        using var process = Process.Start(start)!;
+        using var process = Process.Start(CreateStartInfo(fixture))!;
         var error = process.StandardError.ReadToEndAsync();
         var output = process.StandardOutput.ReadToEndAsync();
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
@@ -112,6 +139,24 @@ public sealed class StartupProcessTests
         }
         await output;
         return (process.ExitCode, await error);
+    }
+
+    private static ProcessStartInfo CreateStartInfo(StartupDirectory fixture)
+    {
+        var start = new ProcessStartInfo("dotnet")
+        {
+            WorkingDirectory = fixture.Root,
+            UseShellExecute = false,
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+            CreateNoWindow = true,
+        };
+        start.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, "Winnow.dll"));
+        start.ArgumentList.Add("--data-dir");
+        start.ArgumentList.Add(fixture.Data);
+        start.ArgumentList.Add("--no-sync");
+        start.Environment["DOTNET_ENVIRONMENT"] = "Production";
+        return start;
     }
 
     private sealed class StartupDirectory : IDisposable
@@ -133,6 +178,14 @@ public sealed class StartupProcessTests
             return factory;
         }
 
-        public void Dispose() => Directory.Delete(Root, recursive: true);
+        public void Dispose()
+        {
+            // Native process teardown can release SQLite handles shortly after exit is signalled.
+            for (var attempt = 0; ; attempt++)
+            {
+                try { Directory.Delete(Root, recursive: true); return; }
+                catch (IOException) when (attempt < 20) { Thread.Sleep(100); }
+            }
+        }
     }
 }

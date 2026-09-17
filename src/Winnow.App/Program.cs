@@ -299,116 +299,119 @@ public static class Program
                 return;
             }
 
-            host.Start();
+            // Workers can publish UI changes immediately. Initialize the native dispatcher
+            // first, or an early UIThread access permanently selects Avalonia's fallback.
+            BuildAvaloniaApp().AfterPlatformServicesSetup(platform =>
+            {
+                host.Start();
 
 #if DEBUG
-            // --seed-sample fills an empty database with the M0 sample library
-            // so the view is verifiable before real ingest is wired. After
-            // migrations, before the UI reads anything.
-            if (args.Contains("--seed-sample"))
-            {
-                Services.SampleDataSeeder.SeedAsync(host.Services).GetAwaiter().GetResult();
-            }
-            else
-#endif
-            // F04. Nothing below gates the window: the shell opens on whatever
-            // the database already holds and this fills it in behind. --no-sync
-            // skips it for UI work against a fixed database.
-            if (!args.Contains("--no-sync"))
-            {
-                // Local sync first: it creates the rows everything else
-                // enriches, and on a first run the grid is empty until it
-                // lands. Then remote backfill, then enrichment. Sequential
-                // because each step reads what the last one wrote — and because
-                // one resolver transaction at a time is the rule the sync gate
-                // exists to keep.
-                startup = Task.Run(async () =>
+                // --seed-sample fills an empty database with the M0 sample library
+                // so the view is verifiable before real ingest is wired. After
+                // migrations, before the UI reads anything.
+                if (args.Contains("--seed-sample"))
                 {
-                    var services = host.Services;
-                    // Returns the burst's pooled page caches and GC regions while
-                    // the pipeline runs, and once more when it ends.
-                    using var trim = Services.StartupMemoryTrim.Start(services, Shutdown.Token);
-                    try
+                    Services.SampleDataSeeder.SeedAsync(host.Services).GetAwaiter().GetResult();
+                }
+                else
+#endif
+                // F04. Nothing below gates the window: the shell opens on whatever
+                // the database already holds and this fills it in behind. --no-sync
+                // skips it for UI work against a fixed database.
+                if (!args.Contains("--no-sync"))
+                {
+                    // Local sync first: it creates the rows everything else
+                    // enriches, and on a first run the grid is empty until it
+                    // lands. Then remote backfill, then enrichment. Sequential
+                    // because each step reads what the last one wrote — and because
+                    // one resolver transaction at a time is the rule the sync gate
+                    // exists to keep.
+                    startup = Task.Run(async () =>
                     {
-                        // Declared around the local pass only, and released in a
-                        // finally: the two manifest watchers hold their first
-                        // stable read while this runs rather than scanning the
-                        // same files two seconds later, so a pass that throws
-                        // must not leave them waiting for ever (TASK-152.5).
-                        var scans = services.GetRequiredService<LibraryScanBaseline>();
-                        var firstScan = scans.Expect();
-                        LibrarySyncReport local;
+                        var services = host.Services;
+                        // Returns the burst's pooled page caches and GC regions while
+                        // the pipeline runs, and once more when it ends.
+                        using var trim = Services.StartupMemoryTrim.Start(services, Shutdown.Token);
                         try
                         {
-                            local = await services.GetRequiredService<ILocalLibrarySync>()
-                                .SyncAsync(Shutdown.Token);
+                            // Declared around the local pass only, and released in a
+                            // finally: the two manifest watchers hold their first
+                            // stable read while this runs rather than scanning the
+                            // same files two seconds later, so a pass that throws
+                            // must not leave them waiting for ever (TASK-152.5).
+                            var scans = services.GetRequiredService<LibraryScanBaseline>();
+                            var firstScan = scans.Expect();
+                            LibrarySyncReport local;
+                            try
+                            {
+                                local = await services.GetRequiredService<ILocalLibrarySync>()
+                                    .SyncAsync(Shutdown.Token);
+                            }
+                            finally
+                            {
+                                firstScan.Dispose();
+                            }
+
+                            if (local.Candidates > 0)
+                            {
+                                await RefreshLibraryAsync(services);
+                            }
+
+                            var backfill = services.GetRequiredService<IRemoteOwnershipSync>();
+                            if (local.Scan is { } scanned) await backfill.SyncAsync(scanned, Shutdown.Token);
+                            else await backfill.SyncAsync(Shutdown.Token);
                         }
-                        finally
+                        catch (OperationCanceledException)
                         {
-                            firstScan.Dispose();
+                            // Window closed mid-run. Each promotion commits on its
+                            // own, so the next launch resumes from what is left.
                         }
-
-                        if (local.Candidates > 0)
+                        catch (Exception ex)
                         {
-                            await RefreshLibraryAsync(services);
+                            services.GetRequiredService<ILoggerFactory>()
+                                .CreateLogger(typeof(Program))
+                                .LogWarning(ex, "Startup sync failed; the library stays as the last run left it.");
                         }
+                    }, Shutdown.Token);
+                }
 
-                        var backfill = services.GetRequiredService<IRemoteOwnershipSync>();
-                        if (local.Scan is { } scanned) await backfill.SyncAsync(scanned, Shutdown.Token);
-                        else await backfill.SyncAsync(Shutdown.Token);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // Window closed mid-run. Each promotion commits on its
-                        // own, so the next launch resumes from what is left.
-                    }
-                    catch (Exception ex)
-                    {
-                        services.GetRequiredService<ILoggerFactory>()
-                            .CreateLogger(typeof(Program))
-                            .LogWarning(ex, "Startup sync failed; the library stays as the last run left it.");
-                    }
-                }, Shutdown.Token);
-            }
-
-            if (!writesSuppressed)
-            {
-                ownershipRefresh = new CredentialMetadataRefresh(startup,
-                    async ct => { await host.Services.GetRequiredService<IRemoteOwnershipSync>().SyncAsync(ct); },
-                    _ => host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(Program))
-                        .LogWarning("Ownership refresh after an account change failed; the next scheduled pass will retry."),
-                    Shutdown.Token);
-                host.Services.GetRequiredService<OwnershipRefreshRequests>().Requested += ownershipRefresh.Request;
-                credentialRefresh = new CredentialMetadataRefresh(startup,
-                    ct => RefreshIgdbMetadataAsync(host.Services, ct),
-                    _ => host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(Program))
-                        .LogWarning("Metadata refresh after an IGDB credential change failed; saved credentials remain available."),
-                    Shutdown.Token);
-                host.Services.GetRequiredService<IgdbSettingsService>().CredentialsChanged += credentialRefresh.Request;
-                var pluginStartup = Task.Run(async () =>
+                if (!writesSuppressed)
                 {
-                    await host.Services.GetRequiredService<LegacySteamGridDbPluginMigration>().RunAsync(Shutdown.Token);
-                    var catalog = host.Services.GetRequiredService<PluginCatalog>();
-                    await catalog.DiscoverAsync(Path.Combine(AppContext.BaseDirectory, "plugins"),
-                        Path.Combine(DataLocation.Root, "plugins"), Shutdown.Token);
-                    var preferences = host.Services.GetRequiredService<ArtworkPreferences>();
-                    preferences.ConfigureSources(catalog.GetActive<IArtworkProviderPlugin>()
-                        .Select(p => new ArtworkSourceOption("plugin:" + p.Manifest.Id, p.Manifest.Name)));
-                    await preferences.LoadAsync(Shutdown.Token);
-                }, Shutdown.Token);
-                pluginRefresh = new PluginRefreshCoordinator(pluginStartup,
-                    ct => host.Services.GetRequiredService<PluginSyncService>().ImportLibrariesAsync(ct),
-                    ct => host.Services.GetRequiredService<PluginSyncService>().EnrichAsync(ct),
-                    ct => RefreshLibraryAsync(host.Services, ct),
-                    _ => host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(Program))
-                        .LogWarning("Plugin refresh failed; stored library data remains available."),
-                    Shutdown.Token, libraryStartup: startup,
-                    refreshSuggestions: ct => host.Services.GetRequiredService<IMergeSuggestionRefresh>().RefreshAsync(ct));
-                host.Services.GetRequiredService<PluginSettingsBackend>().RefreshRequested += pluginRefresh.Request;
-                pluginRefresh.Request();
-            }
-
-            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+                    ownershipRefresh = new CredentialMetadataRefresh(startup,
+                        async ct => { await host.Services.GetRequiredService<IRemoteOwnershipSync>().SyncAsync(ct); },
+                        _ => host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(Program))
+                            .LogWarning("Ownership refresh after an account change failed; the next scheduled pass will retry."),
+                        Shutdown.Token);
+                    host.Services.GetRequiredService<OwnershipRefreshRequests>().Requested += ownershipRefresh.Request;
+                    credentialRefresh = new CredentialMetadataRefresh(startup,
+                        ct => RefreshIgdbMetadataAsync(host.Services, ct),
+                        _ => host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(Program))
+                            .LogWarning("Metadata refresh after an IGDB credential change failed; saved credentials remain available."),
+                        Shutdown.Token);
+                    host.Services.GetRequiredService<IgdbSettingsService>().CredentialsChanged += credentialRefresh.Request;
+                    var pluginStartup = Task.Run(async () =>
+                    {
+                        await host.Services.GetRequiredService<LegacySteamGridDbPluginMigration>().RunAsync(Shutdown.Token);
+                        var catalog = host.Services.GetRequiredService<PluginCatalog>();
+                        await catalog.DiscoverAsync(Path.Combine(AppContext.BaseDirectory, "plugins"),
+                            Path.Combine(DataLocation.Root, "plugins"), Shutdown.Token);
+                        var preferences = host.Services.GetRequiredService<ArtworkPreferences>();
+                        preferences.ConfigureSources(catalog.GetActive<IArtworkProviderPlugin>()
+                            .Select(p => new ArtworkSourceOption("plugin:" + p.Manifest.Id, p.Manifest.Name)));
+                        await preferences.LoadAsync(Shutdown.Token);
+                    }, Shutdown.Token);
+                    pluginRefresh = new PluginRefreshCoordinator(pluginStartup,
+                        ct => host.Services.GetRequiredService<PluginSyncService>().ImportLibrariesAsync(ct),
+                        ct => host.Services.GetRequiredService<PluginSyncService>().EnrichAsync(ct),
+                        ct => RefreshLibraryAsync(host.Services, ct),
+                        _ => host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(Program))
+                            .LogWarning("Plugin refresh failed; stored library data remains available."),
+                        Shutdown.Token, libraryStartup: startup,
+                        refreshSuggestions: ct => host.Services.GetRequiredService<IMergeSuggestionRefresh>().RefreshAsync(ct));
+                    host.Services.GetRequiredService<PluginSettingsBackend>().RefreshRequested += pluginRefresh.Request;
+                    pluginRefresh.Request();
+                }
+            }).StartWithClassicDesktopLifetime(args);
         }
         catch (Exception fault)
         {

@@ -896,6 +896,11 @@ Independent phase failures leave other phases eligible. Committed ownerships are
 before metadata, even after a later ownership operation fails; subsequent publication boundaries
 expose enriched facts. IGDB credential refresh selects the IGDB steps from this same pipeline.
 
+Hosted services and background startup work begin after Avalonia initializes native platform
+services, before it constructs the application and opens either desktop or fullscreen. This
+keeps early UI publications from creating a fallback dispatcher that cannot run the native
+message loop. Database initialization and terminal-only authentication still precede UI setup.
+
 `LibraryChangePublisher` reloads desktop library and merge state on the UI dispatcher with a
 shutdown token. The library's existing committed-change event refreshes active fullscreen state;
 inactive fullscreen contexts refresh when entered. Account actions enqueue and coalesce work
