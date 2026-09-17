@@ -182,10 +182,80 @@ public sealed class ArtworkBrowserTests
             var browse = Named(view, row.BrowseAutomationName); browse.BringIntoView(); Flush(); browse.Focus();
             window.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None); Flush();
             Assert.True(browser.IsOpen); Assert.Equal(ArtworkSlot.Cover, browser.Slot);
+            Assert.True(view.FindControl<Border>("MetadataOverlay")!.IsEffectivelyVisible);
+            Assert.False(view.FindControl<Border>("MetadataOverlay")!.IsEffectivelyEnabled);
             window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None); Flush();
             Assert.True(editor.IsOpen); Assert.False(browser.IsOpen);
             Assert.Same(browse, window.FocusManager!.GetFocusedElement());
             Assert.Equal("Unfinished title", editor.Rows[0].Draft);
+            window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None); Flush();
+            Assert.False(editor.IsOpen);
+            Assert.Same(view.FindControl<Button>("MoreActionsButton"), window.FocusManager!.GetFocusedElement());
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(1200, 640)]
+    [InlineData(1280, 820)]
+    [InlineData(1920, 1080)]
+    [InlineData(800, 700)]
+    [InlineData(940, 820)]
+    public async Task Metadata_overlay_bounds_fields_and_keeps_navigation_reachable(int width, int height)
+    {
+        var service = new MetadataService();
+        var browser = new ArtworkBrowserViewModel(new BrowserService(), 1, "Game");
+        var snapshot = width == 940 ? service.Snapshot with
+        {
+            Fields = service.Snapshot.Fields.Select(field => field with { Source = FieldSources.User }).ToArray()
+        } : service.Snapshot;
+        var editor = new GameMetadataEditorViewModel(service, 1, snapshot, picker: new ImagePicker(), artworkBrowser: browser);
+        using var details = new GameDetailsViewModel(TileFixture.Tile(DateTime.UtcNow), "Started", [], DateTime.UtcNow, metadataEditor: editor, artworkBrowser: browser);
+        var view = new GameDetailsView { DataContext = details };
+        var window = new Window { Width = width, Height = height, Content = view };
+        if (width == 940) ThemeTypographyResources.Apply(window.Resources, Winnow.App.Themes.ThemeTypography.Default with { SizePercent = 120 });
+        window.Show();
+        try
+        {
+            await editor.OpenCommand.ExecuteAsync(null); Flush();
+            var overlay = view.FindControl<Border>("MetadataOverlay")!;
+            var form = view.FindControl<GameMetadataEditorView>("MetadataEditorView")!;
+            var scroll = form.FindControl<ScrollViewer>("MetadataFormScroll")!;
+            var back = view.FindControl<Button>("MetadataBackButton")!;
+            Assert.False(view.FindControl<Border>("Card")!.IsEffectivelyEnabled);
+            AssertVisibleInside(overlay, window);
+            AssertVisibleInside(back, overlay);
+            AssertVisibleInside(scroll, overlay);
+            Assert.InRange(overlay.Bounds.Width, Math.Min(width - 48, 1440) - 1, Math.Min(width - 48, 1440) + 1);
+            Assert.IsType<TextBox>(window.FocusManager!.GetFocusedElement());
+            for (var index = 0; index < 30; index++)
+            {
+                window.KeyPressQwerty(PhysicalKey.Tab, RawInputModifiers.None); Flush();
+                Assert.Contains(overlay, Assert.IsAssignableFrom<Control>(window.FocusManager!.GetFocusedElement()).GetVisualAncestors());
+            }
+            for (var index = 0; index < 30; index++)
+            {
+                window.KeyPressQwerty(PhysicalKey.Tab, RawInputModifiers.Shift); Flush();
+                Assert.Contains(overlay, Assert.IsAssignableFrom<Control>(window.FocusManager!.GetFocusedElement()).GetVisualAncestors());
+            }
+            back.Focus(); scroll.ScrollToHome(); Flush();
+            Capture(window, $"metadata-overlay-{width}x{height}");
+            editor.Rows.Single(row => row.Field == WorkFields.Summary).Draft = string.Join(" ", Enumerable.Repeat("A longer description that should wrap comfortably without widening the editor.", 15));
+            var year = editor.Rows.Single(row => row.Field == WorkFields.FirstReleaseYear);
+            year.Draft = "not a year";
+            await year.SaveCommand.ExecuteAsync(null); Flush();
+            Assert.True(year.HasProblem);
+            Capture(window, $"metadata-overlay-validation-{width}x{height}");
+            var position = back.TranslatePoint(default, window);
+            scroll.ScrollToEnd(); Flush();
+            Assert.Equal(position, back.TranslatePoint(default, window));
+            foreach (var field in form.GetVisualDescendants().OfType<TextBox>().Where(box => box.IsEffectivelyVisible))
+            {
+                field.BringIntoView(); Flush();
+                AssertVisibleInside(field, scroll);
+            }
+            window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None); Flush();
+            Assert.False(editor.IsOpen);
         }
         finally { window.Close(); }
     }
@@ -322,6 +392,40 @@ public sealed class ArtworkBrowserTests
             apply.Focus(); page.Handle(GamepadButtons.Accept); Flush();
             Assert.True(model.Current!.IsCurrent);
             Capture(window, $"artwork-fullscreen-motion-{reducedMotion}");
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Fullscreen_metadata_keeps_field_order_and_validation_navigation()
+    {
+        using var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell);
+        var service = new MetadataService();
+        using var editor = new GameMetadataEditorViewModel(service, 1, service.Snapshot);
+        await editor.OpenCommand.ExecuteAsync(null);
+        using var page = new FullscreenDetailsMetadataPage(context, editor);
+        using var view = new FullscreenView(context);
+        var window = new Window { Width = 1920, Height = 1080, Content = view };
+        window.Show(); context.Push(page);
+        FullscreenPage? requested = null;
+        context.PageRequested += value => requested = value;
+        try
+        {
+            Flush();
+            var fields = page.GetVisualDescendants().OfType<Button>().Where(button => AutomationProperties.GetName(button) != "Back").ToArray();
+            Assert.Equal(editor.Rows.Select(row => row.MenuLabel), fields.Select(AutomationProperties.GetName));
+            Capture(window, "metadata-fullscreen-fields");
+            var year = editor.Rows.Single(row => row.Field == WorkFields.FirstReleaseYear);
+            Named(page, year.MenuLabel).Focus(); page.Handle(GamepadButtons.Accept); Flush();
+            var fieldPage = Assert.IsType<FullscreenDetailsFieldPage>(requested);
+            year.Draft = "invalid";
+            await year.SaveCommand.ExecuteAsync(null); Flush();
+            Assert.True(year.HasProblem);
+            Capture(window, "metadata-fullscreen-validation");
+            fieldPage.Handle(GamepadButtons.Back); Flush();
+            Assert.Equal("", year.Draft);
+            Assert.True(page.IsEffectivelyVisible);
+            Assert.True(Named(page, year.MenuLabel).IsKeyboardFocusWithin);
         }
         finally { window.Close(); }
     }

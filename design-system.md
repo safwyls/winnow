@@ -1460,8 +1460,9 @@ to the available capped size, so its header does not move when a shorter tab is 
 
 **One vertical reading area per tab.** The header and tab row stay outside the scrolling
 content. Each tab's ScrollViewer sits in bounded space and retains its offset when switching
-tabs. Long content increases the scroll extent, not the card size. The focused metadata and
-matching views use the same bounded body area in place of the tabs (§10.9, §10.10).
+tabs. Long content increases the scroll extent, not the card size. The focused matching
+view uses the same bounded body area in place of the tabs (§10.9). Metadata editing opens
+the larger overlay described in §10.10.
 The matching results retain their own bounded candidate list.
 
 Fluent draws an auto-hidden scrollbar over the content. Each vertical region clears it with
@@ -1589,11 +1590,12 @@ with a product id offer `Manage in GOG Galaxy`, opening the game's existing Gala
 These navigation actions do not claim to invoke a game-uninstall protocol. Winnow never
 deletes a game's files. Installation management stays in `More`, outside the primary Play/Install strip.
 
-**A row's name does not change with the state of what it opens.** `Wrong game?` and
-`Edit details` open a focused body in place of the tabs. Back to details, the tool's own close
-control, or Escape returns to the retained tab and puts focus on More. Reopening the same tool
-keeps its query, results or unsaved field drafts. The header remains visible throughout.
-The tool's close tooltip names the tool; the modal's close button still dismisses the game.
+**A row's name does not change with the state of what it opens.** `Wrong game?` opens a
+focused body in place of the tabs; `Edit details` opens a larger overlay above the card.
+Back to details or Escape returns to the retained tab and puts focus on More. Reopening the
+same tool keeps its query, results or unsaved field drafts. Each surface keeps its game title
+visible. The matching tool also has its own close control; the card's close button dismisses
+the game when no overlay is open.
 
 **A heading that names a section is set in `TextDim`**, the same ink as the `×` glyph beside
 it, so the header reads as chrome rather than as the section's own content. The set is IGDB
@@ -2057,14 +2059,17 @@ tracking its own.
 
 **`Edit details` is a row in More (§10.3)**, beside `Wrong game?`. Identity correction
 chooses which game this is; the field editor chooses what individual values should be.
-The editor occupies a focused, full-width body in place of the tabs. It stays in the modal's
-own visual tree, with a bounded scroll region and a Back to details control. Opening it again
+The desktop editor opens a sibling overlay above the details card, with a 24px window inset,
+24px padding and a maximum size of 1440×1000. Its heading, game title, Back to details control
+and editor-wide messages stay above the bounded form scroll region. Opening it again
 preserves drafts in all six rows and does not reload already-loaded fields. Closing it or
 pressing Escape returns to the retained tab without saving or discarding those drafts.
 
-**The section carries an `EDIT DETAILS` heading and its own close control** (§10.3's rule).
-The `×` glyph sits in the trailing Auto column of the header row, beside the heading; its
-tooltip is `Close editor`. The close control is the first Tab stop in the section.
+**Focus stays in the active overlay.** Opening the editor focuses its first text field.
+Tab and Shift+Tab cycle inside it, and the details card is disabled underneath. Browsing
+artwork opens the artwork overlay above the still-mounted editor; returning restores focus
+to the originating Browse artwork button and preserves drafts. Escape returns one level at
+a time. Back to details is the editor's single close control.
 
 **Each field carries its own source, and that source is the single answer to where the value
 came from.** There is no override layer stacked over an automatic value. A metadata fetch
@@ -2088,7 +2093,11 @@ two sit in one modal, so they do not share a word.
 field's. One consequence: §10.9's same-game offer cannot arise on this surface, because the
 collision it answers can only be produced by naming an IGDB id.
 
-**Six rows, in this order:** Name, Release year, About, Cover art, Publisher, Background art.
+**Six fields, grouped for the available space.** Desktop places Name, Release year, Publisher
+and About in the left column, with Cover art and Background art in the right. Below 820px of
+editor width the artwork section stacks below the text fields. Single-line inputs have a
+38px minimum height. Fullscreen retains its existing field navigation order: Name, Release
+year, About, Cover art, Publisher, Background art, with shared save and validation behavior.
 `About` is the one multi-line field. `Release year` is the one numeric field and draws in Plex
 Mono with tabular figures, §3's rule. A year outside 1900–2200, or a blank name, is refused
 under the field rather than stored. The two art rows take a URL in the field and carry a

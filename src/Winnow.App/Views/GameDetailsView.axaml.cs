@@ -56,7 +56,6 @@ public partial class GameDetailsView : UserControl
         LayoutUpdated += (_, _) => RequestBackdrop();
         ScreenshotScroll.AddHandler(PointerWheelChangedEvent, OnScreenshotWheel, RoutingStrategies.Tunnel);
         WireMenuRows();
-        MetadataEditorView.CloseRequested += OnSectionClosed;
         MetadataEditorView.AddHandler(Button.ClickEvent, (_, e) =>
         {
             if (e.Source is Button { DataContext: MetadataArtRowViewModel row } button && ReferenceEquals(button.Command, row.BrowseCommand))
@@ -111,7 +110,7 @@ public partial class GameDetailsView : UserControl
                 var field = MetadataEditorView.GetVisualDescendants().OfType<TextBox>()
                     .FirstOrDefault(control => control.IsEffectivelyVisible && control.IsEnabled);
                 if (field is not null) field.Focus(NavigationMethod.Tab);
-                else BackToDetailsButton.Focus(NavigationMethod.Tab);
+                else MetadataBackButton.Focus(NavigationMethod.Tab);
             }
             else if (wasFocused) MoreActionsButton.Focus(NavigationMethod.Tab);
         }, DispatcherPriority.Background);

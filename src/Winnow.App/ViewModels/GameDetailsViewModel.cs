@@ -168,6 +168,8 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     public bool ShowArtworkBrowser => ArtworkBrowser is not null;
     public bool IsArtworkFocused => ArtworkBrowser is { IsOpen: true };
     public bool ShowOtherFocusedTools => !IsArtworkFocused;
+    public bool IsMetadataOverlayOpen => MetadataEditor is { IsOpen: true };
+    public bool IsDetailsInteractive => !IsMetadataOverlayOpen && !IsArtworkFocused;
     public string FocusedBackLabel => IsArtworkFocused && MetadataEditor?.IsOpen == true ? "Back to edit details" : GameDetailsCopy.BackToDetails;
     public bool IsMetadataFocused => MetadataEditor is { IsOpen: true } && !IsArtworkFocused;
     public bool IsMatchFocused => IgdbMatch is { IsOpen: true };
@@ -188,6 +190,8 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         else if (ReferenceEquals(sender, IgdbMatch) && IsMatchFocused)
             MetadataEditor?.CloseCommand.Execute(null);
         OnPropertyChanged(nameof(IsMetadataFocused));
+        OnPropertyChanged(nameof(IsMetadataOverlayOpen));
+        OnPropertyChanged(nameof(IsDetailsInteractive));
         OnPropertyChanged(nameof(IsMatchFocused));
         OnPropertyChanged(nameof(IsFocusedView));
         OnPropertyChanged(nameof(ShowDetailsTabs));

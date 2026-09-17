@@ -1,5 +1,5 @@
 using Avalonia.Controls;
-using Avalonia.Interactivity;
+using Avalonia.Input;
 using Winnow.App.ViewModels;
 
 namespace Winnow.App.Views;
@@ -14,15 +14,15 @@ public partial class GameMetadataEditorView : UserControl
     public GameMetadataEditorView()
     {
         InitializeComponent();
+        SizeChanged += (_, _) =>
+        {
+            var narrow = Bounds.Width < 820;
+            MetadataFormGrid.ColumnDefinitions = new(narrow ? "*" : "3*,2*");
+            MetadataFormGrid.RowDefinitions = new(narrow ? "Auto,Auto" : "Auto");
+            Grid.SetColumn(MetadataArtworkFields, narrow ? 0 : 1);
+            Grid.SetRow(MetadataArtworkFields, narrow ? 1 : 0);
+        };
     }
-
-    /// <summary>
-    /// Raised after the section's own close control folds it, so the host can
-    /// hand focus to the More trigger — the control the section was opened
-    /// from. The close button lives inside this control and vanishes with
-    /// the section, so focus management belongs to the host.
-    /// </summary>
-    public event EventHandler? CloseRequested;
 
     protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     {
@@ -31,15 +31,8 @@ public partial class GameMetadataEditorView : UserControl
         ApplyCoverScaling();
     }
 
-    /// <summary>
-    /// The view model's <see cref="GameMetadataEditorViewModel.CloseCommand"/>
-    /// folds the section; this handler only announces it to the host via
-    /// <see cref="CloseRequested"/>. <c>e.Handled</c> is deliberately left
-    /// alone — Avalonia's Button runs its Command after raising Click, and
-    /// marking it handled would suppress the command.
-    /// </summary>
-    private void OnClosePressed(object? sender, RoutedEventArgs e)
-        => CloseRequested?.Invoke(this, EventArgs.Empty);
+    private void OnFieldGotFocus(object? sender, GotFocusEventArgs e)
+        => (e.Source as Control)?.BringIntoView();
 
     protected override void OnDataContextChanged(EventArgs e)
     {

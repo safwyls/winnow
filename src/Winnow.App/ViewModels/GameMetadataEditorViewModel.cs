@@ -19,7 +19,7 @@ namespace Winnow.App.ViewModels;
 /// one pass.
 ///
 /// <para>Opened from "Edit details" in More (§10.3), beside "Wrong game?",
-/// in focused content beneath the persistent header. Omitting any one optional
+/// in a desktop overlay or the fullscreen metadata page. Omitting any one optional
 /// constructor argument costs exactly that one capability; with no
 /// IWorkMetadataEditService registered or no resolved work id the row is
 /// not drawn at all.</para>
@@ -82,7 +82,13 @@ public partial class GameMetadataEditorViewModel : ObservableObject, IDisposable
     /// <summary>One row per <see cref="WorkFields.All"/> entry, in display order.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasRows))]
+    [NotifyPropertyChangedFor(nameof(TextRows), nameof(ArtRows))]
     public partial IReadOnlyList<MetadataFieldRowViewModel> Rows { get; set; } = [];
+
+    // Desktop groups text and artwork without changing the fullscreen field order.
+    public IReadOnlyList<MetadataTextRowViewModel> TextRows => Rows.OfType<MetadataTextRowViewModel>()
+        .OrderBy(row => row.IsMultiline).ToArray();
+    public IReadOnlyList<MetadataArtRowViewModel> ArtRows => Rows.OfType<MetadataArtRowViewModel>().ToArray();
 
     /// <summary>Status field, in words. Null when nothing is in flight.</summary>
     [ObservableProperty]
