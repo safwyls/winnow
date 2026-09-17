@@ -92,7 +92,7 @@ public sealed class GameLinkRouter(IUriDispatcher dispatcher, ISettingsRepositor
             {
                 try
                 {
-                    if (PatchNotesPolicy.For(uri) is not null && reader is { IsAvailable: true }
+                    if (reader is { IsAvailable: true }
                         && reader.Open(uri, title) == PatchNotesOutcome.Opened) return new(true);
                 }
                 catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) { }

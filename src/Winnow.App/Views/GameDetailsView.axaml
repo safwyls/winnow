@@ -330,6 +330,7 @@
     <Panel>
         <Border Name="Scrim" Background="{StaticResource ModalScrim}" PointerPressed="OnScrimPressed"/>
         <Border Name="Card"
+                IsEnabled="{Binding IsDetailsInteractive}"
                 Background="{StaticResource Surface}"
                 BorderBrush="{StaticResource Line}"
                 BorderThickness="1"
@@ -541,6 +542,8 @@
                                                       IsVisible="{Binding ShowMetadataEditor}"
                                                       Command="{Binding MetadataEditor.OpenCommand}"
                                                       ToolTip.Tip="{Binding MetadataEditor.OpenTooltip}"/>
+                                            <MenuItem Name="ChangeArtworkItem" Header="Change artwork"
+                                                      IsVisible="{Binding ShowArtworkBrowser}" Command="{Binding ArtworkBrowser.OpenCommand}"/>
                                             <MenuItem Name="HideItem"
                                                       Header="{Binding HideLabel}"
                                                       IsVisible="{Binding ShowHide}"
@@ -1291,16 +1294,17 @@
                                 </ScrollViewer>
                             </TabItem>
                         </TabControl>
-                        <Grid Name="FocusedDetailsHost" RowDefinitions="Auto,*" IsVisible="{Binding IsFocusedView}">
+                        <Grid Name="FocusedDetailsHost" RowDefinitions="Auto,*" IsVisible="{Binding IsMatchFocused}">
                             <Button Grid.Row="0"
                                     Name="BackToDetailsButton"
                                     Classes="quiet"
                                     HorizontalAlignment="Left"
-                                    Content="{x:Static vm:GameDetailsCopy.BackToDetails}"
-                                    AutomationProperties.Name="{x:Static vm:GameDetailsCopy.BackToDetails}"
+                                    Content="{Binding FocusedBackLabel}"
+                                    AutomationProperties.Name="{Binding FocusedBackLabel}"
                                     Command="{Binding BackToDetailsCommand}"/>
                             <Grid Grid.Row="1">
                                 <ScrollViewer Name="FocusedDetailsScroll"
+                                              IsVisible="{Binding ShowOtherFocusedTools}"
                                               Classes="inner"
                                               HorizontalScrollBarVisibility="Disabled"
                                               VerticalScrollBarVisibility="Auto">
@@ -1516,11 +1520,6 @@
                                                                Text="{Binding Problem}"/>
                                                 </StackPanel>
                                             </StackPanel>
-                                            <StackPanel Name="MetadataEditorHost"
-                                                        IsVisible="{Binding IsMetadataFocused}">
-                                                <views:GameMetadataEditorView Name="MetadataEditorView"
-                                                                              DataContext="{Binding MetadataEditor}"/>
-                                            </StackPanel>
                                         </StackPanel>
                                     </StackPanel>
                                 </ScrollViewer>
@@ -1559,5 +1558,58 @@
                 </Grid>
             </Panel>
         </Border>
+        <Panel IsVisible="{Binding IsMetadataOverlayOpen}" IsEnabled="{Binding ShowOtherFocusedTools}">
+            <Border Background="{StaticResource ModalScrim}"/>
+            <Border Name="MetadataOverlay" Background="{StaticResource Surface}"
+                    BorderBrush="{StaticResource Line}" BorderThickness="1"
+                    CornerRadius="{StaticResource RadiusTile}" BoxShadow="0 18 48 0 #A6000000"
+                    Margin="24" Padding="24" MaxWidth="1440" MaxHeight="1000"
+                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                    KeyboardNavigation.TabNavigation="Cycle">
+                <Grid RowDefinitions="Auto,*" RowSpacing="16">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="24">
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="label section" Text="Edit details" AutomationProperties.HeadingLevel="2"/>
+                            <TextBlock Classes="body" Text="{Binding Title}" FontSize="{DynamicResource FontSize20}"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                        <Button Name="MetadataBackButton" Grid.Column="1" Classes="secondary"
+                                VerticalAlignment="Center" Content="Back to details"
+                                AutomationProperties.Name="Back to details"
+                                Command="{Binding BackToDetailsCommand}"/>
+                    </Grid>
+                    <Grid Name="MetadataEditorHost" Grid.Row="1">
+                        <views:GameMetadataEditorView Name="MetadataEditorView"
+                                                      DataContext="{Binding MetadataEditor}"/>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Panel>
+        <Panel IsVisible="{Binding IsArtworkFocused}">
+            <Border Background="{StaticResource ModalScrim}"/>
+            <Border Name="ArtworkOverlay" Background="{StaticResource Surface}"
+                    BorderBrush="{StaticResource Line}" BorderThickness="1"
+                    CornerRadius="{StaticResource RadiusTile}" BoxShadow="0 18 48 0 #A6000000"
+                    Margin="24" Padding="24" MaxWidth="1440" MaxHeight="1000"
+                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                    KeyboardNavigation.TabNavigation="Cycle">
+                <Grid RowDefinitions="Auto,*" RowSpacing="16">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="24">
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="label section" Text="Change artwork" AutomationProperties.HeadingLevel="2"/>
+                            <TextBlock Classes="body" Text="{Binding Title}" FontSize="{DynamicResource FontSize20}"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                        <Button Name="ArtworkBackButton" Grid.Column="1" Classes="secondary"
+                                VerticalAlignment="Center" Content="{Binding FocusedBackLabel}"
+                                AutomationProperties.Name="{Binding FocusedBackLabel}"
+                                IsEnabled="{Binding ArtworkBrowser.CanEdit}"
+                                Command="{Binding BackToDetailsCommand}"/>
+                    </Grid>
+                    <views:ArtworkBrowserView Name="ArtworkBrowserView" Grid.Row="1"
+                                              DataContext="{Binding ArtworkBrowser}"/>
+                </Grid>
+            </Border>
+        </Panel>
     </Panel>
 </UserControl>

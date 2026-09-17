@@ -1,0 +1,44 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Winnow.App.ViewModels"
+             x:Class="Winnow.App.Views.PluginTabStrip"
+             x:DataType="vm:PluginSettingsViewModel">
+    <UserControl.Styles>
+        <Style Selector="TabControl.plugin-tabs">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}"/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="TabItem" x:DataType="vm:PluginSettingsTabViewModel">
+            <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{DynamicResource BodySize}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="MinHeight" Value="44"/>
+            <Setter Property="AutomationProperties.Name" Value="{Binding Name}"/>
+        </Style>
+        <Style Selector="TabItem:selected">
+            <Setter Property="Foreground" Value="{StaticResource VoltForeground}"/>
+        </Style>
+    </UserControl.Styles>
+    <Grid ColumnDefinitions="Auto,*,Auto">
+        <Button Name="PreviousPluginTabs" Classes="act" Content="‹" MinWidth="36" MinHeight="44"
+                Margin="0,0,8,0" IsVisible="False" Click="OnPrevious" AutomationProperties.Name="Scroll plugin tabs left"/>
+        <ScrollViewer Name="PluginTabScroll" Grid.Column="1" HorizontalScrollBarVisibility="Hidden"
+                      VerticalScrollBarVisibility="Disabled">
+            <TabControl Name="PluginTabs" Classes="plugin-tabs" ItemsSource="{Binding PluginTabs}"
+                        SelectedItem="{Binding SelectedTab, Mode=TwoWay}" AutomationProperties.Name="Plugin tabs">
+                <TabControl.ItemsPanel>
+                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                </TabControl.ItemsPanel>
+                <TabControl.ItemTemplate>
+                    <DataTemplate DataType="vm:PluginSettingsTabViewModel"><TextBlock Text="{Binding Name}"/></DataTemplate>
+                </TabControl.ItemTemplate>
+            </TabControl>
+        </ScrollViewer>
+        <Button Name="NextPluginTabs" Grid.Column="2" Classes="act" Content="›" MinWidth="36" MinHeight="44"
+                Margin="8,0,0,0" IsVisible="False" Click="OnNext" AutomationProperties.Name="Scroll plugin tabs right"/>
+    </Grid>
+</UserControl>

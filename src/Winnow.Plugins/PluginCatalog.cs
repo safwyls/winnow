@@ -245,6 +245,7 @@ public sealed class PluginCatalog(IPluginStateStore state, IPluginContextFactory
         || (typeof(TPlugin) == typeof(ILibrarySourcePlugin) && manifest.Capabilities.Contains(PluginCapabilities.Library))
         || (typeof(TPlugin) == typeof(IMetadataProviderPlugin) && manifest.Capabilities.Contains(PluginCapabilities.Metadata))
         || (typeof(TPlugin) == typeof(IArtworkProviderPlugin) && manifest.Capabilities.Contains(PluginCapabilities.Artwork))
+        || (typeof(TPlugin) == typeof(IArtworkBrowserPlugin) && manifest.Capabilities.Contains(PluginCapabilities.Artwork))
         || (typeof(TPlugin) == typeof(IPluginAccount) && manifest.Capabilities.Contains(PluginCapabilities.Account))
         || (typeof(TPlugin) == typeof(IPluginGameActions) && manifest.Capabilities.Contains(PluginCapabilities.GameActions))
         || (typeof(TPlugin) == typeof(IRecommendationFeedPlugin) && manifest.Capabilities.Contains(PluginCapabilities.Recommendations));

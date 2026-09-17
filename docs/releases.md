@@ -280,6 +280,10 @@ the existing required Windows and Linux jobs first restore and audit dependencie
 also verifies migrations against the current event's baseline. These checks run even when
 tests can be reused; a fresh vulnerability warning still fails the gate.
 
+Windows runs a focused fullscreen Home layout preflight before the full solution suite so
+those regressions fail without waiting for the longer database tests. The preflight retains
+its own test results and does not replace any full-suite coverage or produce reusable evidence.
+
 Each successful full-test job uploads an immutable, per-platform evidence record. Reuse
 requires a completed successful run from this repository's CI or release workflow, with both
 required platform jobs successful in the recorded attempt. The complete Git tree, actual

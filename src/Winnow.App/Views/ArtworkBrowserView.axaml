@@ -1,0 +1,93 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:vm="using:Winnow.App.ViewModels" xmlns:domain="using:Winnow.Core.Domain" xmlns:views="using:Winnow.App.Views"
+ x:Class="Winnow.App.Views.ArtworkBrowserView" x:DataType="vm:ArtworkBrowserViewModel">
+ <UserControl.Styles>
+  <Style Selector="Button"><Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="{DynamicResource Line}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/><Setter Property="Padding" Value="10,6"/></Style>
+  <Style Selector="Button /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="Transparent"/></Style>
+  <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource SurfaceRaised}"/></Style>
+  <Style Selector="Button:focus-visible /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="BorderBrush" Value="{DynamicResource VoltForeground}"/></Style>
+  <Style Selector="Button.selected"><Setter Property="BorderBrush" Value="{DynamicResource Volt}"/></Style>
+  <Style Selector="Button.primary"><Setter Property="Background" Value="{DynamicResource Volt}"/><Setter Property="Foreground" Value="{DynamicResource VoltInk}"/></Style>
+  <Style Selector="Button.primary /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource Volt}"/></Style>
+  <Style Selector="Button.art-candidate"><Setter Property="Padding" Value="8"/><Setter Property="BorderThickness" Value="2"/><Setter Property="BorderBrush" Value="{DynamicResource Line}"/></Style>
+  <Style Selector="Button.art-candidate.selected"><Setter Property="BorderBrush" Value="{DynamicResource Volt}"/></Style>
+ </UserControl.Styles>
+ <Grid RowDefinitions="Auto,*,Auto" RowSpacing="16">
+  <StackPanel Spacing="8">
+   <StackPanel Orientation="Horizontal" Spacing="8" IsEnabled="{Binding CanEdit}">
+    <Button Name="HeroSlotButton" Classes="secondary" Classes.selected="{Binding IsHero}" Content="Hero" AutomationProperties.Name="Hero artwork" Command="{Binding ChooseSlotCommand}" CommandParameter="{x:Static domain:ArtworkSlot.Hero}"/>
+    <Button Classes="secondary" Classes.selected="{Binding IsCover}" Content="Cover" AutomationProperties.Name="Cover artwork" Command="{Binding ChooseSlotCommand}" CommandParameter="{x:Static domain:ArtworkSlot.Cover}"/>
+    <Button Classes="secondary" Classes.selected="{Binding IsIcon}" Content="Icon" AutomationProperties.Name="Icon artwork" Command="{Binding ChooseSlotCommand}" CommandParameter="{x:Static domain:ArtworkSlot.Icon}"/>
+    <TextBlock Classes="data" Text="{Binding SourceLabel}" Foreground="{DynamicResource TextDim}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+   </StackPanel>
+   <WrapPanel Orientation="Horizontal">
+    <Button Classes="quiet" Content="All sources" AutomationProperties.Name="All artwork sources" Command="{Binding ChooseSourceCommand}" CommandParameter="all"/>
+    <ItemsControl ItemsSource="{Binding Sources}">
+     <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+     <ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:ArtworkSourceViewModel"><Button Classes="quiet" Content="{Binding Name}" AutomationProperties.Name="{Binding Name}" Click="OnSourcePressed"/></DataTemplate></ItemsControl.ItemTemplate>
+    </ItemsControl>
+   </WrapPanel>
+  </StackPanel>
+  <Grid Name="BrowserBody" Grid.Row="1" ColumnDefinitions="3*,2*" ColumnSpacing="24" RowSpacing="12">
+   <ScrollViewer Name="CandidateScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <StackPanel Spacing="12">
+     <ContentControl Content="{Binding Current}">
+      <ContentControl.ContentTemplate><DataTemplate x:DataType="vm:ArtworkCandidateViewModel">
+       <Button Classes="art-candidate" Classes.selected="{Binding IsSelected}" AutomationProperties.Name="Current artwork" Click="OnCandidatePressed" HorizontalAlignment="Left" Width="180">
+        <StackPanel><Image Source="{Binding Thumbnail}" Height="100" Stretch="Uniform"/><TextBlock Classes="body" Text="{Binding StateLabel}"/><TextBlock Classes="data" Text="{Binding Description}" TextWrapping="Wrap"/></StackPanel>
+       </Button>
+      </DataTemplate></ContentControl.ContentTemplate>
+     </ContentControl>
+     <ItemsControl ItemsSource="{Binding VisibleSources}">
+      <ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:ArtworkSourceViewModel">
+       <StackPanel Spacing="8" Margin="0,0,0,16">
+        <TextBlock Classes="label section" Text="{Binding Name}" AutomationProperties.HeadingLevel="3"/>
+        <TextBlock Classes="body" Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource TextDim}"/>
+        <ItemsControl ItemsSource="{Binding Items}">
+         <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+         <ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:ArtworkCandidateViewModel">
+          <Button Classes="art-candidate" Classes.selected="{Binding IsSelected}" Margin="0,0,12,12" Width="180" AutomationProperties.Name="{Binding Description}" Click="OnCandidatePressed">
+           <StackPanel Spacing="4"><Image Source="{Binding Thumbnail}" Height="96" Stretch="Uniform"/><TextBlock Classes="body" Text="{Binding StateLabel}" Foreground="{DynamicResource VoltForeground}"/><TextBlock Classes="data" FontSize="{DynamicResource FontSize11}" Text="{Binding Description}" TextWrapping="Wrap"/></StackPanel>
+          </Button>
+         </DataTemplate></ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Button Classes="secondary" Content="Try again" AutomationProperties.Name="Retry artwork source" IsVisible="{Binding CanRetry}" Command="{Binding RetryCommand}"/>
+        <Button Classes="secondary" Content="Load more" AutomationProperties.Name="Load more artwork" IsVisible="{Binding HasMore}" Command="{Binding MoreCommand}"/>
+       </StackPanel>
+      </DataTemplate></ItemsControl.ItemTemplate>
+     </ItemsControl>
+    </StackPanel>
+   </ScrollViewer>
+   <Grid Name="PreviewPanel" Grid.Column="1" RowDefinitions="Auto,*" RowSpacing="12" ClipToBounds="True">
+    <StackPanel Spacing="8">
+     <TextBlock Classes="label section" Text="Preview" AutomationProperties.HeadingLevel="3"/>
+     <TextBlock Classes="body" Text="{Binding PreviewDescription}" MaxLines="2" TextTrimming="CharacterEllipsis" TextWrapping="Wrap" ToolTip.Tip="{Binding PreviewDescription}"/>
+     <Button Classes="quiet" Content="Open artwork source" AutomationProperties.Name="Open artwork source" IsVisible="{Binding HasSourceLink}" Click="OnSourceLinkPressed" HorizontalAlignment="Left"/>
+    </StackPanel>
+    <Grid Grid.Row="1" IsVisible="{Binding IsHero}" RowDefinitions="Auto,*" RowSpacing="12">
+     <WrapPanel><Button Content="Desktop crop" Classes.selected="{Binding ShowDesktopHero}" Command="{Binding DesktopCropCommand}" AutomationProperties.Name="Preview desktop crop"/><Button Content="Fullscreen crop" Classes.selected="{Binding ShowFullscreenHero}" Command="{Binding FullscreenCropCommand}" AutomationProperties.Name="Preview fullscreen crop"/></WrapPanel>
+     <Viewbox Name="DesktopCropBox" Grid.Row="1" Stretch="Uniform" IsVisible="{Binding ShowDesktopHero}"><Border Background="{DynamicResource Well}" ClipToBounds="True"><Image Name="DesktopHeroPreview" Source="{Binding Preview}" Width="400" Height="300" Stretch="UniformToFill"/></Border></Viewbox>
+     <Viewbox Name="FullscreenCropBox" Grid.Row="1" Stretch="Uniform" IsVisible="{Binding ShowFullscreenHero}"><Border Background="{DynamicResource Well}" ClipToBounds="True"><Image Name="FullscreenHeroPreview" Source="{Binding Preview}" Width="400" Height="225" Stretch="UniformToFill"/></Border></Viewbox>
+    </Grid>
+    <Viewbox Name="CoverPreviewBox" Grid.Row="1" IsVisible="{Binding IsCover}" Stretch="Uniform">
+     <Border Background="{DynamicResource Well}" Width="240" Height="360" ClipToBounds="True"><Image Source="{Binding Preview}" views:CoverPresentation.IsCover="True"/></Border>
+    </Viewbox>
+    <Grid Grid.Row="1" IsVisible="{Binding IsIcon}" RowDefinitions="Auto,Auto,*" RowSpacing="8">
+     <StackPanel Orientation="Horizontal" Spacing="12"><Border Background="{DynamicResource SurfaceRaised}" Padding="8"><Image Source="{Binding Preview}" Width="32" Height="32" Stretch="Uniform"/></Border><TextBlock Classes="data" Text="Icon · 32 px" VerticalAlignment="Center"/></StackPanel>
+     <TextBlock Grid.Row="1" Classes="data" Text="Transparency on light and dark"/>
+     <Grid Name="IconPreviewPanel" Grid.Row="2" ColumnDefinitions="*,*"><Border Background="{DynamicResource Text}" Padding="12"><Image Source="{Binding Preview}" MaxHeight="180" Stretch="Uniform"/></Border><Border Grid.Column="1" Background="{DynamicResource Well}" Padding="12"><Image Source="{Binding Preview}" MaxHeight="180" Stretch="Uniform"/></Border></Grid>
+    </Grid>
+   </Grid>
+  </Grid>
+  <StackPanel Name="ArtworkActions" Grid.Row="2" Spacing="8">
+   <TextBlock Classes="body" Text="{Binding Status}" IsVisible="{Binding HasStatus}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+   <TextBlock Classes="body" Text="{Binding Problem}" IsVisible="{Binding HasProblem}" TextWrapping="Wrap" Foreground="{DynamicResource AmberForeground}" AutomationProperties.LiveSetting="Polite"/>
+   <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsEnabled="{Binding CanEdit}"><TextBox Classes="field" Watermark="Image URL" Text="{Binding ImportUrl}" AutomationProperties.Name="Artwork image URL"/><Button Grid.Column="1" Classes="secondary" Content="Import URL" AutomationProperties.Name="Import artwork URL" Command="{Binding ImportFromUrlCommand}"/></Grid>
+   <WrapPanel>
+    <Button Classes="primary" Content="Use artwork" AutomationProperties.Name="Use artwork" Command="{Binding ApplyCommand}" IsEnabled="{Binding CanApply}" Margin="0,0,8,0"/>
+    <Button Classes="secondary" Content="Use automatic" AutomationProperties.Name="Use automatic artwork" Command="{Binding AutomaticCommand}" IsEnabled="{Binding CanEdit}" Margin="0,0,8,0"/>
+    <Button Classes="secondary" Content="Choose file" AutomationProperties.Name="Choose artwork file" Command="{Binding ChooseFileCommand}" IsVisible="{Binding CanPickFile}" IsEnabled="{Binding CanEdit}"/>
+   </WrapPanel>
+  </StackPanel>
+ </Grid>
+</UserControl>

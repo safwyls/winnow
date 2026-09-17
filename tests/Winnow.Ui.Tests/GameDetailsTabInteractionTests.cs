@@ -183,7 +183,7 @@ public sealed class GameDetailsTabInteractionTests
             .Single(box => box.DataContext is MetadataTextRowViewModel row && row.Field == WorkFields.Name);
         field.Text = "A name still being considered";
         Flush();
-        fixture.Click(fixture.Find<Button>("BackToDetailsButton"));
+        fixture.Click(fixture.Find<Button>("MetadataBackButton"));
         Assert.Equal(4, model.SelectedTabIndex);
         Assert.True(fixture.Find<TabControl>("DetailsTabs").IsEffectivelyVisible);
         Assert.True(fixture.Find<Button>("MoreActionsButton").IsKeyboardFocusWithin);

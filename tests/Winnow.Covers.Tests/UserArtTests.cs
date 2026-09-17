@@ -55,6 +55,27 @@ public class UserArtTests : IDisposable
     }
 
     [Fact]
+    public void Provider_selection_rejects_header_only_images_before_persisting()
+    {
+        Assert.Equal(UserArtImportFailure.NotAnImage, _store.ImportValidatedBytes(Png).Failure);
+        Assert.False(Directory.Exists(_store.Root));
+    }
+
+    [Fact]
+    public void Provider_selection_keeps_original_image_bytes_for_offline_use()
+    {
+        using var bitmap = new SkiaSharp.SKBitmap(24, 24);
+        bitmap.Erase(SkiaSharp.SKColors.Teal);
+        using var encoded = bitmap.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+        var bytes = encoded.ToArray();
+        var imported = _store.ImportValidatedBytes(bytes);
+        Assert.True(imported.Ok);
+        var reopened = new UserArtStore(_options);
+        Assert.True(reopened.TryRead(UserArtRef.Token(imported.Reference)!, out var retained));
+        Assert.Equal(bytes, retained);
+    }
+
+    [Fact]
     public async Task An_imported_file_lands_under_the_configured_cache_directory()
     {
         var chosen = WriteSourceFile(Png);

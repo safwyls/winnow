@@ -75,7 +75,7 @@
         <!-- §16.3 field treatment: Well cut into the card, found by its
              Line border, lit by a Volt ring on focus. -->
         <Style Selector="TextBox.field">
-            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="MinHeight" Value="38"/>
             <Setter Property="Padding" Value="10,6"/>
             <Setter Property="VerticalContentAlignment" Value="Top"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
@@ -132,79 +132,8 @@
 
     </UserControl.Styles>
 
-    <StackPanel>
+    <UserControl.DataTemplates>
 
-    <!-- An art save reloads the library and reopens the modal, which leaves
-         the editor closed, so this line sits outside the IsOpen gate below.
-         The same arrangement as the IGDB reassignment control's carried
-         note. -->
-    <!-- Note is TextDim: it holds a landed-act confirmation ("Name
-         saved.", "About returned to automatic."), the same register as
-         GameIgdbMatchViewModel.Note in the IGDB control above, which
-         holds standing state labels ("Matched by you.") and the same
-         kind of confirmation. Intro, directly below, is prose the user
-         reads once to understand the editor, and takes .body's own Text
-         ink with no Foreground override. The per-row Status and Note
-         lines in the two DataTemplates keep TextDim for the same
-         reason as this one. -->
-    <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
-               Margin="0,18,0,0"
-               TextWrapping="Wrap"
-               LineHeight="{DynamicResource TextLineHeight17}"
-               Foreground="{StaticResource TextDim}"
-               IsVisible="{Binding HasNote}"
-               Text="{Binding Note}"/>
-
-    <StackPanel IsVisible="{Binding IsOpen}" Spacing="10" Margin="0,18,0,0">
-
-        <!-- The section names itself with a heading and closes itself with
-             a quiet button using the modal's close glyph one level down.
-             The trigger that opened the section is a menu row that
-             dismissed itself, so without this heading nothing on screen
-             identifies the surface. -->
-        <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Grid.Column="0"
-                       Classes="label section"
-                       VerticalAlignment="Center"
-                       AutomationProperties.HeadingLevel="2"
-                       Text="{Binding SectionHeading}"/>
-            <Button Grid.Column="1" Classes="quiet"
-                    VerticalAlignment="Top"
-                    Command="{Binding CloseCommand}"
-                    Click="OnClosePressed"
-                    AutomationProperties.Name="{Binding CloseAutomationName}"
-                    ToolTip.Tip="{Binding CloseTooltip}">
-                <TextBlock Classes="body-l"
-                           Foreground="{StaticResource TextDim}"
-                           Text="&#x00D7;"/>
-            </Button>
-        </Grid>
-
-        <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
-                   TextWrapping="Wrap"
-                   LineHeight="{DynamicResource TextLineHeight17}"
-                   Text="{Binding Intro}"/>
-
-        <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
-                   TextWrapping="Wrap"
-                   Foreground="{StaticResource TextDim}"
-                   IsVisible="{Binding HasStatus}"
-                   Text="{Binding Status}"/>
-
-        <TextBlock Classes="body" FontSize="{DynamicResource FontSize11}"
-                   TextWrapping="Wrap"
-                   LineHeight="{DynamicResource TextLineHeight16}"
-                   Foreground="{StaticResource AmberForeground}"
-                   IsVisible="{Binding HasProblem}"
-                   Text="{Binding Problem}"/>
-
-        <!-- The editor's rows draw inside the details modal's rest band and
-             take that band's own gutter. A margin of their own would be
-             counted twice and would step the editor's rows in from every other
-             section in the band. -->
-        <ItemsControl ItemsSource="{Binding Rows}"
-                      IsVisible="{Binding HasRows}">
-            <ItemsControl.DataTemplates>
 
                 <DataTemplate DataType="vm:MetadataTextRowViewModel">
                     <Border BorderBrush="{StaticResource Line}"
@@ -317,7 +246,7 @@
                                 <StackPanel Grid.Column="1" Spacing="8">
                                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                         <TextBox Grid.Column="0" Classes="field"
-                                                 Height="30"
+                                                 MinHeight="38"
                                                  Watermark="{Binding Watermark}"
                                                  AutomationProperties.Name="{Binding FieldAutomationName}"
                                                  Text="{Binding Draft, Mode=TwoWay}"/>
@@ -339,6 +268,9 @@
                                         <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                                                    Text="{Binding ChooseFileLabel}"/>
                                     </Button>
+                                    <Button Classes="secondary" Content="Browse artwork" HorizontalAlignment="Left"
+                                            IsVisible="{Binding CanBrowse}" AutomationProperties.Name="{Binding BrowseAutomationName}"
+                                            Command="{Binding BrowseCommand}"/>
                                 </StackPanel>
                             </Grid>
 
@@ -358,8 +290,40 @@
                     </Border>
                 </DataTemplate>
 
-            </ItemsControl.DataTemplates>
-        </ItemsControl>
-    </StackPanel>
-    </StackPanel>
+
+    </UserControl.DataTemplates>
+
+    <Grid RowDefinitions="Auto,*" RowSpacing="16" IsVisible="{Binding IsOpen}">
+        <StackPanel Spacing="8">
+            <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
+                       TextWrapping="Wrap" LineHeight="{DynamicResource TextLineHeight17}"
+                       Text="{Binding Intro}"/>
+            <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
+                       TextWrapping="Wrap" Foreground="{StaticResource TextDim}"
+                       AutomationProperties.LiveSetting="Polite"
+                       IsVisible="{Binding HasNote}" Text="{Binding Note}"/>
+            <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
+                       TextWrapping="Wrap" Foreground="{StaticResource TextDim}"
+                       AutomationProperties.LiveSetting="Polite"
+                       IsVisible="{Binding HasStatus}" Text="{Binding Status}"/>
+            <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
+                       TextWrapping="Wrap" Foreground="{StaticResource AmberForeground}"
+                       AutomationProperties.LiveSetting="Polite"
+                       IsVisible="{Binding HasProblem}" Text="{Binding Problem}"/>
+        </StackPanel>
+        <ScrollViewer Name="MetadataFormScroll" Grid.Row="1" Classes="inner"
+                      HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                      GotFocus="OnFieldGotFocus">
+            <Grid Name="MetadataFormGrid" ColumnDefinitions="3*,2*" ColumnSpacing="32" RowSpacing="24"
+                  Margin="{StaticResource InnerScrollGutter}" IsVisible="{Binding HasRows}">
+                <ItemsControl Name="MetadataTextFields" ItemsSource="{Binding TextRows}"/>
+                <StackPanel Name="MetadataArtworkFields" Grid.Column="1" Spacing="8">
+                    <TextBlock Classes="label section" Text="Artwork" AutomationProperties.HeadingLevel="3"/>
+                    <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}" TextWrapping="Wrap"
+                               Text="Browse artwork sources, choose a file or paste an image address."/>
+                    <ItemsControl ItemsSource="{Binding ArtRows}"/>
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
 </UserControl>

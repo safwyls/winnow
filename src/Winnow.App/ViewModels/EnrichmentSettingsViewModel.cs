@@ -7,7 +7,8 @@ using Winnow.App.Services;
 namespace Winnow.App.ViewModels;
 
 public sealed class EnrichmentSettingsViewModel(
-    IgdbSettingsViewModel igdb, PluginSettingsViewModel? plugins = null, ArtworkOrderViewModel? artworkOrder = null)
+    IgdbSettingsViewModel igdb, PluginSettingsViewModel? plugins = null, ArtworkOrderViewModel? artworkOrder = null,
+    MetadataSyncViewModel? metadataSync = null)
 {
     public string Title => "Metadata & artwork";
     public string SegmentLabel => "METADATA & ARTWORK";
@@ -16,6 +17,7 @@ public sealed class EnrichmentSettingsViewModel(
     public IgdbSettingsViewModel Igdb { get; } = igdb;
     public PluginSettingsViewModel Plugins { get; } = plugins ?? new();
     public ArtworkOrderViewModel ArtworkOrder { get; } = artworkOrder ?? new();
+    public MetadataSyncViewModel MetadataSync { get; } = metadataSync ?? new();
     public void ClearSecrets() { Igdb.ClientSecret = string.Empty; Plugins.ClearSecrets(); }
 }
 

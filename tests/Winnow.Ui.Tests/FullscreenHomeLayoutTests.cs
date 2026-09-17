@@ -287,8 +287,12 @@ public sealed class FullscreenHomeLayoutTests
         try
         {
             window.Show(); Dispatcher.UIThread.RunJobs();
-            var covers = television.GetVisualDescendants().OfType<FullscreenCover>().Select(c => c.Bounds).ToArray();
-            Assert.NotEmpty(covers);
+            // The root also hosts asynchronously loaded backdrop art; only shelf covers
+            // participate in the description layout being checked here.
+            Rect[] CoverBounds() => television.CurrentPage.GetVisualDescendants()
+                .OfType<FullscreenCover>().Select(c => c.Bounds).ToArray();
+            var covers = CoverBounds();
+            Assert.Equal(3, covers.Length);
             for (var i = 0; i < 3; i++)
             {
                 var reason = television.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == "FullscreenHomeReason");
@@ -296,7 +300,7 @@ public sealed class FullscreenHomeLayoutTests
                 Assert.Equal(2, reason.MaxLines);
                 Assert.Equal(TextTrimming.WordEllipsis, reason.TextTrimming);
                 Assert.True(reason.TextLayout.TextLines.Count <= 2);
-                Assert.Equal(covers, television.GetVisualDescendants().OfType<FullscreenCover>().Select(c => c.Bounds).ToArray());
+                Assert.Equal(covers, CoverBounds());
                 television.Handle(GamepadButtons.Right);
                 Dispatcher.UIThread.RunJobs();
             }

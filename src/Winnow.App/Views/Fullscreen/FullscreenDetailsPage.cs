@@ -627,6 +627,12 @@ public sealed class FullscreenDetailsPage : FullscreenPage
         if (_details.ManagementAction is { } management) actions.Add(new(management.Label, () => Context.OpenLink(management), IconLabel: "Manage installation"));
         if (_details.OpenableFolder is { } folder)
             actions.Add(new("Browse install folder", () => Context.BrowseFolder(folder)));
+        if (_details.ArtworkBrowser is { } artwork)
+            actions.Add(new("Change artwork", () =>
+            {
+                Context.Push(new FullscreenArtworkPage(Context, artwork));
+                _ = artwork.OpenAsync();
+            }));
         if (_details.MetadataEditor is { } editor)
             actions.Add(new(editor.OpenLabel, async () =>
             {

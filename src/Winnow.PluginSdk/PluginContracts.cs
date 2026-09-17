@@ -69,7 +69,7 @@ public sealed record PluginMetadata
     public IReadOnlyList<string> Tags { get; init; } = [];
 }
 
-public enum PluginArtworkKind { Background, Cover, Screenshot }
+public enum PluginArtworkKind { Background, Cover, Screenshot, Icon }
 
 public sealed record PluginArtwork(string Id, string Url, int Width, int Height)
 {
@@ -77,6 +77,9 @@ public sealed record PluginArtwork(string Id, string Url, int Width, int Height)
     public string? ImageType { get; init; }
     public bool Animated { get; init; }
     public bool Transparent { get; init; }
+    public string? ThumbnailUrl { get; init; }
+    public string? Creator { get; init; }
+    public string? PageUrl { get; init; }
 }
 
 /// <summary>GameId must name a supplied library entry; Score ranges from zero to one.</summary>

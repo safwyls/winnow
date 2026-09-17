@@ -1460,8 +1460,9 @@ to the available capped size, so its header does not move when a shorter tab is 
 
 **One vertical reading area per tab.** The header and tab row stay outside the scrolling
 content. Each tab's ScrollViewer sits in bounded space and retains its offset when switching
-tabs. Long content increases the scroll extent, not the card size. The focused metadata and
-matching views use the same bounded body area in place of the tabs (§10.9, §10.10).
+tabs. Long content increases the scroll extent, not the card size. The focused matching
+view uses the same bounded body area in place of the tabs (§10.9). Metadata editing opens
+the larger overlay described in §10.10.
 The matching results retain their own bounded candidate list.
 
 Fluent draws an auto-hidden scrollbar over the content. Each vertical region clears it with
@@ -1589,11 +1590,12 @@ with a product id offer `Manage in GOG Galaxy`, opening the game's existing Gala
 These navigation actions do not claim to invoke a game-uninstall protocol. Winnow never
 deletes a game's files. Installation management stays in `More`, outside the primary Play/Install strip.
 
-**A row's name does not change with the state of what it opens.** `Wrong game?` and
-`Edit details` open a focused body in place of the tabs. Back to details, the tool's own close
-control, or Escape returns to the retained tab and puts focus on More. Reopening the same tool
-keeps its query, results or unsaved field drafts. The header remains visible throughout.
-The tool's close tooltip names the tool; the modal's close button still dismisses the game.
+**A row's name does not change with the state of what it opens.** `Wrong game?` opens a
+focused body in place of the tabs; `Edit details` opens a larger overlay above the card.
+Back to details or Escape returns to the retained tab and puts focus on More. Reopening the
+same tool keeps its query, results or unsaved field drafts. Each surface keeps its game title
+visible. The matching tool also has its own close control; the card's close button dismisses
+the game when no overlay is open.
 
 **A heading that names a section is set in `TextDim`**, the same ink as the `×` glyph beside
 it, so the header reads as chrome rather than as the section's own content. The set is IGDB
@@ -1856,17 +1858,18 @@ which reserved separate rows and columns for the controls.
 tab content, so the keyboard reaches `Play` before the active tab's fields. Technical
 identifiers are inside the Library tab's collapsed disclosure.
 
-### 10.8 The patch notes panel
+### 10.8 The embedded browser
 
 A patched game's `Patch notes` button on an Activity update row, and the `All patch notes`
 row in More, follow **Settings → Application → Links → Open links in** on desktop and
-fullscreen. The default, **In Winnow**, uses Winnow's WebView2 window for permitted patch
-notes. **System browser** opens web links externally. **Store client** is offered when a
+fullscreen. The default, **In Winnow**, uses Winnow's WebView2 window for HTTP and HTTPS
+links, including store pages, patch notes and other websites. **System browser** opens web
+links externally. **Store client** is offered when a
 registered Steam executable exists on Windows; it opens Steam store pages in that client.
-Other web pages, unavailable readers and refused client routes fall back to the system
+Other web pages under Store client, unavailable readers and refused client routes fall back to the system
 browser, with a status line in desktop details or a fullscreen notice. Failed browser opens
 report failure. Play, Install, Uninstall and explicit client-management actions keep their
-native targets. The preference never broadens the reader's origin gate.
+native targets. Browsing is separate from storefront sign-in and credential capture.
 
 **It is a separate top-level window, not an overlay.** The reason is the airspace problem the
 sign-in window already records: a hosted native browser HWND paints over Avalonia content
@@ -1878,9 +1881,10 @@ its place, nothing is blocked. `Escape` dismisses it, so does the close button, 
 page asking to close itself. One window at a time — opening a second note navigates the open
 window and brings it forward.
 
-**Chrome.** The system title bar, titled with the game. Across the top of the client area a
-`Surface` strip with a `Line` rule under it: the current page's host on the left in Data S,
-and on the right one quiet action that hands the page to the user's own browser. When the
+**Chrome.** The system title bar reads `Winnow browser` followed by the supplied page or game
+title. Across the top of the client area a `Surface` strip with a `Line` rule under it carries
+Back and Forward controls, the current web address in Data S, and an Open in browser action.
+When the
 embedded browser cannot start, an `Amber` line appears in that strip and the window stays
 dismissable. 1024x820, the same size as the sign-in browser window.
 
@@ -1890,50 +1894,34 @@ because `Winnow.Auth.WebView` references Avalonia and `Winnow.Core` and nothing 
 the same seam the consent window uses, and a theme picked in settings is already in force when
 the panel opens.
 
-**The origin gate is the load-bearing part.** The address that opens a panel must be https, on
-exactly one of four origins:
+**Web navigation stays in the browser.** HTTP and HTTPS pages, redirects and links may
+render regardless of their origin. Once open:
 
-- `store.steampowered.com`
-- `steamstore-a.akamaihd.net`
-- `steamcommunity.com`
-- `www.steamcommunity.com`
-
-with `/news/` or `/announcements` in its path. Origins are compared as scheme, host and port,
-exactly. Steam's own news API hands out `steamstore-a.akamaihd.net/news/externalpost/...`,
-which redirects onto a community announcement; that is why all four are named.
-`update_events.url` is captured from a network response, so the gate is an allowlist, for the
-same reason §10.3 gives.
-
-Once open:
-
-- An allowlisted origin renders.
-- Any other web address is cancelled and handed to the user's own browser.
+- Web addresses render in the existing window.
 - Anything that is not a web address at all — `data:`, `blob:`, `file:`, `javascript:`, a
   launcher protocol, any custom scheme — is refused outright.
-- A popup takes the same decision.
-- A subframe takes a stricter one: off the allowlist it is blocked rather than opened
-  externally, so a third-party embedded video does not load. A cost, taken deliberately.
+- A popup navigates the existing window rather than opening another window.
+- Web subframes may render across origins; non-web targets remain blocked.
 
-The whole decision is `PatchNotesPolicy`, built on the same `AuthFlowPolicy` the Epic sign-in
-and the Steam account-page harvest run on, so there is one origin mechanism in the application
-rather than two.
+`PatchNotesPolicy` owns the web-navigation decision. The sign-in and account-harvest
+policies retain their separate origin restrictions and capture behavior.
 
 **Validate links before rendering and navigation.** `GameLink.Create` rejects unsafe outbound
-targets before a button is shown. `PatchNotesPolicy` then restricts which validated web pages
-may render inside the browser.
+targets before a button is shown. The browser also validates navigation, frames and popups;
+the initial WebView blank page exists before those navigation handlers attach.
 
 **Nothing is injected into the page.** No host objects, no web-message channel, no developer
 tools, no context menu, no downloads, and every permission request is denied. The browser
 profile is in-private and lives under the run's own data directory, so `--data-dir` redirects
-it with everything else. Script runs — a storefront news page is an ordinary web page, and
+it with everything else. Script runs — a storefront page is an ordinary web page, and
 there is nothing in the panel for it to talk to.
 
 **A game whose updates carry no page says so.** One `TextDim` line under the update list,
 stating only that there is no page to read — not that nothing shipped, which is the same
 distinction §10.4 draws for its own empty state.
 
-**Where the panel is unavailable** — no WebView2 runtime on the machine — the buttons open the system browser. Nothing is greyed out and nothing announces
-itself.
+**Where the panel is unavailable** — no WebView2 runtime on the machine — the buttons open
+the system browser and the calling surface reports that fallback.
 
 ### 10.9 IGDB override
 
@@ -2057,14 +2045,17 @@ tracking its own.
 
 **`Edit details` is a row in More (§10.3)**, beside `Wrong game?`. Identity correction
 chooses which game this is; the field editor chooses what individual values should be.
-The editor occupies a focused, full-width body in place of the tabs. It stays in the modal's
-own visual tree, with a bounded scroll region and a Back to details control. Opening it again
+The desktop editor opens a sibling overlay above the details card, with a 24px window inset,
+24px padding and a maximum size of 1440×1000. Its heading, game title, Back to details control
+and editor-wide messages stay above the bounded form scroll region. Opening it again
 preserves drafts in all six rows and does not reload already-loaded fields. Closing it or
 pressing Escape returns to the retained tab without saving or discarding those drafts.
 
-**The section carries an `EDIT DETAILS` heading and its own close control** (§10.3's rule).
-The `×` glyph sits in the trailing Auto column of the header row, beside the heading; its
-tooltip is `Close editor`. The close control is the first Tab stop in the section.
+**Focus stays in the active overlay.** Opening the editor focuses its first text field.
+Tab and Shift+Tab cycle inside it, and the details card is disabled underneath. Browsing
+artwork opens the artwork overlay above the still-mounted editor; returning restores focus
+to the originating Browse artwork button and preserves drafts. Escape returns one level at
+a time. Back to details is the editor's single close control.
 
 **Each field carries its own source, and that source is the single answer to where the value
 came from.** There is no override layer stacked over an automatic value. A metadata fetch
@@ -2088,7 +2079,11 @@ two sit in one modal, so they do not share a word.
 field's. One consequence: §10.9's same-game offer cannot arise on this surface, because the
 collision it answers can only be produced by naming an IGDB id.
 
-**Six rows, in this order:** Name, Release year, About, Cover art, Publisher, Background art.
+**Six fields, grouped for the available space.** Desktop places Name, Release year, Publisher
+and About in the left column, with Cover art and Background art in the right. Below 820px of
+editor width the artwork section stacks below the text fields. Single-line inputs have a
+38px minimum height. Fullscreen retains its existing field navigation order: Name, Release
+year, About, Cover art, Publisher, Background art, with shared save and validation behavior.
 `About` is the one multi-line field. `Release year` is the one numeric field and draws in Plex
 Mono with tabular figures, §3's rule. A year outside 1900–2200, or a blank name, is refused
 under the field rather than stored. The two art rows take a URL in the field and carry a
@@ -2131,6 +2126,45 @@ late read cannot reopen it. Desktop and fullscreen share this behavior.
 that resolves to no work id, the link is not drawn at all and the modal is exactly what it was.
 Omitting only the image picker costs the `Choose file` route and leaves the URL route
 untouched.
+
+#### Artwork browser
+
+**Change artwork** in the game's More menu opens independent Hero, Cover and Icon slots.
+The existing art rows also offer **Browse artwork**. Desktop opens a larger overlay above
+the whole details modal, bounded to 1440 × 1000 with a 24-pixel window inset. A compact
+header names the game and offers Back. The gallery takes three fifths of the body beside
+a persistent preview; only the gallery scrolls. Images fit the preview's remaining height,
+and **Use artwork**, **Use automatic**, file import and URL import stay below the body.
+Narrow layouts put a bounded preview above the results. The underlying details card cannot
+receive input while the browser is open, and keyboard focus cycles within the overlay.
+Back and Escape abandon the preview and return to the invoking editor row or the More
+control. The details tab and editor drafts survive the visit.
+
+**All sources** groups candidates by source. Steam and IGDB remain visible even when no
+appropriate asset exists; unsupported slots and setup failures explain the limitation.
+Enabled artwork plugins contribute their own group. Each group loads, pages and retries
+independently. Selecting a candidate changes only the preview. Current and Selected are
+written labels; Volt adds selection emphasis without replacing those labels. Artwork remains
+at full saturation. Source, dimensions and creator appear when supplied.
+
+Hero previews offer Desktop crop and Fullscreen crop controls and fit the chosen crop within
+the preview area. Desktop uses the current details card's ratio; fullscreen labels its desktop
+example as 4:3 and its fullscreen preview as 16:9. These previews show composition without
+the reading veil. Cover previews follow the shared Fit/Fill preference, and icons show
+32-pixel use plus light and dark transparency backgrounds. An available artwork page opens
+through **Open artwork source** beside the attribution.
+**Use artwork** validates and retains the chosen image before replacing the selected slot.
+**Use automatic** resets only that slot. Saving, empty and failure states use words and
+remain next to the operation; there are no required hover controls or transitions.
+
+Fullscreen uses a separate artwork page with TV-sized controls, a persistent preview,
+source controls, and explicit focus rows. A previews or activates the focused action.
+LT and RT cycle backward and forward through Hero, Cover and Icon, wrapping at either end
+and focusing the selected slot. The slot row shows the trigger glyphs. Switching retains each
+slot's preview and browsing position and is disabled while artwork is being saved.
+**Use artwork** commits. B returns without committing a preview. Candidate identity retains
+focus when another page of results arrives. File selection and URL entry use the fullscreen
+file browser and keyboard. Both surfaces use the same saved choices and refresh operations.
 
 ---
 
@@ -3063,7 +3097,12 @@ switch the current view. Windows sign-in and explicit background launches retain
 behavior. Exiting fullscreen restores the desktop, and reopening a hidden window does not
 reapply the startup preference.
 
-METADATA & ARTWORK groups credentials and automatic backdrop preferences. Its **IGDB METADATA**
+METADATA & ARTWORK groups credentials and automatic backdrop preferences. A **Library metadata**
+card offers **Sync metadata now** for an explicit pass over the existing library. The shared
+command is disabled while running; a polite live status shows waiting, the current stage,
+completion or recovery instructions. Leaving settings does not cancel the pass. Fullscreen
+offers the same action and status in its Metadata & artwork section with controller navigation.
+Its **IGDB METADATA**
 card offers **Get IGDB credentials**, labelled **Client ID** and
 **Client secret** fields, **Save credentials** and **Remove saved credentials**. The secret
 is masked, is cleared after saving or leaving the form, and is never loaded back into the
@@ -3075,12 +3114,25 @@ Fullscreen Metadata & artwork opens a dedicated **IGDB metadata** page with the 
 actions, large fields and explicit controller focus rows. A opens the existing on-screen
 keyboard for either field; secret entry retains its masking.
 
-The separate **PLUGINS** tab starts with a list of names and versions loaded in the current
-session, or an explicit empty state. Desktop and fullscreen use the runtime loaded state,
-so pending enable or disable changes do not change the list until restart.
+The separate **PLUGINS** section has one named tab per plugin loaded in the current session,
+followed by **Manage plugins** for installation, unloaded packages and diagnostics. The first
+loaded plugin is selected initially; subsequent visits and catalog refreshes keep the selected
+plugin when it is still loaded. Desktop and fullscreen use the runtime loaded state, so
+pending enable or disable changes do not remove its tab until restart. With no loaded plugins,
+Manage plugins shows the explicit empty state and installation controls.
+
+The plugin tab strip stays above the scrolling settings form. When names exceed the available
+width, left and right arrow buttons appear at opposite ends of the strip and scroll through
+the tabs without changing selection. Each arrow disables at its corresponding edge. The
+selected or keyboard-focused tab scrolls into view, and resizing removes the arrows once all
+tabs fit. Desktop uses native tab semantics with Left/Right and Home/End navigation; fullscreen
+uses a controller focus row with A to select, while the existing section navigation remains
+available. Tab switches retain ordinary field drafts but clear secret drafts and cancel a
+sign-in challenge on the plugin being left.
 Desktop cards stretch across the available pane width up to 1,100 logical pixels and remain
 left-aligned on wider displays, with the version beneath the name
-and an Enabled/Disabled switch at the upper right. The tab shows one card per discovered plugin, with its name, version,
+and an Enabled/Disabled switch at the upper right. A loaded plugin tab shows that plugin alone;
+Manage plugins shows cards for discovered packages that are not loaded, with their name, version,
 description, supported features and status. **Open plugins folder** opens the installation
 directory. ZIP packages unpack automatically at startup; users may also place unpacked packages
 there. Failed ZIP imports appear alongside other package diagnostics. Explain that manually installing and changing enablement requires a restart and that plugins
@@ -3122,8 +3174,9 @@ polling. Connection status uses a polite text announcement. The provider's brows
 authentication; Winnow never asks for its password. History imports that do not establish
 ownership retain an explanatory source line in both game-detail overviews, including groups.
 
-Fullscreen lists discovered plugins under Plugins and opens a dedicated page for
-each one. The page uses the same settings model with large generated fields, explicit focus
+Fullscreen places the selected loaded plugin's form below its own horizontal plugin tabs.
+Manage plugins opens dedicated pages for unloaded packages. Both presentations use the same
+settings model with large generated fields, explicit focus
 rows, masked controller text entry and the same commands. Saving keeps the controls in place
 so controller focus can return to the same action. Plugins do not supply arbitrary UI trees.
 The fullscreen section strip scrolls horizontally when needed and brings the focused tab into view.

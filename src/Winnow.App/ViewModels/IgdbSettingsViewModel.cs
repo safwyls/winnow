@@ -7,7 +7,7 @@ namespace Winnow.App.ViewModels;
 /// <summary>Shared credential editing for both Settings surfaces.</summary>
 public partial class IgdbSettingsViewModel(
     IIgdbSettingsService? settings = null,
-    IUriDispatcher? uris = null) : ObservableObject
+    IUriDispatcher? uris = null, IGameLinkRouter? linkRouter = null) : ObservableObject
 {
     [ObservableProperty] public partial string ClientId { get; set; } = string.Empty;
     [ObservableProperty] public partial string ClientSecret { get; set; } = string.Empty;
@@ -114,12 +114,14 @@ public partial class IgdbSettingsViewModel(
     {
         try
         {
-            if (uris is null || !await uris.OpenAsync(new Uri("https://dev.twitch.tv/console/apps")))
-                Status = "Could not open the browser. Visit dev.twitch.tv/console/apps to create a Twitch application.";
+            var link = GameLink.Create("Twitch developer console", "https://dev.twitch.tv/console/apps")!;
+            if (!(linkRouter is not null ? (await linkRouter.OpenAsync(link, link.Label)).Opened
+                : uris is not null && await uris.OpenAsync(new Uri(link.Uri))))
+                Status = "Could not open the page. Visit dev.twitch.tv/console/apps to create a Twitch application.";
         }
         catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
         {
-            Status = "Could not open the browser. Visit dev.twitch.tv/console/apps to create a Twitch application.";
+            Status = "Could not open the page. Visit dev.twitch.tv/console/apps to create a Twitch application.";
         }
     }
 }

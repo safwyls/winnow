@@ -172,6 +172,85 @@ public sealed class PluginCatalogTests
     }
 
     [Fact]
+    public async Task Legacy_artwork_provider_remains_active_without_the_optional_browser_interface()
+    {
+        using var files = new Packages();
+        files.Add(files.Builtin, "legacy", manifest: Packages.Manifest("legacy") with
+        {
+            Capabilities = [PluginCapabilities.Artwork],
+        });
+        await using var catalog = new PluginCatalog(new State(), new Context());
+        await catalog.DiscoverAsync(files.Builtin, files.User);
+
+        var descriptor = Assert.Single(catalog.GetActive<IArtworkProviderPlugin>());
+        Assert.Empty(catalog.GetActive<IArtworkBrowserPlugin>());
+        var game = new PluginGame("host-1", "Fixture game", new Dictionary<string, string>());
+        var artwork = await catalog.InvokeAsync<IReadOnlyList<PluginArtwork>>(descriptor,
+            (plugin, token) => ((IArtworkProviderPlugin)plugin).GetArtworkAsync(game, token));
+        Assert.Equal(PluginArtworkKind.Background, Assert.Single(artwork!).Kind);
+        Assert.Null(descriptor.Error);
+    }
+
+    [Fact]
+    public async Task Artwork_browser_is_manifest_gated_and_pages_with_attribution_through_the_isolated_catalog()
+    {
+        using var files = new Packages();
+        files.Add(files.Builtin, "browser", typeof(ArtworkBrowserFixture));
+        files.Add(files.Builtin, "undeclared", manifest: Packages.Manifest("undeclared", typeof(ArtworkBrowserFixture)) with
+        {
+            Capabilities = [PluginCapabilities.Metadata],
+        });
+        await using var catalog = new PluginCatalog(new State(), new Context());
+        await catalog.DiscoverAsync(files.Builtin, files.User);
+
+        Assert.All(catalog.Plugins, descriptor => Assert.True(descriptor.Loaded));
+        var descriptor = Assert.Single(catalog.GetActive<IArtworkBrowserPlugin>());
+        Assert.Equal("browser", descriptor.Manifest.Id);
+        var game = new PluginGame("host-1", "Fixture game", new Dictionary<string, string> { ["steam"] = "220" });
+        var first = await catalog.InvokeAsync<PluginArtworkPage>(descriptor,
+            async (plugin, token) =>
+            {
+                var browser = Assert.IsAssignableFrom<IArtworkBrowserPlugin>(plugin);
+                Assert.Contains(PluginArtworkKind.Icon, browser.SupportedArtworkKinds);
+                return await browser.BrowseArtworkAsync(game, PluginArtworkKind.Icon, cancellationToken: token);
+            });
+        Assert.NotNull(first);
+        Assert.Equal(PluginArtworkAvailability.Available, first.Availability);
+        Assert.NotNull(first.NextCursor);
+        var image = Assert.Single(first.Items);
+        Assert.Equal(PluginArtworkKind.Icon, image.Kind);
+        Assert.Equal("https://art.example/220/first.png", image.Url);
+        Assert.Equal("https://art.example/thumb/first.png", image.ThumbnailUrl);
+        Assert.Equal("Fixture artist", image.Creator);
+        Assert.Equal("https://art.example/asset/first", image.PageUrl);
+
+        var second = await catalog.InvokeAsync<PluginArtworkPage>(descriptor,
+            async (plugin, token) => await ((IArtworkBrowserPlugin)plugin).BrowseArtworkAsync(game, PluginArtworkKind.Icon,
+                first.NextCursor, token));
+        Assert.NotNull(second);
+        Assert.Null(second.NextCursor);
+        Assert.Equal("second", Assert.Single(second.Items).Id);
+        var unsupported = await catalog.InvokeAsync<PluginArtworkPage>(descriptor,
+            async (plugin, token) => await ((IArtworkBrowserPlugin)plugin).BrowseArtworkAsync(game, PluginArtworkKind.Cover,
+                cancellationToken: token));
+        Assert.NotNull(unsupported);
+        Assert.Equal(PluginArtworkAvailability.Unsupported, unsupported.Availability);
+        Assert.Empty(unsupported.Items);
+        Assert.Null(descriptor.Error);
+    }
+
+    [Fact]
+    public void Artwork_sdk_preserves_existing_enum_and_assembly_identities()
+    {
+        Assert.Equal(0, (int)PluginArtworkKind.Background);
+        Assert.Equal(1, (int)PluginArtworkKind.Cover);
+        Assert.Equal(2, (int)PluginArtworkKind.Screenshot);
+        Assert.Equal(3, (int)PluginArtworkKind.Icon);
+        Assert.Equal(new Version(1, 0, 0, 0), typeof(IArtworkProviderPlugin).Assembly.GetName().Version);
+        Assert.Equal(1, PluginApi.Version);
+    }
+
+    [Fact]
     public async Task User_collision_cannot_replace_builtin_and_invalid_manifests_never_execute()
     {
         using var files = new Packages();

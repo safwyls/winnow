@@ -250,6 +250,13 @@ passing through Winnow infrastructure. This is a reference option, not planned i
   reloads the shared library on the UI thread.
   Settings credentials take precedence over environment/local configuration credentials;
   removing the saved pair preserves that fallback. Saving does not perform network validation.
+- **Sync metadata now** in desktop and fullscreen settings explicitly runs the IGDB-relevant
+  stages of the shared library refresh pipeline, even when automatic sync is suppressed.
+  It checks credential availability, shares the pipeline's serialization gate, reports stage
+  progress and failures, and publishes committed library changes. It never invokes ownership
+  or launcher imports and does not change automatic-sync settings. Existing cache lifetimes,
+  manual match pins, field overrides and saved artwork precedence still apply. Completion
+  means the pass finished; providers can serve cached data or leave unavailable games unmatched.
 - Auth is Twitch client-credentials:
   `POST https://id.twitch.tv/oauth2/token?client_id=…&client_secret=…&grant_type=client_credentials`.
   Send `Client-ID` and `Authorization: Bearer <token>` on every request. Tokens are long-lived
@@ -304,6 +311,26 @@ passing through Winnow infrastructure. This is a reference option, not planned i
   figure cannot be attributed to anyone, and the rule is that a score is shown with its source
   and its count or not at all.
 
+#### Artwork choices and browsing
+
+Saved artwork choices live separately from provider observations in `artwork_choices`.
+Each original work has independent Hero, Cover and Icon slots, with manual choices above
+collection choices. Reads share choices through the current confirmed same-game group;
+the newest revision wins within a priority. Unlinking stops sharing without copying artwork
+onto another work. Reset clears that slot across the current group, including migrated legacy
+user fields, so automatic selection resumes. Selected image bytes live in the user artwork
+cache independently of provider credentials or activation. The Windows jump list prefers
+a saved icon and otherwise uses its existing cover-derived icon.
+
+Artwork browsing is an optional SDK capability alongside automatic artwork provision.
+It declares supported kinds and returns bounded pages with opaque cursors, availability,
+dimensions and attribution. Existing providers retain their original unpaged contract.
+
+Desktop and fullscreen use the same selection service and separate presentation paths.
+Steam browser keys bypass automatic IGDB fallback so the source label remains accurate.
+IGDB offers covers and cached or fetched landscape artwork; it does not supply an icon slot.
+Saving downloads and fully decodes the original static image before recording a choice.
+
 #### SteamGridDB artwork
 
 The SDK-only `Winnow.Plugin.SteamGridDb` package retrieves static landscape heroes through
@@ -312,6 +339,12 @@ API key. This slice uses exact Steam app IDs only; it does not search names or c
 Requests exclude NSFW, humor and epilepsy-tagged assets. Returned dimensions, type flags,
 format and canonical CDN URL are checked before storing a candidate. Each response is bounded
 to 2 MiB and supplies the first page of candidates.
+
+The optional browser additionally pages static heroes, portrait grids and PNG icons through
+the documented per-game endpoints. Its opaque cursors and 30-day cache are scoped by game,
+kind and page, separately from automatic hero observations. Available creator and source-page
+attribution follow the selected image. Library-wide collections remain deferred: the published
+API has no supported enumeration contract (see `docs/spikes/steamgriddb-collections.md`).
 
 A shared Polly pipeline limits requests to one per second and permits two retries for
 transport, timeout, rate-limit and server failures, with Retry-After delays capped at 30 seconds.
@@ -1175,8 +1208,11 @@ boundaries. The Windows-only WebView2 availability rules remain unchanged.
 
 `IGameLinkRouter` applies `application.link_destination` (`in-app`, `browser`, or `store`)
 to game-detail reading links on both surfaces. It revalidates `GameLink` before dispatch.
-In-app reading retains `PatchNotesPolicy` unchanged; unsupported pages and unavailable or
-refused readers use the system browser. The only alternative native reading route is a
+In-app reading accepts HTTP and HTTPS pages through `PatchNotesPolicy`, including store
+pages and links outside Steam news. Web redirects, popups and frames can cross origins;
+page-requested non-web schemes remain blocked. The private
+browser has no sign-in capture, host objects or web-message bridge. Unavailable or refused
+readers use the system browser. The only alternative native reading route is a
 canonical HTTPS Steam store app page to `steam://store/<appid>`, with a registered Windows
 protocol-handler executable verified through `AssocQueryStringW`. No Epic or GOG web-to-client
 route is assumed. Missing or refused clients fall back to the browser. The setting offers
@@ -1184,7 +1220,8 @@ Store client only when Steam is available; a previously saved unavailable select
 System browser without rewriting the stored preference. Each click rechecks availability.
 Explicit launcher actions preserve their validated native URI on every platform. Desktop
 details show fallback/failure status; fullscreen uses its shared notice. Update-download and
-provider-setup links retain their explicit browser destinations.
+device-code sign-in links retain their explicit browser destinations. Provider-setup,
+release-note and artwork-source web links follow the preference.
 
 ### 5.2 Session detection
 

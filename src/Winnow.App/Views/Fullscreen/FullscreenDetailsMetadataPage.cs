@@ -17,7 +17,14 @@ public sealed class FullscreenDetailsMetadataPage : FullscreenPage
         foreach (var field in editor.Rows)
         {
             var button = FullscreenUi.Button(field.MenuLabel, () =>
-                Context.Push(new FullscreenDetailsFieldPage(Context, field)));
+            {
+                if (field is MetadataArtRowViewModel { ArtworkBrowser: { } browser } art)
+                {
+                    Context.Push(new FullscreenArtworkPage(Context, browser));
+                    _ = browser.OpenAsync(art.IsCover ? Winnow.Core.Domain.ArtworkSlot.Cover : Winnow.Core.Domain.ArtworkSlot.Hero);
+                }
+                else Context.Push(new FullscreenDetailsFieldPage(Context, field));
+            });
             button.Bind(Button.ContentProperty, new Binding(nameof(MetadataFieldRowViewModel.MenuLabel)) { Source = field });
             button.Bind(AutomationProperties.NameProperty, new Binding(nameof(MetadataFieldRowViewModel.MenuLabel)) { Source = field });
             content.Children.Add(button);

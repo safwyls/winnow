@@ -8,7 +8,7 @@ namespace Winnow.App.ViewModels;
 
 public partial class PluginSettingsViewModel(
     IPluginSettingsBackend? backend = null, IUriDispatcher? uris = null, TimeProvider? timeProvider = null,
-    IOfficialPluginInstaller? installer = null) : ObservableObject
+    IOfficialPluginInstaller? installer = null, IGameLinkRouter? linkRouter = null) : ObservableObject
 {
     private readonly SemaphoreSlim _loadGate = new(1, 1);
     private PluginInstallViewModel? _installation;
@@ -19,6 +19,7 @@ public partial class PluginSettingsViewModel(
         await LoadAsync();
         var plugin = Plugins.FirstOrDefault(plugin => plugin.Id == id)
             ?? throw new InvalidOperationException("Installed plugin settings are unavailable.");
+        SelectPlugin(plugin);
         PluginSettingsRequested?.Invoke(plugin);
     }
     public string Title => "Plugins";
@@ -28,6 +29,59 @@ public partial class PluginSettingsViewModel(
     public const string InstallationNote = "Install official plugins from the Winnow website, or place a plugin ZIP or unpacked plugin in the plugins folder and restart. ZIPs unpack automatically. Manually added plugins need enabling and a restart. Only enable plugins from authors you trust: plugins run with Winnow's access to this device.";
     public const string SecretNote = "Secrets are stored securely on this device and are never shown again. Leave a secret blank to keep its saved value.";
     public ObservableCollection<PluginCardViewModel> Plugins { get; } = [];
+    public ObservableCollection<PluginCardViewModel> LoadedPlugins { get; } = [];
+    public ObservableCollection<PluginCardViewModel> ManagedPlugins { get; } = [];
+    private static readonly PluginSettingsTabViewModel ManageTab = new("Manage plugins", null);
+    public ObservableCollection<PluginSettingsTabViewModel> PluginTabs { get; } = [ManageTab];
+    private PluginSettingsTabViewModel _selectedTab = ManageTab;
+    private bool _hasLoaded;
+    public PluginSettingsTabViewModel SelectedTab
+    {
+        get => _selectedTab;
+        set
+        {
+            if (value is null || ReferenceEquals(value, _selectedTab)) return;
+            if (_selectedTab.Plugin is null)
+                foreach (var plugin in ManagedPlugins) plugin.Deactivate();
+            if (!ReferenceEquals(_selectedTab.Plugin, value.Plugin)) _selectedTab.Plugin?.Deactivate();
+            if (SetProperty(ref _selectedTab, value))
+            {
+                OnPropertyChanged(nameof(SelectedPlugin));
+                OnPropertyChanged(nameof(IsManagingPlugins));
+                OnPropertyChanged(nameof(VisiblePlugins));
+            }
+        }
+    }
+    public PluginCardViewModel? SelectedPlugin => SelectedTab.Plugin;
+    public bool IsManagingPlugins => SelectedPlugin is null;
+    public IEnumerable<PluginCardViewModel> VisiblePlugins => SelectedPlugin is { } selected ? [selected] : ManagedPlugins;
+    public void SelectPlugin(PluginCardViewModel? plugin) => SelectedTab =
+        PluginTabs.FirstOrDefault(tab => tab.Plugin?.Id == plugin?.Id) ?? ManageTab;
+
+    private void RefreshTabs()
+    {
+        var previousId = SelectedPlugin?.Id;
+        var loaded = Plugins.Where(plugin => plugin.IsLoaded)
+            .OrderBy(plugin => plugin.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
+        LoadedPlugins.Clear();
+        foreach (var plugin in loaded) LoadedPlugins.Add(plugin);
+        ManagedPlugins.Clear();
+        foreach (var plugin in Plugins.Where(plugin => !plugin.IsLoaded)) ManagedPlugins.Add(plugin);
+        var tabs = loaded.Select(plugin => PluginTabs.FirstOrDefault(tab => ReferenceEquals(tab.Plugin, plugin))
+            ?? new PluginSettingsTabViewModel(plugin.Name, plugin)).Append(ManageTab).ToArray();
+        // Keep existing tab instances and selection stable during ordinary settings refreshes.
+        for (var i = 0; i < tabs.Length; i++)
+        {
+            if (i < PluginTabs.Count && ReferenceEquals(PluginTabs[i], tabs[i])) continue;
+            var existingIndex = PluginTabs.IndexOf(tabs[i]);
+            if (existingIndex >= 0) PluginTabs.Move(existingIndex, i);
+            else PluginTabs.Insert(i, tabs[i]);
+        }
+        while (PluginTabs.Count > tabs.Length) PluginTabs.RemoveAt(PluginTabs.Count - 1);
+        SelectPlugin(!_hasLoaded ? loaded.FirstOrDefault() : loaded.FirstOrDefault(plugin => plugin.Id == previousId));
+        _hasLoaded = true;
+        OnPropertyChanged(nameof(VisiblePlugins));
+    }
     public string UserPluginDirectory => backend?.UserPluginDirectory ?? string.Empty;
     [ObservableProperty] public partial bool IsBusy { get; private set; }
     [ObservableProperty] public partial string Status { get; private set; } = string.Empty;
@@ -51,11 +105,12 @@ public partial class PluginSettingsViewModel(
             foreach (var snapshot in snapshots)
             {
                 var existing = Plugins.FirstOrDefault(plugin => plugin.Id == snapshot.Id);
-                if (existing is null) Plugins.Add(new PluginCardViewModel(snapshot, backend, uris, timeProvider));
+                if (existing is null) Plugins.Add(new PluginCardViewModel(snapshot, backend, uris, timeProvider, linkRouter));
                 else existing.Apply(snapshot, drafts);
             }
             foreach (var removed in Plugins.Where(plugin => snapshots.All(snapshot => snapshot.Id != plugin.Id)).ToArray())
             { removed.Deactivate(); Plugins.Remove(removed); }
+            RefreshTabs();
             Status = Plugins.Count == 0 ? "No plugins found. Open the plugins folder to add one, then restart Winnow." : string.Empty;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
@@ -70,10 +125,13 @@ public partial class PluginSettingsViewModel(
     public void FolderOpenFailed() => Status = "Could not open the plugins folder. Check that Winnow's data folder is available, then try again.";
 }
 
+public sealed record PluginSettingsTabViewModel(string Name, PluginCardViewModel? Plugin);
+
 public partial class PluginCardViewModel : ObservableObject
 {
     private readonly IPluginSettingsBackend _backend;
     private readonly IUriDispatcher? _uris;
+    private readonly IGameLinkRouter? _linkRouter;
     private readonly TimeProvider _time;
     private readonly IReadOnlyList<string> _accountHosts;
     private CancellationTokenSource? _signInCancellation;
@@ -124,9 +182,10 @@ public partial class PluginCardViewModel : ObservableObject
     public string WebsiteAccessibleName => $"Open {Name} website";
 
     public PluginCardViewModel(PluginSettingsSnapshot snapshot, IPluginSettingsBackend backend, IUriDispatcher? uris = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null, IGameLinkRouter? linkRouter = null)
     {
         _backend = backend; _uris = uris;
+        _linkRouter = linkRouter;
         _time = timeProvider ?? TimeProvider.System;
         _accountHosts = snapshot.AccountHosts ?? [];
         Id = snapshot.Id; Name = snapshot.Name; Description = snapshot.Description;
@@ -326,10 +385,12 @@ public partial class PluginCardViewModel : ObservableObject
     {
         try
         {
-            if (WebUri(url) is { } uri && _uris is not null && await _uris.OpenAsync(uri)) return;
+            if (WebUri(url) is { } uri && GameLink.Create("Provider website", uri.AbsoluteUri) is { } link
+                && (_linkRouter is not null ? (await _linkRouter.OpenAsync(link, Name)).Opened
+                    : _uris is not null && await _uris.OpenAsync(uri))) return;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) { }
-        Status = "Could not open the provider website. Check your default browser and try again.";
+        Status = "Could not open the provider website. Try again.";
     }
 
     internal static Uri? WebUri(string? url) => !string.IsNullOrWhiteSpace(url)

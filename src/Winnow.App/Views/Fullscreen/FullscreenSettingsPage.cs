@@ -29,6 +29,10 @@ public sealed class FullscreenSettingsPage : FullscreenPage
     private int _refreshVersion;
     private bool _disposed;
     private bool _pluginsRefreshing;
+    private bool _pluginCatalogRequested;
+    private FullscreenPluginSettingsPage? _pluginPage;
+    private Button? _selectedPluginTab;
+    private (string Id, bool IsLoaded)[] _renderedPlugins = [];
     public Task PendingLibraryRefresh { get; private set; } = Task.CompletedTask;
     public Task PendingPlatformRefresh { get; private set; } = Task.CompletedTask;
     public Task PendingPluginRefresh { get; private set; } = Task.CompletedTask;
@@ -41,8 +45,10 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         Render();
         context.PreferencesChanged += RefreshValues;
         context.Shared.ApplicationSettings.PropertyChanged += ApplicationSettingsChanged;
+        context.Shared.PluginSettings.PropertyChanged += PluginSettingsChanged;
         AttachedToVisualTree += RefreshValues;
         AttachedToVisualTree += (_, _) => { if (_section == "Platforms") PendingPlatformRefresh = RefreshPlatformsAsync(); };
+        DetachedFromVisualTree += (_, _) => { if (_section == "Plugins") context.Shared.PluginSettings.ClearSecrets(); };
     }
 
     private void RefreshValues(object? sender, EventArgs e)
@@ -70,7 +76,20 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         }, DispatcherPriority.Background);
     }
 
-    public override void Dispose() { _disposed = true; Context.PreferencesChanged -= RefreshValues; Context.Shared.ApplicationSettings.PropertyChanged -= ApplicationSettingsChanged; base.Dispose(); }
+    public override void Dispose() { _disposed = true; _pluginPage?.Dispose(); Context.Shared.PluginSettings.SelectedPlugin?.Deactivate(); Context.Shared.PluginSettings.PropertyChanged -= PluginSettingsChanged; Context.PreferencesChanged -= RefreshValues; Context.Shared.ApplicationSettings.PropertyChanged -= ApplicationSettingsChanged; base.Dispose(); }
+
+    private void PluginSettingsChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (_disposed || _section != "Plugins") return;
+        var selectionChanged = e.PropertyName == nameof(PluginSettingsViewModel.SelectedPlugin);
+        var catalogChanged = e.PropertyName == nameof(PluginSettingsViewModel.VisiblePlugins)
+            && !_renderedPlugins.SequenceEqual(Context.Shared.PluginSettings.Plugins.Select(plugin => (plugin.Id, plugin.IsLoaded)));
+        if (!selectionChanged && !catalogChanged) return;
+        var restoreFocus = PreserveFocus();
+        Render();
+        if (selectionChanged && _selectedPluginTab is { } selected) FocusControl(selected);
+        else restoreFocus();
+    }
 
     private async Task RefreshPlatformsAsync()
     {
@@ -85,6 +104,14 @@ public sealed class FullscreenSettingsPage : FullscreenPage
 
     private void Render()
     {
+        _pluginPage?.Dispose();
+        _pluginPage = null;
+        _selectedPluginTab = null;
+        if (_section != "Plugins")
+        {
+            Context.Shared.PluginSettings.ClearSecrets();
+            _pluginCatalogRequested = false;
+        }
         _adjustments.Clear();
         _valueRefreshers.Clear();
         _updateActions.Clear();
@@ -107,6 +134,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         var selectedTab = tabs[Array.IndexOf(Sections, _section)];
         tabStrip.Loaded += (_, _) => selectedTab.BringIntoView();
         var rows = new StackPanel { Spacing = 14 };
+        Control? pluginNavigation = null;
         var focus = new List<Control[]> { tabs };
         void Group(string label)
         {
@@ -297,6 +325,17 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         }
         else if (_section == "Metadata & artwork")
         {
+            Group("Library metadata");
+            var sync = Context.Shared.EnrichmentSettings.MetadataSync;
+            rows.Children.Add(FullscreenInformation.Metadata(MetadataSyncViewModel.Explanation));
+            var syncButton = Action("Sync metadata now", () => { }, "Run");
+            syncButton.Command = sync.SyncCommand;
+            AutomationProperties.SetAutomationId(syncButton, "MetadataSyncButton");
+            var syncStatus = FullscreenInformation.Metadata("");
+            syncStatus.Name = "MetadataSyncStatus";
+            syncStatus.Bind(TextBlock.TextProperty, new Binding(nameof(sync.Status)) { Source = sync });
+            AutomationProperties.SetLiveSetting(syncStatus, AutomationLiveSetting.Polite);
+            rows.Children.Add(syncStatus);
             Group("Sources");
             Action("IGDB metadata", () => Context.Push(new FullscreenIgdbSettingsPage(Context)));
             Action("Artwork source order", () => Context.Push(new FullscreenArtworkOrderPage(Context)));
@@ -304,6 +343,17 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         }
         else if (_section == "Plugins")
         {
+            var plugins = Context.Shared.PluginSettings;
+            pluginNavigation = CreatePluginNavigation(plugins, focus);
+            if (plugins.SelectedPlugin is { } selectedPlugin)
+            {
+                _pluginPage = new FullscreenPluginSettingsPage(Context, selectedPlugin, embedded: true);
+                focus.AddRange(_pluginPage.FocusRows);
+                foreach (var control in _pluginPage.FocusRows.SelectMany(row => row))
+                    control.GotFocus += (_, _) => _focused = control;
+            }
+            else
+            {
             if (Context.Shared.PluginSettings.Installation.HasRequest)
                 Action("Plugin installation", () => Context.Push(new FullscreenPluginInstallPage(Context)));
             Group("Loaded plugins");
@@ -313,7 +363,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             AutomationProperties.SetLiveSetting(loadedPlugins, AutomationLiveSetting.Polite);
             rows.Children.Add(loadedPlugins);
             Group("Plugins");
-            foreach (var plugin in Context.Shared.EnrichmentSettings.Plugins.Plugins)
+            foreach (var plugin in plugins.ManagedPlugins)
                 Action(plugin.Name, () => Context.Push(new FullscreenPluginSettingsPage(Context, plugin)));
             Action("Open plugins folder", async () => await OpenPluginsFolderAsync(), "Run");
             rows.Children.Add(FullscreenInformation.Text(PluginSettingsViewModel.InstallationNote));
@@ -321,7 +371,12 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             pluginStatus.Bind(TextBlock.TextProperty, new Binding(nameof(PluginSettingsViewModel.Status)) { Source = Context.Shared.EnrichmentSettings.Plugins });
             AutomationProperties.SetLiveSetting(pluginStatus, AutomationLiveSetting.Polite);
             rows.Children.Add(pluginStatus);
-            if (!_pluginsRefreshing) PendingPluginRefresh = RefreshPluginsAsync();
+            }
+            if (!_pluginsRefreshing && !_pluginCatalogRequested)
+            {
+                _pluginCatalogRequested = true;
+                PendingPluginRefresh = RefreshPluginsAsync();
+            }
         }
         else
         {
@@ -403,11 +458,19 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             Grid.SetRow(contents[1], 1); guide.Children.Add(contents[1]);
             main.Children.Add(guide);
         }
+        else if (pluginNavigation is not null)
+        {
+            var pluginLayout = new Grid { RowDefinitions = new RowDefinitions("Auto,*"), RowSpacing = 24 };
+            pluginLayout.Children.Add(pluginNavigation);
+            Control body = _pluginPage is not null ? _pluginPage : FullscreenUi.Scroll(rows);
+            Grid.SetRow(body, 1); pluginLayout.Children.Add(body);
+            main.Children.Add(pluginLayout);
+        }
         else main.Children.Add(FullscreenUi.Scroll(rows));
         var preview = FullscreenUi.Stack(FullscreenInformation.Heading(_section == "Appearance" ? "Preview" : _section),
             FullscreenUi.Text("Your next game is already here.", 48),
             FullscreenInformation.Metadata(_section == "Appearance" ? "Theme, typography, cover art and cover dimming apply to both views. Other appearance settings apply to fullscreen." : "Library and account settings apply to both desktop and fullscreen."));
-        if (_section == "Controller") Grid.SetColumnSpan(main.Children[0], 2);
+        if (_section is "Controller" or "Plugins") Grid.SetColumnSpan(main.Children[0], 2);
         else { Grid.SetColumn(preview, 1); main.Children.Add(preview); }
         if (_section == "Appearance" && Context.Library.VisibleTiles.FirstOrDefault() is { } sample)
         {
@@ -425,8 +488,77 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         Content = layout; SetFocusRows(focus.ToArray()); Changed();
     }
 
+    private Control CreatePluginNavigation(PluginSettingsViewModel plugins, List<Control[]> focus)
+    {
+        var strip = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
+        _renderedPlugins = plugins.Plugins.Select(plugin => (plugin.Id, plugin.IsLoaded)).ToArray();
+        var scroll = new ScrollViewer
+        {
+            Name = "FullscreenPluginTabScroll", Content = strip,
+            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden,
+            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled
+        };
+        var previous = FullscreenUi.Button("‹", () => { });
+        var next = FullscreenUi.Button("›", () => { });
+        previous.Name = "PreviousFullscreenPluginTabs";
+        next.Name = "NextFullscreenPluginTabs";
+        AutomationProperties.SetName(previous, "Scroll plugin tabs left");
+        AutomationProperties.SetName(next, "Scroll plugin tabs right");
+        var tabs = new List<Control> { previous };
+        void AddTab(string name, PluginCardViewModel? plugin)
+        {
+            var tab = FullscreenUi.Tab(name, () => plugins.SelectPlugin(plugin));
+            var selected = ReferenceEquals(plugins.SelectedPlugin, plugin);
+            tab.Classes.Set("current", selected);
+            AutomationProperties.SetItemStatus(tab, selected ? "Selected" : "Not selected");
+            tab.GotFocus += (_, _) => { _focused = tab; tab.BringIntoView(); };
+            if (selected) _selectedPluginTab = tab;
+            strip.Children.Add(tab); tabs.Add(tab);
+        }
+        foreach (var plugin in plugins.LoadedPlugins) AddTab(plugin.Name, plugin);
+        AddTab("Manage plugins", null);
+        tabs.Add(next); focus.Add(tabs.ToArray());
+        previous.GotFocus += (_, _) => _focused = previous;
+        next.GotFocus += (_, _) => _focused = next;
+        var layout = new Grid { Name = "FullscreenPluginTabs", ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), ColumnSpacing = 12 };
+        layout.Children.Add(previous); Grid.SetColumn(scroll, 1); layout.Children.Add(scroll);
+        Grid.SetColumn(next, 2); layout.Children.Add(next);
+        void UpdateArrows()
+        {
+            var maximum = Math.Max(0, scroll.Extent.Width - scroll.Viewport.Width);
+            previous.IsVisible = next.IsVisible = scroll.Extent.Width > layout.Bounds.Width - 2 * layout.ColumnSpacing + 1;
+            previous.IsEnabled = scroll.Offset.X > 1;
+            next.IsEnabled = scroll.Offset.X < maximum - 1;
+        }
+        void Scroll(int direction)
+        {
+            scroll.Offset = new Vector(Math.Clamp(scroll.Offset.X + direction * scroll.Viewport.Width * .75,
+                0, Math.Max(0, scroll.Extent.Width - scroll.Viewport.Width)), 0);
+            UpdateArrows();
+        }
+        previous.Click += (_, _) => Scroll(-1);
+        next.Click += (_, _) => Scroll(1);
+        scroll.ScrollChanged += (_, _) => UpdateArrows();
+        scroll.SizeChanged += (_, _) => UpdateArrows();
+        layout.SizeChanged += (_, _) =>
+        {
+            UpdateArrows();
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (layout.IsAttachedToVisualTree()) _selectedPluginTab?.BringIntoView();
+            }, DispatcherPriority.Loaded);
+        };
+        layout.Loaded += (_, _) => { _selectedPluginTab?.BringIntoView(); UpdateArrows(); };
+        return layout;
+    }
+
     public override bool Handle(GamepadButtons buttons)
     {
+        if (buttons.HasFlag(GamepadButtons.Accept) && _focused is ToggleSwitch { Command: null, IsEffectivelyEnabled: true } toggle)
+        {
+            toggle.IsChecked = toggle.IsChecked != true;
+            return true;
+        }
         if ((buttons & (GamepadButtons.PagePrevious | GamepadButtons.PageNext)) != 0)
         {
             var direction = buttons.HasFlag(GamepadButtons.PageNext) ? 1 : -1;
@@ -524,10 +656,9 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             // Let the current composition finish before replacing rows from the discovered catalog.
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
             var plugins = Context.Shared.EnrichmentSettings.Plugins;
-            var before = plugins.Plugins.Select(plugin => plugin.Id).ToArray();
             await plugins.LoadAsync();
             if (!_disposed && _section == "Plugins"
-                && !before.SequenceEqual(plugins.Plugins.Select(plugin => plugin.Id)))
+                && !_renderedPlugins.SequenceEqual(plugins.Plugins.Select(plugin => (plugin.Id, plugin.IsLoaded))))
             { Render(); FocusInitial(); }
         }
         finally { _pluginsRefreshing = false; }

@@ -526,6 +526,10 @@ public static class Program
         services.AddSingleton<DatabaseInitializer>();
 
         services.AddSingleton<IWorkRepository, WorkRepository>();
+        services.AddSingleton<IArtworkChoiceRepository, ArtworkChoiceRepository>();
+        services.AddSingleton<ArtworkSelectionService>();
+        services.AddSingleton<IArtworkBrowserService, ArtworkBrowserService>();
+        services.AddSingleton<ICoverSource, SteamBrowserArtworkSource>();
         services.AddSingleton<IIgdbObservationWriter, IgdbObservationWriter>();
         services.AddSingleton<IReleaseRepository, ReleaseRepository>();
         services.AddSingleton<IReleaseYearEvidenceRepository, ReleaseYearEvidenceRepository>();
@@ -976,6 +980,9 @@ public static class Program
         services.AddSingleton<IgdbSettingsService>();
         services.AddSingleton<IIgdbSettingsService>(sp => sp.GetRequiredService<IgdbSettingsService>());
         services.AddSingleton<IgdbSettingsViewModel>();
+        services.AddSingleton<IManualMetadataSyncService, ManualMetadataSyncService>();
+        services.AddSingleton(sp => new MetadataSyncViewModel(
+            sp.GetRequiredService<IManualMetadataSyncService>(), Shutdown.Token));
         services.AddSingleton<PluginSettingsViewModel>();
         services.AddSingleton<ArtworkPreferences>();
         services.AddSingleton<ArtworkOrderViewModel>();

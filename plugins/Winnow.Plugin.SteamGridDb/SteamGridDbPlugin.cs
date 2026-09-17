@@ -8,7 +8,7 @@ using Winnow.PluginSdk;
 namespace Winnow.Plugin.SteamGridDb;
 
 /// <summary>An artwork provider using only the public SDK and host-managed services.</summary>
-public sealed partial class SteamGridDbPlugin : IArtworkProviderPlugin
+public sealed partial class SteamGridDbPlugin : IArtworkProviderPlugin, IArtworkBrowserPlugin
 {
     public const int PayloadVersion = 1;
     private const int MaxResponseBytes = 2 * 1024 * 1024;
@@ -149,7 +149,7 @@ public sealed partial class SteamGridDbPlugin : IArtworkProviderPlugin
 
     private static string Fingerprint(string key) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key)));
 
-    [GeneratedRegex("^https://cdn2\\.steamgriddb\\.com/hero/[a-fA-F0-9]{32}\\.(png|jpg|webp)$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex("^https://cdn2\\.steamgriddb\\.com/(?:file/sgdb-cdn/)?hero/[a-fA-F0-9]{32}\\.(png|jpg|webp)\\z", RegexOptions.CultureInvariant)]
     private static partial Regex SafeUrl();
 
     private sealed record Payload(int Version, IReadOnlyList<CachedImage>? Images);

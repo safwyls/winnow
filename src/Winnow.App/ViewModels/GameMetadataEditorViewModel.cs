@@ -19,7 +19,7 @@ namespace Winnow.App.ViewModels;
 /// one pass.
 ///
 /// <para>Opened from "Edit details" in More (§10.3), beside "Wrong game?",
-/// in focused content beneath the persistent header. Omitting any one optional
+/// in a desktop overlay or the fullscreen metadata page. Omitting any one optional
 /// constructor argument costs exactly that one capability; with no
 /// IWorkMetadataEditService registered or no resolved work id the row is
 /// not drawn at all.</para>
@@ -55,11 +55,13 @@ public partial class GameMetadataEditorViewModel : ObservableObject, IDisposable
         IImageFilePicker? picker = null,
         Func<string, Task>? afterArtChange = null,
         Func<string, string?, Task>? afterTextChange = null,
-        string? note = null)
+        string? note = null,
+        ArtworkBrowserViewModel? artworkBrowser = null)
     {
         ArgumentNullException.ThrowIfNull(service);
 
         _service = service;
+        ArtworkBrowser = artworkBrowser;
         _workId = workId;
         _covers = covers;
         _picker = picker;
@@ -80,7 +82,13 @@ public partial class GameMetadataEditorViewModel : ObservableObject, IDisposable
     /// <summary>One row per <see cref="WorkFields.All"/> entry, in display order.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasRows))]
+    [NotifyPropertyChangedFor(nameof(TextRows), nameof(ArtRows))]
     public partial IReadOnlyList<MetadataFieldRowViewModel> Rows { get; set; } = [];
+
+    // Desktop groups text and artwork without changing the fullscreen field order.
+    public IReadOnlyList<MetadataTextRowViewModel> TextRows => Rows.OfType<MetadataTextRowViewModel>()
+        .OrderBy(row => row.IsMultiline).ToArray();
+    public IReadOnlyList<MetadataArtRowViewModel> ArtRows => Rows.OfType<MetadataArtRowViewModel>().ToArray();
 
     /// <summary>Status field, in words. Null when nothing is in flight.</summary>
     [ObservableProperty]
@@ -132,6 +140,7 @@ public partial class GameMetadataEditorViewModel : ObservableObject, IDisposable
     public string CloseAutomationName => GameMetadataEditorCopy.CloseAutomationName;
 
     public string Intro => GameMetadataEditorCopy.Intro;
+    public ArtworkBrowserViewModel? ArtworkBrowser { get; }
 
     /// <summary>
     /// Sets the display resolution for art previews from the view's own render
@@ -698,6 +707,11 @@ public sealed partial class MetadataArtRowViewModel : MetadataFieldRowViewModel
     public override bool IsNumeric => false;
 
     public bool IsCover => string.Equals(Field, WorkFields.CoverUrl, StringComparison.Ordinal);
+    public ArtworkBrowserViewModel? ArtworkBrowser => Editor.ArtworkBrowser;
+    public bool CanBrowse => ArtworkBrowser is not null;
+    public string BrowseAutomationName => $"Browse {Label}";
+    [RelayCommand]
+    private Task BrowseAsync() => ArtworkBrowser?.OpenAsync(IsCover ? ArtworkSlot.Cover : ArtworkSlot.Hero) ?? Task.CompletedTask;
 
     /// <summary>Cover is 64x96 (the 2:3 portrait the whole grid is made of); background is 96x54.</summary>
     public double PreviewWidth => IsCover ? 64 : 96;

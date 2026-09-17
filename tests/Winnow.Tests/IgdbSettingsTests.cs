@@ -10,6 +10,22 @@ namespace Winnow.Tests;
 
 public sealed class IgdbSettingsTests : IDisposable
 {
+    [Fact]
+    public async Task Setup_page_uses_the_shared_link_destination()
+    {
+        var router = new SetupLinkRouter();
+        var vm = new IgdbSettingsViewModel(linkRouter: router);
+        await vm.OpenSetupCommand.ExecuteAsync(null);
+        Assert.Equal("https://dev.twitch.tv/console/apps", router.Opened?.Uri);
+    }
+
+    private sealed class SetupLinkRouter : IGameLinkRouter
+    {
+        public GameLink? Opened { get; private set; }
+        public Task<LinkOpenResult> OpenAsync(GameLink link, string title)
+        { Opened = link; return Task.FromResult(new LinkOpenResult(true)); }
+    }
+
     private readonly TempDatabase _db = new();
     private SqliteSettingsStore Store => new(_db.Factory);
     private static readonly string[] TokenKeys = [TwitchTokenProvider.TokenBlobKey,

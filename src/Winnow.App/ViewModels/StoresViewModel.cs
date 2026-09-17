@@ -61,10 +61,10 @@ public partial class StoresViewModel : ObservableObject
     private readonly SteamSignInService? _steamSignIn;
 
     /// <summary>
-    /// The one place a URI leaves the application, used for the single outbound
-    /// link on this screen: Steam's own key registration page.
+    /// OS fallback for isolated hosts without the shared link router.
     /// </summary>
     private readonly IUriDispatcher? _uris;
+    private readonly IGameLinkRouter? _linkRouter;
 
     /// <summary>Guards against writing the preference back while it is being read.</summary>
     private bool _loadingAccountScope;
@@ -75,13 +75,15 @@ public partial class StoresViewModel : ObservableObject
         IAccountVisibility? accountVisibility = null,
         SteamSignInService? steamSignIn = null,
         IUriDispatcher? uris = null,
-        SteamAccountImportViewModel? accountImport = null)
+        SteamAccountImportViewModel? accountImport = null,
+        IGameLinkRouter? linkRouter = null)
     {
         _connections = connections;
         _counts = counts;
         _accountVisibility = accountVisibility;
         _steamSignIn = steamSignIn;
         _uris = uris;
+        _linkRouter = linkRouter;
         AccountImport = accountImport;
     }
 
@@ -1345,15 +1347,14 @@ public partial class StoresViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Opens Steam's own key registration page through the shared dispatcher —
-    /// the one place a URI leaves this application. A platform that declines says
-    /// so rather than failing silently.
+    /// Opens Steam's key registration page using the chosen link destination.
     /// </summary>
     [RelayCommand]
     private async Task OpenSteamApiKeyPageAsync()
     {
-        if (_uris is null
-            || !await _uris.OpenAsync(new Uri(SteamConnectionCopy.ApiKeyRegistrationUrl)))
+        var link = GameLink.Create("Steam API key registration", SteamConnectionCopy.ApiKeyRegistrationUrl)!;
+        if (!(_linkRouter is not null ? (await _linkRouter.OpenAsync(link, link.Label)).Opened
+            : _uris is not null && await _uris.OpenAsync(new Uri(link.Uri))))
         {
             SteamApiKeyNoticeMessage = SteamConnectionCopy.ApiKeyOpenFailed;
         }

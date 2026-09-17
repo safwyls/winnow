@@ -57,6 +57,16 @@ public sealed class IdentityReadInventoryTests
     // deciding.
     private static readonly Entry[] Inventory =
     [
+        new("src/Winnow.App/Services/ArtworkBrowserService.cs", "GetCurrentAsync", Policy.Resolve,
+            "Saved artwork and external IDs are read through the confirmed same-game group. The display adapter supplies the library-projected cover for preferred headers and pins."),
+        new("src/Winnow.App/Services/ArtworkBrowserService.cs", "IgdbAsync", Policy.Resolve,
+            "Enumerates each original work within the confirmed group to offer its source artwork, without copying observations or changing identity."),
+        new("src/Winnow.App/Services/ArtworkBrowserService.cs", "GameAsync", Policy.Resolve,
+            "The browser's game handle collects external identifiers from the current confirmed group for exact provider lookups."),
+        new("src/Winnow.App/Services/ArtworkBrowserService.cs", "CommitAsync", Policy.DoNotResolve,
+            "Checks that the original target work still exists before saving its selection. Sharing occurs on read; writes never move the selection to another work."),
+        new("src/Winnow.App/Services/WorkMetadataEditService.cs", "ImportArtAsync", Policy.DoNotResolve,
+            "Checks the original edited work exists before recording a manual artwork choice; the selection service shares it only through current confirmed links."),
         // ── RESOLVE ────────────────────────────────────────────────────────
         new("src/Winnow.Data/Repositories/GameplayStatsRepository.cs", "SessionCte", Policy.Resolve,
             "The caller supplies visible ownerships and resolved game IDs from AllTiles. Store filtering retains exact session attribution before totals and rankings fold by that resolved game ID."),

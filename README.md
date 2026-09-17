@@ -209,6 +209,13 @@ stores the secret through the platform secret protector; it does not validate it
 The secret stays masked, and the field is cleared after saving. A background metadata refresh
 runs after any startup sync or current credential refresh finishes, with progress in the titlebar.
 
+Choose **Settings → Metadata & artwork → Sync metadata now** to run a metadata pass on
+the existing library. The action is available on desktop and fullscreen, including runs
+started with `--no-sync` or `--seed-sample`. It does not import games or enable background
+sync. It uses the normal provider caches and preserves manual matches, field edits and
+artwork choices; it does not force a fresh download of every record. Progress and retry
+messages appear beside the action. IGDB credentials are required.
+
 **Remove saved credentials** removes only the pair stored by Winnow. Environment or local
 configuration credentials remain available as a fallback, taking effect immediately.
 If secure storage is unavailable, Winnow refuses to save the secret and explains the failure.
@@ -289,6 +296,18 @@ Build its ZIP with `./plugins/Winnow.Plugin.Psn/Package.ps1`, then install and e
 **Settings → Plugins**. See the [PlayStation plugin guide](plugins/Winnow.Plugin.Psn/README.md)
 for connection steps, source limits and caching. Fixture and UI checks cover the implementation;
 live Sony sign-in and account data still need validation.
+
+### Choosing game artwork
+
+Open a game's **More → Change artwork** to browse Hero, Cover and Icon images from Steam,
+IGDB and enabled artwork plugins. Selecting an image previews it; **Use artwork** saves
+only that slot. **Use automatic** restores its normal source policy. File and image-URL
+imports are available in the same browser, and **Edit details → Browse artwork** opens
+the corresponding slot. On desktop, a larger overlay keeps the preview and actions visible
+beside the scrolling gallery. Fullscreen provides the same choices with controller navigation.
+
+Saved images remain available offline and after a provider is disabled. Steam and IGDB
+offer official assets, so some games have few choices; IGDB does not supply icons.
 
 ### Writing a theme
 

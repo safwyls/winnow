@@ -97,9 +97,11 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         ArtworkPreferences? artworkPreferences = null,
         IReadOnlyDictionary<long, DateTime>? acknowledgedByRelease = null,
         IGameLinkRouter? linkRouter = null,
-        SteamReportedActivityViewModel? steamActivity = null)
+        SteamReportedActivityViewModel? steamActivity = null,
+        ArtworkBrowserViewModel? artworkBrowser = null)
     {
         _covers = covers;
+        ArtworkBrowser = artworkBrowser;
         SteamActivity = steamActivity ?? new SteamReportedActivityViewModel();
         _lightbox = lightbox;
         Reception = GameReceptionViewModel.From(ratings);
@@ -156,14 +158,22 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         ApplyWatermarks();
         if (IgdbMatch is not null) IgdbMatch.PropertyChanged += OnToolPropertyChanged;
         if (MetadataEditor is not null) MetadataEditor.PropertyChanged += OnToolPropertyChanged;
+        if (ArtworkBrowser is not null) ArtworkBrowser.PropertyChanged += OnToolPropertyChanged;
     }
 
     [ObservableProperty]
     public partial int SelectedTabIndex { get; set; }
 
-    public bool IsMetadataFocused => MetadataEditor is { IsOpen: true };
+    public ArtworkBrowserViewModel? ArtworkBrowser { get; }
+    public bool ShowArtworkBrowser => ArtworkBrowser is not null;
+    public bool IsArtworkFocused => ArtworkBrowser is { IsOpen: true };
+    public bool ShowOtherFocusedTools => !IsArtworkFocused;
+    public bool IsMetadataOverlayOpen => MetadataEditor is { IsOpen: true };
+    public bool IsDetailsInteractive => !IsMetadataOverlayOpen && !IsArtworkFocused;
+    public string FocusedBackLabel => IsArtworkFocused && MetadataEditor?.IsOpen == true ? "Back to edit details" : GameDetailsCopy.BackToDetails;
+    public bool IsMetadataFocused => MetadataEditor is { IsOpen: true } && !IsArtworkFocused;
     public bool IsMatchFocused => IgdbMatch is { IsOpen: true };
-    public bool IsFocusedView => IsMetadataFocused || IsMatchFocused;
+    public bool IsFocusedView => IsMetadataFocused || IsMatchFocused || IsArtworkFocused;
     public bool ShowDetailsTabs => !IsFocusedView;
 
     private void OnToolPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -173,19 +183,27 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         // Only an explicit open/close changes navigation. Background metadata
         // notifications must not reopen a tool or disturb the selected tab.
         if (e.PropertyName != nameof(GameMetadataEditorViewModel.IsOpen)) return;
+        if (ReferenceEquals(sender, ArtworkBrowser) && IsArtworkFocused)
+            IgdbMatch?.CloseCommand.Execute(null);
         if (ReferenceEquals(sender, MetadataEditor) && IsMetadataFocused)
             IgdbMatch?.CloseCommand.Execute(null);
         else if (ReferenceEquals(sender, IgdbMatch) && IsMatchFocused)
             MetadataEditor?.CloseCommand.Execute(null);
         OnPropertyChanged(nameof(IsMetadataFocused));
+        OnPropertyChanged(nameof(IsMetadataOverlayOpen));
+        OnPropertyChanged(nameof(IsDetailsInteractive));
         OnPropertyChanged(nameof(IsMatchFocused));
         OnPropertyChanged(nameof(IsFocusedView));
         OnPropertyChanged(nameof(ShowDetailsTabs));
+        OnPropertyChanged(nameof(IsArtworkFocused));
+        OnPropertyChanged(nameof(ShowOtherFocusedTools));
+        OnPropertyChanged(nameof(FocusedBackLabel));
     }
 
     [RelayCommand]
     private void BackToDetails()
     {
+        if (IsArtworkFocused) { ArtworkBrowser?.Close(); return; }
         MetadataEditor?.CloseCommand.Execute(null);
         IgdbMatch?.CloseCommand.Execute(null);
     }
@@ -843,7 +861,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     public bool ShowHide => HideCommand is not null;
 
     public bool HasMoreActions => HasLinks || HasManagementAction || HasOpenableFolder
-        || ShowRefetch || ShowIgdbMatch || ShowMetadataEditor || ShowHide;
+        || ShowRefetch || ShowIgdbMatch || ShowMetadataEditor || ShowArtworkBrowser || ShowHide;
 
     /// <summary>Hide label — always singular, because this modal shows one game.</summary>
     public string HideLabel => LibrarySettingsCopy.HideDetailsButton;
@@ -987,11 +1005,13 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         if (_artworkPreferences is not null) _artworkPreferences.Changed -= ArtworkPreferencesChanged;
         if (IgdbMatch is not null) IgdbMatch.PropertyChanged -= OnToolPropertyChanged;
         if (MetadataEditor is not null) MetadataEditor.PropertyChanged -= OnToolPropertyChanged;
+        if (ArtworkBrowser is not null) ArtworkBrowser.PropertyChanged -= OnToolPropertyChanged;
         _backdrop.Dispose();
         _cover.Dispose();
         Screenshots?.Dispose();
         IgdbMatch?.Dispose();
         MetadataEditor?.Dispose();
+        ArtworkBrowser?.Dispose();
         SteamActivity.Dispose();
     }
 
