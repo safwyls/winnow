@@ -145,7 +145,9 @@ report the limitation and leave Backlog files untouched.
   all other whitespace retained. Never replace an existing entry. Verify with
   `./scripts/Verify-Migrations.ps1 -BaselineRef HEAD`; mutation tests are in
   `scripts/Test-MigrationHashes.ps1`.
-- Windows CI prints completed tests and retains TRX plus hang diagnostics. A five-minute
+- Windows CI prints completed tests and retains TRX plus hang diagnostics. A focused fullscreen
+  Home layout preflight runs first to report layout failures before the longer database suite.
+  Both stages retain results, and reusable evidence still requires the full suite. A five-minute
   test inactivity timeout captures a mini dump so a stalled host can be investigated.
   The job summary lists per-assembly timing and the slowest test cases. Feature branches run
   through the pull-request trigger rather than duplicating the same Windows and Linux jobs on

@@ -125,6 +125,10 @@ jobs:
       - name: Verify test timing summary
         run: ./scripts/Test-TestResultSummary.ps1
 
+      - name: Home layout preflight
+        if: steps.evidence.outputs.reused != 'true'
+        run: dotnet test tests/Winnow.Ui.Tests --configuration Release --no-build --filter "FullyQualifiedName~Winnow.Ui.Tests.FullscreenHomeLayoutTests" --logger trx --logger "console;verbosity=normal" --results-directory TestResults/preflight --blame-hang-timeout 5m --blame-hang-dump-type mini
+
       - name: Test
         if: steps.evidence.outputs.reused != 'true'
         run: dotnet test --configuration Release --no-build --logger trx --logger "console;verbosity=normal" --results-directory TestResults --blame-hang-timeout 5m --blame-hang-dump-type mini
