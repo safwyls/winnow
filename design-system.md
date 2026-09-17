@@ -3224,7 +3224,8 @@ in Application settings reopens Welcome without resetting preferences.
 
 **Desktop.** The wizard sits over the client area, leaving the caption available. A compact
 header carries the step count, title and explanation; the body scrolls inside a bounded
-panel and navigation stays visible at the minimum window height. The normal shell cannot
+panel and navigation stays visible at the minimum window height. Header and footer fills
+sit inside a 7px rounded clip, inset by the frame's 1px border and 8px outer radius. The normal shell cannot
 receive input underneath it. Keyboard Tab cycles inside setup. Embedded platform dialogs
 keep their own focus scope; Escape closes that layer first, then skips an optional setup
 step. Returning from fullscreen restores wizard focus. The controller keyboard appears above

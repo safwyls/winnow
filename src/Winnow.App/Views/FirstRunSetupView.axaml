@@ -69,41 +69,43 @@
                 Background="{StaticResource Ground}" BorderBrush="{StaticResource Line}"
                 BorderThickness="1" CornerRadius="{StaticResource RadiusPane}" ClipToBounds="True"
                 KeyboardNavigation.TabNavigation="Cycle">
-            <Grid RowDefinitions="Auto,*,Auto">
-                <Border Padding="24" Background="{StaticResource Surface}"
-                        BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
-                    <StackPanel Spacing="12">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Classes="display-s" Text="WINNOW SETUP"/>
-                            <TextBlock Grid.Column="1" Classes="data" Text="{Binding ProgressText}"
-                                       Foreground="{StaticResource TextDim}"/>
-                        </Grid>
-                        <TextBlock Name="StepHeading" Classes="display-l" Text="{Binding Title}"
-                                   AutomationProperties.HeadingLevel="1"
-                                   AutomationProperties.LiveSetting="Polite"/>
-                        <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Description}"/>
-                    </StackPanel>
-                </Border>
-                <ContentControl Grid.Row="1" Name="StepContent"
-                                HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
-                <Border Grid.Row="2" Padding="24,16" BorderBrush="{StaticResource Line}"
-                        BorderThickness="0,1,0,0" Background="{StaticResource Surface}">
-                    <StackPanel Spacing="12">
-                        <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Problem}" IsVisible="{Binding !!Problem}"
-                                   Foreground="{StaticResource AmberForeground}" AutomationProperties.LiveSetting="Polite"/>
-                        <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="12">
-                            <Button Name="SkipSetupButton" Classes="act quiet" Content="Skip setup"
-                                    Command="{Binding SkipAllCommand}"/>
-                            <Button Grid.Column="2" Name="SkipStepButton" Classes="act quiet" Content="Skip this step"
-                                    IsVisible="{Binding CanSkipStep}" Command="{Binding SkipStepCommand}"/>
-                            <Button Grid.Column="3" Name="BackButton" Classes="act" Content="Back"
-                                    IsEnabled="{Binding CanGoBack}" Command="{Binding BackCommand}"/>
-                            <Button Grid.Column="4" Name="NextButton" Classes="act primary"
-                                    Content="{Binding NextLabel}" Command="{Binding NextCommand}"/>
-                        </Grid>
-                    </StackPanel>
-                </Border>
-            </Grid>
+            <Border Name="SetupContentClip" CornerRadius="{StaticResource RadiusPaneInner}" ClipToBounds="True">
+                <Grid RowDefinitions="Auto,*,Auto">
+                    <Border Padding="24" Background="{StaticResource Surface}"
+                            BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
+                        <StackPanel Spacing="12">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Classes="display-s" Text="WINNOW SETUP"/>
+                                <TextBlock Grid.Column="1" Classes="data" Text="{Binding ProgressText}"
+                                           Foreground="{StaticResource TextDim}"/>
+                            </Grid>
+                            <TextBlock Name="StepHeading" Classes="display-l" Text="{Binding Title}"
+                                       AutomationProperties.HeadingLevel="1"
+                                       AutomationProperties.LiveSetting="Polite"/>
+                            <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Description}"/>
+                        </StackPanel>
+                    </Border>
+                    <ContentControl Grid.Row="1" Name="StepContent"
+                                    HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+                    <Border Grid.Row="2" Padding="24,16" BorderBrush="{StaticResource Line}"
+                            BorderThickness="0,1,0,0" Background="{StaticResource Surface}">
+                        <StackPanel Spacing="12">
+                            <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Problem}" IsVisible="{Binding !!Problem}"
+                                       Foreground="{StaticResource AmberForeground}" AutomationProperties.LiveSetting="Polite"/>
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="12">
+                                <Button Name="SkipSetupButton" Classes="act quiet" Content="Skip setup"
+                                        Command="{Binding SkipAllCommand}"/>
+                                <Button Grid.Column="2" Name="SkipStepButton" Classes="act quiet" Content="Skip this step"
+                                        IsVisible="{Binding CanSkipStep}" Command="{Binding SkipStepCommand}"/>
+                                <Button Grid.Column="3" Name="BackButton" Classes="act" Content="Back"
+                                        IsEnabled="{Binding CanGoBack}" Command="{Binding BackCommand}"/>
+                                <Button Grid.Column="4" Name="NextButton" Classes="act primary"
+                                        Content="{Binding NextLabel}" Command="{Binding NextCommand}"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
         </Border>
     </Panel>
 </UserControl>

@@ -579,6 +579,7 @@
          round: radius reads as a proportion of the corner it turns, and 6px on a
          750px-tall column is a chamfer rather than a round. -->
     <CornerRadius x:Key="RadiusPane">8</CornerRadius>
+    <CornerRadius x:Key="RadiusPaneInner">7</CornerRadius>
     <!-- The gap between one pane and the next, and between a pane and the window
          edge. §4's own spacing step, and exactly the width of the resize band
          §9.1 measures — so a pane inset by it has no control the OS can eat. Its
