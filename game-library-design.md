@@ -220,6 +220,26 @@ stored locally.
 
 ### 4.4 IGDB
 
+Winnow keeps user-provided IGDB credentials and calls IGDB directly. A Winnow-operated
+metadata service is deferred: simplifying credential setup does not currently justify
+adding hosting to the project. This applies to desktop and fullscreen setup alike.
+
+Xbox's shared public client ID does not provide the same option for IGDB. Xbox users
+authorize their own account access without a shared application secret. IGDB's documented
+[authentication flow](https://api-docs.igdb.com/#authentication) requires a Twitch client ID
+and client secret to obtain an application token. A shared secret shipped in the desktop
+binary would be extractable.
+
+For future reference, Playnite's [IGDB plugin configuration](https://github.com/JosefNemec/PlayniteExtensions/blob/master/source/Metadata/IGDBMetadata/IgdbMetadataPlugin.cs)
+supplies a backend endpoint, and its [request client](https://github.com/JosefNemec/PlayniteExtensions/blob/master/source/Metadata/IGDBMetadata/IgdbClient.cs)
+calls that service's search and metadata routes without performing the Twitch token exchange
+in the desktop client. Winnow could similarly offer an optional metadata gateway that keeps
+the secret on the server, renews tokens, caches results and coordinates rate limits, while
+retaining direct access with personal credentials. Users would not need their own developer
+registration or Twitch sign-in for that route. Reconsidering it would require accepting
+hosting and maintenance costs, service availability and abuse controls, and metadata queries
+passing through Winnow infrastructure. This is a reference option, not planned implementation.
+
 - Desktop and fullscreen Metadata & artwork settings accept the user's Twitch client ID and secret.
   An App service writes through the existing IGDB settings store and secret
   protector, atomically replaces the pair and clears persisted token caches. It refuses
