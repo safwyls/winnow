@@ -216,9 +216,10 @@ across short polling calls so the 120-second invocation deadline remains meaning
 
 The optional [Xbox plugin](../plugins/Winnow.Plugin.Xbox/README.md) demonstrates local Windows
 discovery, device sign-in, account-scoped history, catalog artwork and registered-app launch.
-Its package needs a host with SDK 1.1 support. It is distributed separately and starts disabled
-when installed as a user plugin. Played history is opt-in and cannot supply a complete purchase
-inventory. Run `./plugins/Winnow.Plugin.Xbox/Package.ps1` to build its ZIP.
+Its package needs a host with SDK 1.1 support. It is distributed separately; a manually added
+package starts disabled, while browser installation enables a new package. Played history is
+opt-in and cannot supply a complete purchase inventory. Run
+`./plugins/Winnow.Plugin.Xbox/Package.ps1` to build its ZIP.
 
 The optional [PlayStation plugin](../plugins/Winnow.Plugin.Psn/README.md) imports the PS4/PS5
 account library, optional played history and PS3/PS Vita trophy-title history. It uses a
