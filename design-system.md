@@ -1858,17 +1858,18 @@ which reserved separate rows and columns for the controls.
 tab content, so the keyboard reaches `Play` before the active tab's fields. Technical
 identifiers are inside the Library tab's collapsed disclosure.
 
-### 10.8 The patch notes panel
+### 10.8 The embedded browser
 
 A patched game's `Patch notes` button on an Activity update row, and the `All patch notes`
 row in More, follow **Settings → Application → Links → Open links in** on desktop and
-fullscreen. The default, **In Winnow**, uses Winnow's WebView2 window for permitted patch
-notes. **System browser** opens web links externally. **Store client** is offered when a
+fullscreen. The default, **In Winnow**, uses Winnow's WebView2 window for HTTP and HTTPS
+links, including store pages, patch notes and other websites. **System browser** opens web
+links externally. **Store client** is offered when a
 registered Steam executable exists on Windows; it opens Steam store pages in that client.
-Other web pages, unavailable readers and refused client routes fall back to the system
+Other web pages under Store client, unavailable readers and refused client routes fall back to the system
 browser, with a status line in desktop details or a fullscreen notice. Failed browser opens
 report failure. Play, Install, Uninstall and explicit client-management actions keep their
-native targets. The preference never broadens the reader's origin gate.
+native targets. Browsing is separate from storefront sign-in and credential capture.
 
 **It is a separate top-level window, not an overlay.** The reason is the airspace problem the
 sign-in window already records: a hosted native browser HWND paints over Avalonia content
@@ -1880,9 +1881,10 @@ its place, nothing is blocked. `Escape` dismisses it, so does the close button, 
 page asking to close itself. One window at a time — opening a second note navigates the open
 window and brings it forward.
 
-**Chrome.** The system title bar, titled with the game. Across the top of the client area a
-`Surface` strip with a `Line` rule under it: the current page's host on the left in Data S,
-and on the right one quiet action that hands the page to the user's own browser. When the
+**Chrome.** The system title bar reads `Winnow browser` followed by the supplied page or game
+title. Across the top of the client area a `Surface` strip with a `Line` rule under it carries
+Back and Forward controls, the current web address in Data S, and an Open in browser action.
+When the
 embedded browser cannot start, an `Amber` line appears in that strip and the window stays
 dismissable. 1024x820, the same size as the sign-in browser window.
 
@@ -1892,50 +1894,34 @@ because `Winnow.Auth.WebView` references Avalonia and `Winnow.Core` and nothing 
 the same seam the consent window uses, and a theme picked in settings is already in force when
 the panel opens.
 
-**The origin gate is the load-bearing part.** The address that opens a panel must be https, on
-exactly one of four origins:
+**Web navigation stays in the browser.** HTTP and HTTPS pages, redirects and links may
+render regardless of their origin. Once open:
 
-- `store.steampowered.com`
-- `steamstore-a.akamaihd.net`
-- `steamcommunity.com`
-- `www.steamcommunity.com`
-
-with `/news/` or `/announcements` in its path. Origins are compared as scheme, host and port,
-exactly. Steam's own news API hands out `steamstore-a.akamaihd.net/news/externalpost/...`,
-which redirects onto a community announcement; that is why all four are named.
-`update_events.url` is captured from a network response, so the gate is an allowlist, for the
-same reason §10.3 gives.
-
-Once open:
-
-- An allowlisted origin renders.
-- Any other web address is cancelled and handed to the user's own browser.
+- Web addresses render in the existing window.
 - Anything that is not a web address at all — `data:`, `blob:`, `file:`, `javascript:`, a
   launcher protocol, any custom scheme — is refused outright.
-- A popup takes the same decision.
-- A subframe takes a stricter one: off the allowlist it is blocked rather than opened
-  externally, so a third-party embedded video does not load. A cost, taken deliberately.
+- A popup navigates the existing window rather than opening another window.
+- Web subframes may render across origins; non-web targets remain blocked.
 
-The whole decision is `PatchNotesPolicy`, built on the same `AuthFlowPolicy` the Epic sign-in
-and the Steam account-page harvest run on, so there is one origin mechanism in the application
-rather than two.
+`PatchNotesPolicy` owns the web-navigation decision. The sign-in and account-harvest
+policies retain their separate origin restrictions and capture behavior.
 
 **Validate links before rendering and navigation.** `GameLink.Create` rejects unsafe outbound
-targets before a button is shown. `PatchNotesPolicy` then restricts which validated web pages
-may render inside the browser.
+targets before a button is shown. The browser also validates navigation, frames and popups;
+the initial WebView blank page exists before those navigation handlers attach.
 
 **Nothing is injected into the page.** No host objects, no web-message channel, no developer
 tools, no context menu, no downloads, and every permission request is denied. The browser
 profile is in-private and lives under the run's own data directory, so `--data-dir` redirects
-it with everything else. Script runs — a storefront news page is an ordinary web page, and
+it with everything else. Script runs — a storefront page is an ordinary web page, and
 there is nothing in the panel for it to talk to.
 
 **A game whose updates carry no page says so.** One `TextDim` line under the update list,
 stating only that there is no page to read — not that nothing shipped, which is the same
 distinction §10.4 draws for its own empty state.
 
-**Where the panel is unavailable** — no WebView2 runtime on the machine — the buttons open the system browser. Nothing is greyed out and nothing announces
-itself.
+**Where the panel is unavailable** — no WebView2 runtime on the machine — the buttons open
+the system browser and the calling surface reports that fallback.
 
 ### 10.9 IGDB override
 

@@ -12,6 +12,7 @@ using Winnow.App.Views;
 using Winnow.App.Views.Fullscreen;
 using Winnow.Core.Domain;
 using Winnow.Core.Repositories;
+using Winnow.Core.Reading;
 using Winnow.Data.Repositories;
 using Winnow.Tests;
 using Xunit;
@@ -20,6 +21,43 @@ namespace Winnow.Ui.Tests;
 
 public sealed class LinkDestinationTests
 {
+    [AvaloniaTheory]
+    [InlineData(false, "in-app", "https://store.steampowered.com/app/440/", true, "")]
+    [InlineData(true, "in-app", "https://store.steampowered.com/app/440/", true, "")]
+    [InlineData(false, "in-app", "https://www.steamgriddb.com/grid/1", true, "")]
+    [InlineData(true, "in-app", "https://example.com/article", true, "")]
+    [InlineData(false, "store", "https://store.steampowered.com/app/440/", false, "steam")]
+    [InlineData(true, "store", "https://store.steampowered.com/app/440/", false, "steam")]
+    [InlineData(false, "store", "https://example.com/article", false, "https")]
+    [InlineData(true, "store", "https://example.com/article", false, "https")]
+    public async Task Both_presentations_route_store_and_general_web_links(bool fullscreen, string preference, string url, bool embedded, string scheme)
+    {
+        using var db = new TempDatabase();
+        var settings = new SettingsRepository(db.Factory);
+        await settings.SetAsync(GameLinkRouter.SettingKey, preference);
+        var dispatcher = new UriRecorder();
+        var reader = new ReaderRecorder();
+        var router = new GameLinkRouter(dispatcher, settings, new Clients(), reader);
+        using var services = new ServiceCollection().AddSingleton<IGameLinkRouter>(router).BuildServiceProvider();
+        using var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell, services);
+        var now = DateTime.UtcNow;
+        using var details = new GameDetailsViewModel(TileFixture.Tile(now, steamAppId: "440"), "Never played", [], now, linkRouter: router);
+        var link = GameLink.Create("Read", url)!;
+        if (fullscreen) context.OpenLink(link);
+        else Assert.True(await details.OpenReadingLinkAsync(link));
+        Dispatcher.UIThread.RunJobs();
+        if (embedded)
+        {
+            Assert.Equal(url, Assert.Single(reader.Opened).AbsoluteUri);
+            Assert.Empty(dispatcher.Opened);
+        }
+        else
+        {
+            Assert.Empty(reader.Opened);
+            Assert.Equal(scheme, Assert.Single(dispatcher.Opened).Scheme);
+        }
+    }
+
     [AvaloniaFact]
     public async Task Library_created_details_receive_the_shared_router()
     {
@@ -153,6 +191,12 @@ public sealed class LinkDestinationTests
         public Task SetAsync(string key, string value, CancellationToken ct = default) => throw new IOException("Read-only fixture");
     }
     private sealed class Clients : IStoreClientAvailability { public bool IsAvailable(string scheme) => true; }
+    private sealed class ReaderRecorder : IPatchNotesReader
+    {
+        public bool IsAvailable => true;
+        public List<Uri> Opened { get; } = [];
+        public PatchNotesOutcome Open(Uri url, string title) { Opened.Add(url); return PatchNotesOutcome.Opened; }
+    }
     private sealed class UriRecorder : IUriDispatcher
     {
         public List<Uri> Opened { get; } = [];

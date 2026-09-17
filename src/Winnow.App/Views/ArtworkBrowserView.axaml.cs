@@ -68,6 +68,12 @@ public partial class ArtworkBrowserView : UserControl
         if (DataContext is not ArtworkBrowserViewModel { SourceLink: { } link } model) return;
         try
         {
+            if (this.FindAncestorOfType<GameDetailsView>()?.DataContext is GameDetailsViewModel details
+                && await details.OpenReadingLinkAsync(link))
+            {
+                model.Problem = details.LinkStatus;
+                return;
+            }
             if (TopLevel.GetTopLevel(this)?.Launcher is not { } launcher || !await launcher.LaunchUriAsync(new Uri(link.Uri)))
                 model.Problem = "Could not open the artwork source. Try again.";
         }

@@ -14,7 +14,7 @@ public enum PatchNotesOutcome
 }
 
 /// <summary>
-/// Opens a game's patch notes inside an embedded browser panel rather than the
+/// Opens HTTP and HTTPS links inside an embedded browser panel rather than the
 /// system browser. Core-only contract so no view model names a browser type;
 /// the same shape as <see cref="Auth.IInteractiveAuthPrompt"/>.
 /// </summary>
@@ -28,7 +28,7 @@ public interface IPatchNotesReader
     bool IsAvailable { get; }
 
     /// <summary>
-    /// Opens (or reuses) the patch-notes panel for <paramref name="url"/>.
+    /// Opens (or reuses) the browser panel for <paramref name="url"/>.
     /// Returns <see cref="PatchNotesOutcome.Opened"/> on success, or a reason.
     /// </summary>
     PatchNotesOutcome Open(Uri url, string title);

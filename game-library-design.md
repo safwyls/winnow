@@ -1208,8 +1208,11 @@ boundaries. The Windows-only WebView2 availability rules remain unchanged.
 
 `IGameLinkRouter` applies `application.link_destination` (`in-app`, `browser`, or `store`)
 to game-detail reading links on both surfaces. It revalidates `GameLink` before dispatch.
-In-app reading retains `PatchNotesPolicy` unchanged; unsupported pages and unavailable or
-refused readers use the system browser. The only alternative native reading route is a
+In-app reading accepts HTTP and HTTPS pages through `PatchNotesPolicy`, including store
+pages and links outside Steam news. Web redirects, popups and frames can cross origins;
+page-requested non-web schemes remain blocked. The private
+browser has no sign-in capture, host objects or web-message bridge. Unavailable or refused
+readers use the system browser. The only alternative native reading route is a
 canonical HTTPS Steam store app page to `steam://store/<appid>`, with a registered Windows
 protocol-handler executable verified through `AssocQueryStringW`. No Epic or GOG web-to-client
 route is assumed. Missing or refused clients fall back to the browser. The setting offers
@@ -1217,7 +1220,8 @@ Store client only when Steam is available; a previously saved unavailable select
 System browser without rewriting the stored preference. Each click rechecks availability.
 Explicit launcher actions preserve their validated native URI on every platform. Desktop
 details show fallback/failure status; fullscreen uses its shared notice. Update-download and
-provider-setup links retain their explicit browser destinations.
+device-code sign-in links retain their explicit browser destinations. Provider-setup,
+release-note and artwork-source web links follow the preference.
 
 ### 5.2 Session detection
 

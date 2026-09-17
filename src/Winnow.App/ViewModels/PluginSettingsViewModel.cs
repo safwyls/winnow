@@ -8,7 +8,7 @@ namespace Winnow.App.ViewModels;
 
 public partial class PluginSettingsViewModel(
     IPluginSettingsBackend? backend = null, IUriDispatcher? uris = null, TimeProvider? timeProvider = null,
-    IOfficialPluginInstaller? installer = null) : ObservableObject
+    IOfficialPluginInstaller? installer = null, IGameLinkRouter? linkRouter = null) : ObservableObject
 {
     private readonly SemaphoreSlim _loadGate = new(1, 1);
     private PluginInstallViewModel? _installation;
@@ -51,7 +51,7 @@ public partial class PluginSettingsViewModel(
             foreach (var snapshot in snapshots)
             {
                 var existing = Plugins.FirstOrDefault(plugin => plugin.Id == snapshot.Id);
-                if (existing is null) Plugins.Add(new PluginCardViewModel(snapshot, backend, uris, timeProvider));
+                if (existing is null) Plugins.Add(new PluginCardViewModel(snapshot, backend, uris, timeProvider, linkRouter));
                 else existing.Apply(snapshot, drafts);
             }
             foreach (var removed in Plugins.Where(plugin => snapshots.All(snapshot => snapshot.Id != plugin.Id)).ToArray())
@@ -74,6 +74,7 @@ public partial class PluginCardViewModel : ObservableObject
 {
     private readonly IPluginSettingsBackend _backend;
     private readonly IUriDispatcher? _uris;
+    private readonly IGameLinkRouter? _linkRouter;
     private readonly TimeProvider _time;
     private readonly IReadOnlyList<string> _accountHosts;
     private CancellationTokenSource? _signInCancellation;
@@ -124,9 +125,10 @@ public partial class PluginCardViewModel : ObservableObject
     public string WebsiteAccessibleName => $"Open {Name} website";
 
     public PluginCardViewModel(PluginSettingsSnapshot snapshot, IPluginSettingsBackend backend, IUriDispatcher? uris = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null, IGameLinkRouter? linkRouter = null)
     {
         _backend = backend; _uris = uris;
+        _linkRouter = linkRouter;
         _time = timeProvider ?? TimeProvider.System;
         _accountHosts = snapshot.AccountHosts ?? [];
         Id = snapshot.Id; Name = snapshot.Name; Description = snapshot.Description;
@@ -326,10 +328,12 @@ public partial class PluginCardViewModel : ObservableObject
     {
         try
         {
-            if (WebUri(url) is { } uri && _uris is not null && await _uris.OpenAsync(uri)) return;
+            if (WebUri(url) is { } uri && GameLink.Create("Provider website", uri.AbsoluteUri) is { } link
+                && (_linkRouter is not null ? (await _linkRouter.OpenAsync(link, Name)).Opened
+                    : _uris is not null && await _uris.OpenAsync(uri))) return;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) { }
-        Status = "Could not open the provider website. Check your default browser and try again.";
+        Status = "Could not open the provider website. Try again.";
     }
 
     internal static Uri? WebUri(string? url) => !string.IsNullOrWhiteSpace(url)

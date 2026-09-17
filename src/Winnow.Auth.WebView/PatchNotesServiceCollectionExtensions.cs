@@ -5,7 +5,7 @@ using Winnow.Core.Reading;
 namespace Winnow.Auth.WebView;
 
 /// <summary>
-/// Composition for the embedded patch-notes reader.
+/// Composition for the isolated embedded web reader.
 /// </summary>
 public static class PatchNotesServiceCollectionExtensions
 {

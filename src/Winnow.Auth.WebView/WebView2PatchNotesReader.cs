@@ -13,31 +13,10 @@ using Winnow.Core.Reading;
 namespace Winnow.Auth.WebView;
 
 /// <summary>
-/// Opens a game's patch notes in a separate WebView2 window. The surface has
-/// no bridge, no host object, no web message channel and no script injection;
-/// its only capability is rendering an allowlisted Steam news page.
-///
-/// <para><b>What this surface is allowed to do, stated as rules.</b></para>
-///
-/// <list type="number">
-/// <item><description>The panel navigates only to origins
-/// <see cref="PatchNotesPolicy"/> allows. An off-allowlist address is cancelled
-/// and handed to the user's own browser. A non-web scheme is blocked
-/// outright.</description></item>
-/// <item><description>Sub-frames are stricter: an off-allowlist frame is blocked
-/// rather than opened externally, so a third-party embed cannot
-/// load.</description></item>
-/// <item><description>No script is injected, no host object is defined, and web
-/// messages are disabled. Script itself stays on: a storefront news page is an
-/// ordinary web page, and with nothing to talk to it has no channel into the
-/// host.</description></item>
-/// <item><description>Every download is cancelled, every permission request
-/// denied, and every external-URI-scheme launch refused.</description></item>
-/// <item><description>The profile is in-private, so the session writes nothing
-/// of consequence.</description></item>
-/// <item><description>One window at a time; a second note navigates the open
-/// window and activates it.</description></item>
-/// </list>
+/// Opens web links in a separate, reusable WebView2 window. HTTP and HTTPS pages,
+/// redirects, frames and popups remain embedded. The isolated in-private profile has
+/// no sign-in bridge, host objects or web message channel. Downloads, permissions
+/// and external native schemes are denied.
 /// </summary>
 public sealed class WebView2PatchNotesReader : IPatchNotesReader
 {
@@ -49,7 +28,7 @@ public sealed class WebView2PatchNotesReader : IPatchNotesReader
     /// <inheritdoc cref="PanelWidth"/>
     private const double PanelHeight = 820;
 
-    private const string TitlePrefix = "Patch notes";
+    private const string TitlePrefix = "Winnow browser";
     private const string ExternalLabel = "Open in browser";
     private const string CouldNotStart = "The embedded browser could not start.";
 
@@ -63,6 +42,8 @@ public sealed class WebView2PatchNotesReader : IPatchNotesReader
     private PatchNotesPolicy? _policy;
     private TextBlock? _address;
     private TextBlock? _problem;
+    private Button? _back;
+    private Button? _forward;
 
     private readonly IWebViewInputSupport? _input;
     public WebView2PatchNotesReader(string profileRoot, ILogger<WebView2PatchNotesReader>? log = null, IWebViewInputSupport? input = null)
@@ -81,7 +62,7 @@ public sealed class WebView2PatchNotesReader : IPatchNotesReader
     public bool IsAvailable => WebView2Runtime.IsAvailable && Application.Current is not null;
 
     /// <summary>
-    /// Opens (or navigates an already-open) patch-notes window to
+    /// Opens (or navigates an already-open) browser window to
     /// <paramref name="url"/>. Posts to the UI thread and returns immediately.
     /// </summary>
     public PatchNotesOutcome Open(Uri url, string title)
@@ -111,7 +92,7 @@ public sealed class WebView2PatchNotesReader : IPatchNotesReader
                 // is a convenience; the user can still open the address in their
                 // own browser.
                 _log.LogWarning(
-                    "The patch-notes window could not be shown ({ExceptionType}).", ex.GetType().Name);
+                    "The browser window could not be shown ({ExceptionType}).", ex.GetType().Name);
             }
         });
 
@@ -119,7 +100,7 @@ public sealed class WebView2PatchNotesReader : IPatchNotesReader
     }
 
     /// <summary>
-    /// Shows or reuses the patch-notes window. A second note navigates the open
+    /// Shows or reuses the browser window. A second link navigates the open
     /// window rather than opening a second one.
     /// </summary>
     private void Show(PatchNotesPolicy policy, string title)
@@ -137,8 +118,7 @@ public sealed class WebView2PatchNotesReader : IPatchNotesReader
             return;
         }
 
-        // In-private: the news page is read-only content, and the user must not
-        // accumulate a browsing session from incidental page views.
+        // Keep incidental browsing separate from account sign-in profiles.
         var host = new WebView2Host(_profileFolder, inPrivate: true);
         var window = BuildWindow(title, host);
         if (_input is not null && window.Content is Control content) { window.Content = null; window.Content = _input.Wrap(window, content, host, reading: true); }
@@ -150,6 +130,8 @@ public sealed class WebView2PatchNotesReader : IPatchNotesReader
             _policy = null;
             _address = null;
             _problem = null;
+            _back = null;
+            _forward = null;
         };
 
         _window = window;
@@ -198,7 +180,7 @@ public sealed class WebView2PatchNotesReader : IPatchNotesReader
         catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
         {
             _log.LogWarning(
-                "The patch-notes panel could not start its browser ({ExceptionType}).", ex.GetType().Name);
+                "The browser panel could not start its browser ({ExceptionType}).", ex.GetType().Name);
 
             if (ReferenceEquals(_window, window))
             {
@@ -208,7 +190,7 @@ public sealed class WebView2PatchNotesReader : IPatchNotesReader
     }
 
     /// <summary>
-    /// Locks down every capability the news page does not need. Script stays
+    /// Locks down capabilities that ordinary page viewing does not need. Script stays
     /// on: a storefront page is an ordinary web page, and with no bridge, no
     /// host object and no web message channel it has nothing to talk to.
     /// </summary>
@@ -245,23 +227,16 @@ public sealed class WebView2PatchNotesReader : IPatchNotesReader
                     SetProblem(null);
                     return;
 
-                case PatchNotesNavigation.OpenExternally:
-                    e.Cancel = true;
-                    OpenExternally(uri!);
-                    return;
-
                 default:
                     e.Cancel = true;
                     _log.LogWarning(
-                        "Refused to send the patch-notes panel to {Origin}.",
+                        "Refused to send the browser panel to {Origin}.",
                         Winnow.Core.Auth.AuthFlowPolicy.OriginOf(uri) ?? "a non-web address");
                     return;
             }
         };
 
-        // Frames are stricter than the top-level gate: an off-allowlist frame
-        // is blocked rather than opened externally, so a third-party embedded
-        // video or tracker cannot load. A deliberate cost.
+        // Third-party web frames use the same scheme boundary as their parent page.
         browser.FrameNavigationStarting += (_, e) =>
         {
             Uri.TryCreate(e.Uri, UriKind.Absolute, out var uri);
@@ -282,10 +257,6 @@ public sealed class WebView2PatchNotesReader : IPatchNotesReader
             {
                 case PatchNotesNavigation.Allow:
                     ((CoreWebView2)sender!).Navigate(uri!.ToString());
-                    return;
-
-                case PatchNotesNavigation.OpenExternally:
-                    OpenExternally(uri!);
                     return;
 
                 default:
@@ -309,12 +280,18 @@ public sealed class WebView2PatchNotesReader : IPatchNotesReader
             SetAddress(uri);
         };
 
+        browser.HistoryChanged += (_, _) =>
+        {
+            if (_back is not null) _back.IsEnabled = browser.CanGoBack;
+            if (_forward is not null) _forward.IsEnabled = browser.CanGoForward;
+        };
+
         browser.WindowCloseRequested += (_, _) => window.Close();
     }
 
     /// <summary>
-    /// Builds the patch-notes window: a system title bar, a strip with the
-    /// current host and an "open in browser" button, and the WebView2 host
+    /// Builds the browser window: a system title bar, a strip with the
+    /// current address, history controls and an "open in browser" button, and the WebView2 host
     /// filling the rest. Non-modal, owned by the main window, dismissed by
     /// Escape or the close button.
     /// </summary>
@@ -356,9 +333,18 @@ public sealed class WebView2PatchNotesReader : IPatchNotesReader
             }
         };
 
+        _back = new Button { Classes = { "act", "quiet" }, Content = "Back", IsEnabled = false };
+        _forward = new Button { Classes = { "act", "quiet" }, Content = "Forward", IsEnabled = false };
+        _back.Click += (_, _) => { if (_browser is { CanGoBack: true } browser) browser.GoBack(); };
+        _forward.Click += (_, _) => { if (_browser is { CanGoForward: true } browser) browser.GoForward(); };
+        var history = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
+        history.Children.Add(_back);
+        history.Children.Add(_forward);
+
         var strip = new Grid
         {
-            ColumnDefinitions = new ColumnDefinitions("*,Auto"),
+            ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"),
+            ColumnSpacing = 12,
         };
 
         var read = new StackPanel
@@ -371,8 +357,10 @@ public sealed class WebView2PatchNotesReader : IPatchNotesReader
         read.Children.Add(_address);
         read.Children.Add(_problem);
 
+        strip.Children.Add(history);
+        Grid.SetColumn(read, 1);
         strip.Children.Add(read);
-        Grid.SetColumn(external, 1);
+        Grid.SetColumn(external, 2);
         strip.Children.Add(external);
 
         var bar = new Border
@@ -422,7 +410,10 @@ public sealed class WebView2PatchNotesReader : IPatchNotesReader
     {
         if (_address is not null)
         {
-            _address.Text = uri?.Host ?? string.Empty;
+            // Show the scheme, host and path so HTTP pages and redirects are visible.
+            _address.Text = PatchNotesPolicy.IsReadable(uri) ? uri!.GetComponents(
+                UriComponents.SchemeAndServer | UriComponents.PathAndQuery, UriFormat.SafeUnescaped) : string.Empty;
+            ToolTip.SetTip(_address, _address.Text);
         }
     }
 
@@ -440,6 +431,8 @@ public sealed class WebView2PatchNotesReader : IPatchNotesReader
     /// <summary>Hands <paramref name="uri"/> to the OS shell (the user's own browser).</summary>
     private void OpenExternally(Uri uri)
     {
+        if (!PatchNotesPolicy.IsReadable(uri)) return;
+
         try
         {
             using var process = System.Diagnostics.Process.Start(

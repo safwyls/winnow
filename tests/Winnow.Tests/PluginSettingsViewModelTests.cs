@@ -7,6 +7,25 @@ namespace Winnow.Tests;
 public sealed class PluginSettingsViewModelTests
 {
     [Fact]
+    public async Task Plugin_help_links_use_the_shared_destination_instead_of_the_OS_dispatcher()
+    {
+        var uris = new Uris();
+        var router = new HelpLinkRouter();
+        var settings = new PluginSettingsViewModel(new Backend(), uris, linkRouter: router);
+        await settings.LoadAsync();
+        await Assert.Single(settings.Plugins).Fields[0].OpenSetupCommand.ExecuteAsync(null);
+        Assert.Equal("https://example.com/api", router.Opened?.Uri);
+        Assert.Null(uris.Opened);
+    }
+
+    private sealed class HelpLinkRouter : IGameLinkRouter
+    {
+        public GameLink? Opened { get; private set; }
+        public Task<LinkOpenResult> OpenAsync(GameLink link, string title)
+        { Opened = link; return Task.FromResult(new LinkOpenResult(true)); }
+    }
+
+    [Fact]
     public async Task Collapsed_advanced_settings_preserve_values_and_secret_drafts_when_saving()
     {
         var backend = new Backend { AdvancedFields = true };

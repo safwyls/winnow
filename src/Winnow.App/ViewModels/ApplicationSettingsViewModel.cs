@@ -17,6 +17,7 @@ public partial class ApplicationSettingsViewModel : ObservableObject
     private readonly IStartupRegistration? _startup;
     private readonly IApplicationUpdater? _updater;
     private readonly IUriDispatcher? _uris;
+    private readonly IGameLinkRouter? _linkRouter;
     private bool _refreshingUpdate;
     private bool _loading;
     private Task _linkWrite = Task.CompletedTask;
@@ -28,12 +29,14 @@ public partial class ApplicationSettingsViewModel : ObservableObject
         IUriDispatcher? uris = null,
         IgdbSettingsViewModel? igdb = null,
         IStoreClientAvailability? storeClients = null,
-        DiagnosticsViewModel? diagnostics = null)
+        DiagnosticsViewModel? diagnostics = null,
+        IGameLinkRouter? linkRouter = null)
     {
         _settings = settings;
         _startup = startup;
         _updater = updater;
         _uris = uris;
+        _linkRouter = linkRouter;
         Diagnostics = diagnostics ?? new DiagnosticsViewModel();
         LinkDestinationOptions = storeClients?.IsAvailable(GameLink.SteamScheme) == true
             ? ["In Winnow", "System browser", "Store client"] : ["In Winnow", "System browser"];
@@ -64,8 +67,8 @@ public partial class ApplicationSettingsViewModel : ObservableObject
 
     public IReadOnlyList<string> LinkDestinationOptions { get; }
     public string LinkDestinationNote => LinkDestinationOptions.Count == 3
-        ? "Winnow reads supported patch notes. Store client opens Steam store pages. Other pages use your browser."
-        : "Winnow reads supported patch notes. Other pages use your browser. Store client is available when Steam is installed on Windows.";
+        ? "Open web pages in Winnow or your system browser. Store client opens Steam store pages and uses your browser for other links."
+        : "Open web pages in Winnow or your system browser. Store client is available when Steam is installed on Windows.";
     [ObservableProperty]
     public partial int LinkDestinationIndex { get; set; }
     partial void OnLinkDestinationIndexChanged(int value)
@@ -156,7 +159,7 @@ public partial class ApplicationSettingsViewModel : ObservableObject
             await _updater.RestartAsync();
     });
     [RelayCommand] private void CancelUpdate() => _updater?.CancelDownload();
-    [RelayCommand] private Task OpenReleaseNotesAsync() => OpenUpdateLinkAsync(_updater?.Snapshot.ReleaseUrl);
+    [RelayCommand] private Task OpenReleaseNotesAsync() => OpenUpdateLinkAsync(_updater?.Snapshot.ReleaseUrl, usePreference: true);
     [RelayCommand] private Task OpenManualDownloadAsync() => OpenUpdateLinkAsync(_updater?.Snapshot.DownloadUrl);
 
     private async Task RunUpdateAsync(Func<Task> action)
@@ -165,11 +168,13 @@ public partial class ApplicationSettingsViewModel : ObservableObject
         catch { UpdateStatus = "Couldn't complete the update action. Try again."; }
     }
 
-    private Task OpenUpdateLinkAsync(string? url) => RunUpdateAsync(async () =>
+    private Task OpenUpdateLinkAsync(string? url, bool usePreference = false) => RunUpdateAsync(async () =>
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps
-            || _uris is null || !await _uris.OpenAsync(uri))
-            UpdateStatus = "Couldn't open your browser. Try again.";
+            || !(usePreference && _linkRouter is not null && GameLink.Create("Release notes", url) is { } link
+                ? (await _linkRouter.OpenAsync(link, "Winnow release notes")).Opened
+                : _uris is not null && await _uris.OpenAsync(uri)))
+            UpdateStatus = "Couldn't open the link. Try again.";
     });
 
     [ObservableProperty]

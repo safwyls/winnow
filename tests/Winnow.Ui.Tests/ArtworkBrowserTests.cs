@@ -24,6 +24,37 @@ namespace Winnow.Ui.Tests;
 public sealed class ArtworkBrowserTests
 {
     [AvaloniaFact]
+    public async Task Desktop_artwork_source_uses_the_shared_link_router()
+    {
+        var router = new SourceRouter();
+        var browser = new ArtworkBrowserViewModel(new BrowserService { IncludeAttribution = true }, 1, "Game");
+        using var details = new GameDetailsViewModel(TileFixture.Tile(DateTime.UtcNow), "Started", [], DateTime.UtcNow, artworkBrowser: browser, linkRouter: router);
+        var view = new GameDetailsView { DataContext = details };
+        var window = new Window { Width = 1280, Height = 820, Content = view };
+        window.Show();
+        try
+        {
+            await browser.OpenAsync();
+            browser.SelectCommand.Execute(browser.Sources[0].Items[0]); Flush();
+            var source = Named(view, "Open artwork source");
+            source.Focus(); window.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None); Flush();
+            Assert.Equal("https://www.steamgriddb.com/grid/1", Assert.Single(router.Links).Uri);
+            Assert.Equal("Opened in your browser.", browser.Problem);
+        }
+        finally { window.Close(); }
+    }
+
+    private sealed class SourceRouter : IGameLinkRouter
+    {
+        public List<GameLink> Links { get; } = [];
+        public Task<LinkOpenResult> OpenAsync(GameLink link, string title)
+        {
+            Links.Add(link);
+            return Task.FromResult(new LinkOpenResult(true, "Opened in your browser."));
+        }
+    }
+
+    [AvaloniaFact]
     public async Task Preview_and_back_do_not_write_and_apply_changes_only_the_selected_slot()
     {
         var service = new BrowserService();
