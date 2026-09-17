@@ -385,7 +385,8 @@ public static class Program
                     ct => RefreshLibraryAsync(host.Services, ct),
                     _ => host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(Program))
                         .LogWarning("Plugin refresh failed; stored library data remains available."),
-                    Shutdown.Token, libraryStartup: startup);
+                    Shutdown.Token, libraryStartup: startup,
+                    refreshSuggestions: ct => host.Services.GetRequiredService<IMergeSuggestionRefresh>().RefreshAsync(ct));
                 host.Services.GetRequiredService<PluginSettingsBackend>().RefreshRequested += pluginRefresh.Request;
                 pluginRefresh.Request();
             }
@@ -684,6 +685,7 @@ public static class Program
         services.AddSingleton<ILocalLibrarySync>(sp => sp.GetRequiredService<LocalLibrarySyncService>());
         services.AddSingleton<OwnershipRefreshRequests>();
         services.AddSingleton<LibraryChangePublisher>();
+        services.AddSingleton<IMergeSuggestionRefresh, MergeSuggestionRefresh>();
         services.AddSingleton(sp => new LibraryRefreshPipeline(
         [
             new("Steam playtime history", async ct => { await sp.GetRequiredService<ISteamPlaytimeBackfill>().BackfillAsync(ct); }, PublishAfter: true),
@@ -695,7 +697,7 @@ public static class Program
             new("IGDB maturity", async ct => { await sp.GetRequiredService<IgdbMaturitySync>().SyncAsync(ct); }, IgdbRelevant: true),
             new("Reception and images", async ct => { await sp.GetRequiredService<ReceptionSyncService>().SyncAsync(ct); }, IgdbRelevant: true),
             new("Lifecycle evidence", async ct => { await sp.GetRequiredService<LifecycleSyncService>().SyncAsync(ct); }, IgdbRelevant: true),
-            new("Identity proposals", async ct => { await sp.GetRequiredService<LibrarySoftMatchSweep>().SweepAsync(ct); }),
+            new("Identity proposals", async ct => { await sp.GetRequiredService<IMergeSuggestionRefresh>().RefreshAsync(ct); }),
             new("Update signals", async ct => { await sp.GetRequiredService<UpdateSignalPoller>().PollDueBatchAsync(ct); }, PublishAfter: true),
             new("Storefront links", ct => sp.GetRequiredService<StorefrontSyncService>().SyncAsync(ct), PublishAfter: true),
         ], ct => RefreshLibraryAsync(sp, ct), sp.GetRequiredService<ILogger<LibraryRefreshPipeline>>()));

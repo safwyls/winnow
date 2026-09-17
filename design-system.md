@@ -512,13 +512,24 @@ the grid cannot do densely lives here, which is how the analytics capability sta
 without dominating the default experience.
 
 **Merges.** The screen that proposes which library entries are one game and asks the user to
-confirm each proposal and pick which entry becomes the header. Three bands: a 56px header (`Merges`, the pending count in
+confirm each proposal and pick which entry becomes the header. Three bands: a header with a 56px title row (`Merges`, the pending count in
 Data, `Sort ·`, `Accept N exact matches`, and the one filled button, `Merge N selected`); a 40px
 cut bar on `ChromeSurface` with a six-segment kind filter, a cut chip while filtered, a
 `Prefer · None` platform picker, and the count at the right, `14 → 6` while filtered, the
 only arrow in the interface; and the queue,
 one scroll of five outlined sections, ACROSS STORES · EDITIONS · EXPANSIONS · PARTS · TEST
 BUILDS, each with the count of its pending cards and a one-sentence blurb.
+
+An icon-only `Refresh suggestions` control sits immediately before `Merge N selected` in
+the title row. It uses the shared refresh arrow in `VoltForeground`, with `Refresh suggestions`
+as its tooltip and accessible name. It checks the library for new proposals and reloads the
+queue without answering a proposal or resetting previous answers. The `ctl` button disables
+while checking; quiet `TextDim` feedback below the title row wraps within the pane at the
+1200px minimum window width and announces progress politely. The feedback row is absent until
+there is a status to show. Completion reads “Suggestions refreshed. Your
+previous answers are kept.” A bounded pass asks the user to refresh again to check more
+matches; cancellation and failure offer the same control to retry. New plugin imports also
+refresh suggestions automatically, including when the number of pending proposals stays the same.
 
 The platform picker uses the sort menu's `ctl` trigger, chevron, `sortmenu` presenter and
 6px `Volt` dot for the selected option. Its choices are `None`, `Steam`, `Epic` and `GOG`;
@@ -1132,6 +1143,11 @@ metadata candidates through the shared commands. Identity tools include kind and
 selection and confirmed bulk grouping, with exact matching limited by the shared rules.
 The identity page also carries the shared `Prefer ·` platform choice in a controller action
 sheet, with the same options and pending-header behavior as desktop Merges (§6).
+`Refresh suggestions` is a separate controller and keyboard row below the platform choice.
+It shares the desktop command and feedback, disables during the pass, and reloads proposals
+on completion. Automatic import updates also refresh the open identity page. Busy, completion
+and recovery text wraps below the row without animation; closing the page cancels its manual
+request and prevents later feedback from moving focus on another page.
 The Steam API key registration link opens the system browser; obtaining that credential is
 an external website workflow, while entering and saving it stays inside the TV interface.
 

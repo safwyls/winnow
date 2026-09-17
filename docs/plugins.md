@@ -60,8 +60,14 @@ Discovery, initialization and provider work run off the UI thread. Library impor
 plugin discovery and publish committed rows before optional metadata and artwork work. They do
 not wait for other stores' startup enrichment or a previous plugin artwork sweep. Resolver writes
 remain serialized with built-in imports. A separate enrichment queue covers original owned works
-and repeats after built-in startup to include games added by that backfill. Feed providers
-run concurrently with the built-in feed. Built-in shelves publish as soon as they are ready;
+and repeats after built-in startup to include games added by that backfill. After publishing an
+import, the host also queues merge suggestions independently of metadata and artwork. Matching
+includes other stores and preserves confirmed and rejected decisions. **Refresh suggestions**
+in desktop **Merges** or fullscreen **Library tools → Possible identity matches** runs the same
+local matching pass without fetching another inventory or accepting suggestions. Startup,
+plugin and manual passes run one at a time.
+
+Feed providers run concurrently with the built-in feed. Built-in shelves publish as soon as they are ready;
 optional shelves append without replacing existing cards. One five-second aggregate budget
 covers feed snapshot reads, queued provider invocations and execution across all providers.
 Expiry during shared input reads produces an empty optional supplement; caller cancellation

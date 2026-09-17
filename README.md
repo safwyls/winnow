@@ -249,6 +249,11 @@ Winnow's permissions; install packages from authors you trust. Settings are avai
 desktop and fullscreen. See [plugin authoring and installation](docs/plugins.md) for the SDK,
 supported data contracts, compatibility and current limits.
 
+Library imports also refresh merge suggestions across stores, including PlayStation and Xbox.
+Choose **Refresh suggestions** in desktop **Merges** or fullscreen **Library tools → Possible
+identity matches** to run another pass over your stored library. Suggestions still need your
+review; earlier acceptances and rejections remain.
+
 ### Optional: Xbox
 
 The Xbox plugin imports installed Windows Xbox games and can add played PC games and optional

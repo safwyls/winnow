@@ -9,6 +9,9 @@ namespace Winnow.App.Views;
 /// <summary>Decorative action symbols shared by popup and fullscreen menus.</summary>
 internal static class ActionIcons
 {
+    private const string RefreshPath = "M20,10 A8,8 0 1 0 20,16 M20,4 L20,10 L14,10";
+    public static Geometry RefreshGeometry { get; } = Geometry.Parse(RefreshPath);
+
     public static Control Create(string label, double size = 20)
     {
         var text = label.ToLowerInvariant();
@@ -25,7 +28,7 @@ internal static class ActionIcons
             _ when text.Contains("version") => "M3,7 L17,7 L17,21 L3,21 Z M7,3 L21,3 L21,17",
             _ when text.Contains("session") || text.Contains("history") => "M12,3 A9,9 0 1 1 11.99,3 M12,7 L12,12 L16,14",
             _ when text.Contains("folder") => "M3,6 L9,6 L11,8 L21,8 L21,20 L3,20 Z",
-            _ when text.Contains("refresh") || text.Contains("refetch") || text.Contains("reset") => "M20,10 A8,8 0 1 0 20,16 M20,4 L20,10 L14,10",
+            _ when text.Contains("refresh") || text.Contains("refetch") || text.Contains("reset") => RefreshPath,
             _ when text.Contains("undo") || text.Contains("restore") => "M9,4 L3,10 L9,16 M3,10 L14,10 Q21,10 21,20",
             _ when text.Contains("edit") || text.Contains("rename") => "M4,16 L16,4 L20,8 L8,20 L3,21 Z M13,7 L17,11",
             _ when text.Contains("delete") => "M3,6 L21,6 M9,6 L9,3 L15,3 L15,6 M6,6 L7,21 L17,21 L18,6 M10,10 L10,17 M14,10 L14,17",

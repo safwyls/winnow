@@ -938,10 +938,11 @@ Application adapters own persistence. Library imports enter the existing resolve
 `plugin:<id>` ownership sources; existing Steam/Epic/GOG external IDs join only when known
 matches agree. `PluginRefreshCoordinator` starts imports after discovery, independently of the
 built-in startup enrichment pipeline. `LibrarySyncGate` still serializes resolver writes.
-Imports publish through `LibraryChangePublisher` before a separate metadata/artwork queue runs,
-so desktop/fullscreen filters and Gameplay store choices see new ownerships promptly. Completing
-built-in startup requests another enrichment sweep for its newly added works. Migration 0032
-widens the external-ID provider constraint to accept this namespace
+Imports publish through `LibraryChangePublisher` before separate metadata/artwork and merge
+suggestion queues run, so desktop/fullscreen filters and Gameplay store choices see new
+ownerships promptly. Matching publishes again on completion and does not wait for artwork.
+Completing built-in startup requests another enrichment and matching pass for its newly added
+works. Migration 0032 widens the external-ID provider constraint to accept this namespace
 while preserving existing hard joins. Missing inventory never deletes ownerships. Metadata observations retain their
 source in `metadata_cache`; summary/year fill automatic missing fields through the existing
 provenance-aware repository. Migration 0031's `plugin_work_facets` holds genre/tag assignments
@@ -1321,6 +1322,14 @@ collision — `works.igdb_id` is UNIQUE — is confirmed in place on the modal w
 named and shown, and the link is written without entering the `merge_candidates` queue. The
 queue is where soft matches are cleared; a hard external-id join is not a soft match.
 
+`IMergeSuggestionRefresh` serializes soft matching requested by the normal library pipeline,
+plugin imports and **Refresh suggestions** in desktop Merges or fullscreen identity tools.
+It dispatches the matcher off the UI thread and advances a revision after each successful pass, so views reload
+changed proposals even when the pending count stays the same. Manual refresh compares stored
+library facts; it does not fetch inventories or accept proposals. A pass that reaches the
+comparison limit keeps its resume point and offers another refresh. Confirmed links and
+rejected pairs remain in force.
+
 **Gamesdb references require edition evidence before automatic linking.** The App's
 `GamesDbIdentitySyncService` scans Epic external IDs, including fully enriched works, through
 the shared ownership-refresh pipeline used at startup, on scheduled passes and after account
@@ -1590,7 +1599,7 @@ work_ratings(work_id FK works ON DELETE CASCADE, source, score, rating_count, la
 
 -- Resolution
 merge_candidates(id, left_release_id, right_release_id, score, signals_json, status)
-  -- status ∈ {pending, confirmed, rejected}
+  -- status ∈ {pending, rejected}; confirmed answers live in identity links
 
 -- Caching / config
 metadata_cache(provider, provider_id, payload_json, fetched_at, PRIMARY KEY(provider, provider_id))
