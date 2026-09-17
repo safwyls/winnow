@@ -290,6 +290,17 @@ Build its ZIP with `./plugins/Winnow.Plugin.Psn/Package.ps1`, then install and e
 for connection steps, source limits and caching. Fixture and UI checks cover the implementation;
 live Sony sign-in and account data still need validation.
 
+### Choosing game artwork
+
+Open a game's **More → Change artwork** to browse Hero, Cover and Icon images from Steam,
+IGDB and enabled artwork plugins. Selecting an image previews it; **Use artwork** saves
+only that slot. **Use automatic** restores its normal source policy. File and image-URL
+imports are available in the same browser, and **Edit details → Browse artwork** opens
+the corresponding slot. Fullscreen provides the same choices with controller navigation.
+
+Saved images remain available offline and after a provider is disabled. Steam and IGDB
+offer official assets, so some games have few choices; IGDB does not supply icons.
+
 ### Writing a theme
 
 **Settings → Appearance → Typography** lets you choose heading, interface and data fonts,

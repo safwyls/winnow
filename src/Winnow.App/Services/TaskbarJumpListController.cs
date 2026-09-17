@@ -39,7 +39,7 @@ internal sealed class TaskbarJumpListController : IDisposable
         if (_disposed || !OperatingSystem.IsWindows()) return;
         var games = RecentGames(_library.AllTiles);
         var covers = games.ToDictionary(game => game.OwnershipId,
-            game => _library.TileForOwnership(game.OwnershipId)?.CoverKey);
+            game => _library.TileForOwnership(game.OwnershipId) is { } tile ? tile.IconKey ?? tile.CoverKey : null);
         var revision = Interlocked.Increment(ref _revision);
         _ = Task.Run(async () =>
         {

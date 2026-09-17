@@ -111,7 +111,7 @@ Build its local NuGet package with:
 dotnet pack src/Winnow.PluginSdk -c Release -o artifacts/plugin-sdk
 ```
 
-Reference `Winnow.PluginSdk` version `1.1.0` from that local package source. Set
+Reference `Winnow.PluginSdk` version `1.2.0` from that local package source. Set
 `EnableDynamicLoading=true` in your .NET 10 class-library project and keep the SDK reference
 out of your package's runtime dependencies (`Private=false` for a project reference, or
 `ExcludeAssets=runtime` for a package reference). Copy your DLL, `.deps.json`, manifest and
@@ -153,6 +153,7 @@ Implement `IPlugin.InitializeAsync` to retain `IPluginContext`, plus one or more
 | `ILibrarySourcePlugin` | Inventory, installation and playtime observations. Stable source IDs become provider-scoped ownerships. Known Steam/Epic/GOG IDs can join an existing release when all matches agree; titles never cause an automatic join. Missing results never delete ownerships. |
 | `IMetadataProviderPlugin` | Summary, release date, genres and tags for the supplied game handle. Summary/year fill missing automatic fields; user overrides remain authoritative. Genre/tag observations have separate source-scoped assignments. |
 | `IArtworkProviderPlugin` | Static backgrounds, covers or screenshots with URLs and dimensions. The host validates HTTPS hosts, dimensions and bounded counts, retains source attribution, and uses isolated hashed cache keys. |
+| `IArtworkBrowserPlugin` | SDK 1.2 optional extension for artwork providers. Declares supported artwork kinds and returns pages with optional thumbnail, creator and source-page attribution. The catalog exposes it under the existing `artwork` manifest capability. |
 | `IRecommendationFeedPlugin` | Scores from 0 to 1 and a concise explanation for supplied library handles. The host rejects unknown handles and invalid values and renders one named shelf using existing cards, feedback and reserves. |
 | `IPluginAccount` | SDK 1.1 account capability. Short begin/poll/status/cancel/sign-out calls use shared desktop/fullscreen controls. Only the user code and a declared HTTPS verification address reach the UI. |
 | `IPluginGameActions` | SDK 1.1 game-actions capability. Executes Play or OpenStore for an imported source ID after host validation. The provider resolves the current target; the host never executes provider command text. |
@@ -181,6 +182,34 @@ not clear an assigned cover. Recommendation results are computed for the current
 or an empty list produces no shelf, and the host does not retain an older successful result.
 Saved user backgrounds take precedence over automatic source ordering. Screenshot results
 use the existing gallery/lightbox.
+
+### Artwork browser contract
+
+SDK 1.2 adds `IArtworkBrowserPlugin` without changing `IArtworkProviderPlugin.GetArtworkAsync`.
+An existing automatic artwork provider can load without implementing the browser interface.
+To offer browsing, implement both interfaces and keep `artwork` in the manifest's capabilities;
+implementing the interface without declaring that capability does not register a browser.
+The SDK assembly version remains `1.0.0.0`, and manifest `apiVersion` remains 1. A plugin using
+the new interface needs a host that supplies SDK 1.2.
+
+`SupportedArtworkKinds` declares which kinds can be browsed. `Background` is the hero slot,
+`Cover` the cover slot, and the appended `Icon` value is the icon slot. The existing Background,
+Cover and Screenshot enum values retain their numeric identities. `BrowseArtworkAsync` receives
+the game, requested kind, optional opaque cursor and cancellation token. A null next cursor
+ends pagination. Use exact `PluginGame.ExternalIds` for lookup; browsing does not establish
+library identity.
+
+`PluginArtworkPage.Availability` distinguishes Available, SetupRequired, Unsupported and
+Unavailable. An available empty page means no candidates; it must not stand in for a missing
+credential or failed request. The optional page message must contain no credentials or raw
+provider errors. Each `PluginArtwork` can carry `ThumbnailUrl`, `Creator` and `PageUrl` in
+addition to its full image URL and dimensions. Use the host's bounded HTTP service and respect
+cancellation for each page.
+
+Desktop and fullscreen expose these providers in the shared artwork browser. Selecting an
+image previews it; saving validates and retains the original image locally with its attribution.
+Saved choices remain available when a provider is disabled. Collection enumeration and bulk
+application are deferred pending a supported SteamGridDB API or export.
 
 ## Host services
 

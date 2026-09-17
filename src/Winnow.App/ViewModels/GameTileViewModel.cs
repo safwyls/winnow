@@ -546,6 +546,7 @@ public partial class GameTileViewModel : ObservableObject
 
     /// <summary>Provider id this tile's art is fetched under; null when we know no id for it.</summary>
     public CoverKey? CoverKey { get; }
+    public CoverKey? IconKey { get; init; }
 
     /// <summary>
     /// Where any surface showing this game acquires its art. The tile holds the

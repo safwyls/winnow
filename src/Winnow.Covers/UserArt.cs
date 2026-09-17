@@ -276,6 +276,20 @@ public sealed class UserArtStore
         return UserArtImport.Imported(UserArtRef.Format(token));
     }
 
+    /// <summary>Persists a provider selection only after decoding a bounded, static image.</summary>
+    public UserArtImport ImportValidatedBytes(byte[] bytes)
+    {
+        if (bytes.LongLength > MaxBytes) return UserArtImport.Failed(UserArtImportFailure.TooLarge);
+        using var data = SkiaSharp.SKData.CreateCopy(bytes);
+        using var codec = SkiaSharp.SKCodec.Create(data);
+        if (codec is null || codec.Info.Width <= 0 || codec.Info.Height <= 0
+            || codec.Info.Width > 8192 || codec.Info.Height > 8192
+            || (long)codec.Info.Width * codec.Info.Height > 32 * 1024 * 1024 || codec.FrameCount > 1)
+            return UserArtImport.Failed(UserArtImportFailure.NotAnImage);
+        using var bitmap = SkiaSharp.SKBitmap.Decode(codec);
+        return bitmap is null ? UserArtImport.Failed(UserArtImportFailure.NotAnImage) : Store(bytes);
+    }
+
     internal static bool LooksLikeImage(ReadOnlySpan<byte> bytes)
     {
         if (bytes.Length < 12)

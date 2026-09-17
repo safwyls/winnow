@@ -4,7 +4,9 @@ title: Preview apply and undo library artwork collections
 status: To Do
 assignee: []
 created_date: '2026-09-17 16:12'
-labels: []
+updated_date: '2026-09-17 16:47'
+labels:
+  - blocked
 dependencies:
   - TASK-330
   - TASK-331
@@ -30,3 +32,11 @@ Users want a coordinated artwork style across their library without selecting ev
 - [ ] #6 Initial application is one-time, with no silent collection subscription or styling of later imports; collection assignments take precedence over automatic art and remain below manual choices.
 - [ ] #7 Desktop keyboard and fullscreen controller flows, focus return and scaling are verified separately; tests cover ambiguity, partial failure, cancellation and conflict-aware undo; shipped behavior is documented.
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Collection implementation is gated: TASK-330 found no supported collection enumeration API/export. Website-only internal access is undocumented and terms restrict scraping. Await provider-supported access; no bulk-apply UI is shipped. Per-game browser work can proceed independently.
+
+Per-game browsing is implemented independently. Collection application remains unimplemented on both surfaces because supported enumeration is unavailable; the saved-choice model reserves collection precedence and revision-safe restoration, but no bulk operation or collection subscription is exposed.
+<!-- SECTION:NOTES:END -->

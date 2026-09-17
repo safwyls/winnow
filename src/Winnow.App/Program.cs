@@ -526,6 +526,10 @@ public static class Program
         services.AddSingleton<DatabaseInitializer>();
 
         services.AddSingleton<IWorkRepository, WorkRepository>();
+        services.AddSingleton<IArtworkChoiceRepository, ArtworkChoiceRepository>();
+        services.AddSingleton<ArtworkSelectionService>();
+        services.AddSingleton<IArtworkBrowserService, ArtworkBrowserService>();
+        services.AddSingleton<ICoverSource, SteamBrowserArtworkSource>();
         services.AddSingleton<IIgdbObservationWriter, IgdbObservationWriter>();
         services.AddSingleton<IReleaseRepository, ReleaseRepository>();
         services.AddSingleton<IReleaseYearEvidenceRepository, ReleaseYearEvidenceRepository>();

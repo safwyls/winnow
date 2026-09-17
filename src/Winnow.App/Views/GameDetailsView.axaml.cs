@@ -19,6 +19,8 @@ public partial class GameDetailsView : UserControl
 {
     private GameDetailsViewModel? _observedDetails;
     private bool _wasFocusedView;
+    private bool _wasArtworkFocused;
+    private string? _artworkReturnName;
     private readonly List<MenuItem> _linkRows = [];
     private Control? _refreshFocused;
     private (long ReleaseId, DateTime At, bool Announcement)? _refreshUpdate;
@@ -55,6 +57,11 @@ public partial class GameDetailsView : UserControl
         ScreenshotScroll.AddHandler(PointerWheelChangedEvent, OnScreenshotWheel, RoutingStrategies.Tunnel);
         WireMenuRows();
         MetadataEditorView.CloseRequested += OnSectionClosed;
+        MetadataEditorView.AddHandler(Button.ClickEvent, (_, e) =>
+        {
+            if (e.Source is Button { DataContext: MetadataArtRowViewModel row } button && ReferenceEquals(button.Command, row.BrowseCommand))
+                _artworkReturnName = AutomationProperties.GetName(button);
+        }, handledEventsToo: true);
 
         // The previewer gets the populated modal; runtime leaves the
         // DataContext to the shell. See Design/PreviewData.cs.
@@ -82,12 +89,23 @@ public partial class GameDetailsView : UserControl
 
         var wasFocused = _wasFocusedView;
         _wasFocusedView = details.IsFocusedView;
+        var wasArtwork = _wasArtworkFocused;
+        _wasArtworkFocused = details.IsArtworkFocused;
+        if (details.IsArtworkFocused && !wasArtwork && details.MetadataEditor?.IsOpen != true) _artworkReturnName = null;
+        if (details.IsArtworkFocused && !wasArtwork && _artworkReturnName is null)
+            _artworkReturnName = this.GetVisualDescendants().OfType<Button>()
+                .FirstOrDefault(control => control.IsFocused && control.DataContext is MetadataArtRowViewModel) is { } invoking
+                ? AutomationProperties.GetName(invoking) : null;
         Dispatcher.UIThread.Post(() =>
         {
             if (!ReferenceEquals(DataContext, details) || !IsVisible) return;
-            if (details.IsMatchFocused) MatchQueryField.Focus(NavigationMethod.Tab);
+            if (details.IsArtworkFocused) ArtworkBrowserView.FindControl<Button>("HeroSlotButton")?.Focus(NavigationMethod.Tab);
+            else if (details.IsMatchFocused) MatchQueryField.Focus(NavigationMethod.Tab);
             else if (details.IsMetadataFocused)
             {
+                if (wasArtwork && _artworkReturnName is { } name && MetadataEditorView.GetVisualDescendants().OfType<Button>()
+                    .FirstOrDefault(control => AutomationProperties.GetName(control) == name) is { } browse)
+                { browse.Focus(NavigationMethod.Tab); return; }
                 // The editor may still be loading its first field rows. Back
                 // remains an available keyboard destination throughout that load.
                 var field = MetadataEditorView.GetVisualDescendants().OfType<TextBox>()
@@ -165,6 +183,7 @@ public partial class GameDetailsView : UserControl
                 "RefetchItem" => "Refetch",
                 "WrongGameItem" => "Wrong game",
                 "EditDetailsItem" => "Edit details",
+                "ChangeArtworkItem" => "Edit details",
                 "HideItem" => "Hide game",
                 _ => "Open website"
             });

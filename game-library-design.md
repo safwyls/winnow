@@ -304,6 +304,26 @@ passing through Winnow infrastructure. This is a reference option, not planned i
   figure cannot be attributed to anyone, and the rule is that a score is shown with its source
   and its count or not at all.
 
+#### Artwork choices and browsing
+
+Saved artwork choices live separately from provider observations in `artwork_choices`.
+Each original work has independent Hero, Cover and Icon slots, with manual choices above
+collection choices. Reads share choices through the current confirmed same-game group;
+the newest revision wins within a priority. Unlinking stops sharing without copying artwork
+onto another work. Reset clears that slot across the current group, including migrated legacy
+user fields, so automatic selection resumes. Selected image bytes live in the user artwork
+cache independently of provider credentials or activation. The Windows jump list prefers
+a saved icon and otherwise uses its existing cover-derived icon.
+
+Artwork browsing is an optional SDK capability alongside automatic artwork provision.
+It declares supported kinds and returns bounded pages with opaque cursors, availability,
+dimensions and attribution. Existing providers retain their original unpaged contract.
+
+Desktop and fullscreen use the same selection service and separate presentation paths.
+Steam browser keys bypass automatic IGDB fallback so the source label remains accurate.
+IGDB offers covers and cached or fetched landscape artwork; it does not supply an icon slot.
+Saving downloads and fully decodes the original static image before recording a choice.
+
 #### SteamGridDB artwork
 
 The SDK-only `Winnow.Plugin.SteamGridDb` package retrieves static landscape heroes through
@@ -312,6 +332,12 @@ API key. This slice uses exact Steam app IDs only; it does not search names or c
 Requests exclude NSFW, humor and epilepsy-tagged assets. Returned dimensions, type flags,
 format and canonical CDN URL are checked before storing a candidate. Each response is bounded
 to 2 MiB and supplies the first page of candidates.
+
+The optional browser additionally pages static heroes, portrait grids and PNG icons through
+the documented per-game endpoints. Its opaque cursors and 30-day cache are scoped by game,
+kind and page, separately from automatic hero observations. Available creator and source-page
+attribution follow the selected image. Library-wide collections remain deferred: the published
+API has no supported enumeration contract (see `docs/spikes/steamgriddb-collections.md`).
 
 A shared Polly pipeline limits requests to one per second and permits two retries for
 transport, timeout, rate-limit and server failures, with Retry-After delays capped at 30 seconds.

@@ -41,5 +41,6 @@
   "0041_group_header_preferences.sql": "0faf2e7d054414501e3c3ed6eccf672018f67ec78798d7f9b360fc3a83aecc17",
   "0040_achievement_accounts.sql": "e0ed48c84eff0158f6197728b0ea9d85a5eae4cb48a4b45009a74a1e4cf668a7",
   "0042_release_edition_evidence.sql": "aff21ee8e22d40c887c2aced33bf66533aaf4e64615153d583a2fc3a45cd23ba",
-  "0043_steam_playtime_observations.sql": "d20a0ed19b3b002a14acd0aea0760861ca2cffe71c923fa102f5404428b30423"
+  "0043_steam_playtime_observations.sql": "d20a0ed19b3b002a14acd0aea0760861ca2cffe71c923fa102f5404428b30423",
+  "0044_artwork_choices.sql": "3578b66f7d221c8f06803c8ef993938ce12c6b252ec694f9c94ef992e960773c"
 }

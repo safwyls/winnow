@@ -144,6 +144,9 @@ public sealed record SteamAppInfo(
     string? ParentAppId)
 {
     public SteamLibraryAssets? LibraryAssets { get; init; }
+
+    /// <summary>The validated 40-hex <c>common.icon</c> filename stem for Steam's community app icon.</summary>
+    public string? IconHash { get; init; }
 }
 
 /// <summary>Localized relative paths published in <c>common.library_assets_full</c>.</summary>

@@ -339,6 +339,9 @@
                                         <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}"
                                                    Text="{Binding ChooseFileLabel}"/>
                                     </Button>
+                                    <Button Classes="secondary" Content="Browse artwork" HorizontalAlignment="Left"
+                                            IsVisible="{Binding CanBrowse}" AutomationProperties.Name="{Binding BrowseAutomationName}"
+                                            Command="{Binding BrowseCommand}"/>
                                 </StackPanel>
                             </Grid>
 

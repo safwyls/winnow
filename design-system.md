@@ -2132,6 +2132,38 @@ that resolves to no work id, the link is not drawn at all and the modal is exact
 Omitting only the image picker costs the `Choose file` route and leaves the URL route
 untouched.
 
+#### Artwork browser
+
+**Change artwork** in the game's More menu opens independent Hero, Cover and Icon slots.
+The existing art rows also offer **Browse artwork**. Desktop places the browser in the
+bounded details body; its source results scroll while **Use artwork**, **Use automatic**,
+file import and URL import remain reachable below them. Narrow bodies place the preview
+above the results. Back and Escape abandon the preview and return to the invoking editor
+row or the More control. Opening the browser from an art row retains the editor's drafts.
+
+**All sources** groups candidates by source. Steam and IGDB remain visible even when no
+appropriate asset exists; unsupported slots and setup failures explain the limitation.
+Enabled artwork plugins contribute their own group. Each group loads, pages and retries
+independently. Selecting a candidate changes only the preview. Current and Selected are
+written labels; Volt adds selection emphasis without replacing those labels. Artwork remains
+at full saturation. Source, dimensions and creator appear when supplied.
+
+Hero previews offer Desktop crop and Fullscreen crop controls and fit the chosen crop within
+the preview area. Desktop uses the current details card's ratio; fullscreen labels its desktop
+example as 4:3 and its fullscreen preview as 16:9. These previews show composition without
+the reading veil. Cover previews follow the shared Fit/Fill preference, and icons show
+32-pixel use plus light and dark transparency backgrounds. An available artwork page opens
+through **Open artwork source** beside the attribution.
+**Use artwork** validates and retains the chosen image before replacing the selected slot.
+**Use automatic** resets only that slot. Saving, empty and failure states use words and
+remain next to the operation; there are no required hover controls or transitions.
+
+Fullscreen uses a separate artwork page with TV-sized controls, a persistent preview,
+source controls, and explicit focus rows. A previews or activates the focused action;
+**Use artwork** commits. B returns without committing a preview. Candidate identity retains
+focus when another page of results arrives. File selection and URL entry use the fullscreen
+file browser and keyboard. Both surfaces use the same saved choices and refresh operations.
+
 ---
 
 ## 11. The filter panel

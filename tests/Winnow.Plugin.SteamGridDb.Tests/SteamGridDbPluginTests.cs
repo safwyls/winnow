@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Winnow.Plugin.SteamGridDb.Tests;
 
-public sealed class SteamGridDbPluginTests
+public sealed partial class SteamGridDbPluginTests
 {
     private const string Hero = """{"id":7,"width":3840,"height":2160,"url":"https://cdn2.steamgriddb.com/hero/0123456789abcdef0123456789abcdef.png","mime":"image/png","tags":[]}""";
     private const string CacheKey = "heroes:steam:220";
@@ -271,6 +271,7 @@ public sealed class SteamGridDbPluginTests
         public int Status { get; set; } = 200;
         public byte[] Body { get; set; } = [];
         public Exception? Failure { get; set; }
+        public Action? RequestStarted { get; set; }
 
         public static async Task<Host> CreateAsync(string body)
         {
@@ -299,6 +300,8 @@ public sealed class SteamGridDbPluginTests
         public Task<PluginHttpResponse> SendAsync(PluginHttpRequest request, CancellationToken cancellationToken = default)
         {
             Requests.Add(request);
+            RequestStarted?.Invoke();
+            cancellationToken.ThrowIfCancellationRequested();
             if (Failure is not null) throw Failure;
             return Task.FromResult(new PluginHttpResponse(Status, Body, new Dictionary<string, string>()));
         }

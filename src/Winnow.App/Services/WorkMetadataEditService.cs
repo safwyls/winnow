@@ -16,19 +16,22 @@ public sealed class WorkMetadataEditService : IWorkMetadataEditService
     private readonly IWorkIgdbPinRepository? _pins;
     private readonly UserArtStore? _art;
     private readonly ILogger<WorkMetadataEditService> _log;
+    private readonly ArtworkSelectionService? _selections;
 
     public WorkMetadataEditService(
         IWorkRepository works,
         IWorkFieldSourceRepository fields,
         IWorkIgdbPinRepository? pins = null,
         UserArtStore? art = null,
-        ILogger<WorkMetadataEditService>? log = null)
+        ILogger<WorkMetadataEditService>? log = null,
+        ArtworkSelectionService? selections = null)
     {
         _works = works;
         _fields = fields;
         _pins = pins;
         _art = art;
         _log = log ?? NullLogger<WorkMetadataEditService>.Instance;
+        _selections = selections;
     }
 
     public async Task<WorkMetadataSnapshot?> GetAsync(long workId, CancellationToken ct = default)
@@ -43,12 +46,18 @@ public sealed class WorkMetadataEditService : IWorkMetadataEditService
 
             var states = await _fields.GetStateAsync(workId, ct);
             var pin = _pins is null ? null : await _pins.GetAsync(workId, ct);
+            var fields = states.Select(s => new WorkMetadataField(s.Field, s.Value, s.Source)).ToList();
+            if (_selections is not null)
+                for (var i = 0; i < fields.Count; i++)
+                    if (WorkFields.IsArt(fields[i].Field)
+                        && await _selections.GetAsync(workId, SlotFor(fields[i].Field), ct) is { } choice)
+                        fields[i] = fields[i] with { Value = choice.AssetKey, Source = FieldSources.User };
 
             return new WorkMetadataSnapshot(
                 workId,
                 work.Name,
                 pin is not null,
-                [.. states.Select(s => new WorkMetadataField(s.Field, s.Value, s.Source))]);
+                fields);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -84,6 +93,11 @@ public sealed class WorkMetadataEditService : IWorkMetadataEditService
     {
         try
         {
+            if (_selections is not null && WorkFields.IsArt(field))
+            {
+                await _selections.ResetAsync(workId, SlotFor(field), ct);
+                return WorkFieldEditOutcome.Applied;
+            }
             return await _fields.ResetFieldAsync(workId, field, ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -140,6 +154,19 @@ public sealed class WorkMetadataEditService : IWorkMetadataEditService
                 };
             }
 
+            if (_selections is not null)
+            {
+                if (await _works.GetAsync(workId, ct) is null) return WorkArtEditOutcome.WorkNotFound;
+                if (UserArtRef.Token(imported.Reference) is not { } token || !_art.TryRead(token, out var bytes))
+                    return WorkArtEditOutcome.NotAnImage;
+                if (!(await Task.Run(() => _art.ImportValidatedBytes(bytes), ct)).Ok) return WorkArtEditOutcome.NotAnImage;
+                await _selections.SaveAsync(new ArtworkChoice
+                {
+                    WorkId = workId, Slot = SlotFor(field), Kind = ArtworkChoiceKind.Manual,
+                    AssetKey = imported.Reference, SourceId = "user", AssetId = imported.Reference
+                }, ct);
+                return WorkArtEditOutcome.Applied;
+            }
             var applied = await _fields.SetFieldAsync(workId, field, imported.Reference, ct);
             return applied switch
             {
@@ -159,4 +186,6 @@ public sealed class WorkMetadataEditService : IWorkMetadataEditService
             return WorkArtEditOutcome.Failed;
         }
     }
+
+    private static ArtworkSlot SlotFor(string field) => field == WorkFields.CoverUrl ? ArtworkSlot.Cover : ArtworkSlot.Hero;
 }

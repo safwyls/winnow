@@ -280,6 +280,9 @@ internal static class UpdateSignalJson
             var name = ReadString(common, "name");
             var type = ReadString(common, "type");
             var assets = ReadLibraryAssets(common);
+            var icon = ReadString(common, "icon");
+            var iconHash = icon is { Length: 40 } && icon.All(char.IsAsciiHexDigit)
+                ? icon.ToLowerInvariant() : null;
 
             // `parent` arrives as a stringified integer, like every other number
             // this host sends.
@@ -290,7 +293,8 @@ internal static class UpdateSignalJson
             if (string.IsNullOrWhiteSpace(name)
                 && string.IsNullOrWhiteSpace(type)
                 && parent is null
-                && assets is null)
+                && assets is null
+                && iconHash is null)
             {
                 // A `common` block with nothing in it that this reader wants is
                 // indistinguishable, to every caller, from no block at all.
@@ -303,7 +307,7 @@ internal static class UpdateSignalJson
                 Type: string.IsNullOrWhiteSpace(type) ? null : type.Trim(),
                 ParentAppId: parent is { } p && p > 0
                     ? p.ToString(CultureInfo.InvariantCulture)
-                    : null) { LibraryAssets = assets };
+                    : null) { LibraryAssets = assets, IconHash = iconHash };
         }
         catch (JsonException)
         {

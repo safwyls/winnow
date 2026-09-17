@@ -541,6 +541,8 @@
                                                       IsVisible="{Binding ShowMetadataEditor}"
                                                       Command="{Binding MetadataEditor.OpenCommand}"
                                                       ToolTip.Tip="{Binding MetadataEditor.OpenTooltip}"/>
+                                            <MenuItem Name="ChangeArtworkItem" Header="Change artwork"
+                                                      IsVisible="{Binding ShowArtworkBrowser}" Command="{Binding ArtworkBrowser.OpenCommand}"/>
                                             <MenuItem Name="HideItem"
                                                       Header="{Binding HideLabel}"
                                                       IsVisible="{Binding ShowHide}"
@@ -1296,11 +1298,12 @@
                                     Name="BackToDetailsButton"
                                     Classes="quiet"
                                     HorizontalAlignment="Left"
-                                    Content="{x:Static vm:GameDetailsCopy.BackToDetails}"
-                                    AutomationProperties.Name="{x:Static vm:GameDetailsCopy.BackToDetails}"
+                                    Content="{Binding FocusedBackLabel}"
+                                    AutomationProperties.Name="{Binding FocusedBackLabel}"
                                     Command="{Binding BackToDetailsCommand}"/>
                             <Grid Grid.Row="1">
                                 <ScrollViewer Name="FocusedDetailsScroll"
+                                              IsVisible="{Binding ShowOtherFocusedTools}"
                                               Classes="inner"
                                               HorizontalScrollBarVisibility="Disabled"
                                               VerticalScrollBarVisibility="Auto">
@@ -1524,6 +1527,8 @@
                                         </StackPanel>
                                     </StackPanel>
                                 </ScrollViewer>
+                                <views:ArtworkBrowserView Name="ArtworkBrowserView" IsVisible="{Binding IsOpen}"
+                                                          DataContext="{Binding ArtworkBrowser}"/>
                             </Grid>
                         </Grid>
                     </Panel>
