@@ -896,7 +896,12 @@ the session; cooperative cancellation keeps it available for another sign-in or 
 
 Application adapters own persistence. Library imports enter the existing resolver under
 `plugin:<id>` ownership sources; existing Steam/Epic/GOG external IDs join only when known
-matches agree. Migration 0032 widens the external-ID provider constraint to accept this namespace
+matches agree. `PluginRefreshCoordinator` starts imports after discovery, independently of the
+built-in startup enrichment pipeline. `LibrarySyncGate` still serializes resolver writes.
+Imports publish through `LibraryChangePublisher` before a separate metadata/artwork queue runs,
+so desktop/fullscreen filters and Gameplay store choices see new ownerships promptly. Completing
+built-in startup requests another enrichment sweep for its newly added works. Migration 0032
+widens the external-ID provider constraint to accept this namespace
 while preserving existing hard joins. Missing inventory never deletes ownerships. Metadata observations retain their
 source in `metadata_cache`; summary/year fill automatic missing fields through the existing
 provenance-aware repository. Migration 0031's `plugin_work_facets` holds genre/tag assignments

@@ -46,13 +46,16 @@ public sealed class GameplayStatsRepositoryTests(ITestOutputHelper output)
         Assert.Equal(1, stats.SessionLengths[3].Count);
     }
 
-    [Fact]
-    public async Task Actual_store_filter_precedes_linked_game_folding_and_visibility_is_explicit()
+    [Theory]
+    [InlineData("gog")]
+    [InlineData("plugin:xbox")]
+    [InlineData("plugin:another-store")]
+    public async Task Actual_store_filter_precedes_linked_game_folding_and_visibility_is_explicit(string store)
     {
         using var db = new TempDatabase();
         LibraryReadFixtures.Seed(db, 3);
         using (var connection = db.Factory.Open())
-            connection.Execute("UPDATE ownerships SET store='gog' WHERE id=2;");
+            connection.Execute("UPDATE ownerships SET store=@store WHERE id=2;", new { store });
         Session(db, 1, Start, Start.AddHours(1), 3600);
         Session(db, 2, Start, Start.AddHours(2), 7200);
         Session(db, 3, Start, Start.AddHours(8), 28800);
@@ -62,12 +65,32 @@ public sealed class GameplayStatsRepositoryTests(ITestOutputHelper output)
         Assert.Equal(10800, stats.RecordedSeconds);
         Assert.Equal(1, stats.GamesPlayedCount);
         Assert.Equal(new GameplayGameTotal(1, 10800), Assert.Single(stats.TopGames));
-        Assert.Equal(new[] { new GameplayStoreTotal("gog", 7200), new GameplayStoreTotal("steam", 3600) }, stats.Stores);
-        var gog = await repository.GetAsync(request with { Store = "gog" });
-        Assert.Equal(7200, gog.RecordedSeconds);
-        Assert.Equal(1, gog.OverlappingSessionCount);
-        Assert.Equal(1, Assert.Single(gog.TopGames).ResolvedWorkId);
+        Assert.Equal(new[] { new GameplayStoreTotal(store, 7200), new GameplayStoreTotal("steam", 3600) }, stats.Stores);
+        var selected = await repository.GetAsync(request with { Store = store });
+        Assert.Equal(7200, selected.RecordedSeconds);
+        Assert.Equal(1, selected.OverlappingSessionCount);
+        Assert.Equal(1, Assert.Single(selected.TopGames).ResolvedWorkId);
         Assert.Equal(0, (await repository.GetAsync(request with { Store = "epic" })).RecordedSeconds);
+    }
+
+    [Fact]
+    public async Task Xbox_lifetime_playtime_and_last_played_do_not_become_recorded_sessions()
+    {
+        using var db = new TempDatabase();
+        LibraryReadFixtures.Seed(db, 2);
+        using (var connection = db.Factory.Open())
+            connection.Execute("""
+                UPDATE ownerships SET store='plugin:xbox' WHERE id=2;
+                INSERT INTO play_records(ownership_id,playtime_minutes,last_played_at,source,observed_at)
+                VALUES(2,7200,@Start,'plugin:xbox',@Start);
+                """, new { Start });
+        Session(db, 1, Start, Start.AddHours(1), 3600);
+        var stats = await new GameplayStatsRepository(db.Factory).GetAsync(Request(new(1, 1), new(2, 2))
+            with { Store = "plugin:xbox" });
+        Assert.Equal(0, stats.RecordedSeconds);
+        Assert.Equal(0, stats.GamesPlayedCount);
+        Assert.Equal(0, stats.StartedSessionCount);
+        Assert.Empty(stats.TopGames);
     }
 
     [Fact]

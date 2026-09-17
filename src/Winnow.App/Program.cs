@@ -237,7 +237,7 @@ public static class Program
         // seconds into the first run is a normal thing to do.
         Task startup = Task.CompletedTask;
         CredentialMetadataRefresh? credentialRefresh = null;
-        CredentialMetadataRefresh? pluginRefresh = null;
+        PluginRefreshCoordinator? pluginRefresh = null;
         CredentialMetadataRefresh? ownershipRefresh = null;
         try
         {
@@ -379,15 +379,13 @@ public static class Program
                         .Select(p => new ArtworkSourceOption("plugin:" + p.Manifest.Id, p.Manifest.Name)));
                     await preferences.LoadAsync(Shutdown.Token);
                 }, Shutdown.Token);
-                pluginRefresh = new CredentialMetadataRefresh(Task.WhenAll(startup, pluginStartup),
-                    async ct =>
-                    {
-                        await host.Services.GetRequiredService<PluginSyncService>().SyncAsync(ct);
-                        if (!ct.IsCancellationRequested) await RefreshLibraryAsync(host.Services);
-                    },
+                pluginRefresh = new PluginRefreshCoordinator(pluginStartup,
+                    ct => host.Services.GetRequiredService<PluginSyncService>().ImportLibrariesAsync(ct),
+                    ct => host.Services.GetRequiredService<PluginSyncService>().EnrichAsync(ct),
+                    ct => RefreshLibraryAsync(host.Services, ct),
                     _ => host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(Program))
                         .LogWarning("Plugin refresh failed; stored library data remains available."),
-                    Shutdown.Token);
+                    Shutdown.Token, libraryStartup: startup);
                 host.Services.GetRequiredService<PluginSettingsBackend>().RefreshRequested += pluginRefresh.Request;
                 pluginRefresh.Request();
             }

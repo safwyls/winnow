@@ -56,8 +56,11 @@ and produce a fixed diagnostic without the exception text. Cancellation is passe
 These measures handle cooperative failures; native crashes and malicious or noncooperative code
 require process or OS isolation, which this version does not provide.
 
-Discovery, initialization and provider work run off the UI thread. The background pass waits for
-startup synchronization, imports libraries, then enriches original owned works. Feed providers
+Discovery, initialization and provider work run off the UI thread. Library imports start after
+plugin discovery and publish committed rows before optional metadata and artwork work. They do
+not wait for other stores' startup enrichment or a previous plugin artwork sweep. Resolver writes
+remain serialized with built-in imports. A separate enrichment queue covers original owned works
+and repeats after built-in startup to include games added by that backfill. Feed providers
 run concurrently with the built-in feed. Built-in shelves publish as soon as they are ready;
 optional shelves append without replacing existing cards. One five-second aggregate budget
 covers feed snapshot reads, queued provider invocations and execution across all providers.

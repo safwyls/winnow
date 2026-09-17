@@ -18,11 +18,18 @@ public sealed class PluginSyncService(PluginCatalog catalog, ILibraryQueryReposi
     IWorkRepository works, IReleaseRepository releases, IWorkImageRepository images, IPluginFacetRepository facets,
     IMetadataCache cache, ExternalIdResolver resolver, LibrarySyncGate libraryGate, ILogger<PluginSyncService> logger)
 {
-    private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly SemaphoreSlim _importGate = new(1, 1);
+    private readonly SemaphoreSlim _enrichmentGate = new(1, 1);
 
     public async Task SyncAsync(CancellationToken ct = default)
     {
-        await _gate.WaitAsync(ct);
+        await ImportLibrariesAsync(ct);
+        await EnrichAsync(ct);
+    }
+
+    public async Task ImportLibrariesAsync(CancellationToken ct = default)
+    {
+        await _importGate.WaitAsync(ct);
         try
         {
             foreach (var plugin in catalog.GetActive<ILibrarySourcePlugin>())
@@ -32,6 +39,15 @@ public sealed class PluginSyncService(PluginCatalog catalog, ILibraryQueryReposi
                 using var lease = await libraryGate.EnterAsync(ct);
                 await ApplySafelyAsync(plugin, () => ImportAsync(plugin, games, ct), ct);
             }
+        }
+        finally { _importGate.Release(); }
+    }
+
+    public async Task EnrichAsync(CancellationToken ct = default)
+    {
+        await _enrichmentGate.WaitAsync(ct);
+        try
+        {
             var snapshot = await library.GetSnapshotAsync(BucketThresholds.Default, ct);
             var ownedReleases = snapshot.Ownerships.Select(o => o.ReleaseId).ToHashSet();
             var targets = snapshot.Releases.Where(r => ownedReleases.Contains(r.Id)).GroupBy(r => r.WorkId);
@@ -77,7 +93,7 @@ public sealed class PluginSyncService(PluginCatalog catalog, ILibraryQueryReposi
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
         { logger.LogWarning("Plugin refresh did not finish; existing library data remains available."); }
-        finally { _gate.Release(); }
+        finally { _enrichmentGate.Release(); }
     }
 
     private async Task ApplySafelyAsync(PluginDescriptor plugin, Func<Task> apply, CancellationToken ct)

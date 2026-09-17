@@ -33,20 +33,23 @@ public sealed class GameplayStatsViewModelTests
         Assert.True(model.HasData);
     }
 
-    [Fact]
-    public async Task Identity_reload_updates_game_mapping_and_store_removal_resets_selection()
+    [Theory]
+    [InlineData("gog", "GOG")]
+    [InlineData("plugin:xbox", "Xbox")]
+    public async Task Identity_reload_updates_game_mapping_and_store_removal_resets_selection(string store, string label)
     {
-        using var fixture = new Fixture();
+        using var fixture = new Fixture(store);
         await fixture.Library.LoadCommand.ExecuteAsync(null);
         using var model = fixture.Model();
-        model.SelectedStore = Assert.Single(model.StoreOptions, s => s.Key == "gog");
+        model.SelectedStore = Assert.Single(model.StoreOptions, s => s.Key == store);
+        Assert.Equal(label, model.SelectedStore.Label);
         var first = model.ActivateAsync();
         (await fixture.Reads.NextAsync()).Complete();
         await first;
         await new IdentityLinkRepository(fixture.Db.Factory).LinkAsync(new() { ParentWorkId = 1, ChildWorkIds = [2] });
         await fixture.Library.LoadCommand.ExecuteAsync(null);
         var linked = await fixture.Reads.NextAsync();
-        Assert.Equal("gog", linked.Request.Store);
+        Assert.Equal(store, linked.Request.Store);
         Assert.Equal(2, linked.Request.Ownerships.Count);
         Assert.All(linked.Request.Ownerships, o => Assert.Equal(1, o.ResolvedWorkId));
         linked.Complete();
@@ -131,10 +134,11 @@ public sealed class GameplayStatsViewModelTests
         public TempDatabase Db { get; } = new();
         public ControlledRepository Reads { get; } = new();
         public LibraryViewModel Library { get; }
-        public Fixture()
+        public Fixture(string secondStore = "gog")
         {
             LibraryReadFixtures.Seed(Db, 2);
-            using (var connection = Db.Factory.Open()) connection.Execute("UPDATE ownerships SET store='gog' WHERE id=2;");
+            using (var connection = Db.Factory.Open())
+                connection.Execute("UPDATE ownerships SET store=@secondStore WHERE id=2;", new { secondStore });
             Library = new(new LibraryQueryRepository(Db.Factory), new OwnershipRepository(Db.Factory),
                 new ReleaseRepository(Db.Factory), new WorkRepository(Db.Factory), new UpdateEventRepository(Db.Factory),
                 identityLinks: new IdentityLinkRepository(Db.Factory));

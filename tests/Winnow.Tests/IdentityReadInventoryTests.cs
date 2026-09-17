@@ -109,7 +109,7 @@ public sealed class IdentityReadInventoryTests
             "Fetches each Steam release for an explicitly confirmed owning account; linked games cannot share provider schemas or account unlocks."),
         new("src/Winnow.Data/Repositories/AccountAcquisitionRepository.cs", "GetSteamOwnershipIdsAsync", Policy.DoNotResolve,
             "Acquisition observations belong to the captured account's exact store ownership; links do not combine receipts or account membership."),
-        new("src/Winnow.App/Services/PluginSyncService.cs", "SyncAsync", Policy.DoNotResolve,
+        new("src/Winnow.App/Services/PluginSyncService.cs", "EnrichAsync", Policy.DoNotResolve,
             "Provider observations belong to original owned works; current confirmed groups share artwork on presentation reads."),
         new("src/Winnow.Data/Repositories/LibraryQueryRepository.cs", "GetSnapshotAsync", Policy.DoNotResolve,
             "The additional work and ownership result sets preserve each row's own metadata and "

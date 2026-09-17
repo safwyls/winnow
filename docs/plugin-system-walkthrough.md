@@ -234,9 +234,10 @@ sequenceDiagram
     H-->>U: Image bytes
 ```
 
-[Program.cs](../src/Winnow.App/Program.cs) schedules the plugin refresh after startup
-synchronization and plugin discovery. The refresh runs in the background, imports library
-providers first, and then asks metadata and artwork providers about owned games.
+[Program.cs](../src/Winnow.App/Program.cs) schedules library imports after plugin discovery.
+Imports publish committed rows before a separate queue asks metadata and artwork providers
+about owned games. This lets a newly connected library appear while other stores or artwork
+providers are still refreshing. A later enrichment pass includes games added by built-in startup.
 
 Inside [SteamGridDbPlugin](../plugins/Winnow.Plugin.SteamGridDb/SteamGridDbPlugin.cs), the request
 uses the supplied Steam ID. It does not search the game's title. A fresh cached response is

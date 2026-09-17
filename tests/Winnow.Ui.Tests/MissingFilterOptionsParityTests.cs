@@ -21,6 +21,56 @@ namespace Winnow.Ui.Tests;
 public sealed class MissingFilterOptionsParityTests
 {
     [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Xbox_import_appears_in_store_filters_and_selects_its_titles(bool fullscreen)
+    {
+        using var db = new TempDatabase();
+        LibraryReadFixtures.Seed(db, 2);
+        using var library = new LibraryViewModel(new LibraryQueryRepository(db.Factory), new OwnershipRepository(db.Factory),
+            new ReleaseRepository(db.Factory), new WorkRepository(db.Factory), new UpdateEventRepository(db.Factory));
+        await library.LoadCommand.ExecuteAsync(null);
+        Assert.DoesNotContain(library.Filters.VisibleGroups, group => group.Key == FilterPanelViewModel.StoreKey);
+        using (var connection = db.Factory.Open())
+            connection.Execute("UPDATE ownerships SET store='plugin:xbox' WHERE id=2;");
+        await library.LoadCommand.ExecuteAsync(null);
+        using var context = new FullscreenContext(library, PreviewData.Feed, PreviewData.Shell);
+        using var page = new FullscreenBrowseFiltersPage(context);
+        FullscreenPage? groupPage = null;
+        var window = new Window { Width = 1920, Height = 1080,
+            Content = fullscreen ? page : new FilterPanelView { DataContext = library.Filters } };
+        context.PageRequested += value => { groupPage = value; window.Content = value; };
+        context.BackRequested += () => window.Content = page;
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            if (fullscreen)
+            {
+                var open = Assert.Single(page.GetVisualDescendants().OfType<Button>(),
+                    button => AutomationProperties.GetName(button) == "PLATFORM · Any");
+                Assert.True(open.Focus()); page.Handle(GamepadButtons.Accept); Dispatcher.UIThread.RunJobs();
+                var xbox = Assert.Single(groupPage!.GetVisualDescendants().OfType<Button>(),
+                    button => AutomationProperties.GetName(button) == "Xbox, 1 matching title");
+                Assert.True(xbox.Focus()); groupPage!.Handle(GamepadButtons.Accept);
+                groupPage.Handle(GamepadButtons.Keyboard);
+            }
+            else
+            {
+                var xbox = Assert.Single(window.GetVisualDescendants().OfType<CheckBox>(),
+                    box => AutomationProperties.GetName(box) == "Xbox, 1 matching title");
+                Assert.True(xbox.IsEnabled);
+                xbox.IsChecked = true;
+            }
+            Assert.Equal(new[] { "plugin:xbox" }, library.Filters.ToFilter().Stores);
+            Assert.Equal("Game 2", Assert.Single(library.VisibleTiles).Title);
+            var stores = library.Filters.Groups.Single(group => group.Key == FilterPanelViewModel.StoreKey);
+            Assert.Equal(1, stores.AllOptions.Single(option => option.Label == "Steam").Count);
+            Assert.Equal(1, stores.AllOptions.Single(option => option.Label == "Xbox").Count);
+        }
+        finally { groupPage?.Dispose(); window.Close(); }
+    }
+
+    [AvaloniaTheory]
     [InlineData(false, "account")]
     [InlineData(true, "account")]
     [InlineData(false, "hide")]

@@ -27,6 +27,12 @@ through.
 
 ## Plugin observations
 
+The library's PLATFORM filter and Gameplay store choices come from the store keys on current
+visible library tiles, including `plugin:<id>` ownerships. `StoreNaming.Label` renders
+`plugin:xbox` as Xbox. These are ownership-source choices, separate from IGDB hardware metadata.
+Plugin imports publish committed rows before metadata/artwork enrichment. Account sign-in alone
+does not add titles: the provider must return an inventory and the import must commit it.
+
 Enabled metadata plugins also supply `genre` and `tag` names through `PluginMetadata`.
 `PluginSyncService` stores the source response under `metadata_cache` provider `plugin:<id>`,
 key `metadata:<workId>`, and writes up to 100 names per kind (each at most 100 characters).
