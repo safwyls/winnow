@@ -76,8 +76,8 @@ internal static class StartupFailure
     /// <param name="dataDirectory">The library this run was opening.</param>
     /// <param name="logs">
     /// The host's logger factory when the host got far enough to have one;
-    /// <c>null</c> when it did not, in which case the sentence is the only
-    /// record and the channel below is the only place it goes.
+    /// <c>null</c> when it did not. The separate startup log needs only an
+    /// existing selected data directory; the alert remains available if writing fails.
     /// </param>
     /// <param name="surface">
     /// The channel, injectable so a test can read what the user would have been
@@ -98,6 +98,22 @@ internal static class StartupFailure
         }
 
         var sentence = SentenceFor(exception, dataDirectory);
+
+        try
+        {
+            // Host construction can fail after the normal sink opens but before
+            // its logger factory is available. A separate sink also survives a
+            // disposed host, and uses the same bounded, privacy-filtered format.
+            if (Path.IsPathFullyQualified(dataDirectory) && Directory.Exists(dataDirectory))
+            {
+                using var fallback = DiagnosticLogging.Create(dataDirectory, fileName: "startup-failure.log");
+                fallback.Fatal(exception, "Application startup failed with HRESULT {HResult}.", exception.HResult);
+            }
+        }
+        catch (Exception)
+        {
+            // An inaccessible data directory must not prevent the user alert.
+        }
 
         try
         {

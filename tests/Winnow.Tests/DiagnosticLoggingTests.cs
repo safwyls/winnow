@@ -13,6 +13,46 @@ public sealed class DiagnosticLoggingTests : IDisposable
     public DiagnosticLoggingTests() => Directory.CreateDirectory(_root);
     public void Dispose() => Directory.Delete(_root, true);
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Startup_fault_is_persisted_without_a_host_even_when_its_normal_sink_is_open(bool openNormalSink)
+    {
+        using var normal = openNormalSink ? DiagnosticLogging.Create(_root) : null;
+        Exception fault;
+        try { throw new IOException("unstructured-private-secret"); }
+        catch (IOException error) { fault = error; }
+
+        var code = StartupFailure.Report(fault, _root, null, (_, _) => { });
+
+        Assert.Equal(3, code);
+        var text = File.ReadAllText(Path.Combine(_root, "logs", "startup-failure.log"));
+        Assert.Contains("IOException", text);
+        Assert.Contains(nameof(Startup_fault_is_persisted_without_a_host_even_when_its_normal_sink_is_open), text);
+        Assert.Contains(fault.HResult.ToString(System.Globalization.CultureInfo.InvariantCulture), text);
+        Assert.Contains(" build=", text);
+        Assert.DoesNotContain("unstructured-private-secret", text);
+        Assert.DoesNotContain(_root, text);
+    }
+
+    [Fact]
+    public void Failure_to_write_startup_diagnostics_preserves_exit_code_and_alert()
+    {
+        File.WriteAllText(Path.Combine(_root, "logs"), "Directory deliberately blocked by a file");
+        var shown = false;
+        Assert.Equal(3, StartupFailure.Report(new IOException("original fault"), _root,
+            null, (_, text) => shown = text.Contains("original fault")));
+        Assert.True(shown);
+    }
+
+    [Fact]
+    public void Startup_cancellation_does_not_write_failure_diagnostics()
+    {
+        Assert.Equal(0, StartupFailure.Report(new OperationCanceledException(), _root,
+            null, (_, _) => throw new InvalidOperationException("Unexpected alert")));
+        Assert.False(Directory.Exists(Path.Combine(_root, "logs")));
+    }
+
     [Fact]
     public void Host_logging_persists_under_the_selected_data_directory_and_flushes_each_event()
     {
