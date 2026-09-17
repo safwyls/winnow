@@ -925,18 +925,33 @@
                     </StackPanel>
                 </Border>
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
-                    <Button Name="TitleBarUpdateButton" Content="Update and restart"
-                            FontFamily="{DynamicResource BodyFont}" FontSize="{DynamicResource LabelSize}"
-                            Foreground="{StaticResource Text}" Background="{StaticResource ChromeRaised}"
-                            BorderBrush="{StaticResource Line}" BorderThickness="1"
-                            CornerRadius="{StaticResource RadiusControl}" MinHeight="28" Height="28" Padding="12,0" Margin="0,4,12,4"
-                            VerticalContentAlignment="Center"
-                            IsVisible="{Binding ApplicationSettings.HasUpdateAction}"
-                            IsEnabled="{Binding ApplicationSettings.CanUpdateAndRestart}"
-                            Command="{Binding ApplicationSettings.UpdateAndRestartCommand}"
-                            AutomationProperties.Name="Update and restart"
-                            AutomationProperties.ItemStatus="{Binding ApplicationSettings.UpdateStatus}"
-                            ToolTip.Tip="{Binding ApplicationSettings.UpdateStatus}"/>
+                    <Grid MinWidth="144" Margin="0,0,12,0" VerticalAlignment="Center"
+                          IsVisible="{Binding ApplicationSettings.HasUpdateAction}">
+                        <Button Name="TitleBarUpdateButton" Content="Update and restart"
+                                FontFamily="{DynamicResource BodyFont}" FontSize="{DynamicResource LabelSize}"
+                                Foreground="{StaticResource Text}" Background="{StaticResource ChromeRaised}"
+                                BorderBrush="{StaticResource Line}" BorderThickness="1"
+                                CornerRadius="{StaticResource RadiusControl}" MinHeight="28" Height="28" Padding="12,0"
+                                VerticalAlignment="Center" HorizontalAlignment="Stretch" VerticalContentAlignment="Center"
+                                IsVisible="{Binding ApplicationSettings.ShowUpdateAction}"
+                                IsEnabled="{Binding ApplicationSettings.CanUpdateAndRestart}"
+                                Command="{Binding ApplicationSettings.UpdateAndRestartCommand}"
+                                AutomationProperties.Name="Update and restart"
+                                AutomationProperties.ItemStatus="{Binding ApplicationSettings.UpdateStatus}"
+                                ToolTip.Tip="{Binding ApplicationSettings.UpdateStatus}"/>
+                        <StackPanel Name="TitleBarUpdateProgress" Spacing="3" VerticalAlignment="Center"
+                                    IsVisible="{Binding ApplicationSettings.CanCancelUpdate}"
+                                    ToolTip.Tip="{Binding ApplicationSettings.UpdateStatus}">
+                            <TextBlock Text="Updating" HorizontalAlignment="Center"
+                                       FontFamily="{DynamicResource BodyFont}" FontSize="{DynamicResource LabelSize}"
+                                       Foreground="{StaticResource Text}"/>
+                            <ProgressBar Name="TitleBarUpdateProgressBar" MinWidth="0" Height="3" Minimum="0" Maximum="100"
+                                         Value="{Binding ApplicationSettings.UpdateProgress}"
+                                         Foreground="{StaticResource Volt}" Background="{StaticResource Line}"
+                                         AutomationProperties.Name="Updating"
+                                         AutomationProperties.ItemStatus="{Binding ApplicationSettings.UpdateStatus}"/>
+                        </StackPanel>
+                    </Grid>
                     <Button AutomationProperties.Name="Minimise" Classes="wincontrol"
                             Click="OnMinimisePressed"
                             ToolTip.Tip="Minimise">

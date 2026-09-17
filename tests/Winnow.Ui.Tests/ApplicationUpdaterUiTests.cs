@@ -38,6 +38,11 @@ public sealed class ApplicationUpdaterUiTests
             Dispatcher.UIThread.RunJobs();
             Assert.True(button.IsVisible);
             Assert.True(notice.IsVisible);
+            window.UpdateLayout();
+            var titleBar = window.FindControl<Border>("TitleBar")!;
+            var buttonOrigin = button.TranslatePoint(default, titleBar)!.Value;
+            var updateSlotWidth = button.Bounds.Width;
+            Assert.Equal(titleBar.Bounds.Height / 2, buttonOrigin.Y + button.Bounds.Height / 2, 1);
             Assert.Equal(0, updater.Restarts);
             Assert.Equal(0, updater.Downloads);
             Assert.Same(settings.UpdateAndRestartCommand, button.Command);
@@ -64,11 +69,42 @@ public sealed class ApplicationUpdaterUiTests
             Assert.Equal(1, updater.Downloads);
             Assert.Equal(2, updater.Restarts);
 
-            updater.Publish(updater.Snapshot with { Busy = true, CanRestart = false, CanCancel = true });
+            updater.Publish(updater.Snapshot with { Busy = true, CanRestart = false, CanCancel = true, Progress = 34 });
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(button.IsVisible);
+            Assert.False(notice.IsVisible);
+            var progress = window.FindControl<StackPanel>("TitleBarUpdateProgress")!;
+            var desktopBar = window.FindControl<ProgressBar>("TitleBarUpdateProgressBar")!;
+            var fullscreenBar = fullscreen.GetVisualDescendants().OfType<ProgressBar>().Single(p => p.Name == "FullscreenUpdateProgressBar");
+            Assert.True(progress.IsEffectivelyVisible);
+            Assert.True(fullscreenBar.IsEffectivelyVisible);
+            Assert.Equal(34, desktopBar.Value);
+            Assert.Equal(34, fullscreenBar.Value);
+            window.UpdateLayout();
+            var progressOrigin = progress.TranslatePoint(default, titleBar)!.Value;
+            Assert.Equal(updateSlotWidth, progress.Bounds.Width);
+            Assert.Equal(buttonOrigin.X, progressOrigin.X);
+            Assert.InRange(Math.Abs(titleBar.Bounds.Height / 2 - (progressOrigin.Y + progress.Bounds.Height / 2)), 0, 0.5);
+            Assert.False(settings.UpdateAndRestartCommand.CanExecute(null));
+            if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } progressDirectory)
+            {
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick(); Dispatcher.UIThread.RunJobs();
+                using var desktopFrame = window.CaptureRenderedFrame();
+                desktopFrame!.Save(Path.Combine(progressDirectory, "updating-titlebar.png"));
+                using var fullscreenFrame = television.CaptureRenderedFrame();
+                fullscreenFrame!.Save(Path.Combine(progressDirectory, "updating-fullscreen.png"));
+            }
+            updater.Publish(updater.Snapshot with { Progress = 78 });
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(78, desktopBar.Value);
+            Assert.Equal(78, fullscreenBar.Value);
+            updater.CancelDownload();
             Dispatcher.UIThread.RunJobs();
             Assert.True(button.IsVisible);
-            Assert.False(button.IsEnabled);
-            Assert.False(settings.UpdateAndRestartCommand.CanExecute(null));
+            Assert.True(button.IsEnabled);
+            Assert.True(notice.IsVisible);
+            Assert.False(progress.IsVisible);
+            Assert.False(fullscreenBar.IsEffectivelyVisible);
         }
         finally { window.Close(); television.Close(); }
     }
