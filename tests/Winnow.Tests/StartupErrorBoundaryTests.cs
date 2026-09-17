@@ -95,7 +95,7 @@ public class StartupErrorBoundaryTests
         var channel = new Channel();
 
         // The host is the thing that failed, so there is no logger factory to
-        // ask. AC2's "logged" has nowhere to go; "surfaced" still must.
+        // ask. Surfacing the failure does not depend on one.
         var code = StartupFailure.Report(
             new InvalidOperationException("the container would not build"),
             @"C:\throwaway\winnow",

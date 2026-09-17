@@ -187,6 +187,18 @@ The workflow retains journals and baseline-selection evidence. Runner results es
 those environments only; hardware power-loss and filesystem durability behavior still
 depend on the device and filesystem.
 
+Portable smoke failures print the scenario and journal failure alongside the helper exit
+code. Once Winnow has selected an existing data directory, startup faults also write
+`logs/startup-failure.log`, independently of host construction, with the exception type,
+stack frames, HRESULT and native error code in the normal privacy-filtered, bounded log format. Smoke artifacts
+retain these logs; inspect them before rerunning a failed job. Faults before data-directory
+selection or with an unwritable directory still rely on the startup alert and exit code.
+
+On Windows, atomic journal replacement retries access-denied and sharing/lock violations
+for up to two seconds to tolerate temporary readers. It preserves the previous journal until
+replacement succeeds. Persistent locks and other errors still fail the operation; the updater
+does not replay an update phase or delete the journal to bypass a lock.
+
 Archive name checks follow platform case sensitivity: Linux portable packages retain
 both the `Winnow` apphost and the `winnow` shell launcher. Exact duplicate entries remain
 invalid. The smoke script waits for the update helper's process exit with a bounded

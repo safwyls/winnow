@@ -24,10 +24,10 @@ internal static class DiagnosticLogging
     }
 
     internal static Serilog.Core.Logger Create(string dataDirectory, long fileSizeBytes = FileSizeBytes,
-        int retainedFiles = RetainedFiles)
+        int retainedFiles = RetainedFiles, string fileName = "diagnostic.log")
         => new LoggerConfiguration()
             .MinimumLevel.Information()
-            .WriteTo.File(new DiagnosticFormatter(), Path.Combine(dataDirectory, "logs", "diagnostic.log"),
+            .WriteTo.File(new DiagnosticFormatter(), Path.Combine(dataDirectory, "logs", fileName),
                 fileSizeLimitBytes: fileSizeBytes, rollOnFileSizeLimit: true,
                 retainedFileCountLimit: retainedFiles, buffered: false, encoding: new UTF8Encoding(false))
             .CreateLogger();

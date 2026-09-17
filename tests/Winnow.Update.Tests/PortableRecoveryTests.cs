@@ -11,6 +11,40 @@ namespace Winnow.Update.Tests;
 
 public sealed class PortableRecoveryTests
 {
+    [Fact]
+    public async Task StartupJournalTransitionSurvivesTemporaryWindowsReaderLock()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        using var f = new Fixture(); f.Zip(); f.Stage(); f.SetPhase(UpdatePhase.Installed);
+        using var reader = new FileStream(f.Journal, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        var transition = Task.Run(() => PortableUpdateEngine.ValidateStartup(f.Journal, f.Install, f.Data));
+        try
+        {
+            Assert.True(SpinWait.SpinUntil(() => File.Exists(f.Journal + ".tmp") || transition.IsCompleted,
+                TimeSpan.FromSeconds(5)));
+            await Task.Delay(100);
+            Assert.False(transition.IsCompleted);
+        }
+        finally { reader.Dispose(); }
+        await transition;
+        Assert.Equal(UpdatePhase.MigrationStarted, PortableUpdateEngine.ReadJournal(f.Journal).Phase);
+        Assert.False(File.Exists(f.Journal + ".tmp"));
+    }
+
+    [Fact]
+    public void PersistentWindowsReaderLockPreservesJournalAndSurfacesFailure()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        using var f = new Fixture(); f.Zip(); f.Stage(); f.SetPhase(UpdatePhase.Installed);
+        var before = File.ReadAllBytes(f.Journal);
+        using var reader = new FileStream(f.Journal, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        var error = Assert.Throws<System.ComponentModel.Win32Exception>(() =>
+            PortableUpdateEngine.ValidateStartup(f.Journal, f.Install, f.Data));
+        Assert.Contains(error.NativeErrorCode, new[] { 5, 32, 33 });
+        Assert.Equal(before, File.ReadAllBytes(f.Journal));
+        Assert.Equal("old", File.ReadAllText(f.Executable));
+    }
+
     [Theory]
     [InlineData("../escape")]
     [InlineData("/absolute")]

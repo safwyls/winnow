@@ -39,7 +39,25 @@ function Invoke-Helper([string[]]$Arguments, [bool]$ExpectFailure = $false) {
         throw "Portable helper '$($Arguments[0])' did not exit within $($helperTimeout.TotalMinutes) minutes (PID $($process.Id))."
     }
     $code = $process.ExitCode
-    if (($code -eq 0) -eq $ExpectFailure) { throw "Unexpected helper exit ${code}: $($Arguments[0])" }
+    if (($code -eq 0) -eq $ExpectFailure) {
+        $detail = ''
+        $journalIndex = [Array]::IndexOf($Arguments, '--journal')
+        if ($journalIndex -ge 0 -and $journalIndex + 1 -lt $Arguments.Count) {
+            try {
+                $failedState = Get-Content -LiteralPath $Arguments[$journalIndex + 1] -Raw | ConvertFrom-Json -AsHashtable
+                $detail = " Phase=$($failedState.Phase); Failure=$($failedState.Failure)"
+                $startupLogs = Join-Path $failedState.DataDirectory 'logs'
+                if (Test-Path -LiteralPath $startupLogs) {
+                    Get-ChildItem -LiteralPath $startupLogs -Filter 'startup-failure*.log' | ForEach-Object {
+                        Get-Content -LiteralPath $_.FullName -Tail 10 | ForEach-Object { Write-Host $_ }
+                    }
+                }
+            } catch {
+                $detail = " Could not read startup diagnostics: $($_.Exception.Message)"
+            }
+        }
+        throw "Unexpected helper exit ${code}: $($Arguments[0]) ($scenario).$detail"
+    }
 }
 function Read-LibraryEvidence([string]$Database) {
     $result = & python -c 'import sqlite3,sys,json; c=sqlite3.connect(sys.argv[1]); assert c.execute("PRAGMA integrity_check").fetchone()[0]=="ok"; print(json.dumps(c.execute("SELECT id,name FROM works ORDER BY id").fetchall()))' $Database
@@ -48,6 +66,7 @@ function Read-LibraryEvidence([string]$Database) {
 }
 try {
     foreach ($scenario in @('external-data', 'internal-data', 'failed-startup', 'interrupted-replacement')) {
+        Write-Host "Starting portable upgrade scenario: $scenario ($Runtime)."
         $inside = $scenario -in @('internal-data', 'interrupted-replacement')
         $scenarioRoot = Join-Path $root $scenario
         $install = Join-Path $scenarioRoot 'portable'
