@@ -8,7 +8,7 @@
   "description": "Installed Xbox PC games, with optional Xbox played history, metadata and artwork. Played history and installations do not prove purchase ownership.",
   "capabilities": ["library", "metadata", "artwork", "account", "game-actions"],
   "settings": [
-    { "key": "client-id", "label": "Microsoft application ID", "help": "Public-client application registered for personal Microsoft accounts and Xbox sign-in. Required only to connect an account.", "setupUrl": "https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app" },
+    { "key": "client-id", "label": "Microsoft application ID override", "isAdvanced": true, "help": "Leave blank to use Winnow’s built-in sign-in. For developers using their own public-client registration. Changing this requires signing in again." },
     { "key": "import-history", "label": "Import played Xbox PC games", "isBoolean": true, "help": "Includes previously played games, including trials and Game Pass. Does not establish ownership. Never-played uninstalled purchases are unavailable." },
     { "key": "include-console", "label": "Include played console games", "isBoolean": true, "help": "Requires played-history import. Console games cannot be launched on this PC." },
     { "key": "refresh-token", "label": "Microsoft connection", "secret": true, "managedByPlugin": true, "help": "Managed by Sign in and Sign out." }

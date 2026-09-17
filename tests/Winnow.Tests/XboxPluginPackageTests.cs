@@ -55,6 +55,10 @@ public sealed class XboxPluginPackageTests
             var card = Assert.Single(await backend.LoadAsync());
             Assert.DoesNotContain(card.Settings, setting => setting.Key == "refresh-token");
             Assert.Contains(card.Settings, setting => setting.Key == "import-history");
+            var applicationOverride = Assert.Single(card.Settings, setting => setting.Key == "client-id");
+            Assert.True(applicationOverride.IsAdvanced);
+            Assert.False(applicationOverride.IsRequired);
+            Assert.True(string.IsNullOrEmpty(applicationOverride.Value));
             var unrelated = new PluginGame("unrelated", "Steam game", new Dictionary<string, string> { ["steam"] = "220" });
             Assert.Null(await ((IMetadataProviderPlugin)instance).GetMetadataAsync(unrelated));
             Assert.Empty((await ((IArtworkProviderPlugin)instance).GetArtworkAsync(unrelated))!);

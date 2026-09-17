@@ -76,6 +76,17 @@ public partial class PluginCardViewModel : ObservableObject
     public bool HasSettings => Fields.Count > 0;
     public bool HasSecrets => Fields.Any(candidate => candidate.IsSecret);
     public ObservableCollection<PluginSettingFieldViewModel> Fields { get; } = [];
+    public IReadOnlyList<PluginSettingFieldViewModel> StandardFields { get; }
+    public IReadOnlyList<PluginSettingFieldViewModel> AdvancedFields { get; }
+    public bool HasAdvancedSettings => AdvancedFields.Count > 0;
+    public bool HasVisibleSecrets => StandardFields.Any(candidate => candidate.IsSecret)
+        || AdvancedSettingsExpanded && AdvancedFields.Any(candidate => candidate.IsSecret);
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AdvancedSettingsLabel), nameof(AdvancedSettingsAccessibleName), nameof(AdvancedSettingsStatus), nameof(HasVisibleSecrets))]
+    public partial bool AdvancedSettingsExpanded { get; set; }
+    public string AdvancedSettingsLabel => AdvancedSettingsExpanded ? "Hide advanced settings" : "Show advanced settings";
+    public string AdvancedSettingsAccessibleName => $"{AdvancedSettingsLabel}: {Name}";
+    public string AdvancedSettingsStatus => AdvancedSettingsExpanded ? "Expanded" : "Collapsed";
     [ObservableProperty] public partial bool Enabled { get; private set; }
     [ObservableProperty] public partial bool ActivationSelected { get; set; }
     [ObservableProperty] public partial bool IsLoaded { get; private set; }
@@ -110,6 +121,8 @@ public partial class PluginCardViewModel : ObservableObject
         CanConfigure = snapshot.CanConfigure;
         HasAccount = snapshot.HasAccount;
         foreach (var field in snapshot.Settings) Fields.Add(new(field, this));
+        StandardFields = Fields.Where(field => !field.IsAdvanced).ToArray();
+        AdvancedFields = Fields.Where(field => field.IsAdvanced).ToArray();
         Apply(snapshot);
     }
 
@@ -132,7 +145,8 @@ public partial class PluginCardViewModel : ObservableObject
     }
 
     public void ClearSecrets() { foreach (var field in Fields.Where(field => field.IsSecret)) field.Value = string.Empty; }
-    public void Deactivate() { ClearSecrets(); CancelSignIn(); }
+    public void Deactivate() { ClearSecrets(); CancelSignIn(); AdvancedSettingsExpanded = false; }
+    [RelayCommand] private void ToggleAdvancedSettings() => AdvancedSettingsExpanded = !AdvancedSettingsExpanded;
     private bool CanEdit() => CanConfigure && !IsBusy;
     private bool CanRefresh() => CanConfigure && !IsBusy && Enabled && IsLoaded;
     private bool CanConnect() => CanRefresh() && HasAccount && !AccountConnected;
@@ -246,7 +260,12 @@ public partial class PluginCardViewModel : ObservableObject
     private async Task SaveAsync()
     {
         var missing = Fields.FirstOrDefault(field => field.IsRequired && !field.IsSecret && string.IsNullOrWhiteSpace(field.Value));
-        if (missing is not null) { Status = $"Enter {missing.Label.ToLowerInvariant()} before saving."; return; }
+        if (missing is not null)
+        {
+            if (missing.IsAdvanced) AdvancedSettingsExpanded = true;
+            Status = $"Enter {missing.Label.ToLowerInvariant()} before saving.";
+            return;
+        }
         var values = Fields.Where(field => !field.IsSecret || !string.IsNullOrWhiteSpace(field.Value))
             .ToDictionary(field => field.Key, field => field.Value);
         if (values.Count == 0) { Status = "Enter a setting or secret before saving."; return; }
@@ -339,6 +358,7 @@ public partial class PluginSettingFieldViewModel : ObservableObject
     public bool IsSecret { get; }
     public bool IsRequired { get; }
     public bool IsBoolean { get; }
+    public bool IsAdvanced { get; }
     public bool IsText => !IsBoolean;
     public bool BooleanValue { get => bool.TryParse(Value, out var selected) && selected; set => Value = value ? "true" : "false"; }
     public char PasswordChar => IsSecret ? '●' : '\0';
@@ -359,6 +379,7 @@ public partial class PluginSettingFieldViewModel : ObservableObject
         _owner = owner; Key = snapshot.Key; Label = snapshot.Label; Description = snapshot.Description;
         IsSecret = snapshot.IsSecret; IsRequired = snapshot.IsRequired; SetupUrl = snapshot.SetupUrl;
         IsBoolean = snapshot.IsBoolean;
+        IsAdvanced = snapshot.IsAdvanced;
         Apply(snapshot);
     }
     internal void Apply(PluginSettingSnapshot snapshot, bool updateValue = true)

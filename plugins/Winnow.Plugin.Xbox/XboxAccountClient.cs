@@ -19,7 +19,7 @@ internal sealed class XboxAccountClient(IPluginContext context, TimeProvider clo
         var saved = await ReadSavedAsync(ct);
         return saved is not null && saved.ClientId == clientId
             ? new(true, "Connected to Xbox. Played history does not establish ownership.")
-            : new(false, clientId is null ? "Enter a Microsoft public-client application ID to connect. Local PC discovery works without sign-in." : "Not connected. Local PC discovery works without sign-in.");
+            : new(false, clientId is null ? "The application ID override is invalid. Clear it in Advanced settings to use Winnow’s sign-in." : "Not connected. Local PC discovery works without sign-in.");
     }
 
     internal async Task<PluginSignInChallenge?> BeginAsync(CancellationToken ct)
@@ -204,6 +204,7 @@ internal sealed class XboxAccountClient(IPluginContext context, TimeProvider clo
     private async Task<string?> ClientIdAsync(CancellationToken ct)
     {
         var id = (await context.Settings.GetAsync("client-id", ct))?.Trim();
+        if (string.IsNullOrEmpty(id)) id = XboxApplication.ClientId;
         return Guid.TryParse(id, out var parsed) && parsed != Guid.Empty ? parsed.ToString("D") : null;
     }
     private async Task<Saved?> ReadSavedAsync(CancellationToken ct)

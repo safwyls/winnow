@@ -20,20 +20,34 @@ again. Use **Refresh now** to import. Desktop and fullscreen expose the same set
 
 Local PC discovery works without sign-in. For optional played history:
 
-1. Register a Microsoft application that supports personal Microsoft accounts and public-client
-   device authorization. Supply its application ID in Xbox plugin settings and select
-   **Save settings**. The registration
-   must permit `XboxLive.SignIn XboxLive.offline_access`; obtaining a generic Entra application
-   ID alone does not establish Xbox service access. No client secret is used or bundled.
-2. Select **Sign in** and follow the Microsoft verification link with the displayed code.
+1. Select **Sign in** and follow the Microsoft verification link with the displayed code.
    Sign-in uses your browser. Winnow does not receive your password.
-3. Enable **Import played Xbox PC games**. Enable **Include played console games** separately
+2. Enable **Import played Xbox PC games**. Enable **Include played console games** separately
    if desired. Save and refresh.
+
+The plugin includes Winnow's public application ID. You do not need an Entra account or an
+application registration. **Show advanced settings → Microsoft application ID override** is
+only for developers using a different registration. Leave it blank for the built-in sign-in;
+clear an old override and save to switch back to Winnow. Changing the effective application
+ID requires signing in again. An invalid override disables sign-in until it is corrected or cleared.
 
 The host protects the refresh credential with current-user DPAPI on Windows. Sign-in refuses
 to complete when protected persistence is unavailable. **Sign out** removes the saved credential
 and prevents further reads of that account's history cache. Previously imported library entries
-remain, as with other Winnow plugin imports. Changing the application ID requires reconnecting.
+remain, as with other Winnow plugin imports.
+
+## Maintainer registration
+
+Winnow's registration uses the public client ID `7681b3e4-c26b-4c0e-b91e-ee53af8dd423`,
+supports **Personal accounts only**, and enables **Allow public client flows** and Live SDK
+support. The device-code flow does not require a redirect URI or client secret. The application
+requests `XboxLive.SignIn XboxLive.offline_access`, then exchanges the Microsoft access token
+for Xbox user and XSTS tokens. The ID is a public identifier, not a credential.
+
+Maintainers manage this registration in Microsoft Entra. Forks that use a different registration
+must enable the same account type and public-client flow, then validate Xbox service access;
+creating a generic application ID alone does not prove that the service accepts it. The optional
+advanced override supports testing without changing the packaged default.
 
 ## What is imported
 
@@ -86,9 +100,10 @@ dotnet test tests/Winnow.Plugin.Xbox.Tests
 ```
 
 Provider tests use synthetic responses shaped from maintained implementations and sanitized
-local fixtures. These verify protocol handling, not current service acceptance by a production
-Winnow registration. End-to-end Microsoft sign-in requires a configured application and remains
-a separate live validation step.
+local fixtures. These verify protocol handling independently of live service availability.
+Winnow's registration also passed a live sign-in and PC/console history check. That check returned
+last-played dates but no playtime values from the plugin; cumulative minutes remain a separate
+validation item. See the [validation report](../../docs/spikes/xbox-integration-validation.md).
 
 ## Protocol references
 

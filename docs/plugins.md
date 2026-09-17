@@ -149,7 +149,11 @@ use the existing gallery/lightbox.
 
 ## Host services
 
-- **Settings:** only declared non-secret fields, scoped by plugin ID.
+- **Settings:** only declared non-secret fields, scoped by plugin ID. `IsBoolean` renders a
+  toggle. `IsAdvanced` defaults to false; set it on optional overrides or infrequently used
+  fields to place them under **Show advanced settings** on desktop and fullscreen. Closing
+  that section preserves its values when saving. `IsAdvanced` also applies to user-editable
+  secret fields; secrets cannot be boolean toggles.
 - **Secrets:** reads, writes and removes declared secret fields through the protected host store.
   User-editable fields appear in Winnow settings; `ManagedByPlugin` secret declarations are
   reserved for credentials maintained by sign-in and are hidden from the editors. Windows

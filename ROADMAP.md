@@ -69,9 +69,10 @@ start from titles the user has explicitly selected, rather than a general purcha
 
 The plugin contract excludes custom screens, UI replacement, an online marketplace and automatic
 plugin updates. SDK 1.1 adds shared account connection and provider game actions. Xbox history
-does not establish ownership and cannot discover never-played uninstalled purchases. A registered
-Microsoft public-client ID is required for sign-in; authenticated service and device validation
-remain outstanding. Readable PC installation roots use the existing session tracker.
+does not establish ownership and cannot discover never-played uninstalled purchases. Winnow
+bundles its public Microsoft application ID; users sign in without Entra setup. Live PC/console
+history import is validated; cumulative minutes and protected WindowsApps launch/session
+tracking need further device validation. Readable PC installation roots use the existing session tracker.
 
 ## 5. Carried debt
 

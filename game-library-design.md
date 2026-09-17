@@ -390,11 +390,13 @@ game identity; an exact package-family match to Xbox title history can classify 
 Package family names identify PC entries across updates. Xbox TitleIds and Store ProductIds
 are distinct identifiers; names never establish an identity join.
 
-The optional account connection uses Microsoft's consumer device-code flow with a configurable
+The optional account connection uses Microsoft's consumer device-code flow with Winnow's bundled
 public-client application ID and Xbox sign-in/offline scopes, followed by Xbox user-token and
 XSTS exchanges. Only the host's protected secret store holds refresh credentials. Device codes
-and access tokens stay in memory. History caches are scoped to the configured application and
-Xbox account. The user separately opts into played-history import and console inclusion.
+and access tokens stay in memory. History caches are scoped to the effective application and
+Xbox account. An optional developer override sits under advanced settings on both surfaces;
+clearing it restores Winnow's identity. An invalid explicit override never silently selects
+another application. The user separately opts into played-history import and console inclusion.
 
 TitleHub supplies played titles and last-played dates, UserStats supplies available
 MinutesPlayed, and the keyless Microsoft display catalog supplies descriptions and artwork.
@@ -413,8 +415,9 @@ preserve prior observations. Play revalidates the current package registration a
 AUMID through Windows. Store navigation opens a verified ProductId's Store page and does not
 promise an entitlement or start an unattended installation. Console history has no local Play.
 Readable installation roots use the existing process watcher; protected WindowsApps directories
-and inaccessible process paths limit tracking. Protocol/fixture coverage is separate from live
-Microsoft registration, account and device validation, which remains outstanding. Request,
+and inaccessible process paths limit tracking. Live sign-in and PC/console history import have
+been validated with Winnow's registration; reported minutes and protected-app launch/session
+tracking still need further device validation. Request,
 cache and registration details are in the [plugin guide](plugins/Winnow.Plugin.Xbox/README.md).
 
 ### 4.7 Steam account pages, sign-in, and what may be stored

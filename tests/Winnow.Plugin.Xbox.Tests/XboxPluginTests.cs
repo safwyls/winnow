@@ -7,6 +7,7 @@ namespace Winnow.Plugin.Xbox.Tests;
 
 public sealed class XboxPluginTests
 {
+    private const string WinnowClientId = "7681b3e4-c26b-4c0e-b91e-ee53af8dd423";
     private const string Pfn = "Example.Game_abcdefghijklm";
     private const string Source = "pfn:example.game_abcdefghijklm";
     private static readonly XboxLocalGame Installed = new(Pfn, "Example game") { InstallPath = @"C:\Games\Example", AppUserModelId = Pfn + "!Game" };
@@ -31,6 +32,60 @@ public sealed class XboxPluginTests
         Assert.False(game.Installed);
         Assert.DoesNotContain(PluginGameActionKind.Play, game.Actions);
         Assert.Null(game.AcquiredAt);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("  ")]
+    public async Task Sign_in_uses_Winnow_registration_without_user_configuration(string? value)
+    {
+        var h = await Host.Create();
+        if (value is not null) h.SettingsValues["client-id"] = value;
+        var challenge = Assert.IsType<PluginSignInChallenge>(await h.Plugin.BeginSignInAsync());
+        Assert.Contains("client_id=" + WinnowClientId, Encoding.UTF8.GetString(Assert.Single(h.Requests).Body!));
+        h.Clock.Now = h.Clock.Now.AddSeconds(challenge.PollIntervalSeconds);
+        Assert.Equal(PluginSignInState.Connected, (await h.Plugin.PollSignInAsync(challenge.AttemptId)).State);
+        Assert.True((await h.Plugin.GetAccountStatusAsync()).Connected);
+        using var saved = JsonDocument.Parse(h.Secret!);
+        Assert.Equal(WinnowClientId, saved.RootElement.GetProperty("clientId").GetString());
+        Assert.False(h.SettingsValues.ContainsValue(WinnowClientId));
+    }
+
+    [Theory]
+    [InlineData("not-an-app-id")]
+    [InlineData("00000000-0000-0000-0000-000000000000")]
+    public async Task Invalid_explicit_override_does_not_silently_use_a_different_registration(string value)
+    {
+        var h = await Host.Create();
+        h.SettingsValues["client-id"] = value;
+        Assert.Null(await h.Plugin.BeginSignInAsync());
+        Assert.Empty(h.Requests);
+        h.SettingsValues["client-id"] = "";
+        Assert.NotNull(await h.Plugin.BeginSignInAsync());
+    }
+
+    [Fact]
+    public async Task Clearing_override_retires_pending_sign_in_and_isolates_saved_account_history()
+    {
+        var h = await Host.Create();
+        Assert.Equal(PluginSignInState.Connected, (await h.Connect()).State);
+        h.SettingsValues["import-history"] = "true";
+        Assert.NotEmpty((await h.Plugin.GetLibraryAsync())!);
+        var pending = (await h.Plugin.BeginSignInAsync())!;
+        h.SettingsValues["client-id"] = "";
+        Assert.Equal(PluginSignInState.Failed, (await h.Plugin.PollSignInAsync(pending.AttemptId)).State);
+        Assert.False((await h.Plugin.GetAccountStatusAsync()).Connected);
+        var requests = h.Requests.Count;
+        Assert.Empty((await h.Plugin.GetLibraryAsync())!);
+        Assert.Equal(requests, h.Requests.Count);
+        var fresh = (await h.Plugin.BeginSignInAsync())!;
+        Assert.Contains("client_id=" + WinnowClientId, Encoding.UTF8.GetString(h.Requests.Last().Body!));
+        h.Clock.Now = h.Clock.Now.AddSeconds(fresh.PollIntervalSeconds);
+        Assert.Equal(PluginSignInState.Connected, (await h.Plugin.PollSignInAsync(fresh.AttemptId)).State);
+        h.SettingsValues["client-id"] = Host.ClientId;
+        Assert.False((await h.Plugin.GetAccountStatusAsync()).Connected);
+        Assert.Empty((await h.Plugin.GetLibraryAsync())!);
     }
 
     [Fact]

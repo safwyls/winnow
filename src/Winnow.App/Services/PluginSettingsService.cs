@@ -5,7 +5,7 @@ namespace Winnow.App.Services;
 /// <summary>Presentation snapshots never contain stored secret values.</summary>
 public sealed record PluginSettingSnapshot(
     string Key, string Label, string? Description, bool IsSecret, bool IsRequired,
-    string? Value, bool HasStoredSecret, string? SetupUrl = null, bool IsBoolean = false);
+    string? Value, bool HasStoredSecret, string? SetupUrl = null, bool IsBoolean = false, bool IsAdvanced = false);
 
 public sealed record PluginSettingsSnapshot(
     string Id, string Name, string Description, string Version, string Capabilities,

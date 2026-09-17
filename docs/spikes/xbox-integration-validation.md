@@ -1,8 +1,8 @@
 # Xbox plugin validation
 
-Measured on Windows on 2026-09-16 (Pacific time) for TASK-318. The implementation is an
-optional SDK package; these checks do not establish live Microsoft account access or full
-purchase inventory coverage. Product behavior and current limitations belong in the
+Measured on Windows on 2026-09-16 (Pacific time) for TASK-318 and TASK-319. The implementation
+is an optional SDK package. Public-service, fixture and live account checks are recorded
+separately below; none establishes full purchase inventory coverage. Product behavior belongs in the
 [plugin guide](../../plugins/Winnow.Plugin.Xbox/README.md).
 
 ## Local and public-service smoke checks
@@ -67,15 +67,35 @@ the running installed app. Full-suite TRX results and focused reruns are in that
 `verified-*results` folders. UI captures used `WINNOW_UI_CAPTURE_DIR` with temporary fake
 accounts. `plugins/Winnow.Plugin.Xbox/Package.ps1` rebuilds the distributable ZIP.
 
+## Shared registration and live account check
+
+For TASK-319, a Winnow application was registered for personal Microsoft accounts, with Live
+SDK support and public-client flows enabled. No client secret or redirect URI was created.
+The plugin bundles that public ID and uses it when the optional advanced override is blank.
+
+A temporary console harness loaded the production Xbox provider and host HTTP policy, supplied
+no client-ID override, and used in-memory credentials and cache with an empty local scanner.
+The user completed Microsoft sign-in and consent. Device authorization, Microsoft token, Xbox
+user-token and XSTS requests each returned HTTP 200. TitleHub and three UserStats requests also
+returned HTTP 200. The provider returned 70 history entries: 51 PC and 19 console, all with
+last-played timestamps. It returned no cumulative-minute values in this run; HTTP success alone
+does not establish playtime coverage. The harness removed its credential and exited without
+writing library data, raw account responses or tokens to disk.
+
+The updated solution built in Release with zero warnings and errors. Focused tests passed:
+104 Xbox provider tests, 37 host/account/view-model tests, 19 desktop/fullscreen UI tests, and
+the real Xbox ZIP loading test. These cover the packaged advanced setting, default identity,
+invalid overrides, clearing an override, account/history isolation, hidden fields surviving
+saves, and keyboard/controller disclosure. Desktop and fullscreen captures were inspected.
+The earlier full-UI limitations above remain; no clean full-UI run is claimed for TASK-319.
+
 ## Live validation still required
 
-- A suitable Microsoft public-client registration and a consenting test account are needed to
-  validate current device authorization, service acceptance, history and cumulative minutes.
+- Cumulative-minute values need validation against an account/title with known service readings.
 - No retail GDK game was launched. Registered activation and process monitoring inside
   protected WindowsApps directories still need device-level validation.
-- Console history is fixture-tested; it has no local PC launch or session recording.
+- Console history was read live; it has no local PC launch or session recording.
 - Linux native process tests are intentionally skipped on this Windows host.
 
 Never-played uninstalled purchases cannot be discovered by this played-history integration.
-Fixtures and successful public catalog access do not establish entitlement parity or live
-authenticated-service availability.
+Fixtures, public catalog access and the live history check do not establish entitlement parity.

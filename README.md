@@ -258,14 +258,16 @@ sessions when their installation folders and process paths are readable. Console
 no local Play action. Desktop and fullscreen share the same plugin settings and game actions.
 
 Build the installable ZIP with `./plugins/Winnow.Plugin.Xbox/Package.ps1`, then install and enable
-it through **Settings → Plugins**. Local discovery works without sign-in. Account import needs
-a Microsoft public-client application ID; setup instructions and requirements are in the
+it through **Settings → Plugins**. Local discovery works without sign-in. For account import,
+select **Sign in**; Winnow includes its public application ID, so users need no Entra setup.
+An optional developer override is under advanced settings. Instructions are in the
 [Xbox plugin guide](plugins/Winnow.Plugin.Xbox/README.md).
 
 Played history and installed presence do not prove a purchase or a current Game Pass licence.
 History import is opt-in, and game details show its source. Uninstalled games never played are
-not available through the Xbox history service. Live sign-in with a registered application,
-console coverage and protected WindowsApps launch/session behavior still need device validation.
+not available through the Xbox history service. Live sign-in and PC/console history have been
+checked with Winnow's registration. Reported cumulative minutes and protected WindowsApps
+launch/session behavior still need further device validation.
 
 ### Writing a theme
 

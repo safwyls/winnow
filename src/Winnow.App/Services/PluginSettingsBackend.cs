@@ -17,7 +17,7 @@ public sealed class PluginSettingsBackend(PluginCatalog catalog, PluginStorage s
             foreach (var field in plugin.Manifest.Settings.Where(field => !field.ManagedByPlugin))
                 fields.Add(new(field.Key, field.Label, field.Help, field.Secret, field.Required,
                     field.Secret ? null : await storage.ReadSettingAsync(plugin.Manifest.Id, field.Key, ct),
-                    field.Secret && await storage.HasStoredSecretAsync(plugin.Manifest.Id, field.Key, ct), field.SetupUrl, field.IsBoolean));
+                    field.Secret && await storage.HasStoredSecretAsync(plugin.Manifest.Id, field.Key, ct), field.SetupUrl, field.IsBoolean, field.IsAdvanced));
             var hasAccount = plugin.Manifest.Capabilities.Contains(PluginCapabilities.Account);
             var account = hasAccount && plugin.Loaded
                 ? await catalog.InvokeAsync<PluginAccountStatus>(plugin, (instance, token) => ((IPluginAccount)instance).GetAccountStatusAsync(token)!, ct)

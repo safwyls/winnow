@@ -3073,6 +3073,10 @@ only a package with a valid manifest offers configuration controls.
 
 Winnow generates labelled text fields, boolean toggles and masked secret fields from each
 plugin's manifest. Tokens managed by a connection never appear as editable credential fields.
+Advanced fields sit below **Show advanced settings** on both surfaces and start collapsed.
+The button changes to **Hide advanced settings** while open and exposes its expanded or
+collapsed state to assistive technology. Hidden fields keep their values when saving; they
+stay out of keyboard and controller focus until revealed. Leaving the page closes the section.
 Optional **Get** links open the provider's HTTPS setup page. **Save settings** persists the
 fields and clears secret drafts; a blank secret keeps the saved value. Each secret has a
 **Remove saved secret** action, available only when a secret is stored. A polite status line

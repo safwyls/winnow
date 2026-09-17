@@ -35,6 +35,7 @@ public sealed record PluginSettingDefinition
     public string? Help { get; init; }
     public string? SetupUrl { get; init; }
     public bool IsBoolean { get; init; }
+    public bool IsAdvanced { get; init; }
     public bool ManagedByPlugin { get; init; }
 }
 

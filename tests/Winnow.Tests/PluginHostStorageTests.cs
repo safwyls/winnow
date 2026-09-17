@@ -76,7 +76,7 @@ public sealed class PluginHostStorageTests
         using var host = new Host();
         var manifest = Manifest("first") with { Settings = [
             new() { Key = "refresh-token", Label = "Session", Secret = true, ManagedByPlugin = true },
-            new() { Key = "console", Label = "Console history", IsBoolean = true }] };
+            new() { Key = "console", Label = "Console history", IsBoolean = true, IsAdvanced = true }] };
         host.AddManifest(manifest);
         await using var catalog = host.Catalog();
         await catalog.DiscoverAsync(host.BuiltinDirectory, host.UserDirectory);
@@ -84,6 +84,7 @@ public sealed class PluginHostStorageTests
         var field = Assert.Single(Assert.Single(await backend.LoadAsync()).Settings);
         Assert.Equal("console", field.Key);
         Assert.True(field.IsBoolean);
+        Assert.True(field.IsAdvanced);
         await Assert.ThrowsAsync<ArgumentException>(() => backend.SaveAsync("first", new Dictionary<string, string>
         { ["console"] = "true", ["refresh-token"] = "private-token" }));
         Assert.Null(await host.Storage.ReadSettingAsync("first", "console"));

@@ -24,13 +24,13 @@ public sealed class FullscreenPluginSettingsPage : FullscreenPage
         controls.Children.Add(FullscreenInformation.Metadata(model.Capabilities));
         if (model.CanConfigure) FullscreenInformation.AddSection(controls, "Activation");
         var focus = new List<Control[]>();
-        Button Action(string label, System.Windows.Input.ICommand command, string? accessibleName = null)
+        Button Action(string label, System.Windows.Input.ICommand command, string? accessibleName = null, Panel? parent = null)
         {
             var button = FullscreenUi.Button(label, () => { });
             button.FontSize = 24;
             button.Command = command;
             AutomationProperties.SetName(button, accessibleName ?? label);
-            controls.Children.Add(button); focus.Add([button]);
+            (parent ?? controls).Children.Add(button); focus.Add([button]);
             return button;
         }
         var enabled = new ToggleSwitch { FontSize = 24, MinHeight = 72,
@@ -72,11 +72,11 @@ public sealed class FullscreenPluginSettingsPage : FullscreenPage
             var cancel = Action("Cancel sign-in", model.CancelSignInCommand, model.CancelSignInAccessibleName);
             cancel.Bind(IsVisibleProperty, new Binding(nameof(model.IsConnecting)) { Source = model });
         }
-        foreach (var field in model.Fields)
+        void AddField(PluginSettingFieldViewModel field, Panel parent)
         {
-            controls.Children.Add(FullscreenInformation.Rule());
-            controls.Children.Add(FullscreenInformation.Title(field.Label));
-            if (field.HasDescription) controls.Children.Add(FullscreenInformation.Metadata(field.Description!));
+            parent.Children.Add(FullscreenInformation.Rule());
+            parent.Children.Add(FullscreenInformation.Title(field.Label));
+            if (field.HasDescription) parent.Children.Add(FullscreenInformation.Metadata(field.Description!));
             Control editor;
             if (field.IsBoolean)
             {
@@ -92,11 +92,28 @@ public sealed class FullscreenPluginSettingsPage : FullscreenPage
             }
             editor.Bind(IsEnabledProperty, new Binding(nameof(field.IsEnabled)) { Source = field });
             AutomationProperties.SetName(editor, field.AccessibleName);
-            controls.Children.Add(editor); focus.Add([editor]);
-            if (field.HasSetup) Action(field.SetupLabel + "     Browser ↗", field.OpenSetupCommand, field.SetupAccessibleName);
-            if (field.IsSecret) Action("Remove saved secret", field.RemoveSecretCommand, field.RemoveAccessibleName);
+            parent.Children.Add(editor); focus.Add([editor]);
+            if (field.HasSetup) Action(field.SetupLabel + "     Browser ↗", field.OpenSetupCommand, field.SetupAccessibleName, parent);
+            if (field.IsSecret) Action("Remove saved secret", field.RemoveSecretCommand, field.RemoveAccessibleName, parent);
         }
-        if (model.HasSecrets) controls.Children.Add(FullscreenInformation.Metadata(PluginSettingsViewModel.SecretNote));
+        foreach (var field in model.StandardFields) AddField(field, controls);
+        if (model.HasAdvancedSettings)
+        {
+            var disclosure = Action(model.AdvancedSettingsLabel, model.ToggleAdvancedSettingsCommand);
+            disclosure.Bind(Button.ContentProperty, new Binding(nameof(model.AdvancedSettingsLabel)) { Source = model });
+            disclosure.Bind(AutomationProperties.NameProperty, new Binding(nameof(model.AdvancedSettingsAccessibleName)) { Source = model });
+            disclosure.Bind(AutomationProperties.ItemStatusProperty, new Binding(nameof(model.AdvancedSettingsStatus)) { Source = model });
+            var advanced = new StackPanel { Spacing = 16 };
+            advanced.Bind(IsVisibleProperty, new Binding(nameof(model.AdvancedSettingsExpanded)) { Source = model });
+            foreach (var field in model.AdvancedFields) AddField(field, advanced);
+            controls.Children.Add(advanced);
+        }
+        if (model.HasSecrets)
+        {
+            var secretNote = FullscreenInformation.Metadata(PluginSettingsViewModel.SecretNote);
+            secretNote.Bind(IsVisibleProperty, new Binding(nameof(model.HasVisibleSecrets)) { Source = model });
+            controls.Children.Add(secretNote);
+        }
         if (model.HasSettings || model.CanConfigure) FullscreenInformation.AddSection(controls, "Apply changes");
         if (model.HasSettings) Action("Save settings", model.SaveCommand, model.SaveAccessibleName);
         if (model.CanConfigure) Action("Refresh now     Run", model.RefreshCommand, model.RefreshAccessibleName);
