@@ -1,0 +1,117 @@
+/* The promo pages use real app views and readable examples as their visual structure. */
+.player-page { background: #0d191b; }
+.player-page .hero { min-height: 720px; padding-block: 68px 64px; gap: clamp(28px, 4vw, 76px); }
+.player-page .hero h1 { font-size: clamp(3.4rem, 5.1vw, 6rem); line-height: 1.03; }
+.player-page .hero-lede { font-size: 1.125rem; max-width: 34rem; }
+.player-page .eyebrow { font-size: .875rem; letter-spacing: .08em; }
+.player-page .local-note { font-size: .875rem; line-height: 1.6; align-items: flex-start; max-width: 31rem; }
+.player-page .local-note svg { flex-shrink: 0; margin-top: 4px; }
+.player-page .button-primary { box-shadow: none; }
+.player-page .button-primary:hover { box-shadow: none; transform: none; background: #8aefd5; }
+.player-page .library-stage { box-shadow: 0 18px 45px #0004; }
+.platform-line { display: flex; flex-wrap: wrap; gap: 12px 32px; padding-block: 22px; border-block: 1px solid var(--line); color: var(--dim); font-size: .875rem; }
+.platform-line span + span { border-left: 1px solid var(--line); padding-left: 32px; }
+.section-heading { display: grid; grid-template-columns: 1.1fr .9fr; gap: clamp(30px, 7vw, 120px); align-items: end; margin-bottom: 48px; }
+.section-heading h2, .feature-copy h2, .questions h2 { font-size: clamp(2.35rem, 3.8vw, 4.3rem); line-height: 1.08; margin: 0; max-width: 760px; }
+.section-heading > p, .section-heading > div > p:not(.eyebrow) { color: var(--dim); font-size: 1.05rem; line-height: 1.8; margin: 16px 0 0; max-width: 36rem; }
+.player-page .story { padding-block: 96px; }
+.player-page .story-grid { display: block; border: 0; }
+.player-page .story-card { display: grid; grid-template-columns: 1.1fr .9fr; align-items: center; gap: clamp(32px, 6vw, 104px); border: 0; padding: 38px 0; }
+.player-page .story-card + .story-card { border-top: 1px solid var(--line); }
+.player-page .story-card:nth-child(2) { grid-template-columns: .9fr 1.1fr; }
+.player-page .story-card:nth-child(2) .demo-stage { grid-column: 2; grid-row: 1; }
+.player-page .story-card:nth-child(2) .story-copy { grid-column: 1; grid-row: 1; }
+.demo-stage { background: #152b2b; padding: 40px clamp(20px, 3vw, 54px) 24px; border: 1px solid #294644; border-radius: 6px; min-width: 0; }
+.story-card:nth-child(2) .demo-stage { background: #261e29; border-color: #463140; }
+.story-card:nth-child(3) .demo-stage { background: #15232c; border-color: #2c414e; }
+.player-page .tile-demo { height: auto; min-height: 285px; }
+.player-page .demo-tile { width: 31%; max-width: 180px; flex-basis: 180px; }
+.player-page .feature-tile { width: 42%; max-width: 190px; flex-basis: 190px; }
+.player-page .demo-hint { margin: 26px 0 0; color: #a7bab5; text-align: center; font: 400 .875rem/1.6 'Jakarta', sans-serif; text-transform: none; }
+.player-page .demo-response { width: 52%; max-width: 260px; padding: 22px; opacity: .8; background: #0d191be6; }
+.player-page .demo-response.open { opacity: 1; transform: none; }
+.player-page .demo-response strong { font: 500 1.05rem/1.5 'Jakarta', sans-serif; }
+.player-page .demo-response small { font: 400 .875rem/1.5 'Jakarta', sans-serif; }
+.player-page .app-tile-overlay > strong { font-size: .95rem; }
+.player-page .app-tile-meta { font-size: .75rem; }
+.player-page .app-tile-actions i { font-size: .65rem; }
+.player-page .story-copy h3 { font-size: clamp(1.8rem, 2.7vw, 3rem); line-height: 1.12; margin: 0 0 22px; max-width: 36rem; }
+.story-copy > p:not(.eyebrow) { color: #b1c2bd; line-height: 1.8; max-width: 36rem; margin: 12px 0 0; }
+.workflow { background: #e4ede9; color: #172e2c; padding-block: 88px; }
+.workflow .eyebrow { color: #3f6359; }
+.workflow .section-heading > p { color: #435f56; }
+.workflow-layout { display: grid; grid-template-columns: 1.25fr .75fr; gap: clamp(40px, 7vw, 120px); align-items: start; }
+.workflow-steps { list-style: none; padding: 0; margin: 0; }
+.workflow-steps li { display: grid; grid-template-columns: 44px 1fr; gap: 22px; padding: 30px 0; border-top: 1px solid #b5c8be; }
+.step-number { padding-top: 3px; color: #587369; font: .875rem/1.6 'Plex Mono', monospace; }
+.workflow h3 { font-size: 1.5rem; line-height: 1.2; margin: 0 0 12px; }
+.workflow p { line-height: 1.8; margin: 0; color: #435f56; }
+.connection-notes { padding: 30px; border: 1px solid #b5c8be; background: #d6e3dd; }
+.connection-notes h3 { font-size: 1.25rem; }
+.connection-notes p + h3 { margin-top: 30px; }
+.connection-notes .read-only-note { display: flex; align-items: flex-start; gap: 12px; margin-top: 30px; padding-top: 24px; border-top: 1px solid #b5c8be; color: #172e2c; }
+.read-only-note svg { flex-shrink: 0; margin-top: 3px; }
+.connection-notes .text-link { margin-top: 24px; color: #174e3b; font-weight: 600; }
+.workflow a:focus-visible { outline-color: #174e3b; }
+.collection-section { display: grid; grid-template-columns: .75fr 1.25fr; align-items: center; gap: clamp(32px, 5vw, 90px); padding-block: 108px; }
+.feature-copy > p:not(.eyebrow) { color: var(--dim); line-height: 1.8; margin-top: 24px; }
+.feature-list { margin: 30px 0 0; }
+.feature-list > div { padding: 18px 0; border-top: 1px solid var(--line); }
+.feature-list dt { color: var(--text); font-weight: 600; }
+.feature-list dd { color: var(--dim); margin: 8px 0 0; line-height: 1.75; }
+.product-figure { margin: 0; min-width: 0; }
+.product-figure img { width: 100%; height: auto; display: block; border: 1px solid var(--line); border-radius: 6px; }
+.product-figure figcaption { color: var(--dim); font-size: .875rem; margin-top: 16px; }
+.fullscreen-section { padding-block: 88px; background: #11151e; border-block: 1px solid #2c3543; }
+.fullscreen-section .eyebrow { color: #b2acd0; }
+.fullscreen-figure { max-width: 1400px; margin-inline: auto; }
+.fullscreen-figure img { border-color: #3d3a50; }
+.questions { display: grid; grid-template-columns: .75fr 1.25fr; gap: 80px; padding-block: 96px; }
+.question-list details { border-top: 1px solid var(--line); padding: 22px 0; }
+.question-list details:last-child { border-bottom: 1px solid var(--line); }
+.question-list summary { cursor: pointer; font-weight: 600; font-size: 1.05rem; padding-right: 12px; }
+.question-list summary::marker { color: var(--volt); }
+.question-list p { line-height: 1.8; color: var(--dim); margin: 18px 0 0; max-width: 48rem; }
+.question-list a { color: var(--text); text-decoration: underline; text-underline-offset: 4px; }
+.question-list summary:focus-visible { outline: 2px solid var(--volt); outline-offset: 6px; }
+.player-page .closing { padding-block: 90px 104px; border-top: 1px solid var(--line); }
+.player-page .closing > p:last-child { font-size: .95rem; }
+.player-page footer { font-size: .875rem; }
+
+@media (min-width: 901px) and (max-width: 1200px) {
+  .player-page .hero { grid-template-columns: .85fr 1.15fr; }
+  .player-page .hero-actions { flex-direction: column; align-items: flex-start; gap: 16px; }
+  .demo-stage { padding-inline: 24px; }
+  .player-page .demo-response { padding: 14px; }
+  .player-page .single-tile-demo { gap: 18px; }
+}
+@media (max-width: 900px) {
+  .player-page .hero { grid-template-columns: 1fr; min-height: 0; gap: 44px; padding-block: 52px; }
+  .player-page .hero h1 { max-width: 680px; font-size: clamp(3rem, 8vw, 4.5rem); }
+  .section-heading, .workflow-layout, .collection-section, .questions { grid-template-columns: 1fr; gap: 32px; }
+  .player-page .story-card, .player-page .story-card:nth-child(2) { grid-template-columns: 1fr; gap: 28px; padding-block: 34px; }
+  .player-page .story-card:nth-child(2) .demo-stage, .player-page .story-card:nth-child(2) .story-copy { grid-column: auto; grid-row: auto; }
+  .demo-stage { padding-inline: 36px; }
+  .story-copy { max-width: 620px; }
+  .player-page .story-copy h3 { font-size: 2.15rem; }
+  .player-page .story, .collection-section, .questions { padding-block: 64px; }
+  .workflow, .fullscreen-section { padding-block: 64px; }
+  .platform-line { gap: 10px 22px; }
+  .platform-line span + span { padding-left: 0; border-left: 0; }
+}
+@media (max-width: 480px) {
+  .player-page .hero h1 { font-size: 3.1rem; }
+  .player-page .hero .eyebrow { font-size: .75rem; }
+  .demo-stage { padding: 26px 14px 20px; }
+  .player-page .tile-demo { min-height: 210px; }
+  .player-page .single-tile-demo { gap: 16px; }
+  .player-page .demo-response { padding: 14px; }
+  .player-page .demo-response strong { font-size: .95rem; }
+  .player-page .demo-response small { font-size: .8rem; }
+  .player-page .app-tile-meta { font-size: .75rem; }
+  .player-page .app-tile-actions i { display: none; }
+  .player-page .app-tile-overlay > strong { font-size: .8rem; }
+  .workflow-steps li { grid-template-columns: 28px 1fr; gap: 16px; }
+  .connection-notes { padding: 24px; }
+  .platform-line { flex-direction: column; }
+}

@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { cpSync, mkdirSync, readFileSync, existsSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import './export-architecture.mjs';
 
 const basePath = process.env.PAGES_BASE_PATH ?? '';
 if (basePath !== '' && !/^\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/.test(basePath)) {

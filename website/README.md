@@ -19,6 +19,16 @@ Missing rendered pages or assets fail the build.
 
 ## Documentation
 
+The player page pairs interactive game examples with import, organization, and controller
+walkthroughs. Keep copy factual and aligned with shipped behavior; Winnow is free and open
+source, supported by voluntary donations. Page-specific layout lives in `app/promo.css`.
+
+The developer page displays the architecture snapshot as a responsive SVG, without a nested
+scrolling viewer. Its link opens the original interactive diagram with zoom and navigation.
+`scripts/export-architecture.mjs` extracts that SVG from `public/architecture-diagram.html`
+during the Pages build. Run `node scripts/export-architecture.mjs` after changing the diagram
+when working in the development server.
+
 The home-page hero uses the seven app screenshots in `public/assets/screenshots/`.
 `app/HeroCarousel.tsx` keeps their captions and alternative text together. Slides advance
 every 5.5 seconds, pause during hover or keyboard focus, and stop after manual selection.

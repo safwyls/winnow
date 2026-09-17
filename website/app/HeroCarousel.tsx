@@ -7,11 +7,11 @@ import { sitePath } from '@/lib/site-path';
 
 const screenshots = [
   ['desktop-library.png', 'Your library', 'Winnow desktop library with game covers and built-in collections'],
-  ['desktop-merges.png', 'Bring editions together', 'Winnow reviewing suggested merges for different game editions'],
-  ['desktop-feed.png', 'A reason to return', 'Winnow recommendations with a Hollow Knight preview and reasons to play'],
-  ['desktop-details.png', 'The whole picture', 'Slay the Spire details, play history and screenshots in Winnow'],
-  ['fullscreen-details.jpg', 'Details from your sofa', 'Subnautica details and play history in fullscreen mode'],
-  ['fullscreen-feed.jpg', 'Pick up where you left off', 'Fullscreen recommendations with Balatro and a recently played shelf'],
+  ['desktop-merges.png', 'Edition and store matching', 'Winnow reviewing suggested merges for different game editions'],
+  ['desktop-feed.png', 'Your recommendations', 'Winnow recommendations with a Hollow Knight preview and reasons to play'],
+  ['desktop-details.png', 'Game details', 'Slay the Spire details, play history and screenshots in Winnow'],
+  ['fullscreen-details.jpg', 'Fullscreen game details', 'Subnautica details and play history in fullscreen mode'],
+  ['fullscreen-feed.jpg', 'Recently played in fullscreen', 'Fullscreen recommendations with Balatro and a recently played shelf'],
   ['fullscreen-library.jpg', 'Your library, fullscreen', 'Winnow fullscreen library showing game covers and controller navigation'],
 ] as const;
 
