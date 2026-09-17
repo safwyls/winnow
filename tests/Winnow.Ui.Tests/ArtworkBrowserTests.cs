@@ -191,31 +191,105 @@ public sealed class ArtworkBrowserTests
     }
 
     [AvaloniaTheory]
-    [InlineData(540, 720)]
-    [InlineData(960, 720)]
-    public async Task Desktop_keeps_apply_controls_visible_and_keyboard_reachable(int width, int height)
+    [InlineData(1280, 820)]
+    [InlineData(1200, 640)]
+    [InlineData(1920, 1080)]
+    public async Task Desktop_overlay_keeps_preview_and_actions_visible_while_only_gallery_scrolls(int width, int height)
     {
-        var service = new BrowserService();
+        var service = new BrowserService { CandidateCount = 24, IncludeAttribution = true };
         using var pixels = ArtworkPixels();
-        using var model = new ArtworkBrowserViewModel(service, 1, "Game", new Leases(new CoverArt(pixels, pixels)));
-        await model.OpenAsync();
-        var view = new ArtworkBrowserView { DataContext = model };
+        var model = new ArtworkBrowserViewModel(service, 1, "A distant shore", new Leases(new CoverArt(pixels, pixels)), new ImagePicker());
+        using var details = new GameDetailsViewModel(TileFixture.Tile(DateTime.UtcNow), "Started", [], DateTime.UtcNow, artworkBrowser: model);
+        var view = new GameDetailsView { DataContext = details };
         var window = new Window { Width = width, Height = height, Content = view };
         window.Show();
         try
         {
-            if (view.TryFindResource("Surface", out var surface)) window.Background = surface as IBrush;
-            Flush();
-            var apply = Named(view, "Use artwork");
-            Assert.False(apply.IsEnabled);
-            var candidate = view.GetVisualDescendants().OfType<Button>().First(button => button.DataContext is ArtworkCandidateViewModel { IsCurrent: false });
-            candidate.Focus(); window.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None); Flush();
-            Assert.True(apply.IsEnabled); Assert.Empty(service.Writes);
-            var bounds = new Rect(apply.TranslatePoint(default, window)!.Value, apply.Bounds.Size);
-            Assert.True(bounds.Bottom <= window.ClientSize.Height + 1);
-            Assert.True(bounds.Right <= window.ClientSize.Width + 1);
-            Assert.True(apply.Focus(NavigationMethod.Tab));
-            Capture(window, $"artwork-desktop-{width}");
+            await model.OpenAsync(); Flush();
+            var overlay = view.FindControl<Border>("ArtworkOverlay")!;
+            var card = view.FindControl<Border>("Card")!;
+            var browser = view.FindControl<ArtworkBrowserView>("ArtworkBrowserView")!;
+            Assert.False(card.IsEffectivelyEnabled);
+            Assert.DoesNotContain(card, overlay.GetVisualAncestors());
+            Assert.InRange(overlay.Bounds.Width, Math.Min(width - 48, 1440) - 1, Math.Min(width - 48, 1440) + 1);
+            Assert.True(overlay.Bounds.Width > card.Bounds.Width);
+            Assert.Contains(overlay.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == details.Title);
+            AssertVisibleInside(view.FindControl<Button>("ArtworkBackButton")!, overlay);
+            var preview = browser.FindControl<Control>("PreviewPanel")!;
+            var gallery = browser.FindControl<ScrollViewer>("CandidateScroll")!;
+            Assert.DoesNotContain(preview.GetVisualAncestors(), control => control is ScrollViewer);
+            var apply = Named(browser, "Use artwork");
+            foreach (var slot in new[] { ArtworkSlot.Hero, ArtworkSlot.Cover, ArtworkSlot.Icon })
+            {
+                await model.ChooseSlotCommand.ExecuteAsync(slot); Flush();
+                var writesBeforePreview = service.Writes.Count;
+                var candidate = browser.GetVisualDescendants().OfType<Button>().First(button => button.DataContext is ArtworkCandidateViewModel { IsCurrent: false });
+                candidate.Focus(); window.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None); Flush();
+                Assert.True(apply.IsEnabled); Assert.Equal(writesBeforePreview, service.Writes.Count);
+                await model.ApplyCommand.ExecuteAsync(null); Flush();
+                Assert.Equal(writesBeforePreview + 1, service.Writes.Count);
+                Assert.True(model.HasStatus); Assert.False(apply.IsEnabled);
+                AssertVisibleInside(preview, overlay);
+                AssertVisibleInside(apply, overlay);
+                AssertVisibleInside(Named(browser, "Use automatic artwork"), overlay);
+                AssertVisibleInside(Named(browser, "Import artwork URL"), overlay);
+                AssertVisibleInside(Named(browser, "Choose artwork file"), overlay);
+                AssertVisibleInside(Named(browser, "Open artwork source"), preview);
+                foreach (var image in preview.GetVisualDescendants().OfType<Image>().Where(image => image.IsEffectivelyVisible))
+                    AssertVisibleInside(image, preview);
+                if (slot == ArtworkSlot.Hero)
+                {
+                    model.FullscreenCropCommand.Execute(null); Flush();
+                    AssertVisibleInside(browser.FindControl<Image>("FullscreenHeroPreview")!, preview);
+                    model.DesktopCropCommand.Execute(null); Flush();
+                }
+                var previewPosition = preview.TranslatePoint(default, window);
+                var actionPosition = apply.TranslatePoint(default, window);
+                gallery.Offset = new(0, 500); Flush();
+                Assert.True(gallery.Offset.Y > 0);
+                Assert.Equal(previewPosition, preview.TranslatePoint(default, window));
+                Assert.Equal(actionPosition, apply.TranslatePoint(default, window));
+                Capture(window, $"artwork-overlay-{width}x{height}-{slot.ToString().ToLowerInvariant()}");
+            }
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Desktop_overlay_cycles_keyboard_focus_and_back_restores_details_without_writing()
+    {
+        var service = new BrowserService();
+        var browser = new ArtworkBrowserViewModel(service, 1, "Game");
+        using var details = new GameDetailsViewModel(TileFixture.Tile(DateTime.UtcNow), "Started", [], DateTime.UtcNow, artworkBrowser: browser);
+        var view = new GameDetailsView { DataContext = details };
+        var outside = new Button { Content = "Library action" };
+        var host = new Grid(); host.Children.Add(outside); host.Children.Add(view);
+        var window = new Window { Width = 1280, Height = 820, Content = host }; window.Show();
+        try
+        {
+            await browser.OpenAsync(); Flush();
+            var overlay = view.FindControl<Border>("ArtworkOverlay")!;
+            var back = view.FindControl<Button>("ArtworkBackButton")!;
+            browser.SelectCommand.Execute(browser.Sources[0].Items[0]); Flush();
+            foreach (var modifiers in new[] { RawInputModifiers.None, RawInputModifiers.Shift })
+            {
+                back.Focus(NavigationMethod.Tab); Flush();
+                var visited = new HashSet<Control>();
+                var returned = false;
+                for (var step = 0; step < 60; step++)
+                {
+                    window.KeyPressQwerty(PhysicalKey.Tab, modifiers); Flush();
+                    var focus = Assert.IsAssignableFrom<Control>(window.FocusManager!.GetFocusedElement());
+                    Assert.Contains(overlay, focus.GetVisualAncestors());
+                    visited.Add(focus);
+                    if (ReferenceEquals(focus, back)) { returned = true; break; }
+                }
+                Assert.True(returned); Assert.True(visited.Count >= 8);
+            }
+            back.Focus(); window.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None); Flush();
+            Assert.False(browser.IsOpen); Assert.Empty(service.Writes);
+            Assert.True(view.FindControl<Border>("Card")!.IsEffectivelyEnabled);
+            Assert.Same(view.FindControl<Button>("MoreActionsButton"), window.FocusManager!.GetFocusedElement());
         }
         finally { window.Close(); }
     }
@@ -253,6 +327,17 @@ public sealed class ArtworkBrowserTests
     }
 
     private static Button Named(Control root, string name) => root.GetVisualDescendants().OfType<Button>().Single(button => AutomationProperties.GetName(button) == name);
+    private static void AssertVisibleInside(Control control, Control container)
+    {
+        Assert.True(control.IsEffectivelyVisible);
+        var origin = control.TranslatePoint(default, container)!.Value;
+        var far = control.TranslatePoint(new(control.Bounds.Width, control.Bounds.Height), container)!.Value;
+        Assert.True(far.X > origin.X && far.Y > origin.Y, $"{control.Name ?? control.GetType().Name} must have visible area.");
+        Assert.InRange(origin.X, -1, container.Bounds.Width + 1);
+        Assert.InRange(origin.Y, -1, container.Bounds.Height + 1);
+        Assert.InRange(far.X, 0, container.Bounds.Width + 1);
+        Assert.InRange(far.Y, 0, container.Bounds.Height + 1);
+    }
     private static void Flush() { Dispatcher.UIThread.RunJobs(); AvaloniaHeadlessPlatform.ForceRenderTimerTick(); Dispatcher.UIThread.RunJobs(); }
     private static void Capture(Window window, string name)
     {
@@ -290,6 +375,7 @@ public sealed class ArtworkBrowserTests
         public bool FailIgdb { get; set; }
         public bool FailSave { get; set; }
         public int CandidateCount { get; set; } = 1;
+        public bool IncludeAttribution { get; set; }
         public TaskCompletionSource<ArtworkBrowserPage>? PendingSteam { get; set; }
         private ArtworkCandidate? _current;
         public ArtworkCandidate? CurrentProjection { get; set; }
@@ -299,7 +385,9 @@ public sealed class ArtworkBrowserTests
             if (sourceId == "steam" && PendingSteam is not null) return PendingSteam.Task;
             if (sourceId == "igdb" && FailIgdb) throw new IOException("Unavailable");
             return Task.FromResult(new ArtworkBrowserPage(Enumerable.Range(0, CandidateCount).Select(index => Candidate(sourceId, slot,
-                index == 0 ? cursor is null ? "first" : "second" : $"{cursor}:{index}")).ToArray(), cursor is null ? "page2" : null));
+                index == 0 ? cursor is null ? "first" : "second" : $"{cursor}:{index}") with
+                { Creator = IncludeAttribution ? "Community artist with a longer display name" : null,
+                    PageUrl = IncludeAttribution ? "https://www.steamgriddb.com/grid/1" : null }).ToArray(), cursor is null ? "page2" : null));
         }
         public Task<ArtworkSaveResult> SaveAsync(long workId, ArtworkSlot slot, ArtworkCandidate candidate, CancellationToken ct = default)
         { if (FailSave) return Task.FromResult(new ArtworkSaveResult(false, "Image unavailable. Try again.")); Writes.Add((workId, slot)); _current = candidate; return Task.FromResult(new ArtworkSaveResult(true, "Artwork saved.")); }
@@ -307,6 +395,10 @@ public sealed class ArtworkBrowserTests
         { Resets.Add((workId, slot)); _current = null; return Task.FromResult(new ArtworkSaveResult(true, "Using automatic artwork.")); }
         public Task<ArtworkSaveResult> ImportFileAsync(long workId, ArtworkSlot slot, string path, CancellationToken ct = default) => SaveAsync(workId, slot, Candidate("file", slot, path), ct);
         public Task<ArtworkSaveResult> ImportUrlAsync(long workId, ArtworkSlot slot, string url, CancellationToken ct = default) => SaveAsync(workId, slot, Candidate("url", slot, url), ct);
+    }
+    private sealed class ImagePicker : IImageFilePicker
+    {
+        public Task<string?> PickAsync(string title, CancellationToken ct = default) => Task.FromResult<string?>(null);
     }
     private sealed class MetadataService : IWorkMetadataEditService
     {

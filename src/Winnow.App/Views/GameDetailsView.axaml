@@ -330,6 +330,7 @@
     <Panel>
         <Border Name="Scrim" Background="{StaticResource ModalScrim}" PointerPressed="OnScrimPressed"/>
         <Border Name="Card"
+                IsEnabled="{Binding ShowOtherFocusedTools}"
                 Background="{StaticResource Surface}"
                 BorderBrush="{StaticResource Line}"
                 BorderThickness="1"
@@ -1527,8 +1528,6 @@
                                         </StackPanel>
                                     </StackPanel>
                                 </ScrollViewer>
-                                <views:ArtworkBrowserView Name="ArtworkBrowserView" IsVisible="{Binding IsOpen}"
-                                                          DataContext="{Binding ArtworkBrowser}"/>
                             </Grid>
                         </Grid>
                     </Panel>
@@ -1564,5 +1563,31 @@
                 </Grid>
             </Panel>
         </Border>
+        <Panel IsVisible="{Binding IsArtworkFocused}">
+            <Border Background="{StaticResource ModalScrim}"/>
+            <Border Name="ArtworkOverlay" Background="{StaticResource Surface}"
+                    BorderBrush="{StaticResource Line}" BorderThickness="1"
+                    CornerRadius="{StaticResource RadiusTile}" BoxShadow="0 18 48 0 #A6000000"
+                    Margin="24" Padding="24" MaxWidth="1440" MaxHeight="1000"
+                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                    KeyboardNavigation.TabNavigation="Cycle">
+                <Grid RowDefinitions="Auto,*" RowSpacing="16">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="24">
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="label section" Text="Change artwork" AutomationProperties.HeadingLevel="2"/>
+                            <TextBlock Classes="body" Text="{Binding Title}" FontSize="{DynamicResource FontSize20}"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                        <Button Name="ArtworkBackButton" Grid.Column="1" Classes="secondary"
+                                VerticalAlignment="Center" Content="{Binding FocusedBackLabel}"
+                                AutomationProperties.Name="{Binding FocusedBackLabel}"
+                                IsEnabled="{Binding ArtworkBrowser.CanEdit}"
+                                Command="{Binding BackToDetailsCommand}"/>
+                    </Grid>
+                    <views:ArtworkBrowserView Name="ArtworkBrowserView" Grid.Row="1"
+                                              DataContext="{Binding ArtworkBrowser}"/>
+                </Grid>
+            </Border>
+        </Panel>
     </Panel>
 </UserControl>

@@ -16,21 +16,19 @@ public partial class ArtworkBrowserView : UserControl
     public ArtworkBrowserView()
     {
         InitializeComponent();
-        PreviewScroll.SizeChanged += (_, _) =>
+        PreviewPanel.SizeChanged += (_, _) =>
         {
             var card = this.FindAncestorOfType<GameDetailsView>()?.FindControl<Border>("Card");
             var desktopRatio = card is { Bounds.Height: > 0 } ? card.Bounds.Width / card.Bounds.Height : 4d / 3;
             DesktopHeroPreview.Height = 400 / desktopRatio;
-            DesktopCropBox.MaxHeight = FullscreenCropBox.MaxHeight = Math.Max(72, PreviewScroll.Bounds.Height - 110);
         };
         SizeChanged += (_, _) =>
         {
             var narrow = Bounds.Width < 610;
-            BrowserBody.ColumnDefinitions = new(narrow ? "*" : "*,*");
-            BrowserBody.RowDefinitions = new(narrow ? "Auto,*" : "*");
-            Grid.SetColumn(PreviewScroll, narrow ? 0 : 1);
+            BrowserBody.ColumnDefinitions = new(narrow ? "*" : "3*,2*");
+            BrowserBody.RowDefinitions = new(narrow ? "2*,3*" : "*");
+            Grid.SetColumn(PreviewPanel, narrow ? 0 : 1);
             Grid.SetRow(CandidateScroll, narrow ? 1 : 0);
-            PreviewScroll.MaxHeight = narrow ? 160 : double.PositiveInfinity;
         };
     }
     protected override void OnDataContextChanged(EventArgs e)

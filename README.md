@@ -296,7 +296,8 @@ Open a game's **More → Change artwork** to browse Hero, Cover and Icon images 
 IGDB and enabled artwork plugins. Selecting an image previews it; **Use artwork** saves
 only that slot. **Use automatic** restores its normal source policy. File and image-URL
 imports are available in the same browser, and **Edit details → Browse artwork** opens
-the corresponding slot. Fullscreen provides the same choices with controller navigation.
+the corresponding slot. On desktop, a larger overlay keeps the preview and actions visible
+beside the scrolling gallery. Fullscreen provides the same choices with controller navigation.
 
 Saved images remain available offline and after a provider is disabled. Steam and IGDB
 offer official assets, so some games have few choices; IGDB does not supply icons.

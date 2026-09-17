@@ -2135,11 +2135,15 @@ untouched.
 #### Artwork browser
 
 **Change artwork** in the game's More menu opens independent Hero, Cover and Icon slots.
-The existing art rows also offer **Browse artwork**. Desktop places the browser in the
-bounded details body; its source results scroll while **Use artwork**, **Use automatic**,
-file import and URL import remain reachable below them. Narrow bodies place the preview
-above the results. Back and Escape abandon the preview and return to the invoking editor
-row or the More control. Opening the browser from an art row retains the editor's drafts.
+The existing art rows also offer **Browse artwork**. Desktop opens a larger overlay above
+the whole details modal, bounded to 1440 × 1000 with a 24-pixel window inset. A compact
+header names the game and offers Back. The gallery takes three fifths of the body beside
+a persistent preview; only the gallery scrolls. Images fit the preview's remaining height,
+and **Use artwork**, **Use automatic**, file import and URL import stay below the body.
+Narrow layouts put a bounded preview above the results. The underlying details card cannot
+receive input while the browser is open, and keyboard focus cycles within the overlay.
+Back and Escape abandon the preview and return to the invoking editor row or the More
+control. The details tab and editor drafts survive the visit.
 
 **All sources** groups candidates by source. Steam and IGDB remain visible even when no
 appropriate asset exists; unsupported slots and setup failures explain the limitation.
