@@ -46,6 +46,8 @@ public sealed record PluginGame(string Id, string Title, IReadOnlyDictionary<str
 
 public sealed record PluginLibraryGame(string SourceId, string Title)
 {
+    /// <summary>True when Title is a fallback identifier; a later observed title may replace the host placeholder.</summary>
+    public bool TitleIsProvisional { get; init; }
     public IReadOnlyDictionary<string, string> ExternalIds { get; init; } = new Dictionary<string, string>();
     public string? AccountRef { get; init; }
     public string? InstallPath { get; init; }
@@ -53,6 +55,9 @@ public sealed record PluginLibraryGame(string SourceId, string Title)
     public long? PlaytimeMinutes { get; init; }
     public DateTimeOffset? LastPlayedAt { get; init; }
     public DateTimeOffset? AcquiredAt { get; init; }
+    /// <summary>Describes the evidence for inclusion, such as installed or played history; not proof of purchase.</summary>
+    public string? LibrarySourceLabel { get; init; }
+    public IReadOnlyList<PluginGameActionKind> Actions { get; init; } = [];
 }
 
 /// <summary>Source-attributed observations; the host decides which missing canonical values to fill.</summary>

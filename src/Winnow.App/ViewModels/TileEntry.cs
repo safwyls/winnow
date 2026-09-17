@@ -54,6 +54,8 @@ public sealed record TileEntry : IPlayedEntry
     public EpicLaunchKey? EpicLaunchKey { get; init; }
 
     public Winnow.Core.Repositories.StorefrontDetails? Storefront { get; init; }
+    public PluginEntryActions? PluginActions { get; init; }
+    public string? LibrarySourceLabel => PluginActions?.SourceLabel;
 
     /// <summary>True only when a source looked and found it on disk.</summary>
     public bool IsOnDisk => Installed == true;
@@ -76,7 +78,7 @@ public sealed record TileEntry : IPlayedEntry
     /// <c>Play</c> when this copy is on disk, <c>Install</c> when it is not,
     /// and null when this app cannot honestly name either (§10.3).
     /// </summary>
-    public GameLink? PrimaryAction => StoreActions.PrimaryFor(
+    public GameLink? PrimaryAction => PluginActions?.Play ?? StoreActions.PrimaryFor(
         Store, Installed, SteamAppId, GogProductId, EpicLaunchKey);
 
     /// <summary>
@@ -84,7 +86,7 @@ public sealed record TileEntry : IPlayedEntry
     /// <see cref="ViewModels.NoWayIn.None"/> when it can. Derived from the
     /// same store ids and install state as <see cref="PrimaryAction"/>.
     /// </summary>
-    public NoWayIn NoWayIn => StoreActions.WhyNoWayIn(
+    public NoWayIn NoWayIn => PluginActions?.Play is not null || PluginActions?.Store is not null ? NoWayIn.None : StoreActions.WhyNoWayIn(
         Store, Installed, SteamAppId, GogProductId, EpicLaunchKey, Storefront);
 
     /// <summary>Builds the entry for one ownership row.</summary>
@@ -131,6 +133,9 @@ public static class StoreNaming
         "steam" => "Steam",
         "gog" => "GOG",
         "epic" => "Epic",
+        "plugin:xbox" => "Xbox",
+        var value when value.StartsWith("plugin:", StringComparison.Ordinal) && value.Length > 7
+            => string.Concat(char.ToUpperInvariant(store[7]), store[8..]),
         _ => string.Concat(char.ToUpperInvariant(store[0]), store[1..]),
     };
 

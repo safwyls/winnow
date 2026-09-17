@@ -5,6 +5,8 @@ namespace Winnow.Plugins;
 /// <summary>Discovers manifests before loading trusted code. Activation changes take effect on the next launch.</summary>
 public sealed class PluginCatalog(IPluginStateStore state, IPluginContextFactory contexts) : IAsyncDisposable
 {
+    // Allows asynchronous cancellation cleanup without extending a user wait beyond one quarter second.
+    private static readonly TimeSpan CancellationUnwindGrace = TimeSpan.FromMilliseconds(250);
     private readonly List<PluginDescriptor> _plugins = [];
     private readonly List<PluginDiscoveryIssue> _issues = [];
     private readonly object _registry = new();
@@ -184,6 +186,8 @@ public sealed class PluginCatalog(IPluginStateStore state, IPluginContextFactory
         || (typeof(TPlugin) == typeof(ILibrarySourcePlugin) && manifest.Capabilities.Contains(PluginCapabilities.Library))
         || (typeof(TPlugin) == typeof(IMetadataProviderPlugin) && manifest.Capabilities.Contains(PluginCapabilities.Metadata))
         || (typeof(TPlugin) == typeof(IArtworkProviderPlugin) && manifest.Capabilities.Contains(PluginCapabilities.Artwork))
+        || (typeof(TPlugin) == typeof(IPluginAccount) && manifest.Capabilities.Contains(PluginCapabilities.Account))
+        || (typeof(TPlugin) == typeof(IPluginGameActions) && manifest.Capabilities.Contains(PluginCapabilities.GameActions))
         || (typeof(TPlugin) == typeof(IRecommendationFeedPlugin) && manifest.Capabilities.Contains(PluginCapabilities.Recommendations));
 
     /// <summary>Provider exceptions never expose their text, which might contain credentials or response data.</summary>
@@ -210,7 +214,10 @@ public sealed class PluginCatalog(IPluginStateStore state, IPluginContextFactory
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 ObserveLateFailure(pending);
-                // A noncooperative provider may still be running after cancellation.
+                // Cooperative HTTP/credential cleanup can finish just after WaitAsync observes
+                // cancellation. Give it a bounded unwind before treating it as still running.
+                if (!pending.IsCompleted)
+                    await Task.WhenAny(pending, Task.Delay(CancellationUnwindGrace)).ConfigureAwait(false);
                 if (!pending.IsCompleted) descriptor.Loaded = false;
                 throw;
             }
@@ -240,6 +247,8 @@ public sealed class PluginCatalog(IPluginStateStore state, IPluginContextFactory
                 PluginCapabilities.Metadata => plugin is IMetadataProviderPlugin,
                 PluginCapabilities.Artwork => plugin is IArtworkProviderPlugin,
                 PluginCapabilities.Recommendations => plugin is IRecommendationFeedPlugin,
+                PluginCapabilities.Account => plugin is IPluginAccount,
+                PluginCapabilities.GameActions => plugin is IPluginGameActions,
                 _ => false,
             };
             if (!implemented) throw new InvalidDataException("A declared plugin capability is not implemented.");

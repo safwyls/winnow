@@ -44,13 +44,52 @@ public sealed class FullscreenPluginSettingsPage : FullscreenPage
         restart.Bind(IsVisibleProperty, new Binding(nameof(model.RestartRequired)) { Source = model });
         controls.Children.Add(restart);
         if (model.HasWebsite) Action("Provider website     Browser ↗", model.OpenWebsiteCommand, model.WebsiteAccessibleName);
+        if (model.HasAccount)
+        {
+            FullscreenInformation.AddSection(controls, "Account");
+            var accountStatus = FullscreenInformation.Text("");
+            accountStatus.Bind(TextBlock.TextProperty, new Binding(nameof(model.AccountStatus)) { Source = model });
+            AutomationProperties.SetLiveSetting(accountStatus, AutomationLiveSetting.Polite);
+            controls.Children.Add(accountStatus);
+            var challenge = new StackPanel { Spacing = 12 };
+            challenge.Bind(IsVisibleProperty, new Binding(nameof(model.HasSignInChallenge)) { Source = model });
+            challenge.Children.Add(FullscreenInformation.Metadata("Sign-in code"));
+            var code = FullscreenInformation.Text("", 36);
+            code.Bind(TextBlock.TextProperty, new Binding(nameof(model.UserCode)) { Source = model });
+            AutomationProperties.SetAutomationId(code, "PluginSignInCode");
+            challenge.Children.Add(code);
+            var address = FullscreenInformation.Text("", 24);
+            address.Bind(TextBlock.TextProperty, new Binding(nameof(model.VerificationUrl)) { Source = model });
+            AutomationProperties.SetAutomationId(address, "PluginSignInAddress");
+            challenge.Children.Add(address);
+            controls.Children.Add(challenge);
+            var open = Action("Open sign-in page     Browser ↗", model.OpenSignInPageCommand, model.SignInPageAccessibleName);
+            open.Bind(IsVisibleProperty, new Binding(nameof(model.HasSignInChallenge)) { Source = model });
+            var connect = Action("Sign in", model.ConnectCommand, model.ConnectAccessibleName);
+            connect.Bind(IsVisibleProperty, new Binding("!" + nameof(model.AccountConnected)) { Source = model });
+            var disconnect = Action("Sign out", model.DisconnectCommand, model.DisconnectAccessibleName);
+            disconnect.Bind(IsVisibleProperty, new Binding(nameof(model.AccountConnected)) { Source = model });
+            var cancel = Action("Cancel sign-in", model.CancelSignInCommand, model.CancelSignInAccessibleName);
+            cancel.Bind(IsVisibleProperty, new Binding(nameof(model.IsConnecting)) { Source = model });
+        }
         foreach (var field in model.Fields)
         {
             controls.Children.Add(FullscreenInformation.Rule());
             controls.Children.Add(FullscreenInformation.Title(field.Label));
             if (field.HasDescription) controls.Children.Add(FullscreenInformation.Metadata(field.Description!));
-            var editor = new TextBox { FontSize = 24, MinHeight = 72, PasswordChar = field.PasswordChar, Watermark = field.Watermark };
-            editor.Bind(TextBox.TextProperty, new Binding(nameof(field.Value)) { Source = field, Mode = BindingMode.TwoWay });
+            Control editor;
+            if (field.IsBoolean)
+            {
+                var toggle = new ToggleSwitch { FontSize = 24, MinHeight = 72, OnContent = "On", OffContent = "Off" };
+                toggle.Bind(ToggleSwitch.IsCheckedProperty, new Binding(nameof(field.BooleanValue)) { Source = field, Mode = BindingMode.TwoWay });
+                editor = toggle;
+            }
+            else
+            {
+                var text = new TextBox { FontSize = 24, MinHeight = 72, PasswordChar = field.PasswordChar, Watermark = field.Watermark };
+                text.Bind(TextBox.TextProperty, new Binding(nameof(field.Value)) { Source = field, Mode = BindingMode.TwoWay });
+                editor = text;
+            }
             editor.Bind(IsEnabledProperty, new Binding(nameof(field.IsEnabled)) { Source = field });
             AutomationProperties.SetName(editor, field.AccessibleName);
             controls.Children.Add(editor); focus.Add([editor]);
@@ -73,11 +112,20 @@ public sealed class FullscreenPluginSettingsPage : FullscreenPage
         SetFocusRows(focus.ToArray());
         foreach (var control in focus.SelectMany(row => row)) control.GotFocus += (_, _) => _lastFocused = control;
         model.PropertyChanged += ModelChanged;
-        DetachedFromVisualTree += (_, _) => model.ClearSecrets();
+        DetachedFromVisualTree += (_, _) => model.Deactivate();
     }
 
     private void ModelChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(PluginCardViewModel.HasSignInChallenge) && _model.HasSignInChallenge)
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (_disposed || !this.IsAttachedToVisualTree() || !_model.HasSignInChallenge) return;
+                var open = this.GetVisualDescendants().OfType<Button>().FirstOrDefault(button => button.Command == _model.OpenSignInPageCommand);
+                if (open is not null) FocusControl(open);
+            }, DispatcherPriority.Loaded);
+        }
         if (e.PropertyName != nameof(PluginCardViewModel.IsBusy) || _model.IsBusy) return;
         Dispatcher.UIThread.Post(() =>
         {
@@ -87,11 +135,23 @@ public sealed class FullscreenPluginSettingsPage : FullscreenPage
         }, DispatcherPriority.Loaded);
     }
 
+    public override bool Handle(Winnow.App.Services.GamepadButtons buttons)
+    {
+        // Generated value switches have no command; controller Accept must toggle their bound value.
+        if (buttons.HasFlag(Winnow.App.Services.GamepadButtons.Accept)
+            && _lastFocused is ToggleSwitch { Command: null, IsEffectivelyEnabled: true } toggle)
+        {
+            toggle.IsChecked = toggle.IsChecked != true;
+            return true;
+        }
+        return base.Handle(buttons);
+    }
+
     public override void Dispose()
     {
         _disposed = true;
         _model.PropertyChanged -= ModelChanged;
-        _model.ClearSecrets();
+        _model.Deactivate();
         base.Dispose();
     }
 }

@@ -48,8 +48,13 @@ public sealed class PluginSyncService(PluginCatalog catalog, ILibraryQueryReposi
                 }).ToArray();
                 foreach (var plugin in catalog.GetActive<IMetadataProviderPlugin>())
                 {
-                    var metadata = await catalog.InvokeAsync(plugin, (instance, token) => ((IMetadataProviderPlugin)instance).GetMetadataAsync(games[0], token), ct);
-                    if (metadata is not null) await ApplySafelyAsync(plugin, () => ApplyMetadataAsync(plugin.Manifest.Id, work.Id, metadata, ct), ct);
+                    foreach (var game in games)
+                    {
+                        var metadata = await catalog.InvokeAsync(plugin, (instance, token) => ((IMetadataProviderPlugin)instance).GetMetadataAsync(game, token), ct);
+                        if (metadata is null) continue;
+                        await ApplySafelyAsync(plugin, () => ApplyMetadataAsync(plugin.Manifest.Id, work.Id, metadata, ct), ct);
+                        break;
+                    }
                 }
                 foreach (var plugin in catalog.GetActive<IArtworkProviderPlugin>())
                 {
@@ -101,7 +106,7 @@ public sealed class PluginSyncService(PluginCatalog catalog, ILibraryQueryReposi
                 && known.Select(r => r.Id).Distinct().ToArray() is [var existing])
                 await releases.AddExternalIdAsync(new() { ReleaseId = existing, Provider = source, ProviderId = game.SourceId }, ct);
 
-            var candidate = new CandidateOwnership(source, game.SourceId, game.Title.Trim(), game.AccountRef,
+            var candidate = new CandidateOwnership(source, game.SourceId, game.TitleIsProvisional ? null : game.Title.Trim(), game.AccountRef,
                 game.InstallPath is { } path && Path.IsPathFullyQualified(path) ? path : null,
                 game.Installed, game.PlaytimeMinutes, game.LastPlayedAt?.UtcDateTime, game.AcquiredAt?.UtcDateTime,
                 source, DateTime.UtcNow);
@@ -109,6 +114,7 @@ public sealed class PluginSyncService(PluginCatalog catalog, ILibraryQueryReposi
             // Keep a provider's additional IDs only when no other release claims them.
             var release = await releases.FindByExternalIdAsync(source, game.SourceId, ct);
             if (release is null) continue;
+            await PluginGameActionService.SaveAsync(cache, release.Id, plugin.Manifest.Id, game, ct);
             foreach (var (provider, id) in (game.ExternalIds ?? new Dictionary<string, string>()).Take(32))
                 if (ValidExternalId(provider, id) && await releases.FindByExternalIdAsync(provider, id, ct) is null)
                     await releases.AddExternalIdAsync(new() { ReleaseId = release.Id, Provider = provider, ProviderId = id }, ct);

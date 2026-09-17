@@ -59,6 +59,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     private readonly ISessionRepository? _sessions;
     private readonly ISteamPlaytimeObservationRepository? _steamObservations;
     private readonly ISettingsRepository? _activitySettings;
+    private readonly PluginGameActionService? _pluginActions;
 
     /// <summary>
     /// §1's longitudinal playtime series, read only when a detail panel opens.
@@ -244,7 +245,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         IGroupHeaderPreferenceRepository? groupHeaders = null,
         Services.IGameLinkRouter? linkRouter = null,
         ISteamPlaytimeObservationRepository? steamObservations = null,
-        ISettingsRepository? activitySettings = null)
+        ISettingsRepository? activitySettings = null,
+        PluginGameActionService? pluginActions = null)
     {
         _storefrontCache = storefrontCache;
         _workRatings = workRatings;
@@ -270,6 +272,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         _sessions = sessions;
         _steamObservations = steamObservations;
         _activitySettings = activitySettings;
+        _pluginActions = pluginActions;
         _leases = leases;
         _snapshots = snapshots;
         _facetRepository = facets;
@@ -941,7 +944,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                 ? new Dictionary<string, StorefrontDetails>()
                 : await _storefrontCache.ReadAllAsync(ct);
             var headers = _groupHeaders is null ? new Dictionary<long, string?>() : await _groupHeaders.GetAllAsync(ct);
-            return (snapshot, identity, facets, pins, epic, storefronts, headers);
+            var pluginActions = _pluginActions is null ? new Dictionary<long, PluginEntryActions>() : await _pluginActions.ReadAsync(snapshot, ct);
+            return (snapshot, identity, facets, pins, epic, storefronts, headers, pluginActions);
         }, ct);
         if (_disposed || ct.IsCancellationRequested || generation != Volatile.Read(ref _loadGeneration)) return;
         var prepareOnUi = Avalonia.Application.Current is not null && Avalonia.Threading.Dispatcher.UIThread.CheckAccess();
@@ -1176,7 +1180,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                     storefront: storefronts.GetValueOrDefault(ownership?.Store == "epic"
                         ? "epic:" + EpicKeyFor(member.ReleaseId)?.Namespace
                         : "gog:" + gogProductIdByRelease.GetValueOrDefault(member.ReleaseId)))
-                    with { Lifecycle = member.Lifecycle });
+                    with { Lifecycle = member.Lifecycle, PluginActions = loaded.pluginActions.GetValueOrDefault(member.OwnershipId) });
 
                 coverage.Add(new CoverageEntry
                 {

@@ -65,6 +65,27 @@
                                         </WrapPanel>
                                         <TextBlock Classes="body" Foreground="{StaticResource AmberForeground}" IsVisible="{Binding RestartRequired}"
                                                    Text="Restart Winnow to apply the enable or disable change."/>
+                                        <StackPanel Spacing="8" IsVisible="{Binding HasAccount}">
+                                            <TextBlock Classes="label section" Text="ACCOUNT" AutomationProperties.HeadingLevel="3"/>
+                                            <TextBlock Classes="body prose" Text="{Binding AccountStatus}" AutomationProperties.LiveSetting="Polite"/>
+                                            <StackPanel Spacing="8" IsVisible="{Binding HasSignInChallenge}">
+                                                <TextBlock Classes="body" Text="Sign-in code"/>
+                                                <SelectableTextBlock Classes="data" Text="{Binding UserCode}" TextWrapping="Wrap"
+                                                                     AutomationProperties.AutomationId="PluginSignInCode"/>
+                                                <SelectableTextBlock Classes="body" Text="{Binding VerificationUrl}" TextWrapping="Wrap"
+                                                                     AutomationProperties.AutomationId="PluginSignInAddress"/>
+                                                <Button Classes="act" Content="Open sign-in page" HorizontalAlignment="Left"
+                                                        Command="{Binding OpenSignInPageCommand}" AutomationProperties.Name="{Binding SignInPageAccessibleName}"/>
+                                            </StackPanel>
+                                            <WrapPanel>
+                                                <Button Classes="act" Margin="0,0,8,0" Content="Sign in" Command="{Binding ConnectCommand}"
+                                                        IsVisible="{Binding !AccountConnected}" AutomationProperties.Name="{Binding ConnectAccessibleName}"/>
+                                                <Button Classes="act" Content="Sign out" Command="{Binding DisconnectCommand}"
+                                                        IsVisible="{Binding AccountConnected}" AutomationProperties.Name="{Binding DisconnectAccessibleName}"/>
+                                                <Button Classes="act" Content="Cancel sign-in" Command="{Binding CancelSignInCommand}"
+                                                        IsVisible="{Binding IsConnecting}" AutomationProperties.Name="{Binding CancelSignInAccessibleName}"/>
+                                            </WrapPanel>
+                                        </StackPanel>
                                         <ItemsControl ItemsSource="{Binding Fields}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate DataType="vm:PluginSettingFieldViewModel">
@@ -72,8 +93,12 @@
                                                         <TextBlock Classes="body" Text="{Binding Label}"/>
                                                         <TextBlock Classes="body prose" Text="{Binding Description}" IsVisible="{Binding HasDescription}"/>
                                                         <TextBox Text="{Binding Value, Mode=TwoWay}" PasswordChar="{Binding PasswordChar}"
+                                                                 IsVisible="{Binding IsText}"
                                                                  IsEnabled="{Binding IsEnabled}" Watermark="{Binding Watermark}"
                                                                  AutomationProperties.Name="{Binding AccessibleName}"/>
+                                                        <ToggleSwitch IsChecked="{Binding BooleanValue, Mode=TwoWay}" IsVisible="{Binding IsBoolean}"
+                                                                      IsEnabled="{Binding IsEnabled}" OnContent="On" OffContent="Off"
+                                                                      AutomationProperties.Name="{Binding AccessibleName}"/>
                                                         <WrapPanel>
                                                             <Button Classes="act" Margin="0,0,8,0" Content="{Binding SetupLabel}" IsVisible="{Binding HasSetup}"
                                                                     Command="{Binding OpenSetupCommand}" AutomationProperties.Name="{Binding SetupAccessibleName}"/>

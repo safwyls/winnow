@@ -42,6 +42,7 @@ public sealed class PluginManifestTests
     public void Compatibility_capability_settings_and_network_limits_are_checked_before_loading()
     {
         PluginManifestReader.Validate(Valid);
+        PluginManifestReader.Validate(Valid with { Capabilities = ["library", "account", "game-actions"] });
         Assert.Throws<InvalidDataException>(() => PluginManifestReader.Validate(Valid with { ApiVersion = 2 }));
         Assert.Throws<InvalidDataException>(() => PluginManifestReader.Validate(Valid with { Capabilities = ["custom-ui"] }));
         Assert.Throws<InvalidDataException>(() => PluginManifestReader.Validate(Valid with { Capabilities = ["artwork", "artwork"] }));
@@ -49,6 +50,10 @@ public sealed class PluginManifestTests
         { Settings = [new() { Key = "key", Label = "API key" }, new() { Key = "key", Label = "Duplicate" }] }));
         Assert.Throws<InvalidDataException>(() => PluginManifestReader.Validate(Valid with
         { Settings = [new() { Key = "key", Label = "API key", SetupUrl = "file:///private" }] }));
+        Assert.Throws<InvalidDataException>(() => PluginManifestReader.Validate(Valid with
+        { Settings = [new() { Key = "key", Label = "Secret toggle", Secret = true, IsBoolean = true }] }));
+        Assert.Throws<InvalidDataException>(() => PluginManifestReader.Validate(Valid with
+        { Settings = [new() { Key = "key", Label = "Managed plaintext", ManagedByPlugin = true }] }));
         Assert.Throws<InvalidDataException>(() => PluginManifestReader.Validate(Valid with
         { Network = new() { RequestsPerSecond = double.PositiveInfinity } }));
         Assert.Throws<InvalidDataException>(() => PluginManifestReader.Validate(Valid with

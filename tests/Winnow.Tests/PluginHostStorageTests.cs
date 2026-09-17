@@ -22,6 +22,78 @@ public sealed class PluginHostStorageTests
     private const string LegacySecretKey = "steamgriddb.api_key.protected";
 
     [Fact]
+    public async Task Plugin_secret_writes_require_declared_keys_and_store_only_protected_values()
+    {
+        using var host = new Host();
+        var context = host.Contexts.Create(Manifest("first"));
+        await Assert.ThrowsAsync<ArgumentException>(async () => await context.Secrets.SetAsync("label", "private-token"));
+        await Assert.ThrowsAsync<ArgumentException>(async () => await context.Secrets.SetAsync("unknown", "private-token"));
+        await Assert.ThrowsAsync<ArgumentException>(async () => await context.Secrets.RemoveAsync("label"));
+        if (!OperatingSystem.IsWindows())
+        {
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await context.Secrets.SetAsync("apikey", "private-token"));
+            return;
+        }
+        await context.Secrets.SetAsync("apikey", "private-token");
+        Assert.Equal("private-token", await context.Secrets.GetAsync("apikey"));
+        Assert.Null(await host.Contexts.Create(Manifest("second")).Secrets.GetAsync("apikey"));
+        using (var connection = host.Database.Factory.Open())
+            Assert.DoesNotContain(await connection.QueryAsync<string>("SELECT value FROM settings WHERE value IS NOT NULL;"),
+                value => value.Contains("private-token", StringComparison.Ordinal));
+        await context.Secrets.RemoveAsync("apikey");
+        Assert.Null(await context.Secrets.GetAsync("apikey"));
+    }
+
+    [Fact]
+    public async Task Managed_secret_reads_ignore_configuration_before_and_after_removing_a_saved_token()
+    {
+        using var host = new Host();
+        host.Configuration["Plugins:xbox:refresh-token"] = "fixture-config-token";
+        host.Configuration["Plugins:xbox:apikey"] = "fixture-config-key";
+        var context = host.Contexts.Create(Manifest("xbox") with { Settings = [
+            new() { Key = "refresh-token", Label = "Session", Secret = true, ManagedByPlugin = true },
+            new() { Key = "apikey", Label = "API key", Secret = true }] });
+        Assert.Null(await context.Secrets.GetAsync("refresh-token"));
+        Assert.Equal("fixture-config-key", await context.Secrets.GetAsync("apikey"));
+        if (OperatingSystem.IsWindows())
+        {
+            await context.Secrets.SetAsync("refresh-token", "fixture-saved-token");
+            Assert.Equal("fixture-saved-token", await context.Secrets.GetAsync("refresh-token"));
+            await context.Secrets.SetAsync("apikey", "fixture-saved-key");
+            Assert.Equal("fixture-saved-key", await context.Secrets.GetAsync("apikey"));
+        }
+        else
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await context.Secrets.SetAsync("refresh-token", "fixture-saved-token"));
+        await context.Secrets.RemoveAsync("refresh-token");
+        await context.Secrets.RemoveAsync("apikey");
+        Assert.Null(await context.Secrets.GetAsync("refresh-token"));
+        Assert.Equal("fixture-config-key", await context.Secrets.GetAsync("apikey"));
+    }
+
+    [Fact]
+    public async Task Managed_tokens_are_not_editable_and_boolean_settings_are_prevalidated()
+    {
+        using var host = new Host();
+        var manifest = Manifest("first") with { Settings = [
+            new() { Key = "refresh-token", Label = "Session", Secret = true, ManagedByPlugin = true },
+            new() { Key = "console", Label = "Console history", IsBoolean = true }] };
+        host.AddManifest(manifest);
+        await using var catalog = host.Catalog();
+        await catalog.DiscoverAsync(host.BuiltinDirectory, host.UserDirectory);
+        var backend = new PluginSettingsBackend(catalog, host.Storage, host.UserDirectory);
+        var field = Assert.Single(Assert.Single(await backend.LoadAsync()).Settings);
+        Assert.Equal("console", field.Key);
+        Assert.True(field.IsBoolean);
+        await Assert.ThrowsAsync<ArgumentException>(() => backend.SaveAsync("first", new Dictionary<string, string>
+        { ["console"] = "true", ["refresh-token"] = "private-token" }));
+        Assert.Null(await host.Storage.ReadSettingAsync("first", "console"));
+        await Assert.ThrowsAsync<ArgumentException>(() => backend.RemoveSecretAsync("first", "refresh-token"));
+        await Assert.ThrowsAsync<ArgumentException>(() => backend.SaveAsync("first", new Dictionary<string, string> { ["console"] = "yes" }));
+        await backend.SaveAsync("first", new Dictionary<string, string> { ["console"] = "true" });
+        Assert.Equal("true", await host.Storage.ReadSettingAsync("first", "console"));
+    }
+
+    [Fact]
     public async Task Contexts_isolate_settings_cache_and_secret_fields_in_the_same_database()
     {
         using var host = new Host();

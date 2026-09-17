@@ -76,7 +76,7 @@ Build its local NuGet package with:
 dotnet pack src/Winnow.PluginSdk -c Release -o artifacts/plugin-sdk
 ```
 
-Reference `Winnow.PluginSdk` version `1.0.0` from that local package source. Set
+Reference `Winnow.PluginSdk` version `1.1.0` from that local package source. Set
 `EnableDynamicLoading=true` in your .NET 10 class-library project and keep the SDK reference
 out of your package's runtime dependencies (`Private=false` for a project reference, or
 `ExcludeAssets=runtime` for a package reference). Copy your DLL, `.deps.json`, manifest and
@@ -119,10 +119,17 @@ Implement `IPlugin.InitializeAsync` to retain `IPluginContext`, plus one or more
 | `IMetadataProviderPlugin` | Summary, release date, genres and tags for the supplied game handle. Summary/year fill missing automatic fields; user overrides remain authoritative. Genre/tag observations have separate source-scoped assignments. |
 | `IArtworkProviderPlugin` | Static backgrounds, covers or screenshots with URLs and dimensions. The host validates HTTPS hosts, dimensions and bounded counts, retains source attribution, and uses isolated hashed cache keys. |
 | `IRecommendationFeedPlugin` | Scores from 0 to 1 and a concise explanation for supplied library handles. The host rejects unknown handles and invalid values and renders one named shelf using existing cards, feedback and reserves. |
+| `IPluginAccount` | SDK 1.1 account capability. Short begin/poll/status/cancel/sign-out calls use shared desktop/fullscreen controls. Only the user code and a declared HTTPS verification address reach the UI. |
+| `IPluginGameActions` | SDK 1.1 game-actions capability. Executes Play or OpenStore for an imported source ID after host validation. The provider resolves the current target; the host never executes provider command text. |
 
-Library-source support initially covers inventory and playtime import. A wholly new launcher's
-custom launch, installation and sign-in workflow is not exposed by this SDK. Existing Steam,
-Epic and GOG actions remain available where their known IDs establish the corresponding links.
+Library sources import inventory, installation and playtime observations. SDK 1.1 also supports
+account connection and game actions through the interfaces above. `PluginLibraryGame.Actions`
+advertises supported actions; Play is shown only for an installed entry with an active provider.
+`LibrarySourceLabel` explains inclusion evidence in both detail views, including when history
+does not establish ownership. Existing Steam, Epic and GOG actions remain available where their
+known IDs establish the corresponding links. Custom screens are not supported.
+Set `TitleIsProvisional` when a local resource cannot be resolved and the title is only an
+identifier. The host keeps a provisional placeholder until a later import supplies a real title.
 
 `PluginGame.Id` is opaque and valid for that request. Metadata/artwork handles identify original
 works; recommendation handles identify eligible owned entries. Use `ExternalIds` for service
@@ -143,10 +150,14 @@ use the existing gallery/lightbox.
 ## Host services
 
 - **Settings:** only declared non-secret fields, scoped by plugin ID.
-- **Secrets:** reads declared secret fields; editing happens through Winnow settings. Windows
+- **Secrets:** reads, writes and removes declared secret fields through the protected host store.
+  User-editable fields appear in Winnow settings; `ManagedByPlugin` secret declarations are
+  reserved for credentials maintained by sign-in and are hidden from the editors. Windows
   persists them with current-user DPAPI and distinct plugin/key entropy. Other hosts refuse
   persisted secret writes. `Plugins__<plugin-id>__<key>` environment configuration can supply
-  a value without saving it. Secrets never appear in settings read snapshots.
+  user-editable secrets without saving them. `ManagedByPlugin` secrets read only protected
+  stored values, so removing a sign-in token cannot reactivate a configured fallback.
+  Secrets never appear in settings read snapshots.
 - **Cache:** up to 2 MiB per payload, with an expiry supplied by the provider. Expired entries
   remain readable for offline fallback. Providers should version their cache keys or payloads.
 - **HTTP:** HTTPS on exact declared hosts, redirects disabled, bounded responses and a shared
@@ -157,6 +168,18 @@ The SteamGridDB plugin demonstrates exact-ID lookup, credential changes, negativ
 static-art filtering and stale-response fallback. Its original API key, response cache,
 stored hero observations and downloaded source images migrate when the plugin host first runs.
 The legacy `SteamGridDb__ApiKey` environment variable continues to work.
+
+Boolean settings use `IsBoolean: true` and render as toggles on both surfaces. They cannot be
+secret. Text and secret declarations retain their previous behavior. Account providers declare
+the `account` capability and all verification hosts in `network.allowedHosts`. Device codes,
+access tokens and refresh tokens must not enter ordinary settings or caches. Split user waits
+across short polling calls so the 120-second invocation deadline remains meaningful.
+
+The optional [Xbox plugin](../plugins/Winnow.Plugin.Xbox/README.md) demonstrates local Windows
+discovery, device sign-in, account-scoped history, catalog artwork and registered-app launch.
+Its package needs a host with SDK 1.1 support. It is distributed separately and starts disabled
+when installed as a user plugin. Played history is opt-in and cannot supply a complete purchase
+inventory. Run `./plugins/Winnow.Plugin.Xbox/Package.ps1` to build its ZIP.
 
 ## Verification and scope
 

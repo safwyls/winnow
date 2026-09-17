@@ -34,9 +34,9 @@ public static partial class PluginManifestReader
         Require(!string.IsNullOrWhiteSpace(manifest.EntryType) && manifest.EntryType.Length <= 256, "The plugin entry type is invalid.");
         Require(manifest.Description is null || manifest.Description.Length <= 2000, "The plugin description is too long.");
         Require(IsOptionalHttpsUrl(manifest.Website), "The plugin website must use HTTPS.");
-        Require(manifest.Capabilities is { Count: > 0 and <= 4 }
+        Require(manifest.Capabilities is { Count: > 0 and <= 6 }
             && manifest.Capabilities.All(x => x is PluginCapabilities.Library or PluginCapabilities.Metadata
-                or PluginCapabilities.Artwork or PluginCapabilities.Recommendations)
+                or PluginCapabilities.Artwork or PluginCapabilities.Recommendations or PluginCapabilities.Account or PluginCapabilities.GameActions)
             && manifest.Capabilities.Distinct(StringComparer.Ordinal).Count() == manifest.Capabilities.Count,
             "The plugin capabilities are invalid.");
         Require(manifest.Settings is { Count: <= 32 }, "The plugin has too many settings.");
@@ -47,6 +47,8 @@ public static partial class PluginManifestReader
             Require(!string.IsNullOrWhiteSpace(setting.Label) && setting.Label.Length <= 120, "The plugin setting label is invalid.");
             Require(setting.Help is null || setting.Help.Length <= 1000, "The plugin setting help is too long.");
             Require(IsOptionalHttpsUrl(setting.SetupUrl), "The plugin setup URL must use HTTPS.");
+            Require(!setting.IsBoolean || !setting.Secret, "Boolean settings cannot contain secrets.");
+            Require(!setting.ManagedByPlugin || setting.Secret, "Managed settings must be secrets.");
         }
         ValidateNetwork(manifest.Network);
     }

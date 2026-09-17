@@ -96,6 +96,9 @@ public sealed class IdentityReadInventoryTests
             "Selects header metadata from a current member of the resolved group while retaining the group's canonical identity root."),
 
         // ── DO NOT RESOLVE ─────────────────────────────────────────────────
+        new("src/Winnow.App/Services/PluginGameActionService.cs", "ExecuteAsync", Policy.DoNotResolve,
+            "Revalidates the exact ownership and provider source chosen for a game action. Resolving "
+            + "to a grouped parent could launch another store copy and misattribute its session."),
         new("src/Winnow.Resolve/ExternalIdResolver.cs", "CaptureSteamObservationsAsync", Policy.DoNotResolve,
             "Steam counter observations belong to the original store ownership and account. Installation gating must read that copy, not a linked game's installation."),
         new("src/Winnow.Data/Repositories/ActivityRepository.cs", "GetPageAsync", Policy.DoNotResolve,

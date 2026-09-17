@@ -249,6 +249,24 @@ Winnow's permissions; install packages from authors you trust. Settings are avai
 desktop and fullscreen. See [plugin authoring and installation](docs/plugins.md) for the SDK,
 supported data contracts, compatibility and current limits.
 
+### Optional: Xbox
+
+The Xbox plugin imports installed Windows Xbox games and can add played PC games and optional
+console history after Microsoft sign-in. It supplies available playtime, last played, Microsoft
+Store descriptions and artwork. Registered PC games can launch through Windows; Winnow records
+sessions when their installation folders and process paths are readable. Console entries have
+no local Play action. Desktop and fullscreen share the same plugin settings and game actions.
+
+Build the installable ZIP with `./plugins/Winnow.Plugin.Xbox/Package.ps1`, then install and enable
+it through **Settings → Plugins**. Local discovery works without sign-in. Account import needs
+a Microsoft public-client application ID; setup instructions and requirements are in the
+[Xbox plugin guide](plugins/Winnow.Plugin.Xbox/README.md).
+
+Played history and installed presence do not prove a purchase or a current Game Pass licence.
+History import is opt-in, and game details show its source. Uninstalled games never played are
+not available through the Xbox history service. Live sign-in with a registered application,
+console coverage and protected WindowsApps launch/session behavior still need device validation.
+
 ### Writing a theme
 
 **Settings → Appearance → Typography** lets you choose heading, interface and data fonts,

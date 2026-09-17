@@ -52,6 +52,18 @@ public sealed record GameLink
     /// bug.</para>
     /// </summary>
     public GameLinkKind Kind { get; }
+    internal string? PluginId { get; init; }
+    internal string? PluginSourceId { get; init; }
+    internal long PluginOwnershipId { get; init; }
+    internal Winnow.PluginSdk.PluginGameActionKind? PluginAction { get; init; }
+
+    internal static GameLink? ForPlugin(string label, long ownershipId, string pluginId, string sourceId, Winnow.PluginSdk.PluginGameActionKind action)
+        => Winnow.Plugins.PluginManifestReader.IsValidId(pluginId)
+            && sourceId is { Length: > 0 and <= 256 } && !sourceId.Any(char.IsControl) && Enum.IsDefined(action)
+            ? new GameLink(label, "winnow-plugin://action", "Open through " + StoreNaming.Label("plugin:" + pluginId),
+                action == Winnow.PluginSdk.PluginGameActionKind.Play ? GameLinkKind.Play : GameLinkKind.Link)
+                { PluginOwnershipId = ownershipId, PluginId = pluginId, PluginSourceId = sourceId, PluginAction = action }
+            : null;
 
     /// <summary>True when pressing this should end with a game running.</summary>
     public bool StartsGame => Kind == GameLinkKind.Play;
@@ -67,7 +79,7 @@ public sealed record GameLink
     /// a browser — Steam, the Epic Games Launcher or GOG Galaxy.
     /// </summary>
     public bool IsLauncherProtocol
-        => IsSteamProtocol
+        => PluginId is not null || IsSteamProtocol
         || Uri.StartsWith(EpicScheme + "://", StringComparison.OrdinalIgnoreCase)
         || Uri.StartsWith(GogScheme + "://", StringComparison.OrdinalIgnoreCase);
 

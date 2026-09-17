@@ -13,7 +13,8 @@ and milestone state are in `ROADMAP.md`; visual values are in `design-system.md`
 ## 0. How to read this document
 
 This is a build specification, not a proposal. Sections 1 to 3 are context. Section 4 encodes
-API and filesystem behaviour that has been verified against live systems, and several of its
+API and filesystem contracts, distinguishing live measurements from documented and fixture-tested
+behavior where necessary. Several of its
 constraints contradict what you will find in older blog posts and Stack Overflow answers.
 Read section 4 before writing any ingest code.
 
@@ -43,7 +44,7 @@ exposed by storefront APIs or not retained by anyone.
 
 ### Out of scope
 
-- PlayStation and Xbox integration (§4.6)
+- PlayStation integration (§4.6)
 - Any hosted service, user accounts, or multi-user features. Winnow has no accounts; it links
   the user's. Signing in to Epic or Steam authenticates the user to *their* service and stores
   the token locally. That is third-party linking, not account creation.
@@ -377,13 +378,44 @@ the news item's `url` on the event row; the badge is clickable.
 
 **Never-opened games are ineligible for the badge, so do not poll them.**
 
-### 4.6 Excluded platforms
+### 4.6 Xbox plugin and excluded platforms
 
-PSN and Xbox are **out of scope and must not be added**. Neither has a consumer API, PSN
-requires the user to extract an `npsso` cookie by hand every two months, and PSNAWP's own
-documentation warns that use may result in PSN account bans. Signing in to Epic is not a
-precedent for these: Winnow supports service linking only within each supported provider's
-authentication contract.
+PSN remains out of scope. It requires the user to extract an `npsso` cookie by hand every two
+months, and PSNAWP's documentation warns that use may result in account bans.
+
+Xbox is an optional SDK-only package under `plugins/Winnow.Plugin.Xbox`. Local discovery reads
+the current Windows user's registered Store packages and copies manifests/configuration to
+temporary storage before parsing. `MicrosoftGame.config` or `xboxservices.config` establishes
+game identity; an exact package-family match to Xbox title history can classify older packages.
+Package family names identify PC entries across updates. Xbox TitleIds and Store ProductIds
+are distinct identifiers; names never establish an identity join.
+
+The optional account connection uses Microsoft's consumer device-code flow with a configurable
+public-client application ID and Xbox sign-in/offline scopes, followed by Xbox user-token and
+XSTS exchanges. Only the host's protected secret store holds refresh credentials. Device codes
+and access tokens stay in memory. History caches are scoped to the configured application and
+Xbox account. The user separately opts into played-history import and console inclusion.
+
+TitleHub supplies played titles and last-played dates, UserStats supplies available
+MinutesPlayed, and the keyless Microsoft display catalog supplies descriptions and artwork.
+Statistics correlate the account and service-configuration ID from TitleHub; an absent or
+ambiguous ID leaves playtime unknown. Windows resolves localized package display names;
+unresolved resource identifiers remain provisional until a later import supplies a real title.
+Missing minutes remain unknown; history does not synthesize sessions or acquisition dates.
+Neither played history nor installation proves ownership or an active subscription. The
+consumer history service cannot find never-played uninstalled purchases; Microsoft's
+[collections API](https://learn.microsoft.com/en-us/windows/uwp/monetize/query-for-products)
+is scoped to a publisher's products, not an arbitrary consumer's entire library. Imported
+source labels explain this on desktop and fullscreen.
+
+Only a complete local scan can establish an uninstall. Unavailable scans and remote failures
+preserve prior observations. Play revalidates the current package registration and activates its
+AUMID through Windows. Store navigation opens a verified ProductId's Store page and does not
+promise an entitlement or start an unattended installation. Console history has no local Play.
+Readable installation roots use the existing process watcher; protected WindowsApps directories
+and inaccessible process paths limit tracking. Protocol/fixture coverage is separate from live
+Microsoft registration, account and device validation, which remains outstanding. Request,
+cache and registration details are in the [plugin guide](plugins/Winnow.Plugin.Xbox/README.md).
 
 ### 4.7 Steam account pages, sign-in, and what may be stored
 
@@ -832,6 +864,8 @@ first-paint path.**
 #### Provider plugins
 
 `Winnow.PluginSdk` API 1 exposes library sources, metadata, artwork and recommendation feeds.
+SDK 1.1 adds optional account connection and game-action capabilities without changing the
+assembly major. Existing providers retain their original contracts.
 `Winnow.Plugins` discovers manifest-bearing directories under the installation's bundled
 `plugins` folder and the data directory's user `plugins` folder. Third-party packages start
 disabled; activation changes require restart. Settings declarations generate separate desktop
@@ -853,6 +887,10 @@ responses and per-provider Polly rate/retry policies. Scoped settings keys use l
 plugin/key segments; secrets use DPAPI with equally scoped entropy. No plugin receives a host
 service provider, database connection or UI object through the SDK.
 
+Caller cancellation gives a running provider 250 ms to finish asynchronous cleanup while its
+invocation gate remains held. A provider still running after that bounded grace is disabled for
+the session; cooperative cancellation keeps it available for another sign-in or refresh.
+
 Application adapters own persistence. Library imports enter the existing resolver under
 `plugin:<id>` ownership sources; existing Steam/Epic/GOG external IDs join only when known
 matches agree. Migration 0032 widens the external-ID provider constraint to accept this namespace
@@ -865,6 +903,18 @@ and share through current confirmed groups on presentation reads. User artwork s
 Every release's external IDs are queried for artwork; an unavailable member preserves the
 previous combined observation. Plugin feeds receive eligible owned groups and explanatory
 scores produce existing shelves on both surfaces, preserving dismissal and snooze behavior.
+
+Account providers expose short begin/poll/cancel/disconnect operations. The host presents the
+verification address and user code, owns the cancellable wait, and only opens declared HTTPS
+hosts. Managed secret fields are excluded from editors; declared secret writes still go through
+the host protector. Leaving either settings surface cancels the pending attempt.
+
+Library observations may advertise Play and OpenStore plus an inclusion-source label. The host
+stores these in the separate `plugin-library-actions` metadata-cache namespace. Library reads
+batch-load them; dispatch rechecks the ownership, source ID, current observation and active
+provider before invoking code. Play shares existing launch intents and session attribution.
+Unloading a plugin removes its actions while preserving labels and imported facts. Metadata
+providers inspect owned releases until one returns metadata; artwork inspects every release.
 
 `docs/plugins.md` describes authoring, local package layout, compatibility and operational
 limits. SteamGridDB is shipped as a separate SDK-only package, copied during build and publish.

@@ -46,7 +46,7 @@ public interface IGameLinkRouter
 
 /// <summary>Chooses among supported reading routes; native game/installation actions keep their original target.</summary>
 public sealed class GameLinkRouter(IUriDispatcher dispatcher, ISettingsRepository settings,
-    IStoreClientAvailability clients, IPatchNotesReader? reader = null) : IGameLinkRouter
+    IStoreClientAvailability clients, IPatchNotesReader? reader = null, PluginGameActionService? pluginActions = null) : IGameLinkRouter
 {
     public const string SettingKey = "application.link_destination";
     public static LinkDestination Parse(string? value) => value switch
@@ -65,6 +65,17 @@ public sealed class GameLinkRouter(IUriDispatcher dispatcher, ISettingsRepositor
     public async Task<LinkOpenResult> OpenAsync(GameLink link, string title)
     {
         ArgumentNullException.ThrowIfNull(link);
+        if (link.PluginId is not null)
+        {
+            try
+            {
+                return link.Kind == GameLinkKind.Link && pluginActions is not null
+                    && await pluginActions.ExecuteAsync(link.PluginOwnershipId, link)
+                    ? new(true) : new(false, "This plugin action is unavailable.");
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
+            { return new(false, "Could not open this link. Try again."); }
+        }
         if (GameLink.Create(link.Label, link.Uri, kind: link.Kind) is null
             || !Uri.TryCreate(link.Uri, UriKind.Absolute, out var uri)) return new(false, "This link is unavailable.");
         try

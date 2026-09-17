@@ -3071,7 +3071,8 @@ there. Failed ZIP imports appear alongside other package diagnostics. Explain th
 run with Winnow's access to the device. A malformed or incompatible package states its failure;
 only a package with a valid manifest offers configuration controls.
 
-Winnow generates labelled text fields and masked secret fields from each plugin's manifest.
+Winnow generates labelled text fields, boolean toggles and masked secret fields from each
+plugin's manifest. Tokens managed by a connection never appear as editable credential fields.
 Optional **Get** links open the provider's HTTPS setup page. **Save settings** persists the
 fields and clears secret drafts; a blank secret keeps the saved value. Each secret has a
 **Remove saved secret** action, available only when a secret is stored. A polite status line
@@ -3080,6 +3081,13 @@ Secrets also clear when leaving the settings surface. The activation switch on d
 states the next launch's choice and keeps a visible restart notice while it differs from the
 running state. **Refresh now** is available for enabled, loaded plugins. SteamGridDB uses this
 same generated form for its API key.
+
+Account-capable plugins offer **Sign in**, **Sign out** and **Cancel sign-in** on both
+surfaces. A pending connection shows the verification address, readable user code and an
+**Open sign-in page** action. Cancelling, leaving the page or expiry clears the code and stops
+polling. Connection status uses a polite text announcement. The provider's browser page owns
+authentication; Winnow never asks for its password. History imports that do not establish
+ownership retain an explanatory source line in both game-detail overviews, including groups.
 
 Fullscreen lists discovered plugins under Plugins and opens a dedicated page for
 each one. The page uses the same settings model with large generated fields, explicit focus

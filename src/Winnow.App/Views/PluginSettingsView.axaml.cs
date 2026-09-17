@@ -9,6 +9,7 @@ namespace Winnow.App.Views;
 public partial class PluginSettingsView : UserControl
 {
     private bool _attached;
+    private PluginSettingsViewModel? _model;
 
     public PluginSettingsView()
     {
@@ -18,7 +19,12 @@ public partial class PluginSettingsView : UserControl
             _attached = true;
             LoadIfVisible();
         };
-        DataContextChanged += (_, _) => LoadIfVisible();
+        DataContextChanged += (_, _) =>
+        {
+            if (!ReferenceEquals(_model, DataContext)) _model?.ClearSecrets();
+            _model = DataContext as PluginSettingsViewModel;
+            LoadIfVisible();
+        };
         DetachedFromVisualTree += (_, _) => { _attached = false; ClearSecrets(); };
     }
 

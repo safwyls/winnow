@@ -1023,6 +1023,7 @@ public static class Program
         services.AddSingleton<WorkReceptionWriter>();
         services.AddSingleton<ReceptionSyncService>();
         services.AddSingleton<PluginSyncService>();
+        services.AddSingleton<PluginGameActionService>();
         services.AddSingleton<PluginFeedService>();
         services.AddSingleton<LifecycleSyncService>();
         services.AddSingleton<GameRefetchService>();

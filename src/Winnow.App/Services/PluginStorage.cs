@@ -108,7 +108,16 @@ public sealed class PluginContextFactory(PluginStorage storage, PluginHttpClient
         async ValueTask IPluginSettings.SetAsync(string key, string? value, CancellationToken ct)
         { Check(key, false); if (value?.Length > 4096) throw new ArgumentException("Setting too long."); await storage.WriteSettingAsync(PluginId, key, value, ct); }
         async ValueTask<string?> IPluginSecrets.GetAsync(string key, CancellationToken ct)
-        { Check(key, true); return await storage.ReadSecretAsync(PluginId, key, ct); }
+        {
+            Check(key, true);
+            return manifest.Settings.Single(setting => setting.Key == key).ManagedByPlugin
+                ? await storage.ReadStoredSecretAsync(PluginId, key, ct)
+                : await storage.ReadSecretAsync(PluginId, key, ct);
+        }
+        async ValueTask IPluginSecrets.SetAsync(string key, string value, CancellationToken ct)
+        { Check(key, true); await storage.WriteSecretAsync(PluginId, key, value, ct); }
+        async ValueTask IPluginSecrets.RemoveAsync(string key, CancellationToken ct)
+        { Check(key, true); await storage.RemoveSecretAsync(PluginId, key, ct); }
         async ValueTask<PluginCacheEntry?> IPluginCache.GetAsync(string key, CancellationToken ct)
             => await storage.ReadCacheAsync(PluginId, key, ct);
         async ValueTask IPluginCache.SetAsync(string key, PluginCacheEntry entry, CancellationToken ct)

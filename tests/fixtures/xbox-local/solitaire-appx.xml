@@ -1,0 +1,269 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<Package IgnorableNamespaces="uap mp rescap build" xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" xmlns:build="http://schemas.microsoft.com/developer/appx/2015/build">
+  <Identity Name="Microsoft.MicrosoftSolitaireCollection" Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" Version="4.26.7290.0" ProcessorArchitecture="x64" />
+  <mp:PhoneIdentity PhoneProductId="282592d5-5c50-496d-921e-b6ef523ad4d9" PhonePublisherId="c0566bf3-b08a-4984-9de3-63aea1f3eba6" />
+  <Properties>
+    <DisplayName>Solitaire &amp; Casual Games</DisplayName>
+    <PublisherDisplayName>Microsoft Studios</PublisherDisplayName>
+    <Logo>Assets\MicrosoftSolitaireStoreLogo.png</Logo>
+  </Properties>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+    <PackageDependency Name="Microsoft.NET.Native.Runtime.2.2" MinVersion="2.2.28604.0" Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" />
+    <PackageDependency Name="Microsoft.NET.Native.Framework.2.2" MinVersion="2.2.29512.0" Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" />
+    <PackageDependency Name="Microsoft.UI.Xaml.2.8" MinVersion="8.2501.31001.0" Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" />
+    <PackageDependency Name="Microsoft.VCLibs.140.00.UWPDesktop" MinVersion="14.0.33728.0" Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" />
+    <PackageDependency Name="Microsoft.VCLibs.140.00" MinVersion="14.0.33519.0" Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" />
+  </Dependencies>
+  <Resources>
+    <Resource Language="EN-US" />
+    <Resource Language="AF-ZA" />
+    <Resource Language="AM-ET" />
+    <Resource Language="AR-SA" />
+    <Resource Language="AZ-LATN-AZ" />
+    <Resource Language="BG-BG" />
+    <Resource Language="CA-ES" />
+    <Resource Language="CS-CZ" />
+    <Resource Language="DA-DK" />
+    <Resource Language="DE-DE" />
+    <Resource Language="EL-GR" />
+    <Resource Language="EN-GB" />
+    <Resource Language="ES-ES" />
+    <Resource Language="ES-MX" />
+    <Resource Language="ET-EE" />
+    <Resource Language="EU-ES" />
+    <Resource Language="FA-IR" />
+    <Resource Language="FI-FI" />
+    <Resource Language="FIL-PH" />
+    <Resource Language="FR-CA" />
+    <Resource Language="FR-FR" />
+    <Resource Language="GL-ES" />
+    <Resource Language="HE-IL" />
+    <Resource Language="HI-IN" />
+    <Resource Language="HR-HR" />
+    <Resource Language="HU-HU" />
+    <Resource Language="ID-ID" />
+    <Resource Language="IS-IS" />
+    <Resource Language="IT-IT" />
+    <Resource Language="JA-JP" />
+    <Resource Language="KK-KZ" />
+    <Resource Language="KM-KH" />
+    <Resource Language="KN-IN" />
+    <Resource Language="KO-KR" />
+    <Resource Language="LT-LT" />
+    <Resource Language="LV-LV" />
+    <Resource Language="MK-MK" />
+    <Resource Language="ML-IN" />
+    <Resource Language="MS-MY" />
+    <Resource Language="NB-NO" />
+    <Resource Language="NL-NL" />
+    <Resource Language="PL-PL" />
+    <Resource Language="PT-BR" />
+    <Resource Language="PT-PT" />
+    <Resource Language="RO-RO" />
+    <Resource Language="RU-RU" />
+    <Resource Language="SK-SK" />
+    <Resource Language="SL-SI" />
+    <Resource Language="SQ-AL" />
+    <Resource Language="SR-LATN-RS" />
+    <Resource Language="SV-SE" />
+    <Resource Language="TA-IN" />
+    <Resource Language="TE-IN" />
+    <Resource Language="TH-TH" />
+    <Resource Language="TR-TR" />
+    <Resource Language="UK-UA" />
+    <Resource Language="VI-VN" />
+    <Resource Language="ZH-CN" />
+    <Resource Language="ZH-HK" />
+    <Resource Language="ZH-TW" />
+    <Resource uap:Scale="100" />
+  </Resources>
+  <Applications>
+    <Application Id="App" Executable="Solitaire.exe" EntryPoint="Solitaire.App">
+      <uap:VisualElements DisplayName="Solitaire &amp; Casual Games" Square150x150Logo="Assets\MicrosoftSolitaireMedTile.png" Square44x44Logo="Assets\MicrosoftSolitaireAppList.png" Description="Solitaire &amp; Casual Games" BackgroundColor="#0078D4">
+        <uap:LockScreen Notification="badge" BadgeLogo="Assets\MicrosoftSolitaireBadgeLogo.png" />
+        <uap:DefaultTile Wide310x150Logo="Assets\MicrosoftSolitaireWideTile.png" Square71x71Logo="Assets\MicrosoftSolitaireSmallTile.png" Square310x310Logo="Assets\MicrosoftSolitaireLargeTile.png" ShortName="Solitaire &amp; Casual Games">
+          <uap:ShowNameOnTiles>
+            <uap:ShowOn Tile="square150x150Logo" />
+            <uap:ShowOn Tile="wide310x150Logo" />
+            <uap:ShowOn Tile="square310x310Logo" />
+          </uap:ShowNameOnTiles>
+        </uap:DefaultTile>
+        <uap:SplashScreen BackgroundColor="#0078D4" Image="Assets\MicrosoftSolitaireSplashScreen.png" />
+      </uap:VisualElements>
+      <Extensions>
+        <uap:Extension Category="windows.protocol">
+          <uap:Protocol Name="xboxliveapp-1297287741" />
+        </uap:Extension>
+        <uap:Extension Category="windows.protocol">
+          <uap:Protocol Name="microsoftsolitairecollection" />
+        </uap:Extension>
+      </Extensions>
+      <uap:ApplicationContentUriRules>
+        <uap:Rule Match="https://*.microsoftcasualgames.com/" Type="include" WindowsRuntimeAccess="none" />
+        <uap:Rule Match="http://*.microsoftcasualgames.com/" Type="include" WindowsRuntimeAccess="none" />
+        <uap:Rule Match="https://cdn.zone.msn.com/" Type="include" WindowsRuntimeAccess="none" />
+        <uap:Rule Match="https://zonecdn.blob.core.windows.net/" Type="include" WindowsRuntimeAccess="none" />
+      </uap:ApplicationContentUriRules>
+    </Application>
+  </Applications>
+  <Extensions>
+    <Extension Category="windows.publisherCacheFolders">
+      <PublisherCacheFolders>
+        <Folder Name="SettingsContainer" />
+        <Folder Name="mcg" />
+      </PublisherCacheFolders>
+    </Extension>
+    <Extension Category="windows.activatableClass.inProcessServer">
+      <InProcessServer>
+        <Path>Microsoft.MicrosoftSolitaireCollection.dll</Path>
+        <ActivatableClass ActivatableClassId="McgBridge.Uwp.Consent.ConsentBridgeSettings" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="McgBridge.Uwp.Consent.ConsentBridge" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="McgBridge.Uwp.Telemetry.UwpTelemetryEventAdapter" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.AdSdk.Uwp.SdkInfo" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.AdSdk.Uwp.InterstitialVideoAd" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.AdSdk.Uwp.SdkLogger" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.AdSdk.Uwp.SdkResult" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.AdSdk.Uwp.SdkConfigFactory" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.AdSdk.Uwp.BannerAdControl" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.AdSdk.Uwp.InitializationOptions" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.AdSdk.Uwp.MsAdSdk" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.AdSdk.Uwp.SdkConfigurationOptions" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.AdaptiveText" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.TileBindingContentContact" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.AdaptiveProgressBar" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastButton" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastGenericAttributionText" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastSpriteSheet" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastGenericAppLogo" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastBindingShoulderTap" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastActionsCustom" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.TileBasicText" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastSelectionBoxItem" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.TileVisual" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastPeople" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.TileBasicImage" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastVisual" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.TileBindingContentPeople" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastShoulderTapImage" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastContent" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.TilePeekImage" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastSelectionBox" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.TileBindingContentAdaptive" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastButtonSnooze" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.TileContent" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.AdaptiveSubgroup" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastTextBox" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastGenericHeroImage" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.BadgeNumericContent" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastButtonDismiss" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastContentBuilder" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastArguments" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.TileBinding" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastActionsSnoozeAndDismiss" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.AdaptiveProgressBarValue" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastHeader" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.TileBindingContentPhotos" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.BadgeGlyphContent" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.AdaptiveGroup" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.AdaptiveImage" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastContextMenuItem" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastBindingGeneric" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.TileBindingContentIconic" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastActivationOptions" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.TileBackgroundImage" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastNotificationManagerCompat" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Toolkit.Uwp.Notifications.ToastAudio" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.PartnerInfo" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.DeviceCategory" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.AdSessionContextType" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.ImpressionType" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.AudioEvents" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.ScriptInjector" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.CreativeType" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.WebViewInfo" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.Owner" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.AdSession" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.VideoEvents" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.ErrorType" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.InteractionType" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.AdSessionConfiguration" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.VerificationScriptResource" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.VastProperties" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.AdSessionContext" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.Omid" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.AdEvents" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.PlayerState" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.Partner" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="OM.SDKWindows.Position" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="VungleSDK.DiagnosticLogEvent" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="VungleSDK.AdPlacementConfig" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="VungleSDK.AdEndEventArgs" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="VungleSDK.AdEventArgs" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="VungleSDK.AdConfig" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="VungleSDK.AdPlayableEventArgs" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="VungleSDK.AdFactory" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="VungleSDK.AdViewEventArgs" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="VungleSDK.MediatedAdReadyForSuperToken" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="VungleSDK.VungleSDKConfig" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="VungleSDK.shared.Views.AdDisplays.PopupAdDisplaySettings" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="VungleSDK.shared.Views.WindowUtils" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="VungleSDK.ConfigEventArgs" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="VungleSDK.VungleAd" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="VungleSDK.UI.VungleAdControl" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.AdSdk.VungleMediationExtension.VungleMediationExtension" ThreadingModel="both" />
+      </InProcessServer>
+    </Extension>
+    <Extension Category="windows.activatableClass.inProcessServer">
+      <InProcessServer>
+        <Path>Microsoft.Apps.Stubs.Handoff.dll</Path>
+        <ActivatableClass ActivatableClassId="Microsoft.Apps.Stubs.Handoff.ActivationHelper" ThreadingModel="both" />
+      </InProcessServer>
+    </Extension>
+    <Extension Category="windows.activatableClass.inProcessServer">
+      <InProcessServer>
+        <Path>Microsoft.Web.WebView2.Core.dll</Path>
+        <ActivatableClass ActivatableClassId="Microsoft.Web.WebView2.Core.CoreWebView2CustomSchemeRegistration" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Web.WebView2.Core.CoreWebView2Environment" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Web.WebView2.Core.CoreWebView2CompositionController" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Web.WebView2.Core.CoreWebView2Controller" ThreadingModel="both" />
+        <ActivatableClass ActivatableClassId="Microsoft.Web.WebView2.Core.CoreWebView2ControllerWindowReference" ThreadingModel="both" />
+      </InProcessServer>
+    </Extension>
+  </Extensions>
+  <Capabilities>
+    <Capability Name="internetClient" />
+    <Capability Name="privateNetworkClientServer" />
+    <rescap:Capability Name="confirmAppClose" />
+  </Capabilities>
+  <build:Metadata>
+    <build:Item Name="cl.exe" Version="19.44.35228.0" />
+    <build:Item Name="VisualStudio" Version="17.0" />
+    <build:Item Name="OperatingSystem" Version="10.0.20348.4647 (WinBuild.160101.0800)" />
+    <build:Item Name="Microsoft.Build.AppxPackage.dll" Version="17.14.40598.3191" />
+    <build:Item Name="ProjectGUID" Value="{3261B578-DE7A-427A-A904-BB20DB2B1E36}" />
+    <build:Item Name="ilc.exe" Version="2.2.33220.00 built by: PROJECTNREL" />
+    <build:Item Name="Microsoft.Windows.UI.Xaml.Build.Tasks.dll" Version="10.0.26100.7705" />
+    <build:Item Name="OptimizingToolset" Value="ilc.exe" />
+    <build:Item Name="DisableReflectionInvokeThunks" Value="true" />
+    <build:Item Name="UseDotNetNativeSharedAssemblyFrameworkPackage" Value="True" />
+    <build:Item Name="RemovableFeatures" Value="System.Xml.XmlUrlResolver.NonFileUrlSupport" />
+    <build:Item Name="DisableStackTraceMetadata" Value="true" />
+    <build:Item Name="DisableExceptionMessages" Value="true" />
+    <build:Item Name="ShortcutGenericAnalysis" Value="false" />
+    <build:Item Name="GeneratePGD" Value="false" />
+    <build:Item Name="ConsumePGD" Value="false" />
+    <build:Item Name="SingleThreadNUTC" Value="false" />
+    <build:Item Name="Use64BitCompiler" Value="false" />
+    <build:Item Name="OptimizeForSize" Value="true" />
+    <build:Item Name="AlignMethodsAtMinimalBoundaries" Value="true" />
+    <build:Item Name="LargeAddressAware" Value="false" />
+    <build:Item Name="NoLinkerSymbols" Value="false" />
+    <build:Item Name="OutOfProcPDB" Value="false" />
+    <build:Item Name="LargePdbPages" Value="false" />
+    <build:Item Name="Use64BitRhbind" Value="false" />
+    <build:Item Name="Use64BitIlc" Value="false" />
+    <build:Item Name="MakePri.exe" Version="10.0.26100.7705 (WinBuild.160101.0800)" />
+  </build:Metadata>
+</Package>

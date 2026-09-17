@@ -41,17 +41,20 @@ public sealed class GameLaunchService
     private readonly LaunchIntents? _intents;
     private readonly TimeProvider _clock;
     private readonly ILogger<GameLaunchService> _logger;
+    private readonly PluginGameActionService? _pluginActions;
 
     public GameLaunchService(
         IUriDispatcher dispatcher,
         LaunchIntents? intents = null,
         TimeProvider? clock = null,
-        ILogger<GameLaunchService>? logger = null)
+        ILogger<GameLaunchService>? logger = null,
+        PluginGameActionService? pluginActions = null)
     {
         _dispatcher = dispatcher;
         _intents = intents;
         _clock = clock ?? TimeProvider.System;
         _logger = logger ?? NullLogger<GameLaunchService>.Instance;
+        _pluginActions = pluginActions;
     }
 
     /// <summary>Fires a store action for one ownership. Only Play declares an intent; Install does not.</summary>
@@ -90,7 +93,9 @@ public sealed class GameLaunchService
         bool opened;
         try
         {
-            opened = await _dispatcher.OpenAsync(uri).ConfigureAwait(false);
+            opened = action.PluginId is not null
+                ? _pluginActions is not null && await _pluginActions.ExecuteAsync(ownershipId, action).ConfigureAwait(false)
+                : await _dispatcher.OpenAsync(uri).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

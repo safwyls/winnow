@@ -223,6 +223,11 @@ public sealed class FullscreenDetailsPage : FullscreenPage
     {
         var history = new StackPanel { Spacing = 14 };
         history.Children.Add(DetailText("YOUR HISTORY", 18, "TextDim"));
+        var source = DetailText("", 22, "TextDim");
+        source.Bind(TextBlock.TextProperty, new Binding(nameof(_details.LibrarySourceSummary)) { Source = _details });
+        source.Bind(IsVisibleProperty, new Binding(nameof(_details.HasLibrarySourceSummary)) { Source = _details });
+        AutomationProperties.SetAutomationId(source, "LibrarySourceSummary");
+        history.Children.Add(source);
         var figures = new Grid { ColumnDefinitions = new ColumnDefinitions("160,Auto,*"), ColumnSpacing = 28 };
         if (_details.PlaytimeText != "—")
         {

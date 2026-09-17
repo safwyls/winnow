@@ -273,15 +273,15 @@ ID can attach an observation to an existing release when all found matches agree
 titles never establish that join. Migration 0032 extends the external-ID provider constraint
 to admit these namespaces. Missing inventory does not remove ownership.
 
-Library support here means importing inventory, installation observations and playtime. A new
-launcher's custom launch, install and sign-in workflows need additional contracts; API 1 does
-not expose them. Existing store actions can use established Steam/Epic/GOG links.
+Library support includes inventory, installation observations and playtime. SDK 1.1 adds
+optional account connection and game actions through shared host controls; the Xbox package
+uses these contracts. Existing store actions can use established Steam/Epic/GOG links.
 
 Metadata observations retain source attribution. Summary and release year fill eligible missing
 automatic values through the existing repository; a plugin cannot overwrite the user's edits
 through this API. Migration 0031 adds separate genre/tag assignments for each plugin. A refresh
 replaces that provider's assignments while retaining other providers' assignments. Currently,
-metadata gets the first owned release's identifiers for a work; artwork checks every owned release.
+metadata checks owned releases until one returns a result; artwork checks every owned release.
 
 For recommendations, [PluginFeedService](../src/Winnow.App/Services/PluginFeedService.cs) supplies
 eligible owned games after grouping and suppression. A plugin returns handles from that input,
