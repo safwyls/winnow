@@ -12,7 +12,6 @@ const screenshots = [
   ['desktop-details.png', 'The whole picture', 'Slay the Spire details, play history and screenshots in Winnow'],
   ['fullscreen-details.jpg', 'Details from your sofa', 'Subnautica details and play history in fullscreen mode'],
   ['fullscreen-feed.jpg', 'Pick up where you left off', 'Fullscreen recommendations with Balatro and a recently played shelf'],
-  ['desktop-setup.png', 'Make yourself comfortable', 'Winnow setup for metadata, platforms and preferences'],
   ['fullscreen-library.jpg', 'Your library, fullscreen', 'Winnow fullscreen library showing game covers and controller navigation'],
 ] as const;
 

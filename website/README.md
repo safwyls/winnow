@@ -19,7 +19,7 @@ Missing rendered pages or assets fail the build.
 
 ## Documentation
 
-The home-page hero uses the eight app screenshots in `public/assets/screenshots/`.
+The home-page hero uses the seven app screenshots in `public/assets/screenshots/`.
 `app/HeroCarousel.tsx` keeps their captions and alternative text together. Slides advance
 every 5.5 seconds, pause during hover or keyboard focus, and stop after manual selection.
 Reduced-motion preferences disable automatic rotation. The fixed image area shows each
