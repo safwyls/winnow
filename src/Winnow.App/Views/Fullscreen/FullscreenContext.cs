@@ -244,6 +244,11 @@ public sealed class FullscreenContext : IDisposable
                 if (!_disposed && result.Message is { } message) Notify(message);
                 return;
             }
+            if (link.PluginId is not null)
+            {
+                Notify("This plugin action is unavailable.");
+                return;
+            }
             var uri = new Uri(link.Uri);
             if (!link.IsLauncherProtocol && Services?.GetService<Winnow.Core.Reading.IPatchNotesReader>() is { IsAvailable: true } reader &&
                 reader.Open(uri, Library.Details?.Title ?? link.Label) == Winnow.Core.Reading.PatchNotesOutcome.Opened)

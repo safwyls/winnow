@@ -242,12 +242,53 @@ effect on desktop and fullscreen without restarting; it does not change metadata
 ### Provider plugins
 
 Plugins can import game libraries, add metadata and artwork, and supply recommendation shelves.
+Find SteamGridDB, Xbox and PlayStation on the [plugins page](https://winnow.gg/plugins/).
+Choose **Install in Winnow** to install a new official plugin and open its settings, or
+download its ZIP. The Windows installer and Linux package register the browser link handler.
+Existing plugins are not replaced by install links.
 Open **Settings → Plugins → Open plugins folder**, drop in a plugin ZIP or copy an unpacked
 package into its own directory, then restart. ZIPs unpack automatically; enable the plugin
 and restart again to activate it. Third-party plugins run trusted code with
 Winnow's permissions; install packages from authors you trust. Settings are available on
 desktop and fullscreen. See [plugin authoring and installation](docs/plugins.md) for the SDK,
 supported data contracts, compatibility and current limits.
+
+Library imports also refresh merge suggestions across stores, including PlayStation and Xbox.
+Choose **Refresh suggestions** in desktop **Merges** or fullscreen **Library tools → Possible
+identity matches** to run another pass over your stored library. Suggestions still need your
+review; earlier acceptances and rejections remain.
+
+### Optional: Xbox
+
+The Xbox plugin imports installed Windows Xbox games and can add played PC games and optional
+console history after Microsoft sign-in. It supplies available playtime, last played, Microsoft
+Store descriptions and artwork. Registered PC games can launch through Windows; Winnow records
+sessions when their installation folders and process paths are readable. Console entries have
+no local Play action. Desktop and fullscreen share the same plugin settings and game actions.
+
+Build the installable ZIP with `./plugins/Winnow.Plugin.Xbox/Package.ps1`, then install and enable
+it through **Settings → Plugins**. Local discovery works without sign-in. For account import,
+select **Sign in**; Winnow includes its public application ID, so users need no Entra setup.
+An optional developer override is under advanced settings. Instructions are in the
+[Xbox plugin guide](plugins/Winnow.Plugin.Xbox/README.md).
+
+Played history and installed presence do not prove a purchase or a current Game Pass licence.
+History import is opt-in, and game details show its source. Uninstalled games never played are
+not available through the Xbox history service. Live sign-in and PC/console history have been
+checked with Winnow's registration. Reported cumulative minutes and protected WindowsApps
+launch/session behavior still need further device validation.
+
+### Optional: PlayStation
+
+The PlayStation plugin imports Sony's PS4/PS5 account library, with optional played history,
+available playtime and PS3/PS Vita trophy-title history. It uses a Sony NPSSO session token
+saved through the protected plugin settings on desktop or fullscreen. Console entries have
+no local Play action; played and trophy history do not establish purchase ownership.
+
+Build its ZIP with `./plugins/Winnow.Plugin.Psn/Package.ps1`, then install and enable it in
+**Settings → Plugins**. See the [PlayStation plugin guide](plugins/Winnow.Plugin.Psn/README.md)
+for connection steps, source limits and caching. Fixture and UI checks cover the implementation;
+live Sony sign-in and account data still need validation.
 
 ### Writing a theme
 

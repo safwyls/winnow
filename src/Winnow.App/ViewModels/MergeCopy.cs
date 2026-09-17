@@ -9,6 +9,13 @@ namespace Winnow.App.ViewModels;
 /// </summary>
 public static class MergeCopy
 {
+    public const string RefreshSuggestions = "Refresh suggestions";
+    public const string RefreshSuggestionsBusy = "Checking your library for matches…";
+    public const string RefreshSuggestionsCompleted = "Suggestions refreshed. Your previous answers are kept.";
+    public const string RefreshSuggestionsPartial = "Suggestions refreshed. Choose Refresh suggestions again to check more matches.";
+    public const string RefreshSuggestionsCancelled = "Refresh stopped. Choose Refresh suggestions to try again.";
+    public const string RefreshSuggestionsFailed = "Couldn't refresh suggestions. Choose Refresh suggestions to try again.";
+
     public const string PreferredPlatformFormat = "Prefer · {0}";
     public const string PreferredPlatformTooltip =
         "Choose headers from this platform where available, across all pending proposals. You can still change individual headers. None keeps the current choices.";

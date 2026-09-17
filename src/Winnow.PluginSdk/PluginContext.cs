@@ -19,6 +19,11 @@ public interface IPluginSettings
 public interface IPluginSecrets
 {
     ValueTask<string?> GetAsync(string key, CancellationToken cancellationToken = default);
+    /// <summary>Stores a declared secret through the host's protected credential store.</summary>
+    ValueTask SetAsync(string key, string value, CancellationToken cancellationToken = default)
+        => ValueTask.FromException(new NotSupportedException("Protected secret writes are unavailable."));
+    ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
+        => ValueTask.FromException(new NotSupportedException("Protected secret writes are unavailable."));
 }
 
 public sealed record PluginCacheEntry(byte[] Payload, DateTimeOffset ExpiresAt);

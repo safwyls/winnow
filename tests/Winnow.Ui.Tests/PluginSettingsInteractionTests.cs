@@ -11,12 +11,208 @@ using Winnow.App.ViewModels;
 using Winnow.App.Views;
 using Winnow.App.Views.Fullscreen;
 using Winnow.Enrich.Igdb.Storage;
+using Winnow.PluginSdk;
 using Xunit;
 
 namespace Winnow.Ui.Tests;
 
 public sealed class PluginSettingsInteractionTests
 {
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Advanced_settings_start_collapsed_support_input_and_preserve_hidden_values_on_save(bool fullscreen)
+    {
+        var backend = new AccountBackend();
+        var shell = await ShellAsync(backend);
+        var plugin = shell.PluginSettings.Plugins[0];
+        using var context = new FullscreenContext(shell.Library, shell.Feed, shell);
+        using var page = fullscreen ? new FullscreenPluginSettingsPage(context, plugin) : null;
+        Control view = page is null ? new PluginSettingsView { DataContext = shell.PluginSettings } : page;
+        using var presentation = fullscreen ? new FullscreenView(context) : null;
+        if (page is not null) context.Push(page);
+        var window = new Window { Width = fullscreen ? 1920 : 1200, Height = 1080, Content = presentation is null ? view : presentation };
+        window.Show();
+        try
+        {
+            void Activate(Button button)
+            {
+                button.Focus();
+                if (page is not null) page.Handle(GamepadButtons.Accept);
+                else
+                {
+                    window.KeyPress(Avalonia.Input.Key.Enter, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Enter, null);
+                    window.KeyRelease(Avalonia.Input.Key.Enter, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Enter, null);
+                }
+                Dispatcher.UIThread.RunJobs();
+            }
+            Assert.False(plugin.AdvancedSettingsExpanded);
+            Assert.DoesNotContain(view.GetVisualDescendants().OfType<TextBox>(), box => box.IsEffectivelyVisible);
+            var disclosure = Named<Button>(view, "Show advanced settings: Xbox");
+            Assert.Equal("Collapsed", AutomationProperties.GetItemStatus(disclosure));
+            var save = Named<Button>(view, "Save Xbox settings");
+            if (page is not null)
+            {
+                disclosure.Focus();
+                page.Handle(GamepadButtons.Down);
+                Assert.True(save.IsFocused);
+            }
+            else
+            {
+                disclosure.Focus();
+                window.KeyPress(Avalonia.Input.Key.Tab, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Tab, null);
+                window.KeyRelease(Avalonia.Input.Key.Tab, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Tab, null);
+                Assert.True(save.IsFocused);
+            }
+            await plugin.SaveCommand.ExecuteAsync(null);
+            Assert.Equal("existing-override", backend.SavedClientId);
+            Assert.DoesNotContain("advanced-secret", backend.Saved!.Keys);
+            Capture(window, fullscreen ? "fullscreen-plugin-advanced-collapsed" : "desktop-plugin-advanced-collapsed");
+            Activate(disclosure);
+            Assert.Equal("Expanded", AutomationProperties.GetItemStatus(disclosure));
+            Assert.Equal("Hide advanced settings: Xbox", AutomationProperties.GetName(disclosure));
+            var clientId = Named<TextBox>(view, "Xbox Application ID override");
+            var secret = Named<TextBox>(view, "Xbox Advanced secret");
+            Assert.True(clientId.IsEffectivelyVisible);
+            Assert.Equal('●', secret.PasswordChar);
+            if (page is not null)
+            {
+                page.Handle(GamepadButtons.Down);
+                Assert.True(clientId.IsFocused);
+                TextBox? requested = null;
+                context.TextRequested += field => requested = field;
+                page.Handle(GamepadButtons.Accept);
+                Assert.Same(clientId, requested);
+                Assert.Single(presentation!.GetVisualDescendants().OfType<GamepadKeyboardView>());
+                presentation!.Handle(GamepadButtons.Back);
+                Dispatcher.UIThread.RunJobs();
+                Assert.Empty(presentation!.GetVisualDescendants().OfType<GamepadKeyboardView>());
+            }
+            clientId.Text = "new-override";
+            secret.Text = "replacement-secret";
+            Dispatcher.UIThread.RunJobs();
+            Capture(window, fullscreen ? "fullscreen-plugin-advanced-expanded" : "desktop-plugin-advanced-expanded");
+            Activate(disclosure);
+            Assert.False(clientId.IsEffectivelyVisible);
+            Assert.False(secret.IsEffectivelyVisible);
+            Activate(save);
+            await plugin.SaveCommand.ExecutionTask!;
+            Assert.Equal("new-override", backend.SavedClientId);
+            Assert.Equal("replacement-secret", backend.Saved!["advanced-secret"]);
+            Assert.Empty(plugin.AdvancedFields.Single(field => field.IsSecret).Value);
+            Activate(disclosure);
+            clientId.Text = "";
+            Dispatcher.UIThread.RunJobs();
+            Activate(disclosure);
+            await plugin.SaveCommand.ExecuteAsync(null);
+            Assert.Empty(backend.SavedClientId);
+            Activate(disclosure);
+            window.Content = null;
+            Assert.False(plugin.AdvancedSettingsExpanded);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Account_settings_support_boolean_input_and_cancel_sign_in_when_leaving(bool fullscreen)
+    {
+        var backend = new AccountBackend();
+        var shell = await ShellAsync(backend);
+        var plugin = shell.PluginSettings.Plugins[0];
+        using var context = new FullscreenContext(shell.Library, shell.Feed, shell);
+        using var page = fullscreen ? new FullscreenPluginSettingsPage(context, plugin) : null;
+        Control view = page is null ? new PluginSettingsView { DataContext = shell.PluginSettings } : page;
+        using var presentation = fullscreen ? new FullscreenView(context) : null;
+        if (page is not null) context.Push(page);
+        var window = new Window { Width = fullscreen ? 1920 : 1200, Height = 1080, Content = presentation is null ? view : presentation };
+        window.Show();
+        try
+        {
+            Assert.Equal(0, backend.Begins);
+            var toggle = Named<ToggleSwitch>(view, "Xbox Include console history");
+            toggle.Focus();
+            if (page is not null) page.Handle(GamepadButtons.Accept);
+            else
+            {
+                window.KeyPress(Avalonia.Input.Key.Space, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Space, null);
+                window.KeyRelease(Avalonia.Input.Key.Space, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Space, null);
+            }
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(plugin.Fields[0].BooleanValue);
+            await plugin.SaveCommand.ExecuteAsync(null);
+            Assert.Equal("true", backend.SavedValue);
+            var connect = Named<Button>(view, "Sign in to Xbox");
+            connect.Focus();
+            if (page is not null) page.Handle(GamepadButtons.Accept);
+            else window.KeyPress(Avalonia.Input.Key.Enter, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Enter, null);
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(plugin.HasSignInChallenge);
+            var code = view.GetVisualDescendants().OfType<TextBlock>().Single(block => AutomationProperties.GetAutomationId(block) == "PluginSignInCode");
+            var address = view.GetVisualDescendants().OfType<TextBlock>().Single(block => AutomationProperties.GetAutomationId(block) == "PluginSignInAddress");
+            Assert.Equal("ABCD-1234", code.Text);
+            Assert.Equal("https://login.example.com/device", address.Text);
+            Assert.Equal(code.Text, Avalonia.Automation.Peers.ControlAutomationPeer.CreatePeerForElement(code)!.GetName());
+            Assert.Equal(address.Text, Avalonia.Automation.Peers.ControlAutomationPeer.CreatePeerForElement(address)!.GetName());
+            Assert.True(Named<Button>(view, "Open Xbox sign-in page").IsEffectivelyEnabled);
+            Assert.True(Named<Button>(view, "Cancel Xbox sign-in").IsEffectivelyEnabled);
+            Capture(window, fullscreen ? "fullscreen-plugin-account" : "desktop-plugin-account");
+            var pending = plugin.ConnectCommand.ExecutionTask!;
+            var cancel = Named<Button>(view, "Cancel Xbox sign-in");
+            cancel.Focus();
+            if (page is not null) page.Handle(GamepadButtons.Accept);
+            else window.KeyPress(Avalonia.Input.Key.Enter, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Enter, null);
+            await pending;
+            Assert.Equal(1, backend.Cancels);
+            Assert.Empty(plugin.UserCode);
+            pending = plugin.ConnectCommand.ExecuteAsync(null);
+            window.Content = null;
+            await pending;
+            Assert.Equal(2, backend.Cancels);
+            Assert.Empty(plugin.UserCode);
+            Assert.Empty(plugin.VerificationUrl);
+            Assert.False(plugin.IsBusy);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Account_connection_and_sign_out_update_both_surfaces(bool fullscreen)
+    {
+        var backend = new AccountBackend { PollInterval = 1 };
+        var shell = await ShellAsync(backend);
+        var plugin = shell.PluginSettings.Plugins[0];
+        using var context = new FullscreenContext(shell.Library, shell.Feed, shell);
+        using var page = fullscreen ? new FullscreenPluginSettingsPage(context, plugin) : null;
+        Control view = page is null ? new PluginSettingsView { DataContext = shell.PluginSettings } : page;
+        using var presentation = fullscreen ? new FullscreenView(context) : null;
+        if (page is not null) context.Push(page);
+        var window = new Window { Width = fullscreen ? 1920 : 1200, Height = 1080, Content = presentation is null ? view : presentation };
+        window.Show();
+        try
+        {
+            await plugin.ConnectCommand.ExecuteAsync(null);
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(plugin.AccountConnected);
+            Assert.False(Named<Button>(view, "Sign in to Xbox").IsEffectivelyVisible);
+            var disconnect = Named<Button>(view, "Sign out of Xbox");
+            Assert.True(disconnect.IsEffectivelyEnabled);
+            disconnect.Focus();
+            if (page is not null) page.Handle(GamepadButtons.Accept);
+            else window.KeyPress(Avalonia.Input.Key.Enter, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Enter, null);
+            await plugin.DisconnectCommand.ExecutionTask!;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(1, backend.SignOuts);
+            Assert.False(plugin.AccountConnected);
+            Assert.True(Named<Button>(view, "Sign in to Xbox").IsEffectivelyEnabled);
+            Assert.False(Named<Button>(view, "Sign out of Xbox").IsEffectivelyVisible);
+        }
+        finally { window.Close(); }
+    }
+
     [AvaloniaFact]
     public async Task Desktop_cards_fill_the_pane_and_activation_switch_handles_keyboard_and_save_failure()
     {
@@ -417,6 +613,9 @@ public sealed class PluginSettingsInteractionTests
     {
         if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is not { } directory) return;
         Directory.CreateDirectory(directory);
+        Dispatcher.UIThread.RunJobs();
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        Dispatcher.UIThread.RunJobs();
         using var frame = window.CaptureRenderedFrame();
         frame!.Save(Path.Combine(directory, name + ".png"));
     }
@@ -477,6 +676,42 @@ public sealed class PluginSettingsInteractionTests
         public Task SetEnabledAsync(string pluginId, bool enabled, CancellationToken ct = default)
         { if (FailActivation) throw new IOException(); _enabled = enabled; return Task.CompletedTask; }
         public Task RefreshAsync(string pluginId, CancellationToken ct = default) => Task.CompletedTask;
+    }
+
+    private sealed class AccountBackend : IPluginSettingsBackend
+    {
+        public string UserPluginDirectory => "plugins";
+        public int Begins { get; private set; }
+        public int Cancels { get; private set; }
+        public int SignOuts { get; private set; }
+        public int PollInterval { get; init; } = 60;
+        public string SavedValue { get; private set; } = "false";
+        public string SavedClientId { get; private set; } = "existing-override";
+        public IReadOnlyDictionary<string, string>? Saved { get; private set; }
+        public Task<IReadOnlyList<PluginSettingsSnapshot>> LoadAsync(CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<PluginSettingsSnapshot>>([new("xbox", "Xbox", "Import PC games and optional played console history.",
+                "1.0", "Account connection", true, true, false, "", [
+                    new("console", "Include console history", "Import played console games after sign-in.", false, false, SavedValue, false, IsBoolean: true),
+                    new("client-id", "Application ID override", "Leave blank to use the bundled application.", false, false, SavedClientId, false, IsAdvanced: true),
+                    new("advanced-secret", "Advanced secret", null, true, false, null, true, IsAdvanced: true)],
+                HasAccount: true, AccountHosts: ["login.example.com"])]);
+        public Task SaveAsync(string pluginId, IReadOnlyDictionary<string, string> values, CancellationToken ct = default)
+        { Saved = values; SavedValue = values["console"]; SavedClientId = values["client-id"]; return Task.CompletedTask; }
+        public Task RemoveSecretAsync(string pluginId, string key, CancellationToken ct = default) => Task.CompletedTask;
+        public Task SetEnabledAsync(string pluginId, bool enabled, CancellationToken ct = default) => Task.CompletedTask;
+        public Task RefreshAsync(string pluginId, CancellationToken ct = default) => Task.CompletedTask;
+        public Task<PluginSignInChallenge?> BeginSignInAsync(string pluginId, CancellationToken ct = default)
+        {
+            Begins++;
+            return Task.FromResult<PluginSignInChallenge?>(new("attempt", "https://login.example.com/device", "ABCD-1234",
+                DateTimeOffset.UtcNow.AddMinutes(10), PollInterval));
+        }
+        public Task<PluginSignInResult> PollSignInAsync(string pluginId, string attemptId, CancellationToken ct = default)
+            => Task.FromResult(new PluginSignInResult(PluginSignInState.Connected, ""));
+        public Task CancelSignInAsync(string pluginId, string attemptId, CancellationToken ct = default)
+        { Cancels++; return Task.CompletedTask; }
+        public Task SignOutAsync(string pluginId, CancellationToken ct = default)
+        { SignOuts++; return Task.CompletedTask; }
     }
 
     private sealed class Store : ISettingsStore

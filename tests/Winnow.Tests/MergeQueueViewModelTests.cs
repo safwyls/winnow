@@ -31,6 +31,199 @@ namespace Winnow.Tests;
 /// </summary>
 public sealed class MergeQueueViewModelTests
 {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Completed_pass_reloads_changed_proposals_even_when_pending_count_is_unchanged(bool visible)
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.ResolveState.SetLastSoftMatchSweepAsync(DateTimeOffset.UtcNow);
+        var oldPair = await fixture.QueuePairAsync(Prey, Prey);
+        var refresh = new SuggestionRefreshStub();
+        using var queue = fixture.CreateViewModel(suggestionRefresh: refresh);
+        queue.IsPaneVisible = visible;
+        await queue.EnsureLoadedAsync();
+        Assert.Equal("Prey", Assert.Single(queue.Sections.SelectMany(section => section.Cards)).HeaderTitle);
+
+        await fixture.Candidates.WithdrawPendingAsync(oldPair);
+        await fixture.QueuePairAsync(Witcher, Witcher);
+        await refresh.RefreshAsync();
+        await queue.NoteQueueMayHaveMovedAsync();
+        if (!visible)
+        {
+            Assert.Equal("Prey", Assert.Single(queue.Sections.SelectMany(section => section.Cards)).HeaderTitle);
+            await queue.EnsureLoadedAsync();
+        }
+        Assert.Equal(1, queue.PendingCount);
+        Assert.Equal(Witcher.Title, Assert.Single(queue.Sections.SelectMany(section => section.Cards)).HeaderTitle);
+    }
+
+    [Fact]
+    public async Task Earlier_queue_read_cannot_replace_a_newer_refresh_result()
+    {
+        using var fixture = new MergeQueueFixture();
+        var oldPair = await fixture.QueuePairAsync(Prey, Prey);
+        var readStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var finishOldRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var candidates = fixture.CountingCandidates();
+        candidates.AfterPendingRead = async _ =>
+        {
+            if (candidates.PendingReads != 1) return;
+            readStarted.SetResult();
+            await finishOldRead.Task;
+        };
+        var refresh = new SuggestionRefreshStub();
+        using var queue = fixture.CreateViewModel(candidates: candidates, suggestionRefresh: refresh);
+        var oldLoad = queue.EnsureLoadedAsync();
+        await readStarted.Task;
+        try
+        {
+            await fixture.Candidates.WithdrawPendingAsync(oldPair);
+            await fixture.QueuePairAsync(Witcher, Witcher);
+            await refresh.RefreshAsync();
+            await queue.EnsureLoadedAsync();
+            Assert.Equal(Witcher.Title, Assert.Single(queue.Sections.SelectMany(section => section.Cards)).HeaderTitle);
+        }
+        finally { finishOldRead.TrySetResult(); }
+        await oldLoad;
+        Assert.Equal(Witcher.Title, Assert.Single(queue.Sections.SelectMany(section => section.Cards)).HeaderTitle);
+    }
+
+    [Fact]
+    public async Task Refresh_in_one_surface_reloads_an_already_loaded_other_surface_on_entry()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.ResolveState.SetLastSoftMatchSweepAsync(DateTimeOffset.UtcNow);
+        var refresh = new SuggestionRefreshStub();
+        using var desktop = fixture.CreateViewModel(suggestionRefresh: refresh);
+        using var fullscreen = fixture.CreateViewModel(suggestionRefresh: refresh);
+        await desktop.EnsureLoadedAsync();
+        await fullscreen.EnsureLoadedAsync();
+        await fixture.QueuePairAsync(Prey, Prey);
+        await fullscreen.RefreshSuggestionsCommand.ExecuteAsync(null);
+        Assert.Equal(0, desktop.PendingCount);
+        await desktop.EnsureLoadedAsync();
+        Assert.Equal(1, desktop.PendingCount);
+    }
+
+    [Fact]
+    public async Task Manual_refresh_forces_reload_and_preserves_the_previous_answers()
+    {
+        using var fixture = new MergeQueueFixture();
+        var rejected = await fixture.QueuePairAsync(Prey, Prey);
+        var confirmed = await fixture.QueuePairAsync(Witcher, Witcher);
+        var refresh = new SuggestionRefreshStub();
+        using var queue = fixture.CreateViewModel(suggestionRefresh: refresh);
+        await queue.EnsureLoadedAsync();
+        await queue.DifferentGamesCommand.ExecuteAsync(queue.Sections.SelectMany(section => section.Cards).Single(card => card.HeaderTitle == Prey.Title));
+        await queue.SameGameCommand.ExecuteAsync(queue.Sections.SelectMany(section => section.Cards).Single(card => card.HeaderTitle == Witcher.Title));
+        var links = await fixture.LiveLinksAsync();
+        var oldCard = Assert.Single(queue.Sections.SelectMany(section => section.Cards));
+
+        await queue.RefreshSuggestionsCommand.ExecuteAsync(null);
+
+        Assert.NotSame(oldCard, Assert.Single(queue.Sections.SelectMany(section => section.Cards)));
+        Assert.Equal(MergeCandidateStatuses.Rejected, await fixture.StatusOfAsync(rejected));
+        Assert.Equal(MergeCandidateStatuses.Pending, await fixture.StatusOfAsync(confirmed));
+        Assert.Equal(links, await fixture.LiveLinksAsync());
+        Assert.Equal(MergeCopy.RefreshSuggestionsCompleted, queue.SuggestionRefreshStatus);
+    }
+
+    [Fact]
+    public async Task Dismiss_refresh_then_undo_restores_a_current_registered_proposal()
+    {
+        using var fixture = new MergeQueueFixture();
+        var candidate = await fixture.QueuePairAsync(Prey, Prey);
+        var refresh = new MergeSuggestionRefresh(new LibrarySoftMatchSweep(fixture.Releases,
+            new SoftMatchResolver(new SoftMatcher(), fixture.Candidates, fixture.Factory), fixture.ResolveState, links: fixture.Links));
+        using var queue = fixture.CreateViewModel(suggestionRefresh: refresh);
+        await queue.EnsureLoadedAsync();
+        var oldCard = Assert.Single(queue.Sections.SelectMany(section => section.Cards));
+        await queue.DifferentGamesCommand.ExecuteAsync(oldCard);
+        await queue.RefreshSuggestionsCommand.ExecuteAsync(null);
+        Assert.Equal(MergeCandidateStatuses.Rejected, await fixture.StatusOfAsync(candidate));
+        Assert.Empty(queue.Sections.SelectMany(section => section.Cards));
+
+        await queue.UndoCommand.ExecuteAsync(null);
+
+        Assert.Equal(MergeCandidateStatuses.Pending, await fixture.StatusOfAsync(candidate));
+        var current = Assert.Single(queue.Sections.SelectMany(section => section.Cards));
+        Assert.NotSame(oldCard, current);
+        Assert.True(current.CanAnswer);
+        Assert.All(current.Rows, row => Assert.Same(current, queue.CardOf(row)));
+        Assert.Equal(1, queue.PendingCount);
+        Assert.Empty(await fixture.LiveLinksAsync());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Merge_refresh_then_undo_removes_the_current_resolved_strip(bool sweepRetiresCandidate)
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(Prey, Prey);
+        IMergeSuggestionRefresh refresh = sweepRetiresCandidate
+            ? new MergeSuggestionRefresh(new LibrarySoftMatchSweep(fixture.Releases,
+                new SoftMatchResolver(new SoftMatcher(), fixture.Candidates, fixture.Factory), fixture.ResolveState, links: fixture.Links))
+            : new SuggestionRefreshStub();
+        using var queue = fixture.CreateViewModel(suggestionRefresh: refresh);
+        await queue.EnsureLoadedAsync();
+        var oldCard = Assert.Single(queue.Sections.SelectMany(section => section.Cards));
+        await queue.SameGameCommand.ExecuteAsync(oldCard);
+        await queue.RefreshSuggestionsCommand.ExecuteAsync(null);
+        var refreshed = Assert.Single(queue.Sections.SelectMany(section => section.Cards));
+        Assert.NotSame(oldCard, refreshed);
+        Assert.True(refreshed.IsResolved);
+
+        await queue.UndoCommand.ExecuteAsync(null);
+
+        Assert.Empty(await fixture.LiveLinksAsync());
+        Assert.DoesNotContain(queue.Sections.SelectMany(section => section.Cards), card => card.IsResolved);
+        Assert.Equal(sweepRetiresCandidate ? 0 : 1, queue.PendingCount);
+        if (!sweepRetiresCandidate)
+        {
+            var current = Assert.Single(queue.Sections.SelectMany(section => section.Cards));
+            Assert.NotSame(oldCard, current);
+            Assert.NotSame(refreshed, current);
+            Assert.True(current.CanAnswer);
+        }
+    }
+
+    [Fact]
+    public async Task Cancellation_recovers_the_command_and_truncated_pass_reports_more_work()
+    {
+        using var fixture = new MergeQueueFixture();
+        var refresh = new SuggestionRefreshStub
+        {
+            Run = async ct => { await Task.Delay(Timeout.InfiniteTimeSpan, ct); return SoftMatchSweepReport.Empty; },
+        };
+        using var queue = fixture.CreateViewModel(suggestionRefresh: refresh);
+        var pending = queue.RefreshSuggestionsCommand.ExecuteAsync(null);
+        Assert.True(queue.IsRefreshingSuggestions);
+        Assert.False(queue.RefreshSuggestionsCommand.CanExecute(null));
+        queue.RefreshSuggestionsCommand.Cancel();
+        await pending;
+        Assert.False(queue.IsRefreshingSuggestions);
+        Assert.Equal(MergeCopy.RefreshSuggestionsCancelled, queue.SuggestionRefreshStatus);
+        Assert.True(queue.RefreshSuggestionsCommand.CanExecute(null));
+        refresh.Run = _ => Task.FromResult(SoftMatchSweepReport.Empty with { Truncated = true });
+        await queue.RefreshSuggestionsCommand.ExecuteAsync(null);
+        Assert.Equal(MergeCopy.RefreshSuggestionsPartial, queue.SuggestionRefreshStatus);
+        Assert.False(queue.HasCompletedSweep);
+    }
+
+    private sealed class SuggestionRefreshStub : IMergeSuggestionRefresh
+    {
+        public long Revision { get; private set; }
+        public Func<CancellationToken, Task<SoftMatchSweepReport>> Run { get; set; } = _ => Task.FromResult(SoftMatchSweepReport.Empty);
+        public async Task<SoftMatchSweepReport> RefreshAsync(CancellationToken ct = default)
+        {
+            var report = await Run(ct);
+            Revision++;
+            return report;
+        }
+    }
+
     private static readonly SeedSide Prey = new("Prey", 2017, "Bethesda Softworks");
     private static readonly SeedSide PreyUnknown = new("Prey", null, null);
     private static readonly SeedSide Witcher = new("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED");
@@ -2228,16 +2421,19 @@ public sealed class MergeQueueViewModelTests
         : IMergeCandidateRepository
     {
         public int PendingReads { get; private set; }
+        public Func<IReadOnlyList<MergeCandidate>, Task>? AfterPendingRead { get; set; }
 
         public int StatusWrites { get; private set; }
 
         public Task<long> InsertAsync(MergeCandidate candidate, CancellationToken ct = default)
             => inner.InsertAsync(candidate, ct);
 
-        public Task<IReadOnlyList<MergeCandidate>> GetPendingAsync(CancellationToken ct = default)
+        public async Task<IReadOnlyList<MergeCandidate>> GetPendingAsync(CancellationToken ct = default)
         {
             PendingReads++;
-            return inner.GetPendingAsync(ct);
+            var pending = await inner.GetPendingAsync(ct);
+            if (AfterPendingRead is not null) await AfterPendingRead(pending);
+            return pending;
         }
 
         /// <summary>Counted apart from <see cref="PendingReads"/>, because it returns no rows.</summary>
@@ -2366,7 +2562,8 @@ public sealed class MergeQueueViewModelTests
             IMergeCandidateRepository? candidates = null,
             IReadOnlyList<long>? pinnedWorkIds = null,
             ICoverLeases? covers = null,
-            DormancyRamp? ramp = null)
+            DormancyRamp? ramp = null,
+            IMergeSuggestionRefresh? suggestionRefresh = null)
             => new(
                 candidates ?? Candidates,
                 Releases,
@@ -2382,7 +2579,8 @@ public sealed class MergeQueueViewModelTests
                 clock: Clock,
                 post: action => action(),
                 settings: new SettingsRepository(_db.Factory),
-                ramp: ramp);
+                ramp: ramp,
+                suggestionRefresh: suggestionRefresh);
 
         /// <summary>
         /// Sets one work's stored art reference through the real enrichment

@@ -650,6 +650,11 @@
                                                 </StackPanel>
                                             </Border>
                                             <TextBlock Classes="body"
+                                                       AutomationProperties.AutomationId="LibrarySourceSummary"
+                                                       TextWrapping="Wrap"
+                                                       IsVisible="{Binding HasLibrarySourceSummary}"
+                                                       Text="{Binding LibrarySourceSummary}"/>
+                                            <TextBlock Classes="body"
                                                        TextWrapping="Wrap"
                                                        IsVisible="{Binding HasLifecycle}"
                                                        Text="{Binding LifecycleText}"/>

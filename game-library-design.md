@@ -13,7 +13,8 @@ and milestone state are in `ROADMAP.md`; visual values are in `design-system.md`
 ## 0. How to read this document
 
 This is a build specification, not a proposal. Sections 1 to 3 are context. Section 4 encodes
-API and filesystem behaviour that has been verified against live systems, and several of its
+API and filesystem contracts, distinguishing live measurements from documented and fixture-tested
+behavior where necessary. Several of its
 constraints contradict what you will find in older blog posts and Stack Overflow answers.
 Read section 4 before writing any ingest code.
 
@@ -43,7 +44,6 @@ exposed by storefront APIs or not retained by anyone.
 
 ### Out of scope
 
-- PlayStation and Xbox integration (§4.6)
 - Any hosted service, user accounts, or multi-user features. Winnow has no accounts; it links
   the user's. Signing in to Epic or Steam authenticates the user to *their* service and stores
   the token locally. That is third-party linking, not account creation.
@@ -219,6 +219,26 @@ stored locally.
 
 ### 4.4 IGDB
 
+Winnow keeps user-provided IGDB credentials and calls IGDB directly. A Winnow-operated
+metadata service is deferred: simplifying credential setup does not currently justify
+adding hosting to the project. This applies to desktop and fullscreen setup alike.
+
+Xbox's shared public client ID does not provide the same option for IGDB. Xbox users
+authorize their own account access without a shared application secret. IGDB's documented
+[authentication flow](https://api-docs.igdb.com/#authentication) requires a Twitch client ID
+and client secret to obtain an application token. A shared secret shipped in the desktop
+binary would be extractable.
+
+For future reference, Playnite's [IGDB plugin configuration](https://github.com/JosefNemec/PlayniteExtensions/blob/master/source/Metadata/IGDBMetadata/IgdbMetadataPlugin.cs)
+supplies a backend endpoint, and its [request client](https://github.com/JosefNemec/PlayniteExtensions/blob/master/source/Metadata/IGDBMetadata/IgdbClient.cs)
+calls that service's search and metadata routes without performing the Twitch token exchange
+in the desktop client. Winnow could similarly offer an optional metadata gateway that keeps
+the secret on the server, renews tokens, caches results and coordinates rate limits, while
+retaining direct access with personal credentials. Users would not need their own developer
+registration or Twitch sign-in for that route. Reconsidering it would require accepting
+hosting and maintenance costs, service availability and abuse controls, and metadata queries
+passing through Winnow infrastructure. This is a reference option, not planned implementation.
+
 - Desktop and fullscreen Metadata & artwork settings accept the user's Twitch client ID and secret.
   An App service writes through the existing IGDB settings store and secret
   protector, atomically replaces the pair and clears persisted token caches. It refuses
@@ -377,13 +397,68 @@ the news item's `url` on the event row; the badge is clickable.
 
 **Never-opened games are ineligible for the badge, so do not poll them.**
 
-### 4.6 Excluded platforms
+### 4.6 Xbox and PlayStation plugins
 
-PSN and Xbox are **out of scope and must not be added**. Neither has a consumer API, PSN
-requires the user to extract an `npsso` cookie by hand every two months, and PSNAWP's own
-documentation warns that use may result in PSN account bans. Signing in to Epic is not a
-precedent for these: Winnow supports service linking only within each supported provider's
-authentication contract.
+Xbox is an optional SDK-only package under `plugins/Winnow.Plugin.Xbox`. Local discovery reads
+the current Windows user's registered Store packages and copies manifests/configuration to
+temporary storage before parsing. `MicrosoftGame.config` or `xboxservices.config` establishes
+game identity; an exact package-family match to Xbox title history can classify older packages.
+Package family names identify PC entries across updates. Xbox TitleIds and Store ProductIds
+are distinct identifiers; names never establish an identity join.
+
+The optional account connection uses Microsoft's consumer device-code flow with Winnow's bundled
+public-client application ID and Xbox sign-in/offline scopes, followed by Xbox user-token and
+XSTS exchanges. Only the host's protected secret store holds refresh credentials. Device codes
+and access tokens stay in memory. History caches are scoped to the effective application and
+Xbox account. An optional developer override sits under advanced settings on both surfaces;
+clearing it restores Winnow's identity. An invalid explicit override never silently selects
+another application. The user separately opts into played-history import and console inclusion.
+
+TitleHub supplies played titles and last-played dates, UserStats supplies available
+MinutesPlayed, and the keyless Microsoft display catalog supplies descriptions and artwork.
+Statistics correlate the account and service-configuration ID from TitleHub; an absent or
+ambiguous ID leaves playtime unknown. Windows resolves localized package display names;
+unresolved resource identifiers remain provisional until a later import supplies a real title.
+Missing minutes remain unknown; history does not synthesize sessions or acquisition dates.
+Neither played history nor installation proves ownership or an active subscription. The
+consumer history service cannot find never-played uninstalled purchases; Microsoft's
+[collections API](https://learn.microsoft.com/en-us/windows/uwp/monetize/query-for-products)
+is scoped to a publisher's products, not an arbitrary consumer's entire library. Imported
+source labels explain this on desktop and fullscreen.
+
+Only a complete local scan can establish an uninstall. Unavailable scans and remote failures
+preserve prior observations. Play revalidates the current package registration and activates its
+AUMID through Windows. Store navigation opens a verified ProductId's Store page and does not
+promise an entitlement or start an unattended installation. Console history has no local Play.
+Readable installation roots use the existing process watcher; protected WindowsApps directories
+and inaccessible process paths limit tracking. Live sign-in and PC/console history import have
+been validated with Winnow's registration; reported minutes and protected-app launch/session
+tracking still need further device validation. Request,
+cache and registration details are in the [plugin guide](plugins/Winnow.Plugin.Xbox/README.md).
+
+PlayStation is an optional SDK-only package under `plugins/Winnow.Plugin.Psn`. It follows the
+community-documented psn-api and PlayStation-Trophies protocols using the host's bounded HTTP
+service, with no Node runtime. A user supplies NPSSO in the protected plugin settings; the
+provider exchanges it for access and refresh credentials and resolves the numeric account
+through Sony's authenticated profile endpoint. Refresh credentials stay in the secret store,
+access credentials stay in memory, and response caches are scoped by account and credential.
+Changed or removed credentials suppress in-flight publication. Desktop and fullscreen use
+the same secret editor, Save and Remove actions; the device-code account contract is not used.
+
+The active PS4/PS5 purchase-library endpoint supplies inventory. Optional played history adds
+PS4/PS5 titles, cumulative minutes and last played. Optional trophy history supplies PS3/Vita
+sets without inventing playtime or treating trophy synchronization as last played. Sets shared
+with newer platforms are excluded. Exact title IDs join purchase and played observations;
+trophy sets use a separate namespace. Source labels distinguish purchase-library observations
+from history and explain subscription uncertainty. No source creates acquisition dates,
+local installations, launch actions, sessions or achievement records.
+
+Complete endpoint results cache independently for six hours with stale fallback, monotonic
+pagination, at most 10,000 rows and a 2 MiB payload. The provider has a 100-second operation
+budget and preserves imported observations after failures. Available genres and platform tags
+flow through metadata; Sony icon dimensions are measured before offering cover candidates.
+Requests, hosts, limits and setup are in the [PlayStation guide](plugins/Winnow.Plugin.Psn/README.md).
+Fixture and desktop/fullscreen tests cover implementation; live Sony-account validation remains open.
 
 ### 4.7 Steam account pages, sign-in, and what may be stored
 
@@ -832,6 +907,8 @@ first-paint path.**
 #### Provider plugins
 
 `Winnow.PluginSdk` API 1 exposes library sources, metadata, artwork and recommendation feeds.
+SDK 1.1 adds optional account connection and game-action capabilities without changing the
+assembly major. Existing providers retain their original contracts.
 `Winnow.Plugins` discovers manifest-bearing directories under the installation's bundled
 `plugins` folder and the data directory's user `plugins` folder. Third-party packages start
 disabled; activation changes require restart. Settings declarations generate separate desktop
@@ -845,6 +922,17 @@ validation. Existing plugin IDs and destination paths cannot be replaced. Succes
 move to `.archives`; failed inputs remain with a settings diagnostic. Discovery ignores
 `.archives` and `.unpack-*` staging directories, including leftovers from interrupted launches.
 
+The official website installer accepts only `winnow://plugins/install?id=<known-id>&release=<tag>`.
+Startup validates this bounded input before resolving configuration or data paths; same-user
+single-instance IPC forwards it to a running app. It verifies a published `safwyls/winnow`
+release's catalogue and ZIP against GitHub asset digests, size limits and package identity,
+with redirects limited to GitHub asset hosts. Catalogue API/SDK requirements are checked before
+publication. Installation waits for discovery and takes the catalogue lifecycle lock. It can
+enable and load a new first-party package immediately, but cannot replace existing plugin
+files or change an existing plugin's activation preference. Incomplete downloads use a
+non-ZIP temporary extension. Desktop and fullscreen share progress and results and open the
+selected provider's settings. Windows installers and Linux packages register the URI scheme.
+
 Plugin code runs in-process with the application's permissions. Assembly load contexts isolate
 dependencies, not filesystem/network access. Initializers and provider calls run on worker
 threads with 30-second and 120-second deadlines. Exceptions use fixed diagnostics; timeouts
@@ -853,9 +941,19 @@ responses and per-provider Polly rate/retry policies. Scoped settings keys use l
 plugin/key segments; secrets use DPAPI with equally scoped entropy. No plugin receives a host
 service provider, database connection or UI object through the SDK.
 
+Caller cancellation gives a running provider 250 ms to finish asynchronous cleanup while its
+invocation gate remains held. A provider still running after that bounded grace is disabled for
+the session; cooperative cancellation keeps it available for another sign-in or refresh.
+
 Application adapters own persistence. Library imports enter the existing resolver under
 `plugin:<id>` ownership sources; existing Steam/Epic/GOG external IDs join only when known
-matches agree. Migration 0032 widens the external-ID provider constraint to accept this namespace
+matches agree. `PluginRefreshCoordinator` starts imports after discovery, independently of the
+built-in startup enrichment pipeline. `LibrarySyncGate` still serializes resolver writes.
+Imports publish through `LibraryChangePublisher` before separate metadata/artwork and merge
+suggestion queues run, so desktop/fullscreen filters and Gameplay store choices see new
+ownerships promptly. Matching publishes again on completion and does not wait for artwork.
+Completing built-in startup requests another enrichment and matching pass for its newly added
+works. Migration 0032 widens the external-ID provider constraint to accept this namespace
 while preserving existing hard joins. Missing inventory never deletes ownerships. Metadata observations retain their
 source in `metadata_cache`; summary/year fill automatic missing fields through the existing
 provenance-aware repository. Migration 0031's `plugin_work_facets` holds genre/tag assignments
@@ -865,6 +963,18 @@ and share through current confirmed groups on presentation reads. User artwork s
 Every release's external IDs are queried for artwork; an unavailable member preserves the
 previous combined observation. Plugin feeds receive eligible owned groups and explanatory
 scores produce existing shelves on both surfaces, preserving dismissal and snooze behavior.
+
+Account providers expose short begin/poll/cancel/disconnect operations. The host presents the
+verification address and user code, owns the cancellable wait, and only opens declared HTTPS
+hosts. Managed secret fields are excluded from editors; declared secret writes still go through
+the host protector. Leaving either settings surface cancels the pending attempt.
+
+Library observations may advertise Play and OpenStore plus an inclusion-source label. The host
+stores these in the separate `plugin-library-actions` metadata-cache namespace. Library reads
+batch-load them; dispatch rechecks the ownership, source ID, current observation and active
+provider before invoking code. Play shares existing launch intents and session attribution.
+Unloading a plugin removes its actions while preserving labels and imported facts. Metadata
+providers inspect owned releases until one returns metadata; artwork inspects every release.
 
 `docs/plugins.md` describes authoring, local package layout, compatibility and operational
 limits. SteamGridDB is shipped as a separate SDK-only package, copied during build and publish.
@@ -1223,6 +1333,14 @@ collision — `works.igdb_id` is UNIQUE — is confirmed in place on the modal w
 named and shown, and the link is written without entering the `merge_candidates` queue. The
 queue is where soft matches are cleared; a hard external-id join is not a soft match.
 
+`IMergeSuggestionRefresh` serializes soft matching requested by the normal library pipeline,
+plugin imports and **Refresh suggestions** in desktop Merges or fullscreen identity tools.
+It dispatches the matcher off the UI thread and advances a revision after each successful pass, so views reload
+changed proposals even when the pending count stays the same. Manual refresh compares stored
+library facts; it does not fetch inventories or accept proposals. A pass that reaches the
+comparison limit keeps its resume point and offers another refresh. Confirmed links and
+rejected pairs remain in force.
+
 **Gamesdb references require edition evidence before automatic linking.** The App's
 `GamesDbIdentitySyncService` scans Epic external IDs, including fully enriched works, through
 the shared ownership-refresh pipeline used at startup, on scheduled passes and after account
@@ -1492,7 +1610,7 @@ work_ratings(work_id FK works ON DELETE CASCADE, source, score, rating_count, la
 
 -- Resolution
 merge_candidates(id, left_release_id, right_release_id, score, signals_json, status)
-  -- status ∈ {pending, confirmed, rejected}
+  -- status ∈ {pending, rejected}; confirmed answers live in identity links
 
 -- Caching / config
 metadata_cache(provider, provider_id, payload_json, fetched_at, PRIMARY KEY(provider, provider_id))

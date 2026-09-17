@@ -5,6 +5,26 @@
              x:Class="Winnow.App.Views.PluginSettingsView"
              x:DataType="vm:PluginSettingsViewModel"
              AutomationProperties.Name="Plugin settings">
+    <UserControl.Resources>
+        <DataTemplate x:Key="PluginSettingEditor" DataType="vm:PluginSettingFieldViewModel">
+            <StackPanel Spacing="8" Margin="0,0,0,12">
+                <TextBlock Classes="body" Text="{Binding Label}"/>
+                <TextBlock Classes="body prose" Text="{Binding Description}" IsVisible="{Binding HasDescription}"/>
+                <TextBox Text="{Binding Value, Mode=TwoWay}" PasswordChar="{Binding PasswordChar}"
+                         IsVisible="{Binding IsText}" IsEnabled="{Binding IsEnabled}" Watermark="{Binding Watermark}"
+                         AutomationProperties.Name="{Binding AccessibleName}"/>
+                <ToggleSwitch IsChecked="{Binding BooleanValue, Mode=TwoWay}" IsVisible="{Binding IsBoolean}"
+                              IsEnabled="{Binding IsEnabled}" OnContent="On" OffContent="Off"
+                              AutomationProperties.Name="{Binding AccessibleName}"/>
+                <WrapPanel>
+                    <Button Classes="act" Margin="0,0,8,0" Content="{Binding SetupLabel}" IsVisible="{Binding HasSetup}"
+                            Command="{Binding OpenSetupCommand}" AutomationProperties.Name="{Binding SetupAccessibleName}"/>
+                    <Button Classes="act" Content="Remove saved secret" IsVisible="{Binding IsSecret}"
+                            Command="{Binding RemoveSecretCommand}" AutomationProperties.Name="{Binding RemoveAccessibleName}"/>
+                </WrapPanel>
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
     <UserControl.Styles>
         <Style Selector="Border.card">
             <Setter Property="Background" Value="{StaticResource Surface}"/>
@@ -28,6 +48,18 @@
                     <ColumnDefinition Width="*" MaxWidth="1100"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel HorizontalAlignment="Stretch" Spacing="14">
+                    <Border Classes="card" IsVisible="{Binding Installation.HasRequest}">
+                        <StackPanel Spacing="12">
+                            <TextBlock Classes="label section" Text="PLUGIN INSTALLATION"/>
+                            <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Installation.Status}"
+                                       AutomationProperties.AutomationId="PluginInstallStatus" AutomationProperties.LiveSetting="Polite"/>
+                            <ProgressBar IsIndeterminate="True" IsVisible="{Binding Installation.IsBusy}" Height="3"
+                                         Foreground="{StaticResource Volt}" AutomationProperties.Name="Installing plugin"/>
+                            <Button Classes="act" Content="Retry installation" HorizontalAlignment="Left"
+                                    IsVisible="{Binding Installation.CanRetry}" Command="{Binding Installation.RetryCommand}"
+                                    AutomationProperties.Name="Retry plugin installation"/>
+                        </StackPanel>
+                    </Border>
                     <TextBlock Classes="label section" AutomationProperties.HeadingLevel="2" Text="LOADED PLUGINS"/>
                     <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding LoadedPluginSummary}"
                                AutomationProperties.AutomationId="LoadedPluginsSummary" AutomationProperties.LiveSetting="Polite"/>
@@ -65,26 +97,37 @@
                                         </WrapPanel>
                                         <TextBlock Classes="body" Foreground="{StaticResource AmberForeground}" IsVisible="{Binding RestartRequired}"
                                                    Text="Restart Winnow to apply the enable or disable change."/>
-                                        <ItemsControl ItemsSource="{Binding Fields}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate DataType="vm:PluginSettingFieldViewModel">
-                                                    <StackPanel Spacing="8" Margin="0,0,0,12">
-                                                        <TextBlock Classes="body" Text="{Binding Label}"/>
-                                                        <TextBlock Classes="body prose" Text="{Binding Description}" IsVisible="{Binding HasDescription}"/>
-                                                        <TextBox Text="{Binding Value, Mode=TwoWay}" PasswordChar="{Binding PasswordChar}"
-                                                                 IsEnabled="{Binding IsEnabled}" Watermark="{Binding Watermark}"
-                                                                 AutomationProperties.Name="{Binding AccessibleName}"/>
-                                                        <WrapPanel>
-                                                            <Button Classes="act" Margin="0,0,8,0" Content="{Binding SetupLabel}" IsVisible="{Binding HasSetup}"
-                                                                    Command="{Binding OpenSetupCommand}" AutomationProperties.Name="{Binding SetupAccessibleName}"/>
-                                                            <Button Classes="act" Content="Remove saved secret" IsVisible="{Binding IsSecret}"
-                                                                    Command="{Binding RemoveSecretCommand}" AutomationProperties.Name="{Binding RemoveAccessibleName}"/>
-                                                        </WrapPanel>
-                                                    </StackPanel>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        <TextBlock Classes="body prose" IsVisible="{Binding HasSecrets}" Text="{x:Static vm:PluginSettingsViewModel.SecretNote}"/>
+                                        <StackPanel Spacing="8" IsVisible="{Binding HasAccount}">
+                                            <TextBlock Classes="label section" Text="ACCOUNT" AutomationProperties.HeadingLevel="3"/>
+                                            <TextBlock Classes="body prose" Text="{Binding AccountStatus}" AutomationProperties.LiveSetting="Polite"/>
+                                            <StackPanel Spacing="8" IsVisible="{Binding HasSignInChallenge}">
+                                                <TextBlock Classes="body" Text="Sign-in code"/>
+                                                <SelectableTextBlock Classes="data" Text="{Binding UserCode}" TextWrapping="Wrap"
+                                                                     AutomationProperties.AutomationId="PluginSignInCode"/>
+                                                <SelectableTextBlock Classes="body" Text="{Binding VerificationUrl}" TextWrapping="Wrap"
+                                                                     AutomationProperties.AutomationId="PluginSignInAddress"/>
+                                                <Button Classes="act" Content="Open sign-in page" HorizontalAlignment="Left"
+                                                        Command="{Binding OpenSignInPageCommand}" AutomationProperties.Name="{Binding SignInPageAccessibleName}"/>
+                                            </StackPanel>
+                                            <WrapPanel>
+                                                <Button Classes="act" Margin="0,0,8,0" Content="Sign in" Command="{Binding ConnectCommand}"
+                                                        IsVisible="{Binding !AccountConnected}" AutomationProperties.Name="{Binding ConnectAccessibleName}"/>
+                                                <Button Classes="act" Content="Sign out" Command="{Binding DisconnectCommand}"
+                                                        IsVisible="{Binding AccountConnected}" AutomationProperties.Name="{Binding DisconnectAccessibleName}"/>
+                                                <Button Classes="act" Content="Cancel sign-in" Command="{Binding CancelSignInCommand}"
+                                                        IsVisible="{Binding IsConnecting}" AutomationProperties.Name="{Binding CancelSignInAccessibleName}"/>
+                                            </WrapPanel>
+                                        </StackPanel>
+                                        <ItemsControl ItemsSource="{Binding StandardFields}" ItemTemplate="{StaticResource PluginSettingEditor}"/>
+                                        <StackPanel Spacing="12" IsVisible="{Binding HasAdvancedSettings}">
+                                            <Button Classes="act" Content="{Binding AdvancedSettingsLabel}" HorizontalAlignment="Left"
+                                                    Command="{Binding ToggleAdvancedSettingsCommand}"
+                                                    AutomationProperties.Name="{Binding AdvancedSettingsAccessibleName}"
+                                                    AutomationProperties.ItemStatus="{Binding AdvancedSettingsStatus}"/>
+                                            <ItemsControl ItemsSource="{Binding AdvancedFields}" IsVisible="{Binding AdvancedSettingsExpanded}"
+                                                          ItemTemplate="{StaticResource PluginSettingEditor}"/>
+                                        </StackPanel>
+                                        <TextBlock Classes="body prose" IsVisible="{Binding HasVisibleSecrets}" Text="{x:Static vm:PluginSettingsViewModel.SecretNote}"/>
                                         <WrapPanel>
                                             <Button Classes="act" Margin="0,0,8,0" Content="Save settings" IsVisible="{Binding HasSettings}"
                                                     Command="{Binding SaveCommand}" AutomationProperties.Name="{Binding SaveAccessibleName}"/>

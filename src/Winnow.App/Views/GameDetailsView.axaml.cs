@@ -488,6 +488,7 @@ public partial class GameDetailsView : UserControl
     /// </summary>
     private async Task LaunchAsync(GameLink link)
     {
+        if (link.PluginId is not null) return;
         if (TopLevel.GetTopLevel(this)?.Launcher is not { } launcher)
         {
             return;

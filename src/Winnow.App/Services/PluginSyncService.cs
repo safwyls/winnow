@@ -18,11 +18,18 @@ public sealed class PluginSyncService(PluginCatalog catalog, ILibraryQueryReposi
     IWorkRepository works, IReleaseRepository releases, IWorkImageRepository images, IPluginFacetRepository facets,
     IMetadataCache cache, ExternalIdResolver resolver, LibrarySyncGate libraryGate, ILogger<PluginSyncService> logger)
 {
-    private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly SemaphoreSlim _importGate = new(1, 1);
+    private readonly SemaphoreSlim _enrichmentGate = new(1, 1);
 
     public async Task SyncAsync(CancellationToken ct = default)
     {
-        await _gate.WaitAsync(ct);
+        await ImportLibrariesAsync(ct);
+        await EnrichAsync(ct);
+    }
+
+    public async Task ImportLibrariesAsync(CancellationToken ct = default)
+    {
+        await _importGate.WaitAsync(ct);
         try
         {
             foreach (var plugin in catalog.GetActive<ILibrarySourcePlugin>())
@@ -32,6 +39,15 @@ public sealed class PluginSyncService(PluginCatalog catalog, ILibraryQueryReposi
                 using var lease = await libraryGate.EnterAsync(ct);
                 await ApplySafelyAsync(plugin, () => ImportAsync(plugin, games, ct), ct);
             }
+        }
+        finally { _importGate.Release(); }
+    }
+
+    public async Task EnrichAsync(CancellationToken ct = default)
+    {
+        await _enrichmentGate.WaitAsync(ct);
+        try
+        {
             var snapshot = await library.GetSnapshotAsync(BucketThresholds.Default, ct);
             var ownedReleases = snapshot.Ownerships.Select(o => o.ReleaseId).ToHashSet();
             var targets = snapshot.Releases.Where(r => ownedReleases.Contains(r.Id)).GroupBy(r => r.WorkId);
@@ -48,8 +64,13 @@ public sealed class PluginSyncService(PluginCatalog catalog, ILibraryQueryReposi
                 }).ToArray();
                 foreach (var plugin in catalog.GetActive<IMetadataProviderPlugin>())
                 {
-                    var metadata = await catalog.InvokeAsync(plugin, (instance, token) => ((IMetadataProviderPlugin)instance).GetMetadataAsync(games[0], token), ct);
-                    if (metadata is not null) await ApplySafelyAsync(plugin, () => ApplyMetadataAsync(plugin.Manifest.Id, work.Id, metadata, ct), ct);
+                    foreach (var game in games)
+                    {
+                        var metadata = await catalog.InvokeAsync(plugin, (instance, token) => ((IMetadataProviderPlugin)instance).GetMetadataAsync(game, token), ct);
+                        if (metadata is null) continue;
+                        await ApplySafelyAsync(plugin, () => ApplyMetadataAsync(plugin.Manifest.Id, work.Id, metadata, ct), ct);
+                        break;
+                    }
                 }
                 foreach (var plugin in catalog.GetActive<IArtworkProviderPlugin>())
                 {
@@ -72,7 +93,7 @@ public sealed class PluginSyncService(PluginCatalog catalog, ILibraryQueryReposi
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
         { logger.LogWarning("Plugin refresh did not finish; existing library data remains available."); }
-        finally { _gate.Release(); }
+        finally { _enrichmentGate.Release(); }
     }
 
     private async Task ApplySafelyAsync(PluginDescriptor plugin, Func<Task> apply, CancellationToken ct)
@@ -101,7 +122,7 @@ public sealed class PluginSyncService(PluginCatalog catalog, ILibraryQueryReposi
                 && known.Select(r => r.Id).Distinct().ToArray() is [var existing])
                 await releases.AddExternalIdAsync(new() { ReleaseId = existing, Provider = source, ProviderId = game.SourceId }, ct);
 
-            var candidate = new CandidateOwnership(source, game.SourceId, game.Title.Trim(), game.AccountRef,
+            var candidate = new CandidateOwnership(source, game.SourceId, game.TitleIsProvisional ? null : game.Title.Trim(), game.AccountRef,
                 game.InstallPath is { } path && Path.IsPathFullyQualified(path) ? path : null,
                 game.Installed, game.PlaytimeMinutes, game.LastPlayedAt?.UtcDateTime, game.AcquiredAt?.UtcDateTime,
                 source, DateTime.UtcNow);
@@ -109,6 +130,7 @@ public sealed class PluginSyncService(PluginCatalog catalog, ILibraryQueryReposi
             // Keep a provider's additional IDs only when no other release claims them.
             var release = await releases.FindByExternalIdAsync(source, game.SourceId, ct);
             if (release is null) continue;
+            await PluginGameActionService.SaveAsync(cache, release.Id, plugin.Manifest.Id, game, ct);
             foreach (var (provider, id) in (game.ExternalIds ?? new Dictionary<string, string>()).Take(32))
                 if (ValidExternalId(provider, id) && await releases.FindByExternalIdAsync(provider, id, ct) is null)
                     await releases.AddExternalIdAsync(new() { ReleaseId = release.Id, Provider = provider, ProviderId = id }, ct);

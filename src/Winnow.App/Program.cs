@@ -45,6 +45,15 @@ public static class Program
     /// the host — and the SQLite connection factory with it — is disposed.
     /// </summary>
     private static readonly CancellationTokenSource Shutdown = new();
+    internal static CancellationToken ShutdownToken => Shutdown.Token;
+
+    private sealed class SuppressedPluginInstaller : IOfficialPluginInstaller
+    {
+        public Task<PluginInstallResult> InstallAsync(PluginInstallRequest request,
+            IProgress<PluginInstallProgress>? progress = null, CancellationToken ct = default)
+            => Task.FromResult(new PluginInstallResult(PluginInstallOutcome.Failed, request.PluginId,
+                "Plugin installation is unavailable in this test session. Restart Winnow normally, then open the install link again."));
+    }
 
     /// <summary>
     /// The single-instance mutex held for this run (TASK-23): null in a second
@@ -99,6 +108,13 @@ public static class Program
 
     private static void Run(string[] args)
     {
+        if (!AppActivationRequest.TryReadStartup(args, out var activationRequest))
+        {
+            Services.ConsoleAuthPrompt.AttachConsoleIfNeeded();
+            Console.Error.WriteLine("The Winnow plugin link is invalid. Open the plugins page and try again.");
+            Environment.ExitCode = 2;
+            return;
+        }
         // A second library in the same portable installation must not race replacement.
         if (File.Exists(Path.Combine(AppContext.BaseDirectory, "release-info.json")) &&
             !UpdateInstallation.IsManagedLinux(AppContext.BaseDirectory) &&
@@ -180,7 +196,6 @@ public static class Program
         // copy pointed at a throwaway --data-dir still runs — that is the
         // documented safe way to click around, and it is not the two-copies
         // failure this guard exists to prevent.
-        var activationRequest = AppActivationRequest.FromArguments(args);
         SingleInstance = Services.SingleInstanceGuard.TryAcquire(DataLocation.Root);
         if (SingleInstance is null)
         {
@@ -222,6 +237,8 @@ public static class Program
 
         var databaseAlreadyExisted = File.Exists(DataLocation.DatabasePath);
         ConfigureServices(builder.Services, DataLocation);
+        if (writesSuppressed)
+            builder.Services.AddSingleton<IOfficialPluginInstaller>(new SuppressedPluginInstaller());
 
         builder.Services.Configure<SnapshotSchedulerOptions>(o => o.Enabled = !writesSuppressed);
         builder.Services.Configure<RemoteOwnershipSchedulerOptions>(o => o.Enabled = !writesSuppressed);
@@ -237,7 +254,7 @@ public static class Program
         // seconds into the first run is a normal thing to do.
         Task startup = Task.CompletedTask;
         CredentialMetadataRefresh? credentialRefresh = null;
-        CredentialMetadataRefresh? pluginRefresh = null;
+        PluginRefreshCoordinator? pluginRefresh = null;
         CredentialMetadataRefresh? ownershipRefresh = null;
         try
         {
@@ -379,15 +396,14 @@ public static class Program
                         .Select(p => new ArtworkSourceOption("plugin:" + p.Manifest.Id, p.Manifest.Name)));
                     await preferences.LoadAsync(Shutdown.Token);
                 }, Shutdown.Token);
-                pluginRefresh = new CredentialMetadataRefresh(Task.WhenAll(startup, pluginStartup),
-                    async ct =>
-                    {
-                        await host.Services.GetRequiredService<PluginSyncService>().SyncAsync(ct);
-                        if (!ct.IsCancellationRequested) await RefreshLibraryAsync(host.Services);
-                    },
+                pluginRefresh = new PluginRefreshCoordinator(pluginStartup,
+                    ct => host.Services.GetRequiredService<PluginSyncService>().ImportLibrariesAsync(ct),
+                    ct => host.Services.GetRequiredService<PluginSyncService>().EnrichAsync(ct),
+                    ct => RefreshLibraryAsync(host.Services, ct),
                     _ => host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(Program))
                         .LogWarning("Plugin refresh failed; stored library data remains available."),
-                    Shutdown.Token);
+                    Shutdown.Token, libraryStartup: startup,
+                    refreshSuggestions: ct => host.Services.GetRequiredService<IMergeSuggestionRefresh>().RefreshAsync(ct));
                 host.Services.GetRequiredService<PluginSettingsBackend>().RefreshRequested += pluginRefresh.Request;
                 pluginRefresh.Request();
             }
@@ -431,6 +447,8 @@ public static class Program
                 // Already logged inside the task; shutdown must not throw.
             }
 
+            try { host.Services.GetService<IOfficialPluginInstaller>()?.StopAsync().GetAwaiter().GetResult(); }
+            catch (Exception) { LoggerFactoryOrNull(host)?.CreateLogger(typeof(Program)).LogWarning("Plugin installation could not finish shutting down."); }
             host.StopAsync().GetAwaiter().GetResult();
         }
     }
@@ -686,6 +704,7 @@ public static class Program
         services.AddSingleton<ILocalLibrarySync>(sp => sp.GetRequiredService<LocalLibrarySyncService>());
         services.AddSingleton<OwnershipRefreshRequests>();
         services.AddSingleton<LibraryChangePublisher>();
+        services.AddSingleton<IMergeSuggestionRefresh, MergeSuggestionRefresh>();
         services.AddSingleton(sp => new LibraryRefreshPipeline(
         [
             new("Steam playtime history", async ct => { await sp.GetRequiredService<ISteamPlaytimeBackfill>().BackfillAsync(ct); }, PublishAfter: true),
@@ -697,7 +716,7 @@ public static class Program
             new("IGDB maturity", async ct => { await sp.GetRequiredService<IgdbMaturitySync>().SyncAsync(ct); }, IgdbRelevant: true),
             new("Reception and images", async ct => { await sp.GetRequiredService<ReceptionSyncService>().SyncAsync(ct); }, IgdbRelevant: true),
             new("Lifecycle evidence", async ct => { await sp.GetRequiredService<LifecycleSyncService>().SyncAsync(ct); }, IgdbRelevant: true),
-            new("Identity proposals", async ct => { await sp.GetRequiredService<LibrarySoftMatchSweep>().SweepAsync(ct); }),
+            new("Identity proposals", async ct => { await sp.GetRequiredService<IMergeSuggestionRefresh>().RefreshAsync(ct); }),
             new("Update signals", async ct => { await sp.GetRequiredService<UpdateSignalPoller>().PollDueBatchAsync(ct); }, PublishAfter: true),
             new("Storefront links", ct => sp.GetRequiredService<StorefrontSyncService>().SyncAsync(ct), PublishAfter: true),
         ], ct => RefreshLibraryAsync(sp, ct), sp.GetRequiredService<ILogger<LibraryRefreshPipeline>>()));
@@ -780,6 +799,9 @@ public static class Program
         services.AddSingleton<PluginSettingsBackend>(sp => new(sp.GetRequiredService<PluginCatalog>(),
             sp.GetRequiredService<PluginStorage>(), Path.Combine(data.Root, "plugins")));
         services.AddSingleton<IPluginSettingsBackend>(sp => sp.GetRequiredService<PluginSettingsBackend>());
+        services.AddSingleton<IOfficialPluginInstaller>(sp => new OfficialPluginInstaller(
+            OfficialPluginInstaller.CreateHttpClient(), sp.GetRequiredService<PluginCatalog>(),
+            sp.GetRequiredService<IPluginSettingsBackend>(), sp.GetRequiredService<ArtworkPreferences>(), Shutdown.Token));
         services.AddSingleton<IPluginFacetRepository, PluginFacetRepository>();
         services.AddSingleton<Winnow.Covers.ICoverSource, PluginArtworkSource>();
         services.AddSteamStoreEnrichment();
@@ -1023,6 +1045,7 @@ public static class Program
         services.AddSingleton<WorkReceptionWriter>();
         services.AddSingleton<ReceptionSyncService>();
         services.AddSingleton<PluginSyncService>();
+        services.AddSingleton<PluginGameActionService>();
         services.AddSingleton<PluginFeedService>();
         services.AddSingleton<LifecycleSyncService>();
         services.AddSingleton<GameRefetchService>();

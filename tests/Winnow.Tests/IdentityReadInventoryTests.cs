@@ -96,6 +96,9 @@ public sealed class IdentityReadInventoryTests
             "Selects header metadata from a current member of the resolved group while retaining the group's canonical identity root."),
 
         // ── DO NOT RESOLVE ─────────────────────────────────────────────────
+        new("src/Winnow.App/Services/PluginGameActionService.cs", "ExecuteAsync", Policy.DoNotResolve,
+            "Revalidates the exact ownership and provider source chosen for a game action. Resolving "
+            + "to a grouped parent could launch another store copy and misattribute its session."),
         new("src/Winnow.Resolve/ExternalIdResolver.cs", "CaptureSteamObservationsAsync", Policy.DoNotResolve,
             "Steam counter observations belong to the original store ownership and account. Installation gating must read that copy, not a linked game's installation."),
         new("src/Winnow.Data/Repositories/ActivityRepository.cs", "GetPageAsync", Policy.DoNotResolve,
@@ -106,7 +109,7 @@ public sealed class IdentityReadInventoryTests
             "Fetches each Steam release for an explicitly confirmed owning account; linked games cannot share provider schemas or account unlocks."),
         new("src/Winnow.Data/Repositories/AccountAcquisitionRepository.cs", "GetSteamOwnershipIdsAsync", Policy.DoNotResolve,
             "Acquisition observations belong to the captured account's exact store ownership; links do not combine receipts or account membership."),
-        new("src/Winnow.App/Services/PluginSyncService.cs", "SyncAsync", Policy.DoNotResolve,
+        new("src/Winnow.App/Services/PluginSyncService.cs", "EnrichAsync", Policy.DoNotResolve,
             "Provider observations belong to original owned works; current confirmed groups share artwork on presentation reads."),
         new("src/Winnow.Data/Repositories/LibraryQueryRepository.cs", "GetSnapshotAsync", Policy.DoNotResolve,
             "The additional work and ownership result sets preserve each row's own metadata and "

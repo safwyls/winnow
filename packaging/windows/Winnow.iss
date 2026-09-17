@@ -25,12 +25,19 @@ SolidCompression=yes
 ; The updater waits for Winnow to exit. Setup must never terminate another copy.
 CloseApplications=no
 RestartApplications=no
+ChangesAssociations=yes
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\Winnow"; Filename: "{app}\Winnow.exe"; WorkingDir: "{app}"; IconFilename: "{app}\Winnow.exe"
+
+[Registry]
+Root: HKCU; Subkey: "Software\Classes\winnow"; ValueType: string; ValueName: ""; ValueData: "URL:Winnow Protocol"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\winnow"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKCU; Subkey: "Software\Classes\winnow\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\Winnow.exe"",0"
+Root: HKCU; Subkey: "Software\Classes\winnow\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Winnow.exe"" --uri ""%1"""
 
 ; Winnow's database, cache, themes, and browser profile live under
 ; %LOCALAPPDATA%\Winnow. They are not installer files, so Inno Setup does not

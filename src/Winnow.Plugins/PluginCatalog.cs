@@ -5,10 +5,14 @@ namespace Winnow.Plugins;
 /// <summary>Discovers manifests before loading trusted code. Activation changes take effect on the next launch.</summary>
 public sealed class PluginCatalog(IPluginStateStore state, IPluginContextFactory contexts) : IAsyncDisposable
 {
+    // Allows asynchronous cancellation cleanup without extending a user wait beyond one quarter second.
+    private static readonly TimeSpan CancellationUnwindGrace = TimeSpan.FromMilliseconds(250);
     private readonly List<PluginDescriptor> _plugins = [];
     private readonly List<PluginDiscoveryIssue> _issues = [];
     private readonly object _registry = new();
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
+    private readonly TaskCompletionSource _discoveryReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly CancellationTokenSource _stopping = new();
     private bool _discovered;
     private volatile bool _disposed;
 
@@ -16,6 +20,7 @@ public sealed class PluginCatalog(IPluginStateStore state, IPluginContextFactory
     public IReadOnlyList<PluginDiscoveryIssue> Issues { get { lock (_registry) return _issues.ToArray(); } }
     public TimeSpan InvocationTimeout { get; init; } = TimeSpan.FromSeconds(120);
     public TimeSpan InitializationTimeout { get; init; } = TimeSpan.FromSeconds(30);
+    public Task DiscoveryReady => _discoveryReady.Task;
 
     public void ReportInvalidResult(PluginDescriptor descriptor)
     {
@@ -24,6 +29,8 @@ public sealed class PluginCatalog(IPluginStateStore state, IPluginContextFactory
 
     public async Task DiscoverAsync(string builtinRoot, string userRoot, CancellationToken cancellationToken = default)
     {
+        using var operation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _stopping.Token);
+        cancellationToken = operation.Token;
         await _lifecycle.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -33,6 +40,41 @@ public sealed class PluginCatalog(IPluginStateStore state, IPluginContextFactory
             var ids = new HashSet<string>(StringComparer.Ordinal);
             await DiscoverRootAsync(builtinRoot, true, ids, cancellationToken).ConfigureAwait(false);
             await DiscoverRootAsync(userRoot, false, ids, cancellationToken).ConfigureAwait(false);
+            _discoveryReady.TrySetResult();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            _discoveryReady.TrySetCanceled(cancellationToken);
+            throw;
+        }
+        catch (Exception error)
+        {
+            _discoveryReady.TrySetException(error);
+            throw;
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    /// <summary>Registers only a new, verified package. Existing code and activation preferences are never replaced.</summary>
+    public async Task<PluginDescriptor?> InstallVerifiedArchiveAsync(string archivePath, string userRoot,
+        Action<PluginManifest> validateManifest, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(validateManifest);
+        using var operation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _stopping.Token);
+        cancellationToken = operation.Token;
+        await DiscoveryReady.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await _lifecycle.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            var ids = Plugins.Select(plugin => plugin.Manifest.Id).ToHashSet(StringComparer.Ordinal);
+            var directory = await PluginArchiveInstaller.TryInstallAsync(archivePath, userRoot, ids, AddIssue,
+                cancellationToken, validateManifest).ConfigureAwait(false);
+            if (directory is null) return null;
+            // A published package survives caller cancellation. Host shutdown can still stop registration;
+            // startup discovers the retained package next time, without loading code after disposal.
+            await DiscoverDirectoryAsync(directory, false, ids, _stopping.Token, enableNew: true).ConfigureAwait(false);
+            return Plugins.SingleOrDefault(plugin => plugin.DirectoryPath == directory);
         }
         finally { _lifecycle.Release(); }
     }
@@ -83,7 +125,8 @@ public sealed class PluginCatalog(IPluginStateStore state, IPluginContextFactory
         }
     }
 
-    private async Task DiscoverDirectoryAsync(string directory, bool builtin, HashSet<string> ids, CancellationToken cancellationToken)
+    private async Task DiscoverDirectoryAsync(string directory, bool builtin, HashSet<string> ids, CancellationToken cancellationToken,
+        bool enableNew = false)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var manifestPath = Path.Combine(directory, "plugin.json");
@@ -111,7 +154,11 @@ public sealed class PluginCatalog(IPluginStateStore state, IPluginContextFactory
             Manifest = manifest, DirectoryPath = Path.GetFullPath(directory), BuiltIn = builtin,
         };
         lock (_registry) _plugins.Add(descriptor);
-        try { descriptor.Enabled = await state.GetEnabledAsync(manifest.Id, cancellationToken).ConfigureAwait(false) ?? builtin; }
+        try
+        {
+            if (enableNew) await state.SetEnabledAsync(manifest.Id, true, cancellationToken).ConfigureAwait(false);
+            descriptor.Enabled = enableNew || (await state.GetEnabledAsync(manifest.Id, cancellationToken).ConfigureAwait(false) ?? builtin);
+        }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception)
         {
@@ -130,7 +177,8 @@ public sealed class PluginCatalog(IPluginStateStore state, IPluginContextFactory
     {
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(InitializationTimeout);
-        Task? initialization = null;
+        var initializationToken = deadline.Token;
+        Task<(PluginLoadContext Loader, IPlugin Plugin)>? initialization = null;
         try
         {
             // Constructors and synchronous plugin code must not occupy the UI/startup thread.
@@ -138,28 +186,41 @@ public sealed class PluginCatalog(IPluginStateStore state, IPluginContextFactory
             {
                 var path = Path.Combine(descriptor.DirectoryPath, descriptor.Manifest.EntryAssembly);
                 var loader = new PluginLoadContext(path);
-                descriptor.LoadContext = loader;
-                var assembly = loader.LoadFromAssemblyPath(path);
-                var type = assembly.GetType(descriptor.Manifest.EntryType, throwOnError: true)!;
-                if (type.IsAbstract || !type.IsPublic || !typeof(IPlugin).IsAssignableFrom(type))
-                    throw new InvalidDataException("The plugin entry type does not implement the plugin contract.");
-                var plugin = Activator.CreateInstance(type) as IPlugin
-                    ?? throw new InvalidDataException("The plugin could not be constructed.");
-                descriptor.Instance = plugin;
-                ValidateCapabilities(descriptor.Manifest, plugin);
-                await plugin.InitializeAsync(contexts.Create(descriptor.Manifest), deadline.Token).ConfigureAwait(false);
+                IPlugin? plugin = null;
+                try
+                {
+                    var assembly = loader.LoadFromAssemblyPath(path);
+                    var type = assembly.GetType(descriptor.Manifest.EntryType, throwOnError: true)!;
+                    if (type.IsAbstract || !type.IsPublic || !typeof(IPlugin).IsAssignableFrom(type))
+                        throw new InvalidDataException("The plugin entry type does not implement the plugin contract.");
+                    plugin = Activator.CreateInstance(type) as IPlugin
+                        ?? throw new InvalidDataException("The plugin could not be constructed.");
+                    ValidateCapabilities(descriptor.Manifest, plugin);
+                    await plugin.InitializeAsync(contexts.Create(descriptor.Manifest), initializationToken).ConfigureAwait(false);
+                    initializationToken.ThrowIfCancellationRequested();
+                    return (loader, plugin);
+                }
+                catch
+                {
+                    await DisposeInstanceAsync(plugin).ConfigureAwait(false);
+                    loader.Unload();
+                    throw;
+                }
             }, deadline.Token);
-            await initialization.WaitAsync(deadline.Token).ConfigureAwait(false);
+            var initialized = await initialization.WaitAsync(deadline.Token).ConfigureAwait(false);
+            deadline.Token.ThrowIfCancellationRequested();
+            descriptor.LoadContext = initialized.Loader;
+            descriptor.Instance = initialized.Plugin;
             descriptor.Loaded = true;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            ObserveLateFailure(initialization);
+            ObserveAbandonedInitialization(initialization);
             throw;
         }
         catch (OperationCanceledException)
         {
-            ObserveLateFailure(initialization);
+            ObserveAbandonedInitialization(initialization);
             descriptor.Error = "The plugin did not finish starting in time. Restart Winnow to try again.";
         }
         catch (Exception)
@@ -184,6 +245,8 @@ public sealed class PluginCatalog(IPluginStateStore state, IPluginContextFactory
         || (typeof(TPlugin) == typeof(ILibrarySourcePlugin) && manifest.Capabilities.Contains(PluginCapabilities.Library))
         || (typeof(TPlugin) == typeof(IMetadataProviderPlugin) && manifest.Capabilities.Contains(PluginCapabilities.Metadata))
         || (typeof(TPlugin) == typeof(IArtworkProviderPlugin) && manifest.Capabilities.Contains(PluginCapabilities.Artwork))
+        || (typeof(TPlugin) == typeof(IPluginAccount) && manifest.Capabilities.Contains(PluginCapabilities.Account))
+        || (typeof(TPlugin) == typeof(IPluginGameActions) && manifest.Capabilities.Contains(PluginCapabilities.GameActions))
         || (typeof(TPlugin) == typeof(IRecommendationFeedPlugin) && manifest.Capabilities.Contains(PluginCapabilities.Recommendations));
 
     /// <summary>Provider exceptions never expose their text, which might contain credentials or response data.</summary>
@@ -210,7 +273,10 @@ public sealed class PluginCatalog(IPluginStateStore state, IPluginContextFactory
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 ObserveLateFailure(pending);
-                // A noncooperative provider may still be running after cancellation.
+                // Cooperative HTTP/credential cleanup can finish just after WaitAsync observes
+                // cancellation. Give it a bounded unwind before treating it as still running.
+                if (!pending.IsCompleted)
+                    await Task.WhenAny(pending, Task.Delay(CancellationUnwindGrace)).ConfigureAwait(false);
                 if (!pending.IsCompleted) descriptor.Loaded = false;
                 throw;
             }
@@ -240,6 +306,8 @@ public sealed class PluginCatalog(IPluginStateStore state, IPluginContextFactory
                 PluginCapabilities.Metadata => plugin is IMetadataProviderPlugin,
                 PluginCapabilities.Artwork => plugin is IArtworkProviderPlugin,
                 PluginCapabilities.Recommendations => plugin is IRecommendationFeedPlugin,
+                PluginCapabilities.Account => plugin is IPluginAccount,
+                PluginCapabilities.GameActions => plugin is IPluginGameActions,
                 _ => false,
             };
             if (!implemented) throw new InvalidDataException("A declared plugin capability is not implemented.");
@@ -253,25 +321,58 @@ public sealed class PluginCatalog(IPluginStateStore state, IPluginContextFactory
                 TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
 
+    private static void ObserveAbandonedInitialization(Task<(PluginLoadContext Loader, IPlugin Plugin)>? task)
+    {
+        if (task is null) return;
+        _ = task.ContinueWith(async completed =>
+        {
+            if (completed.IsCompletedSuccessfully)
+            {
+                await DisposeInstanceAsync(completed.Result.Plugin).ConfigureAwait(false);
+                completed.Result.Loader.Unload();
+            }
+            else _ = completed.Exception;
+        }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default).Unwrap();
+    }
+
+    private static async Task DisposeInstanceAsync(IPlugin? instance)
+    {
+        try
+        {
+            if (instance is IAsyncDisposable asyncDisposable)
+                await Task.Run(async () => await asyncDisposable.DisposeAsync().ConfigureAwait(false))
+                    .WaitAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+            else if (instance is IDisposable disposable)
+                await Task.Run(disposable.Dispose).WaitAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+        }
+        catch (Exception) { /* Plugin cleanup must not prevent host shutdown. */ }
+    }
+
+    public async Task StopAsync(CancellationToken cancellationToken = default)
+    {
+        await _stopping.CancelAsync().ConfigureAwait(false);
+        _discoveryReady.TrySetCanceled(_stopping.Token);
+        await _lifecycle.WaitAsync(cancellationToken).ConfigureAwait(false);
+        _lifecycle.Release();
+    }
+
     public async ValueTask DisposeAsync()
     {
-        if (_disposed) return;
-        _disposed = true;
-        foreach (var descriptor in Plugins)
+        await StopAsync().ConfigureAwait(false);
+        await _lifecycle.WaitAsync().ConfigureAwait(false);
+        try
         {
-            descriptor.Loaded = false;
-            try
+            if (_disposed) return;
+            _disposed = true;
+            foreach (var descriptor in Plugins)
             {
-                if (descriptor.Instance is IAsyncDisposable asyncDisposable)
-                    await Task.Run(async () => await asyncDisposable.DisposeAsync().ConfigureAwait(false))
-                        .WaitAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
-                else if (descriptor.Instance is IDisposable disposable)
-                    await Task.Run(disposable.Dispose).WaitAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+                descriptor.Loaded = false;
+                await DisposeInstanceAsync(descriptor.Instance).ConfigureAwait(false);
+                descriptor.Instance = null;
+                descriptor.LoadContext?.Unload();
+                descriptor.LoadContext = null;
             }
-            catch (Exception) { /* Plugin cleanup must not prevent host shutdown. */ }
-            descriptor.Instance = null;
-            descriptor.LoadContext?.Unload();
-            descriptor.LoadContext = null;
         }
+        finally { _lifecycle.Release(); }
     }
 }

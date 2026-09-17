@@ -512,13 +512,24 @@ the grid cannot do densely lives here, which is how the analytics capability sta
 without dominating the default experience.
 
 **Merges.** The screen that proposes which library entries are one game and asks the user to
-confirm each proposal and pick which entry becomes the header. Three bands: a 56px header (`Merges`, the pending count in
+confirm each proposal and pick which entry becomes the header. Three bands: a header with a 56px title row (`Merges`, the pending count in
 Data, `Sort ·`, `Accept N exact matches`, and the one filled button, `Merge N selected`); a 40px
 cut bar on `ChromeSurface` with a six-segment kind filter, a cut chip while filtered, a
 `Prefer · None` platform picker, and the count at the right, `14 → 6` while filtered, the
 only arrow in the interface; and the queue,
 one scroll of five outlined sections, ACROSS STORES · EDITIONS · EXPANSIONS · PARTS · TEST
 BUILDS, each with the count of its pending cards and a one-sentence blurb.
+
+An icon-only `Refresh suggestions` control sits immediately before `Merge N selected` in
+the title row. It uses the shared refresh arrow in `VoltForeground`, with `Refresh suggestions`
+as its tooltip and accessible name. It checks the library for new proposals and reloads the
+queue without answering a proposal or resetting previous answers. The `ctl` button disables
+while checking; quiet `TextDim` feedback below the title row wraps within the pane at the
+1200px minimum window width and announces progress politely. The feedback row is absent until
+there is a status to show. Completion reads “Suggestions refreshed. Your
+previous answers are kept.” A bounded pass asks the user to refresh again to check more
+matches; cancellation and failure offer the same control to retry. New plugin imports also
+refresh suggestions automatically, including when the number of pending proposals stays the same.
 
 The platform picker uses the sort menu's `ctl` trigger, chevron, `sortmenu` presenter and
 6px `Volt` dot for the selected option. Its choices are `None`, `Steam`, `Epic` and `GOG`;
@@ -1132,6 +1143,11 @@ metadata candidates through the shared commands. Identity tools include kind and
 selection and confirmed bulk grouping, with exact matching limited by the shared rules.
 The identity page also carries the shared `Prefer ·` platform choice in a controller action
 sheet, with the same options and pending-header behavior as desktop Merges (§6).
+`Refresh suggestions` is a separate controller and keyboard row below the platform choice.
+It shares the desktop command and feedback, disables during the pass, and reloads proposals
+on completion. Automatic import updates also refresh the open identity page. Busy, completion
+and recovery text wraps below the row without animation; closing the page cancels its manual
+request and prevents later feedback from moving focus on another page.
 The Steam API key registration link opens the system browser; obtaining that credential is
 an external website workflow, while entering and saving it stays inside the TV interface.
 
@@ -3067,11 +3083,29 @@ left-aligned on wider displays, with the version beneath the name
 and an Enabled/Disabled switch at the upper right. The tab shows one card per discovered plugin, with its name, version,
 description, supported features and status. **Open plugins folder** opens the installation
 directory. ZIP packages unpack automatically at startup; users may also place unpacked packages
-there. Failed ZIP imports appear alongside other package diagnostics. Explain that installing and changing enablement requires a restart and that plugins
+there. Failed ZIP imports appear alongside other package diagnostics. Explain that manually installing and changing enablement requires a restart and that plugins
 run with Winnow's access to the device. A malformed or incompatible package states its failure;
 only a package with a valid manifest offers configuration controls.
 
-Winnow generates labelled text fields and masked secret fields from each plugin's manifest.
+An **Install in Winnow** link on the official website restores the current desktop or
+fullscreen window and starts installation without another confirmation. Desktop Plugins
+shows a polite status line and an accent progress bar above the cards; fullscreen uses a
+dedicated installation page with the same status and a Back action. Success opens the
+plugin's settings, preserving the completion message. An existing plugin opens its current
+settings without replacing it. Failures keep a **Retry installation** action in keyboard and
+controller reach. Installation continues when leaving the page, without interrupting the
+player’s new location when it finishes. Official plugins activate immediately; account or
+API-key setup still happens in their ordinary settings.
+On a first launch, the optional setup screen pauses for installation and keeps its saved
+step. It can be reopened in Application settings and resumes on the next launch. An active
+setup sign-in finishes before the handoff changes screens.
+
+Winnow generates labelled text fields, boolean toggles and masked secret fields from each
+plugin's manifest. Tokens managed by a connection never appear as editable credential fields.
+Advanced fields sit below **Show advanced settings** on both surfaces and start collapsed.
+The button changes to **Hide advanced settings** while open and exposes its expanded or
+collapsed state to assistive technology. Hidden fields keep their values when saving; they
+stay out of keyboard and controller focus until revealed. Leaving the page closes the section.
 Optional **Get** links open the provider's HTTPS setup page. **Save settings** persists the
 fields and clears secret drafts; a blank secret keeps the saved value. Each secret has a
 **Remove saved secret** action, available only when a secret is stored. A polite status line
@@ -3080,6 +3114,13 @@ Secrets also clear when leaving the settings surface. The activation switch on d
 states the next launch's choice and keeps a visible restart notice while it differs from the
 running state. **Refresh now** is available for enabled, loaded plugins. SteamGridDB uses this
 same generated form for its API key.
+
+Account-capable plugins offer **Sign in**, **Sign out** and **Cancel sign-in** on both
+surfaces. A pending connection shows the verification address, readable user code and an
+**Open sign-in page** action. Cancelling, leaving the page or expiry clears the code and stops
+polling. Connection status uses a polite text announcement. The provider's browser page owns
+authentication; Winnow never asks for its password. History imports that do not establish
+ownership retain an explanatory source line in both game-detail overviews, including groups.
 
 Fullscreen lists discovered plugins under Plugins and opens a dedicated page for
 each one. The page uses the same settings model with large generated fields, explicit focus

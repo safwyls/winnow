@@ -65,10 +65,13 @@ public sealed class PluginSyncIntegrationTests
         await catalog.DiscoverAsync(Path.Combine(root, "packages"), Path.Combine(root, "absent"));
         Assert.True(Assert.Single(catalog.Plugins).Loaded);
         var sync = provider.GetRequiredService<PluginSyncService>();
-        await sync.SyncAsync();
+        await sync.ImportLibrariesAsync();
         var release = await provider.GetRequiredService<IReleaseRepository>().FindByExternalIdAsync("plugin:fixture", "fixture-game");
         Assert.NotNull(release);
         Assert.Equal(release.Id, (await provider.GetRequiredService<IReleaseRepository>().FindByExternalIdAsync("steam", "220"))!.Id);
+        Assert.NotEqual("Fixture metadata from fixture", (await provider.GetRequiredService<IWorkRepository>().GetAsync(release.WorkId))!.Summary);
+        Assert.Empty(await provider.GetRequiredService<IWorkImageRepository>().GetForWorkAsync(release.WorkId));
+        await sync.EnrichAsync();
         Assert.Equal("Fixture metadata from fixture", (await provider.GetRequiredService<IWorkRepository>().GetAsync(release.WorkId))!.Summary);
         Assert.Equal("plugin:fixture", (await provider.GetRequiredService<IWorkFieldSourceRepository>().GetSourcesAsync(release.WorkId))[WorkFields.Summary]);
         var images = provider.GetRequiredService<IWorkImageRepository>();

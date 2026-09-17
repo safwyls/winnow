@@ -34,7 +34,7 @@ hardware validation. The remaining validation is listed in §6.
 
 | Area | Implemented behavior |
 |---|---|
-| Library | Local Steam, Epic and GOG discovery, optional Steam/Epic connections, manual entries, search, filters and user lists. Steam collections are not imported. |
+| Library | Local Steam, Epic and GOG discovery, optional Steam/Epic connections, manual entries, search, filters and user lists. Optional Xbox imports installed PC games and opt-in PC/console played history. Optional PlayStation imports the PS4/PS5 account library and opt-in played/legacy trophy history. Steam collections are not imported. |
 | Identity | Exact external IDs resolve automatically. Fuzzy matches require confirmation. Same-game, expansion and variant relations apply immediately through reversible links on desktop and fullscreen. |
 | History | Playtime snapshots, process-based session recording and restart recovery, optional journal notes, Steam history backfill and account-page imports. Unknown history remains unknown. |
 | Statistics | Gameplay and Spending views on desktop and fullscreen. Gameplay shows recorded hours, top games, session lengths and current library composition, with store and date controls. Spending shows captured Steam purchases by currency, yearly bars, purchase composition, licence acquisition and transaction insights. Dollar credits share the dollar total; currencies are never converted or combined. |
@@ -48,7 +48,7 @@ hardware validation. The remaining validation is listed in §6.
 
 ## 4. Excluded and deferred
 
-**Excluded:** PlayStation/Xbox integration, hosted or multi-user services, co-op and friend
+**Excluded:** Hosted or multi-user services, co-op and friend
 library matching, mobile, and a 3D shelf view. Fullscreen is a separate TV interface.
 
 **Deferred work:**
@@ -67,8 +67,19 @@ library matching, mobile, and a 3D shelf view. Fullscreen is a separate TV inter
 Unowned-game recommendations are outside the current feed. A later wishlist feature would
 start from titles the user has explicitly selected, rather than a general purchase feed.
 
-The initial plugin contract excludes custom screens, UI replacement, new launcher actions,
-an online marketplace and automatic plugin updates.
+The plugin contract excludes custom screens, UI replacement, an online marketplace and automatic
+plugin updates. The website lists first-party providers with release-backed ZIP downloads and
+browser installation into desktop or fullscreen settings. CI packages all three providers with
+the application release and verifies a versioned catalogue. SDK 1.1 adds shared account connection and provider game actions. Xbox history
+does not establish ownership and cannot discover never-played uninstalled purchases. Winnow
+bundles its public Microsoft application ID; users sign in without Entra setup. Live PC/console
+history import is validated; cumulative minutes and protected WindowsApps launch/session
+tracking need further device validation. Readable PC installation roots use the existing session tracker.
+
+PlayStation uses a protected NPSSO credential and community-documented Sony APIs. Console
+imports have no local installation or launch support. Trophy sets supply legacy library
+evidence, not individual achievement records. Fixture and desktop/fullscreen checks cover
+the implementation; live sign-in, account inventory and reported durations remain unvalidated.
 
 ## 5. Carried debt
 

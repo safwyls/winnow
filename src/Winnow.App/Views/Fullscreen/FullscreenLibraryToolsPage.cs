@@ -1,3 +1,4 @@
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using Winnow.App.ViewModels;
@@ -111,6 +112,11 @@ public sealed class FullscreenManualGamePage : FullscreenPage
 public sealed class FullscreenIdentityPage : FullscreenPage
 {
     private readonly MergeQueueViewModel? _model;
+    private readonly CancellationTokenSource _lifetime = new();
+    private Button? _refreshButton;
+    private TextBlock? _refreshStatus;
+    private bool _applying;
+    private bool _queueRefreshPending;
     private bool _disposed;
     private string _status = "Reading possible matches…";
     public override string Title => "Possible identity matches";
@@ -118,17 +124,55 @@ public sealed class FullscreenIdentityPage : FullscreenPage
     public FullscreenIdentityPage(FullscreenContext context) : base(context)
     {
         _model = context.Services is { } services ? ActivatorUtilities.CreateInstance<MergeQueueViewModel>(services) : null;
+        if (_model is not null) _model.IsPaneVisible = true;
+        context.Library.TilesChanged += OnTilesChanged;
         Render();
         AttachedToVisualTree += async (_, _) =>
         {
-            try { if (_model is not null) await _model.EnsureLoadedAsync(); _status = "No possible matches to review."; Render(); }
-            catch (Exception) { _status = "Couldn't read possible matches. Reopen this page to try again."; Render(); }
+            try { if (_model is not null) await _model.EnsureLoadedAsync(_lifetime.Token); if (_disposed) return; _status = "No possible matches to review."; Render(); }
+            catch (OperationCanceledException) when (_disposed) { }
+            catch (Exception) { if (_disposed) return; _status = "Couldn't read possible matches. Choose Refresh suggestions to try again."; Render(); }
         };
+    }
+
+    private async void OnTilesChanged(object? sender, EventArgs e)
+    {
+        if (_disposed || _model is null) return;
+        if (_applying) { _queueRefreshPending = true; return; }
+        try { await _model.NoteQueueMayHaveMovedAsync(_lifetime.Token); Render(); }
+        catch (OperationCanceledException) when (_disposed) { }
+        catch (Exception) { if (!_disposed) Context.Notify("Couldn't read possible matches. Choose Refresh suggestions to try again."); }
+    }
+
+    private async Task RefreshSuggestionsAsync()
+    {
+        if (_disposed || _model is null || !_model.RefreshSuggestionsCommand.CanExecute(null)) return;
+        var refresh = _model.RefreshSuggestionsCommand.ExecuteAsync(null);
+        UpdateRefreshControls();
+        await refresh;
+        if (_disposed) return;
+        try { await Context.Shared.MergeQueue.NoteQueueMayHaveMovedAsync(_lifetime.Token); }
+        catch (OperationCanceledException) when (_disposed) { return; }
+        catch (Exception) { if (!_disposed) Context.Notify("Couldn't refresh desktop matches. Reopen Merges to try again."); }
+        if (_disposed) return;
+        _status = "No possible matches to review.";
+        UpdateRefreshControls();
+        Render();
+    }
+
+    private void UpdateRefreshControls()
+    {
+        if (_model is null || _refreshButton is null || _refreshStatus is null) return;
+        _refreshButton.IsEnabled = _model.RefreshSuggestionsCommand.CanExecute(null);
+        AutomationProperties.SetItemStatus(_refreshButton, _model.SuggestionRefreshStatus);
+        _refreshStatus.Text = _model.SuggestionRefreshStatus;
+        _refreshStatus.IsVisible = !string.IsNullOrEmpty(_model.SuggestionRefreshStatus);
     }
 
     private void Render()
     {
         if (_disposed) return;
+        var restoreFocus = PreserveFocus();
         var body = FullscreenInformation.Column("FullscreenIdentityMatches");
         body.Children.Add(FullscreenInformation.Title(Title));
         var focus = new List<Control[]>();
@@ -141,6 +185,19 @@ public sealed class FullscreenIdentityPage : FullscreenPage
             Add(_model.PreferredPlatformLabel, () => Context.ShowActions("Preferred platform for pending headers",
                 _model.PlatformOptions.Select(option => new FullscreenAction(option.Label,
                     async () => await Apply(() => _model.SelectPlatformCommand.ExecuteAsync(option)))).ToArray()));
+            var refresh = FullscreenUi.Button(_model.RefreshSuggestionsLabel,
+                () => PendingAction = RefreshSuggestionsAsync());
+            refresh.Name = "RefreshSuggestionsButton";
+            _refreshButton = refresh;
+            refresh.IsEnabled = _model.RefreshSuggestionsCommand.CanExecute(null);
+            AutomationProperties.SetItemStatus(refresh, _model.SuggestionRefreshStatus);
+            body.Children.Add(refresh); focus.Add([refresh]);
+            var refreshStatus = FullscreenInformation.Text(_model.SuggestionRefreshStatus);
+            refreshStatus.Name = "SuggestionRefreshStatus";
+            _refreshStatus = refreshStatus;
+            refreshStatus.IsVisible = !string.IsNullOrEmpty(_model.SuggestionRefreshStatus);
+            AutomationProperties.SetLiveSetting(refreshStatus, AutomationLiveSetting.Polite);
+            body.Children.Add(refreshStatus);
             if (_model.CanAcceptExact) Add(_model.AcceptExactLabel, () => Confirm(_model.AcceptExactTooltip, () => _model.AcceptExactCommand.ExecuteAsync(null)));
             if (_model.CanMergeSelected) Add(_model.MergeSelectedLabel, () => Confirm(_model.MergeSelectedTooltip, () => _model.MergeSelectedCommand.ExecuteAsync(null)));
             FullscreenInformation.AddSection(body, "Proposals");
@@ -158,7 +215,7 @@ public sealed class FullscreenIdentityPage : FullscreenPage
         }
         if (count == 0) body.Children.Add(FullscreenInformation.Text(_status));
         var back = FullscreenUi.Button("Back", Context.Back); body.Children.Add(back); focus.Add([back]);
-        Content = FullscreenUi.Scroll(body); SetFocusRows(focus.ToArray());
+        Content = FullscreenUi.Scroll(body); SetFocusRows(focus.ToArray()); restoreFocus();
     }
 
     private void Confirm(string description, Func<Task> action) => Context.ShowActions(description,
@@ -168,8 +225,31 @@ public sealed class FullscreenIdentityPage : FullscreenPage
 
     private async Task ApplyCoreAsync(Func<Task> action)
     {
-        try { await action(); await Context.RefreshAsync(); Render(); FocusInitial(); }
-        catch (Exception) { Context.Notify("Couldn't update these matches. Try again."); }
+        _applying = true;
+        try
+        {
+            try
+            {
+                await action();
+                if (_disposed) return;
+                await Context.RefreshAsync();
+            }
+            finally
+            {
+                // Local writes publish library changes too. Drain even if the write or publication failed.
+                while (_queueRefreshPending && _model is not null && !_disposed)
+                {
+                    _queueRefreshPending = false;
+                    await _model.NoteQueueMayHaveMovedAsync(_lifetime.Token);
+                }
+            }
+        }
+        catch (Exception) { if (!_disposed) Context.Notify("Couldn't update these matches. Try again."); }
+        finally
+        {
+            _applying = false;
+            if (!_disposed) { Render(); FocusInitial(); }
+        }
     }
 
     private void Open(MergeCardViewModel card)
@@ -207,5 +287,14 @@ public sealed class FullscreenIdentityPage : FullscreenPage
         Context.ShowActions(card.Reason, actions);
     }
 
-    public override void Dispose() { _disposed = true; _model?.Dispose(); base.Dispose(); }
+    public override void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        Context.Library.TilesChanged -= OnTilesChanged;
+        _lifetime.Cancel();
+        _lifetime.Dispose();
+        _model?.Dispose();
+        base.Dispose();
+    }
 }

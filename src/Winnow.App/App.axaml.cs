@@ -106,6 +106,25 @@ public partial class App : Application
             if (_mainWindow is { IsFullscreen: false } main) main.ToggleFullscreen();
             return;
         }
+        if (request.Kind == AppActivationKind.InstallPlugin && request.Plugin is { } plugin
+            && _mainWindow is { DataContext: MainWindowViewModel pluginShell } pluginWindow)
+        {
+            try
+            {
+                var stopping = Program.ShutdownToken;
+                if (!await pluginWindow.StartupLibraryReady.WaitAsync(stopping)) return;
+                while (pluginShell.Setup.IsOpen && pluginShell.Setup.IsBusy)
+                    await Task.Delay(100, stopping);
+                await pluginShell.PluginSettings.Installation.InstallAsync(plugin, stopping, pluginWindow.ShowPluginInstallation);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                Program.AppHost?.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(App))
+                    .LogWarning(ex, "Could not open the plugin installation.");
+            }
+            return;
+        }
         await _activationQueue.WaitAsync();
         try
         {
@@ -125,7 +144,7 @@ public partial class App : Application
         catch (Exception ex)
         {
             Program.AppHost?.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(App))
-                .LogWarning(ex, "Could not complete the taskbar action.");
+                .LogWarning(ex, "Could not complete the application activation.");
         }
         finally { _activationQueue.Release(); }
     }

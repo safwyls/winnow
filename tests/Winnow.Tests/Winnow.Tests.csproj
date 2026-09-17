@@ -82,6 +82,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Winnow.PluginFixture\Winnow.PluginFixture.csproj" />
+    <ProjectReference Include="..\..\plugins\Winnow.Plugin.Xbox\Winnow.Plugin.Xbox.csproj" />
+    <None Include="..\..\plugins\Winnow.Plugin.Xbox\plugin.json" Link="xbox.plugin.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <Target Name="CopyBundledPluginTestPackage" AfterTargets="Build">

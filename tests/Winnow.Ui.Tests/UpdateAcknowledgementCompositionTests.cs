@@ -61,6 +61,7 @@ public sealed class UpdateAcknowledgementCompositionTests
         using var db = new TempDatabase();
         Seed(db);
         await using var services = Services(db);
+        await using var pendingLoads = new PendingFeedLoads(services);
         var shell = services.GetRequiredService<MainWindowViewModel>();
         var library = shell.Library;
         await library.LoadCommand.ExecuteAsync(null);
@@ -68,6 +69,7 @@ public sealed class UpdateAcknowledgementCompositionTests
         try
         {
             window.Show();
+            Assert.True(await window.StartupLibraryReady);
             Dispatcher.UIThread.RunJobs();
             var menu = window.GetVisualDescendants().OfType<Panel>()
                 .Select(panel => panel.ContextMenu).Single(context => context is not null)!;
@@ -89,7 +91,6 @@ public sealed class UpdateAcknowledgementCompositionTests
         finally
         {
             window.Close();
-            await (services.GetRequiredService<FeedViewModel>().LoadCommand.ExecutionTask ?? Task.CompletedTask);
         }
     }
 
@@ -258,6 +259,7 @@ public sealed class UpdateAcknowledgementCompositionTests
             Dispatcher.UIThread.RunJobs();
             Click(window, "Mark as read");
             await details.DismissFlagCommand.ExecutionTask!;
+            await WaitForActivityAsync(details);
             Dispatcher.UIThread.RunJobs();
             Assert.Null(details.FlagProblem);
             Assert.False(details.FlagIsRaised);
@@ -270,6 +272,7 @@ public sealed class UpdateAcknowledgementCompositionTests
 
             Click(window, "Show it again");
             await details.RestoreFlagCommand.ExecutionTask!;
+            await WaitForActivityAsync(details);
             Dispatcher.UIThread.RunJobs();
             Assert.Null(details.FlagProblem);
             Assert.True(details.ShowDismissFlag);
@@ -278,9 +281,9 @@ public sealed class UpdateAcknowledgementCompositionTests
         }
         finally
         {
-            window.Close(); details.Dispose();
-            await (services.GetRequiredService<FeedViewModel>().LoadCommand.ExecutionTask ?? Task.CompletedTask);
-            await (context.Feed.LoadCommand.ExecutionTask ?? Task.CompletedTask);
+            window.Close();
+            await WaitForActivityAsync(details);
+            details.Dispose();
         }
     }
 
@@ -300,6 +303,7 @@ public sealed class UpdateAcknowledgementCompositionTests
         await repository.InsertAsync(new UpdateEvent { ReleaseId = 1, Kind = UpdateEventKinds.BuildPush, OccurredAt = later });
         await repository.InsertAsync(new UpdateEvent { ReleaseId = 1, Kind = UpdateEventKinds.Announcement, OccurredAt = later.AddDays(1) });
         await opened.DismissFlagCommand.ExecuteAsync(null);
+        await WaitForActivityAsync(opened);
         Assert.True(Assert.Single(library.AllTiles, tile => tile.Game.ResolvedWorkId == 1).HasUnread);
         await library.OpenDetailsCommand.ExecuteAsync(Assert.Single(library.AllTiles, tile => tile.Game.ResolvedWorkId == 1));
         var reopened = library.Details!;
@@ -329,13 +333,29 @@ public sealed class UpdateAcknowledgementCompositionTests
         Assert.Equal(expected, Assert.Single(rows, row => row.ReleaseId == 1).Game.UnreadUpdateCount);
     }
 
+    private static async Task WaitForActivityAsync(GameDetailsViewModel details)
+    {
+        // Applying an updated snapshot starts this independent database read.
+        // Let it finish before replacing/disposal of the details and its database.
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        while (details.SteamActivity.IsLoading)
+            await Task.Delay(1, deadline.Token);
+    }
+
     private sealed class PendingFeedLoads(ServiceProvider services, FullscreenContext? context = null) : IAsyncDisposable
     {
         public async ValueTask DisposeAsync()
         {
-            await (services.GetRequiredService<FeedViewModel>().LoadCommand.ExecutionTask ?? Task.CompletedTask);
+            await DrainAsync(services.GetRequiredService<FeedViewModel>());
             if (context is not null)
-                await (context.Feed.LoadCommand.ExecutionTask ?? Task.CompletedTask);
+                await DrainAsync(context.Feed);
+        }
+
+        private static async Task DrainAsync(FeedViewModel feed)
+        {
+            await (feed.LoadCommand.ExecutionTask ?? Task.CompletedTask);
+            await feed.Backfilling;
+            await feed.AdditionalShelvesLoading;
         }
     }
 

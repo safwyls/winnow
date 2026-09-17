@@ -59,6 +59,10 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     private readonly ICoverLeases? _covers;
     private readonly Services.ArtworkPreferences? _artworkPreferences;
     private readonly IResolveStateRepository? _resolveState;
+    private readonly Services.IMergeSuggestionRefresh? _suggestionRefresh;
+    private readonly CancellationTokenSource _lifetime = new();
+    private long _revisionAtLoad = -1;
+    private long _loadGeneration;
 
     /// <summary>
     /// IGDB pin service. Optional in the way <see cref="ICoverCache"/> and
@@ -114,7 +118,8 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         Services.DormancyRamp? ramp = null,
         Services.ArtworkPreferences? artworkPreferences = null,
         IGroupHeaderPreferenceRepository? groupHeaders = null,
-        LibraryViewModel? library = null)
+        LibraryViewModel? library = null,
+        Services.IMergeSuggestionRefresh? suggestionRefresh = null)
     {
         _candidates = candidates;
         _settings = settings;
@@ -132,6 +137,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         _covers = covers;
         _artworkPreferences = artworkPreferences;
         _resolveState = resolveState;
+        _suggestionRefresh = suggestionRefresh;
         _igdb = igdb;
         _clock = clock ?? TimeProvider.System;
         _post = post ?? (action => Avalonia.Threading.Dispatcher.UIThread.Post(action));
@@ -377,6 +383,46 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
 
     // ── Header buttons ───────────────────────────────────────────────────────
 
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RefreshSuggestionsCommand))]
+    public partial bool IsRefreshingSuggestions { get; private set; }
+
+    [ObservableProperty]
+    public partial string SuggestionRefreshStatus { get; private set; } = string.Empty;
+
+    public string RefreshSuggestionsLabel => MergeCopy.RefreshSuggestions;
+    private bool CanRefreshSuggestions() => !_disposed && _suggestionRefresh is not null && !IsRefreshingSuggestions;
+
+    [RelayCommand(CanExecute = nameof(CanRefreshSuggestions))]
+    private async Task RefreshSuggestionsAsync(CancellationToken ct)
+    {
+        if (!CanRefreshSuggestions()) return;
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(ct, _lifetime.Token);
+        IsRefreshingSuggestions = true;
+        SuggestionRefreshStatus = MergeCopy.RefreshSuggestionsBusy;
+        try
+        {
+            var report = await _suggestionRefresh!.RefreshAsync(cancellation.Token);
+            cancellation.Token.ThrowIfCancellationRequested();
+            _stale = true;
+            await LoadAsync(cancellation.Token);
+            if (!_disposed) SuggestionRefreshStatus = report.Truncated
+                ? MergeCopy.RefreshSuggestionsPartial : MergeCopy.RefreshSuggestionsCompleted;
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            if (!_disposed) SuggestionRefreshStatus = MergeCopy.RefreshSuggestionsCancelled;
+        }
+        catch (Exception)
+        {
+            if (!_disposed) SuggestionRefreshStatus = MergeCopy.RefreshSuggestionsFailed;
+        }
+        finally
+        {
+            if (!_disposed) IsRefreshingSuggestions = false;
+        }
+    }
+
     /// <summary>Pending EXACT MATCH cards in ACROSS STORES, while that section is shown.</summary>
     public int ExactCount => ExactCards().Count;
 
@@ -500,19 +546,10 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
                 await _expansionRefusals.RetractAsync(linked.RefusedPairs, ct);
             }
 
-            linked.Card.MarkPending();
-            linked.Card.RequestCovers(_coverWidthPixels);
-            if (_sectionOfCard.TryGetValue(linked.Card, out var section))
-            {
-                section.Refresh();
-            }
         }
 
-        // Newest dismissal first, so each card lands at the index it left
-        // from with the cards dismissed after it already back in place.
-        for (var i = run.Dismissed.Count - 1; i >= 0; i--)
+        foreach (var (_, card, _) in run.Dismissed)
         {
-            var (section, card, index) = run.Dismissed[i];
             foreach (var candidateId in card.CandidateIds)
             {
                 await _candidates.SetStatusAsync(candidateId, MergeCandidateStatuses.Pending, ct);
@@ -523,6 +560,29 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
                 await _expansionRefusals.RetractAsync(card.RefusalPairs, ct);
             }
 
+        }
+
+        // Refresh can replace the cards while the dock is open. Read the undone state
+        // into the current queue instead of changing the run's detached card instances.
+        if (run.Linked.Any(linked => !_sectionOfCard.ContainsKey(linked.Card))
+            || run.Dismissed.Any(dismissed => !_sectionOfCard.ContainsKey(dismissed.Card)))
+        {
+            await LoadAsync(ct);
+            return;
+        }
+
+        foreach (var linked in run.Linked)
+        {
+            linked.Card.MarkPending();
+            linked.Card.RequestCovers(_coverWidthPixels);
+            if (_sectionOfCard.TryGetValue(linked.Card, out var section)) section.Refresh();
+        }
+
+        // Newest dismissal first, so each card lands at the index it left
+        // from with the cards dismissed after it already back in place.
+        for (var i = run.Dismissed.Count - 1; i >= 0; i--)
+        {
+            var (section, card, index) = run.Dismissed[i];
             card.IsDecided = false;
             section.Insert(card, index);
         }
@@ -598,7 +658,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     /// </summary>
     public async Task EnsureLoadedAsync(CancellationToken ct = default)
     {
-        if (_loaded && !_stale)
+        if (_loaded && !_stale && (_suggestionRefresh?.Revision ?? 0) == _revisionAtLoad)
         {
             if (await ReadPreferredPlatformAsync(ct))
             {
@@ -612,7 +672,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// Notes that the queue's inputs may have moved, for the price of a COUNT.
+    /// Notes that the queue's inputs may have moved, using the sweep revision and a COUNT.
     /// Rebuilds at once when the pane is showing; otherwise records the change
     /// so the next time it is shown rebuilds.
     ///
@@ -624,7 +684,9 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     public async Task NoteQueueMayHaveMovedAsync(CancellationToken ct = default)
     {
         var pending = await _candidates.CountPendingAsync(ct);
-        if (_loaded && !_stale && pending == _pendingAtLoad && HasCompletedSweep)
+        if (_disposed) return;
+        if (_loaded && !_stale && pending == _pendingAtLoad && HasCompletedSweep
+            && (_suggestionRefresh?.Revision ?? 0) == _revisionAtLoad)
         {
             return;
         }
@@ -639,6 +701,12 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task LoadAsync(CancellationToken ct)
     {
+        if (_disposed) return;
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(ct, _lifetime.Token);
+        ct = cancellation.Token;
+        var generation = ++_loadGeneration;
+        // Capture before reading: a sweep that finishes during this read still needs publication.
+        var revision = _suggestionRefresh?.Revision ?? 0;
         var loaded = await Task.Run(async () =>
         {
             // Must be read before the queue so an empty section knows if the matcher has run.
@@ -696,10 +764,13 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             return (hasCompletedSweep, cards, pendingCount: pending.Count, snapshot, resolution, headers);
         }, ct);
 
+        if (_disposed || generation != _loadGeneration) return;
         await ReadPreferredPlatformAsync(ct);
+        if (_disposed || generation != _loadGeneration) return;
         HasCompletedSweep = loaded.hasCompletedSweep;
         _pendingAtLoad = loaded.pendingCount;
-        _stale = false;
+        _revisionAtLoad = revision;
+        _stale = (_suggestionRefresh?.Revision ?? 0) != revision;
         _loaded = true;
         ConfigureGroupHeaders(loaded.cards, loaded.snapshot, loaded.resolution.SameGame, loaded.headers);
         ApplyPreferredPlatform(loaded.cards);
@@ -2153,6 +2224,9 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         }
 
         _disposed = true;
+        _lifetime.Cancel();
+        _lifetime.Dispose();
+        RefreshSuggestionsCommand.NotifyCanExecuteChanged();
         _ramp.PropertyChanged -= OnRampChanged;
         foreach (var card in _sectionOfCard.Keys) card.ReleaseCovers();
         _dockTimer?.Dispose();

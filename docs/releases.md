@@ -9,8 +9,8 @@ uses neither setting; its performance was not measured in that study.
 
 ## Application version
 
-`Version.props` owns the three-part version base (currently `0.1.0`). Ordinary builds
-append `-dev`; CI packages append `-ci.<run number>`. A tag such as `v0.1.0-beta.1`
+`Version.props` owns the three-part version base (currently `0.2.0`). Ordinary builds
+append `-dev`; CI packages append `-ci.<run number>`. A tag such as `v0.2.0-beta.1`
 supplies the release version. Manual builds and tags must use the base in `Version.props`;
 update that file when starting a new release series. Package builds embed the source commit
 in the assembly informational version and use the numeric base for Windows file versions.
@@ -27,6 +27,10 @@ Source archives built without Git metadata show `Unavailable` for the commit.
 | `Winnow-<version>-win-x64.zip` | Portable Windows directory; run `Winnow.exe` |
 | `Winnow-<version>-linux-x64.deb` | Ubuntu 24.04 x64 package, app-menu entry, and `winnow` command |
 | `Winnow-<version>-linux-x64.tar.gz` | Portable Linux directory; run `./winnow` after extraction |
+| `Winnow.Plugin.SteamGridDb-<plugin version>.zip` | SteamGridDB artwork plugin, also bundled with Winnow |
+| `Winnow.Plugin.Xbox-<plugin version>.zip` | Optional Xbox library, metadata and artwork plugin |
+| `Winnow.Plugin.Psn-<plugin version>.zip` | Optional PlayStation library and artwork plugin |
+| `winnow-plugins.json` | Release-specific plugin catalogue with package identity, size and SHA-256 |
 | `SHA256SUMS` | Checksums attached to a tagged draft release |
 
 Each application directory includes `release-info.json` with its version, runtime identifier,
@@ -34,6 +38,22 @@ and source commit. A portable build still uses the normal user data location; pa
 `--data-dir <path>` to select another location. Installers preserve user data on removal.
 For a manual upgrade, close Winnow first. Windows uses a stable Inno Setup AppId and prior install
 directory; Debian prereleases use `~` so they sort before the corresponding stable version.
+
+All three plugin ZIPs are built on every packaging run and attached to the same release as
+Winnow. Their versions come from each `plugin.json`, independently of the application
+version. Packages include the manifest, entry DLL, dependency manifest and README; the host
+supplies `Winnow.PluginSdk.dll`. Packaging checks manifest equality, assembly name and version,
+the public entry type and constructor, SDK provider interfaces, and framework/SDK-only
+dependencies through metadata without executing provider code.
+
+`winnow-plugins.json` uses `schemaVersion: 1`, `releaseTag`, `appVersion`, and a `plugins`
+array containing exactly `steamgriddb`, `xbox` and `psn`. Each entry has `id`, `name`,
+`description`, `version`, `apiVersion`, `assetName`, `size` and lowercase `sha256`, plus
+`minimumSdkVersion` when the source manifest declares it. Sizes and hashes come from the
+finished ZIPs. Release aggregation checks the catalogue against those packages again before
+creating `SHA256SUMS`, which includes all application assets, plugin ZIPs and the catalogue.
+The website reads published GitHub release assets; a draft is not available for browser
+installation or public download until it is published.
 
 ## In-app updates
 
@@ -175,9 +195,10 @@ timeout; the restarted application stays open until scenario cleanup.
 ## Build without publishing
 
 Pushes to `main` and `codex/**`, and pull requests, build packages when application,
-bundled plugin, packaging, version, SDK, dependency configuration, or workflow files change. Their version is
+plugin, packaging, version, SDK, dependency configuration, or workflow files change. Their version is
 `<version base>-ci.<run number>`. Download
-`packages-win-x64` and `packages-linux-x64` from the workflow's artifacts, retained for 14 days.
+`packages-win-x64`, `packages-linux-x64` and `packages-plugins` from the workflow's artifacts,
+retained for 14 days. The plugin artifact contains all three ZIPs and the release catalogue.
 
 Publishing verifies the bundled plugin's source manifest, assembly identity and entry type
 before either platform package is built. The entry type is inspected from metadata without
@@ -185,7 +206,7 @@ loading provider code. Run `packaging/Test-BundledPlugin.ps1 -BuildDirectory <bu
 to exercise missing/mismatched package failures against a built application.
 
 **Actions → Release builds → Run workflow**
-accepts a version such as `0.1.0-beta.1`. This path runs verification and creates artifacts
+accepts a version such as `0.2.0-beta.1`. This path runs verification and creates artifacts
 without creating a tag or GitHub Release. Versions use three numeric components with an
 optional prerelease suffix; numeric components must fit 0–65535. Build metadata and a
 leading `v` are not accepted in this input.
@@ -194,20 +215,26 @@ Local publish commands, from the repository root:
 
 ```powershell
 $commit = git rev-parse HEAD
-./packaging/Publish.ps1 -Runtime win-x64 -Version 0.1.0-beta.1 -Commit $commit -OutputDirectory artifacts/publish-win
-./packaging/windows/New-WindowsPackage.ps1 -PublishDirectory artifacts/publish-win -OutputDirectory artifacts/packages -Version 0.1.0-beta.1
+./packaging/Publish.ps1 -Runtime win-x64 -Version 0.2.0-beta.1 -Commit $commit -OutputDirectory artifacts/publish-win
+./packaging/windows/New-WindowsPackage.ps1 -PublishDirectory artifacts/publish-win -OutputDirectory artifacts/packages -Version 0.2.0-beta.1
+./packaging/New-PluginRelease.ps1 -Version 0.2.0-beta.1 -OutputDirectory artifacts/plugin-packages
+./packaging/Test-PluginRelease.ps1 -PackageDirectory artifacts/plugin-packages -Version 0.2.0-beta.1
 ```
 
 Windows packaging requires [Inno Setup 6](https://jrsoftware.org/isinfo.php). On Linux with
 PowerShell and the .NET SDK installed, publish with `-Runtime linux-x64`, then run:
 
 ```bash
-bash packaging/linux/build.sh artifacts/publish-linux artifacts/packages 0.1.0-beta.1
+bash packaging/linux/build.sh artifacts/publish-linux artifacts/packages 0.2.0-beta.1
 ```
 
 Use an empty publish output directory. The publisher rejects local secret configuration and
 database files. Installer smoke scripts are restricted to GitHub Actions because they install
 and uninstall the package. Their application launches use throwaway `--data-dir` paths.
+Plugin release output must also be empty. `Test-PluginRelease.ps1` copies its inputs to a
+temporary directory and checks missing packages, catalogue identity and digest mismatches,
+unsafe archive entries, manifest changes, and missing or incorrect entry assemblies/types.
+Each plugin also has a `Package.ps1` for building its ZIP alone without a release catalogue.
 
 ## Create a release
 
@@ -219,12 +246,13 @@ Merging a pull request produces build artifacts; only a version tag creates a dr
 After reviewing a commit on main, create and push its version tag, for example:
 
 ```bash
-git tag -a v0.1.0-beta.1 -m "Winnow 0.1.0 beta 1"
-git push origin v0.1.0-beta.1
+git tag -a v0.2.0-beta.1 -m "Winnow 0.2.0 beta 1"
+git push origin v0.2.0-beta.1
 ```
 
 The workflow validates the tag before starting the Windows/Linux CI gate, and builds and
-smoke-checks both platforms. The gate can reuse matching full-test evidence as described below.
+smoke-checks both platforms, and builds and validates all three plugins and their catalogue.
+Missing or invalid plugin assets fail the release. The gate can reuse matching full-test evidence as described below.
 Only then does its release job receive `contents: write` and
 create a **draft** release. A prerelease suffix also sets GitHub's prerelease flag. Review
 the assets and notes in GitHub Releases before publishing the draft. No signing certificate,

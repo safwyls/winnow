@@ -6,6 +6,62 @@ namespace Winnow.Tests;
 public sealed class SingleInstanceActivationTests
 {
     [Fact]
+    public async Task Plugin_requests_round_trip_and_queue_with_other_actions()
+    {
+        var directory = DirectoryName();
+        using var server = new SingleInstanceActivation(directory);
+        var plugin = AppActivationRequest.ForPlugin(new("psn", "v0.2.0-beta.1"));
+        Assert.True(await SingleInstanceActivation.RequestAsync(directory, plugin));
+        Assert.True(await SingleInstanceActivation.RequestAsync(directory, AppActivationRequest.Fullscreen));
+        var received = new List<AppActivationRequest>();
+        server.SetHandler(received.Add);
+        Assert.Equal([plugin, AppActivationRequest.Fullscreen], received);
+    }
+
+    [Fact]
+    public void Uri_arguments_are_validated_before_accepting_other_startup_options()
+    {
+        const string uri = "winnow://plugins/install?id=xbox&release=v0.2.0";
+        var expected = AppActivationRequest.ForPlugin(new("xbox", "v0.2.0"));
+        Assert.True(AppActivationRequest.TryReadStartup(["--uri", uri], out var windows));
+        Assert.Equal(expected, windows);
+        Assert.True(AppActivationRequest.TryReadStartup([uri], out var linux));
+        Assert.Equal(expected, linux);
+        Assert.True(AppActivationRequest.TryReadStartup(["--data-dir", "C:\\Temp\\isolated library", "--uri", uri], out var isolated));
+        Assert.Equal(expected, isolated);
+        foreach (var args in new[] { new[] { "--uri" }, ["--uri", uri, "--data-dir", "C:\\untrusted"],
+                     ["--no-sync", "--uri", uri], ["--uri", uri + "\" --data-dir C:\\untrusted"],
+                     ["--uri", "https://example.com/plugin.zip"], [uri, uri],
+                     ["--jump-list-fullscreen", "--uri", uri] })
+            Assert.False(AppActivationRequest.TryReadStartup(args, out _));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(513)]
+    [InlineData(65535)]
+    public async Task Oversized_or_empty_plugin_frame_is_rejected_without_waiting_for_payload(int length)
+    {
+        var directory = DirectoryName();
+        using var server = new SingleInstanceActivation(directory);
+        var received = new List<AppActivationRequest>();
+        server.SetHandler(received.Add);
+        using var pipe = new System.IO.Pipes.NamedPipeClientStream(".", SingleInstanceGuard.ActivationNameFor(directory),
+            System.IO.Pipes.PipeDirection.InOut, System.IO.Pipes.PipeOptions.Asynchronous);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        await pipe.ConnectAsync(timeout.Token);
+        await pipe.ReadExactlyAsync(new byte[4], timeout.Token);
+        var frame = new byte[3];
+        frame[0] = 4;
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(1), (ushort)length);
+        await pipe.WriteAsync(frame, timeout.Token);
+        var reply = new byte[1];
+        await pipe.ReadExactlyAsync(reply, timeout.Token);
+        Assert.Equal(0, reply[0]);
+        Assert.Empty(received);
+        Assert.True(await SingleInstanceActivation.RequestAsync(directory));
+    }
+    [Fact]
     public async Task Listener_accepts_next_launch_while_previous_client_keeps_its_handle_open()
     {
         var directory = DirectoryName();
@@ -101,6 +157,8 @@ public sealed class SingleInstanceActivationTests
     [InlineData("apphost-game", 42)]
     [InlineData("shell-fullscreen", 0)]
     [InlineData("shell-game", 42)]
+    [InlineData("plugin-uri", 0)]
+    [InlineData("invalid-plugin-uri", 0)]
     public async Task Second_process_activates_owner_and_exits_before_database_initialization(string command, long ownershipId)
     {
         // Native shell coverage is opt-in and always targets a disposable data directory.
@@ -123,10 +181,17 @@ public sealed class SingleInstanceActivationTests
                      "--depsfile", Path.ChangeExtension(testAssembly, ".deps.json"),
                      typeof(Winnow.App.Program).Assembly.Location })
             start.ArgumentList.Add(argument);
-        if (command.Length > 0) start.ArgumentList.Add(command);
+        var pluginUri = command.EndsWith("plugin-uri", StringComparison.Ordinal);
+        if (command.Length > 0 && !pluginUri) start.ArgumentList.Add(command);
         if (ownershipId > 0) start.ArgumentList.Add(ownershipId.ToString(System.Globalization.CultureInfo.InvariantCulture));
         start.ArgumentList.Add("--data-dir");
         start.ArgumentList.Add(directory);
+        if (pluginUri)
+        {
+            start.ArgumentList.Add("--uri");
+            start.ArgumentList.Add(command == "plugin-uri" ? "winnow://plugins/install?id=psn&release=v0.2.0"
+                : "winnow://plugins/install?id=psn&release=v0.2.0\" --data-dir C:\\untrusted");
+        }
         start.WorkingDirectory = Path.GetDirectoryName(typeof(Winnow.App.Program).Assembly.Location)!;
         var throughShell = command.StartsWith("shell-", StringComparison.Ordinal);
         if (throughShell || command.StartsWith("apphost-", StringComparison.Ordinal))
@@ -160,9 +225,10 @@ public sealed class SingleInstanceActivationTests
         {
             using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(20));
             await process.WaitForExitAsync(deadline.Token);
-            Assert.True(process.ExitCode == 0, await errors);
-            Assert.True(activated.Task.IsCompleted, await output);
-            Assert.Equal(command == "--jump-list-game" ? AppActivationRequest.ForGame(ownershipId)
+            Assert.True(process.ExitCode == (command == "invalid-plugin-uri" ? 2 : 0), await errors);
+            Assert.Equal(command != "invalid-plugin-uri", activated.Task.IsCompleted);
+            if (command != "invalid-plugin-uri") Assert.Equal(command == "plugin-uri" ? AppActivationRequest.ForPlugin(new("psn", "v0.2.0"))
+                : command == "--jump-list-game" ? AppActivationRequest.ForGame(ownershipId)
                 : command == "--jump-list-fullscreen" ? AppActivationRequest.Fullscreen : AppActivationRequest.Activate,
                 await activated.Task);
             Assert.False(File.Exists(Path.Combine(directory, "winnow.db")));

@@ -178,20 +178,28 @@ public sealed class FilterPanelViewModelTests
         Assert.DoesNotContain(library.Filters.VisibleGroups, g => g.Key == FilterPanelViewModel.StoreKey);
     }
 
-    [Fact]
-    public async Task A_store_group_appears_as_soon_as_a_second_store_does()
+    [Theory]
+    [InlineData("gog", "GOG")]
+    [InlineData("plugin:xbox", "Xbox")]
+    public async Task A_store_group_appears_as_soon_as_a_second_store_does(string store, string label)
     {
         using var fixture = new PanelFixture();
         await fixture.SeedAsync("Hades");
-        await fixture.SeedAsync("Cyberpunk 2077", store: "gog");
-
-        var library = await fixture.LoadAsync();
+        using var library = await fixture.LoadAsync();
+        Assert.DoesNotContain(library.Filters.VisibleGroups, g => g.Key == FilterPanelViewModel.StoreKey);
+        await fixture.SeedAsync("Another game", store: store);
+        await library.LoadCommand.ExecuteAsync(null);
 
         Assert.Contains(library.Filters.VisibleGroups, g => g.Key == FilterPanelViewModel.StoreKey);
         Assert.Equal(
-            ["GOG", "Steam"],
+            new[] { label, "Steam" }.Order(),
             library.Filters.Groups.Single(g => g.Key == FilterPanelViewModel.StoreKey)
-                .Options.Select(o => o.Label));
+                .Options.Select(o => o.Label).Order());
+        Assert.Equal(1, fixture.Count(library, FilterPanelViewModel.StoreKey, label));
+        fixture.Check(library, FilterPanelViewModel.StoreKey, label);
+        Assert.Equal(new[] { store }, library.Filters.ToFilter().Stores);
+        Assert.Equal(["Another game"], fixture.Titles(library));
+        Assert.Equal(1, fixture.Count(library, FilterPanelViewModel.StoreKey, "Steam"));
     }
 
     // ── The cut bar ─────────────────────────────────────────────────────────

@@ -23,11 +23,16 @@ public sealed class RailListControlsTests
     public async Task Statistics_sits_with_screens_and_stays_reachable_on_both_surfaces()
     {
         var shell = PreviewData.Shell;
+        shell.Library.Lightbox.CloseCommand.Execute(null);
+        shell.Library.CloseDetailsCommand.Execute(null);
+        shell.Library.Prompt?.CancelCommand.Execute(null);
         shell.ShowLibraryCommand.Execute(null);
         var window = new MainWindow { DataContext = shell, Width = 1200, Height = 900 };
         try
         {
-            window.Show(); Flush();
+            window.Show();
+            Assert.True(await window.StartupLibraryReady);
+            Flush();
             var buttons = window.GetVisualDescendants().OfType<Button>().ToArray();
             var stats = buttons.Single(button => ReferenceEquals(button.Command, shell.ToggleAccountStatsCommand));
             var feed = buttons.Single(button => ReferenceEquals(button.Command, shell.ShowFeedCommand));
@@ -59,6 +64,7 @@ public sealed class RailListControlsTests
             var summary = page.GetVisualDescendants().OfType<Button>().Single(button => AutomationProperties.GetName(button) == "Library summary");
             Assert.True(summary.Focus(NavigationMethod.Tab));
             tv.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+            tv.KeyRelease(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
             Assert.IsType<FullscreenLibrarySummaryPage>(opened);
         }
         finally { tv.Close(); opened?.Dispose(); }
@@ -182,6 +188,13 @@ public sealed class RailListControlsTests
 
     private static void Activate(Window window, Button button)
     {
+        // The input helper renders before dispatch. Settle layout and pending
+        // focus restoration before choosing the control that receives Enter.
+        window.UpdateLayout();
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        Flush();
+        Assert.True(button.IsEffectivelyVisible);
+        Assert.True(button.IsEffectivelyEnabled);
         Assert.True(button.Focus(NavigationMethod.Tab));
         window.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None);
         window.KeyReleaseQwerty(PhysicalKey.Enter, RawInputModifiers.None);

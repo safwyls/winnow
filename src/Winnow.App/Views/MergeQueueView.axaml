@@ -1,6 +1,7 @@
 <UserControl AutomationProperties.Name="Merges" AutomationProperties.ControlTypeOverride="Group" xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
+             xmlns:views="using:Winnow.App.Views"
              x:Class="Winnow.App.Views.MergeQueueView"
              x:DataType="vm:MergeQueueViewModel"
              Classes.reducedmotion="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.Ramp.ReducedMotion}">
@@ -301,10 +302,10 @@
 
     </UserControl.Styles>
 
-    <Grid RowDefinitions="56,40,*">
+    <Grid RowDefinitions="56,Auto,40,*">
 
         <!-- ══ Band 1: header ═══════════════════════════════════════════════ -->
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" Margin="16,0">
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto" Margin="16,0">
             <TextBlock AutomationProperties.HeadingLevel="1" Grid.Column="0" Classes="display-l"
                        VerticalAlignment="Center"
                        Text="{Binding Title}"/>
@@ -365,8 +366,24 @@
                            Text="{Binding AcceptExactLabel}"/>
             </Button>
 
+            <Button Grid.Column="5" Name="RefreshSuggestionsButton" Classes="ctl"
+                    Width="32" Height="32" MinWidth="0" Padding="7" Margin="0,0,8,0"
+                    VerticalAlignment="Center" HorizontalContentAlignment="Center"
+                    Command="{Binding RefreshSuggestionsCommand}"
+                    ToolTip.Tip="{Binding RefreshSuggestionsLabel}"
+                    AutomationProperties.Name="{Binding RefreshSuggestionsLabel}"
+                    AutomationProperties.ItemStatus="{Binding SuggestionRefreshStatus}">
+                <Viewbox Width="18" Height="18" IsHitTestVisible="False">
+                    <Canvas Width="24" Height="24">
+                        <Path Data="{x:Static views:ActionIcons.RefreshGeometry}"
+                              Stroke="{DynamicResource VoltForeground}" StrokeThickness="1.8"
+                              StrokeLineCap="Round" StrokeJoin="Round"/>
+                    </Canvas>
+                </Viewbox>
+            </Button>
+
             <!-- The selection's primary, the one filled button on the screen. -->
-            <Button Grid.Column="5" Classes="act primary"
+            <Button Grid.Column="6" Classes="act primary"
                     FontSize="{DynamicResource FontSize12}" Padding="12,5"
                     VerticalAlignment="Center"
                     IsEnabled="{Binding CanMergeSelected}"
@@ -375,8 +392,14 @@
                     Command="{Binding MergeSelectedCommand}"/>
         </Grid>
 
+        <TextBlock Name="SuggestionRefreshStatus" Grid.Row="1" Classes="body"
+                   Margin="16,0,16,12" Foreground="{StaticResource TextDim}"
+                   IsVisible="{Binding SuggestionRefreshStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   Text="{Binding SuggestionRefreshStatus}" TextWrapping="Wrap"
+                   AutomationProperties.LiveSetting="Polite"/>
+
         <!-- ══ Band 2: cut bar ══════════════════════════════════════════════ -->
-        <Border Grid.Row="1"
+        <Border Grid.Row="2"
                 Background="{StaticResource ChromeSurface}"
                 BorderBrush="{StaticResource Line}"
                 BorderThickness="0,1,0,1"
@@ -466,7 +489,7 @@
         <!-- ══ Band 3: the queue ════════════════════════════════════════════
              Right inset 10 rather than 16: the scrollbar steps in off the
              pane edge. -->
-        <ScrollViewer Grid.Row="2"
+        <ScrollViewer Grid.Row="3"
                       HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
             <!-- The inset belongs to the content so it reduces the width used to measure cards. -->

@@ -24,6 +24,7 @@ export default function Home() {
           <a href="#why">Why Winnow</a>
           <a href="#how-it-works">How it works</a>
           <a href={sitePath('/developers/')}>For developers</a>
+          <a href={sitePath('/plugins/')}>Plugins</a>
           <a className="nav-docs" href={sitePath('/docs/')}>Docs</a>
           <a className="nav-cta" href={releasesUrl}>Download</a>
         </nav>
@@ -95,7 +96,7 @@ export default function Home() {
         <p>Free &amp; open source. Supported by voluntary donations.</p>
       </section>
 
-      <footer><Brand /><p>A free, open-source library for your PC games.</p><div><a href={sitePath('/docs/')}>Docs</a><a href={sitePath('/developers/')}>Developers</a><a href="https://github.com/safwyls/winnow">GitHub</a></div></footer>
+      <footer><Brand /><p>A free, open-source library for your PC games.</p><div><a href={sitePath('/plugins/')}>Plugins</a><a href={sitePath('/docs/')}>Docs</a><a href={sitePath('/developers/')}>Developers</a><a href="https://github.com/safwyls/winnow">GitHub</a></div></footer>
     </main>
   );
 }

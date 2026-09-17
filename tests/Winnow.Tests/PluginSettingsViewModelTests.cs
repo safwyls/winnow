@@ -7,6 +7,50 @@ namespace Winnow.Tests;
 public sealed class PluginSettingsViewModelTests
 {
     [Fact]
+    public async Task Collapsed_advanced_settings_preserve_values_and_secret_drafts_when_saving()
+    {
+        var backend = new Backend { AdvancedFields = true };
+        var settings = new PluginSettingsViewModel(backend);
+        await settings.LoadAsync();
+        var plugin = Assert.Single(settings.Plugins);
+        Assert.True(plugin.HasAdvancedSettings);
+        Assert.False(plugin.AdvancedSettingsExpanded);
+        Assert.Empty(plugin.StandardFields);
+        Assert.Equal(2, plugin.AdvancedFields.Count);
+        Assert.False(plugin.HasVisibleSecrets);
+        await plugin.SaveCommand.ExecuteAsync(null);
+        Assert.Equal("en", backend.Saved!["language"]);
+        Assert.DoesNotContain("api-key", backend.Saved.Keys);
+        plugin.ToggleAdvancedSettingsCommand.Execute(null);
+        Assert.True(plugin.HasVisibleSecrets);
+        plugin.Fields[0].Value = "replacement-secret";
+        plugin.Fields[1].Value = "fr";
+        plugin.ToggleAdvancedSettingsCommand.Execute(null);
+        await plugin.SaveCommand.ExecuteAsync(null);
+        Assert.Equal("fr", backend.Saved["language"]);
+        Assert.Equal("replacement-secret", backend.Saved["api-key"]);
+        Assert.Empty(plugin.Fields[0].Value);
+        Assert.False(plugin.AdvancedSettingsExpanded);
+        plugin.ToggleAdvancedSettingsCommand.Execute(null);
+        settings.ClearSecrets();
+        Assert.False(plugin.AdvancedSettingsExpanded);
+    }
+
+    [Fact]
+    public async Task Invalid_required_advanced_field_is_revealed_before_saving()
+    {
+        var backend = new Backend { AdvancedFields = true };
+        var settings = new PluginSettingsViewModel(backend);
+        await settings.LoadAsync();
+        var plugin = Assert.Single(settings.Plugins);
+        plugin.Fields[1].Value = "";
+        await plugin.SaveCommand.ExecuteAsync(null);
+        Assert.True(plugin.AdvancedSettingsExpanded);
+        Assert.Contains("Enter language", plugin.Status);
+        Assert.Null(backend.Saved);
+    }
+
+    [Fact]
     public async Task Secrets_are_never_loaded_and_blank_drafts_preserve_saved_values()
     {
         var backend = new Backend();
@@ -147,6 +191,7 @@ public sealed class PluginSettingsViewModelTests
         public bool Loaded { get; set; } = true;
         public bool Stored { get; set; } = true;
         public bool FailSave { get; set; }
+        public bool AdvancedFields { get; init; }
         public string SetupUrl { get; init; } = "https://example.com/api";
         public IReadOnlyDictionary<string, string>? Saved { get; private set; }
         public string? Removed { get; private set; }
@@ -158,8 +203,8 @@ public sealed class PluginSettingsViewModelTests
             if (PendingLoad is not null) await PendingLoad.Task;
             return [new("community-art", "Community artwork", "Artwork from a community source.",
                 "1.0.0", "Artwork", Enabled, Loaded, Enabled != Loaded, "Ready.", [
-                    new("api-key", "API key", null, true, true, "must-never-be-shown", Stored, SetupUrl),
-                    new("language", "Language", null, false, true, "en", false)])];
+                    new("api-key", "API key", null, true, true, "must-never-be-shown", Stored, SetupUrl, IsAdvanced: AdvancedFields),
+                    new("language", "Language", null, false, true, "en", false, IsAdvanced: AdvancedFields)])];
         }
         public async Task SaveAsync(string pluginId, IReadOnlyDictionary<string, string> values, CancellationToken ct = default)
         {

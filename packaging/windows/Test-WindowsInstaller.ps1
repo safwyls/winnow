@@ -228,6 +228,12 @@ try {
     if (-not (Test-Path -LiteralPath $applicationPath -PathType Leaf)) {
         throw 'The silent reinstall did not preserve the selected install location.'
     }
+    $protocolKey = Get-Item -LiteralPath 'HKCU:\Software\Classes\winnow'
+    $protocolCommand = (Get-Item -LiteralPath 'HKCU:\Software\Classes\winnow\shell\open\command').GetValue('')
+    if ($protocolKey.GetValue('URL Protocol', $null) -cne '' -or
+        $protocolCommand -cne ('"{0}" --uri "%1"' -f $applicationPath)) {
+        throw 'The installer did not register the quoted per-user Winnow URI command for this installation.'
+    }
 
     if (-not (Test-Path -LiteralPath $uninstallerPath -PathType Leaf)) {
         throw "The install did not create its uninstaller: $uninstallerPath"
@@ -236,6 +242,9 @@ try {
 
     if (Test-Path -LiteralPath $applicationPath -PathType Leaf) {
         throw 'The silent uninstall left Winnow.exe in the install directory.'
+    }
+    if (Test-Path -LiteralPath 'HKCU:\Software\Classes\winnow') {
+        throw 'The silent uninstall left the Winnow URI registration behind.'
     }
     if (-not (Test-Path -LiteralPath $databasePath -PathType Leaf) -or
         -not (Test-Path -LiteralPath $sentinelPath -PathType Leaf)) {

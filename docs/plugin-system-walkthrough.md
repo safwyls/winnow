@@ -61,7 +61,7 @@ knowing which class implements it. `Task` lets the provider perform asynchronous
 `CancellationToken` lets the host ask it to stop; the nullable list lets it report that
 artwork is currently unavailable.
 
-There are four independent capabilities:
+SDK 1.1 exposes six capabilities under API major 1:
 
 | Capability | Question Winnow asks | Result |
 |---|---|---|
@@ -69,6 +69,8 @@ There are four independent capabilities:
 | Metadata | What do you know about this game? | Summary, release date, genres and tags |
 | Artwork | Which images could represent this game? | Backgrounds, covers and screenshots |
 | Recommendations | Which of these eligible games would you suggest? | Supplied game handles, scores and explanations |
+| Account | Can the user connect or disconnect this provider? | Connection state and a device-code challenge with bounded polling |
+| Game actions | Can this imported game be played or opened in its store? | A handoff result for a validated source ID and action |
 
 A class can implement several capabilities. An artwork author only needs to implement artwork.
 This avoids making every plugin implement meaningless methods for features it does not provide.
@@ -114,9 +116,11 @@ are its central fields, excerpted from the full file:
 that ID is effectively introducing a different plugin.
 
 The full manifest also declares settings and network hosts. Winnow can therefore show a
-plugin's name, requested configuration and load errors without executing its DLL. User packages
-start disabled; the bundled SteamGridDB package defaults to enabled. An existing saved choice
-takes precedence over either default.
+plugin's name, requested configuration and load errors without executing its DLL. Manually added
+user packages start disabled; the bundled SteamGridDB package defaults to enabled. An existing
+saved choice takes precedence over either default. Installing a new first-party package through
+the website is an explicit request to enable it immediately; links for existing packages preserve
+their files and enabled state.
 
 [PluginManifestReader](../src/Winnow.Plugins/PluginManifestReader.cs) checks the API version,
 identifiers, entry filename, recognized capabilities and bounded configuration. The catalog
@@ -142,6 +146,13 @@ After that, calls use ordinary C# interfaces. We do not use reflection for every
 next launch. Loaded says the instance is active in this session. Changing enablement records
 the choice and marks a restart as required; it does not immediately start or stop the code.
 
+Browser installation uses [OfficialPluginInstaller](../src/Winnow.App/Services/OfficialPluginInstaller.cs)
+to resolve an exact official GitHub release and verify its catalogue and package hashes, sizes
+and identity. It waits for discovery, then installs and loads a new package under the catalogue's
+lifecycle lock. Desktop and fullscreen show shared progress and open the provider's settings.
+This is a first-party installation service, not a new public SDK capability or a way to replace
+already loaded assemblies. Pending installs are cancelled and drained before host disposal.
+
 `InitializeAsync` receives [IPluginContext](../src/Winnow.PluginSdk/PluginContext.cs). SteamGridDB
 saves that context in a field and uses it later. Its constructor does not need to know where
 the database lives or how HTTP clients are configured.
@@ -161,17 +172,20 @@ allows the host to recognize the plugin as an `IArtworkProviderPlugin`.
 [Microsoft's assembly-loading explanation](https://learn.microsoft.com/en-us/dotnet/core/dependency-loading/understanding-assemblyloadcontext)
 describes this distinction.
 
-We also separate three kinds of version:
+We also separate four kinds of version:
 
 | Version | Meaning |
 |---|---|
 | Winnow application version | Which application build the user installed |
 | Manifest `version` | Which release of this particular plugin they installed |
+| SDK NuGet package version | Which SDK features the author compiles against; currently `1.1.0` |
 | Manifest `apiVersion` and SDK assembly major | Which host/plugin contract the plugin expects |
 
 API 1 requires `apiVersion: 1`; the loader also checks the SDK assembly major. The
 [SDK project](../src/Winnow.PluginSdk/Winnow.PluginSdk.csproj) keeps assembly version `1.0.0.0`
-independent of application release overrides. These checks reject obvious incompatibility;
+independent of application release overrides, while the current NuGet package is `1.1.0`.
+Providers using account/game-action contracts or writable secrets need a host with those SDK 1.1
+features. These checks reject obvious incompatibility;
 they do not automatically make a changed interface compatible. Adding required methods or
 changing existing signatures would require deliberate API evolution and compatibility testing.
 
@@ -182,7 +196,7 @@ The context gives each plugin four services:
 | Service | Example use | Host responsibility |
 |---|---|---|
 | `Settings` | Read a declared text option | Keep settings under this plugin's identity |
-| `Secrets` | Read its declared API key | Separate secret access from ordinary settings |
+| `Secrets` | Read an API key; save or remove a declared refresh credential | Protect credentials and separate them from ordinary settings |
 | `Cache` | Keep a response with an expiry | Persist bounded payloads in a provider namespace |
 | `Http` | Call its external API | Enforce declared hosts, request budgets and response limits |
 
@@ -192,9 +206,16 @@ segments so dots in IDs cannot accidentally create a collision. Providers can bo
 `apikey` without overwriting each other's value.
 
 On Windows, saved secrets use current-user DPAPI encryption. The settings editor receives a
-boolean saying a secret is saved, never the saved secret itself. Plugins can read their declared
-secret when they need to authenticate. Other operating systems currently refuse persisted secret
-writes; configuration can supply credentials there.
+boolean saying a secret is saved, never the saved secret itself. `IPluginSecrets.GetAsync`,
+`SetAsync` and `RemoveAsync` operate only on declared secret keys. Writes accept up to 4,096
+characters without control characters. Declare `managedByPlugin: true` with `secret: true`
+for a refresh credential maintained by the provider; it stays out of the settings editors.
+Managed secrets read only protected stored values, so sign-out cannot revive a configuration
+fallback. User-editable secrets can use `Plugins__<plugin-id>__<key>` as a fallback; removing
+the saved value does not remove that configuration. Other operating systems currently refuse
+persisted secret writes. SDK default write/remove methods throw `NotSupportedException`, so test
+contexts and hosts must implement them explicitly when needed. Never store tokens in ordinary
+settings, caches or logs.
 
 [PluginHttpClient](../src/Winnow.Plugins/PluginHttpClient.cs) supplies an HTTP client through
 Winnow's existing client factory and Polly policies. SDK requests use declared HTTPS hosts,
@@ -234,9 +255,14 @@ sequenceDiagram
     H-->>U: Image bytes
 ```
 
-[Program.cs](../src/Winnow.App/Program.cs) schedules the plugin refresh after startup
-synchronization and plugin discovery. The refresh runs in the background, imports library
-providers first, and then asks metadata and artwork providers about owned games.
+[Program.cs](../src/Winnow.App/Program.cs) schedules library imports after plugin discovery.
+Imports publish committed rows before a separate queue asks metadata and artwork providers
+about owned games. This lets a newly connected library appear while other stores or artwork
+providers are still refreshing. A later enrichment pass includes games added by built-in startup.
+`PluginRefreshCoordinator` also queues merge suggestions after imports. The local pass preserves
+confirmed/rejected decisions and runs independently of optional metadata and artwork. The refresh
+icon in desktop Merges and fullscreen Library tools requests the same matching work without
+fetching another inventory or accepting suggestions.
 
 Inside [SteamGridDbPlugin](../plugins/Winnow.Plugin.SteamGridDb/SteamGridDbPlugin.cs), the request
 uses the supplied Steam ID. It does not search the game's title. A fresh cached response is
@@ -273,15 +299,23 @@ ID can attach an observation to an existing release when all found matches agree
 titles never establish that join. Migration 0032 extends the external-ID provider constraint
 to admit these namespaces. Missing inventory does not remove ownership.
 
-Library support here means importing inventory, installation observations and playtime. A new
-launcher's custom launch, install and sign-in workflows need additional contracts; API 1 does
-not expose them. Existing store actions can use established Steam/Epic/GOG links.
+Library support includes inventory, installation observations and playtime. SDK 1.1 adds
+optional account connection and game actions through shared host controls; the Xbox package
+uses these contracts. Existing store actions can use established Steam/Epic/GOG links.
+
+`PluginLibraryGame.TitleIsProvisional` marks an unresolved identifier that a later import can
+replace. `LibrarySourceLabel` explains why an entry appears, such as played history, without
+claiming ownership. `Actions` advertises `Play` or `OpenStore` for that stable source ID.
+[PluginGameActionService](../src/Winnow.App/Services/PluginGameActionService.cs) rechecks the
+ownership, active provider, source identity and advertised action at dispatch; Play also requires
+an installed entry. `IPluginGameActions.ExecuteGameActionAsync` resolves the current target inside
+the provider and returns whether it was handed off. The host never executes provider command text.
 
 Metadata observations retain source attribution. Summary and release year fill eligible missing
 automatic values through the existing repository; a plugin cannot overwrite the user's edits
 through this API. Migration 0031 adds separate genre/tag assignments for each plugin. A refresh
 replaces that provider's assignments while retaining other providers' assignments. Currently,
-metadata gets the first owned release's identifiers for a work; artwork checks every owned release.
+metadata checks owned releases until one returns a result; artwork checks every owned release.
 
 For recommendations, [PluginFeedService](../src/Winnow.App/Services/PluginFeedService.cs) supplies
 eligible owned games after grouping and suppression. A plugin returns handles from that input,
@@ -311,13 +345,31 @@ catalog and stored values into application settings snapshots. The shared view m
 commands and field state. Desktop renders plugin cards; fullscreen renders separate plugin
 pages with its own navigation and focus handling.
 
+Settings can use `isBoolean` for a non-secret toggle and `isAdvanced` for fields shown under
+**Show advanced settings**. Collapsed advanced fields keep their values when saving.
+`managedByPlugin` secrets have no editor. These declarations drive both presentation surfaces.
+
+For providers declaring `account`, [IPluginAccount](../src/Winnow.PluginSdk/PluginInteractionContracts.cs)
+adds status, begin, poll, cancel and sign-out operations. The host supplies shared controls,
+validates the HTTPS verification address against declared hosts, displays the user code and waits
+between short polls. The provider retains the private device code and returns an opaque attempt
+ID, never a credential. `Pending` continues the wait, `SlowDown` increases the interval, and
+`Connected` or `Failed` finishes the attempt. The host cancels unsuccessful attempts and queues
+a refresh on connection or sign-out. Provider messages do not become arbitrary UI copy.
+The [SDK guide](https://winnow.gg/docs/plugin-sdk/#accounts-and-actions) lists challenge bounds
+and exact signatures. Xbox uses this device-code flow; PlayStation uses the ordinary saved-secret
+editor for NPSSO because its connection does not follow that contract.
+
 Saving settings queues the background refresh worker. An already loaded plugin can read the
-new values on its next call; changing whether code is loaded still requires a restart. Active
+new values on its next call; toggling an existing plugin's enablement requires a restart. Active
 artwork providers also become entries in the shared source-order settings.
+Writing directly through `context.Settings` or `context.Secrets` changes storage; it does not
+request background work by itself.
 
 This gives authors a useful amount of presentation through data declarations. Supporting
 arbitrary screens would require a larger contract for navigation, lifecycle, input and UI
-compatibility. API 1 deliberately stops at generated settings and existing shelves/galleries.
+compatibility. API 1 provides generated settings, shared account controls, game actions and
+existing shelves/galleries without giving providers their own screens.
 
 **10. Try a small provider before adding an external API**
 
@@ -336,7 +388,7 @@ Create an `Example.Metadata` directory outside the repository. Save this as `Exa
     <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Winnow.PluginSdk" Version="1.0.0" ExcludeAssets="runtime" />
+    <PackageReference Include="Winnow.PluginSdk" Version="1.1.0" ExcludeAssets="runtime" />
     <None Update="plugin.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
@@ -418,7 +470,15 @@ inside Winnow, copy that directory's contents under
 dotnet run --project "$winnowRepo\src\Winnow.App" -- --data-dir "$sampleRoot\data" --seed-sample
 ```
 
-Find the plugin in Plugins settings, enable it, and restart with the same arguments.
+Close that seeded session, then launch normally against the same throwaway directory:
+
+```powershell
+dotnet run --project "$winnowRepo\src\Winnow.App" -- --data-dir "$sampleRoot\data"
+```
+
+Both `--seed-sample` and `--no-sync` suppress plugin discovery. Use the normal-startup command
+when testing providers; it can also import local launcher data into this temporary library.
+Find the plugin in Plugins settings, enable it, and restart with this normal-startup command.
 The generated tag field should be available. Tag observations require an owned game with a
 Steam external ID in that disposable library; discovery and loading work even without one.
 Changing the field and saving requests another enrichment pass.
@@ -458,7 +518,16 @@ lifecycle and permission design to the work. Winnow v1 uses explicit trust and l
 **12. Packaging, compatibility and verification**
 
 SteamGridDB exercises credentials, HTTP, cache, artwork selection and generated settings
-through the SDK alone.
+through the SDK alone. Xbox adds account connection and game actions; PlayStation demonstrates
+a user-editable session secret and a provider-managed refresh credential.
+
+Release CI packages all three providers as separate ZIPs with manifest versions independent of
+Winnow's application version. A release-specific `winnow-plugins.json` lists their identities,
+sizes and SHA-256 hashes. The [plugins page](https://winnow.gg/plugins/) reads published releases
+and offers ZIP downloads or `winnow://plugins/install?id=<id>&release=<tag>` links. Only known
+first-party IDs are accepted by the browser installer. Other authors distribute local ZIPs;
+automatic plugin updates are not supported. See [release packaging](releases.md) for the catalogue
+format, build commands and CI checks.
 
 The App's [project file](../src/Winnow.App/Winnow.App.csproj) retains a build dependency on the
 bundled plugin with `ReferenceOutputAssembly="false"`. That builds and packages it without
@@ -488,6 +557,6 @@ and compatibility with an arbitrary third-party package require their own verifi
 If building your own plugin system from scratch, use the same progression: pick one useful
 capability, define its small contract, make one independently compiled provider work through
 it, and then add discovery, settings, persistence and failure handling around that working
-boundary. Add a second provider to expose assumptions specific to the first. Winnow's four
-capability families share that infrastructure, while their adapters preserve the different
+boundary. Add a second provider to expose assumptions specific to the first. Winnow's six
+capabilities share that infrastructure, while their adapters preserve the different
 rules each kind of data needs.

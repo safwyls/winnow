@@ -14,6 +14,30 @@ current session above the configuration controls. Pending enable or disable chan
 change this list until restart. When none are loaded, the list says so; discovered packages
 and installation errors remain available below it.
 
+### Install from the website
+
+The [plugins page](https://winnow.gg/plugins/) lists Winnow's SteamGridDB, Xbox and
+PlayStation providers with downloads from published GitHub releases. **Install in Winnow**
+opens the app, installs and enables a new package, then opens its settings. Desktop and
+fullscreen show progress, the result and a retry action on failure. Complete any required
+account connection or API-key setup there. SteamGridDB already ships with Winnow.
+
+Windows installers and Linux packages register the `winnow:` browser handoff. Update Winnow
+if the browser cannot open it. Portable installations can use the ZIP download below or
+register their executable as the handler. Browsers may ask permission to open an external app.
+A link for an existing plugin opens its settings without replacing its files or changing its
+enabled state; browser installation is not a plugin update mechanism.
+
+The link selects a known plugin ID and exact release tag, for example
+`winnow://plugins/install?id=psn&release=v0.2.0`. Winnow reads that release from
+`safwyls/winnow`, verifies the `winnow-plugins.json` catalogue against GitHub's SHA-256
+digest, then checks the selected ZIP's digest, size, identity and SDK compatibility.
+Downloads accept only the official asset URL and GitHub's release-asset hosts. Requests
+are serialized, wait for initial discovery and use the same bounded archive extraction as
+local ZIPs. New packages load immediately; existing assemblies are never replaced in memory.
+
+### Install a ZIP or unpacked package
+
 1. Open **Settings → Plugins → Open plugins folder**. The folder is `plugins`
    inside Winnow's data directory, including when using `--data-dir`. Winnow creates it
    during startup if it is missing.
@@ -38,7 +62,9 @@ never overwrite existing packages or replace a bundled plugin. To update a user 
 Winnow and replace its package files, or remove its directory before dropping in the replacement
 ZIP. To uninstall, close Winnow and remove the plugin directory.
 Disabling or uninstalling retains imported library facts and cached metadata. It stops future
-provider execution after restart. There is no online gallery, package downloader or hot reload.
+provider execution after restart. The website installer is limited to Winnow's own providers;
+third-party packages use the local installation flow. Automatic plugin updates and reloading
+existing assemblies are not supported.
 
 ## Trust and lifecycle
 
@@ -56,9 +82,18 @@ and produce a fixed diagnostic without the exception text. Cancellation is passe
 These measures handle cooperative failures; native crashes and malicious or noncooperative code
 require process or OS isolation, which this version does not provide.
 
-Discovery, initialization and provider work run off the UI thread. The background pass waits for
-startup synchronization, imports libraries, then enriches original owned works. Feed providers
-run concurrently with the built-in feed. Built-in shelves publish as soon as they are ready;
+Discovery, initialization and provider work run off the UI thread. Library imports start after
+plugin discovery and publish committed rows before optional metadata and artwork work. They do
+not wait for other stores' startup enrichment or a previous plugin artwork sweep. Resolver writes
+remain serialized with built-in imports. A separate enrichment queue covers original owned works
+and repeats after built-in startup to include games added by that backfill. After publishing an
+import, the host also queues merge suggestions independently of metadata and artwork. Matching
+includes other stores and preserves confirmed and rejected decisions. **Refresh suggestions**
+in desktop **Merges** or fullscreen **Library tools → Possible identity matches** runs the same
+local matching pass without fetching another inventory or accepting suggestions. Startup,
+plugin and manual passes run one at a time.
+
+Feed providers run concurrently with the built-in feed. Built-in shelves publish as soon as they are ready;
 optional shelves append without replacing existing cards. One five-second aggregate budget
 covers feed snapshot reads, queued provider invocations and execution across all providers.
 Expiry during shared input reads produces an empty optional supplement; caller cancellation
@@ -76,7 +111,7 @@ Build its local NuGet package with:
 dotnet pack src/Winnow.PluginSdk -c Release -o artifacts/plugin-sdk
 ```
 
-Reference `Winnow.PluginSdk` version `1.0.0` from that local package source. Set
+Reference `Winnow.PluginSdk` version `1.1.0` from that local package source. Set
 `EnableDynamicLoading=true` in your .NET 10 class-library project and keep the SDK reference
 out of your package's runtime dependencies (`Private=false` for a project reference, or
 `ExcludeAssets=runtime` for a package reference). Copy your DLL, `.deps.json`, manifest and
@@ -119,10 +154,17 @@ Implement `IPlugin.InitializeAsync` to retain `IPluginContext`, plus one or more
 | `IMetadataProviderPlugin` | Summary, release date, genres and tags for the supplied game handle. Summary/year fill missing automatic fields; user overrides remain authoritative. Genre/tag observations have separate source-scoped assignments. |
 | `IArtworkProviderPlugin` | Static backgrounds, covers or screenshots with URLs and dimensions. The host validates HTTPS hosts, dimensions and bounded counts, retains source attribution, and uses isolated hashed cache keys. |
 | `IRecommendationFeedPlugin` | Scores from 0 to 1 and a concise explanation for supplied library handles. The host rejects unknown handles and invalid values and renders one named shelf using existing cards, feedback and reserves. |
+| `IPluginAccount` | SDK 1.1 account capability. Short begin/poll/status/cancel/sign-out calls use shared desktop/fullscreen controls. Only the user code and a declared HTTPS verification address reach the UI. |
+| `IPluginGameActions` | SDK 1.1 game-actions capability. Executes Play or OpenStore for an imported source ID after host validation. The provider resolves the current target; the host never executes provider command text. |
 
-Library-source support initially covers inventory and playtime import. A wholly new launcher's
-custom launch, installation and sign-in workflow is not exposed by this SDK. Existing Steam,
-Epic and GOG actions remain available where their known IDs establish the corresponding links.
+Library sources import inventory, installation and playtime observations. SDK 1.1 also supports
+account connection and game actions through the interfaces above. `PluginLibraryGame.Actions`
+advertises supported actions; Play is shown only for an installed entry with an active provider.
+`LibrarySourceLabel` explains inclusion evidence in both detail views, including when history
+does not establish ownership. Existing Steam, Epic and GOG actions remain available where their
+known IDs establish the corresponding links. Custom screens are not supported.
+Set `TitleIsProvisional` when a local resource cannot be resolved and the title is only an
+identifier. The host keeps a provisional placeholder until a later import supplies a real title.
 
 `PluginGame.Id` is opaque and valid for that request. Metadata/artwork handles identify original
 works; recommendation handles identify eligible owned entries. Use `ExternalIds` for service
@@ -142,11 +184,19 @@ use the existing gallery/lightbox.
 
 ## Host services
 
-- **Settings:** only declared non-secret fields, scoped by plugin ID.
-- **Secrets:** reads declared secret fields; editing happens through Winnow settings. Windows
+- **Settings:** only declared non-secret fields, scoped by plugin ID. `IsBoolean` renders a
+  toggle. `IsAdvanced` defaults to false; set it on optional overrides or infrequently used
+  fields to place them under **Show advanced settings** on desktop and fullscreen. Closing
+  that section preserves its values when saving. `IsAdvanced` also applies to user-editable
+  secret fields; secrets cannot be boolean toggles.
+- **Secrets:** reads, writes and removes declared secret fields through the protected host store.
+  User-editable fields appear in Winnow settings; `ManagedByPlugin` secret declarations are
+  reserved for credentials maintained by sign-in and are hidden from the editors. Windows
   persists them with current-user DPAPI and distinct plugin/key entropy. Other hosts refuse
   persisted secret writes. `Plugins__<plugin-id>__<key>` environment configuration can supply
-  a value without saving it. Secrets never appear in settings read snapshots.
+  user-editable secrets without saving them. `ManagedByPlugin` secrets read only protected
+  stored values, so removing a sign-in token cannot reactivate a configured fallback.
+  Secrets never appear in settings read snapshots.
 - **Cache:** up to 2 MiB per payload, with an expiry supplied by the provider. Expired entries
   remain readable for offline fallback. Providers should version their cache keys or payloads.
 - **HTTP:** HTTPS on exact declared hosts, redirects disabled, bounded responses and a shared
@@ -157,6 +207,27 @@ The SteamGridDB plugin demonstrates exact-ID lookup, credential changes, negativ
 static-art filtering and stale-response fallback. Its original API key, response cache,
 stored hero observations and downloaded source images migrate when the plugin host first runs.
 The legacy `SteamGridDb__ApiKey` environment variable continues to work.
+
+Boolean settings use `IsBoolean: true` and render as toggles on both surfaces. They cannot be
+secret. Text and secret declarations retain their previous behavior. Account providers declare
+the `account` capability and all verification hosts in `network.allowedHosts`. Device codes,
+access tokens and refresh tokens must not enter ordinary settings or caches. Split user waits
+across short polling calls so the 120-second invocation deadline remains meaningful.
+
+The optional [Xbox plugin](../plugins/Winnow.Plugin.Xbox/README.md) demonstrates local Windows
+discovery, device sign-in, account-scoped history, catalog artwork and registered-app launch.
+Its package needs a host with SDK 1.1 support. It is distributed separately; a manually added
+package starts disabled, while browser installation enables a new package. Played history is
+opt-in and cannot supply a complete purchase inventory. Run
+`./plugins/Winnow.Plugin.Xbox/Package.ps1` to build its ZIP.
+
+The optional [PlayStation plugin](../plugins/Winnow.Plugin.Psn/README.md) imports the PS4/PS5
+account library, optional played history and PS3/PS Vita trophy-title history. It uses a
+user-editable protected NPSSO field and a hidden managed refresh credential. The existing
+account capability describes device-code flows, so PlayStation uses Save and Remove saved
+secret instead. Desktop and fullscreen share these generated controls. The plugin supplies
+metadata and verified icon dimensions, with no local installation or game actions. Build its
+ZIP with `./plugins/Winnow.Plugin.Psn/Package.ps1`. Live Sony-account validation remains open.
 
 ## Verification and scope
 

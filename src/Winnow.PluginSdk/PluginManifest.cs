@@ -6,6 +6,8 @@ public static class PluginCapabilities
     public const string Metadata = "metadata";
     public const string Artwork = "artwork";
     public const string Recommendations = "recommendations";
+    public const string Account = "account";
+    public const string GameActions = "game-actions";
 }
 
 /// <summary>Describes plugin.json. The host reads it before executing any plugin code.</summary>
@@ -32,6 +34,9 @@ public sealed record PluginSettingDefinition
     public bool Required { get; init; }
     public string? Help { get; init; }
     public string? SetupUrl { get; init; }
+    public bool IsBoolean { get; init; }
+    public bool IsAdvanced { get; init; }
+    public bool ManagedByPlugin { get; init; }
 }
 
 public sealed record PluginNetworkOptions

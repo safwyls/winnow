@@ -183,6 +183,8 @@ export const pluginsArticle: DocArticle = {
       <p>Plugins execute inside Winnow with its access to your device. Enable packages only from authors you trust. This SDK does not provide a security sandbox, a marketplace, automatic plugin updates, or custom replacement screens.</p>
     </> },
     { id: 'installation', title: 'Install a provider step by step', content: <>
+      <p>For Winnow’s own providers, open the <a href={sitePath('/plugins/')}>plugins catalogue</a> and choose <strong>Install in Winnow</strong>. A current installed copy of Winnow opens, verifies the official download, installs and enables the new plugin, and shows its settings. Desktop and fullscreen show the same progress and result. If it is already installed, the link opens its settings without replacing files or changing its enabled state.</p>
+      <p>Your browser may ask to open Winnow. If it cannot, update Winnow or use the ZIP download. Windows installers and Linux packages register the link handler; portable copies may need a manual association. To install a ZIP from the catalogue or another trusted author:</p>
       <ol>
         <li>Download the plugin package from its author. Check that it supports Winnow’s current plugin API, version 1.</li>
         <li>Open <strong>Settings → Plugins → Open plugins folder</strong>. This opens <code>plugins</code> inside the selected data directory.</li>

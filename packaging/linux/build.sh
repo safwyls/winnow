@@ -79,7 +79,8 @@ write_desktop_entry() {
 Type=Application
 Name=Winnow
 Comment=Surface forgotten games in your library
-Exec=winnow %U
+Exec=winnow %u
+MimeType=x-scheme-handler/winnow;
 Icon=winnow
 Terminal=false
 Categories=Game;Utility;

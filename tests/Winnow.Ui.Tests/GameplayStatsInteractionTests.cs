@@ -9,6 +9,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Dapper;
 using Microsoft.Extensions.DependencyInjection;
 using Winnow.App.Design;
 using Winnow.App.Services;
@@ -17,12 +18,63 @@ using Winnow.App.Views;
 using Winnow.App.Views.Fullscreen;
 using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
+using Winnow.Data.Repositories;
+using Winnow.Tests;
 using Xunit;
 
 namespace Winnow.Ui.Tests;
 
 public sealed class GameplayStatsInteractionTests
 {
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Xbox_import_updates_open_gameplay_store_choices_and_library_counts(bool fullscreen)
+    {
+        using var db = new TempDatabase();
+        LibraryReadFixtures.Seed(db, 2);
+        using var library = new LibraryViewModel(new LibraryQueryRepository(db.Factory), new OwnershipRepository(db.Factory),
+            new ReleaseRepository(db.Factory), new WorkRepository(db.Factory), new UpdateEventRepository(db.Factory));
+        await library.LoadCommand.ExecuteAsync(null);
+        var repository = new GameplayStatsRepository(db.Factory);
+        using var desktop = new StatsViewModel(new AccountStatsViewModel(new SpendingRepository()), new GameplayStatsViewModel(repository, library));
+        using var services = new ServiceCollection().AddSingleton<IGameplayStatsRepository>(repository).BuildServiceProvider();
+        using var context = new FullscreenContext(library, PreviewData.Feed, PreviewData.Shell, services);
+        using var page = new FullscreenLibrarySummaryPage(context);
+        var state = fullscreen ? page.Stats : desktop;
+        var window = new Window { Width = fullscreen ? 1920 : 1200, Height = 1080,
+            Content = fullscreen ? page : new StatsView { DataContext = desktop } };
+        try
+        {
+            window.Show();
+            if (fullscreen) await page.PendingRefresh; else await desktop.ActivateAsync();
+            Dispatcher.UIThread.RunJobs();
+            Assert.DoesNotContain(state.Gameplay.StoreOptions, store => store.Key == "plugin:xbox");
+            using (var connection = db.Factory.Open())
+                connection.Execute("UPDATE ownerships SET store='plugin:xbox' WHERE id=2;");
+            await library.LoadCommand.ExecuteAsync(null);
+            await state.Gameplay.PendingRefresh; Dispatcher.UIThread.RunJobs();
+            var xbox = Assert.Single(state.Gameplay.StoreOptions, store => store.Key == "plugin:xbox");
+            Assert.Equal("Xbox", xbox.Label);
+            Assert.Equal(1, Assert.Single(state.Gameplay.StoresChart, item => item.Label == "Xbox").Value);
+            Assert.Equal(1, Assert.Single(state.Gameplay.StoresChart, item => item.Label == "Steam").Value);
+            if (fullscreen)
+            {
+                var button = Assert.Single(page.GetVisualDescendants().OfType<Button>(), button => button.Content as string == "Xbox");
+                Assert.True(button.Focus()); page.Handle(GamepadButtons.Accept);
+            }
+            else window.GetVisualDescendants().OfType<ComboBox>().Single(box => box.Name == "GameplayStore").SelectedItem = xbox;
+            await state.Gameplay.PendingRefresh; Dispatcher.UIThread.RunJobs();
+            Assert.Equal("plugin:xbox", state.Gameplay.SelectedStore.Key);
+            Assert.StartsWith("Xbox ·", state.Gameplay.PeriodLabel);
+            Assert.Equal(1, state.Gameplay.LibraryChart.Sum(item => item.Value));
+            Assert.Equal("Xbox", Assert.Single(state.Gameplay.StoresChart).Label);
+            Assert.Equal("0 h", state.Gameplay.HoursText);
+            Assert.Equal("No completed sessions", state.Gameplay.MedianText);
+        }
+        finally { window.Close(); }
+    }
+
     [AvaloniaTheory]
     [InlineData(false, 1200)]
     [InlineData(false, 600)]

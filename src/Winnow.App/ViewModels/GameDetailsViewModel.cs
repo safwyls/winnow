@@ -392,6 +392,10 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
 
     /// <summary>The same stores in words, for the chip row's tooltip.</summary>
     public string StoreNames => Tile.StoreNames;
+    public string LibrarySourceSummary => string.Join(" · ", Tile.Entries
+        .Where(entry => !string.IsNullOrWhiteSpace(entry.LibrarySourceLabel))
+        .Select(entry => $"{entry.StoreName}: {entry.LibrarySourceLabel}").Distinct());
+    public bool HasLibrarySourceSummary => LibrarySourceSummary.Length > 0;
 
     /// <summary>The §7 bucket name this game currently falls in ("Never played").</summary>
     public string BucketLabel { get; private set; }
@@ -1066,9 +1070,10 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         GameTileViewModel tile)
     {
         var primary = tile.PrimaryAction;
-        var links = StoreActions.LinksFor(tile.Store, tile.SteamAppId, tile.GogProductId, tile.PlayableEntry.Storefront);
+        var links = StoreActions.LinksFor(tile.Store, tile.SteamAppId, tile.GogProductId, tile.PlayableEntry.Storefront)
+            .Concat(tile.Entries.Select(entry => entry.PluginActions?.Store).OfType<GameLink>()).Distinct().ToArray();
 
-        var sentence = primary is null && links.Count == 0
+        var sentence = primary is null && links.Length == 0
             ? GameActionBandCopy.NoWayInSentence(tile.NoWayIn)
             : null;
 

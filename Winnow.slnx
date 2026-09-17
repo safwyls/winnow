@@ -26,7 +26,9 @@
   <Folder Name="/tests/">
     <Project Path="tests/Winnow.PluginFixture/Winnow.PluginFixture.csproj" />
     <Project Path="tests/Winnow.Plugins.Tests/Winnow.Plugins.Tests.csproj" />
+    <Project Path="tests/Winnow.Plugin.Psn.Tests/Winnow.Plugin.Psn.Tests.csproj" />
     <Project Path="tests/Winnow.Plugin.SteamGridDb.Tests/Winnow.Plugin.SteamGridDb.Tests.csproj" />
+    <Project Path="tests/Winnow.Plugin.Xbox.Tests/Winnow.Plugin.Xbox.Tests.csproj" />
     <Project Path="tests/Winnow.Covers.Tests/Winnow.Covers.Tests.csproj" />
     <Project Path="tests/Winnow.Monitor.Linux.Tests/Winnow.Monitor.Linux.Tests.csproj" />
     <Project Path="tests/Winnow.Recommend.Tests/Winnow.Recommend.Tests.csproj" />
@@ -38,6 +40,8 @@
     <Project Path="tools/Winnow.Replay/Winnow.Replay.csproj" />
   </Folder>
   <Folder Name="/plugins/">
+    <Project Path="plugins/Winnow.Plugin.Psn/Winnow.Plugin.Psn.csproj" />
     <Project Path="plugins/Winnow.Plugin.SteamGridDb/Winnow.Plugin.SteamGridDb.csproj" />
+    <Project Path="plugins/Winnow.Plugin.Xbox/Winnow.Plugin.Xbox.csproj" />
   </Folder>
 </Solution>

@@ -204,7 +204,8 @@ public sealed class PluginCatalogTests
         using var files = new Packages();
         files.Add(files.Builtin, "slow", typeof(SlowPlugin));
         files.Add(files.Builtin, "art-only", manifest: Packages.Manifest("art-only") with { Capabilities = [PluginCapabilities.Artwork] });
-        await using var catalog = new PluginCatalog(new State(), new Context()) { InitializationTimeout = TimeSpan.FromMilliseconds(100) };
+        // The deadline includes assembly loading and thread-pool scheduling on a busy test runner.
+        await using var catalog = new PluginCatalog(new State(), new Context()) { InitializationTimeout = TimeSpan.FromSeconds(2) };
         await catalog.DiscoverAsync(files.Builtin, files.User);
         Assert.NotNull(catalog.Plugins.Single(x => x.Manifest.Id == "slow").Error);
         Assert.Single(catalog.GetActive<IArtworkProviderPlugin>());
@@ -242,6 +243,36 @@ public sealed class PluginCatalogTests
         cancellation.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => catalog.InvokeAsync<PluginMetadata>(
             Assert.Single(catalog.Plugins), (_, _) => Task.FromResult<PluginMetadata?>(new()), cancellation.Token));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Cancelling_an_inflight_call_keeps_cooperative_providers_available(bool cooperative)
+    {
+        using var files = new Packages();
+        files.Add(files.Builtin, "fixture");
+        await using var catalog = new PluginCatalog(new State(), new Context());
+        await catalog.DiscoverAsync(files.Builtin, files.User);
+        var descriptor = Assert.Single(catalog.Plugins);
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var finish = new TaskCompletionSource<PluginMetadata?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var cancellation = new CancellationTokenSource();
+        var pending = catalog.InvokeAsync<PluginMetadata>(descriptor, async (_, token) =>
+        {
+            started.SetResult();
+            if (!cooperative) return await finish.Task;
+            try { await Task.Delay(Timeout.Infinite, token); }
+            finally { await Task.Delay(25, CancellationToken.None); }
+            return null;
+        }, cancellation.Token);
+        await started.Task;
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending);
+        Assert.Equal(cooperative, descriptor.Loaded);
+        finish.TrySetResult(null);
+        if (cooperative)
+            Assert.NotNull(await catalog.InvokeAsync<PluginMetadata>(descriptor, (_, _) => Task.FromResult<PluginMetadata?>(new())));
     }
 
     [Fact]
