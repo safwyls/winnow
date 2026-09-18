@@ -21,7 +21,7 @@ export const setupArticle: DocArticle = {
     { id: 'first-run', title: '2. Walk through first-run setup', content: <>
       <p>Open your launchers and let their libraries finish updating before starting Winnow. Winnow reads their local files without modifying them. The window opens after the local scan; descriptions, artwork, and update information arrive in the background.</p>
       <ol>
-        <li>The setup wizard walks through IGDB, Steam, Epic, GOG, theme, application preferences, and library preferences.</li>
+        <li>The setup wizard walks through IGDB, Steam, Epic, GOG, theme, application preferences, and library preferences. For the credential step, follow the <a href={sitePath('/docs/configuration/#metadata')}>IGDB setup tutorial</a>; you can skip it and return later.</li>
         <li>Use <strong>Continue</strong> to advance or <strong>Back</strong> to revisit a step. Optional connections can wait: choose <strong>Skip this step</strong>, or <strong>Skip setup</strong> to go straight to your library.</li>
         <li>Preferences save as you change them. Credential forms require their explicit <strong>Save</strong> action; skipping a step discards unsaved secret fields.</li>
         <li>Allow the first background pass time to finish. A large library can take a minute or two to begin filling out.</li>
@@ -95,15 +95,67 @@ export const configurationArticle: DocArticle = {
       <p>Cover dimming is a visual cue, not a filter: it does not hide games or change their play history. To change which games appear, use the library controls below.</p>
       <DocFigure name="appearance" alt="Appearance settings with theme swatches and the Winnow theme selected" caption="Theme previews help you compare palettes before returning to your library." />
     </> },
-    { id: 'metadata', title: 'Add IGDB metadata and artwork', content: <>
-      <p>Winnow works without IGDB credentials. Adding them provides another source of game details and artwork alongside the built-in Steam sources.</p>
+    { id: 'metadata', title: 'IGDB setup: start here', content: <>
+      <p>IGDB adds game details and artwork alongside Winnow’s built-in Steam sources. It is optional: you can keep using your library while setting it up, or skip it entirely. You need two values from a Twitch developer application: a <strong>Client ID</strong> and a <strong>Client secret</strong>.</p>
+      <p>The Twitch branding is expected: IGDB uses Twitch credentials for API access. You are registering a personal application for Winnow to use; you do not need to write code or run a website. Winnow obtains its own access token from those credentials, so you do not need to follow the API documentation’s token-request examples.</p>
+      <p>This walkthrough covers <a href="#igdb-register">registration</a>, <a href="#igdb-save">saving the credentials</a>, <a href="#igdb-sync">your first sync</a>, and <a href="#igdb-help">troubleshooting</a>. If you already have a pair for Winnow, start at saving.</p>
+      <p><strong>Platform note:</strong> saving a secret in Winnow currently requires Windows. On Linux, use the <a href="#igdb-environment">environment-variable instructions</a> after creating your credentials.</p>
+    </> },
+    { id: 'igdb-register', title: 'IGDB: 1. Register with Twitch', content: <>
       <ol>
-        <li>Open <strong>Settings → Metadata &amp; artwork → IGDB metadata</strong>.</li>
-        <li>Choose <strong>Get IGDB credentials</strong> to open the Twitch developer console. Follow the linked IGDB registration instructions, register a Confidential application, and generate a client secret.</li>
-        <li>Enter the <strong>Client ID</strong> and <strong>Client secret</strong>, then choose <strong>Save credentials</strong>.</li>
-        <li>The secret field clears after saving. Winnow queues metadata enrichment behind any active startup sync or credential refresh; watch the title-bar progress.</li>
+        <li>Sign in to the <a href="https://dev.twitch.tv/console/apps">Twitch developer console</a>. Verify your account’s email and enable two-factor authentication in <a href="https://www.twitch.tv/settings/security">Security and Privacy</a>, then refresh the console.</li>
+        <li>Under <strong>Applications</strong>, choose <strong>Register Your Application</strong>. Complete the fields below, the CAPTCHA if shown, and choose <strong>Create</strong>.</li>
       </ol>
-      <p>Saving stores the pair; it does not validate it with Twitch. If details do not arrive, recheck the credentials. <strong>Remove saved credentials</strong> removes Winnow’s saved pair, but environment or local configuration values remain available as a fallback. Persistent secret storage currently requires Windows.</p>
+      <table><thead><tr><th>Field</th><th>What to enter</th></tr></thead><tbody>
+        <tr><td>Name</td><td>A unique name such as <code>Winnow library yourname</code>. Add a suffix if taken.</td></tr>
+        <tr><td>OAuth Redirect URLs</td><td><code>http://localhost</code>, then <strong>Add</strong> if shown. IGDB does not use this callback; no local server is needed.</td></tr>
+        <tr><td>Category</td><td>Choose the closest applicable category, such as <strong>Application Integration</strong> if offered.</td></tr>
+        <tr><td>Client Type</td><td><strong>Confidential</strong>. Public applications cannot generate the secret IGDB needs.</td></tr>
+      </tbody></table>
+      <p>Return to Applications, choose <strong>Manage</strong> beside your entry, copy its <strong>Client ID</strong>, then choose <strong>New Secret</strong> and copy the generated value. Keep the secret private. Generating another invalidates the previous secret.</p>
+      <p>These requirements come from <a href="https://api-docs.igdb.com/#account-creation">IGDB’s account setup</a> and <a href="https://dev.twitch.tv/docs/authentication/register-app">Twitch’s registration guide</a>. If the console changes its wording, use those official instructions.</p>
+    </> },
+    { id: 'igdb-save', title: 'IGDB: 2. Save in Winnow', content: <>
+      <ol>
+        <li>On desktop, open <strong>Settings → Metadata &amp; artwork</strong> and find the <strong>IGDB metadata</strong> card. In fullscreen, open <strong>Settings → Metadata &amp; artwork → IGDB metadata</strong>. The first-run wizard also offers this credential form.</li>
+        <li>Paste the application’s <strong>Client ID</strong> into Client ID and its <strong>Client secret</strong> into Client secret. Both must belong to the same application. These fields do not take your Twitch password, username, stream key, or an access token.</li>
+        <li>Choose <strong>Save credentials</strong> before leaving the form. Simply pasting the values does not save them.</li>
+        <li>Look for <strong>Credentials saved. Metadata refresh queued.</strong> The secret field clears after saving; that is expected. It also stays blank when you reopen settings.</li>
+      </ol>
+      <p>Saving protects the secret on this device and applies the change immediately. It does <strong>not</strong> contact Twitch to verify the pair. Winnow checks the credentials when fetching details. There is no separate “Test connection” button.</p>
+      <p>A background metadata refresh is queued behind any current startup sync or credential refresh. Desktop title-bar progress shows that work. You do not need to restart after saving through the form.</p>
+    </> },
+    { id: 'igdb-sync', title: 'IGDB: 3. Check your first sync', content: <>
+      <ol>
+        <li>Make sure some games are already in your library. Metadata sync updates existing games; it does not import an account’s library.</li>
+        <li>Open <strong>Settings → Metadata &amp; artwork → Sync metadata now</strong>. In fullscreen, go back from the IGDB credential page to find it. This gives you visible progress and a result beside the action.</li>
+        <li>Let the operation finish. If another library operation is active, it may need to wait. Large libraries can take longer; repeatedly saving credentials will not speed up the queue.</li>
+        <li>Open a familiar game’s details and inspect its description, release year, genres, and artwork. Some may already have come from Steam, so unchanged artwork alone does not indicate a failure.</li>
+      </ol>
+      <p><strong>Metadata sync finished</strong> means the pass completed, not that every game matched. Sync uses cached metadata when available and preserves manual matches, field edits, and artwork choices. It does not force every record to download again.</p>
+      <p>For a game that remains unmatched or shows the wrong entry, open its details actions and choose <strong>Wrong game?</strong> on desktop or fullscreen. Search by title or numeric IGDB ID, compare the candidates, and choose <strong>Use this</strong> for the correct game. A manual match shows <strong>Matched by you.</strong> Use <strong>Clear</strong> to return it to automatic matching.</p>
+      <p>Matching and authentication are separate. If title search returns candidates but automatic matching misses a game, Winnow can access metadata; check the game’s identity rather than immediately replacing your credentials. Existing cached results can still be available offline.</p>
+    </> },
+    { id: 'igdb-help', title: 'IGDB: fix common setup problems', content: <>
+      <dl>
+        <dt>Twitch will not let me register</dt><dd>Check email verification and 2FA, refresh the developer console, and use a unique application name. Confirm the redirect URL was added to the form.</dd>
+        <dt>There is no New Secret button</dt><dd>Check that you are managing the intended application and that its client type is Confidential. A Public application does not provide the required secret.</dd>
+        <dt>Winnow asks for both fields, but I already saved a secret</dt><dd>The blank secret field is not a placeholder for the saved value. To replace credentials, enter both the ID and secret again before saving.</dd>
+        <dt>Saved credentials need to be re-entered</dt><dd>The stored pair cannot be read on this device. This can happen after moving data to another Windows account or computer. Enter both values and save again.</dd>
+        <dt>The device could not protect the secret</dt><dd>Nothing was saved. Persistent secret storage is currently Windows-only; use the environment method below where storage is unavailable.</dd>
+        <dt>Sync asks me to add credentials</dt><dd>Check that Save credentials succeeded and that you opened the intended library. A separate <code>--data-dir</code> has its own saved settings. Environment variables must be available to the process that starts Winnow.</dd>
+        <dt>Credentials saved, but sync cannot finish</dt><dd>Check your connection, then recheck that the ID and secret came from the same Twitch application. If you generated a replacement secret, save the new pair in Winnow. Partial-failure messages can also reflect a provider outage or another metadata step; they do not prove the secret is wrong.</dd>
+        <dt>Only a few games are missing details or artwork</dt><dd>Try Wrong game? for those games. An entry may lack particular metadata or artwork, and a saved manual field or image takes priority over automatic updates. IGDB does not supply icon candidates in Winnow’s artwork browser.</dd>
+      </dl>
+      <p>To replace a lost or exposed secret, generate a new one on the same Twitch application, then enter both values and save in Winnow. To remove the local pair, choose <strong>Remove saved credentials</strong>. Environment or local configuration credentials remain available as a fallback; remove those too if you want Winnow to stop using them.</p>
+      <p>If you need help, include your Winnow version, operating system, exact status message, and an example game and store in a <a href="https://github.com/safwyls/winnow/issues">GitHub issue</a>. Do not include the client secret, access tokens, or a screenshot showing them.</p>
+    </> },
+    { id: 'igdb-environment', title: 'IGDB: environment setup', content: <>
+      <p>Use this alternative if Winnow cannot store a secret, including on Linux. The variable names contain <strong>two underscores</strong>. Winnow reads them when starting; fully quit an existing instance first.</p>
+      <p>In Bash, these prompts avoid putting the secret directly in the command history. Replace the last line with the path to your extracted Winnow executable:</p>
+      <pre><code>{'read -r -p "IGDB client ID: " Igdb__ClientId\nread -r -s -p "IGDB client secret: " Igdb__ClientSecret; printf "\\n"\nexport Igdb__ClientId Igdb__ClientSecret\n./Winnow\nunset Igdb__ClientId Igdb__ClientSecret'}</code></pre>
+      <p>The exported pair is available to Winnow launched from that terminal. Starting from a desktop shortcut does not inherit it. Repeat for a new terminal session, or configure your launcher’s environment privately. Environment variables are not Winnow’s encrypted credential store.</p>
+      <p>A readable pair saved in Winnow takes priority over environment values. On Windows, prefer the credential form; advanced configuration options are also listed in the <a href="https://github.com/safwyls/winnow#optional-igdb">repository README</a>.</p>
     </> },
     { id: 'artwork', title: 'Choose artwork sources and cover fit', content: <>
       <ol>
