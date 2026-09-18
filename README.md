@@ -199,6 +199,9 @@ the existing library in place.
 
 ### Optional: IGDB
 
+Follow the [step-by-step IGDB setup tutorial](https://winnow.gg/docs/configuration/#metadata)
+for Twitch registration, the exact fields to fill in, your first metadata sync, and troubleshooting.
+
 Winnow works without it; a keyless Steam endpoint covers most titles. IGDB adds years,
 publishers and genres. Open **Settings → Metadata & artwork → IGDB metadata** on desktop or
 fullscreen. **Get IGDB credentials** opens the [Twitch developer console](https://dev.twitch.tv/console/apps).
