@@ -262,7 +262,7 @@ public partial class GameTileView : UserControl
     {
         if (DataContext is GameTileViewModel tile)
         {
-            tile.IsPointerOver = _pointerInside || InteractionActive;
+            tile.IsPointerOver = _pointerInside || _keyboardActionFocus || InteractionActive;
         }
 
         Lift.Classes.Set("actions-visible", _pointerInside || _keyboardActionFocus || InteractionActive);
