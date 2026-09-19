@@ -1084,17 +1084,19 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     /// the tile's store ids. Returns three values: the primary action (null
     /// when none is honest), the outbound links (empty when no id is held),
     /// and the sentence explaining why there is no way in (null when the
-    /// band does have a primary action or at least one link).
+    /// band does have a primary action or at least one store link).
     /// </summary>
     private static (GameLink? Primary, IReadOnlyList<GameLink> Links, string? NoWayIn) BuildLinks(
         GameTileViewModel tile)
     {
         var primary = tile.PrimaryAction;
-        var links = StoreActions.LinksFor(tile.Store, tile.SteamAppId, tile.GogProductId, tile.PlayableEntry.Storefront)
+        var storeLinks = StoreActions.LinksFor(tile.Store, tile.SteamAppId, tile.GogProductId, tile.PlayableEntry.Storefront)
             .Concat(tile.Entries.Select(entry => entry.PluginActions?.Store).OfType<GameLink>())
-            .Concat(ReferenceLinksFor(tile)).Distinct().ToArray();
+            .Distinct().ToArray();
+        var links = storeLinks.Concat(ReferenceLinksFor(tile)).Distinct().ToArray();
 
-        var sentence = primary is null && links.Length == 0
+        // Reference pages describe a game but do not provide a way to play it.
+        var sentence = primary is null && storeLinks.Length == 0
             ? GameActionBandCopy.NoWayInSentence(tile.NoWayIn)
             : null;
 

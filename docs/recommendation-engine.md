@@ -584,7 +584,7 @@ across the visible surface.
 ### The split
 
 `RecommendationScorer.Explain` returns a `RecommendationReason`: the primary signal,
-supporting signals in precedence order, and `ReasonEvidence` drawn from the same facts as
+supporting signals ordered by priority, and `ReasonEvidence` drawn from the same facts as
 the score. `ReasonBuilder` renders only the primary through `ReasonPhrasebook`. Supporting
 facts and the full score breakdown remain available for inspection and custom rendering;
 they do not add a second clause to the card. Scoring and shelf membership do not depend on wording.

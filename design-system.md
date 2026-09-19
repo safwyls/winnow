@@ -1876,6 +1876,7 @@ The details **More** menu on desktop and fullscreen offers **View on IGDB** when
 game has an IGDB match, and **View on SteamDB** and **View on SteamGridDB** when any
 grouped copy has a Steam app ID. These open the matching game pages through the same
 link destination preference as other websites; unavailable identities omit their links.
+Reference links leave the explanation for an unavailable launch or store action visible.
 
 A patched game's `Patch notes` button on an Activity update row, and the `All patch notes`
 row in More, follow **Settings → Application → Links → Open links in** on desktop and

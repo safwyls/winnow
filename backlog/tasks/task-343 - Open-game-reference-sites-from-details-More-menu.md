@@ -5,7 +5,7 @@ status: Done
 assignee:
   - codex
 created_date: '2026-09-19 16:48'
-updated_date: '2026-09-19 16:52'
+updated_date: '2026-09-19 18:20'
 labels: []
 dependencies: []
 type: feature
@@ -37,6 +37,8 @@ Extend the shared details link list so both existing More menus expose reference
 Verified SteamDB app route, SteamGridDB Steam-ID redirect, and IGDB base-36 short route (decimal /games/ IDs are slugs and can open the wrong game). Use known IDs only; no search fallback or enrichment/network dependency. Both menus already render the shared details Links collection.
 
 Shared details Links now adds View on IGDB using positive canonical work ID encoded as base36, plus SteamDB and SteamGridDB using the first validated Steam app ID among grouped copies. Existing desktop and fullscreen menu builders and GameLinkRouter handle display and opening. Missing identities omit links. Verified 94 GameDetailsViewModelTests/GameLinkRouterTests and 29 LinkDestinationTests/GameDetailsTabInteractionTests, including six actual menu activation cases; builds succeeded. Updated existing exact link-list expectation. No schema or credentials required. Full suite and physical-controller validation not run.
+
+Full-suite verification exposed reference links suppressing missing-launch explanations. The shared details model now uses only primary/store actions when deciding whether to show that explanation; reference pages remain available in More on both surfaces. Updated TileActions regression expectations and visual documentation.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

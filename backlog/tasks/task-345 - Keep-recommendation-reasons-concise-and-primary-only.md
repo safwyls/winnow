@@ -5,7 +5,7 @@ status: Done
 assignee:
   - codex
 created_date: '2026-09-19 17:06'
-updated_date: '2026-09-19 17:12'
+updated_date: '2026-09-19 18:20'
 labels: []
 dependencies: []
 type: enhancement
@@ -35,6 +35,8 @@ Render only the existing primary signal, remove secondary phrasebook and support
 
 <!-- SECTION:NOTES:BEGIN -->
 Removed secondary templates, supporting-clause selection/rendering and citation-cap ledger machinery. Primary variants are concise standalone evidence statements; corrected claims about reading patch notes, refund eligibility or never returning. Preserved score calculation, signal precedence, structured supporting evidence and deterministic primary variant selection. Legacy FactCitation tuning fields remain accepted but inert. Desktop/fullscreen share the rendered primary string; new headless presentation tests verify both. Updated recommendation spec, visual spec, README example and stale reserve-test comment. Verification: 178 recommendation tests, 59 feed VM/reserve tests, 10 UI presentation/shelf tests passed (247 total); full solution build passed with zero warnings/errors; diff checks clean. Independent review found only stale citation-cap docs, corrected before completion. Full solution test suite not run.
+
+Full-suite documentation enforcement flagged the phrase describing supporting-signal ordering as document hierarchy language. Clarified it to ordered by priority; behavior is unchanged.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
