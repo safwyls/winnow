@@ -253,7 +253,7 @@ to meet: a number that means something.
 | `HistoryProbeLimit` / `RecentProbeLimit` | 60 / 25 | The repository interfaces read history per-ownership, so the engine probes a shortlist rather than issuing 2,000 queries per feed. `HistoryProbeLimit` is the cap on the shortlist's **comfort floor**, not the shortlist's justification — the shortlist itself is score-bound safe and may exceed the floor when the bound says it must (§4a). 60 is where the measured bound landed anyway. `RecentProbeLimit` is tier detection only: the most recently played rows are where history concentrates (the 5 real multi-snapshot ownerships are all recent), and what they hold is directly observed, so they floor the estimate without entering the uniform draw that would be biased by them. |
 | `TierSampleOwnerships` | 120 | Ownerships drawn uniformly from every row that could hold history, for the sampled tier estimate (§6). Roughly a third of the measured library's history-bearing rows: enough that the scale-up is not carried by a handful of rows, and cheap at two indexed point reads apiece. Only used when no global aggregate is available. |
 | `TierSampleSeed` | `0x5715_0F5E` | Fixed salt for that draw. Deterministic so one library always samples the same rows: a tier that flickered between refreshes because the sample moved would be a worse answer than a slightly stale one, and a fixed seed makes the estimate reproducible when someone disputes it. Not the shuffle seed — the tier must not change because the day did. |
-| `ReasonCharacterBudget` | 180 | Longest reason sentence a card may carry. One sentence is the contract (§6c), and 180 is the length at which one sentence stays one sentence: it fits the longest primary/secondary pair the selection rules can produce, quoted update title included, so the honesty clauses are never truncated away. Lower it and truncation starts deciding what the user is told. |
+| `ReasonCharacterBudget` | 180 | Maximum primary reason length, including a quoted update title (§6c). This is a safety ceiling; the shipped standalone phrases stay well below it. |
 | `JitterAmplitude` | 0.03 | Below the smallest deliberate weight gap (0.05), so jitter can only reorder rows no real signal separates. |
 | `PenaltyModeMismatch` | 0.10 | Equal to the taste weight on purpose: a perfect genre match on a game the user will never launch with strangers should net to zero, not to a recommendation. A demotion, never an exclusion — facets can be missing or miscoded, and a demotion is recoverable. |
 | `ModeEvidenceMinGames` | 20 | Committed mode-carrying games before the profile may claim a dominant mode. Below it, a handful of purchases could fake dominance; at 20+ games with an 85% share, chance is off the table. The measured library has 261. |
@@ -376,15 +376,12 @@ A caller that holds replacement cards behind each shelf asks one pass for more t
 shows. `RecommendationRequest.VisiblePerShelf` declares how many of each shelf's
 `MaxPerShelf` items actually reach the screen; the rest are a reserve. The engine cannot
 infer the surface size from the depth alone — asking for ten and showing six is the same
-`MaxPerShelf` as asking for ten and showing ten — so the caller states both, and two
-properties of the feed depend on it.
+`MaxPerShelf` as asking for ten and showing ten — so the caller states both.
 
-First, every shelf's visible slice is filled before any shelf's reserve (see the
-"Visible slices are filled before any reserve" rule above). Second, the reason ledger's
-variety caps are sized to the surface, not to the depth — asking for twelve to show six
-must not double how many of those six may cite the same supporting fact. The ledger is
-allocated once per shelf and spans its entire depth, visible and reserve alike, which is
-what makes a reserve card's sentence one the surface has already checked.
+Every shelf's visible slice is filled before any shelf's reserve (see the
+"Visible slices are filled before any reserve" rule above). The primary wording ledger is
+allocated once per shelf and spans its entire depth, visible and reserve alike, so reserve
+cards continue the same variant selection.
 
 The screen is responsible for refusing to promote a card whose sentence a card on the
 shelf is already saying, because a deep enough shelf reaches the end of its distinct
@@ -586,121 +583,57 @@ across the visible surface.
 
 ### The split
 
-The scorer returns structured evidence. `RecommendationScorer.Explain` produces a
-`RecommendationReason`: one primary signal, every supporting fact that fired in
-strongest-first precedence order, and the `ReasonEvidence` both clauses may cite, read off
-the same facts the score was computed from so a sentence cannot state a figure the ranking
-never saw. At most one supporting clause is ever rendered; the list exists so a card whose
-strongest fact is already spent on the surface can reach for the next one honestly (see
-"The shelf ledger" below). `ReasonBuilder` renders one bounded sentence from the reason,
-choosing wording from `ReasonPhrasebook`. What is true and how it reads are separately
-changeable, and a caller wanting its own rendering reads `Recommendation.Explanation`
-rather than parsing the sentence back apart.
-
-`ReasonSignal` is the vocabulary, and every member is a fact about the game rather than a
-phrase:
-
-- **Openings:** patched-since-you-left, bounced, sampled, never-opened, launched-unmeasured,
-  probably-done.
-- **Supports:** tried-to-like-it, taste match, bought twice, installed, dormant,
-  undated dormancy, online-only mismatch, solo-only mismatch, played recently,
-  shown recently — or nothing, which is a legitimate answer.
+`RecommendationScorer.Explain` returns a `RecommendationReason`: the primary signal,
+supporting signals in precedence order, and `ReasonEvidence` drawn from the same facts as
+the score. `ReasonBuilder` renders only the primary through `ReasonPhrasebook`. Supporting
+facts and the full score breakdown remain available for inspection and custom rendering;
+they do not add a second clause to the card. Scoring and shelf membership do not depend on wording.
 
 ### Selection, and its honesty rules
 
-The honesty rules live in the selection, not in the wording.
+Primary precedence is unchanged: probably-done demotions first, then patched-since-you-left,
+then commitment shape (never opened, launched but unmeasured, sampled or bounced).
 
-**Primary,** in precedence order: a row demoted for being probably-done leads with that,
-because the feed is required to be able to say "you were right to drop this"; then the
-patched bucket, the headline fact; then the commitment shape (never opened, launched but
-unmeasured, sampled, bounced).
-
-**Secondary,** in precedence order: mode mismatch first, then fresh play. Both are demotions
-whose effect the user can see, and a demotion the user can see the effect of but not the
-reason for is an arbitrary ranking from their side. Then every supporting fact the opening
-did not already tell, in one list, strongest first: tried-to-like-it, taste match, bought
-twice, installed, dormancy, recently shown. The card takes the first entry the surface has
-not already spent (see "The shelf ledger" below); when the list runs out the card says less.
-
-Dormancy sits last because the opening can usually date the game itself, and the builder
-additionally forbids the opening from spending `{year}` or `{age}` when the supporting
-clause is telling the time story. "You put 5 hours in back in 2019, untouched for seven
-years" is one fact told twice, which is the cookie-cutter failure in miniature.
+Wording states recorded evidence without guessing why someone stopped, claiming they read
+patch notes, or treating missing playtime as proof of no launch. Update titles describe an
+update after the last recorded play; they do not claim the user has never seen it elsewhere.
+Probably-done wording qualifies update coverage as known evidence rather than proving that
+nothing shipped. Supporting demotions remain in the structured explanation and score breakdown.
 
 ### One sentence, bounded
 
-`ReasonCharacterBudget` (180, §5) is sized above the longest pair the selection rules can
-produce, so the clauses the honesty rules put there are never truncated away. The contract
-test sweeps every producible primary/secondary combination against several evidence shapes —
-including a game that knows everything about itself and one that knows almost nothing — and
-asserts exactly one terminator, inside the budget, with no unfilled tokens.
+`ReasonCharacterBudget` (180, §5) is the ceiling, not a target. Primary variants are short,
+standalone statements. Contract tests sweep primary signals and evidence shapes, including
+missing history and long update titles, and require one sentence with no unfilled tokens.
+They also verify that supporting signals never change the rendered sentence.
+
+Example primary output:
+
+> "Reforged Eden" shipped after your last play.
+>
+> 4.3 hours of recorded playtime.
+>
+> Only 22 minutes of recorded playtime.
+>
+> Owned with no recorded launch.
+>
+> Last launched in 2019, with no playtime recorded.
 
 ### Variation, deterministically
 
-Each signal carries several phrasings per clause. The variant is chosen by hashing the
-game's own **release id**, never the shuffle seed, so a reload renders the identical
-sentence while neighbouring cards do not read as siblings, and tomorrow's different hand is
-not also a different wording. A variant whose tokens this game cannot fill truthfully is
-skipped, which is why every list must carry at least one token-free variant; a variant
-citing one of the game's own numbers is preferred over one that would be equally true of any
-game, which is what stops a feed of "it's in your library" cards.
+Each primary signal carries several phrasings, selected by hashing the release ID rather
+than the shuffle seed. Variants requiring missing evidence are skipped; every list has a
+token-free fallback. Specific evidence is preferred over generic wording.
 
-Example output using supported evidence:
+`ShelfReasonLedger` remembers primary variants within one shelf or flat feed, rendered in
+stable score then release-ID order. If a variant has already been used, it chooses a fresh
+one, including a generic fallback, before repeating. The same library in the same order
+renders the same wording. Moving an earlier card can change a later card's variant.
 
-> You have not seen "Reforged Eden", which arrived after you left, and nobody has opened it in 4 years.
->
-> 4.3 hours of yours went into this before you drifted off, spread over 5 sittings rather than one.
->
-> 15 hours in, well past the refund line, then nothing, quiet for 5 years now.
->
-> A brief look, 22 minutes, and nothing after, untouched for 4 years.
->
-> This has been waiting in your library, and nothing needs downloading first.
->
-> 43 hours was your answer 7 years ago, and nothing since has argued with it.
->
-> Something held your attention for 10 hours, then stopped, though 2 days is no time at all to have been away.
-
-### Grammar and evidence
-
-A supporting clause must stand after any eligible opening. Use a participle, appositive or
-coordinate clause; a bare relative pronoun can attach to the wrong noun or verb.
-
-A card may claim only what the engine can prove about that game. It must not claim a
-library-wide rank, maximum, minimum, uniqueness or quantified share. Taste strength uses
-normalised affinity from `ReasonEvidence`: `{strongFacet}` resolves only at or above
-`OnTasteMinAffinity` (0.6). Below that gate, the descriptor may still be named without a
-strength claim. Mode-mismatch wording must describe dominance, not pretend an 85% share
-means every recorded hour.
-
-`ReasonHonestyTests` checks all phrasebook variants for unsupported claims and exercises
-multiple cards sharing the same taste descriptor.
-
-### Variety across one surface
-
-`ShelfReasonLedger` tracks both wording and supporting facts while cards render in stable
-score, then release-ID order. It belongs to one shelf or flat-feed render.
-
-- **Wording:** the release-ID hash selects the initial variant. If that variant is already
-  used for the same signal and clause, select the next unclaimed variant. Prefer a fresh
-  generic variant over repeating a specific one. Repeat only after the available variants
-  are exhausted.
-- **Facts:** take the first eligible supporting fact that has citation capacity. If its
-  budget is spent, try the next fact that actually fired for this card. If none remains,
-  omit the support. Count a citation only after the clause is rendered.
-- **Claim identity:** taste citations use the descriptor name, so Sandbox and Roguelike
-  have separate budgets. Other supporting facts use their signal, regardless of the
-  number cited in the wording.
-- **Required disclosures:** online-only mismatch, solo-only mismatch, played recently
-  and shown recently are exempt from citation caps because they explain demotions.
-
-The citation cap is `max(FactCitationFloor, visibleCards / FactCitationCards)`, using integer
-division and defaults 2 and 3. Six visible cards therefore permit two citations of each
-fact. The caller's `VisiblePerShelf` determines the budget; reserve cards do not enlarge it.
-Inputs are clamped to at least one to avoid division by zero or a silent surface.
-
-The same library in the same order renders the same wording. Moving a preceding card can
-change a later card's choice because the ledger describes the visible surface.
+There is no supporting phrasebook or supporting-fact citation budget. `FactCitationCards`
+and `FactCitationFloor` remain accepted tuning properties for existing callers and saved
+sets, but have no effect. Taste, mode mismatch, installation, dormancy and other supporting
+signals retain their scoring effects and structured evidence.
 
 ### Quoting a store-authored update title
 
@@ -788,9 +721,9 @@ quality remain unmeasured. Provider details are in build specification §6.2.
 | Three dismissals collapse the feed into a monoculture | Dismissals are exclusion-only — they never touch the taste profile (§6b's stated non-effect) — and endorsements pay for taste testimony in √minutes, the same currency as played hours, so no handful of clicks can outvote the library's history. |
 | A shelf that is one franchise five times | `ShelfFranchiseCap` = 1, hard, measured against the 14-entry Infinity Blade pile. |
 | "Matches your taste" via a tag half the library wears | The prevalence cut: facets carried by >25% of the library cannot testify. Without it, 266 of 427 never-opened rows scored a perfect match — a metric measuring nothing. |
-| Recommending games the user will never play with strangers | Mode-mismatch demotion, evidence-gated, with the sentence said out loud where the row does surface. |
+| Recommending games the user will never play with strangers | Mode-mismatch demotion, evidence-gated, retained in the structured reason and full score breakdown. |
 | Resurfacing the finished 200-hour game | Retired is a hard exclusion before scoring, patches notwithstanding — same precedence build specification §6.1 encodes. |
-| Nagging about correctly-abandoned games | Probably-done penalty with an explanation that *says* "you were probably right"; not-interested set for the user's explicit verdict. |
+| Nagging about correctly-abandoned games | Probably-done penalty with a primary reason stating the recorded play and lack of known updates; not-interested set for the user's explicit verdict. |
 | Blank feed on day one | Every load-bearing signal is retroactive; tier detection widens confidence instead of gating output; the shelfware base value keeps the pile ranked rather than empty. |
 | Unexplainable output | Reasons are composed from the same contributions that produced the score; a signal that cannot be explained in one sentence has nowhere to hide in the API shape. |
 | The same frame with the nouns swapped | The scorer returns structure and the builder renders it, so a card avoids concatenation of the same fragments in the same order (§6c). Several phrasings per signal, selected from the release id. The contract test masks every number and proper noun and requires ten genuinely different histories to leave at least eight distinct sentence *skeletons* — distinct wording is not enough to pass. |

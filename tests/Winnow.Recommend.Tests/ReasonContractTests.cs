@@ -71,6 +71,11 @@ public class ReasonContractTests : IDisposable
                         Tuning);
 
                     var label = $"{primary}/{secondary}: {reason}";
+                    Assert.Equal(reason, ReasonBuilder.Build(new RecommendationReason
+                    {
+                        Primary = primary,
+                        Evidence = evidence,
+                    }, Tuning));
 
                     Assert.False(string.IsNullOrWhiteSpace(reason), label);
                     Assert.EndsWith(".", reason, StringComparison.Ordinal);
@@ -89,10 +94,9 @@ public class ReasonContractTests : IDisposable
     [Fact]
     public void Every_phrasing_is_one_clause_and_every_list_has_a_fallback()
     {
-        foreach (var (signal, clause) in Primaries.Select(s => (s, ReasonClause.Primary))
-            .Concat(Secondaries.Where(s => s != ReasonSignal.None).Select(s => (s, ReasonClause.Secondary))))
+        foreach (var signal in Primaries)
         {
-            var variants = ReasonPhrasebook.Variants(signal, clause);
+            var variants = ReasonPhrasebook.Variants(signal);
             Assert.NotEmpty(variants);
 
             // A variant whose tokens a given game cannot fill is skipped, so
@@ -104,18 +108,8 @@ public class ReasonContractTests : IDisposable
                 Assert.DoesNotContain('\n', variant);
                 Assert.Equal(0, SentenceCount(variant));
 
-                if (clause == ReasonClause.Primary)
-                {
-                    // A primary may open on a token — the builder capitalises
-                    // after filling — but never on a joiner.
-                    Assert.False(variant[0] is ',' or ';' or '—' or ' ',
-                        $"a primary clause opens the sentence: {variant}");
-                }
-                else
-                {
-                    Assert.True(variant[0] is ',' or ' ' or '—',
-                        $"a secondary clause carries its own joiner: {variant}");
-                }
+                Assert.False(variant[0] is ',' or ';' or '—' or ' ',
+                    $"a primary opens the sentence: {variant}");
             }
         }
     }
@@ -317,8 +311,7 @@ public class ReasonContractTests : IDisposable
         yield return Rich(5) with { Title = "A Game With A Really Rather Long Name Indeed" };
 
         // A taste match too faint for the gated strength phrasings: the
-        // supporting clause must still render, one clause shorter than the
-        // shape above rather than not at all.
+        // primary wording is independent of supporting taste evidence.
         yield return Rich(6) with { TasteAffinity = 0.1 };
     }
 

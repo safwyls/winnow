@@ -2475,6 +2475,10 @@ queue ahead of the existing reserve and are not recorded as seen until displayed
 keeps its full scored shelf. The page scrolls vertically through shelf headings,
 short explanations and rules fading toward the right. Titles and two-line recommendation
 excerpts stay below each cover; the complete reason remains in the accessible name.
+Built-in recommendations use one short, self-contained primary reason on desktop and
+fullscreen. They do not append supporting phrases about taste, installation, ownership or
+dormancy. The reason cites the recorded play or update fact that led the recommendation;
+other scoring evidence remains available to the engine.
 
 Hover or keyboard focus reveals a bottom action strip inside the cover: **Add to list**,
 **Not now**, and **Not interested**, with 36px targets and named tooltips. Their icons use

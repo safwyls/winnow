@@ -46,8 +46,7 @@ public sealed class FeedReserveTests
         Assert.NotNull(engine.LastRequest);
 
         // Both halves stated. The engine needs the surface size to fill the
-        // visible slices before any reserve and to size the reason ledger's
-        // variety caps — see RecommendationRequest.VisiblePerShelf.
+        // visible slices before any reserve — see RecommendationRequest.VisiblePerShelf.
         Assert.Equal(6, engine.LastRequest!.VisiblePerShelf);
         Assert.True(engine.LastRequest.MaxPerShelf > engine.LastRequest.VisiblePerShelf);
     }

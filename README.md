@@ -15,9 +15,8 @@ whether it's been patched since you last tried. Winnow does.
 
 - **One library across Steam, Epic and GOG.** Read from local launcher files, with optional
   sign-in where a store's API knows things its files don't.
-- **A feed that says why.** Every recommendation carries a sentence — *"You put 2.8 hours into
-  this in 2021 and it has had an update since, most recently 'PATCH NOTES – S06.05.02'."* Not
-  a genre tag, not a star rating. The reason is the product.
+- **A feed that says why.** Every recommendation carries one concise reason, such as
+  *"‘PATCH NOTES – S06.05.02’ shipped after your last play."*
 - **Buckets that mean something.** *Never played* means zero recorded minutes and no
   last-played date. Other buckets distinguish brief trials, longer starts and patched returns.
 - **Patch tracking.** Games updated since you last played them.

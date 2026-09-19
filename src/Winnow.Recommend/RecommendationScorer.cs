@@ -162,20 +162,8 @@ public static class RecommendationScorer
     }
 
     /// <summary>
-    /// Turns the contributions that made a score into the STRUCTURE of its
-    /// explanation: one primary signal, the supporting facts in strongest-first
-    /// order, and the numbers they may cite. Returning structure rather than
-    /// prose is what holds the card to one sentence: at most one supporting
-    /// clause is ever rendered, so nothing downstream has a third clause to
-    /// concatenate.
-    ///
-    /// <para>The honesty rules live in the selection, not in the wording. A row
-    /// demoted for being probably-done leads with that; a row demoted for mode
-    /// mismatch or fresh play says so in the supporting clause. A demotion the
-    /// user can see the effect of but not the reason for is an arbitrary
-    /// ranking from their side, which is why the character budget is sized
-    /// above the longest pair these rules can produce rather than left to
-    /// truncate whichever clause came second.</para>
+    /// Selects the primary reason and preserves supporting evidence for inspection.
+    /// Card prose renders the primary only; the score breakdown retains all contributions.
     /// </summary>
     public static RecommendationReason Explain(
         CandidateFacts facts,
@@ -242,14 +230,7 @@ public static class RecommendationScorer
             : ReasonSignal.Bounced;
     }
 
-    // Returns every supporting fact that fired, in strongest-first order,
-    // rather than only the head. Nothing about which fact is strongest
-    // changed; the list simply stops discarding the ones the head beat, so
-    // a shelf that has already spent the head has somewhere honest to go.
-    // Precedence order: demotion disclosures first (mode mismatch, then
-    // fresh play), then tried-to-like-it, taste match, bought twice,
-    // installed, dormancy, recently shown. Dormancy is late because the
-    // opening clause can usually date the game itself.
+    // Preserve the supporting evidence and its precedence for explanation consumers.
     private static IReadOnlyList<ReasonSignal> SupportingSignals(
         CandidateFacts facts,
         ReasonSignal primary,

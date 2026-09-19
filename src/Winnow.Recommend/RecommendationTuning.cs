@@ -123,18 +123,8 @@ public sealed record RecommendationTuning
     /// <summary>Candidates short-listed per shelf as a multiple of shelf size, before diversity passes.</summary>
     public int ShelfOverfetchFactor { get; init; } = 3;
 
-    /// <summary>
-    /// One card in every this-many on a surface may cite the same supporting
-    /// fact. 3 yields a cap of 2 on a 6-card shelf and 6 on a 20-card feed,
-    /// which is under the three-of-six that was photographed on 2026-09-02.
-    /// </summary>
+    // Retained for callers with saved tuning sets; primary-only reasons have no citation caps.
     public int FactCitationCards { get; init; } = 3;
-
-    /// <summary>
-    /// The derived citation cap never falls below this number, so a short
-    /// surface is not silenced. 2 because two cards making the same claim
-    /// reads as coincidence while three reads as a template.
-    /// </summary>
     public int FactCitationFloor { get; init; } = 2;
 
     /// <summary>
@@ -204,12 +194,8 @@ public sealed record RecommendationTuning
     // ── Explanation ─────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Longest reason sentence a card may carry. One sentence is the contract,
-    /// and 180 is the length at which one sentence stays one sentence: it fits
-    /// the longest primary and secondary the selection rules can pair, quoted
-    /// update title included, so the builder never has to drop a clause the
-    /// honesty rules put there. Lower it and truncation starts deciding what
-    /// the user is told.
+    /// Maximum reason length, including a quoted update title. The 180-character
+    /// ceiling protects card layout; standalone primary phrases stay well below it.
     /// </summary>
     public int ReasonCharacterBudget { get; init; } = 180;
 

@@ -136,11 +136,8 @@ public sealed record ReasonEvidence
 }
 
 /// <summary>
-/// A card's reason as structure rather than prose: what to say first, what to
-/// add, and the facts to say it with. This is the seam: the scorer decides
-/// WHAT is true, <see cref="ReasonBuilder"/> and <see cref="ReasonPhrasebook"/>
-/// decide how it reads. A caller that wants its own wording renders from here
-/// rather than parsing the sentence back apart.
+/// Structured primary and supporting evidence for inspection or custom rendering.
+/// Built-in card prose renders only the primary signal.
 /// </summary>
 public sealed record RecommendationReason
 {
@@ -150,20 +147,10 @@ public sealed record RecommendationReason
     /// <summary>One supporting fact the primary did not already tell, or None.</summary>
     public ReasonSignal Secondary { get; init; } = ReasonSignal.None;
 
-    /// <summary>
-    /// Every supporting fact the scorer proved about this card, strongest
-    /// first, with <see cref="Secondary"/> as its head. A shelf caps how
-    /// many of its cards may cite the same fact (see
-    /// <see cref="ShelfReasonLedger"/>), and a card whose strongest fact is
-    /// already spent needs somewhere honest to go. Reaching down this list
-    /// is honest because every entry fired for this card; nothing on it is
-    /// a new claim. When the list runs out the card says less, it never
-    /// borrows. Defaults to empty; a caller that sets only
-    /// <see cref="Secondary"/> gets the original single-fact behaviour.
-    /// </summary>
+    /// <summary>Supporting facts in precedence order, retained for inspection rather than card prose.</summary>
     public IReadOnlyList<ReasonSignal> SupportingSignals { get; init; } = [];
 
-    /// <summary>The numbers both clauses may cite.</summary>
+    /// <summary>The facts available to explanation consumers.</summary>
     public required ReasonEvidence Evidence { get; init; }
 }
 
