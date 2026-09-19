@@ -12,6 +12,40 @@ namespace Winnow.Tests;
 public sealed class FeedViewModelTests
 {
     [Theory]
+    [InlineData(false, false, 8)]
+    [InlineData(false, true, 8)]
+    [InlineData(true, false, 8)]
+    [InlineData(true, true, 8)]
+    [InlineData(false, false, 3)]
+    [InlineData(true, false, 3)]
+    public async Task Missing_tiles_are_skipped_before_filling_visible_slots(
+        bool fullscreen, bool supplemental, int availableCount)
+    {
+        var tiles = new FakeTileSource();
+        var items = Enumerable.Range(1, availableCount)
+            .Select(id => Item(tiles, id, $"Reason {id}")).ToArray();
+        var missing = new FeedItem(9_999, 9_999, "Unavailable", "Missing tile");
+        var source = Shelf("patched", "Shelf", "", [missing, .. items.Take(3)])
+            with { Reserve = [missing, .. items.Skip(3)] };
+        var snapshot = supplemental
+            ? Snapshot() with { AdditionalShelves = Task.FromResult(new FeedSupplement([source], availableCount)) }
+            : Snapshot(source);
+        var service = new FakeFeedService(snapshot);
+        using var feed = new FeedViewModel(service, tiles, includeReserve: fullscreen);
+
+        await feed.LoadCommand.ExecuteAsync(null);
+        await feed.AdditionalShelvesLoading;
+
+        var shelf = Assert.Single(feed.Shelves);
+        var visible = fullscreen ? availableCount : Math.Min(5, availableCount);
+        Assert.Equal(items.Take(visible).Select(item => item.ReleaseId),
+            shelf.Cards.Select(card => card.Tile.ReleaseId));
+        Assert.Equal(items.Skip(visible).Select(item => item.ReleaseId),
+            shelf.Reserve.Select(item => item.ReleaseId));
+        Assert.Empty(service.Surfaced);
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task Desktop_excess_items_lead_the_reserve_without_being_counted_seen(bool supplemental)

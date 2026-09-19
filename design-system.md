@@ -843,7 +843,9 @@ navigation primitives.
 Fullscreen makes the complete scored shelf available: up to six primary recommendations
 plus four reserve items. Show as many as fit at the chosen scale, with left/right navigation
 to overflow games; do not enlarge covers just to fill a short shelf. Desktop retains five
-cards with a hidden replacement reserve. Only actual viewport entry records an impression.
+cards with a hidden replacement reserve. Skip entries without a loaded library tile before
+filling those five slots, drawing from the reserve in order when needed. Fullscreen shows
+all available entries. Only actual viewport entry records an impression.
 
 Fullscreen cards show cover art without a title caption beneath it in For you, Library and
 Search. Missing-art placeholders and accessible card names still identify the game.

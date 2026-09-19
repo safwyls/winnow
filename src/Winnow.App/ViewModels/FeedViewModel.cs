@@ -376,8 +376,13 @@ public partial class FeedViewModel : ObservableObject, IDisposable
     {
         foreach (var shelf in shelves)
         {
+            // Filter before splitting so an unavailable tile cannot leave a visible
+            // gap while a usable replacement is held in reserve.
+            var available = shelf.Items.Concat(shelf.Reserve)
+                .Where(item => _tiles?.TileForOwnership(item.OwnershipId) is not null)
+                .ToArray();
             // TV can show the full scored shelf horizontally; desktop keeps replacements hidden.
-            var shown = (_includeReserve ? shelf.Items.Concat(shelf.Reserve) : shelf.Items.Take(5)).ToArray();
+            var shown = (_includeReserve ? available : available.Take(5)).ToArray();
             var cards = new List<FeedCardViewModel>(shown.Length);
             foreach (var item in shown)
             {
@@ -393,12 +398,7 @@ public partial class FeedViewModel : ObservableObject, IDisposable
                 continue;
             }
 
-            // A reserve item with no tile is dropped here for the same reason a
-            // visible one is, and here rather than at the swap: a receipt that
-            // offers a replacement has to have one.
-            var reserve = (_includeReserve ? [] : shelf.Items.Skip(5).Concat(shelf.Reserve))
-                .Where(item => _tiles?.TileForOwnership(item.OwnershipId) is not null)
-                .ToList();
+            var reserve = (_includeReserve ? [] : available.Skip(5)).ToList();
 
             // Everything this pass accounted for, shown or held, so a backfill
             // reading the feed again can tell what is new from what is already
