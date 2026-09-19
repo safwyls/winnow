@@ -265,7 +265,9 @@ The hue term is what makes dormant art read as *cool* rather than merely grey. S
 load-bearing: Steam capsules are mostly warm and dark, and without it the floor lands on a
 neutral-warm mud that looks like a rendering fault instead of an encoding.
 
-**Hover restores full saturation over 140ms.** The game wakes up under the cursor. This is the
+**Hover, keyboard/controller action focus, and tile selection restore full saturation and
+brightness over 140ms.** Clearing selection and focus returns the tile to its dormancy state
+unless it is still hovered. Reduced motion snaps the change. The game wakes up under the cursor. This is the
 single most important interaction in the app: it makes the dormancy encoding legible by showing
 you the before and after, and it feels good.
 

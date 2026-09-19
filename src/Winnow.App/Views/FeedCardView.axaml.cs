@@ -148,7 +148,7 @@ public partial class FeedCardView : UserControl
         var reveal = _hovered || _keyboardFocus;
         Card.Classes.Set("actions-visible", reveal);
         CoverTile.InteractionActive = reveal;
-        if (_tile is not null) _tile.IsPointerOver = _hovered;
+        if (_tile is not null) _tile.IsPointerOver = reveal;
         if (_card is not null)
         {
             _card.IsPointerOver = _hovered;

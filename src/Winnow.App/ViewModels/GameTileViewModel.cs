@@ -591,6 +591,7 @@ public partial class GameTileViewModel : ObservableObject
     public partial bool IsPointerOver { get; set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DisplayAlpha))]
     public partial bool IsSelected { get; set; }
 
     /// <summary>Play/Install command, wired by the library for session tracking.</summary>
@@ -603,11 +604,11 @@ public partial class GameTileViewModel : ObservableObject
     public System.Windows.Input.ICommand? OpenDetailsCommand { get; set; }
 
     /// <summary>
-    /// Hover restores full saturation (140ms transition lives in the view). With
+    /// Hover, action focus and selection restore full saturation (140ms in the view). With
     /// dimming off this is 1.0 in both states, so the restore is a no-op without
     /// anything having to special-case it.
     /// </summary>
-    public double DisplayAlpha => IsPointerOver ? 1.0 : DormancyAlpha;
+    public double DisplayAlpha => IsPointerOver || IsSelected ? 1.0 : DormancyAlpha;
 
     /// <summary>
     /// §8: reduced motion snaps the hover restore instead of fading it. The view
