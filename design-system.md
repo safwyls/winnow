@@ -1864,6 +1864,11 @@ identifiers are inside the Library tab's collapsed disclosure.
 
 ### 10.8 The embedded browser
 
+The details **More** menu on desktop and fullscreen offers **View on IGDB** when the
+game has an IGDB match, and **View on SteamDB** and **View on SteamGridDB** when any
+grouped copy has a Steam app ID. These open the matching game pages through the same
+link destination preference as other websites; unavailable identities omit their links.
+
 A patched game's `Patch notes` button on an Activity update row, and the `All patch notes`
 row in More, follow **Settings → Application → Links → Open links in** on desktop and
 fullscreen. The default, **In Winnow**, uses Winnow's WebView2 window for HTTP and HTTPS

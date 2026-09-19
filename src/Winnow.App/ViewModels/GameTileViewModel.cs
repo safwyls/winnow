@@ -139,6 +139,7 @@ public partial class GameTileViewModel : ObservableObject
         // the title, cover and primary entry, but scalar metadata remains on
         // the root the metadata editor and IGDB pin operations address.
         ReleaseYear = work?.FirstReleaseYear;
+        IgdbId = work?.IgdbId;
         NameIsProvisional = work?.NameIsProvisional ?? false;
         Summary = string.IsNullOrWhiteSpace(work?.Summary) ? null : work!.Summary;
         Publisher = string.IsNullOrWhiteSpace(work?.Publisher) ? null : work!.Publisher;
@@ -165,6 +166,8 @@ public partial class GameTileViewModel : ObservableObject
     /// overwhelming majority of tiles.
     /// </summary>
     public IReadOnlyList<TileEntry> Entries { get; }
+
+    public long? IgdbId { get; }
 
     /// <summary>Known Steam releases in this group, independent of which copy can currently launch.</summary>
     public IReadOnlyList<string> SteamBackdropAppIds { get; }

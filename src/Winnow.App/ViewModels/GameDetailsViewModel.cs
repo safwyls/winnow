@@ -814,7 +814,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
 
     public bool HasManagementAction => ManagementAction is not null;
 
-    /// <summary>Store page and patch-notes hub. Empty when we hold no appid.</summary>
+    /// <summary>Store, patch notes and reference pages for known game identities.</summary>
     public IReadOnlyList<GameLink> Links { get; private set; }
 
     public bool HasLinks => Links.Count > 0;
@@ -1091,13 +1091,43 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     {
         var primary = tile.PrimaryAction;
         var links = StoreActions.LinksFor(tile.Store, tile.SteamAppId, tile.GogProductId, tile.PlayableEntry.Storefront)
-            .Concat(tile.Entries.Select(entry => entry.PluginActions?.Store).OfType<GameLink>()).Distinct().ToArray();
+            .Concat(tile.Entries.Select(entry => entry.PluginActions?.Store).OfType<GameLink>())
+            .Concat(ReferenceLinksFor(tile)).Distinct().ToArray();
 
         var sentence = primary is null && links.Length == 0
             ? GameActionBandCopy.NoWayInSentence(tile.NoWayIn)
             : null;
 
         return (primary, links, sentence);
+    }
+
+    private static IEnumerable<GameLink> ReferenceLinksFor(GameTileViewModel tile)
+    {
+        if (tile.IgdbId is > 0)
+            yield return GameLink.Create("View on IGDB", $"https://www.igdb.com/g/{IgdbShortId(tile.IgdbId.Value)}")!;
+
+        // A grouped game's installed copy may be from another store. Its known
+        // Steam identity still provides the reference pages for the same game.
+        var steamAppId = tile.Entries.Select(entry => entry.SteamAppId).FirstOrDefault(GameLink.IsSteamAppId);
+        if (steamAppId is not null)
+        {
+            yield return GameLink.Create("View on SteamDB", $"https://steamdb.info/app/{steamAppId}/")!;
+            yield return GameLink.Create("View on SteamGridDB", $"https://www.steamgriddb.com/steam/{steamAppId}")!;
+        }
+    }
+
+    private static string IgdbShortId(long id)
+    {
+        // IGDB's public short links encode its numeric game ID in base 36.
+        // The /games/ route takes a slug; a decimal ID there can name a different game.
+        const string digits = "0123456789abcdefghijklmnopqrstuvwxyz";
+        var result = string.Empty;
+        while (id > 0)
+        {
+            result = digits[(int)(id % 36)] + result;
+            id /= 36;
+        }
+        return result;
     }
 }
 
