@@ -445,6 +445,7 @@ public partial class GameTileViewModel : ObservableObject
 
     public string? LifecycleText => HasLifecycle
         ? $"{Lifecycle!.Status} · {Lifecycle.Confidence:P0} confidence. {Lifecycle.Reason}"
+            + (Lifecycle.IsExemptFromDerelict ? " Kept out of Derelict by your choice." : string.Empty)
         : null;
 
     /// <summary>

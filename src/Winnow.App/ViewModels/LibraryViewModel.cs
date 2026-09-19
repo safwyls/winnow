@@ -49,6 +49,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     private readonly IWorkRepository _works;
     private readonly IUpdateEventRepository _updateEvents;
     private readonly Services.IUpdateFlagService? _updateFlags;
+    private readonly ILifecycleRepository? _lifecycle;
     private readonly IAccountAcquisitionReader? _acquisitionReader;
 
     /// <summary>
@@ -250,11 +251,13 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         ISettingsRepository? activitySettings = null,
         PluginGameActionService? pluginActions = null,
         IArtworkChoiceRepository? artworkChoices = null,
-        IArtworkBrowserService? artworkBrowser = null)
+        IArtworkBrowserService? artworkBrowser = null,
+        ILifecycleRepository? lifecycle = null)
     {
         _storefrontCache = storefrontCache;
         _artworkChoices = artworkChoices;
         _artworkBrowser = artworkBrowser;
+        _lifecycle = lifecycle;
         _workRatings = workRatings;
         _workImages = workImages;
         _artworkPreferences = artworkPreferences;
@@ -458,6 +461,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     public event EventHandler? TilesChanged;
     /// <summary>Fullscreen publishes committed artwork back to the shared desktop library and shell integrations.</summary>
     internal Func<Task>? PublishArtworkChange { get; set; }
+    internal Func<Task>? PublishLifecycleChange { get; set; }
 
     /// <inheritdoc/>
     public bool HasTiles => _allTiles.Count > 0;
@@ -590,8 +594,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     public partial string SearchText { get; set; } = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanMarkSelectionAsRead))]
-    [NotifyCanExecuteChangedFor(nameof(MarkSelectionAsReadCommand))]
+    [NotifyPropertyChangedFor(nameof(CanMarkSelectionAsRead), nameof(CanRemoveSelectionFromDerelict))]
+    [NotifyCanExecuteChangedFor(nameof(MarkSelectionAsReadCommand), nameof(RemoveSelectionFromDerelictCommand))]
     public partial BucketViewModel? SelectedBucket { get; set; }
 
     /// <summary>
@@ -691,17 +695,54 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// an action keeping its name through the whole flow.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSelection), nameof(AddToListLabel), nameof(HideLabel), nameof(CanMarkSelectionAsRead))]
+    [NotifyPropertyChangedFor(nameof(HasSelection), nameof(AddToListLabel), nameof(HideLabel), nameof(CanMarkSelectionAsRead), nameof(CanRemoveSelectionFromDerelict))]
     [NotifyCanExecuteChangedFor(
         nameof(BeginAddToListCommand),
         nameof(RemoveFromOpenListCommand),
         nameof(HideSelectionCommand),
         nameof(MarkSelectionAsReadCommand),
+        nameof(RemoveSelectionFromDerelictCommand),
         nameof(MoveUpInListCommand),
         nameof(MoveDownInListCommand))]
     public partial IReadOnlyList<GameTileViewModel> SelectedTiles { get; set; } = [];
 
     public bool HasSelection => SelectedTiles.Count > 0;
+
+    public bool CanRemoveSelectionFromDerelict => _lifecycle is not null
+        && SelectedBucket?.Key == LibraryBuckets.Derelict
+        && SelectedTiles.Any(tile => tile.Game.Bucket == LibraryBuckets.Derelict);
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasDerelictProblem), nameof(ShowActionBar))]
+    public partial string? DerelictProblem { get; set; }
+
+    public bool HasDerelictProblem => DerelictProblem is not null;
+
+    [RelayCommand(CanExecute = nameof(CanRemoveSelectionFromDerelict))]
+    private async Task RemoveSelectionFromDerelictAsync(CancellationToken ct)
+    {
+        if (!CanRemoveSelectionFromDerelict) return;
+        var releaseIds = SelectedTiles.Where(tile => tile.Game.Bucket == LibraryBuckets.Derelict)
+            .SelectMany(tile => tile.ReleaseIds).Distinct().ToArray();
+        DerelictProblem = null;
+        try
+        {
+            await _lifecycle!.ExemptFromDerelictAsync(releaseIds, ct);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch
+        {
+            DerelictProblem = "Couldn't remove the selected games from Derelict. Try again.";
+            return;
+        }
+        try
+        {
+            await LoadLibraryAsync(preserveViewport: true, ct: ct);
+            if (PublishLifecycleChange is { } publish) await publish();
+        }
+        catch (OperationCanceledException) { throw; }
+        catch { DerelictProblem = "Your choice was saved, but the library couldn't refresh. Try refreshing it."; }
+    }
 
     public bool CanMarkSelectionAsRead => _updateFlags is not null
         && SelectedBucket?.Key == LibraryBuckets.StaleButPatched
@@ -853,7 +894,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
     public bool ShowCutBar => IsCut;
 
-    public bool ShowActionBar => IsCut || HasPatchReadProblem;
+    public bool ShowActionBar => IsCut || HasPatchReadProblem || HasDerelictProblem;
 
     /// <summary>Whether saving the current cut as a live list is a meaningful act.</summary>
     public bool CanSaveLiveList => !BuildFilter().IsEmpty;

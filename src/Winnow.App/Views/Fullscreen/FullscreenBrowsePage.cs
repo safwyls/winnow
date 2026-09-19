@@ -467,6 +467,10 @@ public sealed class FullscreenBrowsePage : FullscreenPage
         patchProblem.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding(nameof(LibraryViewModel.PatchReadProblem)) { Source = library });
         patchProblem.Bind(IsVisibleProperty, new Avalonia.Data.Binding(nameof(LibraryViewModel.HasPatchReadProblem)) { Source = library });
         headingStack.Children.Add(patchProblem);
+        var derelictProblem = FullscreenUi.Text("", 24, "AmberForeground");
+        derelictProblem.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding(nameof(LibraryViewModel.DerelictProblem)) { Source = library });
+        derelictProblem.Bind(IsVisibleProperty, new Avalonia.Data.Binding(nameof(LibraryViewModel.HasDerelictProblem)) { Source = library });
+        headingStack.Children.Add(derelictProblem);
         grid.Children.Add(headingStack);
         var collections = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"),
             Margin = new Thickness(0, 4, 0, 8) };
@@ -715,6 +719,9 @@ public sealed class FullscreenBrowsePage : FullscreenPage
             if (Context.Library.CanMarkSelectionAsRead)
                 actions.Add(new("Mark as read", () => Context.Library.MarkSelectionAsReadCommand.Execute(null),
                     Context.Library.MarkSelectionAsReadCommand.CanExecute(null)));
+            if (Context.Library.CanRemoveSelectionFromDerelict)
+                actions.Add(new("Remove from Derelict", () => Context.Library.RemoveSelectionFromDerelictCommand.Execute(null),
+                    Context.Library.RemoveSelectionFromDerelictCommand.CanExecute(null)));
             if (Context.Library.CanEditOpenList)
             {
                 actions.Add(new("Remove selected game from list", () => Context.Library.RemoveFromOpenListCommand.Execute(null)));

@@ -10,6 +10,25 @@ public sealed class LifecycleRepository(ISqliteConnectionFactory factory) : ILif
 {
     internal const string Columns = "id, release_id, source, source_id, observed_at, signals_json, raw_json";
 
+    public async Task ExemptFromDerelictAsync(IReadOnlyList<long> releaseIds, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(releaseIds);
+        ct.ThrowIfCancellationRequested();
+        if (releaseIds.Count == 0) return;
+
+        using var batch = new RepositoryWriteBatch(factory);
+        var lease = batch.Lease;
+        foreach (var releaseId in releaseIds.Distinct())
+        {
+            await lease.Connection.ExecuteAsync(new CommandDefinition("""
+                INSERT INTO derelict_exemptions (release_id)
+                VALUES (@releaseId)
+                ON CONFLICT (release_id) DO NOTHING;
+                """, new { releaseId }, transaction: lease.Transaction, cancellationToken: ct));
+        }
+        batch.Commit();
+    }
+
     public async Task<long> AppendAsync(LifecycleObservation observation, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(observation);

@@ -248,6 +248,8 @@
                        TextWrapping="Wrap" Text="{Binding Lists.Problem}" IsVisible="{Binding Lists.HasProblem}"/>
             <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}" Foreground="{StaticResource AmberForeground}"
                        TextWrapping="Wrap" Text="{Binding PatchReadProblem}" IsVisible="{Binding HasPatchReadProblem}"/>
+            <TextBlock Classes="body" FontSize="{DynamicResource FontSize12}" Foreground="{StaticResource AmberForeground}"
+                       TextWrapping="Wrap" Text="{Binding DerelictProblem}" IsVisible="{Binding HasDerelictProblem}"/>
         </StackPanel>
     </Border>
 </UserControl>

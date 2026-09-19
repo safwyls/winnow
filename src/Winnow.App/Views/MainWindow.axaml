@@ -1698,6 +1698,10 @@
                 <Panel.ContextMenu>
                     <ContextMenu Classes="actions"
                                  Opening="OnLibraryContextMenuOpening">
+                        <MenuItem Header="Remove from Derelict"
+                                  IsVisible="{Binding Library.CanRemoveSelectionFromDerelict}"
+                                  Command="{Binding Library.RemoveSelectionFromDerelictCommand}"
+                                  ToolTip.Tip="Keeps selected games out of Derelict, even when new lifecycle evidence arrives."/>
                         <MenuItem Header="Mark as read"
                                   IsVisible="{Binding Library.CanMarkSelectionAsRead}"
                                   Command="{Binding Library.MarkSelectionAsReadCommand}"

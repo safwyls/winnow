@@ -691,6 +691,10 @@ Derelict is a library bucket, excluded from the feed. It names lifecycle evidenc
 promise that a game cannot launch. The details modal states the inferred or explicit status,
 confidence and source-based reason in Overview. Confidence is a heuristic estimate, not a measured probability. Delisted
 games may still run. Launch actions keep their existing availability rules.
+In the Derelict collection, **Remove from Derelict** appears in the desktop selection's
+right-click menu and fullscreen Library options. It applies to the selected games and
+their grouped copies. The saved choice overrides all lifecycle signals, including future
+metadata updates, and returns each game to its ordinary play-history bucket.
 
 - Patched, empty: *"Nothing's been patched since you last played. This fills up on its own."*
 - Derelict, empty: *"No games have enough lifecycle evidence for Derelict yet. This fills in as metadata arrives."*

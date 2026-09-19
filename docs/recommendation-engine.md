@@ -433,6 +433,9 @@ Derelict remains a library bucket and is absent from the feed. The details view 
 its lifecycle status, source reason and confidence. Confidence expresses evidence strength,
 not a probability calibrated against a labelled dataset. Delisting or abandonment does
 not by itself mean a game cannot launch; manual launch remains available.
+**Remove from Derelict** saves a per-release user exemption that overrides all lifecycle
+signals, including future observations. Exempt games use ordinary play-history buckets
+and feed eligibility. Source evidence remains available in details alongside the user's choice.
 
 Lifecycle gates use `LifecycleTuning`, separate from the weighted play model. These are
 initial conservative defaults requiring later evaluation against labelled real libraries;
