@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-19 17:17'
-updated_date: '2026-09-19 17:20'
+updated_date: '2026-09-19 18:28'
 labels: []
 dependencies: []
 type: bug
@@ -35,6 +35,8 @@ Filter entries against library tiles before partitioning visible cards and repla
 
 <!-- SECTION:NOTES:BEGIN -->
 Filter primary and reserve entries before the desktop five-card split; fullscreen still exposes every available entry. Added six regression cases covering both surfaces, supplemental feeds, unavailable tiles and exhausted pools. Updated reserve fixtures to use full desktop shelves so their swap/backfill assertions remain exercised. Validation: 136 feed tests and 66 headless feed UI tests passed with scratch build output; git diff --check passed. Production library was not modified.
+
+Final branch verification: isolated full Release build passed with zero warnings/errors; full solution tests passed with 6,692 passed, zero failed and two Linux-only skips on Windows. Verified all 45 migration hashes against origin/main and passed migration integrity mutation checks. The first shared-output attempt was discarded due to dependency collisions; final results use normal per-project output in an isolated checkout.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
