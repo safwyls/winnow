@@ -290,7 +290,7 @@ The Patched bucket also applies the shared dormancy and playtime eligibility rul
 uses the same patch count and release watermarks on desktop and fullscreen.
 
 In Patched, the desktop game context menu and fullscreen Library options offer **Mark as read**
-for the selected games. Desktop list multi-selection applies it to every selected unread game,
+for the selected games. Desktop grid and list multi-selection apply it to every selected unread game,
 including its linked releases. It refreshes the library and collection counts; failures remain
 visible so the user can retry. Patches newer than those represented by the selected tiles stay unread.
 
@@ -345,6 +345,12 @@ store marks, expansion marks and the unread badge remain available without revea
 Hover and keyboard action focus also draw the promo site's 2px Volt border highlight. The
 ring sits inside the tile with a 1px Ground separator so edge tiles remain unclipped. It
 shares the existing selection ring: leaving a selected tile keeps that ring visible.
+In desktop Library grid and list views, Ctrl+Click toggles a game in the selection without
+opening Details. Right-clicking a selected game preserves the full set; right-clicking an
+unselected game selects it alone. Context actions, including **Mark as read** and
+**Remove from Derelict**, apply to every eligible selected game. Selection survives sorting,
+switching views and refreshes while the games remain visible; filtering removes games that
+leave the view from the selection. Fullscreen keeps its single-game interaction.
 Tile dimensions and spacing do not change.
 
 ### 5.4 How the ramp is drawn
