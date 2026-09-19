@@ -112,7 +112,7 @@ public sealed class TileActionsTests
     }
 
     /// <summary>
-    /// The same missing-key case seen from Band 3: no primary action, no links,
+    /// The same missing-key case seen from Band 3: no primary action or store links,
     /// and the sentence drawn is the missing-identifier one, not a route-shaped
     /// one. This test pins the retirement of <c>NoInstallRoute</c> — the honest
     /// replacement is <see cref="NoWayIn.NoStoreId"/>, not a new route reason.
@@ -125,13 +125,14 @@ public sealed class TileActionsTests
 
         Assert.Equal(NoWayIn.NoStoreId, tile.NoWayIn);
         Assert.False(details.HasPrimaryAction);
-        Assert.False(details.HasLinks);
+        Assert.True(details.HasLinks);
+        Assert.Equal(new[] { "View on SteamDB", "View on SteamGridDB" }, details.Links.Select(link => link.Label));
         Assert.True(details.HasNoWayInSentence);
         Assert.Equal(GameActionBandCopy.NoStoreId, details.NoWayInSentence);
     }
 
     /// <summary>
-    /// A band that has a primary action or at least one link must never
+    /// A band that has a primary action or at least one store link must never
     /// produce a no-way-in sentence. Showing a reason alongside a working
     /// button would contradict the button.
     /// </summary>
@@ -171,7 +172,7 @@ public sealed class TileActionsTests
     }
 
     /// <summary>
-    /// An installed Epic copy with no launch key cannot play and has no links,
+    /// An installed Epic copy with no launch key cannot play and has no store links,
     /// so the band must name the missing store identifier as the reason. The
     /// key arrives via a background catalogue backfill, so this is "not yet"
     /// rather than "never".

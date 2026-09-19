@@ -65,6 +65,7 @@ public partial class MainWindow : Window
         // See the card gesture before a child handles it, while leaving the
         // hover actions to handle their own presses.
         TileWall.AddHandler(PointerPressedEvent, OnTilePressed, RoutingStrategies.Tunnel);
+        ListRows.AddHandler(PointerPressedEvent, OnListPointerPressed, RoutingStrategies.Tunnel);
 
         // Buttons own click and keyboard activation; the surrounding spine sees
         // pointer input first so a held press can scrub across their boundaries.
@@ -1096,9 +1097,18 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (!e.GetCurrentPoint(source).Properties.IsLeftButtonPressed)
+        var point = e.GetCurrentPoint(source).Properties;
+        if (point.IsRightButtonPressed)
         {
-            library.SelectTile(tile);
+            library.SelectTileForContextMenu(tile);
+            return;
+        }
+        if (!point.IsLeftButtonPressed) return;
+
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            library.ToggleTileSelection(tile);
+            e.Handled = true;
             return;
         }
 
@@ -1165,40 +1175,42 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// The list is the one view that can hold more than one selection (§6), so
-    /// the per-item flag the Volt edge reads has to follow the whole set rather
-    /// than only the anchor the view model tracks. This runs after the anchor
-    /// has been written, so it is the last word on which rows are marked.
+    /// Native list selection supplies the complete set, including Ctrl and Shift gestures.
     /// </summary>
     private void OnListSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        foreach (var removed in e.RemovedItems)
+        if (!_syncingListSelection && _library is { IsGridView: false, IsUpdatingSelection: false } && sender is ListBox list)
         {
-            if (removed is GameTileViewModel tile)
-            {
-                tile.IsSelected = false;
-            }
-        }
-
-        foreach (var added in e.AddedItems)
-        {
-            if (added is GameTileViewModel tile)
-            {
-                tile.IsSelected = true;
-            }
-        }
-
-        if (_library is not null && sender is ListBox list)
-        {
-            _library.SelectedCount = list.SelectedItems?.Count ?? 0;
-
-            // The whole picked set, not just the anchor: "Add to list" and
-            // "Remove from list" both act on every marked row, and the view
-            // model has no other way to see them.
             _library.SelectedTiles = list.SelectedItems is null
                 ? []
                 : [.. list.SelectedItems.OfType<GameTileViewModel>()];
         }
+    }
+
+    private bool _syncingListSelection;
+
+    private void SyncListSelection()
+    {
+        if (_library is not { IsGridView: false } || ListRows.SelectedItems is not { } selected) return;
+        var targets = _library.SelectedTiles.ToArray();
+        if (selected.OfType<GameTileViewModel>().SequenceEqual(targets)) return;
+        _syncingListSelection = true;
+        try
+        {
+            selected.Clear();
+            foreach (var tile in targets) selected.Add(tile);
+        }
+        finally { _syncingListSelection = false; }
+    }
+
+    private void OnListPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (_library is null || e.Source is not Control source
+            || source.FindAncestorOfType<ListBoxItem>(includeSelf: true)?.DataContext is not GameTileViewModel tile
+            || !e.GetCurrentPoint(source).Properties.IsRightButtonPressed) return;
+        _library.SelectTileForContextMenu(tile);
+        SyncListSelection();
+        e.Handled = true;
     }
 
     /// <summary>
@@ -1209,6 +1221,7 @@ public partial class MainWindow : Window
 
     private void OnListDoubleTapped(object? sender, TappedEventArgs e)
     {
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control)) return;
         if (_library is not null && e.Source is Control { DataContext: GameTileViewModel tile })
         {
             _library.OpenDetailsCommand.Execute(tile);
@@ -1544,6 +1557,7 @@ public partial class MainWindow : Window
             // user looking at empty space below the content.
             case nameof(LibraryViewModel.VisibleTiles):
             case nameof(LibraryViewModel.IsGridView):
+                SyncListSelection();
                 var preservedOffset = e.PropertyName == nameof(LibraryViewModel.VisibleTiles)
                     ? _hideViewportOffset : null;
                 _hideViewportOffset = null;
@@ -1566,6 +1580,10 @@ public partial class MainWindow : Window
                     TrackListScroll();
                     UpdateAlphabetLocation();
                 }, DispatcherPriority.Background);
+                break;
+
+            case nameof(LibraryViewModel.SelectedTiles):
+                SyncListSelection();
                 break;
 
             case nameof(LibraryViewModel.Sort):

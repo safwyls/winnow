@@ -1,5 +1,7 @@
 using Winnow.Core.Domain;
 using Dapper;
+using Microsoft.Data.Sqlite;
+using Winnow.Data;
 using Winnow.Core.Lifecycle;
 using Winnow.Core.Queries;
 using Winnow.Data.Repositories;
@@ -126,5 +128,113 @@ public sealed class LifecycleTests
         Assert.Empty(await repository.GetAllAsync());
         using var check = db.Factory.Open();
         Assert.Equal(1, check.ExecuteScalar<int>("SELECT COUNT(*) FROM lifecycle_observations;"));
+    }
+
+    [Theory]
+    [InlineData(GameLifecycleStatus.Cancelled)]
+    [InlineData(GameLifecycleStatus.Offline)]
+    [InlineData(GameLifecycleStatus.Delisted)]
+    [InlineData(GameLifecycleStatus.Abandoned)]
+    [InlineData(GameLifecycleStatus.Dead)]
+    public async Task Exemption_survives_reload_and_later_evidence_for_every_derelict_status(GameLifecycleStatus status)
+    {
+        using var db = new TempDatabase();
+        var release = await InsertOwnedReleaseAsync(db, "Game");
+        var repository = new LifecycleRepository(db.Factory);
+        var now = DateTime.UtcNow;
+        var signals = status switch
+        {
+            GameLifecycleStatus.Abandoned => new LifecycleSignals
+            {
+                IsUnfinished = true, LastDevelopmentAt = now.AddYears(-3), LastCommunicationAt = now.AddYears(-3),
+            },
+            GameLifecycleStatus.Dead => new LifecycleSignals
+            {
+                IgdbStatus = "released", IsMultiplayer = true, HasSinglePlayer = false,
+                CurrentPlayers = 0, RecentReviewCount = 0,
+                LastDevelopmentAt = now.AddYears(-3), LastCommunicationAt = now.AddYears(-3),
+            },
+            _ => new LifecycleSignals { IgdbStatus = status.ToString().ToLowerInvariant() },
+        };
+        foreach (var days in new[] { 20, 10, 0 })
+            await repository.AppendAsync(new LifecycleObservation
+            {
+                ReleaseId = release, Source = "official", ObservedAt = now.AddDays(-days), Signals = signals,
+            });
+
+        var before = Assert.Single(await new LibraryQueryRepository(db.Factory).GetOwnershipBucketsAsync(BucketThresholds.Default));
+        Assert.Equal(status, before.Lifecycle!.Status);
+        Assert.Equal(LibraryBuckets.Derelict, before.Game.Bucket);
+        await repository.ExemptFromDerelictAsync([release, release]);
+
+        var reopened = new SqliteConnectionFactory(db.DatabasePath, pooling: false);
+        await new LifecycleRepository(reopened).AppendAsync(new LifecycleObservation
+        {
+            ReleaseId = release, Source = "official", ObservedAt = DateTime.UtcNow, Signals = signals,
+        });
+        var query = new LibraryQueryRepository(reopened);
+        var after = Assert.Single(await query.GetOwnershipBucketsAsync(BucketThresholds.Default));
+        Assert.Equal(before.Lifecycle with { IsExemptFromDerelict = true }, after.Lifecycle);
+        Assert.False(after.Lifecycle!.IsDerelict);
+        Assert.Equal(LibraryBuckets.NeverPlayed, after.Bucket);
+        Assert.Equal(LibraryBuckets.NeverPlayed, after.Game.Bucket);
+        Assert.Equal(after.Lifecycle, Assert.Single((await query.GetSnapshotAsync(BucketThresholds.Default)).Buckets).Lifecycle);
+        Assert.Equal(4, (await new LifecycleRepository(reopened).GetForReleaseAsync(release)).Count);
+    }
+
+    [Fact]
+    public async Task Exempting_group_releases_preserves_unselected_games_and_other_release_states()
+    {
+        using var db = new TempDatabase();
+        var first = await InsertOwnedReleaseAsync(db, "Group");
+        var work = (await new ReleaseRepository(db.Factory).GetAsync(first))!.WorkId;
+        var second = await new ReleaseRepository(db.Factory).InsertAsync(new Release { WorkId = work, Name = "Second copy" });
+        await new OwnershipRepository(db.Factory).InsertAsync(new Ownership { ReleaseId = second, Store = "gog" });
+        var untouched = await InsertOwnedReleaseAsync(db, "Unselected");
+        var repository = new LifecycleRepository(db.Factory);
+        foreach (var release in new[] { first, second, untouched })
+            await repository.AppendAsync(new LifecycleObservation
+            {
+                ReleaseId = release, Source = "official", ObservedAt = DateTime.UtcNow,
+                Signals = new() { OfficialShutdownAt = DateTime.UtcNow.AddDays(-1) },
+            });
+        await repository.ExemptFromDerelictAsync([first]);
+        var query = new LibraryQueryRepository(db.Factory);
+        var partial = await query.GetOwnershipBucketsAsync(BucketThresholds.Default);
+        Assert.Equal(LibraryBuckets.NeverPlayed, partial.Single(r => r.ReleaseId == second).Game.Bucket);
+        Assert.Equal(LibraryBuckets.Derelict, partial.Single(r => r.ReleaseId == second).Bucket);
+
+        await repository.ExemptFromDerelictAsync([first, second]);
+        var rows = await query.GetOwnershipBucketsAsync(BucketThresholds.Default);
+        Assert.All(rows.Where(r => r.ReleaseId != untouched), r =>
+        {
+            Assert.True(r.Lifecycle!.IsExemptFromDerelict);
+            Assert.Equal(LibraryBuckets.NeverPlayed, r.Bucket);
+            Assert.Equal(LibraryBuckets.NeverPlayed, r.Game.Bucket);
+        });
+        Assert.Equal(LibraryBuckets.Derelict, rows.Single(r => r.ReleaseId == untouched).Game.Bucket);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Exemption_batch_failure_rolls_back_even_inside_a_callers_transaction(bool ambient)
+    {
+        using var db = new TempDatabase();
+        var release = await InsertOwnedReleaseAsync(db, "Game");
+        using var unit = ambient ? db.Factory.Begin() : null;
+        await Assert.ThrowsAsync<SqliteException>(() => new LifecycleRepository(db.Factory)
+            .ExemptFromDerelictAsync([release, long.MaxValue]));
+        unit?.Commit();
+        using var connection = db.Factory.Open();
+        Assert.Equal(0, connection.ExecuteScalar<int>("SELECT COUNT(*) FROM derelict_exemptions;"));
+    }
+
+    private static async Task<long> InsertOwnedReleaseAsync(TempDatabase db, string name)
+    {
+        var work = await new WorkRepository(db.Factory).InsertAsync(new Work { Name = name });
+        var release = await new ReleaseRepository(db.Factory).InsertAsync(new Release { WorkId = work, Name = name });
+        await new OwnershipRepository(db.Factory).InsertAsync(new Ownership { ReleaseId = release, Store = "steam" });
+        return release;
     }
 }

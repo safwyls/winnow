@@ -292,7 +292,7 @@ The Patched bucket also applies the shared dormancy and playtime eligibility rul
 uses the same patch count and release watermarks on desktop and fullscreen.
 
 In Patched, the desktop game context menu and fullscreen Library options offer **Mark as read**
-for the selected games. Desktop list multi-selection applies it to every selected unread game,
+for the selected games. Desktop grid and list multi-selection apply it to every selected unread game,
 including its linked releases. It refreshes the library and collection counts; failures remain
 visible so the user can retry. Patches newer than those represented by the selected tiles stay unread.
 
@@ -347,6 +347,12 @@ store marks, expansion marks and the unread badge remain available without revea
 Hover and keyboard action focus also draw the promo site's 2px Volt border highlight. The
 ring sits inside the tile with a 1px Ground separator so edge tiles remain unclipped. It
 shares the existing selection ring: leaving a selected tile keeps that ring visible.
+In desktop Library grid and list views, Ctrl+Click toggles a game in the selection without
+opening Details. Right-clicking a selected game preserves the full set; right-clicking an
+unselected game selects it alone. Context actions, including **Mark as read** and
+**Remove from Derelict**, apply to every eligible selected game. Selection survives sorting,
+switching views and refreshes while the games remain visible; filtering removes games that
+leave the view from the selection. Fullscreen keeps its single-game interaction.
 Tile dimensions and spacing do not change.
 
 ### 5.4 How the ramp is drawn
@@ -693,6 +699,10 @@ Derelict is a library bucket, excluded from the feed. It names lifecycle evidenc
 promise that a game cannot launch. The details modal states the inferred or explicit status,
 confidence and source-based reason in Overview. Confidence is a heuristic estimate, not a measured probability. Delisted
 games may still run. Launch actions keep their existing availability rules.
+In the Derelict collection, **Remove from Derelict** appears in the desktop selection's
+right-click menu and fullscreen Library options. It applies to the selected games and
+their grouped copies. The saved choice overrides all lifecycle signals, including future
+metadata updates, and returns each game to its ordinary play-history bucket.
 
 - Patched, empty: *"Nothing's been patched since you last played. This fills up on its own."*
 - Derelict, empty: *"No games have enough lifecycle evidence for Derelict yet. This fills in as metadata arrives."*
@@ -835,7 +845,9 @@ navigation primitives.
 Fullscreen makes the complete scored shelf available: up to six primary recommendations
 plus four reserve items. Show as many as fit at the chosen scale, with left/right navigation
 to overflow games; do not enlarge covers just to fill a short shelf. Desktop retains five
-cards with a hidden replacement reserve. Only actual viewport entry records an impression.
+cards with a hidden replacement reserve. Skip entries without a loaded library tile before
+filling those five slots, drawing from the reserve in order when needed. Fullscreen shows
+all available entries. Only actual viewport entry records an impression.
 
 Fullscreen cards show cover art without a title caption beneath it in For you, Library and
 Search. Missing-art placeholders and accessible card names still identify the game.
@@ -1862,6 +1874,12 @@ identifiers are inside the Library tab's collapsed disclosure.
 
 ### 10.8 The embedded browser
 
+The details **More** menu on desktop and fullscreen offers **View on IGDB** when the
+game has an IGDB match, and **View on SteamDB** and **View on SteamGridDB** when any
+grouped copy has a Steam app ID. These open the matching game pages through the same
+link destination preference as other websites; unavailable identities omit their links.
+Reference links leave the explanation for an unavailable launch or store action visible.
+
 A patched game's `Patch notes` button on an Activity update row, and the `All patch notes`
 row in More, follow **Settings → Application → Links → Open links in** on desktop and
 fullscreen. The default, **In Winnow**, uses Winnow's WebView2 window for HTTP and HTTPS
@@ -2462,6 +2480,10 @@ queue ahead of the existing reserve and are not recorded as seen until displayed
 keeps its full scored shelf. The page scrolls vertically through shelf headings,
 short explanations and rules fading toward the right. Titles and two-line recommendation
 excerpts stay below each cover; the complete reason remains in the accessible name.
+Built-in recommendations use one short, self-contained primary reason on desktop and
+fullscreen. They do not append supporting phrases about taste, installation, ownership or
+dormancy. The reason cites the recorded play or update fact that led the recommendation;
+other scoring evidence remains available to the engine.
 
 Hover or keyboard focus reveals a bottom action strip inside the cover: **Add to list**,
 **Not now**, and **Not interested**, with 36px targets and named tooltips. Their icons use

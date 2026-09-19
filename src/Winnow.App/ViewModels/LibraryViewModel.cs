@@ -49,6 +49,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     private readonly IWorkRepository _works;
     private readonly IUpdateEventRepository _updateEvents;
     private readonly Services.IUpdateFlagService? _updateFlags;
+    private readonly ILifecycleRepository? _lifecycle;
     private readonly IAccountAcquisitionReader? _acquisitionReader;
 
     /// <summary>
@@ -250,11 +251,13 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         ISettingsRepository? activitySettings = null,
         PluginGameActionService? pluginActions = null,
         IArtworkChoiceRepository? artworkChoices = null,
-        IArtworkBrowserService? artworkBrowser = null)
+        IArtworkBrowserService? artworkBrowser = null,
+        ILifecycleRepository? lifecycle = null)
     {
         _storefrontCache = storefrontCache;
         _artworkChoices = artworkChoices;
         _artworkBrowser = artworkBrowser;
+        _lifecycle = lifecycle;
         _workRatings = workRatings;
         _workImages = workImages;
         _artworkPreferences = artworkPreferences;
@@ -458,6 +461,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     public event EventHandler? TilesChanged;
     /// <summary>Fullscreen publishes committed artwork back to the shared desktop library and shell integrations.</summary>
     internal Func<Task>? PublishArtworkChange { get; set; }
+    internal Func<Task>? PublishLifecycleChange { get; set; }
 
     /// <inheritdoc/>
     public bool HasTiles => _allTiles.Count > 0;
@@ -590,8 +594,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     public partial string SearchText { get; set; } = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanMarkSelectionAsRead))]
-    [NotifyCanExecuteChangedFor(nameof(MarkSelectionAsReadCommand))]
+    [NotifyPropertyChangedFor(nameof(CanMarkSelectionAsRead), nameof(CanRemoveSelectionFromDerelict))]
+    [NotifyCanExecuteChangedFor(nameof(MarkSelectionAsReadCommand), nameof(RemoveSelectionFromDerelictCommand))]
     public partial BucketViewModel? SelectedBucket { get; set; }
 
     /// <summary>
@@ -669,11 +673,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     public partial GameTileViewModel? SelectedTile { get; set; }
 
     /// <summary>
-    /// How many rows list view has selected. §6 asks for multi-select and the
-    /// list gives it (shift/ctrl click, shift+arrows); the count is here so the
-    /// selection is legible rather than an affordance with no readout. What it
-    /// deliberately does NOT come with is bulk list assignment — lists are not
-    /// built, and an action that silently does nothing is worse than no action.
+    /// Number of selected games, shared by desktop grid and list views.
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasMultiSelection), nameof(SelectedCountText))]
@@ -684,24 +684,58 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     public string SelectedCountText => $"{SelectedCount:N0} selected";
 
     /// <summary>
-    /// Everything currently picked, in both views. The grid selects one tile and
-    /// the list selects many, and list membership is written from this rather
-    /// than from <see cref="SelectedTile"/> so that "Add to list" is the same
-    /// control and the same command in either view — which is what §7 means by
-    /// an action keeping its name through the whole flow.
+    /// The complete selection used by bulk actions. SelectedTile is its navigation
+    /// anchor; it does not limit an action to one game.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSelection), nameof(AddToListLabel), nameof(HideLabel), nameof(CanMarkSelectionAsRead))]
+    [NotifyPropertyChangedFor(nameof(HasSelection), nameof(AddToListLabel), nameof(HideLabel), nameof(CanMarkSelectionAsRead), nameof(CanRemoveSelectionFromDerelict))]
     [NotifyCanExecuteChangedFor(
         nameof(BeginAddToListCommand),
         nameof(RemoveFromOpenListCommand),
         nameof(HideSelectionCommand),
         nameof(MarkSelectionAsReadCommand),
+        nameof(RemoveSelectionFromDerelictCommand),
         nameof(MoveUpInListCommand),
         nameof(MoveDownInListCommand))]
     public partial IReadOnlyList<GameTileViewModel> SelectedTiles { get; set; } = [];
 
     public bool HasSelection => SelectedTiles.Count > 0;
+
+    public bool CanRemoveSelectionFromDerelict => _lifecycle is not null
+        && SelectedBucket?.Key == LibraryBuckets.Derelict
+        && SelectedTiles.Any(tile => tile.Game.Bucket == LibraryBuckets.Derelict);
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasDerelictProblem), nameof(ShowActionBar))]
+    public partial string? DerelictProblem { get; set; }
+
+    public bool HasDerelictProblem => DerelictProblem is not null;
+
+    [RelayCommand(CanExecute = nameof(CanRemoveSelectionFromDerelict))]
+    private async Task RemoveSelectionFromDerelictAsync(CancellationToken ct)
+    {
+        if (!CanRemoveSelectionFromDerelict) return;
+        var releaseIds = SelectedTiles.Where(tile => tile.Game.Bucket == LibraryBuckets.Derelict)
+            .SelectMany(tile => tile.ReleaseIds).Distinct().ToArray();
+        DerelictProblem = null;
+        try
+        {
+            await _lifecycle!.ExemptFromDerelictAsync(releaseIds, ct);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch
+        {
+            DerelictProblem = "Couldn't remove the selected games from Derelict. Try again.";
+            return;
+        }
+        try
+        {
+            await LoadLibraryAsync(preserveViewport: true, ct: ct);
+            if (PublishLifecycleChange is { } publish) await publish();
+        }
+        catch (OperationCanceledException) { throw; }
+        catch { DerelictProblem = "Your choice was saved, but the library couldn't refresh. Try refreshing it."; }
+    }
 
     public bool CanMarkSelectionAsRead => _updateFlags is not null
         && SelectedBucket?.Key == LibraryBuckets.StaleButPatched
@@ -853,7 +887,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
     public bool ShowCutBar => IsCut;
 
-    public bool ShowActionBar => IsCut || HasPatchReadProblem;
+    public bool ShowActionBar => IsCut || HasPatchReadProblem || HasDerelictProblem;
 
     /// <summary>Whether saving the current cut as a live list is a meaningful act.</summary>
     public bool CanSaveLiveList => !BuildFilter().IsEmpty;
@@ -1342,6 +1376,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             return;
         }
         var selectedOwnershipId = SelectedTile?.OwnershipId;
+        var selectedOwnershipIds = SelectedTiles.SelectMany(tile => tile.OwnershipIds).ToHashSet();
         _publishedGeneration = generation;
         _coverage = coverage;
         _resolution = resolution;
@@ -1375,11 +1410,9 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
         _loaded = true;
         ApplyFilter(preserveViewport);
-        if (selectedOwnershipId is { } selectedId)
-        {
-            var selected = VisibleTiles.FirstOrDefault(t => t.Covers(selectedId));
-            SelectTile(selected);
-        }
+        var restoredSelection = VisibleTiles.Where(tile => tile.OwnershipIds.Any(selectedOwnershipIds.Contains)).ToArray();
+        SetSelection(restoredSelection, restoredSelection.FirstOrDefault(tile =>
+            selectedOwnershipId is { } selectedId && tile.Covers(selectedId)) ?? restoredSelection.FirstOrDefault());
 
         // Publish the already-read detail facts with the same library generation.
         if (details is not null && ReferenceEquals(Details, details))
@@ -2482,9 +2515,11 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         MoveDownInListCommand.NotifyCanExecuteChanged();
     }
 
-    partial void OnSelectedTilesChanged(IReadOnlyList<GameTileViewModel> value)
+    partial void OnSelectedTilesChanged(IReadOnlyList<GameTileViewModel> oldValue, IReadOnlyList<GameTileViewModel> newValue)
     {
-        _ = value;
+        foreach (var tile in oldValue ?? []) tile.IsSelected = false;
+        foreach (var tile in newValue) tile.IsSelected = true;
+        SelectedCount = newValue.Count;
         RaiseActionState();
     }
 
@@ -2513,13 +2548,32 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     }
 
     public void SelectTile(GameTileViewModel? tile)
-    {
-        if (ReferenceEquals(SelectedTile, tile))
-        {
-            return;
-        }
+        => SetSelection(tile is null ? [] : [tile], tile);
 
-        SelectedTile = tile;
+    public void ToggleTileSelection(GameTileViewModel tile)
+    {
+        var selected = SelectedTiles.Contains(tile)
+            ? SelectedTiles.Where(item => !ReferenceEquals(item, tile)).ToArray()
+            : [.. SelectedTiles, tile];
+        SetSelection(selected, selected.Contains(tile) ? tile : selected.LastOrDefault());
+    }
+
+    public void SelectTileForContextMenu(GameTileViewModel tile)
+    {
+        if (!SelectedTiles.Contains(tile)) SelectTile(tile);
+    }
+
+    internal bool IsUpdatingSelection { get; private set; }
+
+    private void SetSelection(IReadOnlyList<GameTileViewModel> tiles, GameTileViewModel? anchor)
+    {
+        IsUpdatingSelection = true;
+        try
+        {
+            SelectedTile = anchor;
+            SelectedTiles = tiles;
+        }
+        finally { IsUpdatingSelection = false; }
     }
 
     /// <summary>
@@ -2552,23 +2606,10 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
     partial void OnSelectedTileChanged(GameTileViewModel? oldValue, GameTileViewModel? newValue)
     {
-        // Selection flags live on tiles so grid and list views stay in sync.
-        if (oldValue is not null)
-        {
-            oldValue.IsSelected = false;
-        }
-
-        if (newValue is not null)
-        {
-            newValue.IsSelected = true;
-        }
-
-        // Grid view: derive SelectedTiles here so keyboard nav keeps "Add to list" visible.
-        // List view excluded; its SelectionChanged handler owns the multi-select set.
-        if (IsGridView)
+        // Native list selection supplies its complete set through SelectionChanged.
+        if (IsGridView && !IsUpdatingSelection)
         {
             SelectedTiles = newValue is null ? [] : [newValue];
-            SelectedCount = newValue is null ? 0 : 1;
         }
     }
 
@@ -2697,6 +2738,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         // the same source so the views retain their scroll position and selection.
         if (!VisibleTiles.SequenceEqual(visible))
         {
+            var selection = SelectedTiles.Where(visible.Contains).ToArray();
+            var anchor = selection.Contains(SelectedTile) ? SelectedTile : selection.FirstOrDefault();
             IsPreservingViewport = preserveViewport;
             try
             {
@@ -2706,13 +2749,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             {
                 IsPreservingViewport = false;
             }
-            if (SelectedTile is { } selected && !visible.Contains(selected))
-            {
-                SelectTile(null);
-            }
-
-            SelectedCount = SelectedTile is null ? 0 : 1;
-            SelectedTiles = SelectedTile is null ? [] : [SelectedTile];
+            SetSelection(selection, anchor);
         }
 
         var alphabetSections = BuildAlphabetSections(visible);

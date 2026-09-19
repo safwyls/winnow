@@ -19,6 +19,44 @@ public sealed class GameDetailsViewModelTests
 {
     private static readonly DateTime Now = new(2026, 8, 24, 12, 0, 0, DateTimeKind.Utc);
 
+    [Theory]
+    [InlineData(1942, "1hy")]
+    [InlineData(233, "6h")]
+    [InlineData(35, "z")]
+    [InlineData(36, "10")]
+    public void Igdb_reference_uses_numeric_identity_not_title_slug(long id, string shortId)
+    {
+        using var details = new GameDetailsViewModel(TileFixture.Tile(Now,
+            work: new Work { Name = "Different display title", IgdbId = id }), "Never played", [], Now);
+        Assert.Equal($"https://www.igdb.com/g/{shortId}",
+            Assert.Single(details.Links, link => link.Label == "View on IGDB").Uri);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0L)]
+    [InlineData(-1L)]
+    public void Missing_or_invalid_id_does_not_offer_igdb_reference(long? id)
+    {
+        using var details = new GameDetailsViewModel(TileFixture.Tile(Now,
+            work: new Work { Name = "Unmatched", IgdbId = id }), "Never played", [], Now);
+        Assert.DoesNotContain(details.Links, link => link.Label == "View on IGDB");
+    }
+
+    [Fact]
+    public void Steam_reference_links_use_grouped_identity_when_playable_copy_is_gog()
+    {
+        var gog = TileEntry.For(1, 1, 1, "gog", 0, null,
+            new Ownership { ReleaseId = 1, Store = "gog", Installed = true });
+        var steam = TileEntry.For(2, 2, 1, "steam", 0, null, steamAppId: "220");
+        using var details = new GameDetailsViewModel(
+            TileFixture.Tile(Now, [gog, steam, steam with { OwnershipId = 3 }], 1, LibraryBuckets.NeverPlayed),
+            "Never played", [], Now);
+        Assert.Null(details.SteamAppId);
+        Assert.Equal("https://steamdb.info/app/220/", Assert.Single(details.Links, link => link.Label == "View on SteamDB").Uri);
+        Assert.Equal("https://www.steamgriddb.com/steam/220", Assert.Single(details.Links, link => link.Label == "View on SteamGridDB").Uri);
+    }
+
     [Fact]
     public void Default_action_prefers_viable_copy_to_installed_offline_copy()
     {
@@ -206,7 +244,7 @@ public sealed class GameDetailsViewModelTests
     {
         var details = Details(Tile(steamAppId: "620"));
 
-        Assert.Equal(["Store page", "All patch notes"], details.Links.Select(l => l.Label));
+        Assert.Equal(["Store page", "All patch notes", "View on SteamDB", "View on SteamGridDB"], details.Links.Select(l => l.Label));
         Assert.Equal("https://store.steampowered.com/app/620/", details.Links[0].Uri);
         Assert.Equal("https://store.steampowered.com/news/app/620", details.Links[1].Uri);
     }

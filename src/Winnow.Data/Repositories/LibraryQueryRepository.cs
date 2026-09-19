@@ -466,6 +466,8 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             )
             SELECT o.id                                AS OwnershipId,
                    o.release_id                        AS ReleaseId,
+                   EXISTS (SELECT 1 FROM derelict_exemptions de
+                           WHERE de.release_id = o.release_id) AS IsExemptFromDerelict,
                    (SELECT json_group_array(json_object(
                        'Id', lo.id, 'ReleaseId', lo.release_id,
                        'Source', lo.source, 'SourceId', lo.source_id,
@@ -875,7 +877,8 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         var now = asOfUtc;
         var lifecycles = survivors.DistinctBy(r => r.ReleaseId).ToDictionary(r => r.ReleaseId,
             r => LifecycleClassifier.Classify(JsonSerializer.Deserialize(
-                r.LifecycleJson ?? "[]", LifecycleJsonContext.Default.LifecycleObservationArray) ?? [], now));
+                r.LifecycleJson ?? "[]", LifecycleJsonContext.Default.LifecycleObservationArray) ?? [], now)
+                with { IsExemptFromDerelict = r.IsExemptFromDerelict });
         var pushTimes = survivors.DistinctBy(r => r.ReleaseId).ToDictionary(r => r.ReleaseId, r =>
         {
             using var document = JsonDocument.Parse(r.UnreadPushTimesJson ?? "[]");
@@ -944,6 +947,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
     private sealed record BucketRow : IPlayedEntry
     {
         public string? LifecycleJson { get; init; }
+        public bool IsExemptFromDerelict { get; init; }
         public long OwnershipId { get; init; }
         public long ReleaseId { get; init; }
         public long WorkId { get; init; }

@@ -46,8 +46,7 @@ public sealed class FeedReserveTests
         Assert.NotNull(engine.LastRequest);
 
         // Both halves stated. The engine needs the surface size to fill the
-        // visible slices before any reserve and to size the reason ledger's
-        // variety caps — see RecommendationRequest.VisiblePerShelf.
+        // visible slices before any reserve — see RecommendationRequest.VisiblePerShelf.
         Assert.Equal(6, engine.LastRequest!.VisiblePerShelf);
         Assert.True(engine.LastRequest.MaxPerShelf > engine.LastRequest.VisiblePerShelf);
     }
@@ -127,7 +126,7 @@ public sealed class FeedReserveTests
     [Fact]
     public async Task A_receipt_goes_on_the_clock_when_the_shelf_is_holding_a_replacement()
     {
-        var (feed, _, _) = await ScreenAsync(cards: 2, reserve: 1);
+        var (feed, _, _) = await ScreenAsync(cards: 5, reserve: 1);
 
         var first = feed.Shelves[0].Cards[0];
         Assert.True(first.CanReplace);
@@ -144,7 +143,7 @@ public sealed class FeedReserveTests
     [Fact]
     public async Task The_clock_runs_its_window_out_and_states_how_far_it_has_got()
     {
-        var (feed, _, _) = await ScreenAsync(cards: 2, reserve: 1);
+        var (feed, _, _) = await ScreenAsync(cards: 5, reserve: 1);
         var card = feed.Shelves[0].Cards[0];
 
         await card.NotInterestedCommand.ExecuteAsync(null);
@@ -168,7 +167,7 @@ public sealed class FeedReserveTests
     [Fact]
     public async Task The_clock_is_held_while_the_reader_is_on_the_card()
     {
-        var (feed, _, _) = await ScreenAsync(cards: 2, reserve: 1);
+        var (feed, _, _) = await ScreenAsync(cards: 5, reserve: 1);
         var card = feed.Shelves[0].Cards[0];
 
         await card.NotInterestedCommand.ExecuteAsync(null);
@@ -200,8 +199,8 @@ public sealed class FeedReserveTests
     [Fact]
     public async Task Reduced_motion_steps_the_clock_instead_of_sweeping_it()
     {
-        var (feed, _, _) = await ScreenAsync(cards: 2, reserve: 1, reducedMotion: true);
-        var (smooth, _, _) = await ScreenAsync(cards: 2, reserve: 1);
+        var (feed, _, _) = await ScreenAsync(cards: 5, reserve: 1, reducedMotion: true);
+        var (smooth, _, _) = await ScreenAsync(cards: 5, reserve: 1);
 
         // The indicator is determinate, so it is information and stays; what
         // goes under §8 is the continuous movement. A handful of steps rather
@@ -223,7 +222,7 @@ public sealed class FeedReserveTests
     [Fact]
     public async Task The_receipt_running_out_puts_the_next_card_in_that_cards_place()
     {
-        var (feed, service, _) = await ScreenAsync(cards: 2, reserve: 1);
+        var (feed, service, _) = await ScreenAsync(cards: 5, reserve: 1);
         var shelf = feed.Shelves[0];
 
         var changes = new List<NotifyCollectionChangedEventArgs>();
@@ -240,7 +239,7 @@ public sealed class FeedReserveTests
         Assert.Equal(NotifyCollectionChangedAction.Replace, change.Action);
         Assert.Equal(0, change.NewStartingIndex);
 
-        Assert.Equal(2, shelf.Cards.Count);
+        Assert.Equal(5, shelf.Cards.Count);
         Assert.NotSame(outgoing, shelf.Cards[0]);
         Assert.Equal("Held 101", shelf.Cards[0].Tile.Title);
         Assert.False(shelf.Cards[0].IsSetAside);
@@ -253,7 +252,7 @@ public sealed class FeedReserveTests
     [Fact]
     public async Task The_verdict_survives_the_card_that_carried_it()
     {
-        var (feed, service, _) = await ScreenAsync(cards: 2, reserve: 1);
+        var (feed, service, _) = await ScreenAsync(cards: 5, reserve: 1);
         var outgoing = feed.Shelves[0].Cards[0];
 
         await outgoing.NotInterestedCommand.ExecuteAsync(null);
@@ -270,7 +269,7 @@ public sealed class FeedReserveTests
     [Fact]
     public async Task A_not_now_receipt_states_its_return_date_and_survives_the_press_that_made_it()
     {
-        var (feed, _, _) = await ScreenAsync(cards: 2, reserve: 2);
+        var (feed, _, _) = await ScreenAsync(cards: 5, reserve: 2);
         var card = feed.Shelves[0].Cards[0];
 
         await card.NotNowCommand.ExecuteAsync(null);
@@ -287,7 +286,7 @@ public sealed class FeedReserveTests
     [Fact]
     public async Task Taking_a_verdict_back_leaves_the_card_where_it_is()
     {
-        var (feed, _, _) = await ScreenAsync(cards: 2, reserve: 2);
+        var (feed, _, _) = await ScreenAsync(cards: 5, reserve: 2);
         var card = feed.Shelves[0].Cards[0];
 
         await card.NotNowCommand.ExecuteAsync(null);
@@ -324,7 +323,10 @@ public sealed class FeedReserveTests
                     "Never opened, right up your alley",
                     "Sitting sealed in your library.",
                     [Said(tiles, 1, "Shown 1", "Still sealed since the day it arrived."),
-                     Said(tiles, 2, "Shown 2", "Never opened since it joined your library.")])
+                     Said(tiles, 2, "Shown 2", "Never opened since it joined your library."),
+                     Said(tiles, 3, "Shown 3", "Reason 3"),
+                     Said(tiles, 4, "Shown 4", "Reason 4"),
+                     Said(tiles, 5, "Shown 5", "Reason 5")])
                 {
                     Reserve =
                     [
@@ -378,7 +380,7 @@ public sealed class FeedReserveTests
     [Fact]
     public async Task A_swap_from_a_pass_the_feed_has_replaced_is_discarded()
     {
-        var (feed, service, tiles) = await ScreenAsync(cards: 2, reserve: 2);
+        var (feed, service, tiles) = await ScreenAsync(cards: 5, reserve: 2);
 
         var stale = feed.Shelves[0].Cards[0];
         await stale.NotInterestedCommand.ExecuteAsync(null);
@@ -400,7 +402,7 @@ public sealed class FeedReserveTests
     {
         var cache = new HitCache();
         var pool = new CoverLeasePool(cache);
-        var (feed, _, _) = await ScreenAsync(cards: 2, reserve: 1, covers: pool, cache: cache);
+        var (feed, _, _) = await ScreenAsync(cards: 5, reserve: 1, covers: pool, cache: cache);
 
         var shelf = feed.Shelves[0];
         var outgoing = shelf.Cards[0];
@@ -424,7 +426,7 @@ public sealed class FeedReserveTests
     [Fact]
     public async Task The_card_that_leaves_stops_reaching_the_screen()
     {
-        var (feed, service, _) = await ScreenAsync(cards: 2, reserve: 1);
+        var (feed, service, _) = await ScreenAsync(cards: 5, reserve: 1);
         var outgoing = feed.Shelves[0].Cards[0];
 
         await outgoing.NotInterestedCommand.ExecuteAsync(null);
@@ -445,7 +447,7 @@ public sealed class FeedReserveTests
     public async Task A_swap_tops_the_sections_queue_back_up_without_touching_the_screen()
     {
         var tiles = new FakeTileSource();
-        var service = new FakeFeedService(Snapshot(tiles, cards: 2, reserve: 1));
+        var service = new FakeFeedService(Snapshot(tiles, cards: 5, reserve: 1));
         var feed = new FeedViewModel(service, tiles);
         await feed.LoadCommand.ExecuteAsync(null);
 
@@ -454,7 +456,7 @@ public sealed class FeedReserveTests
 
         // What the next pass returns once the answered game is excluded: the
         // shelf has shifted up and a game no queue has held is at the bottom.
-        service.Next = Snapshot(tiles, cards: 2, reserve: 1, firstShown: 200, firstHeld: 300);
+        service.Next = Snapshot(tiles, cards: 5, reserve: 1, firstShown: 200, firstHeld: 300);
 
         await shelf.Cards[0].NotInterestedCommand.ExecuteAsync(null);
         feed.Tick(FeedCardViewModel.Countdown);
@@ -464,7 +466,7 @@ public sealed class FeedReserveTests
         // beside the swap is the same object, and the shelf is the same length.
         Assert.True(shelf.HasReserve);
         Assert.Same(survivor, shelf.Cards[1]);
-        Assert.Equal(2, shelf.Cards.Count);
+        Assert.Equal(5, shelf.Cards.Count);
 
         // And the reader can keep going.
         await shelf.Cards[1].NotInterestedCommand.ExecuteAsync(null);
@@ -477,7 +479,7 @@ public sealed class FeedReserveTests
     public async Task A_backfill_never_offers_a_game_that_is_on_screen_or_already_queued()
     {
         var tiles = new FakeTileSource();
-        var service = new FakeFeedService(Snapshot(tiles, cards: 2, reserve: 1));
+        var service = new FakeFeedService(Snapshot(tiles, cards: 5, reserve: 1));
         var feed = new FeedViewModel(service, tiles);
         await feed.LoadCommand.ExecuteAsync(null);
 
@@ -485,7 +487,7 @@ public sealed class FeedReserveTests
 
         // A pass that returns exactly what this one did. Every id is already on
         // screen, already queued, or already swapped in.
-        service.Next = Snapshot(tiles, cards: 2, reserve: 1);
+        service.Next = Snapshot(tiles, cards: 5, reserve: 1);
 
         await shelf.Cards[0].NotInterestedCommand.ExecuteAsync(null);
         feed.Tick(FeedCardViewModel.Countdown);
@@ -501,7 +503,7 @@ public sealed class FeedReserveTests
     public async Task Backfills_are_coalesced_to_one_reading_and_one_waiting()
     {
         var tiles = new FakeTileSource();
-        var service = new FakeFeedService(Snapshot(tiles, cards: 3, reserve: 3));
+        var service = new FakeFeedService(Snapshot(tiles, cards: 5, reserve: 3));
         var feed = new FeedViewModel(service, tiles);
         await feed.LoadCommand.ExecuteAsync(null);
 
@@ -511,7 +513,7 @@ public sealed class FeedReserveTests
         // The reads are held open, and three swaps ask for three backfills
         // while they are.
         service.Gate = new TaskCompletionSource();
-        service.Next = Snapshot(tiles, cards: 3, reserve: 3, firstShown: 200, firstHeld: 300);
+        service.Next = Snapshot(tiles, cards: 5, reserve: 3, firstShown: 200, firstHeld: 300);
 
         for (var i = 0; i < 3; i++)
         {
@@ -532,20 +534,20 @@ public sealed class FeedReserveTests
     public async Task A_failed_optional_backfill_does_not_drop_the_next_queued_builtin_read()
     {
         var tiles = new FakeTileSource();
-        var service = new FakeFeedService(Snapshot(tiles, cards: 3, reserve: 3));
+        var service = new FakeFeedService(Snapshot(tiles, cards: 5, reserve: 3));
         using var feed = new FeedViewModel(service, tiles);
         await feed.LoadCommand.ExecuteAsync(null);
         var shelf = feed.Shelves[0];
         var before = service.Calls;
         var optional = new TaskCompletionSource<FeedSupplement>();
-        service.Next = Snapshot(tiles, cards: 3, reserve: 3, firstShown: 200, firstHeld: 300)
+        service.Next = Snapshot(tiles, cards: 5, reserve: 3, firstShown: 200, firstHeld: 300)
             with { AdditionalShelves = optional.Task };
 
         await shelf.Cards[0].NotInterestedCommand.ExecuteAsync(null);
         feed.Tick(FeedCardViewModel.Countdown);
         Assert.False(feed.Backfilling.IsCompleted);
 
-        service.Next = Snapshot(tiles, cards: 3, reserve: 3, firstShown: 400, firstHeld: 500);
+        service.Next = Snapshot(tiles, cards: 5, reserve: 3, firstShown: 400, firstHeld: 500);
         await shelf.Cards[1].NotInterestedCommand.ExecuteAsync(null);
         feed.Tick(FeedCardViewModel.Countdown);
         optional.SetException(new IOException("Optional provider stopped."));
@@ -559,21 +561,21 @@ public sealed class FeedReserveTests
     public async Task A_backfill_from_a_pass_the_feed_has_replaced_is_discarded()
     {
         var tiles = new FakeTileSource();
-        var service = new FakeFeedService(Snapshot(tiles, cards: 2, reserve: 1));
+        var service = new FakeFeedService(Snapshot(tiles, cards: 5, reserve: 1));
         var feed = new FeedViewModel(service, tiles);
         await feed.LoadCommand.ExecuteAsync(null);
 
         // The swap asks for a backfill, and that read is held open.
         var held = new TaskCompletionSource();
         service.Gate = held;
-        service.Sequence.Enqueue(Snapshot(tiles, cards: 2, reserve: 1, firstShown: 200, firstHeld: 300));
+        service.Sequence.Enqueue(Snapshot(tiles, cards: 5, reserve: 1, firstShown: 200, firstHeld: 300));
 
         await feed.Shelves[0].Cards[0].NotInterestedCommand.ExecuteAsync(null);
         feed.Tick(FeedCardViewModel.Countdown);
 
         // A library reload lands first, with shelves and queues of its own.
         service.Gate = null;
-        service.Next = Snapshot(tiles, cards: 2, reserve: 1, firstShown: 500, firstHeld: 600);
+        service.Next = Snapshot(tiles, cards: 5, reserve: 1, firstShown: 500, firstHeld: 600);
         await feed.LoadCommand.ExecuteAsync(null);
 
         held.SetResult();

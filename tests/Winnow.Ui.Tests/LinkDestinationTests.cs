@@ -22,6 +22,57 @@ namespace Winnow.Ui.Tests;
 public sealed class LinkDestinationTests
 {
     [AvaloniaTheory]
+    [InlineData(false, "View on IGDB", "https://www.igdb.com/g/1hy")]
+    [InlineData(true, "View on IGDB", "https://www.igdb.com/g/1hy")]
+    [InlineData(false, "View on SteamDB", "https://steamdb.info/app/440/")]
+    [InlineData(true, "View on SteamDB", "https://steamdb.info/app/440/")]
+    [InlineData(false, "View on SteamGridDB", "https://www.steamgriddb.com/steam/440")]
+    [InlineData(true, "View on SteamGridDB", "https://www.steamgriddb.com/steam/440")]
+    public async Task Details_more_menu_opens_reference_page_through_saved_destination(bool fullscreen, string label, string url)
+    {
+        using var db = new TempDatabase();
+        var settings = new SettingsRepository(db.Factory);
+        await settings.SetAsync(GameLinkRouter.SettingKey, "in-app");
+        var dispatcher = new UriRecorder();
+        var reader = new ReaderRecorder();
+        var router = new GameLinkRouter(dispatcher, settings, new Clients(), reader);
+        using var services = new ServiceCollection().AddSingleton<IGameLinkRouter>(router).BuildServiceProvider();
+        using var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell, services);
+        var now = DateTime.UtcNow;
+        using var details = new GameDetailsViewModel(TileFixture.Tile(now, steamAppId: "440",
+            work: new Work { Name = "Reference fixture", IgdbId = 1942 }), "Never played", [], now, linkRouter: router);
+        var view = new GameDetailsView { DataContext = details };
+        using var page = new FullscreenDetailsPage(context, details);
+        var window = new Window { Width = 1920, Height = 1080, Content = fullscreen ? page : view };
+        FullscreenPage? actions = null;
+        context.PageRequested += opened => { actions = opened; window.Content = opened; };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            if (fullscreen)
+            {
+                Assert.True(page.Handle(GamepadButtons.Keyboard));
+                Dispatcher.UIThread.RunJobs();
+                Assert.NotNull(actions);
+                var button = Assert.Single(window.GetVisualDescendants().OfType<Button>(),
+                    candidate => candidate.IsEffectivelyVisible && AutomationProperties.GetName(candidate) == label);
+                button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            }
+            else
+            {
+                var menu = Assert.IsType<MenuFlyout>(view.FindControl<Button>("MoreActionsButton")!.Flyout);
+                var row = Assert.Single(menu.Items.OfType<MenuItem>(), candidate => Equals(candidate.Header, label));
+                row.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            }
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(url, Assert.Single(reader.Opened).AbsoluteUri);
+            Assert.Empty(dispatcher.Opened);
+        }
+        finally { window.Close(); actions?.Dispose(); }
+    }
+
+    [AvaloniaTheory]
     [InlineData(false, "in-app", "https://store.steampowered.com/app/440/", true, "")]
     [InlineData(true, "in-app", "https://store.steampowered.com/app/440/", true, "")]
     [InlineData(false, "in-app", "https://www.steamgriddb.com/grid/1", true, "")]

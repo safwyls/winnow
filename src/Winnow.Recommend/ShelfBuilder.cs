@@ -124,7 +124,7 @@ internal static class ShelfBuilder
                 .ThenBy(s => s.Facts.ReleaseId)
                 .ToList();
 
-            fills.Add(new ShelfFill(definition, pool, request, shown));
+            fills.Add(new ShelfFill(definition, pool, request));
         }
 
         foreach (var fill in fills)
@@ -212,18 +212,10 @@ internal static class ShelfBuilder
         private int _strict;
         private int _relaxed;
 
-        /// <param name="shownCards">
-        /// How many of this shelf's items reach the screen. The reason ledger's
-        /// variety caps are sized per SURFACE, so they are sized to this rather
-        /// than to the depth requested: a caller that asks for twelve in order
-        /// to show six must not thereby double how many of those six may cite
-        /// the same supporting fact.
-        /// </param>
         public ShelfFill(
             ShelfDefinition definition,
             List<ScoredCandidate> pool,
-            RecommendationRequest request,
-            int shownCards)
+            RecommendationRequest request)
         {
             Definition = definition;
             _pool = pool;
@@ -232,8 +224,7 @@ internal static class ShelfBuilder
             // The shelf is the deduplication unit, not the whole feed. Two
             // shelves telling different stories may reuse a phrasing invisibly;
             // two cards side by side on one shelf may not.
-            _ledger = new ShelfReasonLedger(
-                ShelfReasonLedger.CapFor(shownCards, request.Tuning));
+            _ledger = new ShelfReasonLedger();
         }
 
         public ShelfDefinition Definition { get; }

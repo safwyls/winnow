@@ -32,6 +32,7 @@ public enum GameLifecycleStatus { Unknown, Active, Inactive, Dead, Abandoned, Of
 
 public sealed record GameLifecycle(GameLifecycleStatus Status, double Confidence, string Reason)
 {
-    public bool IsDerelict => Status is GameLifecycleStatus.Dead or GameLifecycleStatus.Abandoned
-        or GameLifecycleStatus.Offline or GameLifecycleStatus.Delisted or GameLifecycleStatus.Cancelled;
+    public bool IsExemptFromDerelict { get; init; }
+    public bool IsDerelict => !IsExemptFromDerelict && Status is (GameLifecycleStatus.Dead or GameLifecycleStatus.Abandoned
+        or GameLifecycleStatus.Offline or GameLifecycleStatus.Delisted or GameLifecycleStatus.Cancelled);
 }

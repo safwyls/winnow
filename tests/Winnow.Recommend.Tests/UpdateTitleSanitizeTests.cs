@@ -96,7 +96,7 @@ public class UpdateTitleSanitizeTests
     [Fact]
     public void The_version_survives_onto_the_card()
     {
-        var quoting = ReasonPhrasebook.Variants(ReasonSignal.PatchedSinceYouLeft, ReasonClause.Primary)
+        var quoting = ReasonPhrasebook.Variants(ReasonSignal.PatchedSinceYouLeft)
             .Where(v => v.Contains("{updateTitle}", StringComparison.Ordinal))
             .ToList();
 

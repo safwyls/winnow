@@ -70,6 +70,7 @@ public sealed class FullscreenContext : IDisposable
         var launch = ActivatorUtilities.CreateInstance<LaunchStatusViewModel>(services);
         var library = ActivatorUtilities.CreateInstance<LibraryViewModel>(services, new DormancyRamp(), journal, launch);
         library.PublishArtworkChange = () => shared.Library.RefreshCommittedAsync(CancellationToken.None);
+        library.PublishLifecycleChange = () => shared.Library.RefreshCommittedAsync(CancellationToken.None);
         var feed = ActivatorUtilities.CreateInstance<FeedViewModel>(services, library, library.Lists, true);
         return new(library, feed, shared, services);
     }

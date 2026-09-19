@@ -1639,6 +1639,8 @@ work_maturity(work_id FK works ON DELETE CASCADE, source, ratings, descriptors,
 lifecycle_observations(id, release_id FK releases ON DELETE CASCADE, source, source_id,
                        observed_at, signals_json, raw_json)
   -- dated source answers; nullable signals mean unknown; classification is never stored
+derelict_exemptions(release_id PK FK releases ON DELETE CASCADE)
+  -- explicit user decisions, independent of lifecycle observations
 
 -- Reception and media
 work_images(work_id FK works ON DELETE CASCADE, source, kind, image_ids, images_json, observed_at,
@@ -1730,7 +1732,7 @@ the enforcement test's short list of recorded observations.
 | Stale but patched | `last_played_at < update_event.occurred_at` by > N months, on a game that was actually opened |
 | Retired | `playtime_minutes >= retired_floor`; excluded from surfacing |
 | Active | Residual: nonzero playtime under `bounced_floor`, or a last-played date beside zero (unknown) minutes |
-| Derelict | Dated lifecycle evidence classifies every visible owned release as cancelled, offline, delisted, abandoned or dead |
+| Derelict | Every visible owned release has no user exemption and dated lifecycle evidence classifies it as cancelled, offline, delisted, abandoned or dead |
 
 **Never played means never opened.** Zero minutes *and* no last-played date, nothing else. A
 game with real playtime under the refund line was opened and played.
@@ -1741,6 +1743,15 @@ reason. Explicit cancellation, offline status and delisting precede inferred aba
 dead and inactive states; active and unknown are the remainder. Inactive is not Derelict.
 Confidence is a heuristic estimate, not a calibrated probability. Thresholds and evidence
 gates are documented in `docs/recommendation-engine.md`.
+
+**Remove from Derelict** in the Derelict collection's desktop context menu and fullscreen
+actions saves a user exemption for the selected games' visible releases in one atomic batch.
+Migration 0045 stores these decisions in `derelict_exemptions`, separately from source
+observations. The exemption has no expiry and overrides every automatic Derelict signal,
+including later observations. Status, confidence, reason and source history remain intact;
+the release returns to its ordinary playtime/update bucket and is eligible for the usual feed
+and launch selection rules. The decision applies across accounts and follows the release
+through identity grouping changes; unselected releases keep their existing decisions.
 
 A release is classified independently. A same-game group enters Derelict only when every
 visible release qualifies; evidence about one store copy cannot condemn an unknown or

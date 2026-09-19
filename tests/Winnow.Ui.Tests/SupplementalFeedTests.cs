@@ -18,6 +18,41 @@ public sealed class SupplementalFeedTests
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task Primary_reason_reaches_desktop_and_fullscreen_without_additional_copy(bool fullscreen)
+    {
+        const string reason = "An update arrived after your last session.";
+        var service = new Service(new([
+            new("recommended", "Recommended", "", [new(1, 1, "First game", reason)])],
+            1, FeedConfidence.Established, false));
+        using var feed = new FeedViewModel(service, new Tiles(), includeReserve: fullscreen);
+        await feed.LoadCommand.ExecuteAsync(null);
+        using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell);
+        using var page = fullscreen ? new FullscreenBrowsePage(context, feed: true) : null;
+        var window = new Window { Width = 1920, Height = 1080,
+            Content = page as Control ?? new FeedView { DataContext = feed } };
+        try
+        {
+            window.Show();
+            page?.FocusInitial();
+            Dispatcher.UIThread.RunJobs();
+            var card = Assert.Single(Assert.Single(feed.Shelves).Cards);
+            Assert.Equal(reason, card.Reason);
+            if (fullscreen)
+                Assert.Equal(reason, Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.Name == "FullscreenHomeReason").Text);
+            else
+            {
+                var view = Assert.Single(window.GetVisualDescendants().OfType<FeedCardView>());
+                var text = view.FindControl<TextBlock>("Reason")!;
+                Assert.Equal(reason, string.Concat(text.Inlines!.OfType<Avalonia.Controls.Documents.Run>().Select(run => run.Text)));
+            }
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task Recently_played_hides_verdict_actions_and_does_not_record_impressions(bool fullscreen)
     {
         var tiles = new Tiles();

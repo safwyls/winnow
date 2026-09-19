@@ -114,7 +114,8 @@ public partial class GameTileView : UserControl
     {
         base.OnPointerPressed(e);
         _pressedTile = null;
-        if (Embedded || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if (Embedded || e.Handled || e.KeyModifiers.HasFlag(KeyModifiers.Control)
+            || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
         for (var visual = e.Source as Avalonia.Visual; visual is not null && visual != this; visual = visual.GetVisualParent())
         {
             if (visual is Button or Avalonia.Controls.Primitives.RangeBase) return;
