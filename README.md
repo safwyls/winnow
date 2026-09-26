@@ -1,7 +1,7 @@
 # Winnow
 
 **A local-first game library manager that surfaces the games you own, meant to play, and
-forgot existed.** No server, no account, no telemetry.
+forgot existed.** No hosted service, no account, no telemetry.
 
 Large PC libraries accumulate games you meant to play and forgot about. Storefronts don't
 track the signals that matter: how long a game sat unopened, whether you bounced off it,
@@ -50,6 +50,11 @@ git clone https://github.com/safwyls/winnow.git
 cd winnow
 dotnet run --project src/Winnow.App
 ```
+
+Avalonia attaches to the independent local backend, starting it when needed. Closing the
+frontend leaves session tracking and library refresh running. Other frontends can attach
+to the same library and receive its live changes. See the [frontend API guide](docs/frontend-api.md)
+for independent startup, authentication, events and a JavaScript client example.
 
 Linux builds have limited storefront integration: Epic/GOG discovery targets Windows
 launcher locations, embedded sign-in uses Windows WebView2, and credential persistence
@@ -375,12 +380,19 @@ Winnow.Enrich.*       IGDB, Steam store, steamcmd, GamesDB.
 Winnow.PluginSdk      Public library, metadata, artwork and feed contracts.
 Winnow.Plugins        Plugin discovery, activation, dependency loading and HTTP.
 plugins/             Separately packaged providers, including SteamGridDB.
-Winnow.Covers[.Igdb]  Cover art pipeline and disk cache.
+Winnow.Covers[.Igdb]  Backend cover art pipeline and disk cache.
+Winnow.Covers.Avalonia  Avalonia bitmap rendering and leases.
 Winnow.Monitor        Process watching and session recording.
 Winnow.Recommend      The scoring model and the shelves.
 Winnow.Auth.WebView   WebView2 host for embedded sign-in.
 Winnow.Update[.Helper] Portable staging, database backup, replacement and recovery.
-Winnow.App            Avalonia UI and the composition root. Assembly name `Winnow`.
+Winnow.Application    Backend use cases and background-service composition.
+Winnow.Backend        Independent authenticated loopback HTTP/JSON and event host.
+Winnow.Api.Contracts  Versioned frontend contracts and presentation interfaces.
+Winnow.Api.Client     Typed HTTP client and reconnecting event transport.
+Winnow.Presentation   Shared presentation policies without backend implementations.
+Winnow.Diagnostics    Bounded, redacted diagnostic logging and build identity.
+Winnow.App            Avalonia desktop/fullscreen API client. Assembly name `Winnow`.
 ```
 
 What each module is allowed to do, and the boundaries between them, are in

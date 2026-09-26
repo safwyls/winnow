@@ -142,7 +142,7 @@ public sealed class DataDirectoryOverrideTests : IDisposable
 
         var services = new ServiceCollection();
         services.AddLogging(b => b.SetMinimumLevel(LogLevel.Warning));
-        Program.ConfigureServices(services, location);
+        Winnow.App.LegacyTestServices.ConfigureServices(services, location);
 
         using var provider = services.BuildServiceProvider();
 

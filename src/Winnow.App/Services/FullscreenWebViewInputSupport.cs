@@ -19,7 +19,7 @@ public sealed class FullscreenWebViewInputSupport : IWebViewInputSupport
 {
     public Control Wrap(Window window, Control content, WebView2Host? browser = null, bool reading = false)
     {
-        if ((Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow is not MainWindow { IsFullscreen: true }) return content;
+        if ((Avalonia.Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow is not MainWindow { IsFullscreen: true }) return content;
         window.MaxHeight = double.PositiveInfinity;
         window.MaxWidth = double.PositiveInfinity;
         window.SizeToContent = SizeToContent.Manual;

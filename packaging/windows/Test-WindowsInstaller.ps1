@@ -9,6 +9,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot '../Stop-SmokeBackend.ps1')
 
 function Invoke-SilentProcess {
     param(
@@ -138,6 +139,7 @@ try {
         throw 'Winnow did not stop after the isolated startup check.'
     }
     $applicationProcess = $null
+    Stop-SmokeBackend $dataDirectory
 
     $sentinelPath = Join-Path $dataDirectory 'preserve-after-uninstall.txt'
     [System.IO.File]::WriteAllText($sentinelPath, 'keep this user data')
@@ -186,6 +188,7 @@ try {
             }
             if (-not (Test-Path -LiteralPath (Join-Path $scenarioDirectory 'ready'))) { throw 'Update helper was not ready.' }
             Set-Content -LiteralPath (Join-Path $scenarioDirectory 'proceed') -Value 'ready'
+            Stop-SmokeBackend $dataDirectory
             # The production app requests its normal shutdown after the same handshake.
             Close-SmokeApplication $applicationProcess
             if (-not $applicationProcess.WaitForExit(60000)) { throw 'Winnow did not close normally for the upgrade.' }
@@ -217,6 +220,7 @@ try {
             if (-not $applicationProcess.WaitForExit(60000)) { throw 'Updated Winnow did not close.' }
         }
         $applicationProcess = $null
+        Stop-SmokeBackend $dataDirectory
         if ((Get-Content -LiteralPath $sentinelPath -Raw) -cne 'keep this user data') { throw 'Upgrade changed user data.' }
         foreach ($relativePath in $preservedFiles) {
             if ((Get-Content -LiteralPath (Join-Path $dataDirectory $relativePath) -Raw) -cne 'preserve these user-owned bytes') {
@@ -227,6 +231,9 @@ try {
     }
     if (-not (Test-Path -LiteralPath $applicationPath -PathType Leaf)) {
         throw 'The silent reinstall did not preserve the selected install location.'
+    }
+    foreach ($required in @('backend/Winnow.Backend.exe', 'backend/Winnow.Backend.runtimeconfig.json', 'backend/Microsoft.AspNetCore.dll')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $installDirectory $required) -PathType Leaf)) { throw "Installed backend is missing $required." }
     }
     $protocolKey = Get-Item -LiteralPath 'HKCU:\Software\Classes\winnow'
     $protocolCommand = (Get-Item -LiteralPath 'HKCU:\Software\Classes\winnow\shell\open\command').GetValue('')
@@ -275,6 +282,7 @@ finally {
         Stop-Process -Id $applicationProcess.Id -Force -ErrorAction SilentlyContinue
         $null = $applicationProcess.WaitForExit(10000)
     }
+    try { Stop-SmokeBackend $dataDirectory } catch { Write-Warning 'Could not stop the isolated smoke backend.' }
     try { Remove-VerifiedSmokeRoot -Path $smokeRoot }
     catch { Write-Warning "Disposable smoke directory could not be removed: $($_.Exception.Message)" }
 }

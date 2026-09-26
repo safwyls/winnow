@@ -8,7 +8,8 @@ namespace Winnow.App.ViewModels;
 
 public partial class PluginSettingsViewModel(
     IPluginSettingsBackend? backend = null, IUriDispatcher? uris = null, TimeProvider? timeProvider = null,
-    IOfficialPluginInstaller? installer = null, IGameLinkRouter? linkRouter = null) : ObservableObject
+    IOfficialPluginInstaller? installer = null, IGameLinkRouter? linkRouter = null,
+    ILibraryServiceLifecycle? lifecycle = null) : ObservableObject
 {
     private readonly SemaphoreSlim _loadGate = new(1, 1);
     private PluginInstallViewModel? _installation;
@@ -26,7 +27,7 @@ public partial class PluginSettingsViewModel(
     public string SegmentLabel => "PLUGINS";
     public string SegmentTooltip => "Install and configure provider plugins";
     public string IntroMessage => "Manage plugins for library imports, metadata, artwork and recommendations.";
-    public const string InstallationNote = "Install official plugins from the Winnow website, or place a plugin ZIP or unpacked plugin in the plugins folder and restart. ZIPs unpack automatically. Manually added plugins need enabling and a restart. Only enable plugins from authors you trust: plugins run with Winnow's access to this device.";
+    public const string InstallationNote = "Install official plugins from the Winnow website, or place a plugin ZIP or unpacked plugin in the plugins folder, then choose Restart library service. ZIPs unpack automatically. Manually added plugins need enabling and another service restart. Connected windows reconnect automatically. Only enable plugins from authors you trust: plugins run with Winnow's access to this device.";
     public const string SecretNote = "Secrets are stored securely on this device and are never shown again. Leave a secret blank to keep its saved value.";
     public ObservableCollection<PluginCardViewModel> Plugins { get; } = [];
     public ObservableCollection<PluginCardViewModel> LoadedPlugins { get; } = [];
@@ -86,6 +87,34 @@ public partial class PluginSettingsViewModel(
     [ObservableProperty] public partial bool IsBusy { get; private set; }
     [ObservableProperty] public partial string Status { get; private set; } = string.Empty;
     [ObservableProperty] public partial string LoadedPluginSummary { get; private set; } = "Reading loaded plugins…";
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RestartLibraryServiceCommand))]
+    public partial bool IsRestarting { get; private set; }
+    public bool CanRestartLibraryService => lifecycle is not null && !IsRestarting;
+
+    [RelayCommand(CanExecute = nameof(CanRestartLibraryService))]
+    private async Task RestartLibraryServiceAsync(CancellationToken ct)
+    {
+        if (lifecycle is null) return;
+        if (IsBusy || Plugins.Any(plugin => plugin.IsBusy || plugin.IsConnecting) || Installation.IsBusy)
+        {
+            Status = "Wait for plugin changes to finish, then restart the library service.";
+            return;
+        }
+        IsRestarting = true;
+        Status = "Restarting the library service… Connected windows will reconnect automatically.";
+        try
+        {
+            await lifecycle.RestartAsync(ct);
+            await LoadAsync(ct);
+            Status = "Library service restarted. Connected windows are refreshing.";
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
+        {
+            Status = "Could not restart the library service. Try again; if it remains unavailable, close and reopen Winnow.";
+        }
+        finally { IsRestarting = false; }
+    }
 
     public async Task LoadAsync(CancellationToken ct = default)
     {
@@ -111,12 +140,12 @@ public partial class PluginSettingsViewModel(
             foreach (var removed in Plugins.Where(plugin => snapshots.All(snapshot => snapshot.Id != plugin.Id)).ToArray())
             { removed.Deactivate(); Plugins.Remove(removed); }
             RefreshTabs();
-            Status = Plugins.Count == 0 ? "No plugins found. Open the plugins folder to add one, then restart Winnow." : string.Empty;
+            Status = Plugins.Count == 0 ? "No plugins found. Open the plugins folder to add one, then choose Restart library service." : string.Empty;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
         {
             LoadedPluginSummary = "Loaded plugins could not be read.";
-            Status = "Could not read plugins. Restart Winnow to try again.";
+            Status = "Could not read plugins. Choose Restart library service in Manage plugins to try again.";
         }
         finally { IsBusy = false; _loadGate.Release(); }
     }
@@ -342,18 +371,18 @@ public partial class PluginCardViewModel : ObservableObject
             .ToDictionary(field => field.Key, field => field.Value);
         if (values.Count == 0) { Status = "Enter a setting or secret before saving."; return; }
         await RunAsync(() => _backend.SaveAsync(Id, values),
-            "Settings saved." + (Enabled && IsLoaded ? " Refresh queued." : " Enable the plugin and restart Winnow to use them."),
+            "Settings saved." + (Enabled && IsLoaded ? " Refresh queued." : " Enable the plugin and choose Restart library service in Manage plugins to use them."),
             "Could not save plugin settings. Check that secure storage is available and Winnow's data folder is writable, then try again.");
     }
 
     [RelayCommand(CanExecute = nameof(CanEdit))]
     private Task ToggleEnabledAsync() => RunAsync(() => _backend.SetEnabledAsync(Id, !Enabled),
-        "Plugin setting saved. Restart Winnow to apply the change.",
+        "Plugin setting saved. Choose Restart library service in Manage plugins to apply the change.",
         "Could not change this plugin. Check that Winnow's data folder is writable, then try again.");
 
     [RelayCommand(CanExecute = nameof(CanRefresh))]
     private Task RefreshAsync() => RunAsync(() => _backend.RefreshAsync(Id), "Refresh queued.",
-        "Could not queue a plugin refresh. Restart Winnow to try again.");
+        "Could not queue a plugin refresh. Choose Restart library service in Manage plugins to try again.");
 
     internal Task RemoveSecretAsync(PluginSettingFieldViewModel field) => RunAsync(() => _backend.RemoveSecretAsync(Id, field.Key),
         "Saved secret removed. Any configured fallback remains available.",

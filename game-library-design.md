@@ -1,7 +1,7 @@
 # Winnow — build specification
 
 **Name:** Winnow · root namespace `Winnow`, binary `winnow`
-**Target:** Cross-platform desktop application, local-first, no server
+**Target:** Cross-platform desktop application, local-first, no hosted service
 **Audience:** Implementing engineer or coding agent
 
 This document owns the architecture, the module boundaries, the behaviour of every external
@@ -58,7 +58,8 @@ exposed by storefront APIs or not retained by anyone.
 This application is a **background daemon with a UI attached**. It sits in the tray
 enumerating processes every few seconds, all day, and the user interacts with it briefly and
 occasionally. Avalonia provides the native .NET desktop UI for that long-running, local-first
-process; the host and background services remain separate from its views.
+frontend. An independent local backend owns monitoring, storage and background services;
+Avalonia and other frontends attach through the same versioned API.
 
 ---
 
@@ -75,6 +76,7 @@ process; the host and background services remain separate from its views.
 | VDF / ACF parsing | **ValveKeyValue** (xPaw) | Never hand-roll a parser |
 | Steam client protocol | SteamKit2 | Only if the Web API proves insufficient; not needed today |
 | HTTP | `HttpClient` + **Polly** | Retry, circuit-breaker and rate-limit policies |
+| Local frontend API | ASP.NET Core, HTTP/JSON and server-sent events | Authenticated loopback only; no hosted service |
 | HTML parsing | AngleSharp | The saved-page importer in §5.4 |
 | JSON | `System.Text.Json` | Source-generated contexts |
 | Logging | Serilog, rolling file sink | Ingest failures must be diagnosable |
@@ -82,7 +84,7 @@ process; the host and background services remain separate from its views.
 | Metadata | IGDB v4 API | Twitch client-credentials auth |
 | Packaging / updates | Inno Setup on Windows; Debian and portable archives on Linux | Installed Windows updates use the existing installer; §5.5 |
 
-**Deliberately excluded:** Postgres, any vector store, any server framework, any LLM
+**Deliberately excluded:** Postgres, any vector store, hosted server infrastructure, any LLM
 dependency. Do not add them speculatively.
 
 Publish untrimmed self-contained, as configured by `packaging/Publish.ps1`. The provider plugin
@@ -775,13 +777,16 @@ recorded in `docs/spikes/native-edition-evidence.md`.
 
 ## 5. Architecture
 
-Background services run as `IHostedService` implementations under the generic host, and the
-Avalonia UI resolves view models from the same DI container. **The UI never calls an ingest or
-enrichment component directly; it reads the database and raises commands.**
+Background services run under the independent `Winnow.Backend` host. `Winnow.Application`
+owns use cases, projections and commands over the existing domain modules. **Every frontend,
+including Avalonia desktop and fullscreen, reads snapshots and sends commands through the
+same authenticated `/api/v1` HTTP API.** No frontend registers database repositories or workers.
+The [frontend API guide](docs/frontend-api.md) defines discovery, events, conflicts and lifecycle.
 
-One process owns each data directory, enforced by a named mutex before the host starts.
-A repeated launch sends a bounded request over a current-user named pipe and exits without
-starting another host or showing an error. The owner queues requests until the UI is ready,
+One backend owns each data directory, enforced by a named mutex and exclusive lock. It runs
+without a frontend and stays alive after clients disconnect. Avalonia has a separate
+single-instance guard; other frontend implementations may attach concurrently. A repeated
+Avalonia launch sends a bounded request over a current-user named pipe. The frontend queues requests until the UI is ready,
 then restores and activates its existing desktop or fullscreen window, preserving its
 presentation and navigation state. Separate `--data-dir` libraries remain independent.
 On Windows the mutex and pipe explicitly belong to the current user's SID, deny network
@@ -809,67 +814,28 @@ then refreshes when artwork resolves; missing or timed-out artwork keeps the app
 
 ```mermaid
 graph TB
-    subgraph UI["Avalonia UI (MVVM)"]
-        LV[Library / Feed / Filter]
-        MQ[Merge Confirm Queue]
-        JN[Session Journal Prompt]
-        EX[Export View]
-    end
-
-    subgraph Services["Background Services"]
-        subgraph Ingest["Ingest"]
-            SI[Steam Local Reader]
-            EI[Epic Manifest Reader]
-            GI[GOG Galaxy Reader]
-            HB[Historical Backfill]
-        end
-
-        subgraph Enrich["Enrichment"]
-            IG[IGDB Client - 4 rps]
-            SA[Store Metadata Client]
-            UP[Update Signal Poller]
-        end
-
-        subgraph ApplicationLogic["Resolution, monitoring and recommendations"]
-            ER[Entity Resolver]
-            PM[Process Monitor - 5s]
-            SN[Snapshot Scheduler]
-            RC[Recommender]
-        end
-
-        DB[(SQLite / Dapper)]
-    end
-
-    subgraph External["External"]
-        FS[Local Filesystem]
-        IGDB[IGDB v4]
-        STEAM[Steam Web API]
-        SCMD[api.steamcmd.net]
-    end
-
-    LV --> DB
-    MQ --> ER
-    JN --> DB
-    EX --> DB
-
-    FS --> SI & EI & GI
-    SI & EI & GI & HB --> ER
-    ER --> DB
-    IGDB --> IG --> ER
-    STEAM --> SA & HB --> DB
-    SCMD --> UP --> DB
-    PM --> DB
-    SN --> DB
-    DB --> RC --> LV
+    A[Avalonia desktop and fullscreen]
+    O[Other frontends]
+    API[Authenticated HTTP JSON v1 + SSE]
+    APP[Application queries and commands]
+    WORK[Ingest / enrichment / monitoring / recommendations]
+    DB[(SQLite and backend caches)]
+    EXT[Launcher snapshots and provider APIs]
+    A <--> API
+    O <--> API
+    API --> APP
+    APP --> DB
+    WORK --> DB
+    WORK --> API
+    EXT --> WORK
 ```
 
 ### 5.1 Module boundaries
 
-Library loading reads buckets, works, ownerships, releases, external IDs and list membership
+Backend library loading reads buckets, works, ownerships, releases, external IDs and list membership
 with one multi-result SQLite command in a deferred read transaction. Bucket consolidation
-uses the same rules as standalone bucket reads. Library and startup Review, Display and
-Library settings loads perform repository work on a worker thread, then publish view-model
-state on the UI thread. Facets, identity maps, pins and storefront caches remain fixed-count
+uses the same rules as standalone bucket reads. Frontend Library, Review, Display and Library settings loads request API snapshots asynchronously,
+then publish view-model state on the UI thread. Facets, identity maps, pins and storefront caches remain fixed-count
 bulk reads. This does not change the pre-window appearance bootstrap or unrelated edit commands.
 Tile preparation on the UI thread yields to input and rendering after roughly 8ms or 128
 items, whichever comes first. All prepared models remain local, and cancellation, disposal
@@ -905,7 +871,12 @@ choice while a save is pending, then reconciles with the committed result on eit
 | `Winnow.Monitor` | Detect game start and stop, emit sessions | Assume any specific launcher is present |
 | `Winnow.Recommend` | Score and explain | Perform IO beyond repositories; reference anything but `Winnow.Core`; make identity decisions |
 | `Winnow.Auth.WebView` | Host the embedded sign-in | Reference anything but Avalonia and `Winnow.Core` |
-| `Winnow.App` | UI and composition root. Assembly name `Winnow` | Call an ingest reader or an enrichment client. Cover leases are how art reaches a tile and are not covered by this |
+| `Winnow.Covers.Avalonia` | Decode API-provided artwork into bounded Avalonia bitmap leases | Fetch providers or read backend caches |
+| `Winnow.Application` | Backend use cases, projections, provider and repository composition | Reference Avalonia |
+| `Winnow.Backend` | HTTP/JSON, discovery, authentication, events and backend lifetime | Depend on a frontend |
+| `Winnow.Api.Contracts` / `Winnow.Api.Client` | Versioned contracts and typed external transport | Reference backend implementations |
+| `Winnow.Presentation` / `Winnow.Diagnostics` | Shared presentation policies and bounded logging | Reference database or provider implementations |
+| `Winnow.App` | Desktop/fullscreen API client. Assembly name `Winnow` | Reference database, ingest, enrichment, monitor, resolver or plugin-host implementations |
 
 Built-in provider HTTP clients share linked transport infrastructure in `src/Shared`; this
 creates no dependency between enrichment modules or IO dependency in Core. Requests buffer
@@ -929,18 +900,14 @@ Independent phase failures leave other phases eligible. Committed ownerships are
 before metadata, even after a later ownership operation fails; subsequent publication boundaries
 expose enriched facts. IGDB credential refresh selects the IGDB steps from this same pipeline.
 
-Hosted services and background startup work begin after Avalonia initializes native platform
-services, before it constructs the application and opens either desktop or fullscreen. This
-keeps early UI publications from creating a fallback dispatcher that cannot run the native
-message loop. Database initialization and terminal-only authentication still precede UI setup.
-
-`LibraryChangePublisher` reloads desktop library and merge state on the UI dispatcher with a
-shutdown token. The library's existing committed-change event refreshes active fullscreen state;
-inactive fullscreen contexts refresh when entered. Account actions enqueue and coalesce work
-behind startup instead of holding their UI commands open. These application services live in
-`Winnow.App.Services` rather than Core because sync results refer to Resolve and publication
-belongs to the application. **No enrichment or remote client may be reachable from the
-first-paint path.**
+The backend initializes migrations and setup state before starting workers. It publishes
+committed invalidations with an epoch and sequence; slow consumers cannot block writes.
+Avalonia starts its subscriptions after native platform setup, marshals refreshed snapshots
+onto its dispatcher, and preserves each surface's navigation. Restart or a missing event
+cursor requests a full resync. Account actions enqueue and coalesce backend work instead of
+holding UI commands open. Several extracted services retain their `Winnow.App.Services`
+namespace for source compatibility; their assembly is `Winnow.Application`. **No provider
+client is reachable from the frontend's first-paint path.**
 
 #### Provider plugins
 

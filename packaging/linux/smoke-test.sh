@@ -109,6 +109,12 @@ validate_manifest "$workspace/deb-extract/opt/winnow/release-info.json"
 [[ ! -e $workspace/tar-extract/$artifact_name/package-managed ]] || fail "portable archive has a package-manager marker"
 [[ -x $workspace/tar-extract/$artifact_name/update-helper/Winnow.Update.Helper ]] || fail "portable update helper is missing"
 
+for package_root in "$workspace/deb-extract/opt/winnow" "$workspace/tar-extract/$artifact_name"; do
+    [[ -x $package_root/backend/Winnow.Backend ]] || fail "backend companion is missing"
+    [[ -f $package_root/backend/Winnow.Backend.runtimeconfig.json ]] || fail "backend runtime configuration is missing"
+    [[ -f $package_root/backend/Microsoft.AspNetCore.dll ]] || fail "self-contained ASP.NET runtime is missing"
+done
+
 # `apt-get install` resolves the package's declared runtime dependencies. The
 # runner is ephemeral, so this never installs Winnow onto a user's computer.
 sudo apt-get update

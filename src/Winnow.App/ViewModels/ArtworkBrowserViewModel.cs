@@ -102,6 +102,24 @@ public partial class ArtworkBrowserViewModel : ObservableObject, IDisposable
             }
         }
         IsOpen = true; Slot = slot; PublishSlot(); Problem = null;
+        try
+        {
+            var sources = await _service.GetSourcesAsync(_visit.Token);
+            if (!State.Sources.Select(source => source.Id).SequenceEqual(sources.Select(source => source.Id)))
+            {
+                Selected = null;
+                foreach (var state in _slots.Values)
+                {
+                    state.Current?.Dispose();
+                    foreach (var source in state.Sources) foreach (var item in source.Items) item.Dispose();
+                }
+                foreach (var kind in Enum.GetValues<ArtworkSlot>())
+                    _slots[kind] = new(kind, sources.Select(source => new ArtworkSourceViewModel(this, source, kind)).ToArray());
+                PublishSlot();
+            }
+        }
+        catch (OperationCanceledException) when (_visit.IsCancellationRequested) { return; }
+        catch (Exception) { Problem = "Artwork sources could not be loaded. Reopen the browser to try again."; }
         await LoadSlotAsync(slot, _visit.Token);
     }
 

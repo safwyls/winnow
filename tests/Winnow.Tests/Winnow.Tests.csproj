@@ -101,4 +101,6 @@
           DestinationFiles="@(PluginTestPackage->'$(OutDir)plugins\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true" />
   </Target>
+<ItemGroup><Compile Include="../Shared/LegacyTestServices.cs" Link="Fixtures/LegacyTestServices.cs" /><ProjectReference Include="../../src/Winnow.Application/Winnow.Application.csproj" /></ItemGroup>
+<ItemGroup><Compile Include="../Shared/LegacyConnectionAliases.cs" Link="Fixtures/LegacyConnectionAliases.cs" /></ItemGroup>
 </Project>

@@ -62,7 +62,7 @@
   </ItemGroup>
 
   <!-- Git-ignored local credentials, copied next to the executable so
-       Program.cs can load it from AppContext.BaseDirectory. Conditional: the
+       the backend can load it from the installation directory. Conditional: the
        file is absent in every clean checkout and its absence is normal. -->
   <ItemGroup Condition="Exists('appsettings.local.json')">
     <None Include="appsettings.local.json" CopyToOutputDirectory="PreserveNewest" />
@@ -91,30 +91,27 @@
          and never reference Avalonia or WebView2 themselves (§5.1). -->
     <ProjectReference Include="..\Winnow.Auth.WebView\Winnow.Auth.WebView.csproj" />
     <ProjectReference Include="..\Winnow.Core\Winnow.Core.csproj" />
+    <ProjectReference Include="..\Winnow.Api.Client\Winnow.Api.Client.csproj" />
     <ProjectReference Include="..\Winnow.Update\Winnow.Update.csproj" />
-    <ProjectReference Include="..\Winnow.Covers\Winnow.Covers.csproj" />
-    <ProjectReference Include="..\Winnow.Covers.Igdb\Winnow.Covers.Igdb.csproj" />
-    <ProjectReference Include="..\Winnow.Data\Winnow.Data.csproj" />
-    <ProjectReference Include="..\Winnow.Enrich.GamesDb\Winnow.Enrich.GamesDb.csproj" />
-    <ProjectReference Include="..\Winnow.Enrich.Igdb\Winnow.Enrich.Igdb.csproj" />
-    <ProjectReference Include="..\Winnow.Enrich.Steam\Winnow.Enrich.Steam.csproj" />
-    <ProjectReference Include="..\Winnow.Plugins\Winnow.Plugins.csproj" />
+    <ProjectReference Include="..\Winnow.Covers.Avalonia\Winnow.Covers.Avalonia.csproj" />
     <ProjectReference Include="..\..\plugins\Winnow.Plugin.SteamGridDb\Winnow.Plugin.SteamGridDb.csproj" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\Winnow.Enrich.Stores\Winnow.Enrich.Stores.csproj" />
-    <ProjectReference Include="..\Winnow.Enrich.SteamWeb\Winnow.Enrich.SteamWeb.csproj" />
-    <ProjectReference Include="..\Winnow.Enrich.Updates\Winnow.Enrich.Updates.csproj" />
-    <ProjectReference Include="..\Winnow.Ingest.Epic\Winnow.Ingest.Epic.csproj" />
-    <ProjectReference Include="..\Winnow.Ingest.Gog\Winnow.Ingest.Gog.csproj" />
-    <ProjectReference Include="..\Winnow.Ingest.Steam\Winnow.Ingest.Steam.csproj" />
-    <ProjectReference Include="..\Winnow.Monitor\Winnow.Monitor.csproj" />
-    <!-- M8. The scoring core, wired at last: the module was built and tested
-         standalone on purpose (charter), and this is the composition root
-         handing it repository implementations. The App layer's own FeedService
-         is the only type that names it — a view model must not (§5.1). -->
-    <ProjectReference Include="..\Winnow.Recommend\Winnow.Recommend.csproj" />
-    <ProjectReference Include="..\Winnow.Resolve\Winnow.Resolve.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Winnow.Backend\Winnow.Backend.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+  <Target Name="CopyBackendCompanion" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
+    <MSBuild Projects="..\Winnow.Backend\Winnow.Backend.csproj" Targets="GetTargetPath" BuildInParallel="false">
+      <Output TaskParameter="TargetOutputs" ItemName="BackendCompanionAssembly" />
+    </MSBuild>
+    <PropertyGroup>
+      <BackendCompanionDirectory>@(BackendCompanionAssembly->'%(RootDir)%(Directory)')</BackendCompanionDirectory>
+    </PropertyGroup>
+    <ItemGroup>
+      <BackendCompanionFiles Include="$(BackendCompanionDirectory)**\*" Exclude="$(BackendCompanionDirectory)backend\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(BackendCompanionFiles)" DestinationFiles="@(BackendCompanionFiles->'$(TargetDir)backend\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
   <Target Name="CopyBundledPlugins" AfterTargets="Build">
     <!-- The SDK builds this managed library reference without the app's RID.
          Query that same target path during self-contained publishing. -->
@@ -128,6 +125,8 @@
     <Copy SourceFiles="@(BundledPluginAssembly)" DestinationFolder="$(PublishDir)plugins\steamgriddb" SkipUnchangedFiles="true" />
     <Copy SourceFiles="..\..\plugins\Winnow.Plugin.SteamGridDb\plugin.json" DestinationFolder="$(PublishDir)plugins\steamgriddb" SkipUnchangedFiles="true" />
   </Target>
+  <ItemGroup>
+    <ProjectReference Include="..\Winnow.Diagnostics\Winnow.Diagnostics.csproj" />
+    <ProjectReference Include="..\Winnow.Presentation\Winnow.Presentation.csproj" />
+  </ItemGroup>
 </Project>
-
-

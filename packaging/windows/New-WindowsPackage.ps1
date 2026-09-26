@@ -80,6 +80,9 @@ function Assert-PortableArchive {
         if ($null -eq $archive.GetEntry('Winnow.exe')) {
             throw 'Portable archive does not contain Winnow.exe.'
         }
+        foreach ($required in @('backend/Winnow.Backend.exe', 'backend/Winnow.Backend.dll', 'backend/Winnow.Backend.runtimeconfig.json', 'backend/Microsoft.AspNetCore.dll')) {
+            if ($null -eq $archive.GetEntry($required)) { throw "Portable archive is missing $required." }
+        }
         $manifestEntry = $archive.GetEntry('release-info.json')
         if ($null -eq $manifestEntry) {
             throw 'Portable archive does not contain release-info.json.'
@@ -107,6 +110,9 @@ if (-not (Test-Path -LiteralPath (Join-Path $publishDirectory 'Winnow.exe') -Pat
 }
 if (Test-Path -LiteralPath (Join-Path $publishDirectory 'appsettings.local.json') -PathType Leaf) {
     throw 'PublishDirectory contains appsettings.local.json, which must not enter a release artifact.'
+}
+foreach ($required in @('backend/Winnow.Backend.exe', 'backend/Winnow.Backend.dll', 'backend/Winnow.Backend.runtimeconfig.json', 'backend/Microsoft.AspNetCore.dll')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $publishDirectory $required) -PathType Leaf)) { throw "PublishDirectory is missing $required." }
 }
 $manifestPath = Join-Path $publishDirectory 'release-info.json'
 if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {

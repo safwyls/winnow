@@ -154,7 +154,7 @@ public sealed class LibraryMultiSelectionTests
             var collection = new ServiceCollection();
             collection.AddLogging();
             collection.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
-            Program.ConfigureServices(collection, new(database.DatabasePath + "-data", database.DatabasePath, DataMigrationOutcome.Overridden));
+            Winnow.App.LegacyTestServices.ConfigureServices(collection, new(database.DatabasePath + "-data", database.DatabasePath, DataMigrationOutcome.Overridden));
             collection.AddSingleton<ISqliteConnectionFactory>(database.Factory);
             var services = collection.BuildServiceProvider();
             var shell = services.GetRequiredService<MainWindowViewModel>();

@@ -4,17 +4,9 @@ using System.Text;
 namespace Winnow.App.Services;
 
 /// <summary>
-/// TASK-23 (F39). One Winnow per data directory. Everything that writes the
-/// library — the session watcher, the snapshot scheduler, the remote
-/// ownership scheduler, the update poller — is a per-process singleton, so a
-/// second copy against the same files double-records sessions, races the
-/// SQLite writer, and doubles the external request traffic against services
-/// that are rate-limited by volunteer goodwill.
-/// <para>
-/// Keyed on the data directory rather than on the product: two copies against
-/// the SAME files are the failure, and a second copy pointed at a throwaway
-/// <c>--data-dir</c> (the documented way to click around safely) is not one.
-/// </para>
+/// Activates the existing Avalonia frontend for this data directory. Other
+/// frontend applications can connect alongside it. The backend owns a separate
+/// guard for database access and background workers.
 /// </summary>
 internal static class SingleInstanceGuard
 {
@@ -61,7 +53,7 @@ internal static class SingleInstanceGuard
         // user's unrelated %LOCALAPPDATA% behind fast-user-switching.
         var hash = Convert.ToHexString(SHA256.HashData(
             Encoding.UTF8.GetBytes(Normalized(dataDirectory))));
-        return $"Local\\Winnow.Data.{hash}";
+        return $"Local\\Winnow.Avalonia.{hash}";
     }
 
     private static string Normalized(string dataDirectory)

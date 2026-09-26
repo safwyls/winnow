@@ -8,6 +8,7 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'Stop-SmokeBackend.ps1')
 if ($env:GITHUB_ACTIONS -cne 'true') { throw 'Portable upgrade smoke runs only on disposable GitHub Actions runners.' }
 $root = Join-Path ([IO.Path]::GetTempPath()) ('Winnow-portable-smoke-' + [guid]::NewGuid().ToString('N'))
 $null = New-Item -ItemType Directory -Path $root
@@ -88,6 +89,7 @@ try {
         Start-Sleep -Seconds 3
         if ($old.HasExited) { throw 'Previous release failed after database initialization.' }
         Stop-SmokeProcess $old
+        Stop-SmokeBackend $data
         & python -c 'import sqlite3,sys; c=sqlite3.connect(sys.argv[1]); c.execute("INSERT INTO works(id,name) VALUES (?,?)", (-159,"Portable upgrade fixture")); c.commit(); c.close()' $database
         if ($LASTEXITCODE -ne 0) { throw 'Could not seed the disposable previous-release library.' }
         $libraryBefore = Read-LibraryEvidence $database
@@ -183,7 +185,7 @@ try {
 } finally {
     foreach ($process in $processes) { Stop-SmokeProcess $process }
     # Relaunched applications have a different PID. Restrict cleanup by exact executable path.
-    Get-Process -Name Winnow -ErrorAction SilentlyContinue | ForEach-Object {
+    Get-Process -Name Winnow,Winnow.Backend -ErrorAction SilentlyContinue | ForEach-Object {
         if ($_.Path -and $_.Path.StartsWith($root + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { Stop-SmokeProcess $_ }
     }
     $diagnostics = Join-Path $PSScriptRoot '../artifacts/portable-smoke-logs'

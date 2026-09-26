@@ -10,20 +10,20 @@ public enum FirstRunStep { Welcome, Igdb, Steam, Epic, Gog, Theme, Application, 
 /// <summary>Shared setup navigation. Each editor owns its existing save and consent behavior.</summary>
 public partial class FirstRunSetupViewModel : ObservableObject
 {
-    private readonly FirstRunSetupService _progress;
+    private readonly IFirstRunSetup _progress;
     private bool _navigating;
     private bool _loaded;
     private bool _suspended;
 
     public FirstRunSetupViewModel(StoresViewModel stores, AppearanceViewModel appearance,
         ApplicationSettingsViewModel application, LibrarySettingsViewModel librarySettings,
-        FirstRunSetupService? progress = null)
+        IFirstRunSetup? progress = null)
     {
         Stores = stores;
         Appearance = appearance;
         Application = application;
         LibrarySettings = librarySettings;
-        _progress = progress ?? new FirstRunSetupService();
+        _progress = progress ?? new PreviewSetupProgress();
         Application.SetupRequested += () => ReopenCommand.Execute(null);
         Application.Igdb.PropertyChanged += BusyChanged;
         Stores.PropertyChanged += BusyChanged;

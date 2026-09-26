@@ -18,7 +18,7 @@ namespace Winnow.Tests;
 /// is a required constructor parameter precisely so an omission breaks the
 /// container at startup instead of rendering a screen whose answers
 /// quietly write nothing. These tests build the container the way
-/// <c>Program.ConfigureServices</c> builds it and actually resolve the
+/// <c>Winnow.App.LegacyTestServices.ConfigureServices</c> builds it and actually resolve the
 /// screen and run its load, so the wiring is exercised rather than
 /// asserted about.
 /// </summary>

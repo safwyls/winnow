@@ -24,14 +24,16 @@ public sealed class EnrichmentSettingsViewModel(
 public partial class ArtworkOrderViewModel : ObservableObject
 {
     private readonly ArtworkPreferences? _preferences;
+    private readonly Winnow.Api.Client.WinnowApiClient? _api;
     public const string Explanation = "Try sources from top to bottom. Your saved background always comes first. Standard Steam heroes and covers remain fallbacks.";
     public ObservableCollection<ArtworkSourcePreference> Sources { get; } = [];
     [ObservableProperty] public partial bool IsBusy { get; private set; }
     [ObservableProperty] public partial string Status { get; private set; } = string.Empty;
 
-    public ArtworkOrderViewModel(ArtworkPreferences? preferences = null)
+    public ArtworkOrderViewModel(ArtworkPreferences? preferences = null, Winnow.Api.Client.WinnowApiClient? api = null)
     {
         _preferences = preferences;
+        _api = api;
         Refresh();
         if (preferences is not null) preferences.Changed += () =>
         {
@@ -42,7 +44,15 @@ public partial class ArtworkOrderViewModel : ObservableObject
 
     public async Task LoadAsync(CancellationToken ct = default)
     {
-        if (_preferences is not null) await _preferences.LoadAsync(ct);
+        if (_preferences is not null)
+        {
+            if (_api is not null)
+            {
+                var sources = await _api.GetAsync<ArtworkSourceOption[]>("preferences/artwork-sources", ct);
+                _preferences.ConfigureSources(sources.Where(source => source.Id is not ArtworkPreferences.Steam and not ArtworkPreferences.Igdb));
+            }
+            await _preferences.LoadAsync(ct);
+        }
         Refresh();
     }
 

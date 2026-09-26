@@ -43,6 +43,23 @@ if ($Runtime -eq 'win-x64') { $readyToRun = @('-p:PublishReadyToRun=true') }
     -p:ContinuousIntegrationBuild=true `
     @readyToRun @ExtraProperties -warnaserror
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed ($LASTEXITCODE)." }
+# The API owns its ASP.NET runtime independently of the desktop presentation.
+$backendOutput = Join-Path $output 'backend'
+& dotnet publish "$repo/src/Winnow.Backend/Winnow.Backend.csproj" --configuration Release --runtime $Runtime `
+    --self-contained true --output $backendOutput `
+    "-p:BaseOutputPath=$buildOutput" "-p:Version=$Version" `
+    "-p:AssemblyVersion=$($release.Numeric).0" "-p:FileVersion=$($release.Numeric).0" `
+    "-p:SourceRevisionId=$Commit" -p:PublishTrimmed=false -p:PublishSingleFile=false `
+    -p:ContinuousIntegrationBuild=true @readyToRun @ExtraProperties -warnaserror
+if ($LASTEXITCODE -ne 0) { throw "Backend publish failed ($LASTEXITCODE)." }
+$backendHost = if ($Runtime -eq 'win-x64') { 'Winnow.Backend.exe' } else { 'Winnow.Backend' }
+foreach ($required in @($backendHost, 'Winnow.Backend.dll', 'Winnow.Backend.runtimeconfig.json', 'Winnow.Backend.deps.json')) {
+    if (!(Test-Path -LiteralPath (Join-Path $backendOutput $required) -PathType Leaf)) { throw "Missing backend/$required." }
+}
+$backendConfig = Get-Content -LiteralPath (Join-Path $backendOutput 'Winnow.Backend.runtimeconfig.json') -Raw | ConvertFrom-Json
+if (!($backendConfig.runtimeOptions.includedFrameworks | Where-Object name -eq 'Microsoft.AspNetCore.App')) {
+    throw 'The backend package must include its ASP.NET runtime.'
+}
 # The replacement process runs outside the directory it replaces. Keep its own
 # runtime together so it can be copied to the durable handoff directory.
 & dotnet publish "$repo/src/Winnow.Update.Helper/Winnow.Update.Helper.csproj" --configuration Release --runtime $Runtime `

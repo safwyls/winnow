@@ -34,9 +34,14 @@ Source archives built without Git metadata show `Unavailable` for the commit.
 | `SHA256SUMS` | Checksums attached to a tagged draft release |
 
 Each application directory includes `release-info.json` with its version, runtime identifier,
-and source commit. A portable build still uses the normal user data location; pass
+and source commit. The `backend/` directory contains the independent `Winnow.Backend`
+companion and its self-contained ASP.NET Core runtime. Keep that directory with the app;
+Avalonia starts or attaches to the backend for the selected data directory. A portable build still uses the normal user data location; pass
 `--data-dir <path>` to select another location. Installers preserve user data on removal.
-For a manual upgrade, close Winnow first. Windows uses a stable Inno Setup AppId and prior install
+For a manual upgrade, close all frontend windows and stop the backend first. Closing the
+last window leaves the backend running. Use authenticated `POST /api/v1/lifecycle/shutdown`
+as described in the [frontend API guide](frontend-api.md#start-and-discover), then wait
+for the backend process to exit. Windows uses a stable Inno Setup AppId and prior install
 directory; Debian prereleases use `~` so they sort before the corresponding stable version.
 
 All three plugin ZIPs are built on every packaging run and attached to the same release as
@@ -97,8 +102,10 @@ signature. Windows packages remain unsigned. See GitHub's [release asset API](ht
 
 On explicit restart, a separate helper verifies and locks the installer, waits up to two
 minutes for the app process to exit, refuses locked application binaries, and runs Inno
-without forced process closure or Windows reboot. Normal shutdown cancels workers and
-disposes the host before process exit. Setup retains the registered installation directory;
+without forced process closure or Windows reboot. The explicit update action first stops
+the shared backend, which cancels workers and releases the database and installation lease.
+Ordinary frontend closure does not stop those workers. Close other frontend windows before
+updating; their binary locks can still prevent replacement. Setup retains the registered installation directory;
 the helper relaunches Winnow with the selected data directory and preserves `--no-sync`.
 Fullscreen startup follows the saved preference. One-time seeding and sign-in flags are not
 replayed. Library data, credentials, covers, themes and preferences remain in the data directory.
@@ -124,10 +131,10 @@ tests do not install software.
 
 ### Portable replacement and recovery
 
-The ZIP and tar.gz layouts are unchanged. Copies from before the portable helper was
+The ZIP and tar.gz contain the frontend, `backend/` companion, and `update-helper/` directories. Copies from before the portable helper was
 introduced need one manual archive upgrade; subsequent supported releases offer in-app
 replacement. Debian installations, including their `package-managed` marker, stay with the
-package manager: close Winnow and use `sudo apt install ./Winnow-<version>-linux-x64.deb`.
+package manager: close the frontends, stop the backend, and use `sudo apt install ./Winnow-<version>-linux-x64.deb`.
 The updater never invokes privilege elevation or replaces package-managed files.
 
 Portable downloads validate the release digest, version and runtime, archive paths and
@@ -142,7 +149,9 @@ while their backup files remain available for manual inspection. Recovery comman
 the current workspace's journal. Retained workspaces are not automatically pruned.
 
 After explicit restart, the copied `Winnow.Update.Helper` waits for the exact original
-process to exit. Installation and library guards exclude other Winnow instances during
+process to exit. Both the frontend and backend hold the installation lease; the explicit
+update action stops the backend before handing off. Installation and library guards exclude
+other Winnow instances during
 replacement. The helper makes and checks a SQLite backup, including committed WAL data,
 before moving the old binaries to `previous` and the staged release into the original
 location. It moves an internal selected data directory to the same relative location.
@@ -156,7 +165,7 @@ Keep the workspace, selected data directory and `before.db` until recovery is co
 Other files placed beside the app remain with the retained previous directory; custom
 themes, covers, credentials and preferences belong in the selected data directory.
 
-Close all Winnow instances before using the copied helper in the workspace's `helper`
+Close all frontend instances and stop their backends before using the copied helper in the workspace's `helper`
 directory. Pass the absolute path to its `journal.json`:
 
 ```text

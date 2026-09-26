@@ -7,6 +7,7 @@ namespace Winnow.App.Services;
 public sealed class DisplayedArtworkBrowserService(IArtworkBrowserService inner, Func<CoverKey?> currentCover) : IArtworkBrowserService
 {
     public IReadOnlyList<ArtworkBrowserSource> Sources => inner.Sources;
+    public Task<IReadOnlyList<ArtworkBrowserSource>> GetSourcesAsync(CancellationToken ct = default) => inner.GetSourcesAsync(ct);
 
     public async Task<ArtworkCandidate?> GetCurrentAsync(long workId, ArtworkSlot slot, CancellationToken ct = default)
     {

@@ -36,6 +36,7 @@ public sealed class MergePlatformPickerTests
             .AddSingleton<ILibraryQueryRepository>(new LibraryQueryRepository(db.Factory))
             .AddSingleton<ISettingsRepository>(settings)
             .AddSingleton<LibraryExpansionScan>()
+            .AddSingleton<IExpansionReviewScan>(sp => sp.GetRequiredService<LibraryExpansionScan>())
             .BuildServiceProvider();
         using var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell, services);
         using var page = new FullscreenIdentityPage(context);

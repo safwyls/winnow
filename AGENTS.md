@@ -1,7 +1,7 @@
 # Winnow — how work is done in this repository
 
 Local-first desktop app that surfaces forgotten games in large Steam/Epic/GOG libraries
-("your library has unread mail"). No server, no accounts.
+("your library has unread mail"). No hosted service, no accounts.
 
 The product, the assembly, the binary and the mascot (a dragon) are all **Winnow**.
 
@@ -21,6 +21,7 @@ needed to use it; there is no document precedence order or required history tour
 | The scoring model: signals, weights, thresholds, cold start, explainability | `docs/recommendation-engine.md` |
 | Where each filter value comes from | `docs/facet-provenance.md` |
 | Plugin installation and authoring | `docs/plugins.md` |
+| Independent frontend API, discovery, events and concurrency | `docs/frontend-api.md` |
 | Building and publishing releases | `docs/releases.md` |
 | Orientation for a new reader: what it is, how to install, run and build | `README.md` |
 | Evidence: how something was measured | `docs/spikes/` |
@@ -48,7 +49,7 @@ Winnow theme" — is the product and is already renamed.
 
 Each one is load-bearing for an install that predates the 2026-08-28 rename.
 
-- `WinnowDataLocation` (`src/Winnow.App/Services/`) moves `%LOCALAPPDATA%\Hoard` to
+- `WinnowDataLocation` (`src/Winnow.Application/Services/`) moves `%LOCALAPPDATA%\Hoard` to
   `%LOCALAPPDATA%\Winnow` once, sidecars and subdirectories included, and falls back to
   reading the legacy directory in place if the move cannot be completed. It must never end up
   pointing at an empty new directory.
@@ -76,9 +77,16 @@ Each one is load-bearing for an install that predates the 2026-08-28 rename.
 - `src/Winnow.Recommend` — the scoring model. No IO beyond repositories; references
   `Winnow.Core` only.
 - `src/Winnow.Auth.WebView` — embedded sign-in. References Avalonia and `Winnow.Core` only.
-- `src/Winnow.App` — Avalonia 11 UI plus the generic-host composition root. Assembly name is
-  `Winnow`, to match `avares://Winnow/...`. The UI reads the database and raises commands; it
-  never calls ingest or enrichment directly.
+- `src/Winnow.Application` — backend use cases, repository composition and background workers.
+- `src/Winnow.Backend` — independent loopback HTTP/JSON API, authentication, discovery and SSE.
+  Owns the data directory and database lifecycle; has no Avalonia dependency.
+- `src/Winnow.Api.Contracts`, `src/Winnow.Api.Client` — versioned contracts and HTTP/event client.
+- `src/Winnow.Presentation`, `src/Winnow.Diagnostics` — shared presentation policies and logging.
+- `src/Winnow.Covers.Avalonia` — Avalonia bitmap rendering and leases, separate from fetching.
+- `src/Winnow.App` — Avalonia desktop/fullscreen frontend. Assembly name is `Winnow`, to match
+  `avares://Winnow/...`. Production composition uses the external API; never add backend
+  implementation, repository, provider, or worker registrations. Legacy domain composition
+  belongs only in `tests/Shared/LegacyTestServices.cs`.
 - `tests/Winnow.Tests` — xUnit on temp-file SQLite databases. Parser tests use the sanitized
   real fixtures in `tests/fixtures/steam/`.
 - `tests/Winnow.Ui.Tests` — isolated Avalonia headless pointer and keyboard tests with real

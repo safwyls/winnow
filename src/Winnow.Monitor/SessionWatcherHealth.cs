@@ -3,28 +3,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Winnow.Monitor;
 
-public enum SessionWatcherOperation
-{
-    ExecutableIndex,
-    ProcessDiscovery,
-    SessionRecovery,
-    SessionPersistence,
-    Tick,
-    Configuration,
-    Shutdown,
-}
-
-public sealed record SessionWatcherFailure(
-    SessionWatcherOperation Operation,
-    DateTimeOffset FirstFailedAtUtc,
-    DateTimeOffset LastFailedAtUtc,
-    long FailureCount,
-    string ExceptionType);
-
 /// <summary>Independent operation health; a successful poll cannot hide a failed index or write.</summary>
 public sealed class SessionWatcherHealth(
     ILogger<SessionWatcherHealth>? logger = null,
-    TimeProvider? timeProvider = null)
+    TimeProvider? timeProvider = null) : ISessionWatcherHealth
 {
     private readonly Lock _gate = new();
     private readonly Dictionary<SessionWatcherOperation, SessionWatcherFailure> _failures = [];

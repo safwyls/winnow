@@ -46,7 +46,7 @@ public interface IGameLinkRouter
 
 /// <summary>Chooses among supported reading routes; native game/installation actions keep their original target.</summary>
 public sealed class GameLinkRouter(IUriDispatcher dispatcher, ISettingsRepository settings,
-    IStoreClientAvailability clients, IPatchNotesReader? reader = null, PluginGameActionService? pluginActions = null) : IGameLinkRouter
+    IStoreClientAvailability clients, IPatchNotesReader? reader = null, IPluginActionDispatcher? pluginActions = null) : IGameLinkRouter
 {
     public const string SettingKey = "application.link_destination";
     public static LinkDestination Parse(string? value) => value switch

@@ -30,7 +30,7 @@ public sealed class XboxPluginPackageTests
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
-            Program.ConfigureServices(services, new(root, db.DatabasePath, DataMigrationOutcome.None));
+            Winnow.App.LegacyTestServices.ConfigureServices(services, new(root, db.DatabasePath, DataMigrationOutcome.None));
             services.AddSingleton<Winnow.Data.ISqliteConnectionFactory>(db.Factory);
             await using var provider = services.BuildServiceProvider();
             var first = provider.GetRequiredService<PluginCatalog>();

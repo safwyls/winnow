@@ -17,7 +17,7 @@ people a reason to keep using the launcher.
 
 ## 2. Standing constraints
 
-- **No server, no Winnow account, no telemetry.** Inference runs locally over the user's
+- **No hosted service, no Winnow account, no telemetry.** Inference runs locally over the user's
   database. Optional storefront sign-in connects an account at that store.
 - **Prioritize the feed and the play-history loop.** Launcher features support finding and
   playing owned games; matching every feature of another launcher is not the objective.
@@ -34,6 +34,7 @@ hardware validation. The remaining validation is listed in §6.
 
 | Area | Implemented behavior |
 |---|---|
+| Frontend independence | One local backend owns the library and workers. Avalonia desktop/fullscreen use the authenticated versioned HTTP API; other frontends can attach concurrently and receive live committed changes. Electron UI implementation is outside this extraction. |
 | Library | Local Steam, Epic and GOG discovery, optional Steam/Epic connections, manual entries, search, filters and user lists. Optional Xbox imports installed PC games and opt-in PC/console played history. Optional PlayStation imports the PS4/PS5 account library and opt-in played/legacy trophy history. Steam collections are not imported. |
 | Identity | Exact external IDs resolve automatically. Fuzzy matches require confirmation. Same-game, expansion and variant relations apply immediately through reversible links on desktop and fullscreen. |
 | History | Playtime snapshots, process-based session recording and restart recovery, optional journal notes, Steam history backfill and account-page imports. Unknown history remains unknown. |

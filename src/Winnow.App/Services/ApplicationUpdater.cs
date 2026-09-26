@@ -8,7 +8,8 @@ namespace Winnow.App.Services;
 internal sealed class ApplicationUpdater(
     GitHubReleaseClient releases, ISettingsRepository settings, IUpdateInstaller installer,
     string cacheDirectory, string currentVersion, string assetSuffix, Action requestShutdown,
-    ILogger<ApplicationUpdater> logger) : BackgroundService, IApplicationUpdater
+    ILogger<ApplicationUpdater> logger, Func<CancellationToken, Task>? prepareBackendShutdown = null,
+    Func<CancellationToken, Task>? recoverBackend = null) : BackgroundService, IApplicationUpdater
 {
     internal const string AutomaticKey = "application.updates.automatic";
     internal const string BetaKey = "application.updates.include_beta";
@@ -177,10 +178,16 @@ internal sealed class ApplicationUpdater(
     {
         if (_handoffPrepared) return;
         if (!await _operation.WaitAsync(0, ct).ConfigureAwait(false)) return;
+        var backendShutdownAttempted = false;
         try
         {
             if (_staged is null || _release?.Sha256 is not { } hash || !installer.IsSupported) return;
             Publish(Snapshot with { Busy = true, Status = "Preparing to restart…" });
+            if (prepareBackendShutdown is not null)
+            {
+                backendShutdownAttempted = true;
+                await prepareBackendShutdown(ct).ConfigureAwait(false);
+            }
             await installer.PrepareAsync(_staged, hash, ct).ConfigureAwait(false);
             _handoffPrepared = true;
             Publish(Snapshot with { CanRestart = false, CanDownload = false });
@@ -191,6 +198,19 @@ internal sealed class ApplicationUpdater(
             DeleteStaged();
             Publish(Snapshot with { CanRestart = false, CanDownload = _release?.Sha256 is not null && installer.IsSupported });
             ReportFailure(ex, ct);
+            if (!_handoffPrepared && backendShutdownAttempted && recoverBackend is not null)
+            {
+                try
+                {
+                    using var recovery = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+                    await recoverBackend(recovery.Token).ConfigureAwait(false);
+                }
+                catch (Exception recoveryFailure)
+                {
+                    logger.LogError(recoveryFailure, "The backend could not restart after update preparation failed.");
+                    Publish(Snapshot with { Status = "The update could not start and the library service did not restart. Close and reopen Winnow." });
+                }
+            }
         }
         finally
         {
@@ -201,6 +221,33 @@ internal sealed class ApplicationUpdater(
 
     public Task SetAutomaticAsync(bool value, CancellationToken ct = default) => SetPreferenceAsync(false, value, ct);
     public Task SetIncludeBetaAsync(bool value, CancellationToken ct = default) => SetPreferenceAsync(true, value, ct);
+
+    internal async Task RefreshPreferencesAsync(CancellationToken ct = default)
+    {
+        if (_handoffPrepared) return;
+        var automatic = await settings.GetAsync(AutomaticKey, ct).ConfigureAwait(false) != "false";
+        var beta = await settings.GetAsync(BetaKey, ct).ConfigureAwait(false) == "true";
+        if (automatic == Snapshot.Automatic && beta == Snapshot.IncludeBeta) return;
+        try { Volatile.Read(ref _checkCancellation)?.Cancel(); }
+        catch (ObjectDisposedException) { }
+        CancelDownload();
+        await _operation.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            if (_handoffPrepared) return;
+            automatic = await settings.GetAsync(AutomaticKey, ct).ConfigureAwait(false) != "false";
+            beta = await settings.GetAsync(BetaKey, ct).ConfigureAwait(false) == "true";
+            if (beta != Snapshot.IncludeBeta)
+            {
+                DeleteStaged();
+                _release = null;
+                Publish(Snapshot with { Automatic = automatic, IncludeBeta = beta, CanDownload = false, CanRestart = false,
+                    AvailableVersion = null, DownloadUrl = null, ReleaseUrl = null, Progress = 0, Status = "Update channel changed." });
+            }
+            else Publish(Snapshot with { Automatic = automatic });
+        }
+        finally { _operation.Release(); }
+    }
 
     private async Task SetPreferenceAsync(bool beta, bool value, CancellationToken ct)
     {
