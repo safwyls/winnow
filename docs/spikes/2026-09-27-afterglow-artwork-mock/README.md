@@ -1,6 +1,6 @@
 # Afterglow artwork and caption study
 
-September 27, 2026 · TASK-354 / TASK-355 / TASK-356 · Proposal for user review
+September 27, 2026 · TASK-354 / TASK-355 / TASK-356 / TASK-357 · Proposal for user review
 
 This standalone mock explores portrait covers and compact captions for Afterglow, Winnow's
 Electron frontend. It preserves the Discover hero composition, warm palette and typography.
@@ -31,15 +31,16 @@ local. The mock makes no API calls and requires no running Winnow backend.
 - Discover keeps its large landscape hero and editorial invitation. Eight returning games
   use small portrait thumbnails in four columns on wide windows, two columns below 1150 px,
   and one below 540 px. The recommendation shelf uses the same compact caption rules.
-- Moving over cover art opens an amorphous PixiJS portal around the cursor. A soft amber/blue
-  rim surrounds alternate game artwork, with slight lens distortion and parallax. Seven games
-  have secondary art; the others reveal a procedural night sky. Captions stay above the effect.
-  Loading/missing artwork and compact records have no portal.
+- Cover art catches a soft light that follows the pointer and settles when it pauses.
+  A PixiJS filter samples the existing print to enrich its colours and add a broad reflection.
+  Geometry, lettering and the centered crop stay fixed. Captions fade above the lighting;
+  their dark backing remains readable. Loading/missing artwork and compact records have no finish.
 - Display options change cover size, caption density and the palette. Defaults are
   **Balanced + Essential**. **With context** adds a short reason; **Titles only** hides
-  metadata. Cover portals offer **Flowing**, **Still** and **Off**. Keyboard focus always uses
-  a still opening; system reduced motion also freezes shape, parallax easing and reveal motion.
-  In Still mode the opening follows pointer movement directly, without its own animation loop.
+  metadata. Cover finish defaults to **Satin at 55%**. **Matte** uses diffuse light;
+  **Satin** adds a gentle sheen; **Foil** adds stronger iridescence. An intensity slider and
+  **Off** option support comparison. Turning off **Follow the pointer** fixes the light in
+  one position. Keyboard focus and system reduced motion use that same stationary treatment.
   These controls are in-memory demonstrations and reset on reload.
 - The review strip switches desktop/fullscreen composition and original/mixed/missing/loading
   artwork. Loading and missing states preserve the same frame dimensions.
@@ -100,13 +101,30 @@ The final shader run produced no new browser warnings or errors. JavaScript synt
 whitespace checks passed. System reduced motion is wired to the same Still path through
 `matchMedia`; changing the OS preference and physical touch input were not exercised.
 
-Current capture: [eight returning games and Enshrouded's portal](09-discover-portal.png).
+Portal review capture: [eight returning games and Enshrouded's portal](09-discover-portal.png).
 
-The effect uses one lazy-initialized WebGL renderer and a single custom fragment filter.
-Secondary images load on demand through Pixi's asset cache. The private ticker is capped
-at 45 fps while flowing, stops when idle, and stays stopped in Still mode. Scroll, blur,
-hidden pages and removed cards cancel pending activation; async results cannot attach to
-an old card. Resolution is capped at 2×. These are implementation bounds, not measured
+The Satin revision was checked at 2052×1272 and 760×560 on desktop and fullscreen layouts.
+Visually inspected cursor lighting, the three finishes, and full-intensity Foil. Checked
+the intensity output, stationary pointer mode, Off, disabled controls and default reset.
+The cursor response reached its settled state with one canvas and a stopped ticker;
+keyboard focus used its static state. Fullscreen arrows moved focus, Enter opened the
+correct game, and dialogs, loading placeholders and compact records had no effect canvas.
+The mixed-proportions Hades source retained its centered 2:3 crop under the shader.
+There was no horizontal overflow at the constrained size, and the footer remained visible.
+No new browser warnings or errors occurred. JavaScript syntax and Git whitespace checks
+passed. System reduced motion uses the verified stationary path; changing the OS preference
+and physical touch input were not exercised.
+
+Current capture: [Satin artwork lighting](10-satin-artwork.png). Move across covers in the
+interactive mock to assess the reflection; a still capture cannot show its cursor response.
+
+The current effect uses one lazy-initialized WebGL renderer and a single custom fragment
+filter. It creates textures from the cover images already decoded by the browser, keyed
+by image URL; it does not fetch secondary art. The private ticker runs at up to 60 fps
+while following or fading, stops once the light settles, and stays stopped for stationary
+lighting. Pointer scrolling, blur, hidden pages and removed cards cancel pending activation;
+async initialization cannot attach to an old card. Resolution is capped at 2×.
+These are implementation bounds, not measured
 GPU timings or evidence of production performance. WebGL failure leaves the normal cards
 and captions usable. A production build should import only the Pixi modules it needs;
 this standalone review uses the full browser bundle for offline portability.
@@ -127,7 +145,7 @@ Steam cache keys: 49520 (Borderlands 2), 504230 (Celeste), 632470 (Disco Elysium
 IGDB cache keys: co20r3 (Borderlands 3), co9cbz (Bounty of Blood), co20xh (Guns, Love and
 Tentacles), co7u1h (Moxxi's Heist). Outer Wilds' hero and the Sable/Hades landscape examples
 come from the preceding September 26 design study; its README records the Steam CDN origins.
-The portal's Borderlands 2 and Enshrouded scenes are copied from their local Steam hero cache
+The earlier portal's Borderlands 2 and Enshrouded scenes are copied from their local Steam hero cache
 entries (Enshrouded's standard variant). Celeste, Disco Elysium and Hollow Knight scenes are
 the preceding study's landscape images. Hades and Outer Wilds reuse this study's hero images.
 

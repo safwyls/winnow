@@ -18,7 +18,7 @@ body[data-mode=fullscreen]{grid-template-rows:34px 90px minmax(0,1fr) 46px;--car
 body[data-mode=fullscreen][data-size] .shelf-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--card-min)),1fr))}
 @media(max-width:800px){.return-item>.cover{flex-basis:44px}.collection-scroll{padding-left:8px;padding-right:8px}}
 .poster-grid:not(.records) .game-card{isolation:isolate;overflow:hidden}
-.poster-grid:not(.records) .card-caption{position:absolute;inset:auto 0 0;z-index:1;max-height:100%;overflow:hidden;padding:48px 14px 15px;gap:8px;border-radius:0 0 8px 8px;background:linear-gradient(180deg,transparent,#0b0e13e8 42px,#0b0e13f5);color:#fff8f0;opacity:0;transition:opacity 180ms ease;pointer-events:none;text-shadow:0 1px 4px #0006}
+.poster-grid:not(.records) .card-caption{position:absolute;inset:auto 0 0;z-index:1;max-height:100%;overflow:hidden;padding:48px 14px 15px;gap:8px;border-radius:0 0 8px 8px;background:linear-gradient(180deg,transparent,#0b0e13e8 42px,#0b0e13f5);color:#fff8f0;opacity:0;transition:opacity 240ms ease;pointer-events:none;text-shadow:0 1px 4px #0006}
 .poster-grid:not(.records) .game-card:is(:hover,:focus-visible) .card-caption{opacity:1}
 .poster-grid:not(.records) .card-title{height:auto;display:block;line-height:1.4;overflow:visible}
 .poster-grid:not(.records) .card-meta,.poster-grid:not(.records) .card-reason{color:#dad4ca}
@@ -32,8 +32,16 @@ body[data-mode=fullscreen][data-size] .shelf-grid{grid-template-columns:repeat(a
 .return-item strong{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;line-height:1.4}
 .return-item small{line-height:1.5}
 .poster-grid,.returning-grid{user-select:none}
-.portal-canvas{position:absolute;inset:0;display:block;pointer-events:none;width:100%;height:100%;z-index:1}
-.portal-setting{display:block;color:var(--muted);font-size:11px;margin-bottom:10px}
-#portal-mode{width:100%;border:1px solid var(--line);border-radius:5px;padding:9px;background:var(--surface);font:12px 'DM Sans',sans-serif}
+.finish-canvas{position:absolute;inset:0;display:block;pointer-events:none;width:100%;height:100%;z-index:1}
+.finish-setting{display:block;color:var(--muted);font-size:11px;margin-bottom:10px}
+#cover-finish{width:100%;border:1px solid var(--line);border-radius:5px;padding:9px;background:var(--surface);font:12px 'DM Sans',sans-serif}
 @media(max-width:1150px){.returning-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:540px){.returning-grid{grid-template-columns:1fr}}
+
+.finish-intensity-label{display:flex;justify-content:space-between;font-size:11px;margin:18px 0 7px}
+#finish-amount{font:10px var(--mono);color:var(--muted)}
+#finish-intensity{display:block;width:100%;min-height:24px;margin:0;accent-color:var(--accent)}
+.finish-follow{display:flex;align-items:center;gap:9px;font-size:11px;margin-top:12px}
+.finish-follow input{accent-color:var(--accent);min-height:14px;margin:0}
+.finish-options:has(#cover-finish option[value=off]:checked) :is(.finish-intensity-label,#finish-intensity,.finish-follow){opacity:.45}
+body[data-finish-motion=still] .card-caption{transition:none!important}
