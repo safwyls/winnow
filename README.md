@@ -51,7 +51,10 @@ cd winnow
 dotnet run --project src/Winnow.App
 ```
 
-Avalonia attaches to the independent local backend, starting it when needed. Closing the
+The frontend code names are **Avalon** for the original Avalonia interface and **Afterglow**
+for the Electron/TypeScript interface. Both belong to Winnow.
+
+Avalon attaches to the independent local backend, starting it when needed. Closing the
 frontend leaves session tracking and library refresh running. Other frontends can attach
 to the same library and receive its live changes. See the [frontend API guide](docs/frontend-api.md)
 for independent startup, authentication, events and a JavaScript client example.
