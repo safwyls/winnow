@@ -3,7 +3,7 @@
 // Static review fixtures. These controls never call Winnow or launch a game.
 const games = [
   {id:'borderlands2', title:'Borderlands 2', store:'Steam', time:'3.8h', installed:true, reason:'Another chance for Pandora.', description:'A familiar world, waiting for another visit.'},
-  {id:'borderlands3', title:'Borderlands 3', store:'Epic', time:'Unplayed', reason:'Still waiting for a first session.'},
+  {id:'borderlands3', title:'Borderlands 3', store:'Epic', time:'4.2h', reason:'Your next vault is out there.'},
   {id:'bounty', title:'Borderlands 3: Bounty of Blood – A Fistful of Redemption', store:'Epic', time:'Unplayed', reason:'A new story in your collection.'},
   {id:'tentacles', title:'Borderlands 3: Guns, Love and Tentacles – The Marriage of Wainwright & Hammerlock', store:'Epic', time:'Unplayed', reason:'A new story in your collection.'},
   {id:'jackpot', title:'Borderlands 3: Moxxi’s Heist of the Handsome Jackpot', store:'Epic', time:'Unplayed', reason:'A new story in your collection.'},
@@ -13,7 +13,7 @@ const games = [
   {id:'hades', title:'Hades', store:'Steam', time:'12.6h', installed:true, reason:'There is always one more run.', description:'One more attempt. One more conversation. One more way out.'},
   {id:'hollow', title:'Hollow Knight', store:'Steam', time:'6.1h', installed:true, reason:'Hallownest still has its secrets.'},
   {id:'outer', title:'Outer Wilds', store:'Steam', time:'Unplayed', reason:'A solar system full of questions.', description:'A solar system full of questions. You already own the first step.'},
-  {id:'sable', title:'Sable', store:'GOG', time:'Unplayed', reason:'Take your time finding your way.'},
+  {id:'sable', title:'Sable', store:'GOG', time:'1.2h', reason:'Take your time finding your way.'},
 ];
 const byId = new Map(games.map(game => [game.id, game]));
 const state = { page:'discover', filter:'all', query:'', view:'grid', hero:0 };
@@ -29,7 +29,7 @@ function cover(game, sample = document.body.dataset.state) {
   if (sample === 'missing' && affected) return `<span class="cover" role="img" aria-label="Artwork unavailable"><span class="cover-empty">${icon('image-off')}<small>No artwork yet</small></span></span>`;
   if (sample === 'loading' && affected) return `<span class="cover" role="img" aria-label="Artwork loading"><span class="cover-loading"><span class="loading-mark"></span></span></span>`;
   const file = sample === 'mixed' && game.id === 'hades' ? 'hades-landscape' : game.id;
-  return `<span class="cover"><img src="assets/${file}.jpg" alt="" loading="lazy" decoding="async"></span>`;
+  return `<span class="cover"><img src="assets/${file}.jpg" alt="" loading="lazy" decoding="async" draggable="false"></span>`;
 }
 
 function metadata(game) {
@@ -51,7 +51,7 @@ function renderLibrary() {
 }
 
 function renderArt() {
-  $('#returning').innerHTML = ['hades','borderlands2','hollow'].map(id => {
+  $('#returning').innerHTML = ['hades','borderlands2','hollow','celeste','disco','enshrouded','borderlands3','sable'].map(id => {
     const game = byId.get(id);
     return `<button class="return-item" data-game="${id}" aria-label="View ${game.title}">${cover(game)}<span><strong>${game.title}</strong><small>${game.reason}</small></span>${icon('arrow-up-right')}</button>`;
   }).join('');
@@ -87,7 +87,7 @@ function selectHero(index) {
 
 function openGame(id) {
   const game = byId.get(id);
-  $('#game-preview').innerHTML = `<div class="preview-layout">${cover(game)}<div><span class="eyebrow">In your collection</span><h2 id="preview-title">${escapeHtml(game.title)}</h2><p>${game.description || game.reason}</p>${metadata(game)}<p class="preview-note">Design preview · sample activity.<br>The complete title and artwork remain available here.</p></div></div>`;
+  $('#game-preview').innerHTML = `<div class="preview-layout">${cover(game)}<div><span class="eyebrow">In your collection</span><h2 id="preview-title">${escapeHtml(game.title)}</h2><p>${game.description || game.reason}</p>${metadata(game)}<p class="preview-note">Design preview · sample activity.<br>Select a cover to inspect its complete title.</p></div></div>`;
   hydrateIcons();
   $('#game-dialog').showModal();
 }
