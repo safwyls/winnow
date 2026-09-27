@@ -272,7 +272,7 @@ export function AfterglowDiscover(context: ThemeContext) {
             </p>
             <div className="hero-actions">
               <button className="primary" onClick={() => context.openGame(hero.workId)}>
-                Open game <ArrowUpRight size={18} />
+                View game <ArrowUpRight size={18} />
               </button>
               {picked && firstShelf?.supportsFeedback && (
                 <>

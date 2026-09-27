@@ -139,6 +139,8 @@ scrollable row in a grid, or `flex: 1; min-height: 0` in a column flex layout. T
 viewport also scrolls as a fallback for packages that have not adopted this layout.
 
 The built-in Library fills its content pane and scrolls its results and index separately.
+Library tools fill the same available width across all tabs on desktop and fullscreen.
+Actions that navigate to game details use `View game`; launching remains a separate action.
 Shared artwork fills the size assigned by its parent; set a height or aspect ratio on the
 `Artwork` frame. Loading, missing artwork, and the decoded image all occupy that same frame.
 The details hero uses a responsive height from 220 to 420 pixels, independent of image ratio.

@@ -39,7 +39,7 @@ export function GameCard({
   onOpen?: () => void
 }) {
   return (
-    <button className="game-card" onClick={onOpen} aria-label={`Open ${game.title}`}>
+    <button className="game-card" onClick={onOpen} aria-label={`View ${game.title}`}>
       <Artwork workId={game.workId} />
       <div className="card-content">
         <div className="card-topline">

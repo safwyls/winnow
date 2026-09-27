@@ -255,7 +255,7 @@ export function CreateList() {
         {draft.sending && <p role="status">Creating your list…</p>}
         <Notice
           error={command.error}
-          message={command.isSuccess ? 'List created. Open a game to add it to a list.' : undefined}
+          message={command.isSuccess ? 'List created. View a game to add it to a list.' : undefined}
         />
       </form>
     </section>

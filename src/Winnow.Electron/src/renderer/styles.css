@@ -1349,12 +1349,15 @@
   }
   .library-tools {
     flex: 1;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
     min-height: 0;
     overflow: auto;
     padding: 28px;
     border: 1px solid var(--line);
     border-radius: var(--radius);
-    margin-bottom: 28px;
+    margin: 0;
   }
   .library-tools h1 {
     font-size: 34px;
