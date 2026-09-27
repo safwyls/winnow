@@ -1,7 +1,7 @@
 # Winnow Afterglow
 
 An independent Electron/TypeScript frontend for Winnow's local backend. Afterglow uses
-panoramic artwork and editorial typography; Catalogue presents the same library as a
+portrait covers, a panoramic featured game and editorial typography; Catalogue presents the same library as a
 reading desk and index. Both use the public theme interface available to installed themes.
 
 Navigation and the footer stay visible as you browse. Library results and the list index
@@ -10,6 +10,22 @@ recommendations rotate every nine seconds while the hero is visible and idle. Pr
 Next, and Pause controls are available on desktop and fullscreen. Selecting a recommendation
 pauses rotation until Resume; hovering, keyboard focus, and leaving the window pause it
 temporarily. Reduced motion disables automatic rotation.
+
+New profiles use filled 2:3 covers, with game information and descriptions in side previews
+on hover or keyboard focus. The preview flips at the window edge and docks in narrow windows;
+Escape dismisses it and Page Up/Down scroll long descriptions. Pick up the thread shows up
+to eight recently played games. Saved landscape and compact-record preferences still work.
+
+Theme Studio's **Artwork materials** controls surface finish, intensity, foil on light areas,
+metal color, pointer movement, lift and tilt. Themes can reuse `ArtworkEffects`, `GamePreview`
+or the composed `GameCard` independently. One lazy Pixi renderer draws the active cover using
+its already-decoded image; static artwork remains available when WebGL is unavailable.
+System and profile reduced-motion settings keep focus effects stationary.
+
+Artwork selection still refreshes with library events. Unchanged images reuse encoded bytes
+for up to two minutes, with explicit artwork changes and reconnects forcing revalidation.
+The first image load still uses the backend's cached PNG/base64 transport; this frontend
+change does not introduce smaller backend image variants.
 
 ## Run from source
 
@@ -49,7 +65,8 @@ frontend leaves the backend running, as described in the [API guide](../../docs/
 - Settings for Steam API credentials, IGDB credentials, Epic and provider connections,
   library preferences, background operations and recommendation feedback history.
 - Theme Studio with three palettes, semantic color overrides, fonts, spacing, scale,
-  motion, navigation placement, card styles, section ordering and JSON profile sharing.
+  artwork finishes and depth, motion, navigation placement, card styles, section ordering
+  and JSON profile sharing.
 - Developer themes that replace the shell and individual screens, with versioned contracts,
   declared settings, contained package assets and recovery to the bundled appearance.
 

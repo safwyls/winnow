@@ -6,6 +6,24 @@ const pages = [
   ['journal', 'Field notes'],
 ]
 
+function BookCover({ context, game, reason }) {
+  const interactionRef = React.useRef(null)
+  const { Artwork, ArtworkEffects, GamePreview } = context.components
+  const artwork = h(Artwork, { workId: game.workId, className: 'rr-book-art' })
+  const cover = h(
+    'button',
+    {
+      ref: interactionRef,
+      className: 'rr-book-cover',
+      onClick: () => context.openGame(game.workId),
+      'aria-label': `View ${game.title}`,
+    },
+    ArtworkEffects ? h(ArtworkEffects, { interactionRef, effects: { foilMetal: 'gold' } }, artwork) : artwork,
+  )
+  // These API 1 additions are optional on earlier hosts.
+  return GamePreview ? h(GamePreview, { game, reason }, cover) : cover
+}
+
 function Shell(context) {
   return h(
     'div',
@@ -92,6 +110,7 @@ function Discover(context) {
                 h(
                   'article',
                   { className: 'rr-suggestion' },
+                  h(BookCover, { context, game, reason: item.reason }),
                   h('span', { className: 'rr-label' }, game.firstReleaseYear || 'From your library'),
                   h('h2', null, h('button', { onClick: () => context.openGame(game.workId) }, game.title)),
                   h('p', null, item.reason),

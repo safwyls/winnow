@@ -65,6 +65,7 @@
     "@tanstack/react-virtual": "3.14.13",
     "lucide-react": "1.48.0",
     "motion": "13.4.4",
+    "pixi.js": "8.21.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "zod": "4.6.5"

@@ -10,6 +10,7 @@ import {
   type ThemeDefinition,
 } from '../src/shared/theme'
 import { loadExternalTheme, validateThemeAssetUrl } from '../src/renderer/theming/runtime'
+import { DEFAULT_ARTWORK_EFFECTS, normalizeArtworkEffects } from '../src/shared/artworkEffects'
 
 describe('portable appearance profiles', () => {
   it('round trips layout and appearance without retaining caller references', () => {
@@ -71,6 +72,66 @@ describe('portable appearance profiles', () => {
     expect(parseThemeProfile(JSON.parse(JSON.stringify(custom)))).toEqual(custom)
   })
 
+  it('keeps older profiles and explicit card layouts while new profiles default to posters', () => {
+    const legacy = structuredClone(DEFAULT_PROFILE)
+    delete legacy.appearance.artwork
+    legacy.layout.cardStyle = 'landscape'
+    const parsed = parseThemeProfile(legacy)
+    expect(parsed.appearance.artwork).toBeUndefined()
+    expect(parsed.layout.cardStyle).toBe('landscape')
+    expect(normalizeArtworkEffects(parsed.appearance.artwork)).toEqual(DEFAULT_ARTWORK_EFFECTS)
+    expect(DEFAULT_PROFILE.layout.cardStyle).toBe('poster')
+  })
+
+  it('round trips independently adjustable artwork settings without shared references', () => {
+    const source = structuredClone(DEFAULT_PROFILE)
+    source.appearance.artwork = {
+      ...DEFAULT_ARTWORK_EFFECTS,
+      finish: 'off',
+      intensity: 0,
+      followPointer: false,
+      floating: false,
+      tilt: 12,
+      foilMetal: 'gold',
+      foilStrength: 100,
+      foilThreshold: 95,
+    }
+    const parsed = parseThemeProfile(JSON.parse(JSON.stringify(source)))
+    expect(parsed).toEqual(source)
+    parsed.appearance.artwork!.foilStrength = 20
+    expect(source.appearance.artwork.foilStrength).toBe(100)
+  })
+
+  it.each([
+    null,
+    [],
+    {},
+    { ...DEFAULT_ARTWORK_EFFECTS, extra: true },
+    { ...DEFAULT_ARTWORK_EFFECTS, finish: 'glitter' },
+    { ...DEFAULT_ARTWORK_EFFECTS, foilMetal: 'copper' },
+    { ...DEFAULT_ARTWORK_EFFECTS, followPointer: 'false' },
+    { ...DEFAULT_ARTWORK_EFFECTS, floating: 1 },
+    { ...DEFAULT_ARTWORK_EFFECTS, highlightFoil: null },
+    { ...DEFAULT_ARTWORK_EFFECTS, intensity: -1 },
+    { ...DEFAULT_ARTWORK_EFFECTS, intensity: 101 },
+    { ...DEFAULT_ARTWORK_EFFECTS, intensity: '55' },
+    { ...DEFAULT_ARTWORK_EFFECTS, intensity: Number.NaN },
+    { ...DEFAULT_ARTWORK_EFFECTS, tilt: -1 },
+    { ...DEFAULT_ARTWORK_EFFECTS, tilt: 13 },
+    { ...DEFAULT_ARTWORK_EFFECTS, foilStrength: -1 },
+    { ...DEFAULT_ARTWORK_EFFECTS, foilStrength: 101 },
+    { ...DEFAULT_ARTWORK_EFFECTS, foilStrength: Number.POSITIVE_INFINITY },
+    { ...DEFAULT_ARTWORK_EFFECTS, foilThreshold: 39 },
+    { ...DEFAULT_ARTWORK_EFFECTS, foilThreshold: 96 },
+  ])('rejects malformed artwork settings on import: %j', (artwork) => {
+    expect(() =>
+      parseThemeProfile({
+        ...DEFAULT_PROFILE,
+        appearance: { ...DEFAULT_PROFILE.appearance, artwork },
+      }),
+    ).toThrow()
+  })
+
   it('uses only declared theme settings and validates values against their schemas', () => {
     const definition: ThemeDefinition = {
       apiVersion: 1,
@@ -104,6 +165,43 @@ describe('portable appearance profiles', () => {
       expect(contrastRatio(palette.muted, palette.surface)).toBeGreaterThan(4.5)
       expect(contrastRatio(palette.accent, palette.surface)).toBeGreaterThan(4.5)
     }
+  })
+})
+
+describe('artwork effect overrides', () => {
+  it('layers theme overrides over preferences and bounds GPU settings', () => {
+    const base = { ...DEFAULT_ARTWORK_EFFECTS, foilMetal: 'gold' as const, intensity: 30 }
+    expect(
+      normalizeArtworkEffects(base, {
+        intensity: 200,
+        tilt: -2,
+        foilStrength: Number.NaN,
+        foilThreshold: 20,
+        followPointer: false,
+      }),
+    ).toMatchObject({
+      intensity: 100,
+      tilt: 0,
+      foilMetal: 'gold',
+      foilStrength: 65,
+      foilThreshold: 40,
+      followPointer: false,
+    })
+    expect(base.intensity).toBe(30)
+    expect(
+      normalizeArtworkEffects(undefined, { tilt: 30, foilStrength: -1, foilThreshold: 100 }),
+    ).toMatchObject({ tilt: 12, foilStrength: 0, foilThreshold: 95 })
+  })
+
+  it('disables all decorative layers with false while retaining preferences', () => {
+    const effects = normalizeArtworkEffects({ foilMetal: 'holographic' }, false)
+    expect(effects).toMatchObject({
+      finish: 'off',
+      highlightFoil: false,
+      floating: false,
+      foilMetal: 'holographic',
+    })
+    expect(normalizeArtworkEffects()).toEqual(DEFAULT_ARTWORK_EFFECTS)
   })
 })
 

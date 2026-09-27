@@ -1,5 +1,8 @@
-import type { ComponentType, ReactNode } from 'react'
+import type { ComponentType, ReactNode, RefObject } from 'react'
 import type { LibraryGame, FeedSnapshot } from '../renderer/api/types'
+import { DEFAULT_ARTWORK_EFFECTS, type ArtworkEffectOptions } from './artworkEffects'
+
+export type { ArtworkEffectOptions } from './artworkEffects'
 
 /** Increment for breaking changes to the data, commands, or component props a theme receives. */
 export const THEME_API_VERSION = 1 as const
@@ -20,6 +23,7 @@ export interface ThemeProfile {
     reducedMotion: boolean
     colors?: Partial<Record<ThemeColorKey, string>>
     scale?: number
+    artwork?: ArtworkEffectOptions
   }
   layout: {
     navigation: 'top' | 'left'
@@ -34,6 +38,23 @@ export interface ThemeGameCardProps {
   game: LibraryGame
   reason?: string
   onOpen?: () => void
+  presentation?: 'poster' | 'landscape' | 'record'
+  effects?: Partial<ArtworkEffectOptions> | false
+  preview?: 'flyout' | 'inline' | 'none'
+}
+export interface ThemeArtworkEffectsProps {
+  children: ReactNode
+  className?: string
+  effects?: Partial<ArtworkEffectOptions> | false
+  /** The untransformed interactive element; defaults to the wrapper itself. */
+  interactionRef?: RefObject<HTMLElement | null>
+}
+export interface ThemeGamePreviewProps {
+  game: LibraryGame
+  reason?: string
+  children: ReactNode
+  disabled?: boolean
+  className?: string
 }
 export interface ThemeContext {
   mode: ThemeMode
@@ -54,6 +75,8 @@ export interface ThemeContext {
     GameCard: ComponentType<ThemeGameCardProps>
     Impression: ComponentType<{ releaseId: number; shelfId: string; children: ReactNode }>
     Artwork: ComponentType<{ workId: number; hero?: boolean; className?: string; eager?: boolean }>
+    ArtworkEffects: ComponentType<ThemeArtworkEffectsProps>
+    GamePreview: ComponentType<ThemeGamePreviewProps>
   }
 }
 interface ThemeSettingBase {
@@ -89,12 +112,13 @@ export const DEFAULT_PROFILE: ThemeProfile = {
     radius: 18,
     scrim: 55,
     reducedMotion: false,
+    artwork: { ...DEFAULT_ARTWORK_EFFECTS },
   },
   layout: {
     navigation: 'top',
     discoverSections: ['hero', 'returning', 'shelves'],
     hiddenSections: [],
-    cardStyle: 'landscape',
+    cardStyle: 'poster',
     detailArrangement: 'aside',
   },
   settings: {},
@@ -175,7 +199,7 @@ export function parseThemeProfile(value: unknown): ThemeProfile {
     appearance,
     ['palette', 'accent', 'font', 'density', 'radius', 'scrim', 'reducedMotion'],
     'Appearance',
-    ['colors', 'scale'],
+    ['colors', 'scale', 'artwork'],
   )
   enumeration(appearance.palette, Object.keys(PALETTES), 'Palette')
   if (typeof appearance.accent !== 'string' || !/^#[\da-f]{6}$/i.test(appearance.accent))
@@ -186,6 +210,19 @@ export function parseThemeProfile(value: unknown): ThemeProfile {
   range(appearance.scrim, 20, 90, 'Artwork shade')
   if (typeof appearance.reducedMotion !== 'boolean') throw new Error('Reduced motion must be on or off.')
   if ('scale' in appearance) range(appearance.scale, 85, 130, 'Interface scale')
+  if ('artwork' in appearance) {
+    if (!isRecord(appearance.artwork)) throw new Error('Artwork effects must be a settings map.')
+    const artwork = appearance.artwork
+    keys(artwork, Object.keys(DEFAULT_ARTWORK_EFFECTS), 'Artwork effects')
+    enumeration(artwork.finish, ['off', 'matte', 'satin', 'foil'], 'Cover finish')
+    enumeration(artwork.foilMetal, ['silver', 'gold', 'holographic'], 'Highlight material')
+    range(artwork.intensity, 0, 100, 'Finish intensity')
+    range(artwork.tilt, 0, 12, 'Maximum tilt')
+    range(artwork.foilStrength, 0, 100, 'Foil strength')
+    range(artwork.foilThreshold, 40, 95, 'Brightness cutoff')
+    for (const key of ['followPointer', 'floating', 'highlightFoil'])
+      if (typeof artwork[key] !== 'boolean') throw new Error('Artwork toggles must be on or off.')
+  }
   if ('colors' in appearance) {
     if (!isRecord(appearance.colors)) throw new Error('Custom palette colors must be a color map.')
     const colorKeys = ['background', 'surface', 'raised', 'text', 'muted', 'line', 'cool']

@@ -7,8 +7,8 @@ import '@fontsource/dm-sans/600.css'
 import '@fontsource/newsreader/400.css'
 import '@fontsource/newsreader/400-italic.css'
 import '@fontsource/jetbrains-mono/400.css'
-import { App } from '../App'
 import '../styles.css'
+import { App } from '../App'
 
 const client = new QueryClient({
   defaultOptions: {

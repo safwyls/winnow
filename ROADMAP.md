@@ -34,7 +34,7 @@ hardware validation. The remaining validation is listed in §6.
 
 | Area | Implemented behavior |
 |---|---|
-| Frontend independence | One local backend owns the library and workers. Avalonia and the independent Electron/TypeScript frontend use the authenticated versioned HTTP API and receive live committed changes. Electron supplies Afterglow and Catalogue compositions, Theme Studio, importable profiles and replaceable React screens. Its [feature and validation scope](src/Winnow.Electron/README.md) is narrower than Avalonia's. |
+| Frontend independence | One local backend owns the library and workers. Avalonia and the independent Electron/TypeScript frontend use the authenticated versioned HTTP API and receive live committed changes. Electron supplies Afterglow and Catalogue compositions, Theme Studio, importable profiles, replaceable React screens and reusable artwork materials, card depth and game previews. Its [feature and validation scope](src/Winnow.Electron/README.md) is narrower than Avalonia's. |
 | Library | Local Steam, Epic and GOG discovery, optional Steam/Epic connections, manual entries, search, filters and user lists. Optional Xbox imports installed PC games and opt-in PC/console played history. Optional PlayStation imports the PS4/PS5 account library and opt-in played/legacy trophy history. Steam collections are not imported. |
 | Identity | Exact external IDs resolve automatically. Fuzzy matches require confirmation. Same-game, expansion and variant relations apply immediately through reversible links on desktop and fullscreen. |
 | History | Playtime snapshots, process-based session recording and restart recovery, optional journal notes, Steam history backfill and account-page imports. Unknown history remains unknown. |

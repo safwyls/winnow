@@ -1,10 +1,22 @@
 import type { QueryClient } from '@tanstack/react-query'
+import type { BackendEvent } from '../shared/bridge'
+
+/** Selection revisions do not fingerprint image bytes. Explicit changes and resyncs bypass reuse. */
+export function shouldRefreshArtwork(event: Pick<BackendEvent, 'kind' | 'resource'>): boolean {
+  return event.kind === 'resync-required' || /^works\/\d+\/artwork(?:\/|$)/.test(event.resource ?? '')
+}
 
 /** Wait for reads that predate this invalidation, then start fresh reads. */
-export async function refreshSnapshots(client: QueryClient): Promise<void> {
+export async function refreshSnapshots(
+  client: QueryClient,
+  options: { artwork?: boolean } = {},
+): Promise<void> {
   const inFlight = client.getQueryCache().findAll({ type: 'active', fetchStatus: 'fetching' })
   await Promise.allSettled(inFlight.map((query) => query.promise))
-  await client.invalidateQueries({}, { cancelRefetch: false })
+  await client.invalidateQueries(
+    { predicate: (query) => query.queryKey[0] !== 'artwork-image' || Boolean(options.artwork) },
+    { cancelRefetch: false },
+  )
 }
 
 /** A change arriving during a snapshot read earns another refresh after that read settles. */

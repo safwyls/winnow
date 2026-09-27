@@ -113,7 +113,7 @@ export function AppFooter({ context }: { context: ThemeContext }) {
       <span>
         {context.games.length.toLocaleString()} games <span className="footer-dot">·</span>{' '}
         {context.mode === 'fullscreen'
-          ? 'Arrows to move · Enter to open · Esc to go back'
+          ? 'Arrows to move · Enter to view · Esc to go back'
           : 'Ctrl+K to find something'}
       </span>
     </footer>
@@ -146,7 +146,7 @@ export function AfterglowDiscover(context: ThemeContext) {
   const returning = [...context.games]
     .filter((game) => game.lastPlayedAt)
     .sort((a, b) => (b.lastPlayedAt ?? '').localeCompare(a.lastPlayedAt ?? ''))
-    .slice(0, 3)
+    .slice(0, 8)
   useEffect(() => {
     if (context.mode !== 'fullscreen') return
     const key = (event: KeyboardEvent) => {
@@ -391,7 +391,13 @@ export function AfterglowDiscover(context: ThemeContext) {
                 const game = gameFor(context, item.releaseId)
                 return game ? (
                   <Impression key={item.releaseId} releaseId={item.releaseId} shelfId={shelf.id}>
-                    <GameCard game={game} reason={item.reason} onOpen={() => context.openGame(game.workId)} />
+                    <GameCard
+                      game={game}
+                      reason={item.reason}
+                      presentation={context.profile.layout.cardStyle}
+                      preview={context.profile.layout.cardStyle === 'record' ? 'inline' : 'flyout'}
+                      onOpen={() => context.openGame(game.workId)}
+                    />
                   </Impression>
                 ) : null
               })}
@@ -483,13 +489,15 @@ export function AfterglowLibrary(context: ThemeContext) {
     [context.games, query, bucket, store, listId, sort, library.data],
   )
   const listMode = view === 'list' || context.profile.layout.cardStyle === 'record'
-  const [columns, setColumns] = useState(4)
+  const [gridWidth, setGridWidth] = useState(1000)
+  const columns = Math.max(
+    gridWidth >= 280 ? 2 : 1,
+    Math.floor(gridWidth / (context.mode === 'fullscreen' ? 210 : 190)),
+  )
   useEffect(() => {
     const element = scrollRef.current
     if (!element) return
-    const observer = new ResizeObserver(([entry]) =>
-      setColumns(Math.max(1, Math.floor(entry.contentRect.width / 250))),
-    )
+    const observer = new ResizeObserver(([entry]) => setGridWidth(entry.contentRect.width))
     observer.observe(element)
     return () => observer.disconnect()
   }, [])
@@ -507,11 +515,14 @@ export function AfterglowLibrary(context: ThemeContext) {
           ? 110
           : 78
         : context.profile.layout.cardStyle === 'poster'
-          ? 510
-          : 340,
+          ? ((gridWidth - (columns - 1) * 22) / columns) * 1.5 + 28
+          : 188,
     overscan: 3,
   })
   const previousFilters = useRef([query, bucket, store, listId, sort].join('\0'))
+  useEffect(() => {
+    virtual.measure()
+  }, [columns, context.profile.layout.cardStyle, listMode])
   useEffect(() => {
     const filters = [query, bucket, store, listId, sort].join('\0')
     if (previousFilters.current !== filters) {
@@ -668,6 +679,8 @@ export function AfterglowLibrary(context: ThemeContext) {
                         <GameCard
                           key={game.workId}
                           game={game}
+                          presentation={context.profile.layout.cardStyle}
+                          preview="flyout"
                           onOpen={() => context.openGame(game.workId)}
                         />
                       ),

@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { ArrowUpRight, Clock3, HardDrive } from 'lucide-react'
-import type { LibraryGame } from '../api/types'
 import { Artwork } from './Artwork'
+import type { ThemeGameCardProps } from '../../shared/theme'
+import { ArtworkEffects } from './artwork-effects'
+import { GamePreview } from './GamePreview'
 
 export function hours(minutes: number) {
   return minutes < 60
@@ -33,35 +35,48 @@ export function GameCard({
   game,
   reason,
   onOpen,
-}: {
-  game: LibraryGame
-  reason?: string
-  onOpen?: () => void
-}) {
+  presentation = 'landscape',
+  effects,
+  preview = 'inline',
+}: ThemeGameCardProps) {
+  const interaction = useRef<HTMLButtonElement>(null)
   return (
-    <button className="game-card" onClick={onOpen} aria-label={`View ${game.title}`}>
-      <Artwork workId={game.workId} />
-      <div className="card-content">
-        <div className="card-topline">
-          <span>{game.entries[0]?.store ?? 'Library'}</span>
-          <ArrowUpRight size={15} />
-        </div>
-        <h3 title={game.title}>{game.title}</h3>
-        <p>{reason ?? bucketLabel(game.bucket)}</p>
-        <div className="game-facts">
-          <span>
-            <Clock3 size={12} />
-            {hours(game.playtimeMinutes)}
-          </span>
-          {game.entries.some((entry) => entry.installed) && (
-            <span>
-              <HardDrive size={12} />
-              Installed
-            </span>
-          )}
-        </div>
-      </div>
-    </button>
+    <GamePreview game={game} reason={reason} disabled={preview !== 'flyout'}>
+      <button
+        ref={interaction}
+        className="game-card"
+        data-presentation={presentation}
+        data-preview={preview}
+        onClick={onOpen}
+        aria-label={`View ${game.title}`}
+      >
+        <ArtworkEffects interactionRef={interaction} effects={presentation === 'record' ? false : effects}>
+          <Artwork workId={game.workId} />
+        </ArtworkEffects>
+        {preview === 'inline' && (
+          <div className="card-content">
+            <div className="card-topline">
+              <span>{game.entries[0]?.store ?? 'Library'}</span>
+              <ArrowUpRight size={15} />
+            </div>
+            <h3 title={game.title}>{game.title}</h3>
+            <p>{reason ?? bucketLabel(game.bucket)}</p>
+            <div className="game-facts">
+              <span>
+                <Clock3 size={12} />
+                {hours(game.playtimeMinutes)}
+              </span>
+              {game.entries.some((entry) => entry.installed) && (
+                <span>
+                  <HardDrive size={12} />
+                  Installed
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+      </button>
+    </GamePreview>
   )
 }
 

@@ -281,6 +281,10 @@
   accent-color: var(--accent);
   margin: 5px 0;
 }
+.studio-field :is(input, select):disabled {
+  opacity: 0.45;
+  cursor: default;
+}
 .studio-value {
   position: absolute;
   right: 0;
@@ -487,7 +491,7 @@
 }
 .fullscreen
   .theme-studio
-  :is(.studio-field, .studio-toggle, .studio-panel > p, .studio-section-order label, .studio-notice) {
+  :is(.studio-field, .studio-toggle, .studio-panel > p, .studio-fieldset legend, .studio-section-order label, .studio-notice) {
   font-size: 16px;
 }
 .fullscreen

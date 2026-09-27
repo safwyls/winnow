@@ -20,6 +20,9 @@ Open **Theme Studio** from the palette button. Choose a composition, then adjust
 - Editorial, sans serif, or monospace typography using bundled fonts.
 - Interface size from 85% to 130%, spacing, corner radius, artwork shading, and reduced motion.
 - Navigation position, library card style, and game-detail arrangement.
+- Artwork materials: Matte, Satin, Foil, or no surface finish; finish intensity; selective
+  foil on bright areas in silver, gold, or holographic colors; brightness cutoff and foil
+  strength; pointer tracking, floating depth, and maximum tilt from 0° to 12°.
 - Discover section order and visibility. At least one section remains visible.
 - Additional controls declared by the selected developer theme.
 
@@ -29,6 +32,11 @@ when a pair has less than 4.5:1 contrast. Buttons filled with the accent use whi
 or white has greater contrast. Individual color resets return to the selected preset;
 choosing a preset clears custom palette overrides.
 System reduced-motion preferences still apply when the explicit preference is off.
+Artwork settings apply to themes that use the shared effect components. Keyboard focus,
+reduced motion, and disabling **Follow the pointer** use a steady light and level card.
+Setting maximum tilt to zero keeps the lift; switching off **Floating artwork** removes
+the lift and shadow without turning off the material finish. Surface finish and highlight
+foil can be disabled independently.
 
 **Export profile** writes a JSON file containing appearance, layout, selected theme ID, and
 theme-specific settings. **Import profile** validates its version, known fields, choices,
@@ -127,8 +135,9 @@ export default defineTheme({
 The complete working example is
 [`src/Winnow.Electron/examples/themes/reading-room`](../src/Winnow.Electron/examples/themes/reading-room).
 It replaces the shell, Discover, and Library using a different visual structure. It keeps
-host Details, Journal, and Settings, and declares two editable settings. It uses no build
-tools: install that folder directly to try it.
+host Details, Journal, and Settings, and declares two editable settings. Its recommendation
+covers reuse the host's material effects and game previews inside its own buttons, with
+gold highlight foil. It uses no build tools: install that folder directly to try it.
 
 ### Viewport and scrolling
 
@@ -144,8 +153,9 @@ Actions that navigate to game details use `View game`; launching remains a separ
 Shared artwork fills the size assigned by its parent; set a height or aspect ratio on the
 `Artwork` frame. Loading, missing artwork, and the decoded image all occupy that same frame.
 The details hero uses a responsive height from 220 to 420 pixels, independent of image ratio.
-Grid titles reserve two lines and keep their full title available to assistive technology
-and in the hover tooltip.
+Afterglow defaults to filled 2:3 portrait cards. Hover or keyboard focus opens a side preview
+with the full title, metadata, recommendation reason, and available game description.
+Artwork stays unobstructed. Existing saved landscape and record preferences remain intact.
 Short windows use tighter navigation and library spacing. At less than 480 logical pixels
 of available height, the grid uses compact thumbnails beside titles and keeps filters on
 one row. These breakpoints follow the scaled content viewport, including at 130% size.
@@ -175,9 +185,11 @@ Each optional screen is a React component receiving the same `ThemeContext`:
 | `children` | The active screen, supplied to the shell. |
 | `renderScreen(page?)` | Render a host screen, bypassing theme overrides to avoid recursion. |
 | `actions.launch(ownershipId)` | Invoke the host's supported play/install command for a copy. |
-| `components.GameCard` | Host card with authenticated artwork; takes `game`, optional `reason`, and `onOpen`. |
+| `components.GameCard` | Host card with authenticated artwork; takes `game`, optional `reason`, `onOpen`, `presentation`, `effects`, and `preview`. |
 | `components.Impression` | Visibility-aware recommendation exposure wrapper; takes `releaseId`, `shelfId`, and children. |
 | `components.Artwork` | Authenticated artwork without a card layout; takes `workId`, optional `hero`, `className`, and `eager`. |
+| `components.ArtworkEffects` | Reusable material and depth surface around artwork; takes `children`, optional `className`, `effects`, and `interactionRef`. |
+| `components.GamePreview` | Game information flyout around a theme-owned trigger; takes `game`, `children`, optional `reason`, `disabled`, and `className`. |
 
 A definition can replace `Shell`, `Discover`, `Library`, `Details`, `Journal`, and `Settings`.
 Omitted screens use host implementations. Theme Studio and the recovery controls belong to
@@ -196,6 +208,93 @@ allowlisted API operations. Its route names and public request/result types live
 Prefer host feature screens and named commands where possible. Backend mutations still
 require the revisions, uncertainty handling, and event reconciliation described in
 [`frontend-api.md`](frontend-api.md). A theme does not gain permission to call arbitrary URLs.
+
+### Reuse artwork materials and previews
+
+The shared effects do not depend on Afterglow's screen layout. For a complete host card,
+set `presentation` to `poster`, `landscape`, or `record`, and `preview` to `flyout`, `inline`,
+or `none`. Omitting the new props keeps the existing inline host-card presentation for
+older theme packages. `effects` takes partial material overrides, or `false` to disable
+all decoration for that card.
+
+```js
+h(context.components.GameCard, {
+  game,
+  reason,
+  onOpen: () => context.openGame(game.workId),
+  presentation: 'poster',
+  preview: 'flyout',
+  effects: { foilMetal: 'gold', tilt: 4 }
+});
+```
+
+For a custom layout, compose the primitives. `ArtworkEffects` wraps one decoded image;
+use `Artwork` for authenticated, cached cover loading. Give the untransformed button a ref
+and pass it as `interactionRef` so pointer coordinates remain stable as the visual tilts.
+Without this ref, the effect wrapper itself supplies the fixed interaction area. Keep
+interactive controls outside the tilted surface; that surface ignores pointer events.
+
+```js
+function Cover({ context, game, reason }) {
+  const trigger = React.useRef(null);
+  const { Artwork, ArtworkEffects, GamePreview } = context.components;
+  return h(GamePreview, { game, reason },
+    h('button', {
+      ref: trigger,
+      className: 'my-cover',
+      'aria-label': `View ${game.title}`,
+      onClick: () => context.openGame(game.workId)
+    },
+      h(ArtworkEffects, { interactionRef: trigger, effects: { foilMetal: 'gold' } },
+        h(Artwork, { workId: game.workId }))));
+}
+```
+
+Size the button and effect frame in the theme's CSS. Both wrapper spans inherit the corner
+radius. The child image must use centered `object-fit: cover` so the material aligns with
+the visible crop. Leave space around covers for their lift and shadow.
+
+```css
+.my-theme .my-cover {
+  width: 180px;
+  aspect-ratio: 2 / 3;
+  border: 0;
+  padding: 0;
+  border-radius: 10px;
+}
+.my-theme .my-cover > .winnow-artwork-effects,
+.my-theme .my-cover .artwork { width: 100%; height: 100%; }
+```
+
+The stable CSS hooks are `.winnow-artwork-effects` (the frame), its direct child
+`.winnow-artwork-surface` (the moving plane), and presence attributes `data-artwork-active`
+and `data-artwork-floating`. `data-artwork-input` is `pointer` or `keyboard`, and
+`data-artwork-motion` is `follow` or `still`. Effect rules are in the `components` cascade
+layer. Scope overrides under the theme's own shell; do not transform the interaction frame.
+
+`GamePreview` keeps game information separate from the image and uses the supplied backend
+record, including `summary` when available. It does not launch the game. The theme supplies
+the trigger's accessible name, focus styling, and activation behavior. `disabled` suppresses
+the preview without removing its children. Wrapping a host card that already has a flyout
+would create two previews; use one or the other.
+
+The flyout is portaled to the document body to escape scroll and card clipping. Style it
+with `[data-theme='your-theme'] .winnow-game-preview`, not a shell descendant selector.
+Its `--preview-background`, `--preview-border` and `--preview-radius` variables fall back to
+the usual surface, line and radius tokens. Keep the wrapper around one named focusable
+trigger. Hover allows time to cross to the panel; keyboard focus opens immediately, Escape
+dismisses it before shell navigation, and Page Up/Down scroll long descriptions. Side
+placement flips at the viewport edge and docks above the footer when neither side fits.
+
+The host supplies saved material defaults to every wrapper. Partial `effects` override only
+the named values; omitted values follow the user's profile. The effect service shares one
+active canvas and reuses the decoded child image, so themes do not fetch secondary artwork
+or bundle Pixi. If graphics initialization fails, the original image and preview remain
+available. The service releases active work when its registered components unmount.
+
+These components are additive to theme API 1. Themes targeting earlier API 1 hosts should
+check for `components.ArtworkEffects` and `components.GamePreview` before using them, as the
+Reading room example does. Existing packages need no changes.
 
 ### Appearance and theme-specific settings
 
@@ -219,6 +318,28 @@ persistent global styles or retaining global listeners without effect cleanup.
 an optional percentage from 85 to 130; the host applies it to the whole interface and exposes
 `--interface-scale` as a ratio. Older version-one profiles without these fields keep their
 preset colors and 100% scale.
+
+`appearance.artwork` optionally stores a complete `ArtworkEffectOptions` object. Older
+version-one profiles without it use the defaults below; their saved card style is preserved.
+New profiles default to portrait cards. Imports reject missing, extra, or invalid artwork
+fields when the object is supplied. Theme component overrides are partial and are bounded
+by `normalizeArtworkEffects`; they do not change the saved profile.
+
+| Field | Choices or limits | Default |
+| --- | --- | --- |
+| `finish` | `off`, `matte`, `satin`, `foil` | `satin` |
+| `intensity` | 0–100 | 55 |
+| `highlightFoil` | Boolean | `true` |
+| `foilMetal` | `silver`, `gold`, `holographic` | `silver` |
+| `foilStrength` | 0–100 | 65 |
+| `foilThreshold` | 40–95; higher values select brighter areas | 72 |
+| `followPointer` | Boolean | `true` |
+| `floating` | Boolean | `true` |
+| `tilt` | 0–12 degrees | 7 |
+
+Highlight selection follows pixel brightness. It can affect bright illustrations as well as
+lettering; it does not identify text. The reusable types, defaults, and resolver live in
+[`artworkEffects.ts`](../src/Winnow.Electron/src/shared/artworkEffects.ts).
 
 Declare a `settings` array to add controls to Theme Studio. Supported fields are `toggle`,
 `select`, and `range`, each with an `id`, label, and default. Range fields require `min` and

@@ -1,4 +1,14 @@
-import { ArrowDown, ArrowUp, Check, Download, LayoutTemplate, Palette, RotateCcw, Upload } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  Download,
+  LayoutTemplate,
+  Palette,
+  RotateCcw,
+  Sparkles,
+  Upload,
+} from 'lucide-react'
 import { useEffect, useId, useState } from 'react'
 import {
   PALETTES,
@@ -10,6 +20,7 @@ import {
   type ThemeSettingValue,
 } from '../../shared/theme'
 import type { ThemeRuntime } from './runtime'
+import { normalizeArtworkEffects, type ArtworkEffectOptions } from '../../shared/artworkEffects'
 import './studio.css'
 
 const sectionLabels: Record<string, string> = {
@@ -80,6 +91,15 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
   const { appearance, layout } = profile
   const palette = PALETTES[appearance.palette]
   const colors = resolvedThemeColors(profile)
+  const artwork = normalizeArtworkEffects(appearance.artwork)
+  const artworkChange = (patch: Partial<ArtworkEffectOptions>) =>
+    setProfile((current) => ({
+      ...current,
+      appearance: {
+        ...current.appearance,
+        artwork: normalizeArtworkEffects(current.appearance.artwork, patch),
+      },
+    }))
   const appearanceChange = (patch: Partial<ThemeProfile['appearance']>) =>
     setProfile((current) => {
       const next = { ...current.appearance, ...patch }
@@ -337,6 +357,140 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
                 </ul>
               </div>
             )}
+          </section>
+          <section className="studio-panel" aria-labelledby="studio-artwork">
+            <div className="studio-section-title">
+              <Sparkles size={18} />
+              <h2 id="studio-artwork">Artwork materials</h2>
+            </div>
+            <p>Set how covers catch the light. Themes using Winnow's artwork effects share these choices.</p>
+            <fieldset className="studio-fieldset">
+              <legend>Surface finish</legend>
+              <div className="studio-field-grid">
+                <label className="studio-field">
+                  Cover finish
+                  <select
+                    value={artwork.finish}
+                    onChange={(event) =>
+                      artworkChange({ finish: event.target.value as ArtworkEffectOptions['finish'] })
+                    }
+                  >
+                    <option value="off">Off</option>
+                    <option value="matte">Matte</option>
+                    <option value="satin">Satin</option>
+                    <option value="foil">Foil</option>
+                  </select>
+                </label>
+                <label className="studio-field">
+                  Finish intensity <span className="studio-value">{artwork.intensity}%</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={artwork.intensity}
+                    disabled={artwork.finish === 'off'}
+                    onChange={(event) => artworkChange({ intensity: Number(event.target.value) })}
+                  />
+                </label>
+              </div>
+            </fieldset>
+            <fieldset className="studio-fieldset">
+              <legend>Highlight foil</legend>
+              <div className="studio-field-grid">
+                <label className="studio-toggle">
+                  <input
+                    type="checkbox"
+                    checked={artwork.highlightFoil}
+                    onChange={(event) => artworkChange({ highlightFoil: event.target.checked })}
+                  />
+                  <span>
+                    <strong>Foil on light areas</strong>
+                    <small>Catch white lettering and bright details in the artwork.</small>
+                  </span>
+                </label>
+                <label className="studio-field">
+                  Highlight material
+                  <select
+                    value={artwork.foilMetal}
+                    disabled={!artwork.highlightFoil}
+                    onChange={(event) =>
+                      artworkChange({ foilMetal: event.target.value as ArtworkEffectOptions['foilMetal'] })
+                    }
+                  >
+                    <option value="silver">Silver</option>
+                    <option value="gold">Gold</option>
+                    <option value="holographic">Holographic</option>
+                  </select>
+                </label>
+                <label className="studio-field">
+                  Foil strength <span className="studio-value">{artwork.foilStrength}%</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={artwork.foilStrength}
+                    disabled={!artwork.highlightFoil}
+                    onChange={(event) => artworkChange({ foilStrength: Number(event.target.value) })}
+                  />
+                </label>
+                <label className="studio-field">
+                  Brightness cutoff <span className="studio-value">{artwork.foilThreshold}%</span>
+                  <input
+                    type="range"
+                    min="40"
+                    max="95"
+                    step="1"
+                    value={artwork.foilThreshold}
+                    disabled={!artwork.highlightFoil}
+                    onChange={(event) => artworkChange({ foilThreshold: Number(event.target.value) })}
+                  />
+                  <small>A higher cutoff limits foil to the brightest areas.</small>
+                </label>
+              </div>
+            </fieldset>
+            <fieldset className="studio-fieldset">
+              <legend>Movement and depth</legend>
+              <div className="studio-field-grid">
+                <label className="studio-toggle">
+                  <input
+                    type="checkbox"
+                    checked={artwork.followPointer}
+                    onChange={(event) => artworkChange({ followPointer: event.target.checked })}
+                  />
+                  <span>
+                    <strong>Follow the pointer</strong>
+                    <small>Move the light and card angle with your cursor.</small>
+                  </span>
+                </label>
+                <label className="studio-toggle">
+                  <input
+                    type="checkbox"
+                    checked={artwork.floating}
+                    onChange={(event) => artworkChange({ floating: event.target.checked })}
+                  />
+                  <span>
+                    <strong>Floating artwork</strong>
+                    <small>Lift covers above the page with a soft shadow.</small>
+                  </span>
+                </label>
+                <label className="studio-field">
+                  Maximum tilt <span className="studio-value">{artwork.tilt}°</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="12"
+                    step="1"
+                    value={artwork.tilt}
+                    disabled={!artwork.floating}
+                    onChange={(event) => artworkChange({ tilt: Number(event.target.value) })}
+                  />
+                  <small>Set to zero for lift alone.</small>
+                </label>
+              </div>
+              <p className="studio-help">Keyboard focus and reduced motion keep the card and light steady.</p>
+            </fieldset>
           </section>
           <section className="studio-panel" aria-labelledby="studio-layout">
             <div className="studio-section-title">

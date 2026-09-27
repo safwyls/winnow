@@ -81,7 +81,28 @@ describe('installed developer themes', () => {
       toggleFullscreen: () => {},
       renderScreen: () => null,
       actions: { launch: async () => {} },
-      components: { GameCard: () => null, Impression: ({ children }) => children, Artwork: () => null },
+      components: {
+        GameCard: () => null,
+        Impression: ({ children }) => children,
+        Artwork: ({ workId }) => React.createElement('img', { alt: `Artwork ${workId}` }),
+        ArtworkEffects: ({ children, effects }) =>
+          React.createElement(
+            'span',
+            {
+              'data-material': effects && effects.foilMetal,
+            },
+            children,
+          ),
+        GamePreview: ({ children, game, reason }) =>
+          React.createElement(
+            'span',
+            {
+              'data-preview-title': game.title,
+              'data-preview-reason': reason,
+            },
+            children,
+          ),
+      },
     }
     const shell = renderToStaticMarkup(React.createElement(definition.Shell!, context))
     expect(shell).toContain('Reading room')
@@ -91,6 +112,66 @@ describe('installed developer themes', () => {
     const library = renderToStaticMarkup(React.createElement(definition.Library!, context))
     expect(library).toContain('The index')
     expect(definition.Details).toBeUndefined()
+
+    context.games = [
+      {
+        workId: 7,
+        title: 'A forgotten story',
+        summary: 'A description from the library.',
+        bucket: 'Never played',
+        playtimeMinutes: 0,
+        entries: [
+          {
+            ownershipId: 3,
+            releaseId: 4,
+            workId: 7,
+            title: 'A forgotten story',
+            store: 'Steam',
+            installed: true,
+            playtimeMinutes: 0,
+          },
+        ],
+      },
+    ]
+    context.feed = {
+      candidateCount: 1,
+      confidence: 1,
+      failed: false,
+      shelves: [
+        {
+          id: 'test',
+          title: 'Return',
+          blurb: '',
+          supportsFeedback: false,
+          reserve: [],
+          items: [
+            {
+              ownershipId: 3,
+              releaseId: 4,
+              title: 'A forgotten story',
+              reason: 'Still waiting to be played.',
+            },
+          ],
+        },
+      ],
+    }
+    for (const mode of ['desktop', 'fullscreen'] as const) {
+      const populated = renderToStaticMarkup(React.createElement(definition.Discover!, { ...context, mode }))
+      expect(populated).toContain('data-material="gold"')
+      expect(populated).toContain('data-preview-title="A forgotten story"')
+      expect(populated).toContain('data-preview-reason="Still waiting to be played."')
+      expect(populated).toContain('alt="Artwork 7"')
+    }
+    const { ArtworkEffects: _effects, GamePreview: _preview, ...legacyComponents } = context.components
+    const legacy = renderToStaticMarkup(
+      React.createElement(definition.Discover!, {
+        ...context,
+        components: legacyComponents as ThemeContext['components'],
+      }),
+    )
+    expect(legacy).toContain('alt="Artwork 7"')
+    expect(legacy).toContain('View A forgotten story')
+    expect(legacy).not.toContain('data-material')
   })
 
   it('keeps the installed theme intact when a replacement package is incomplete', async () => {
