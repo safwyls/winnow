@@ -21,6 +21,7 @@ import {
 } from '../../shared/theme'
 import type { ThemeRuntime } from './runtime'
 import { normalizeArtworkEffects, type ArtworkEffectOptions } from '../../shared/artworkEffects'
+import { useSystemReducedMotion } from '../useSystemReducedMotion'
 import './studio.css'
 
 const sectionLabels: Record<string, string> = {
@@ -92,6 +93,9 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
   const palette = PALETTES[appearance.palette]
   const colors = resolvedThemeColors(profile)
   const artwork = normalizeArtworkEffects(appearance.artwork)
+  const systemReducedMotion = useSystemReducedMotion()
+  const reducedMotion = appearance.reducedMotion || systemReducedMotion
+  const motionStatusId = useId()
   const artworkChange = (patch: Partial<ArtworkEffectOptions>) =>
     setProfile((current) => ({
       ...current,
@@ -452,11 +456,26 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
             </fieldset>
             <fieldset className="studio-fieldset">
               <legend>Movement and depth</legend>
+              {reducedMotion && (
+                <div className="studio-notice studio-motion-status">
+                  <span id={motionStatusId} role="status">
+                    {systemReducedMotion ? 'Your system requests reduced motion.' : 'Reduce motion is on.'}{' '}
+                    Tilt and cursor-following light are paused. Floating artwork can still lift.
+                  </span>
+                  {!systemReducedMotion && (
+                    <button type="button" onClick={() => appearanceChange({ reducedMotion: false })}>
+                      Turn off reduced motion
+                    </button>
+                  )}
+                </div>
+              )}
               <div className="studio-field-grid">
                 <label className="studio-toggle">
                   <input
                     type="checkbox"
                     checked={artwork.followPointer}
+                    disabled={reducedMotion}
+                    aria-describedby={reducedMotion ? motionStatusId : undefined}
                     onChange={(event) => artworkChange({ followPointer: event.target.checked })}
                   />
                   <span>
@@ -483,7 +502,8 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
                     max="12"
                     step="1"
                     value={artwork.tilt}
-                    disabled={!artwork.floating}
+                    disabled={reducedMotion || !artwork.followPointer || !artwork.floating}
+                    aria-describedby={reducedMotion ? motionStatusId : undefined}
                     onChange={(event) => artworkChange({ tilt: Number(event.target.value) })}
                   />
                   <small>Set to zero for lift alone.</small>

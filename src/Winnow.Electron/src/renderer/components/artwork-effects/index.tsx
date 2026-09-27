@@ -1,19 +1,11 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-  type RefObject,
-} from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react'
 import {
   DEFAULT_ARTWORK_EFFECTS,
   normalizeArtworkEffects,
   type ArtworkEffectOptions,
 } from '../../../shared/artworkEffects'
 import { artworkEffects } from './interaction'
+import { useSystemReducedMotion } from '../../useSystemReducedMotion'
 import './artwork-effects.css'
 
 export type { ArtworkEffectOptions } from '../../../shared/artworkEffects'
@@ -30,17 +22,7 @@ export function ArtworkEffectsProvider({
   reducedMotion: boolean
   children: ReactNode
 }) {
-  const [systemMotion, setSystemMotion] = useState(
-    () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches,
-  )
-  useEffect(() => {
-    if (typeof matchMedia !== 'function') return
-    const media = matchMedia('(prefers-reduced-motion: reduce)')
-    const change = () => setSystemMotion(media.matches)
-    change()
-    media.addEventListener('change', change)
-    return () => media.removeEventListener('change', change)
-  }, [])
+  const systemMotion = useSystemReducedMotion()
   const value = useMemo(
     () => ({ options, reducedMotion: reducedMotion || systemMotion }),
     [options, reducedMotion, systemMotion],

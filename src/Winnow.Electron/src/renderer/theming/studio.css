@@ -483,6 +483,16 @@
   font-size: 12px;
   line-height: 1.6;
 }
+.studio-motion-status {
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.studio-motion-status > span {
+  flex: 1 1 260px;
+}
+.studio-toggle:has(input:disabled) {
+  color: var(--muted);
+}
 .fullscreen .theme-studio {
   max-width: 1600px;
 }
@@ -491,7 +501,14 @@
 }
 .fullscreen
   .theme-studio
-  :is(.studio-field, .studio-toggle, .studio-panel > p, .studio-fieldset legend, .studio-section-order label, .studio-notice) {
+  :is(
+    .studio-field,
+    .studio-toggle,
+    .studio-panel > p,
+    .studio-fieldset legend,
+    .studio-section-order label,
+    .studio-notice
+  ) {
   font-size: 16px;
 }
 .fullscreen

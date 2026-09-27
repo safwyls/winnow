@@ -34,6 +34,10 @@ choosing a preset clears custom palette overrides.
 System reduced-motion preferences still apply when the explicit preference is off.
 Artwork settings apply to themes that use the shared effect components. Keyboard focus,
 reduced motion, and disabling **Follow the pointer** use a steady light and level card.
+**Movement and depth** explains when the profile or system preference pauses motion and
+disables the affected controls without discarding their saved values. The notice can turn
+off the profile's **Reduce motion** setting when the system allows motion; it never
+overrides the system preference. Accent changes preserve all motion and artwork settings.
 Setting maximum tilt to zero keeps the lift; switching off **Floating artwork** removes
 the lift and shadow without turning off the material finish. Surface finish and highlight
 foil can be disabled independently.
