@@ -1225,6 +1225,32 @@
   .detail-sidebar {
     min-width: 0;
   }
+  .acknowledge-updates {
+    margin-top: 20px;
+  }
+  .game-links nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .game-links button {
+    width: 100%;
+    justify-content: space-between;
+    text-align: left;
+  }
+  .game-links button span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .game-links button svg {
+    flex-shrink: 0;
+  }
+  .game-links small {
+    display: block;
+    color: var(--muted);
+    margin-top: 4px;
+    font-size: 11px;
+  }
   .conflict-panel {
     border: 1px solid var(--accent);
     padding: 20px;

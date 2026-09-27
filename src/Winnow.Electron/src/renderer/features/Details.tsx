@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Play, Download, RefreshCw } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, Play, Download, RefreshCw } from 'lucide-react'
 import { ApiError, dateLabel, hours, launchMessage, primaryAction, request, storeLabel } from '../api/client'
 import { useApiQuery, useCommand, useDetails, useLibrary, useWorkspace } from '../api/hooks'
 import type { ArtworkPage, ArtworkState, GameEntry, Metadata, Mode, Workspace } from '../api/types'
@@ -8,6 +8,39 @@ import { JournalEditor, SessionRows } from './Journal'
 import { Empty, Notice } from './shared'
 import { Artwork } from '../components/Artwork'
 import { useViewState } from '../viewState'
+import { gameLinks, type GameLink } from '../api/gameLinks'
+
+export function GameLinks({ links }: { links: GameLink[] }) {
+  const [error, setError] = useState<unknown>(null)
+  async function open(url: string) {
+    setError(null)
+    try {
+      await window.winnow.openExternal(url)
+    } catch {
+      setError(
+        new Error('Could not open this link. Check that a browser or Steam is available, then try again.'),
+      )
+    }
+  }
+  if (!links.length) return null
+  return (
+    <section className="feature-panel game-links">
+      <h2>Explore the game</h2>
+      <nav aria-label="Game links">
+        {links.map((link) => (
+          <button key={link.url} title={link.url} onClick={() => void open(link.url)}>
+            <span>
+              {link.label}
+              {link.detail && <small>{link.detail}</small>}
+            </span>
+            <ArrowUpRight size={16} aria-hidden="true" />
+          </button>
+        ))}
+      </nav>
+      <Notice error={error} />
+    </section>
+  )
+}
 
 export function EntryActions({ entry, workspace }: { entry: GameEntry; workspace?: Workspace }) {
   const [pending, setPending] = useState(false)
@@ -134,7 +167,7 @@ export function Details({
           <RefreshCw size={16} /> Refresh metadata
         </button>
       </header>
-      <Notice error={details.error || library.error || command.error} />
+      <Notice error={details.error || library.error || workspace.error || command.error} />
       <nav className="tabs" aria-label="Game information">
         {['Overview', 'History', 'Journal', 'Metadata', 'Artwork'].map((name) => (
           <button key={name} aria-pressed={name === tab} onClick={() => setTab(name)}>
@@ -217,6 +250,7 @@ export function Details({
                 )}
                 {!!details.data?.events.length && (
                   <button
+                    className="acknowledge-updates"
                     disabled={command.isPending}
                     onClick={() => {
                       for (const releaseId of new Set(details.data!.events.map((event) => event.releaseId)))
@@ -272,6 +306,9 @@ export function Details({
               <EntryActions key={entry.ownershipId} entry={entry} workspace={workspace.data} />
             ))}
           </section>
+          {game && workspace.data && (
+            <GameLinks key={workId} links={gameLinks(game, workspace.data, details.data?.events)} />
+          )}
           <ListMembership workId={workId} />
           <HideGame key={workId} workId={workId} onHidden={onClose} />
         </aside>

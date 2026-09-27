@@ -23,13 +23,14 @@ export function validateExternalUrl(value: unknown): string {
     return url.href
   if (
     url.protocol === 'steam:' &&
-    url.hostname === 'store' &&
-    /^\/\d+\/?$/.test(url.pathname) &&
+    !url.port &&
+    ((url.hostname === 'store' && /^\/\d{1,10}\/?$/.test(url.pathname)) ||
+      (url.hostname === 'nav' && /^\/games\/details\/\d{1,10}\/?$/.test(url.pathname))) &&
     !url.search &&
     !url.hash
   )
     return url.href
-  throw new Error('Only HTTPS and Steam store links may be opened')
+  throw new Error('Only HTTPS and Steam store or game-details links may be opened')
 }
 
 export function trustedRendererUrl(value: string, developmentOrigin?: string): boolean {

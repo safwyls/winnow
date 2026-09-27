@@ -78,10 +78,20 @@ describe('shell security', () => {
     expect(trustedRendererUrl('http://127.0.0.1:5174/', 'http://127.0.0.1:5173/')).toBe(false)
     expect(validateExternalUrl('https://store.steampowered.com/app/10/')).toContain('https:')
     expect(validateExternalUrl('steam://store/10')).toBe('steam://store/10')
+    expect(validateExternalUrl('steam://nav/games/details/10')).toBe('steam://nav/games/details/10')
     for (const url of [
       'file:///etc/passwd',
       'javascript:alert(1)',
       'steam://run/10',
+      'steam://install/10',
+      'steam://uninstall/10',
+      'steam://nav/games/details/10?run=1',
+      'steam://nav/games/details/10#run',
+      'steam://nav/games/details/10/extra',
+      'steam://nav/games/details/not-an-id',
+      'steam://nav/games/details/12345678901',
+      'steam://nav:123/games/details/10',
+      'steam://nav/console',
       'https://user:password@example.com/',
       'http://example.com',
       'https://localhost:443/',

@@ -67,6 +67,13 @@ manager, or application updater. Provider connections and game actions depend on
 capabilities. A launch result means a launcher handoff, not confirmed gameplay or download
 progress. Manual entries do not accept arbitrary launch commands.
 
+Game details group browsing shortcuts under **Explore the game**: Steam's game page,
+the store page, patch notes, SteamDB and IGDB. Links use known API identities and cached
+store URLs. Epic/GOG store links appear when available; without a Steam ID, the latest
+recorded update URL supplies the patch-notes link. Missing destinations are omitted.
+Steam viewing opens its library page for Steam-owned copies, or its store page for a
+Steam-mapped copy owned elsewhere. These links do not launch a game.
+
 ## Themes
 
 See [Electron themes](../../docs/electron-themes.md) for profile sharing, installation and
