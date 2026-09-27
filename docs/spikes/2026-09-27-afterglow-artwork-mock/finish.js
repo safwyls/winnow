@@ -6,6 +6,10 @@
   const intensity = document.querySelector('#finish-intensity');
   const follow = document.querySelector('#finish-follow');
   const help = document.querySelector('#finish-help');
+  const highlight = document.querySelector('#highlight-foil');
+  const metal = document.querySelector('#foil-metal');
+  const threshold = document.querySelector('#foil-threshold');
+  const strength = document.querySelector('#foil-strength');
   const selector = '.poster-grid:not(.records) .game-card, .return-item';
   const textures = new Map();
   let app, filter, plane, initialization, active, failed = false, disposed = false;
@@ -40,6 +44,9 @@
     uniform float uReveal;
     uniform float uIntensity;
     uniform float uFinish;
+    uniform float uFoilStrength;
+    uniform float uFoilThreshold;
+    uniform float uFoilMetal;
 
     float luminance(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
 
@@ -80,12 +87,34 @@
       float edge = min(min(p.x, uSize.x - p.x), min(p.y, uSize.y - p.y));
       float glancing = exp(-max(edge, 0.0) * 0.75) * light * step(0.5, uFinish);
       lit += (1.0 - lit) * reflection * glancing * 0.16 * uIntensity;
+
+      // Select from the original print, never the illuminated result: reflections cannot
+      // expand their own mask. Feather the boundary so pale gradients do not become cutouts.
+      float foilMask = smoothstep(uFoilThreshold - 0.08, min(1.0, uFoilThreshold + 0.08), luma);
+      float sweep = uv.x * 0.85 + uv.y * 0.45 - 0.65
+                  - (cursor.x - 0.5) * 0.8 + (cursor.y - 0.5) * 0.45;
+      float broad = exp(-sweep * sweep * 10.0);
+      float glint = exp(-sweep * sweep * 190.0);
+      vec3 metalTint = vec3(0.88, 0.93, 1.0);
+      if (uFoilMetal > 0.5 && uFoilMetal < 1.5) metalTint = vec3(1.0, 0.74, 0.32);
+      if (uFoilMetal > 1.5) {
+        metalTint = 0.68 + 0.32 * cos(sweep * 13.0 + cursor.x * 2.0 + vec3(0.0, 2.1, 4.2));
+      }
+      // Metal needs darker reflections as well as bright ones; adding white to white alone
+      // cannot show a finish. Keep some original pigment and fine printed contrast.
+      vec3 foil = metalTint * (0.43 + broad * 0.40) + vec3(glint * 0.34);
+      foil *= 0.88 + luma * 0.12;
+      foil = mix(foil, ink, 0.16);
+      lit = mix(lit, clamp(foil, 0.0, 1.0), foilMask * uFoilStrength);
       finalColor = vec4(clamp(lit, 0.0, 1.0) * uReveal, uReveal);
     }
   `;
 
   function isStill() { return motion.matches || !follow.checked || input === 'keyboard'; }
-  function enabled() { return !failed && !disposed && control.value !== 'off' && Number(intensity.value) > 0; }
+  function enabled() {
+    return !failed && !disposed && ((control.value !== 'off' && Number(intensity.value) > 0)
+      || (highlight.checked && Number(strength.value) > 0));
+  }
 
   function stop() {
     generation++;
@@ -140,6 +169,9 @@
             uReveal: { value: 0, type: 'f32' },
             uIntensity: { value: 0.55, type: 'f32' },
             uFinish: { value: 1, type: 'f32' },
+            uFoilStrength: { value: 0.65, type: 'f32' },
+            uFoilThreshold: { value: 0.72, type: 'f32' },
+            uFoilMetal: { value: 0, type: 'f32' },
           },
         },
       });
@@ -155,8 +187,11 @@
     const uniforms = filter.resources.finishUniforms.uniforms;
     uniforms.uCursor.set([x, y]);
     uniforms.uReveal = reveal;
-    uniforms.uIntensity = Number(intensity.value) / 100;
+    uniforms.uIntensity = control.value === 'off' ? 0 : Number(intensity.value) / 100;
     uniforms.uFinish = { matte: 0, satin: 1, foil: 2 }[control.value] ?? 0;
+    uniforms.uFoilStrength = highlight.checked ? Number(strength.value) / 100 : 0;
+    uniforms.uFoilThreshold = Number(threshold.value) / 100;
+    uniforms.uFoilMetal = { silver: 0, gold: 1, holographic: 2 }[metal.value] ?? 0;
   }
 
   function tick(ticker) {
@@ -232,6 +267,7 @@
       app.renderer.resize(width, height);
       app.canvas.dataset.status = isStill() ? 'still' : 'following';
       app.canvas.dataset.finish = control.value;
+      app.canvas.dataset.highlight = highlight.checked ? metal.value : 'off';
       cover.append(app.canvas);
       resize.observe(cover);
       draw(); app.render();
@@ -280,15 +316,22 @@
   function updateOptions() {
     stop();
     document.querySelector('#finish-amount').value = `${intensity.value}%`;
+    document.querySelector('#foil-strength-amount').value = `${strength.value}%`;
+    document.querySelector('#foil-threshold-amount').value = `${threshold.value}%`;
     document.body.dataset.finishMotion = motion.matches || !follow.checked ? 'still' : 'follow';
     intensity.disabled = control.value === 'off';
-    follow.disabled = control.value === 'off';
+    metal.disabled = threshold.disabled = strength.disabled = !highlight.checked;
   }
   motion.addEventListener('change', updateOptions);
   control.addEventListener('change', updateOptions);
   intensity.addEventListener('input', updateOptions);
   follow.addEventListener('change', updateOptions);
+  highlight.addEventListener('change', updateOptions);
+  metal.addEventListener('change', updateOptions);
+  threshold.addEventListener('input', updateOptions);
+  strength.addEventListener('input', updateOptions);
   document.querySelector('#reset-options').addEventListener('click', () => {
+    highlight.checked = true; metal.value = 'silver'; threshold.value = '72'; strength.value = '65';
     control.value = 'satin'; intensity.value = '55'; follow.checked = true; updateOptions();
   });
   updateOptions();

@@ -43,7 +43,7 @@ body[data-mode=fullscreen][data-size] .shelf-grid{grid-template-columns:repeat(a
 #finish-intensity{display:block;width:100%;min-height:24px;margin:0;accent-color:var(--accent)}
 .finish-follow{display:flex;align-items:center;gap:9px;font-size:11px;margin-top:12px}
 .finish-follow input{accent-color:var(--accent);min-height:14px;margin:0}
-.finish-options:has(#cover-finish option[value=off]:checked) :is(.finish-intensity-label,#finish-intensity,.finish-follow){opacity:.45}
+.finish-options:has(#cover-finish option[value=off]:checked) :is(.finish-intensity-label,#finish-intensity){opacity:.45}
 body[data-finish-motion=still] .card-caption{transition:none!important}
 
 /* Only the visual surface moves; buttons keep a stable grid position and hit area. */
@@ -64,3 +64,8 @@ body[data-mode=fullscreen] .poster-grid:not(.records) .game-card:focus-visible .
 .depth-options:has(#card-floating:not(:checked)) :is(.finish-intensity-label,#card-tilt){opacity:.45}
 body[data-depth-motion=still] .card-surface{transition:none!important}
 @media(prefers-reduced-motion:reduce){.poster-grid:not(.records) .is-floating .card-surface{transform:perspective(950px) translate3d(0,-8px,18px)}}
+
+#foil-metal{width:100%;border:1px solid var(--line);border-radius:5px;padding:9px;background:var(--surface);font:12px 'DM Sans',sans-serif}
+#foil-strength-amount,#foil-threshold-amount{font:10px var(--mono);color:var(--muted)}
+#foil-strength,#foil-threshold{display:block;width:100%;min-height:24px;margin:0;accent-color:var(--accent)}
+.highlight-options:has(#highlight-foil:not(:checked)) :is(.finish-setting,select,.finish-intensity-label,input[type=range]){opacity:.45}

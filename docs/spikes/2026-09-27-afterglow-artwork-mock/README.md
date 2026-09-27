@@ -1,6 +1,6 @@
 # Afterglow artwork and caption study
 
-September 27, 2026 · TASK-354 / TASK-355 / TASK-356 / TASK-357 / TASK-358 · Proposal for user review
+September 27, 2026 · TASK-354 / TASK-355 / TASK-356 / TASK-357 / TASK-358 / TASK-359 · Proposal for user review
 
 This standalone mock explores portrait covers and compact captions for Afterglow, Winnow's
 Electron frontend. It preserves the Discover hero composition, warm palette and typography.
@@ -47,6 +47,11 @@ local. The mock makes no API calls and requires no running Winnow backend.
   **Card depth** independently toggles floating artwork and adjusts maximum tilt from 0–12°,
   with 7° as the default. Zero gives lift alone. Keyboard focus, reduced motion and disabled
   pointer following keep raised cards level. Finish intensity does not alter card depth.
+  **Highlight foil** adds silver, gold or holographic reflections to light pixels. Its
+  brightness cutoff runs from 40–95% (default 72%) with a soft boundary; strength defaults
+  to 65%. It is enabled for this study and can be disabled independently of the surface
+  finish. It selects bright illustration details as well as lettering. Turn off both
+  surface finish and highlight foil to compare with the original artwork.
   These controls are in-memory demonstrations and reset on reload.
 - The review strip switches desktop/fullscreen composition and original/mixed/missing/loading
   artwork. Loading and missing states preserve the same frame dimensions.
@@ -136,7 +141,22 @@ browser warnings or errors occurred. JavaScript syntax and Git whitespace checks
 The stationary path was exercised through keyboard input and disabled pointer following;
 changing the OS reduced-motion preference and physical touch input were not exercised.
 
-Current capture: [floating artwork](11-floating-artwork.png). Move across covers in the
+Floating-card review capture: [floating artwork](11-floating-artwork.png).
+
+The highlight-foil revision was checked on desktop and fullscreen at 2052×1272 and
+760×560. Visually compared silver and holographic reflections on Hollow Knight and gold
+on Hades. At a 95% cutoff, gold was concentrated on the white title; at 40%, it included
+more of the illustration. Checked independent surface Off, highlight disable and disabled
+controls, zero foil strength, material changes and default reset. Fullscreen arrows produced
+stationary silver foil and level card depth; Enter opened the correct title and removed
+the effect. Compact records and loading placeholders had no canvas. Desktop Discover
+keyboard focus used stationary foil. The narrow options panel, page and library had no
+horizontal overflow, and the fullscreen footer stayed visible. No browser warnings or
+errors were reported; JavaScript syntax and Git whitespace checks passed. The existing
+reduced-motion stationary branch remains in use; OS preference switching and physical
+touch input were not exercised.
+
+Current capture: [holographic highlights](12-highlight-foil.png). Move across covers in the
 interactive mock to assess the depth and reflection; a still capture cannot show their response.
 
 The current effect uses one lazy-initialized WebGL renderer and a single custom fragment
@@ -149,6 +169,10 @@ Card depth uses a CSS perspective transform with an 8 px lift, 18 px forward tra
 and 950 px perspective. Pointer updates coalesce into one animation frame and CSS smooths
 the transform; depth has no continuous idle loop. Both effects read the untransformed
 button bounds, so tilting the artwork cannot change their coordinate reference.
+Highlight foil uses the original sampled pixel's weighted brightness for its mask, before
+any lighting is applied. A feathered threshold selects the print; a darker metallic base
+and moving bright reflection give white pixels a visible finish. It shares the existing
+shader, texture and ticker, with no OCR, per-cover masks, additional textures or requests.
 These are implementation bounds, not measured
 GPU timings or evidence of production performance. WebGL failure leaves the normal cards
 and captions usable. A production build should import only the Pixi modules it needs;
