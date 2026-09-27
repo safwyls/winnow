@@ -22,6 +22,7 @@ needed to use it; there is no document precedence order or required history tour
 | Where each filter value comes from | `docs/facet-provenance.md` |
 | Plugin installation and authoring | `docs/plugins.md` |
 | Independent frontend API, discovery, events and concurrency | `docs/frontend-api.md` |
+| Electron frontend, local builds and developer themes | `src/Winnow.Electron/README.md`, `docs/electron-themes.md` |
 | Building and publishing releases | `docs/releases.md` |
 | Orientation for a new reader: what it is, how to install, run and build | `README.md` |
 | Evidence: how something was measured | `docs/spikes/` |
@@ -81,6 +82,8 @@ Each one is load-bearing for an install that predates the 2026-08-28 rename.
 - `src/Winnow.Backend` — independent loopback HTTP/JSON API, authentication, discovery and SSE.
   Owns the data directory and database lifecycle; has no Avalonia dependency.
 - `src/Winnow.Api.Contracts`, `src/Winnow.Api.Client` — versioned contracts and HTTP/event client.
+- `src/Winnow.Electron` — independent Electron/TypeScript frontend. Main owns API credentials;
+  the sandboxed renderer uses a named preload bridge. Build/test with npm from this directory.
 - `src/Winnow.Presentation`, `src/Winnow.Diagnostics` — shared presentation policies and logging.
 - `src/Winnow.Covers.Avalonia` — Avalonia bitmap rendering and leases, separate from fetching.
 - `src/Winnow.App` — Avalonia desktop/fullscreen frontend. Assembly name is `Winnow`, to match

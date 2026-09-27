@@ -56,6 +56,11 @@ frontend leaves session tracking and library refresh running. Other frontends ca
 to the same library and receive its live changes. See the [frontend API guide](docs/frontend-api.md)
 for independent startup, authentication, events and a JavaScript client example.
 
+An alternative [Electron/TypeScript frontend, Winnow Afterglow](src/Winnow.Electron/README.md),
+is available from source with its own desktop/fullscreen interface, Theme Studio and
+[developer-authored layouts](docs/electron-themes.md). Its feature and validation scope
+is documented separately; the release downloads and instructions below describe Avalonia.
+
 Linux builds have limited storefront integration: Epic/GOG discovery targets Windows
 launcher locations, embedded sign-in uses Windows WebView2, and credential persistence
 requires the Windows DPAPI protector. Linux native session detection and Steam compatibility

@@ -9,6 +9,12 @@ uses neither setting; its performance was not measured in that study.
 
 ## Application version
 
+The independent Electron frontend has a separate local build described in
+[`src/Winnow.Electron/README.md`](../src/Winnow.Electron/README.md). It packages a self-contained
+backend companion with Electron, but is not included in the release workflow or updater
+described on this page. Its Windows x64 package has local smoke coverage; other platforms
+and distributable installation remain unvalidated.
+
 `Version.props` owns the three-part version base (currently `0.2.0`). Ordinary builds
 append `-dev`; CI packages append `-ci.<run number>`. A tag such as `v0.2.0-beta.1`
 supplies the release version. Manual builds and tags must use the base in `Version.props`;

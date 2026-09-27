@@ -2,6 +2,9 @@
 
 **Applies to:** Avalonia desktop and fullscreen interfaces, dark by default with optional light themes.
 
+The independent Electron frontend uses its own Afterglow and Catalogue compositions.
+Its appearance controls and replaceable-screen contract are in [Electron themes](docs/electron-themes.md).
+
 This is the current visual and interaction specification. It owns palette, typography,
 layout, dormancy, components, copy, accessibility, themes and translucency. Numeric resources
 live in [tokens.axaml](src/Winnow.App/Themes/tokens.axaml).

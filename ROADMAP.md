@@ -34,7 +34,7 @@ hardware validation. The remaining validation is listed in §6.
 
 | Area | Implemented behavior |
 |---|---|
-| Frontend independence | One local backend owns the library and workers. Avalonia desktop/fullscreen use the authenticated versioned HTTP API; other frontends can attach concurrently and receive live committed changes. Electron UI implementation is outside this extraction. |
+| Frontend independence | One local backend owns the library and workers. Avalonia and the independent Electron/TypeScript frontend use the authenticated versioned HTTP API and receive live committed changes. Electron supplies Afterglow and Catalogue compositions, Theme Studio, importable profiles and replaceable React screens. Its [feature and validation scope](src/Winnow.Electron/README.md) is narrower than Avalonia's. |
 | Library | Local Steam, Epic and GOG discovery, optional Steam/Epic connections, manual entries, search, filters and user lists. Optional Xbox imports installed PC games and opt-in PC/console played history. Optional PlayStation imports the PS4/PS5 account library and opt-in played/legacy trophy history. Steam collections are not imported. |
 | Identity | Exact external IDs resolve automatically. Fuzzy matches require confirmation. Same-game, expansion and variant relations apply immediately through reversible links on desktop and fullscreen. |
 | History | Playtime snapshots, process-based session recording and restart recovery, optional journal notes, Steam history backfill and account-page imports. Unknown history remains unknown. |
@@ -68,8 +68,9 @@ library matching, mobile, and a 3D shelf view. Fullscreen is a separate TV inter
 Unowned-game recommendations are outside the current feed. A later wishlist feature would
 start from titles the user has explicitly selected, rather than a general purchase feed.
 
-The plugin contract excludes custom screens, UI replacement, an online marketplace and automatic
-plugin updates. The website lists first-party providers with release-backed ZIP downloads and
+The backend provider plugin contract excludes custom screens, UI replacement, an online marketplace and automatic
+plugin updates. Electron's separate [theme contract](docs/electron-themes.md) supports frontend screen replacement.
+The website lists first-party providers with release-backed ZIP downloads and
 browser installation into desktop or fullscreen settings. CI packages all three providers with
 the application release and verifies a versioned catalogue. SDK 1.1 adds shared account connection and provider game actions. Xbox history
 does not establish ownership and cannot discover never-played uninstalled purchases. Winnow
