@@ -1,7 +1,7 @@
 import { ArrowRight, ArrowUpRight, BookOpen, Hash } from 'lucide-react'
 import type { ThemeContext, ThemeDefinition } from '../../shared/theme'
 import { themeSettingValues } from '../../shared/theme'
-import { Brand, Navigation, Utilities, AfterglowLibrary } from './afterglow'
+import { Brand, Navigation, Utilities, AfterglowLibrary, AppFooter } from './afterglow'
 import { Artwork } from '../components/Artwork'
 import { Empty, Impression, hours } from '../components/primitives'
 
@@ -33,6 +33,7 @@ function CatalogueShell(context: ThemeContext) {
         <main id="main-content" tabIndex={-1} className="page-content">
           {context.children}
         </main>
+        <AppFooter context={context} />
       </div>
     </div>
   )
@@ -104,20 +105,13 @@ function CatalogueDiscover(context: ThemeContext) {
     </div>
   )
 }
-function CatalogueLibrary(context: ThemeContext) {
-  return (
-    <div className="catalogue-library">
-      <AfterglowLibrary {...context} />
-    </div>
-  )
-}
 export const catalogue: ThemeDefinition = {
   apiVersion: 1,
   id: 'catalogue',
   name: 'Catalogue',
   Shell: CatalogueShell,
   Discover: CatalogueDiscover,
-  Library: CatalogueLibrary,
+  Library: AfterglowLibrary,
   settings: [
     {
       id: 'showArt',

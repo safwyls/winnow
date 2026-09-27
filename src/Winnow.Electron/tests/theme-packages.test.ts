@@ -54,7 +54,7 @@ describe('installed developer themes', () => {
     const example = resolve('examples/themes/reading-room')
     const installed = await installThemeDirectory(example, themesRoot)
     expect(installed.id).toBe('reading-room')
-    expect(installed.entry).toBe('winnow-theme://reading-room/index.mjs?v=1.0.0')
+    expect(installed.entry).toBe(`winnow-theme://reading-room/index.mjs?v=${installed.version}`)
     expect(await listThemePackages(themesRoot)).toEqual([installed])
     const moduleFile = await themeFile(themesRoot, installed.entry)
     expect(moduleFile.type).toBe('text/javascript')

@@ -46,7 +46,7 @@ export function GameCard({
           <span>{game.entries[0]?.store ?? 'Library'}</span>
           <ArrowUpRight size={15} />
         </div>
-        <h3>{game.title}</h3>
+        <h3 title={game.title}>{game.title}</h3>
         <p>{reason ?? bucketLabel(game.bucket)}</p>
         <div className="game-facts">
           <span>

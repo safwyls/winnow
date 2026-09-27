@@ -120,10 +120,11 @@ export function App() {
   useEffect(() => {
     if (didNavigate.current) {
       document.getElementById('main-content')?.focus({ preventScroll: true })
-      document.documentElement.scrollTop = 0
+      const content = document.getElementById('main-content')
+      if (content) content.scrollTop = 0
     }
     didNavigate.current = true
-  }, [position.page, mode])
+  }, [position.page, position.workId, mode])
   useGamepad(mode === 'fullscreen')
   let context: ThemeContext
   const renderScreen = (page: ThemePage = position.page) => {
@@ -224,29 +225,31 @@ export function App() {
           </div>
         )}
       </div>
-      <ThemeBoundary
-        resetKey={runtime.theme.id}
-        onError={runtime.recoverTheme}
-        fallback={
-          <div className="theme-recovery">
-            <h1>Let’s get you back.</h1>
-            <p>The selected theme could not display this screen.</p>
-            <button
-              className="primary"
-              onClick={() => {
-                runtime.resetProfile()
-                setNotice('')
-                navigate('discover')
-              }}
-            >
-              <RotateCcw size={18} />
-              Restore Afterglow
-            </button>
-          </div>
-        }
-      >
-        <Shell {...context}>{content}</Shell>
-      </ThemeBoundary>
+      <div className="theme-viewport">
+        <ThemeBoundary
+          resetKey={runtime.theme.id}
+          onError={runtime.recoverTheme}
+          fallback={
+            <div className="theme-recovery">
+              <h1>Let’s get you back.</h1>
+              <p>The selected theme could not display this screen.</p>
+              <button
+                className="primary"
+                onClick={() => {
+                  runtime.resetProfile()
+                  setNotice('')
+                  navigate('discover')
+                }}
+              >
+                <RotateCcw size={18} />
+                Restore Afterglow
+              </button>
+            </div>
+          }
+        >
+          <Shell {...context}>{content}</Shell>
+        </ThemeBoundary>
+      </div>
       <button
         className="recovery-shortcut"
         title="Restore default theme (Ctrl+Shift+T)"

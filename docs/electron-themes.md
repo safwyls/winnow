@@ -130,6 +130,30 @@ It replaces the shell, Discover, and Library using a different visual structure.
 host Details, Journal, and Settings, and declares two editable settings. It uses no build
 tools: install that folder directly to try it.
 
+### Viewport and scrolling
+
+The host supplies a bounded viewport that accounts for interface scaling and status banners.
+Shells should fill `height: 100%`, keep navigation and footer outside scrolling content,
+and give the content pane `min-height: 0; overflow: auto`. Use `minmax(0, 1fr)` for the
+scrollable row in a grid, or `flex: 1; min-height: 0` in a column flex layout. The host's
+viewport also scrolls as a fallback for packages that have not adopted this layout.
+
+The built-in Library fills its content pane and scrolls its results and index separately.
+Shared artwork fills the size assigned by its parent; set a height or aspect ratio on the
+`Artwork` frame. Loading, missing artwork, and the decoded image all occupy that same frame.
+The details hero uses a responsive height from 220 to 420 pixels, independent of image ratio.
+Grid titles reserve two lines and keep their full title available to assistive technology
+and in the hover tooltip.
+Short windows use tighter navigation and library spacing. At less than 480 logical pixels
+of available height, the grid uses compact thumbnails beside titles and keeps filters on
+one row. These breakpoints follow the scaled content viewport, including at 130% size.
+
+Afterglow rotates up to six featured recommendations every nine seconds while at least half
+the hero is visible in the focused window. Interaction and pending feedback pause it;
+manual selection pauses until Resume. System or profile reduced motion disables automatic
+rotation and keeps manual navigation. Catalogue and developer themes retain their own
+Discover compositions.
+
 ### Public screen contract
 
 The TypeScript source of truth is

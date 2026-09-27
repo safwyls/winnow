@@ -7,6 +7,7 @@ import { useActivity, useApiQuery, useLibrary, useStatistics } from '../api/hook
 import type { JournalResponse, Mode, Session } from '../api/types'
 import { Empty, Notice } from './shared'
 import { clearViewState, useViewState } from '../viewState'
+import { journalPeriod } from '../api/journalPeriod'
 interface JournalDraftState {
   note: string
   rating: number
@@ -224,7 +225,7 @@ export function Journal({
 }) {
   const [section, setSection] = useViewState(`${mode}:journal:section`, 0)
   const [days, setDays] = useViewState(`${mode}:journal:days`, 30)
-  const [bounds, setBounds] = useViewState(`${mode}:journal:bounds`, period(30))
+  const [bounds, setBounds] = useViewState(`${mode}:journal:bounds`, journalPeriod(30))
   const [editing, setEditing] = useViewState<number | null>(`${mode}:journal:editing`, null)
   const library = useLibrary()
   const activity = useActivity(bounds.fromUtc, bounds.untilUtc, section)
@@ -245,7 +246,7 @@ export function Journal({
             onChange={(event) => {
               const value = Number(event.target.value)
               setDays(value)
-              setBounds(period(value))
+              setBounds(journalPeriod(value))
             }}
           >
             <option value={7}>Last 7 days</option>
@@ -357,11 +358,4 @@ export function Journal({
       {editing != null && <JournalEditor sessionId={editing} onClose={() => setEditing(null)} />}
     </section>
   )
-}
-
-function period(days: number) {
-  const until = new Date()
-  const from = new Date(until)
-  from.setDate(from.getDate() - days)
-  return { fromUtc: from.toISOString(), untilUtc: until.toISOString() }
 }

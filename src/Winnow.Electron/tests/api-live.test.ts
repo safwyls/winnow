@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { librarySchema, feedSchema } from '../src/renderer/api/hooks'
 import type { ActivityPage, JournalResponse, ManualGame, Metadata } from '../src/renderer/api/types'
 import { createClientId } from '../src/renderer/api/client'
+import { journalPeriod } from '../src/renderer/api/journalPeriod'
 
 // Opt in with a throwaway backend; this suite creates and removes test entries.
 const dataDir = process.env.WINNOW_TEST_DATA_DIR
@@ -43,6 +44,23 @@ describe.skipIf(!dataDir)('live frontend API on an explicitly supplied test libr
     const content = await response.text()
     return (content ? JSON.parse(content) : undefined) as T
   }
+  it('accepts Journal activity and gameplay ranges from a fractional current timestamp', async () => {
+    const now = new Date()
+    now.setUTCMilliseconds(987)
+    const bounds = journalPeriod(30, now)
+    const statistics = await api<{ recordedSeconds: number }>('statistics/gameplay', 'POST', {
+      ...bounds,
+      asOfUtc: bounds.untilUtc,
+      timeBins: [bounds],
+    })
+    expect(statistics.recordedSeconds).toBeGreaterThanOrEqual(0)
+    const activity = await api<ActivityPage>('activity/query', 'POST', {
+      ...bounds,
+      section: 0,
+      pageSize: 10,
+    })
+    expect(activity.rows).toBeInstanceOf(Array)
+  })
   it('matches actual library, feed, workspace, detail and redacted settings contracts', async () => {
     const library = librarySchema.parse(await api('library'))
     feedSchema.parse(await api('feed'))

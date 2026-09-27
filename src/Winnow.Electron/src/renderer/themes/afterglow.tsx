@@ -1,17 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { motion } from 'motion/react'
+import { motion, useReducedMotion } from 'motion/react'
 import {
   ArrowRight,
   ArrowUpRight,
   BookOpen,
   Compass,
+  ChevronLeft,
+  ChevronRight,
   Expand,
   Grid2X2,
   List,
   Maximize2,
   Palette,
+  Pause,
+  Play,
   Search,
   Settings2,
   Sparkles,
@@ -25,6 +29,7 @@ import { Empty, GameCard, Impression, bucketLabel, hours } from '../components/p
 import { LibraryTools } from '../features/LibraryTools'
 import dragon from '../assets/dragon.svg'
 import { useViewState, libraryScroll } from '../viewState'
+import { useHeroRotation } from '../useHeroRotation'
 
 const destinations = [
   { id: 'discover', label: 'Discover', Icon: Compass },
@@ -97,16 +102,21 @@ export function AfterglowShell(context: ThemeContext) {
       <main id="main-content" tabIndex={-1} className="page-content">
         {context.children}
       </main>
-      <footer className="app-footer">
-        <span>Your library. Another possibility.</span>
-        <span>
-          {context.games.length.toLocaleString()} games <span className="footer-dot">·</span>{' '}
-          {context.mode === 'fullscreen'
-            ? 'Arrows to move · Enter to open · Esc to go back'
-            : 'Ctrl+K to find something'}
-        </span>
-      </footer>
+      <AppFooter context={context} />
     </div>
+  )
+}
+export function AppFooter({ context }: { context: ThemeContext }) {
+  return (
+    <footer className="app-footer">
+      <span>Your library. Another possibility.</span>
+      <span>
+        {context.games.length.toLocaleString()} games <span className="footer-dot">·</span>{' '}
+        {context.mode === 'fullscreen'
+          ? 'Arrows to move · Enter to open · Esc to go back'
+          : 'Ctrl+K to find something'}
+      </span>
+    </footer>
   )
 }
 function gameFor(context: ThemeContext, releaseId: number) {
@@ -120,9 +130,19 @@ export function AfterglowDiscover(context: ThemeContext) {
   const [pending, setPending] = useState(false)
   const shelves = context.feed?.shelves ?? []
   const firstShelf = shelves.find((shelf) => shelf.supportsFeedback) ?? shelves[0]
-  const firstItems = (firstShelf?.items ?? []).filter((item) => gameFor(context, item.releaseId))
-  const picked = firstItems[Math.min(selection, Math.max(0, firstItems.length - 1))]
+  const firstItems = (firstShelf?.items ?? []).filter((item) => gameFor(context, item.releaseId)).slice(0, 6)
+  const heroIndex = Math.min(selection, Math.max(0, firstItems.length - 1))
+  const picked = firstItems[heroIndex]
   const hero = picked ? gameFor(context, picked.releaseId) : context.games[0]
+  const systemReducedMotion = useReducedMotion()
+  const reducedMotion = context.profile.appearance.reducedMotion || Boolean(systemReducedMotion)
+  const rotation = useHeroRotation({
+    count: firstItems.length,
+    index: heroIndex,
+    onSelect: setSelection,
+    reducedMotion,
+    enabled: !pending && !context.loading && !context.profile.layout.hiddenSections.includes('hero'),
+  })
   const returning = [...context.games]
     .filter((game) => game.lastPlayedAt)
     .sort((a, b) => (b.lastPlayedAt ?? '').localeCompare(a.lastPlayedAt ?? ''))
@@ -133,17 +153,13 @@ export function AfterglowDiscover(context: ThemeContext) {
       if ((event.target as HTMLElement).closest('input,textarea,select,button')) return
       if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
         event.preventDefault()
-        setSelection(
-          (n) =>
-            (n + (event.key === 'ArrowRight' ? 1 : -1) + Math.max(1, firstItems.length)) %
-            Math.max(1, firstItems.length),
-        )
+        rotation.select(heroIndex + (event.key === 'ArrowRight' ? 1 : -1))
       }
       if (event.key === 'Enter' && hero) context.openGame(hero.workId)
     }
     document.addEventListener('keydown', key)
     return () => document.removeEventListener('keydown', key)
-  }, [context.mode, hero, firstItems.length])
+  }, [context.mode, hero, heroIndex, rotation.select])
   const dismiss = async (kind: number) => {
     if (!picked || pending) return
     setPending(true)
@@ -197,13 +213,54 @@ export function AfterglowDiscover(context: ThemeContext) {
     )
   const sections: Record<string, React.ReactNode> = {
     hero: hero && (
-      <section className="hero-layout" key="hero">
+      <section
+        className="hero-layout"
+        key="hero"
+        ref={rotation.ref}
+        aria-roledescription="carousel"
+        aria-label="Featured recommendations"
+        onMouseEnter={rotation.onMouseEnter}
+        onMouseLeave={rotation.onMouseLeave}
+        onFocusCapture={rotation.onFocusCapture}
+        onBlurCapture={rotation.onBlurCapture}
+      >
         <div className="hero-stage">
-          <Artwork workId={hero.workId} hero eager />
+          <Artwork key={`art-${hero.workId}`} workId={hero.workId} hero eager />
           <div className="hero-scrim" />
+          {firstItems.length > 1 && (
+            <div className="hero-controls" role="group" aria-label="Recommendation controls">
+              <button aria-label="Previous recommendation" onClick={() => rotation.select(heroIndex - 1)}>
+                <ChevronLeft size={17} />
+              </button>
+              <span
+                className="hero-position"
+                aria-live={rotation.rotating ? 'off' : 'polite'}
+                aria-atomic="true"
+              >
+                <span className="sr-only">Recommendation </span>
+                {heroIndex + 1}
+                <span aria-hidden="true"> / </span>
+                <span className="sr-only"> of </span>
+                {firstItems.length}
+              </span>
+              <button aria-label="Next recommendation" onClick={() => rotation.select(heroIndex + 1)}>
+                <ChevronRight size={17} />
+              </button>
+              {!reducedMotion && (
+                <button
+                  className="hero-rotation"
+                  onClick={rotation.togglePaused}
+                  aria-label={rotation.paused ? 'Resume rotation' : 'Pause rotation'}
+                  title={rotation.paused ? 'Resume rotation' : 'Pause rotation'}
+                >
+                  {rotation.paused ? <Play size={14} /> : <Pause size={14} />}
+                </button>
+              )}
+            </div>
+          )}
           <motion.div
             className="hero-copy"
-            key={hero.workId}
+            key={`copy-${hero.workId}`}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35 }}
@@ -251,8 +308,9 @@ export function AfterglowDiscover(context: ThemeContext) {
             {firstItems.slice(0, 6).map((item, index) => (
               <button
                 key={item.releaseId}
-                className={index === selection ? 'selected' : ''}
-                onClick={() => setSelection(index)}
+                className={index === heroIndex ? 'selected' : ''}
+                aria-pressed={index === heroIndex}
+                onClick={() => rotation.select(index)}
                 onDoubleClick={() => {
                   const game = gameFor(context, item.releaseId)
                   if (game) context.openGame(game.workId)
@@ -474,7 +532,7 @@ export function AfterglowLibrary(context: ThemeContext) {
         </button>
       </div>
       {tools && <LibraryTools mode={context.mode} onOpenGame={context.openGame} />}
-      <div className="library-toolbar">
+      <div className="library-toolbar" hidden={tools}>
         <label className="search-field">
           <Search size={18} />
           <input
@@ -518,7 +576,7 @@ export function AfterglowLibrary(context: ThemeContext) {
           </button>
         </div>
       </div>
-      <div className="library-body">
+      <div className="library-body" hidden={tools}>
         <aside className="library-index">
           <span className="eyebrow">Browse</span>
           {[
@@ -558,11 +616,7 @@ export function AfterglowLibrary(context: ThemeContext) {
             {games.length.toLocaleString()} {games.length === 1 ? 'game' : 'games'}
             {query && ` matching “${query}”`}
           </p>
-          <div
-            className={`library-scroll ${listMode ? 'records' : 'grid'}`}
-            ref={scrollRef}
-            style={{ height: 'min(72vh, 1100px)' }}
-          >
+          <div className={`library-scroll ${listMode ? 'records' : 'grid'}`} ref={scrollRef}>
             {games.length === 0 ? (
               <Empty title="Nothing here just yet.">
                 <p>Try another search or clear your filters.</p>

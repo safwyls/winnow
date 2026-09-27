@@ -4,6 +4,13 @@ An independent Electron/TypeScript frontend for Winnow's local backend. Afterglo
 panoramic artwork and editorial typography; Catalogue presents the same library as a
 reading desk and index. Both use the public theme interface available to installed themes.
 
+Navigation and the footer stay visible as you browse. Library results and the list index
+scroll independently; other screens scroll within the content pane. Afterglow's featured
+recommendations rotate every nine seconds while the hero is visible and idle. Previous,
+Next, and Pause controls are available on desktop and fullscreen. Selecting a recommendation
+pauses rotation until Resume; hovering, keyboard focus, and leaving the window pause it
+temporarily. Reduced motion disables automatic rotation.
+
 ## Run from source
 
 Install a current Node.js release compatible with Vite 7 (Node 22.12 or later) and the .NET 10 SDK.
