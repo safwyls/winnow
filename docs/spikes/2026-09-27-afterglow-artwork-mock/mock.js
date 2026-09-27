@@ -37,7 +37,7 @@ function metadata(game) {
 }
 
 function card(game) {
-  return `<button class="game-card" data-game="${game.id}" aria-label="View ${escapeHtml(game.title)}" title="${escapeHtml(game.title)}">${cover(game)}<span class="card-caption"><span class="card-title">${escapeHtml(game.title)}</span>${metadata(game)}<span class="card-reason">${game.reason}</span></span>${game.title.length > 32 ? `<span class="card-tooltip" aria-hidden="true">${escapeHtml(game.title)}</span>` : ''}</button>`;
+  return `<button class="game-card" data-game="${game.id}" aria-label="View ${escapeHtml(game.title)}">${cover(game)}<span class="card-caption"><span class="card-title">${escapeHtml(game.title)}</span>${metadata(game)}<span class="card-reason">${game.reason}</span></span>${game.title.length > 32 ? `<span class="card-tooltip" aria-hidden="true">${escapeHtml(game.title)}</span>` : ''}</button>`;
 }
 
 function renderLibrary() {

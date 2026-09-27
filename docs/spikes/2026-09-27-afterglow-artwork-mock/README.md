@@ -1,6 +1,6 @@
 # Afterglow artwork and caption study
 
-September 27, 2026 · TASK-354 · Proposal for user review
+September 27, 2026 · TASK-354 / TASK-355 · Proposal for user review
 
 This standalone mock explores portrait covers and compact captions for Afterglow, Winnow's
 Electron frontend. It preserves the Discover hero composition, warm palette and typography.
@@ -24,9 +24,11 @@ local. The mock makes no API calls and requires no running Winnow backend.
   covers remain complete. Unmatched proportions receive a neutral matte; Sable deliberately
   demonstrates a landscape-only fallback. Production should prefer a portrait source when
   available, while respecting explicitly selected artwork.
-- Captions reserve two title lines and one compact metadata row. They do not reserve a
-  second description block. Long names have a hover title, a visible keyboard-focus tooltip,
-  an accessible full name and a full-title preview when selected.
+- Grid captions sit over the bottom of the artwork and fade in on hover or keyboard focus.
+  A dark gradient supports the full title and a compact metadata row. Idle cards show only
+  artwork, without a reserved text area. Touch screens keep overlays visible. Long names
+  also have an accessible full name and a full-title preview when selected. Compact records
+  retain visible text beside the thumbnail.
 - Discover keeps its large landscape hero and editorial invitation. Returning games use
   small portrait thumbnails; the recommendation shelf uses the same compact caption rules.
 - Display options change cover size, caption density and the palette. Defaults are
@@ -49,7 +51,7 @@ only an inspection aid, not a redesign of the production details screen.
 Browser checks at 1440×900 and 760×560 found no page or library horizontal overflow. Header
 and footer remain inside the viewport and content scrolls within its pane. The wide desktop
 library shows five equally sized cover frames (approximately 203×304 px). Missing and loading
-art retain those dimensions. Short and long titles use the same caption height.
+art retain those dimensions. Caption overlays do not change the card height.
 
 Exercised the six-result unplayed filter, one-result Tentacles search, clearing back to twelve,
 complete long-title preview, compact records, three cover sizes, all three caption options,
@@ -58,7 +60,7 @@ columns. Fullscreen arrow navigation advanced from Borderlands 2 to Borderlands 
 fullscreen Discover at the constrained window size, hero selection, landscape fitting and
 missing/loading thumbnails. JavaScript syntax and Git whitespace checks passed.
 
-Review captures:
+Initial caption-below-art review captures:
 
 - [Discover](01-discover.png)
 - [Library](02-library.png)
@@ -66,6 +68,18 @@ Review captures:
 - [Display options](04-display-options.png)
 - [Fullscreen library](05-fullscreen.png)
 - [Discover shelves](06-shelves.png)
+
+The hover-overlay revision was checked in the browser at 2052×1272. Idle desktop captions
+have zero opacity and cards match their cover height (291 px in this layout). Visually
+checked pointer-hover reveal. Fullscreen keyboard focus exposed the complete Guns, Love
+and Tentacles title: its overlay measured 214 px inside a 326 px card, with no overflow or
+height change. Discover shelf focus exposed the same overlay treatment. Titles-only controls
+hide metadata, reset restores it, and record captions remain visible in normal flow.
+The browser reported no warnings or errors. Touch and reduced-motion fallbacks are defined
+in CSS; no physical touch-device check was performed.
+
+Current review captures: [idle artwork](07-idle-artwork.png) and
+[Discover caption on keyboard focus](08-overlay-focus.png).
 
 The mock does not measure production artwork latency. Proposed follow-up work includes
 targeted artwork invalidation, size-aware requests, cached encoded variants and avoiding

@@ -17,4 +17,12 @@ body[data-mode=fullscreen]{grid-template-rows:34px 90px minmax(0,1fr) 46px;--car
 .return-item>.cover{flex:0 0 52px}.return-item>span:not(.cover){flex:1}.installed svg{width:13px;height:13px}.card-tooltip{bottom:74px}.cover{background:#202124}
 body[data-mode=fullscreen][data-size] .shelf-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--card-min)),1fr))}
 @media(max-width:800px){.return-item>.cover{flex-basis:44px}.collection-scroll{padding-left:8px;padding-right:8px}}
+.poster-grid:not(.records) .game-card{isolation:isolate;overflow:hidden}
+.poster-grid:not(.records) .card-caption{position:absolute;inset:auto 0 0;z-index:1;max-height:100%;overflow:hidden;padding:48px 14px 15px;gap:8px;border-radius:0 0 8px 8px;background:linear-gradient(180deg,transparent,#0b0e13e8 42px,#0b0e13f5);color:#fff8f0;opacity:0;transition:opacity 180ms ease;pointer-events:none;text-shadow:0 1px 4px #0006}
+.poster-grid:not(.records) .game-card:is(:hover,:focus-visible) .card-caption{opacity:1}
+.poster-grid:not(.records) .card-title{height:auto;display:block;line-height:1.4;overflow:visible}
+.poster-grid:not(.records) .card-meta,.poster-grid:not(.records) .card-reason{color:#dad4ca}
+.poster-grid:not(.records) .installed{color:#b5c9e4}
+.poster-grid:not(.records) .card-tooltip{display:none}
+@media(hover:none){.poster-grid:not(.records) .card-caption{opacity:1}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
