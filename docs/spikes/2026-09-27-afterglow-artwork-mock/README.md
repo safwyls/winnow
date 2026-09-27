@@ -1,6 +1,6 @@
 # Afterglow artwork and caption study
 
-September 27, 2026 · TASK-354 / TASK-355 / TASK-356 / TASK-357 / TASK-358 / TASK-359 · Proposal for user review
+September 27, 2026 · TASK-354 / TASK-355 / TASK-356 / TASK-357 / TASK-358 / TASK-359 / TASK-360 · Proposal for user review
 
 This standalone mock explores portrait covers and compact captions for Afterglow, Winnow's
 Electron frontend. It preserves the Discover hero composition, warm palette and typography.
@@ -23,24 +23,28 @@ local. The mock makes no API calls and requires no running Winnow backend.
 - Covers fill aligned 2:3 frames using `object-fit: cover`, cropping from the center when
   their proportions differ. Sable deliberately demonstrates a landscape-only source.
   The mixed-artwork control does the same for Hades.
-- Grid captions sit over the bottom of the artwork and fade in on hover or keyboard focus.
-  A dark gradient supports the full title and a compact metadata row. Idle cards show only
-  artwork, without a reserved text area. Touch screens keep overlays visible. Long names
-  also have an accessible full name and a full-title preview when selected. Compact records
-  retain visible text beside the thumbnail.
+- Grid cards keep their artwork clear. Hovering briefly or using keyboard focus opens a
+  flyout beside the card with its full title, store, playtime, installation status, revisit
+  reason and description. It prefers the right, flips left near the edge and keeps inside
+  the header/footer bounds. Very narrow windows use a bottom panel when neither side fits.
+  You can move into the flyout to read or scroll it. Escape dismisses it before leaving
+  Library; Page Up/Down scroll an overflowing preview while the card has keyboard focus.
+  Selecting the cover opens the full-title dialog, including its description, on all input
+  paths. Compact records retain visible text beside the thumbnail.
 - Discover keeps its large landscape hero and editorial invitation. Eight returning games
   use small portrait thumbnails in four columns on wide windows, two columns below 1150 px,
-  and one below 540 px. The recommendation shelf uses the same compact caption rules.
+  and one below 540 px. The recommendation shelf uses the same side previews.
 - Cover art catches a soft light that follows the pointer and settles when it pauses.
   A PixiJS filter samples the existing print to enrich its colours and add a broad reflection.
-  Lettering and the centered crop stay fixed within the card. Captions fade above the lighting;
-  their dark backing remains readable. Loading/missing artwork and compact records have no finish.
-- Poster cards lift with a soft shadow and tilt toward the pointer. Artwork, finish and
-  caption move together on one surface; the button's hit area stays fixed to avoid hover
+  Lettering and the centered crop stay fixed within the card. Loading/missing artwork and
+  compact records have no finish; their game information remains available.
+- Poster cards lift with a soft shadow and tilt toward the pointer. Artwork and finish
+  lighting move together on one surface; the button's hit area stays fixed to avoid hover
   feedback near its edges. Compact records and returning-game thumbnails remain flat.
-- Display options change cover size, caption density and the palette. Defaults are
-  **Balanced + Essential**. **With context** adds a short reason; **Titles only** hides
-  metadata. Cover finish defaults to **Satin at 55%**. **Matte** uses diffuse light;
+- Display options change cover size, compact record text and the palette. Defaults are
+  **Balanced + Essential**. In list rows, **With context** adds a short reason and
+  **Titles only** hides metadata. Grid previews always include the full information.
+  Cover finish defaults to **Satin at 55%**. **Matte** uses diffuse light;
   **Satin** adds a gentle sheen; **Foil** adds stronger iridescence. An intensity slider and
   **Off** option support comparison. Turning off **Follow the pointer** fixes the light in
   one position. Keyboard focus and system reduced motion use that same stationary treatment.
@@ -61,7 +65,8 @@ local. The mock makes no API calls and requires no running Winnow backend.
   composition study, not a native fullscreen or physical-controller implementation.
 
 The sample has 12 titles. Stores, playtimes, installation flags and recommendation reasons
-are illustrative fixtures, not a live account snapshot. Search, filters, record/grid view,
+are illustrative fixtures, not a live account snapshot. Descriptions are short original
+synopses prepared for this study, not metadata fetched from the backend. Search, filters, record/grid view,
 hero selection, title previews and display controls are interactive. The title dialog is
 only an inspection aid, not a redesign of the production details screen.
 
@@ -156,8 +161,25 @@ errors were reported; JavaScript syntax and Git whitespace checks passed. The ex
 reduced-motion stationary branch remains in use; OS preference switching and physical
 touch input were not exercised.
 
-Current capture: [holographic highlights](12-highlight-foil.png). Move across covers in the
-interactive mock to assess the depth and reflection; a still capture cannot show their response.
+Highlight-foil review capture: [holographic highlights](12-highlight-foil.png).
+
+The side-preview revision was checked on desktop and fullscreen at 2052×1272, fullscreen
+at 760×560, and desktop at 390×700. Grid captions have no rendered area; artwork and foil
+remain unobstructed by text. Hollow Knight opened a right-hand preview; the rightmost
+Enshrouded card opened it to the left. The complete Guns, Love and Tentacles title and
+description wrapped without horizontal overflow. Moving into the flyout kept it open;
+leaving dismissed it. Escape removed the description relationship and kept Library visible.
+Enter opened the correct game and removed the preview. Fullscreen arrows exposed a
+stationary finish and the same information. Constrained previews scrolled with Page Down;
+at 390 px the panel docked above the footer. Missing artwork still exposed the description
+without a shader canvas. Navigation dismissed the preview, and compact rows retained their
+inline captions. Titles-only list preferences did not hide grid preview metadata. JavaScript
+syntax and Git whitespace checks passed, and no browser warnings or errors were reported. Physical touch and
+screen-reader output were not exercised; controls retain accessible full names and active
+previews use aria-describedby. Reduced motion disables the flyout's entrance animation.
+
+Current capture: [artwork with a side preview](13-side-preview.png). Move across covers in
+the interactive mock to assess the depth and reflection; a still capture cannot show their response.
 
 The current effect uses one lazy-initialized WebGL renderer and a single custom fragment
 filter. It creates textures from the cover images already decoded by the browser, keyed

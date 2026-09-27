@@ -2,18 +2,18 @@
 
 // Static review fixtures. These controls never call Winnow or launch a game.
 const games = [
-  {id:'borderlands2', title:'Borderlands 2', store:'Steam', time:'3.8h', installed:true, reason:'Another chance for Pandora.', description:'A familiar world, waiting for another visit.'},
-  {id:'borderlands3', title:'Borderlands 3', store:'Epic', time:'4.2h', reason:'Your next vault is out there.'},
-  {id:'bounty', title:'Borderlands 3: Bounty of Blood – A Fistful of Redemption', store:'Epic', time:'Unplayed', reason:'A new story in your collection.'},
-  {id:'tentacles', title:'Borderlands 3: Guns, Love and Tentacles – The Marriage of Wainwright & Hammerlock', store:'Epic', time:'Unplayed', reason:'A new story in your collection.'},
-  {id:'jackpot', title:'Borderlands 3: Moxxi’s Heist of the Handsome Jackpot', store:'Epic', time:'Unplayed', reason:'A new story in your collection.'},
-  {id:'celeste', title:'Celeste', store:'Steam', time:'2.4h', installed:true, reason:'A mountain you started climbing.'},
-  {id:'disco', title:'Disco Elysium – The Final Cut', store:'Steam', time:'1.6h', reason:'There is more to your story.'},
-  {id:'enshrouded', title:'Enshrouded', store:'Steam', time:'8.2h', installed:true, reason:'A world worth returning to.'},
-  {id:'hades', title:'Hades', store:'Steam', time:'12.6h', installed:true, reason:'There is always one more run.', description:'One more attempt. One more conversation. One more way out.'},
-  {id:'hollow', title:'Hollow Knight', store:'Steam', time:'6.1h', installed:true, reason:'Hallownest still has its secrets.'},
-  {id:'outer', title:'Outer Wilds', store:'Steam', time:'Unplayed', reason:'A solar system full of questions.', description:'A solar system full of questions. You already own the first step.'},
-  {id:'sable', title:'Sable', store:'GOG', time:'1.2h', reason:'Take your time finding your way.'},
+  {id:'borderlands2', title:'Borderlands 2', store:'Steam', time:'3.8h', installed:true, reason:'Another chance for Pandora.', description:'Return to Pandora as a Vault Hunter, chasing strange weapons and taking on Handsome Jack. Explore its wastelands alone or with friends in a story-driven shooter.'},
+  {id:'borderlands3', title:'Borderlands 3', store:'Epic', time:'4.2h', reason:'Your next vault is out there.', description:'Choose a Vault Hunter and take the hunt beyond Pandora. Fight across new worlds, build an arsenal of outlandish weapons and face the Calypso Twins alone or in co-op.'},
+  {id:'bounty', title:'Borderlands 3: Bounty of Blood – A Fistful of Redemption', store:'Epic', time:'Unplayed', reason:'A new story in your collection.', description:'Travel to Gehenna, a frontier world caught between a struggling town and the Devil Riders. This Borderlands 3 expansion mixes a revenge story with new creatures, weapons and dusty trails.'},
+  {id:'tentacles', title:'Borderlands 3: Guns, Love and Tentacles – The Marriage of Wainwright & Hammerlock', store:'Epic', time:'Unplayed', reason:'A new story in your collection.', description:'Join Wainwright and Hammerlock for a wedding on the frozen planet Xylourgos. Help the couple confront an unsettling cult and the creatures that haunt this Borderlands 3 expansion.'},
+  {id:'jackpot', title:'Borderlands 3: Moxxi’s Heist of the Handsome Jackpot', store:'Epic', time:'Unplayed', reason:'A new story in your collection.', description:'Assemble a crew for Moxxi and break into Handsome Jack’s abandoned casino. This Borderlands 3 expansion sends you through neon halls filled with security robots, stranded gamblers and loot.'},
+  {id:'celeste', title:'Celeste', store:'Steam', time:'2.4h', installed:true, reason:'A mountain you started climbing.', description:'Help Madeline climb Celeste Mountain through precise jumps, dashes and rooms full of small challenges. A story about persistence and self-discovery unfolds along the ascent.'},
+  {id:'disco', title:'Disco Elysium – The Final Cut', store:'Steam', time:'1.6h', reason:'There is more to your story.', description:'Wake up as a detective with a fractured memory and a murder to solve. Explore a troubled city, question its residents and let competing parts of your own mind shape the investigation.'},
+  {id:'enshrouded', title:'Enshrouded', store:'Steam', time:'8.2h', installed:true, reason:'A world worth returning to.', description:'Explore a ruined kingdom consumed by a mysterious fog. Gather resources, build a home and develop your combat skills as you venture into the Shroud, alone or with friends.'},
+  {id:'hades', title:'Hades', store:'Steam', time:'12.6h', installed:true, reason:'There is always one more run.', heroDescription:'One more attempt. One more conversation. One more way out.', description:'Fight your way out of the Underworld as Zagreus, with weapons and blessings from the Olympian gods. Each attempt brings new combinations, conversations and another piece of the family story.'},
+  {id:'hollow', title:'Hollow Knight', store:'Steam', time:'6.1h', installed:true, reason:'Hallownest still has its secrets.', description:'Descend into Hallownest, a fallen kingdom beneath the surface. Explore interconnected caverns, master precise combat and uncover the histories of the insects who still call it home.'},
+  {id:'outer', title:'Outer Wilds', store:'Steam', time:'Unplayed', reason:'A solar system full of questions.', heroDescription:'A solar system full of questions. You already own the first step.', description:'Explore a small, changing solar system trapped in a time loop. Follow the traces of an ancient civilization and use what you learn on each journey to piece together its mysteries.'},
+  {id:'sable', title:'Sable', store:'GOG', time:'1.2h', reason:'Take your time finding your way.', description:'Set out on a coming-of-age journey across a vast desert. Glide between dunes, climb old ruins and meet the people whose stories help Sable decide where she belongs.'},
 ];
 const byId = new Map(games.map(game => [game.id, game]));
 const state = { page:'discover', filter:'all', query:'', view:'grid', hero:0 };
@@ -37,7 +37,7 @@ function metadata(game) {
 }
 
 function card(game) {
-  return `<button class="game-card" data-game="${game.id}" aria-label="View ${escapeHtml(game.title)}"><span class="card-surface">${cover(game)}<span class="card-caption"><span class="card-title">${escapeHtml(game.title)}</span>${metadata(game)}<span class="card-reason">${game.reason}</span></span></span>${game.title.length > 32 ? `<span class="card-tooltip" aria-hidden="true">${escapeHtml(game.title)}</span>` : ''}</button>`;
+  return `<button class="game-card" data-game="${game.id}" aria-label="View ${escapeHtml(game.title)}"><span class="card-surface">${cover(game)}</span><span class="card-caption"><span class="card-title">${escapeHtml(game.title)}</span>${metadata(game)}<span class="card-reason">${game.reason}</span></span></button>`;
 }
 
 function renderLibrary() {
@@ -77,7 +77,7 @@ function selectHero(index) {
   const game = byId.get(state.hero ? 'hades' : 'outer');
   $('#hero-art').src = `assets/${game.id}-hero.jpg`;
   $('#hero-title').textContent = game.title;
-  $('#hero-reason').textContent = game.description;
+  $('#hero-reason').textContent = game.heroDescription;
   $('#hero-kicker').textContent = state.hero ? 'Pick up the thread' : 'Still waiting for you';
   $('#hero-position').textContent = `0${state.hero + 1} / 02`;
   $('#hero-meta').innerHTML = `${game.store}<span>${state.hero ? '2020' : '2019'}</span>${game.time === 'Unplayed' ? 'Never played' : game.time+' played'}`;
