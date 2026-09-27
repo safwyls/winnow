@@ -1,6 +1,6 @@
 # Afterglow artwork and caption study
 
-September 27, 2026 · TASK-354 / TASK-355 / TASK-356 / TASK-357 · Proposal for user review
+September 27, 2026 · TASK-354 / TASK-355 / TASK-356 / TASK-357 / TASK-358 · Proposal for user review
 
 This standalone mock explores portrait covers and compact captions for Afterglow, Winnow's
 Electron frontend. It preserves the Discover hero composition, warm palette and typography.
@@ -33,14 +33,20 @@ local. The mock makes no API calls and requires no running Winnow backend.
   and one below 540 px. The recommendation shelf uses the same compact caption rules.
 - Cover art catches a soft light that follows the pointer and settles when it pauses.
   A PixiJS filter samples the existing print to enrich its colours and add a broad reflection.
-  Geometry, lettering and the centered crop stay fixed. Captions fade above the lighting;
+  Lettering and the centered crop stay fixed within the card. Captions fade above the lighting;
   their dark backing remains readable. Loading/missing artwork and compact records have no finish.
+- Poster cards lift with a soft shadow and tilt toward the pointer. Artwork, finish and
+  caption move together on one surface; the button's hit area stays fixed to avoid hover
+  feedback near its edges. Compact records and returning-game thumbnails remain flat.
 - Display options change cover size, caption density and the palette. Defaults are
   **Balanced + Essential**. **With context** adds a short reason; **Titles only** hides
   metadata. Cover finish defaults to **Satin at 55%**. **Matte** uses diffuse light;
   **Satin** adds a gentle sheen; **Foil** adds stronger iridescence. An intensity slider and
   **Off** option support comparison. Turning off **Follow the pointer** fixes the light in
   one position. Keyboard focus and system reduced motion use that same stationary treatment.
+  **Card depth** independently toggles floating artwork and adjusts maximum tilt from 0–12°,
+  with 7° as the default. Zero gives lift alone. Keyboard focus, reduced motion and disabled
+  pointer following keep raised cards level. Finish intensity does not alter card depth.
   These controls are in-memory demonstrations and reset on reload.
 - The review strip switches desktop/fullscreen composition and original/mixed/missing/loading
   artwork. Loading and missing states preserve the same frame dimensions.
@@ -115,8 +121,23 @@ No new browser warnings or errors occurred. JavaScript syntax and Git whitespace
 passed. System reduced motion uses the verified stationary path; changing the OS preference
 and physical touch input were not exercised.
 
-Current capture: [Satin artwork lighting](10-satin-artwork.png). Move across covers in the
-interactive mock to assess the reflection; a still capture cannot show its cursor response.
+Satin review capture: [artwork lighting](10-satin-artwork.png).
+
+The floating-card revision was checked at 2052×1272 and 760×560. On desktop, moving between
+opposite corners changed the card's perspective while its button retained the same
+191.25×286.875 px bounds. The artwork, shader and revealed caption stayed aligned. Checked
+zero tilt with lift, floating disabled while Satin remained active, 12° maximum tilt,
+stationary Foil, and default reset. Fullscreen arrow navigation raised a level card and
+Enter opened the correct full-title preview. Dialogs removed the floating state; compact
+records retained their normal layout. Discover keyboard navigation exposed a level card,
+and all eight returning games remained present. Maximum tilt at the narrow size produced
+no horizontal page or library overflow; the footer stayed inside the viewport. No new
+browser warnings or errors occurred. JavaScript syntax and Git whitespace checks passed.
+The stationary path was exercised through keyboard input and disabled pointer following;
+changing the OS reduced-motion preference and physical touch input were not exercised.
+
+Current capture: [floating artwork](11-floating-artwork.png). Move across covers in the
+interactive mock to assess the depth and reflection; a still capture cannot show their response.
 
 The current effect uses one lazy-initialized WebGL renderer and a single custom fragment
 filter. It creates textures from the cover images already decoded by the browser, keyed
@@ -124,6 +145,10 @@ by image URL; it does not fetch secondary art. The private ticker runs at up to 
 while following or fading, stops once the light settles, and stays stopped for stationary
 lighting. Pointer scrolling, blur, hidden pages and removed cards cancel pending activation;
 async initialization cannot attach to an old card. Resolution is capped at 2×.
+Card depth uses a CSS perspective transform with an 8 px lift, 18 px forward translation
+and 950 px perspective. Pointer updates coalesce into one animation frame and CSS smooths
+the transform; depth has no continuous idle loop. Both effects read the untransformed
+button bounds, so tilting the artwork cannot change their coordinate reference.
 These are implementation bounds, not measured
 GPU timings or evidence of production performance. WebGL failure leaves the normal cards
 and captions usable. A production build should import only the Pixi modules it needs;

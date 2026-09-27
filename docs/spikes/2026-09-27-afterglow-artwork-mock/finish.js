@@ -188,7 +188,9 @@
 
   async function activate(cover, source, clientX, clientY) {
     if (!enabled() || document.hidden || document.querySelector('dialog[open]')) return;
-    const bounds = cover.getBoundingClientRect();
+    // The outer button is a stable hit area; its visual surface may be tilted in 3D.
+    const poster = cover.closest('.poster-grid:not(.records) .game-card');
+    const bounds = (poster || cover).getBoundingClientRect();
     if (!bounds.width || !bounds.height) return;
     if (source === 'pointer' && (clientX < bounds.left || clientX > bounds.right || clientY < bounds.top || clientY > bounds.bottom)) { leave(); return; }
     input = source;
