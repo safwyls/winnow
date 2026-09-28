@@ -2197,8 +2197,70 @@
     width: 100%;
     height: 100%;
   }
-  .game-card[data-preview='flyout'] {
+  .game-card:is([data-preview='flyout'], [data-preview='overlay']) {
     height: auto;
+  }
+  .game-card[data-preview='overlay'] {
+    container: cover-caption / inline-size;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: calc(var(--radius) * 0.6);
+  }
+  .game-card[data-preview='overlay'] .card-content {
+    position: absolute;
+    inset: auto 0 0;
+    z-index: 1;
+    max-height: 100%;
+    overflow: hidden;
+    padding: 48px 14px 15px;
+    background: linear-gradient(180deg, transparent, #0b0e13e8 42px, #0b0e13f5);
+    color: #fff8f0;
+    opacity: 0;
+    transition: opacity 180ms ease;
+    pointer-events: none;
+    text-shadow: 0 1px 4px #0006;
+  }
+  .game-card[data-preview='overlay']:is(:hover, :focus-visible) .card-content,
+  .game-card[data-preview='overlay']:has(.artwork[data-state='missing'], .artwork[data-state='error'])
+    .card-content {
+    opacity: 1;
+  }
+  .game-card[data-preview='overlay'] h3 {
+    height: auto;
+    flex-shrink: 0;
+    overflow-wrap: anywhere;
+    -webkit-line-clamp: 4;
+  }
+  .game-card[data-preview='overlay'] p {
+    min-height: 0;
+  }
+  .game-card[data-preview='overlay'] :is(.card-topline, .game-facts, p) {
+    color: #dad4ca;
+  }
+  .game-card[data-preview='overlay'] .game-facts {
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    margin-top: 9px;
+  }
+  @container cover-caption (max-width: 180px) {
+    .game-card[data-preview='overlay'] .card-content {
+      padding: 32px 11px 11px;
+      background: linear-gradient(180deg, transparent, #0b0e13e8 28px, #0b0e13f5);
+    }
+    .game-card[data-preview='overlay'] h3 {
+      font-size: 14px;
+      -webkit-line-clamp: 3;
+    }
+    .game-card[data-preview='overlay'] p {
+      font-size: 11px;
+      line-height: 1.4;
+      -webkit-line-clamp: 1;
+    }
+  }
+  @media (hover: none) {
+    .game-card[data-preview='overlay'] .card-content {
+      opacity: 1;
+    }
   }
   .game-card[data-presentation='record'] {
     flex-direction: row;

@@ -40,7 +40,7 @@ export interface ThemeGameCardProps {
   onOpen?: () => void
   presentation?: 'poster' | 'landscape' | 'record'
   effects?: Partial<ArtworkEffectOptions> | false
-  preview?: 'flyout' | 'inline' | 'none'
+  preview?: 'flyout' | 'inline' | 'overlay' | 'none'
 }
 export interface ThemeArtworkEffectsProps {
   children: ReactNode

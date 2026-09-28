@@ -32,7 +32,10 @@ when a pair has less than 4.5:1 contrast. Buttons filled with the accent use whi
 or white has greater contrast. Individual color resets return to the selected preset;
 choosing a preset clears custom palette overrides.
 System reduced-motion preferences still apply when the explicit preference is off.
-Artwork settings apply to themes that use the shared effect components. Keyboard focus,
+Artwork settings apply to themes that opt into the shared effect components. Afterglow's
+covers stay still and unlit, with captions over the artwork. It retains saved material
+settings for other themes. Catalogue's Library continues to use materials and side previews.
+Keyboard focus,
 reduced motion, and disabling **Follow the pointer** use a steady light and level card.
 **Movement and depth** explains when the profile or system preference pauses motion and
 disables the affected controls without discarding their saved values. The notice can turn
@@ -157,12 +160,16 @@ Actions that navigate to game details use `View game`; launching remains a separ
 Shared artwork fills the size assigned by its parent; set a height or aspect ratio on the
 `Artwork` frame. Loading, missing artwork, and the decoded image all occupy that same frame.
 The details hero uses a responsive height from 220 to 420 pixels, independent of image ratio.
-Afterglow defaults to filled 2:3 portrait cards. Hover or keyboard focus opens a side preview
-with the full title, metadata, recommendation reason, and available game description.
-Artwork stays unobstructed. Existing saved landscape and record preferences remain intact.
+Afterglow defaults to filled 2:3 portrait cards with no materials, lift or tilt. Hover or
+keyboard focus reveals a shaded caption inside the cover with the title, storefront,
+recommendation reason or bucket, playtime and installation status. The caption does not
+change the card's height; long titles use up to four lines and the button retains the full
+accessible name. Missing or failed artwork keeps its caption visible, as do touch devices.
+Existing saved landscape and record preferences remain intact. The Library fits more
+portrait columns into short windows so a focused caption stays inside the reading area.
 Short windows use tighter navigation and library spacing. At less than 480 logical pixels
-of available height, the grid uses compact thumbnails beside titles and keeps filters on
-one row. These breakpoints follow the scaled content viewport, including at 130% size.
+of available height, inline host cards use compact thumbnails beside titles and filters
+stay on one row. These breakpoints follow the scaled content viewport, including at 130% size.
 
 Afterglow rotates up to six featured recommendations every nine seconds while at least half
 the hero is visible in the focused window. Interaction and pending feedback pause it;
@@ -217,7 +224,8 @@ require the revisions, uncertainty handling, and event reconciliation described 
 
 The shared effects do not depend on Afterglow's screen layout. For a complete host card,
 set `presentation` to `poster`, `landscape`, or `record`, and `preview` to `flyout`, `inline`,
-or `none`. Omitting the new props keeps the existing inline host-card presentation for
+`overlay`, or `none`. `overlay` reveals a caption inside the artwork on hover or keyboard
+focus; Afterglow pairs it with `effects: false`. Omitting these props keeps the existing inline host-card presentation for
 older theme packages. `effects` takes partial material overrides, or `false` to disable
 all decoration for that card.
 

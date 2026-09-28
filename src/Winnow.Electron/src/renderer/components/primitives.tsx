@@ -53,7 +53,7 @@ export function GameCard({
         <ArtworkEffects interactionRef={interaction} effects={presentation === 'record' ? false : effects}>
           <Artwork workId={game.workId} />
         </ArtworkEffects>
-        {preview === 'inline' && (
+        {(preview === 'inline' || preview === 'overlay') && (
           <div className="card-content">
             <div className="card-topline">
               <span>{game.entries[0]?.store ?? 'Library'}</span>

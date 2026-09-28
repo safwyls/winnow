@@ -4,6 +4,10 @@ An independent Electron/TypeScript frontend for Winnow's local backend. Afterglo
 portrait covers, a panoramic featured game and editorial typography; Catalogue presents the same library as a
 reading desk and index. Both use the public theme interface available to installed themes.
 
+The separate [Rift design study](../../docs/spikes/2026-09-28-rift-design/README.md)
+explores a composition built around floating materials and artwork portals. It is an
+interactive mock for review, not an installed frontend theme.
+
 Navigation and the footer stay visible as you browse. Library results and the list index
 scroll independently; other screens scroll within the content pane. Afterglow's featured
 recommendations rotate every nine seconds while the hero is visible and idle. Previous,
@@ -11,14 +15,16 @@ Next, and Pause controls are available on desktop and fullscreen. Selecting a re
 pauses rotation until Resume; hovering, keyboard focus, and leaving the window pause it
 temporarily. Reduced motion disables automatic rotation.
 
-New profiles use filled 2:3 covers, with game information and descriptions in side previews
-on hover or keyboard focus. The preview flips at the window edge and docks in narrow windows;
-Escape dismisses it and Page Up/Down scroll long descriptions. Pick up the thread shows up
-to eight recently played games. Saved landscape and compact-record preferences still work.
+Afterglow uses still, filled 2:3 covers, with captions over the artwork on hover or keyboard
+focus. Missing artwork keeps its caption visible; touch devices always show captions.
+Cards keep the same size regardless of title length. Pick up the thread shows up to eight
+recently played games. Saved landscape and compact-record preferences still work.
 
 Theme Studio's **Artwork materials** controls surface finish, intensity, foil on light areas,
-metal color, pointer movement, lift and tilt. Themes can reuse `ArtworkEffects`, `GamePreview`
-or the composed `GameCard` independently. One lazy Pixi renderer draws the active cover using
+metal color, pointer movement, lift and tilt for themes that opt in. Afterglow does not apply
+these effects, and keeps the saved settings available for other themes. Catalogue's Library
+retains material effects and descriptive side previews. Themes can reuse `ArtworkEffects`,
+`GamePreview` or the composed `GameCard` independently. One lazy Pixi renderer draws an active cover using
 its already-decoded image; static artwork remains available when WebGL is unavailable.
 System and profile reduced-motion settings keep focus effects stationary.
 

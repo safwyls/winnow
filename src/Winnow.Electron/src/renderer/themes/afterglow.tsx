@@ -395,7 +395,8 @@ export function AfterglowDiscover(context: ThemeContext) {
                       game={game}
                       reason={item.reason}
                       presentation={context.profile.layout.cardStyle}
-                      preview={context.profile.layout.cardStyle === 'record' ? 'inline' : 'flyout'}
+                      effects={false}
+                      preview={context.profile.layout.cardStyle === 'record' ? 'inline' : 'overlay'}
                       onOpen={() => context.openGame(game.workId)}
                     />
                   </Impression>
@@ -449,7 +450,7 @@ export function AfterglowDiscover(context: ThemeContext) {
   )
 }
 
-export function AfterglowLibrary(context: ThemeContext) {
+export function AfterglowLibrary({ quietCards = true, ...context }: ThemeContext & { quietCards?: boolean }) {
   const library = useLibrary()
   const [query, setQuery] = useViewState(`library:${context.mode}:query`, ''),
     [bucket, setBucket] = useViewState(`library:${context.mode}:bucket`, 'all'),
@@ -490,14 +491,22 @@ export function AfterglowLibrary(context: ThemeContext) {
   )
   const listMode = view === 'list' || context.profile.layout.cardStyle === 'record'
   const [gridWidth, setGridWidth] = useState(1000)
+  const [gridHeight, setGridHeight] = useState(800)
   const columns = Math.max(
     gridWidth >= 280 ? 2 : 1,
     Math.floor(gridWidth / (context.mode === 'fullscreen' ? 210 : 190)),
+    // Keep a focused cover's caption inside the scroll pane in short windows.
+    quietCards && context.profile.layout.cardStyle === 'poster'
+      ? Math.ceil((gridWidth + 22) / (Math.max(110, (gridHeight - 28) / 1.5) + 22))
+      : 1,
   )
   useEffect(() => {
     const element = scrollRef.current
     if (!element) return
-    const observer = new ResizeObserver(([entry]) => setGridWidth(entry.contentRect.width))
+    const observer = new ResizeObserver(([entry]) => {
+      setGridWidth(entry.contentRect.width)
+      setGridHeight(entry.contentRect.height)
+    })
     observer.observe(element)
     return () => observer.disconnect()
   }, [])
@@ -680,7 +689,8 @@ export function AfterglowLibrary(context: ThemeContext) {
                           key={game.workId}
                           game={game}
                           presentation={context.profile.layout.cardStyle}
-                          preview="flyout"
+                          effects={quietCards ? false : undefined}
+                          preview={quietCards ? 'overlay' : 'flyout'}
                           onOpen={() => context.openGame(game.workId)}
                         />
                       ),

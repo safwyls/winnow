@@ -367,7 +367,10 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
               <Sparkles size={18} />
               <h2 id="studio-artwork">Artwork materials</h2>
             </div>
-            <p>Set how covers catch the light. Themes using Winnow's artwork effects share these choices.</p>
+            <p>
+              These choices apply to themes and components that use artwork effects. Afterglow keeps its
+              covers still and unlit; your choices stay saved for other themes.
+            </p>
             <fieldset className="studio-fieldset">
               <legend>Surface finish</legend>
               <div className="studio-field-grid">

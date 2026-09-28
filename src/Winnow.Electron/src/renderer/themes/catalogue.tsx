@@ -111,7 +111,7 @@ export const catalogue: ThemeDefinition = {
   name: 'Catalogue',
   Shell: CatalogueShell,
   Discover: CatalogueDiscover,
-  Library: AfterglowLibrary,
+  Library: (context) => <AfterglowLibrary {...context} quietCards={false} />,
   settings: [
     {
       id: 'showArt',

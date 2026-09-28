@@ -1,4 +1,13 @@
 'use strict';
+const assetRoot='../2026-09-27-afterglow-artwork-mock/assets/';
+const systemMotion=matchMedia('(prefers-reduced-motion: reduce)');
+const stillControl=document.querySelector('#reduce-motion');
+window.riftMotion={
+  get matches(){return systemMotion.matches||stillControl.checked;},
+  addEventListener(type,handler){systemMotion.addEventListener(type,handler);stillControl.addEventListener(type,handler);}
+};
+stillControl.addEventListener('change',()=>{document.body.dataset.still=String(stillControl.checked);});
+
 
 // Static review fixtures. These controls never call Winnow or launch a game.
 const games = [
@@ -16,6 +25,16 @@ const games = [
   {id:'sable', title:'Sable', store:'GOG', time:'1.2h', reason:'Take your time finding your way.', description:'Set out on a coming-of-age journey across a vast desert. Glide between dunes, climb old ruins and meet the people whose stories help Sable decide where she belongs.'},
 ];
 const byId = new Map(games.map(game => [game.id, game]));
+const portalHeroes = {
+  borderlands2:'borderlands2-scene', celeste:'celeste-scene', disco:'disco-scene',
+  enshrouded:'enshrouded-scene', hades:'hades-hero', hollow:'hollow-scene', outer:'outer-hero', sable:'sable',
+};
+const portalArtwork = game => {
+  if(!game) return null;
+  const unavailable=['missing','loading'].includes(document.body.dataset.state)
+    && ['borderlands3','tentacles','hades','disco'].includes(game.id);
+  return unavailable?null:`${assetRoot}${portalHeroes[game.id]||game.id}.jpg`;
+};
 const state = { page:'discover', filter:'all', query:'', view:'grid', hero:0 };
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -29,7 +48,7 @@ function cover(game, sample = document.body.dataset.state) {
   if (sample === 'missing' && affected) return `<span class="cover" role="img" aria-label="Artwork unavailable"><span class="cover-empty">${icon('image-off')}<small>No artwork yet</small></span></span>`;
   if (sample === 'loading' && affected) return `<span class="cover" role="img" aria-label="Artwork loading"><span class="cover-loading"><span class="loading-mark"></span></span></span>`;
   const file = sample === 'mixed' && game.id === 'hades' ? 'hades-landscape' : game.id;
-  return `<span class="cover"><img src="assets/${file}.jpg" alt="" loading="lazy" decoding="async"></span>`;
+  return `<span class="cover"><img src="${assetRoot}${file}.jpg" alt="" loading="lazy" decoding="async" draggable="false"></span>`;
 }
 
 function metadata(game) {
@@ -37,7 +56,7 @@ function metadata(game) {
 }
 
 function card(game) {
-  return `<button class="game-card" data-game="${game.id}" aria-label="View ${escapeHtml(game.title)}">${cover(game)}<span class="card-caption"><span class="card-title">${escapeHtml(game.title)}</span>${metadata(game)}<span class="card-reason">${game.reason}</span></span>${game.title.length > 32 ? `<span class="card-tooltip" aria-hidden="true">${escapeHtml(game.title)}</span>` : ''}</button>`;
+  return `<button class="game-card" data-game="${game.id}" aria-label="View ${escapeHtml(game.title)}"><span class="card-surface">${cover(game)}</span><span class="card-caption"><span class="card-title">${escapeHtml(game.title)}</span>${metadata(game)}<span class="card-reason">${game.reason}</span></span></button>`;
 }
 
 function renderLibrary() {
@@ -46,7 +65,7 @@ function renderLibrary() {
   $('#collection').innerHTML = filtered.map(card).join('') || '<p class="empty-result">No games match. Try another search.</p>';
   $('#result-count').textContent = `${filtered.length} ${filtered.length === 1 ? 'game' : 'games'}`;
   $('.collection-end').hidden = filtered.length === 0;
-  $('.collection-end').textContent = filtered.length === games.length ? 'A dozen possibilities. All yours.' : 'More to discover in your collection.';
+  $('.collection-end').textContent = filtered.length === games.length ? 'Twelve worlds. Already yours.' : 'More worlds are waiting in your collection.';
   hydrateIcons();
 }
 
@@ -55,14 +74,15 @@ function renderArt() {
     const game = byId.get(id);
     return `<button class="return-item" data-game="${id}" aria-label="View ${game.title}">${cover(game)}<span><strong>${game.title}</strong><small>${game.reason}</small></span>${icon('arrow-up-right')}</button>`;
   }).join('');
-  $('#shelf').innerHTML = ['hollow','disco','celeste','enshrouded','bounty','jackpot'].map(id => card(byId.get(id))).join('');
+  $('#shelf').innerHTML = ['hollow','hades','celeste','enshrouded','disco','sable','borderlands2','bounty'].map(id => card(byId.get(id))).join('');
   renderLibrary();
+  selectHero(state.hero);
 }
 
 function navigate(page) {
   state.page = page;
   $$('.page').forEach(element => { element.hidden = element.id !== page; });
-  $$('.app-bar nav button').forEach(button => {
+  $$('.navigation button').forEach(button => {
     if (button.dataset.page === page) button.setAttribute('aria-current','page');
     else button.removeAttribute('aria-current');
   });
@@ -75,9 +95,11 @@ function navigate(page) {
 function selectHero(index) {
   state.hero = (index + 2) % 2;
   const game = byId.get(state.hero ? 'hades' : 'outer');
-  $('#hero-art').src = `assets/${game.id}-hero.jpg`;
+  $('#hero-art').src = `${assetRoot}${game.id}-hero.jpg`;
+  $('#featured-card').innerHTML=card(game);
+  hydrateIcons();
   $('#hero-title').textContent = game.title;
-  $('#hero-reason').textContent = game.description;
+  $('#hero-reason').textContent = game.heroDescription;
   $('#hero-kicker').textContent = state.hero ? 'Pick up the thread' : 'Still waiting for you';
   $('#hero-position').textContent = `0${state.hero + 1} / 02`;
   $('#hero-meta').innerHTML = `${game.store}<span>${state.hero ? '2020' : '2019'}</span>${game.time === 'Unplayed' ? 'Never played' : game.time+' played'}`;
@@ -87,7 +109,7 @@ function selectHero(index) {
 
 function openGame(id) {
   const game = byId.get(id);
-  $('#game-preview').innerHTML = `<div class="preview-layout">${cover(game)}<div><span class="eyebrow">In your collection</span><h2 id="preview-title">${escapeHtml(game.title)}</h2><p>${game.description || game.reason}</p>${metadata(game)}<p class="preview-note">Design preview · sample activity.<br>The complete title and artwork remain available here.</p></div></div>`;
+  $('#game-preview').innerHTML = `<div class="preview-layout">${cover(game)}<div><span class="eyebrow">In your collection</span><h2 id="preview-title">${escapeHtml(game.title)}</h2><p>${game.description || game.reason}</p>${metadata(game)}<p class="preview-note">Design preview · sample activity.<br>Select a cover to inspect its complete title.</p></div></div>`;
   hydrateIcons();
   $('#game-dialog').showModal();
 }
@@ -142,9 +164,10 @@ $$('[name=caption]').forEach(input => input.addEventListener('change', () => { d
 $('#reset-options').addEventListener('click', () => {
   document.body.dataset.size = 'balanced';
   document.body.dataset.caption = 'essential';
-  document.body.dataset.palette = 'afterglow';
+  document.body.dataset.palette = 'rift';
+  stillControl.checked=false; stillControl.dispatchEvent(new Event('change'));
   $$('button[data-size]').forEach(button => button.setAttribute('aria-pressed',String(button.dataset.size === 'balanced')));
-  $$('button[data-palette]').forEach(button => button.setAttribute('aria-pressed',String(button.dataset.palette === 'afterglow')));
+  $$('button[data-palette]').forEach(button => button.setAttribute('aria-pressed',String(button.dataset.palette === 'rift')));
   $('[name=caption][value=essential]').checked = true;
 });
 
