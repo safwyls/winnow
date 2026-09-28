@@ -16,7 +16,7 @@
 
   function show(input=source) {
     source=input;portal.hide();
-    if(!game||document.hidden||document.querySelector('dialog[open]')||!panel.getClientRects().length)return;
+    if(!game||document.hidden||document.body.dataset.details==='open'||document.querySelector('dialog[open]')||!panel.getClientRects().length)return;
     const plain=motion.value==='plain';
     panel.dataset.plain=String(plain);
     panel.querySelector('.portal-scene').hidden=plain;
@@ -47,6 +47,7 @@
     game=event.detail?.game;show(event.detail?.input||'keyboard');fit();
   });
   document.addEventListener('rift:layout',()=>{show('keyboard');fit();});
+  document.addEventListener('rift:details',()=>show('keyboard'));
   function updateShape() {
     portal.configure(Number(roundness.value),Number(waviness.value),Number(activity.value));
     document.querySelector('#portal-roundness-amount').value=`${roundness.value}%`;
@@ -57,6 +58,7 @@
     activity.disabled=motion.value!=='live'||window.riftMotion.matches;
     document.querySelector('.portal-shape-preview').hidden=motion.value==='plain';
     updatePreview();
+    document.dispatchEvent(new Event('rift:portal-options'));
   }
   function drawPreview() {
     const points=WinnowPortalSurface.contour(160,66,112,51,portal.exponent,portal.wave*.45,previewTime);

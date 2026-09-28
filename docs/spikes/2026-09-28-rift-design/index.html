@@ -3,19 +3,19 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark"><title>Winnow Rift · A window into your collection</title>
-  <link rel="stylesheet" href="effects/effects.css"><link rel="stylesheet" href="rift.css"><link rel="stylesheet" href="gallery.css">
+  <link rel="stylesheet" href="effects/effects.css"><link rel="stylesheet" href="rift.css"><link rel="stylesheet" href="gallery.css"><link rel="stylesheet" href="journey.css">
   <script src="../2026-09-27-afterglow-artwork-mock/assets/lucide.min.js" defer></script>
   <script src="app.js" defer></script><script src="effects/starfield.js" defer></script>
   <script src="../2026-09-27-afterglow-artwork-mock/assets/pixi-8.21.0.min.js" defer></script>
   <script src="effects/finish.js" defer></script><script src="effects/depth.js" defer></script>
-  <script src="effects/portal-surface.js" defer></script><script src="effects/aperture.js" defer></script>
+  <script src="effects/portal-surface.js" defer></script><script src="effects/aperture.js" defer></script><script src="effects/library-preview.js" defer></script><script src="effects/details.js" defer></script>
 </head>
 <body data-mode="desktop" data-size="balanced" data-caption="essential" data-state="normal" data-palette="rift">
   <canvas id="starfield" aria-hidden="true"></canvas>
   <header class="app-bar">
     <a class="wordmark" href="?page=discover"><span class="dragon-mark" aria-hidden="true"></span><strong>winnow</strong><span>RIFT</span></a>
     <nav class="navigation" aria-label="Main navigation"><button data-page="discover">Discover</button><button data-page="library">Library</button></nav>
-    <div class="utilities"><span class="quiet study-label">Design study / 03</span><button class="icon-button" id="toggle-index" aria-label="Toggle collection index" aria-expanded="true"><i data-lucide="panel-left"></i></button><button class="icon-button" id="appearance" aria-label="Customize appearance"><i data-lucide="sliders-horizontal"></i></button></div>
+    <div class="utilities"><span class="quiet study-label">Design study / 04</span><button class="icon-button" id="toggle-index" aria-label="Toggle collection index" aria-expanded="true"><i data-lucide="panel-left"></i></button><button class="icon-button" id="appearance" aria-label="Customize appearance"><i data-lucide="sliders-horizontal"></i></button></div>
   </header>
   <main class="workspace">
     <aside class="collection-index" aria-label="Collection index">
@@ -26,11 +26,11 @@
       <div class="index-foot"><span class="status-dot"></span> Already yours. No store required.</div>
     </aside>
     <section class="world-browser" aria-label="Browse your games">
-      <header class="browser-heading"><div><span class="eyebrow" id="browse-kicker">YOUR LIBRARY</span><h2 id="browse-title">Every game, an opening.</h2></div><button class="secondary details-toggle" id="toggle-details" aria-expanded="true" aria-controls="world-portal" hidden>Hide details</button><span class="selection-position" id="position">01 / 12</span></header>
+      <header class="browser-heading"><div><span class="eyebrow" id="browse-kicker">YOUR LIBRARY</span><h2 id="browse-title">Every game, an opening.</h2></div><span class="selection-position" id="position">01 / 12</span></header>
       <div class="world-stage" id="world-stage">
-        <section class="library-gallery" aria-label="Library gallery" hidden><div class="gallery-heading"><span id="gallery-count">12 games</span><span>Select a cover to look closer</span></div><div class="gallery-scroll"><div id="gallery" class="poster-grid gallery-grid" role="group" aria-label="Game covers"></div></div></section>
+        <section class="library-gallery" aria-label="Library gallery" hidden><div class="gallery-heading"><span id="gallery-count">12 games</span><span>Hover to peek · Select to step inside</span></div><div class="gallery-scroll"><div id="gallery" class="poster-grid gallery-grid" role="group" aria-label="Game covers"></div></div></section>
         <section class="deck-zone" aria-label="Cover deck"><div class="deck-aura" aria-hidden="true"></div><div class="deck-track" aria-hidden="true"></div><div id="deck" class="poster-grid deck"></div><div class="deck-caption"><span id="deck-title"></span><span class="eyebrow">MOVE THE LIGHT. LOOK CLOSER.</span></div><div class="deck-controls"><button class="circle-button" id="previous" aria-label="Previous game"><i data-lucide="arrow-left"></i></button><div id="sequence-dots" class="sequence-dots" aria-label="Position in selection"></div><button class="circle-button" id="next" aria-label="Next game"><i data-lucide="arrow-right"></i></button></div></section>
-        <section class="portal-zone" aria-label="Selected game"><button class="icon-button portal-close" id="close-details" aria-label="Close game details" hidden><i data-lucide="x"></i></button><div class="aperture-label"><span class="signal-dot"></span><span>A WINDOW INTO THIS WORLD</span><span class="label-line"></span></div><div id="world-portal" class="world-portal" data-portal><div class="portal-scene" aria-hidden="true"><div class="portal-fallback"></div></div><div class="portal-content" id="portal-copy"></div></div><div class="portal-foot"><span><i data-lucide="scan-eye"></i> Your place in this world</span><span id="portal-foot-status"></span></div></section>
+        <section class="portal-zone" aria-label="Selected game"><div class="aperture-label"><span class="signal-dot"></span><span>A WINDOW INTO THIS WORLD</span><span class="label-line"></span></div><div id="world-portal" class="world-portal" data-portal><div class="portal-scene" aria-hidden="true"><div class="portal-fallback"></div></div><div class="portal-content" id="portal-copy"></div></div><div class="portal-foot"><span><i data-lucide="scan-eye"></i> Your place in this world</span><span id="portal-foot-status"></span></div></section>
       </div>
       <div class="browse-bottom"><div class="browse-instruction"><kbd>←</kbd><kbd>→</kbd><span>Move between worlds</span></div><button class="text-button" id="surprise"><i data-lucide="shuffle"></i> Take me somewhere else</button></div>
       <div class="empty-workspace" id="empty-workspace" hidden><i data-lucide="search"></i><h2>No worlds found.</h2><p>Try a different title or a wider selection.</p><button class="secondary" id="clear-search">Clear search and filters</button></div>
@@ -56,7 +56,11 @@
     <div class="fit-note"><i data-lucide="scan"></i><p>Covers fill every 2:3 frame. Different proportions are cropped from the center, keeping the deck consistent.</p></div><button class="secondary reset-options" id="reset-options">Restore defaults</button>
   </dialog>
 
-  <dialog id="game-dialog" class="game-dialog"><form method="dialog"><button class="icon-button dialog-close" aria-label="Close game preview"><i data-lucide="x"></i></button></form><div id="game-preview"></div></dialog>
+  <aside id="card-flyout" class="card-flyout" aria-label="Game preview" hidden></aside>
+  <section id="game-details" class="game-details" aria-labelledby="details-title" hidden>
+    <div class="portal-scene" aria-hidden="true"><div class="portal-fallback"></div></div>
+    <div class="portal-content"><div class="details-scroll" tabindex="-1"></div></div>
+  </section>
   <div id="live-message" class="sr-only" aria-live="polite"></div>
 </body>
 </html>

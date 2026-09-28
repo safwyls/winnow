@@ -187,8 +187,9 @@ window.WinnowPortalSurface = class {
     return this.initialization;
   }
 
-  async show(moving, origin, artworkUrl) {
+  async show(moving, origin, artworkUrl, expansion=null) {
     const generation=++this.generation;
+    this.expansion=expansion;
     this.active=true;
     this.moving=moving;
     this.origin=moving?origin:null;
@@ -250,9 +251,14 @@ window.WinnowPortalSurface = class {
     if(opening||delta>=interval-.1) {
       // Entrance follows each display frame. Keep the remainder for the quiet ambient loop.
       this.lastFrame=opening?now:this.lastFrame+Math.max(1,Math.floor((delta+.1)/interval))*interval;
-      this.progress=Math.min(1,Math.max(0,now-this.started)/WinnowPortalSurface.openingMs);
+      this.progress=Math.min(1,Math.max(0,now-this.started)/(this.expansion?680:WinnowPortalSurface.openingMs));
       this.time=this.timeAtStart+Math.max(0,now-this.motionStarted)/1000*this.activityRate;
       this.draw();
+    }
+    if(this.expansion&&this.progress===1){
+      this.panel.dataset.portalRunning='false';
+      this.panel.dispatchEvent(new Event('portal:expanded'));
+      return;
     }
     // The CSS fallback completes the entrance, then remains still without a loop.
     if(this.progress<1||this.activityRate>0&&this.panel.dataset.renderer==='webgl') this.frame=requestAnimationFrame(next=>this.tick(next));
@@ -262,11 +268,13 @@ window.WinnowPortalSurface = class {
   draw() {
     if(!this.active||!this.width) return;
     const restX=this.width/2, restY=this.height/2;
-    const origin=this.origin||{x:restX,y:restY};
+    const origin=this.expansion?{x:this.expansion.x+this.expansion.width/2,y:this.expansion.y+this.expansion.height/2}:this.origin||{x:restX,y:restY};
     const reveal=1-(1-this.progress)**3;
     const scale=.025+.975*reveal;
     const cx=origin.x+(restX-origin.x)*reveal, cy=origin.y+(restY-origin.y)*reveal;
-    const rx=Math.max(1,(restX-8)*scale), ry=Math.max(1,(restY-8)*scale);
+    // Overscan moves the curved rim beyond every viewport corner without scaling the page.
+    const rx=this.expansion?Math.max(1,(this.expansion.width/2-8)*(1-reveal)+restX*1.5*reveal):Math.max(1,(restX-8)*scale);
+    const ry=this.expansion?Math.max(1,(this.expansion.height/2-8)*(1-reveal)+restY*1.5*reveal):Math.max(1,(restY-8)*scale);
     const wave=this.wave*scale, time=this.moving?this.time:0;
     const opening=this.progress<1;
     const fallbackMask=this.panel.dataset.renderer==='fallback'&&(opening||this.fallbackMaskDirty);
