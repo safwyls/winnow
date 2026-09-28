@@ -6,15 +6,15 @@
   <meta name="color-scheme" content="dark light">
   <title>Afterglow · Artwork &amp; rhythm</title>
   <link rel="stylesheet" href="mock.css">
-  <link rel="stylesheet" href="portal-preview.css">
+  <link rel="stylesheet" href="portal-preview.css?v=hero-portal">
   <script src="assets/lucide.min.js" defer></script>
-  <script src="mock.js" defer></script>
+  <script src="mock.js?v=hero-portal" defer></script>
   <script src="assets/pixi-8.21.0.min.js" defer></script>
   <script src="finish.js" defer></script>
   <script src="depth.js" defer></script>
-  <script src="portal-surface.js" defer></script>
+  <script src="portal-surface.js?v=hero-portal" defer></script>
   <script src="portal-profile.js" defer></script>
-  <script src="flyout.js" defer></script>
+  <script src="flyout.js?v=hero-portal" defer></script>
 </head>
 <body data-mode="desktop" data-size="balanced" data-caption="essential" data-state="normal" data-palette="afterglow">
   <div class="review-strip">
@@ -63,8 +63,8 @@
     <fieldset class="depth-options"><legend>Card depth</legend><label class="finish-follow"><input id="card-floating" type="checkbox" checked> Floating artwork</label><div class="finish-intensity-label"><label for="card-tilt">Maximum tilt</label><output id="tilt-amount" for="card-tilt">7°</output></div><input id="card-tilt" type="range" min="0" max="12" value="7" step="1"><p>Cards lift and lean toward your pointer. Set tilt to zero for lift alone. Keyboard focus and reduced motion keep the card steady.</p></fieldset>
     <fieldset class="portal-options"><legend>Details portal</legend>
       <label class="finish-setting" for="preview-motion">When a cover opens its story</label><select id="preview-motion"><option value="live">Living portal</option><option value="still">Still portal</option><option value="plain">Simple preview</option></select>
-      <p>The opening reveals a fixed page of details. Keyboard focus and reduced motion keep the portal still.</p>
-      <div class="portal-shape-preview" aria-hidden="true"><svg viewBox="0 0 320 132"><polygon id="portal-shape-outline"></polygon><circle cx="78" cy="40" r="1"></circle><circle cx="236" cy="78" r="1.2"></circle><circle cx="211" cy="35" r=".8"></circle><text x="160" y="70">YOUR PORTAL</text></svg></div>
+      <p>Game artwork behind a fixed page of details. Keyboard focus and reduced motion keep the portal still.</p>
+      <div class="portal-shape-preview" aria-hidden="true"><svg viewBox="0 0 320 132"><polygon id="portal-shape-outline"></polygon><text x="160" y="70">YOUR PORTAL</text></svg></div>
       <div class="finish-intensity-label"><label for="portal-roundness">Roundness</label><output id="portal-roundness-amount" for="portal-roundness">70%</output></div><input id="portal-roundness" type="range" min="0" max="100" step="5" value="70"><div class="portal-range-ends" aria-hidden="true"><span>Squared</span><span>Rounded</span></div>
       <div class="finish-intensity-label"><label for="portal-waviness">Edge waviness</label><output id="portal-waviness-amount" for="portal-waviness">45%</output></div><input id="portal-waviness" type="range" min="0" max="100" step="5" value="45"><div class="portal-range-ends" aria-hidden="true"><span>Smooth</span><span>Organic</span></div>
     </fieldset>

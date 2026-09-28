@@ -1,6 +1,6 @@
 # Afterglow artwork and caption study
 
-September 27–28, 2026 · TASK-354 / TASK-355 / TASK-356 / TASK-357 / TASK-358 / TASK-359 / TASK-360 / TASK-363 / TASK-364 / TASK-365 · Proposal for user review
+September 27–28, 2026 · TASK-354 / TASK-355 / TASK-356 / TASK-357 / TASK-358 / TASK-359 / TASK-360 / TASK-363 / TASK-364 / TASK-365 / TASK-366 · Proposal for user review
 
 This standalone mock explores portrait covers and compact captions for Afterglow, Winnow's
 Electron frontend. It preserves the Discover hero composition, warm palette and typography.
@@ -28,7 +28,7 @@ local. The mock makes no API calls and requires no running Winnow backend.
   reason and description. It prefers the right, flips left near the edge and keeps inside
   the header/footer bounds. Very narrow windows use a bottom panel when neither side fits.
   The current portal treatment grows from the pointer into that space, with a softly
-  shifting rim and a dim star field behind stationary text. **Display options → Details
+  shifting rim and shaded game artwork behind stationary text. **Display options → Details
   portal** offers Living portal, Still portal and the earlier Simple preview. Keyboard
   focus and system reduced motion always use a stationary portal. Roundness and Edge
   waviness sliders tune the contour, with a small outline preview beside the controls.
@@ -231,16 +231,16 @@ superellipse exponent; Edge waviness changes ripple amplitude. Both controls run
 0–100%, default to 70% and 45%, update an outline preview and reset with Restore defaults.
 They remain available for Still portal and are disabled for Simple preview.
 
-The procedural field draws sparse stars, faint clouds and a gently uneven contour. A second,
+The portal samples game artwork behind a gently uneven contour. A second,
 private Pixi renderer is created lazily on cover hover or focus, at up to 1.5× resolution.
 Pointer hover intent warms the renderer and shader before the visible entrance. The
-entrance follows each display frame; the quiet ambient field targets 30 updates per second
+entrance follows each display frame; the quiet moving rim targets 30 updates per second
 without discarding fractional frame time. A wall-clock deadline prevents delayed frames
 from extending the entrance. One clock updates the opening mask and shader uniforms.
-It does not load textures or secondary artwork. Only Living portal runs a loop;
+Artwork stays fixed against the full reading plane as the aperture reveals it. Only Living portal runs a loop;
 Still portal and keyboard focus draw once. Hiding, navigation, scrolling, dialogs, visibility
 changes and blur stop rendering and detach the canvas. Page teardown destroys this renderer
-without releasing resources shared with the independent cover renderer. A CSS star field
+without releasing resources shared with the independent cover renderer. A CSS image and shading layer
 keeps the text available if graphics initialization fails or the context is lost. Its mask
 completes the entrance and then stops updating.
 
@@ -264,9 +264,9 @@ JavaScript syntax and Git whitespace checks passed. OS preference switching, phy
 touch, screen-reader output and GPU timings were not measured. No production frontend
 code or real library preferences changed.
 
-Current captures: [fixed portal details beside Outer Wilds](15-fixed-portal-reveal.png)
+TASK-364 captures: [fixed portal details beside Outer Wilds](15-fixed-portal-reveal.png)
 and [shape controls](16-portal-shape-controls.png). Use the live mock to assess the reveal,
-edge movement and star field. Capture 14 records the earlier TASK-363 treatment.
+edge movement and artwork. Capture 14 records the earlier TASK-363 treatment.
 
 ## Portal pacing check — September 28, 2026
 
@@ -309,6 +309,36 @@ delay, a completed and stopped graphics fallback, live reduced-motion changes an
 cleanup. Syntax and whitespace checks passed. Viewport overrides were reset. The normal
 review URL is left without profiling enabled; [capture 17](17-smooth-portal.png) records the
 settled appearance, while the live mock shows the timing change.
+
+## Portal artwork revision — September 28, 2026
+
+TASK-366 replaces the procedural star field with each game's local hero or landscape image.
+Eight sample titles have a separate landscape source or landscape-only artwork; the four
+remaining Borderlands 3 samples use their own covers. The image fills the fixed reading
+plane with a centered crop. Stronger shading sits behind the text and footer hint, while
+the rim retains its light and motion. Missing/loading samples and failed image decodes use
+a neutral dark interior.
+
+Hover intent starts decoding the local image without delaying the entrance. One promise
+per URL reuses decoded images; private Pixi textures are created once on use and destroyed
+with the surface. No new remote assets are requested. Switching titles clears the previous
+scene immediately, and a generation check ignores late results from earlier hovers. The
+CSS fallback reuses the same decoded image when graphics are unavailable.
+
+Browser checks covered hero scenes for Hades and Outer Wilds, bright Sable artwork,
+Borderlands 3's cover fallback and its missing-artwork state. Desktop and fullscreen
+retain their 560/620 px reading planes. A Node/JSDOM check exercised out-of-order image
+decodes, one decode per URL, repeat hovers, failed/missing images, graphics fallback,
+still mode, teardown during a pending decode and private texture cleanup. Borderlands 2's
+live desktop entrance measured 362.6 ms with zero scrollable descendants. A 390-call probe
+reported median/95th-percentile submission costs of 0.2/0.3 ms. Versioned script URLs
+prevent the preview from mixing cached catalog code with the new flyout; after reloading,
+the browser reported no new warnings or errors. JavaScript
+syntax and Git whitespace checks passed. These are local mock checks, not production
+artwork latency or GPU measurements. The existing keyboard and reduced-motion paths
+remain stationary; OS preference switching was not exercised in this revision.
+
+Current capture: [Hades artwork inside the portal](18-hero-portal.png).
 
 ## Asset provenance
 

@@ -16,6 +16,16 @@ const games = [
   {id:'sable', title:'Sable', store:'GOG', time:'1.2h', reason:'Take your time finding your way.', description:'Set out on a coming-of-age journey across a vast desert. Glide between dunes, climb old ruins and meet the people whose stories help Sable decide where she belongs.'},
 ];
 const byId = new Map(games.map(game => [game.id, game]));
+const portalHeroes = {
+  borderlands2:'borderlands2-scene', celeste:'celeste-scene', disco:'disco-scene',
+  enshrouded:'enshrouded-scene', hades:'hades-hero', hollow:'hollow-scene', outer:'outer-hero', sable:'sable',
+};
+const portalArtwork = game => {
+  if(!game) return null;
+  const unavailable=['missing','loading'].includes(document.body.dataset.state)
+    && ['borderlands3','tentacles','hades','disco'].includes(game.id);
+  return unavailable?null:`assets/${portalHeroes[game.id]||game.id}.jpg`;
+};
 const state = { page:'discover', filter:'all', query:'', view:'grid', hero:0 };
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];

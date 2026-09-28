@@ -36,27 +36,12 @@ window.WinnowPortalSurface = class {
     uniform vec2 uCenter;
     uniform vec2 uRadius;
     uniform vec2 uRestCenter;
+    uniform vec2 uPanelSize;
     uniform vec2 uShape;
     uniform float uTime;
-    float hash(vec2 p) { return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
-    float noise(vec2 p) {
-      vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
-      return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1)),f.x),f.y);
-    }
-    float stars(vec2 p, float scale) {
-      vec2 grid=p/scale; vec2 cell=floor(grid); float light=0.0;
-      for(int x=-1;x<=1;x++) for(int y=-1;y<=1;y++) {
-        vec2 neighbor=cell+vec2(float(x),float(y));
-        float seed=hash(neighbor);
-        vec2 at=neighbor+vec2(hash(neighbor+7.3),hash(neighbor+19.1));
-        float d=length((grid-at)*scale);
-        float core=1.0-smoothstep(.25,.85+seed*.45,d);
-        float glow=exp(-d*d*.35)*.18;
-        float shimmer=.82+.18*sin(uTime*.6+seed*40.0);
-        light+=(core+glow)*step(.67,seed)*shimmer;
-      }
-      return light;
-    }
+    uniform sampler2D uArtwork;
+    uniform vec2 uArtworkSize;
+    uniform float uHasArtwork;
     void main() {
       vec2 pixel=vTextureCoord*uInputSize.xy;
       vec2 q=(pixel-uCenter)/uRadius;
@@ -64,23 +49,24 @@ window.WinnowPortalSurface = class {
       float contour=pow(pow(abs(q.x),uShape.x)+pow(abs(q.y),uShape.x),1.0/uShape.x);
       float ripple=(sin(angle*3.0+uTime*.32)+sin(angle*7.0-uTime*.23)*.62)*uShape.y;
       float distance=(contour-1.0)*min(uRadius.x,uRadius.y)+ripple;
-      // Pixels beyond the faint halo do not need the star and cloud calculations.
+      // The halo is negligible here; avoid sampling artwork outside the opening.
       if(distance>48.0) { finalColor=vec4(0.0); return; }
       float inside=1.0-smoothstep(-.8,1.0,distance);
       float edge=exp(-abs(distance)*.8);
       float halo=exp(-abs(distance)*.13)*.18;
-      vec2 space=pixel-uRestCenter+vec2(uTime*.6,-uTime*.3);
-      float cloud=noise(space*.008)+noise(space*.016)*.5;
-      float nebula=pow(max(0.0,cloud-.35),2.0);
-      float fringe=smoothstep(.18,.97,contour);
-      vec3 sky=vec3(.023,.032,.060);
-      sky+=mix(vec3(.055,.08,.15),vec3(.13,.06,.15),noise(space*.004))*nebula*(.23+fringe*.7);
-      float starlight=stars(space,33.0)*.72+stars(space+131.0,69.0)*.48;
-      // The clear center gives words a quiet reading plane, with depth around them.
-      sky+=vec3(.72,.81,1.0)*starlight*(.18+fringe*.7);
+      // Crop once against the resting plane, so opening the portal never moves the scene.
+      vec2 local=pixel-uRestCenter;
+      vec2 uv=local/uPanelSize+.5;
+      float fit=max(uPanelSize.x/uArtworkSize.x,uPanelSize.y/uArtworkSize.y);
+      vec2 artUv=clamp(local/(uArtworkSize*fit)+.5,.001,.999);
+      vec3 artwork=texture(uArtwork,artUv).rgb;
+      float reading=(1.0-smoothstep(.38,.50,abs(uv.x-.5)))*(1.0-smoothstep(.65,.92,uv.y));
+      float shade=max(mix(.24,.76,reading),smoothstep(.78,.90,uv.y)*.62);
+      float vignette=smoothstep(.35,.80,length(uv-.5))*.14;
+      vec3 backdrop=mix(vec3(.035,.044,.065),mix(artwork,vec3(.018,.025,.041),shade+vignette),uHasArtwork);
       float shift=.5+.5*sin(angle*2.0+uTime*.19);
       vec3 rim=mix(vec3(.43,.68,.79),vec3(.93,.66,.50),shift);
-      vec3 rgb=sky*inside+rim*(edge*.62+halo);
+      vec3 rgb=backdrop*inside+rim*(edge*.62+halo);
       float alpha=clamp(inside+edge*.7+halo*.85,0.0,1.0);
       finalColor=vec4(rgb,alpha);
     }
@@ -93,6 +79,8 @@ window.WinnowPortalSurface = class {
     this.active=false;
     this.failed=false;
     this.disposed=false;
+    this.artworks=new Map();
+    this.textures=new Map();
     this.configure(70,45);
   }
 
@@ -103,9 +91,55 @@ window.WinnowPortalSurface = class {
     if(this.active) this.draw();
   }
 
-  async prepare() {
+  async prepare(artworkUrl) {
+    void this.loadArtwork(artworkUrl);
     if(this.failed||this.disposed) return;
     try { await this.initialize(); } catch { this.fallback(); }
+  }
+
+  loadArtwork(url) {
+    if(!url||this.disposed) return Promise.resolve(null);
+    if(!this.artworks.has(url)) this.artworks.set(url,(async()=>{
+      try {
+        const image=new Image();
+        image.decoding='async'; image.alt=''; image.src=url;
+        await image.decode();
+        return this.disposed?null:{url,image};
+      } catch { return null; }
+    })());
+    return this.artworks.get(url);
+  }
+
+  setArtwork(artwork) {
+    this.artwork=artwork;
+    this.fallbackImage?.remove();
+    this.fallbackImage=artwork?.image;
+    if(this.fallbackImage) {
+      this.fallbackImage.className='portal-fallback-art';
+      this.fallbackElement.append(this.fallbackImage);
+      this.positionFallbackArtwork();
+    }
+    this.panel.dataset.artwork=artwork?.url||'none';
+    this.bindArtwork();
+  }
+
+  bindArtwork() {
+    if(!this.filter) return;
+    const artwork=this.artwork;
+    let texture=PIXI.Texture.WHITE;
+    if(artwork&&!this.failed) {
+      if(!this.textures.has(artwork.url)) this.textures.set(artwork.url,PIXI.Texture.from(artwork.image,true));
+      texture=this.textures.get(artwork.url);
+    }
+    this.filter.resources.uArtwork=texture.source;
+    const uniforms=this.filter.resources.portalUniforms.uniforms;
+    uniforms.uArtworkSize.set(artwork?[artwork.image.naturalWidth,artwork.image.naturalHeight]:[1,1]);
+    uniforms.uHasArtwork=artwork?1:0;
+  }
+
+  positionFallbackArtwork() {
+    if(!this.fallbackImage||!this.width) return;
+    Object.assign(this.fallbackImage.style,{left:`${-this.sceneX}px`,top:`${-this.sceneY}px`,width:`${this.width}px`,height:`${this.height}px`});
   }
 
   async initialize() {
@@ -123,10 +157,13 @@ window.WinnowPortalSurface = class {
       app.canvas.addEventListener('webglcontextlost',()=>this.fallback());
       this.plane=new PIXI.Sprite(PIXI.Texture.WHITE);
       this.filter=PIXI.Filter.from({gl:{vertex:WinnowPortalSurface.vertex,fragment:WinnowPortalSurface.fragment},
-        resolution:'inherit',padding:0,resources:{portalUniforms:{
+        resolution:'inherit',padding:0,resources:{uArtwork:PIXI.Texture.WHITE.source,portalUniforms:{
           uCenter:{value:new Float32Array([0,0]),type:'vec2<f32>'},
           uRadius:{value:new Float32Array([1,1]),type:'vec2<f32>'},
           uRestCenter:{value:new Float32Array([0,0]),type:'vec2<f32>'},
+          uPanelSize:{value:new Float32Array([1,1]),type:'vec2<f32>'},
+          uArtworkSize:{value:new Float32Array([1,1]),type:'vec2<f32>'},
+          uHasArtwork:{value:0,type:'f32'},
           uShape:{value:new Float32Array([3.4,3.6]),type:'vec2<f32>'},
           uTime:{value:0,type:'f32'},
         }}});
@@ -138,7 +175,7 @@ window.WinnowPortalSurface = class {
     return this.initialization;
   }
 
-  async show(moving, origin) {
+  async show(moving, origin, artworkUrl) {
     const generation=++this.generation;
     this.active=true;
     this.moving=moving;
@@ -151,6 +188,12 @@ window.WinnowPortalSurface = class {
     this.fallbackElement=this.panel.querySelector('.portal-fallback');
     this.scene=this.panel.querySelector('.portal-scene');
     this.contentRevealed=false;
+    this.setArtwork(null);
+    void this.loadArtwork(artworkUrl).then(artwork=>{
+      if(!this.active||this.disposed||generation!==this.generation) return;
+      try { this.setArtwork(artwork); this.draw(); }
+      catch { this.fallback(); }
+    });
     this.panel.dataset.renderer='fallback';
     this.resize();
     if(moving) this.frame=requestAnimationFrame(now=>this.tick(now));
@@ -160,6 +203,7 @@ window.WinnowPortalSurface = class {
       if(!this.active||this.disposed||generation!==this.generation) return;
       if(!this.scene) return;
       this.scene.append(this.app.canvas);
+      this.bindArtwork();
       this.panel.dataset.renderer='webgl';
       this.resize();
       if(moving&&!this.frame) this.frame=requestAnimationFrame(now=>this.tick(now));
@@ -177,6 +221,7 @@ window.WinnowPortalSurface = class {
     if(!this.scene) return;
     Object.assign(this.scene.style,{left:`${this.sceneX}px`,top:`${this.sceneY}px`,width:`${width}px`,height:`${height}px`});
     this.fallbackMaskDirty=true;
+    this.positionFallbackArtwork();
     if(this.app) {
       if(this.app.screen.width!==width||this.app.screen.height!==height) this.app.renderer.resize(width,height);
       this.plane.width=width; this.plane.height=height;
@@ -233,6 +278,7 @@ window.WinnowPortalSurface = class {
       const uniforms=this.filter.resources.portalUniforms.uniforms;
       uniforms.uCenter.set([cx-this.sceneX,cy-this.sceneY]);
       uniforms.uRestCenter.set([restX-this.sceneX,restY-this.sceneY]);
+      uniforms.uPanelSize.set([this.width,this.height]);
       uniforms.uRadius.set([rx,ry]);
       uniforms.uShape.set([this.exponent,wave]);
       uniforms.uTime=time;
@@ -246,6 +292,7 @@ window.WinnowPortalSurface = class {
     cancelAnimationFrame(this.frame); this.frame=0;
     this.app?.stop();
     this.app?.canvas.remove();
+    this.fallbackImage?.remove();
     this.panel.dataset.portalRunning='false';
   }
 
@@ -265,5 +312,7 @@ window.WinnowPortalSurface = class {
     this.filter?.destroy();
     // The cover finish owns another renderer; its shared resources must remain valid.
     this.app?.destroy({removeView:true},{children:true});
+    for(const texture of this.textures.values()) texture.destroy(true);
+    this.textures.clear(); this.artworks.clear();
   }
 };

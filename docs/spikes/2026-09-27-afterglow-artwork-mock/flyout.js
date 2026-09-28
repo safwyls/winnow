@@ -85,7 +85,7 @@
     card.setAttribute('aria-describedby', panel.id);
     position();
     const origin = pointer || {x: card.getBoundingClientRect().right, y: card.getBoundingClientRect().top};
-    if (isPortal && active) void portal.show(moving, {x:origin.x-panel.offsetLeft,y:origin.y-panel.offsetTop});
+    if (isPortal && active) void portal.show(moving, {x:origin.x-panel.offsetLeft,y:origin.y-panel.offsetTop}, portalArtwork(game));
   }
 
   function queue(card, input) {
@@ -95,7 +95,7 @@
     pendingCard = card;
     if (input === 'keyboard') show(card, input);
     else {
-      if(motion.value!=='plain') void portal.prepare();
+      if(motion.value!=='plain') void portal.prepare(portalArtwork(byId.get(card.dataset.game)));
       showTimer = setTimeout(() => show(card, input), 120);
     }
   }

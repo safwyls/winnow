@@ -2,20 +2,15 @@
 .card-flyout[data-portal] {
   padding:0; isolation:isolate; background:transparent; color:#f3eef7;
   border:0; border-radius:0; box-shadow:none; overflow:visible; animation:none;
-  --portal-muted:#c1bfd2; --portal-accent:#ebbe9a;
+  --portal-muted:#d9d6e0; --portal-accent:#ebbe9a;
 }
 .portal-scene { position:absolute; z-index:-1; pointer-events:none; }
 .portal-scene canvas { display:block; width:100%; height:100%; }
 .portal-fallback {
-  position:absolute; inset:0;
-  background:
-    radial-gradient(circle at 15% 23%, #fff9 0 1px, transparent 1.5px),
-    radial-gradient(circle at 83% 19%, #a7cfffcc 0 1px, transparent 1.7px),
-    radial-gradient(circle at 89% 72%, #ffffffa8 0 1px, transparent 1.7px),
-    radial-gradient(circle at 25% 86%, #ffffffa8 0 1px, transparent 1.5px),
-    radial-gradient(ellipse at 92% 16%, #4c325b66, transparent 60%),
-    radial-gradient(ellipse at 0% 90%, #16445680, transparent 60%), #0c101e;
+  position:absolute; inset:0; overflow:clip; background:#090b11;
 }
+.portal-fallback-art { position:absolute; object-fit:cover; object-position:center; }
+.portal-fallback::after { content:''; position:absolute; inset:0; background:linear-gradient(#05060bc2 65%,#05060b9e 90%); }
 .card-flyout[data-renderer=webgl] .portal-fallback { visibility:hidden; }
 .portal-content { position:absolute; inset:0; overflow:clip; clip-path:inset(50%); }
 .card-flyout[data-portal] .flyout-body {
@@ -51,6 +46,5 @@ body .card-flyout[data-portal][data-short=true] h3 { font-size:23px; margin-top:
 .portal-shape-preview { margin-top:18px; border:1px solid var(--line); border-radius:8px; background:#0b101b; }
 .portal-shape-preview svg { display:block; width:100%; height:132px; }
 .portal-shape-preview polygon { fill:#151b2d; stroke:#d6b8b8; stroke-width:1.2; }
-.portal-shape-preview circle { fill:#d1daee; }
 .portal-shape-preview text { fill:#c1bfd2; font:9px 'JetBrains Mono',monospace; text-anchor:middle; letter-spacing:2px; }
 .portal-options:has(#preview-motion option[value=plain]:checked) :is(.finish-intensity-label,.portal-range-ends,input[type=range]) { opacity:.4; }
