@@ -1,6 +1,6 @@
 # Winnow Rift
 
-September 28, 2026 · TASK-369 · Interactive design proposal
+September 28, 2026 · TASK-370 · Interactive design proposal
 
 Rift uses two ways to browse the same collection. Discover keeps a focused deck of
 floating covers beside a persistent artwork portal. Library opens a dense gallery with
@@ -51,7 +51,11 @@ when a cover is selected. Escape or the close button returns focus to the select
 The app bar and footer stay fixed, and the portal has no internal scrollbar.
 
 **Atmosphere** retains Matte/Satin/Foil, intensity, metallic highlights, floating depth,
-maximum tilt, roundness, waviness and Still mode. Card scale changes the Discover deck
+maximum tilt, roundness, waviness and Still mode. **Portal activity** changes edge motion
+independently of shape: 0% freezes the rim, 40% keeps the original pace and 100% moves
+roughly four times faster. The small shape preview animates while adjusting it. Still
+portal, Still mode and system reduced motion disable the activity control; keyboard
+selection continues to show a stationary portal. Card scale changes the Discover deck
 and Library density. Moonstone, Amethyst and Ember change the interface palette.
 **Background** controls the star field and brightness. The field is still, so it needs no
 continuous animation loop and behaves the same under reduced motion. Controls are
@@ -68,7 +72,7 @@ existing portal renderer; it owns the persistent surface lifecycle, sizing and s
 The cover finish, pointer depth and portal shader retain their separate modules, image
 reuse and graphics fallback. `effects/flyout.js` is the prior hover adapter and is no longer
 loaded by this study. Only the active cover uses a material renderer. The portal renders
-at 30 Hz while ambient motion is active, and settles for keyboard input, Still mode or
+at 30 Hz while ambient motion is active, and settles at zero activity, for keyboard input, Still mode or
 window blur. Hidden documents and dialogs stop its loop.
 
 This mock remains separate from the production React `ArtworkEffects`, `GamePreview`
@@ -93,13 +97,19 @@ the field, and Restore defaults returned it to 65%. Discover retained its deck a
 with the star field behind them. The prior study verified the unchanged material options,
 including palette changes and pointer-following tilt.
 
+Activity controls were checked in desktop Discover and fullscreen Library, including
+zero, maximum, reset to 40% and disabled states for Still portal and Still mode. The
+settings preview moved at maximum and froze at zero. A controlled-clock Node check
+exercised the renderer's zero/default/maximum rates, pause/resume without a time jump,
+opening completion at zero activity, and keyboard/fallback loop guards.
+
 All JavaScript modules passed Node syntax checks, and the entrypoint passed unique-ID
 and local-reference checks. Rift reported no browser warnings or errors. Production and
 Afterglow files were unchanged. Physical controller/touch hardware and GPU performance
 were not measured; the static star field adds no recurring render work.
 
 Current captures: [Library gallery](06-rift-library-gallery.png),
-[Discover star field](05-rift-starfield-discover.png).
+[Discover star field](05-rift-starfield-discover.png), [Portal activity control](07-rift-portal-activity.png).
 Prior compositions: [Desktop workspace](03-rift-workspace.png),
 [Focused fullscreen](04-rift-fullscreen.png), [First Discover](01-rift-discover.png),
 [First Library portal](02-rift-library.png).

@@ -4,6 +4,7 @@
 window.WinnowPortalSurface = class {
   static openingMs = 360;
   static ambientFrameMs = 1000/30;
+  static activityRate(activity) { return (Math.max(0,Math.min(100,activity))/40)**1.5; }
   static contour(cx, cy, rx, ry, exponent, wave, time) {
     return Array.from({length:128}, (_, i) => {
       const angle=i*Math.PI/64, x=Math.cos(angle), y=Math.sin(angle);
@@ -84,11 +85,22 @@ window.WinnowPortalSurface = class {
     this.configure(70,45);
   }
 
-  configure(roundness, waviness) {
+  configure(roundness, waviness, activity=40) {
     this.exponent=5.8-Math.max(0,Math.min(100,roundness))*.028;
     this.wave=Math.max(0,Math.min(100,waviness))*.08;
+    this.activityRate=WinnowPortalSurface.activityRate(activity);
+    this.timeAtStart=this.time;
+    this.motionStarted=performance.now();
     this.fallbackMaskDirty=true;
-    if(this.active) this.draw();
+    if(this.active) {
+      this.draw();
+      if(this.moving&&this.activityRate>0&&!this.frame&&this.panel.dataset.renderer==='webgl') {
+        this.lastFrame=performance.now();
+        this.frame=requestAnimationFrame(now=>this.tick(now));
+      } else if(this.activityRate===0&&this.progress===1) {
+        cancelAnimationFrame(this.frame);this.frame=0;
+      }
+    }
   }
 
   async prepare(artworkUrl) {
@@ -182,6 +194,7 @@ window.WinnowPortalSurface = class {
     this.origin=moving?origin:null;
     this.progress=moving?0:1;
     this.started=performance.now();
+    this.motionStarted=this.started;
     this.lastFrame=this.started;
     this.timeAtStart=this.time;
     this.content=this.panel.querySelector('.portal-content');
@@ -238,11 +251,11 @@ window.WinnowPortalSurface = class {
       // Entrance follows each display frame. Keep the remainder for the quiet ambient loop.
       this.lastFrame=opening?now:this.lastFrame+Math.max(1,Math.floor((delta+.1)/interval))*interval;
       this.progress=Math.min(1,Math.max(0,now-this.started)/WinnowPortalSurface.openingMs);
-      this.time=this.timeAtStart+Math.max(0,now-this.started)/1000;
+      this.time=this.timeAtStart+Math.max(0,now-this.motionStarted)/1000*this.activityRate;
       this.draw();
     }
     // The CSS fallback completes the entrance, then remains still without a loop.
-    if(this.progress<1||this.panel.dataset.renderer==='webgl') this.frame=requestAnimationFrame(next=>this.tick(next));
+    if(this.progress<1||this.activityRate>0&&this.panel.dataset.renderer==='webgl') this.frame=requestAnimationFrame(next=>this.tick(next));
     else this.panel.dataset.portalRunning='false';
   }
 
@@ -271,7 +284,7 @@ window.WinnowPortalSurface = class {
       this.content.style.clipPath='none';
       this.contentRevealed=true;
     }
-    const running=String(this.moving&&(opening||this.panel.dataset.renderer==='webgl'));
+    const running=String(this.moving&&(opening||this.activityRate>0&&this.panel.dataset.renderer==='webgl'));
     if(this.panel.dataset.portalOpening!==String(opening)) this.panel.dataset.portalOpening=String(opening);
     if(this.panel.dataset.portalRunning!==running) this.panel.dataset.portalRunning=running;
     if(this.app&&!this.failed) {
