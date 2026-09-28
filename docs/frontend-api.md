@@ -3,7 +3,7 @@
 Winnow's backend runs independently of its frontends. Avalonia desktop and fullscreen use
 the same HTTP/JSON API available to other local applications. An Electron frontend can attach
 alongside Avalonia; both observe the same committed library while keeping their own selection,
-navigation and scroll state. The repository includes [Winnow Afterglow](../src/Winnow.Electron/README.md),
+navigation and scroll state. The repository includes [Winnow Electron](../src/Winnow.Electron/README.md),
 an Electron/TypeScript frontend with its own desktop/fullscreen layouts and
 [replaceable React themes](electron-themes.md).
 

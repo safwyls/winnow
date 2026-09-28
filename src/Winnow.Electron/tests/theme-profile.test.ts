@@ -5,6 +5,7 @@ import {
   contrastRatio,
   parseThemeProfile,
   resolvedThemeColors,
+  selectThemeProfile,
   themeSettingValues,
   validateThemeDefinition,
   type ThemeDefinition,
@@ -13,6 +14,71 @@ import { loadExternalTheme, validateThemeAssetUrl } from '../src/renderer/themin
 import { DEFAULT_ARTWORK_EFFECTS, normalizeArtworkEffects } from '../src/shared/artworkEffects'
 
 describe('portable appearance profiles', () => {
+  it('keeps composition edits independently while motion and size follow the user', () => {
+    const source = structuredClone(DEFAULT_PROFILE)
+    source.appearance.accent = '#d495fe'
+    source.appearance.reducedMotion = true
+    source.appearance.scale = 115
+    source.layout.cardStyle = 'record'
+    const definition: ThemeDefinition = {
+      apiVersion: 1,
+      id: 'rift',
+      name: 'Rift',
+      defaults: {
+        appearance: { palette: 'rift', accent: '#a1e6d3', font: 'modern' },
+        layout: { cardStyle: 'poster' },
+      },
+    }
+    const rift = selectThemeProfile(source, 'rift', definition)
+    expect(rift.appearance).toMatchObject({
+      palette: 'rift',
+      accent: '#a1e6d3',
+      font: 'modern',
+      reducedMotion: true,
+      scale: 115,
+    })
+    expect(rift.layout.cardStyle).toBe('poster')
+    rift.appearance.accent = '#ffffff'
+    rift.appearance.reducedMotion = false
+    rift.appearance.scale = 95
+    rift.settings.rift = { activity: 0 }
+    const restored = selectThemeProfile(parseThemeProfile(JSON.parse(JSON.stringify(rift))), 'afterglow')
+    expect(restored.appearance).toMatchObject({
+      accent: '#d495fe',
+      palette: 'afterglow',
+      reducedMotion: false,
+      scale: 95,
+    })
+    expect(restored.layout.cardStyle).toBe('record')
+    const revisit = selectThemeProfile(restored, 'rift', definition)
+    expect(revisit.appearance.accent).toBe('#ffffff')
+    expect(revisit.settings.rift.activity).toBe(0)
+    expect(source.designs).toBeUndefined()
+  })
+
+  it('rejects executable or recursively nested saved compositions and invalid authored defaults', () => {
+    const design = { appearance: DEFAULT_PROFILE.appearance, layout: DEFAULT_PROFILE.layout }
+    for (const designs of [
+      { rift: { ...design, designs: { rift: design } } },
+      { rift: { ...design, appearance: { ...design.appearance, accent: 'url(evil)' } } },
+      { rift: { ...design, layout: { ...design.layout, cardStyle: 'unknown' } } },
+      { 'https://example.com': design },
+      Object.fromEntries(Array.from({ length: 33 }, (_, index) => [`design${index}`, design])),
+    ])
+      expect(() => parseThemeProfile({ ...DEFAULT_PROFILE, designs })).toThrow()
+    expect(() =>
+      validateThemeDefinition({
+        apiVersion: 1,
+        id: 'rift',
+        name: 'Rift',
+        defaults: { appearance: { accent: 'red' } },
+      }),
+    ).toThrow()
+    expect(() =>
+      validateThemeDefinition({ apiVersion: 1, id: 'rift', name: 'Rift', defaults: { styles: 'body {}' } }),
+    ).toThrow()
+  })
+
   it('round trips layout and appearance without retaining caller references', () => {
     const source = structuredClone(DEFAULT_PROFILE)
     source.layout.navigation = 'left'

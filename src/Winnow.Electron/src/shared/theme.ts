@@ -14,7 +14,7 @@ export interface ThemeProfile {
   schemaVersion: 1
   themeId: string
   appearance: {
-    palette: 'afterglow' | 'paper' | 'bluehour'
+    palette: 'afterglow' | 'paper' | 'bluehour' | 'rift'
     accent: string
     font: 'editorial' | 'modern' | 'mono'
     density: 'comfortable' | 'compact' | 'spacious'
@@ -33,6 +33,8 @@ export interface ThemeProfile {
     detailArrangement: 'aside' | 'stacked'
   }
   settings: Record<string, Record<string, ThemeSettingValue>>
+  /** Inactive compositions retain their appearance; motion and interface scale stay global. */
+  designs?: Record<string, Pick<ThemeProfile, 'appearance' | 'layout'>>
 }
 export interface ThemeGameCardProps {
   game: LibraryGame
@@ -56,12 +58,26 @@ export interface ThemeGamePreviewProps {
   disabled?: boolean
   className?: string
 }
+export interface ThemePortalSurfaceProps {
+  children: ReactNode
+  artwork?: ReactNode
+  className?: string
+  options?: Partial<{ roundness: number; waviness: number; activity: number }>
+  reducedMotion?: boolean
+  active?: boolean
+  origin?: { x: number; y: number }
+  /** Source bounds relative to the destination, in unscaled CSS pixels. */
+  expansion?: { x: number; y: number; width: number; height: number }
+  onExpanded?(): void
+}
 export interface ThemeContext {
   mode: ThemeMode
   page: ThemePage
   selectedWorkId: number | null
   setPage(page: ThemePage): void
   openGame(workId: number): void
+  closeGame?(): void
+  previousPage?: ThemePage
   toggleFullscreen(): void
   games: LibraryGame[]
   feed: FeedSnapshot | undefined
@@ -77,6 +93,8 @@ export interface ThemeContext {
     Artwork: ComponentType<{ workId: number; hero?: boolean; className?: string; eager?: boolean }>
     ArtworkEffects: ComponentType<ThemeArtworkEffectsProps>
     GamePreview: ComponentType<ThemeGamePreviewProps>
+    /** Available in hosts with portal effects; older API-1 hosts may omit it. */
+    PortalSurface?: ComponentType<ThemePortalSurfaceProps>
   }
 }
 interface ThemeSettingBase {
@@ -92,6 +110,11 @@ export interface ThemeDefinition {
   apiVersion: 1
   id: string
   name: string
+  /** First-selection defaults. Saved user choices always take precedence. */
+  defaults?: {
+    appearance?: Partial<ThemeProfile['appearance']>
+    layout?: Partial<ThemeProfile['layout']>
+  }
   Shell?: ComponentType<ThemeContext>
   Discover?: ComponentType<ThemeContext>
   Library?: ComponentType<ThemeContext>
@@ -158,6 +181,17 @@ export const PALETTES = {
     accent: '#c0b3f4',
     cool: '#a3c8e5',
   },
+  rift: {
+    name: 'Moonstone',
+    background: '#080c12',
+    surface: '#111822',
+    raised: '#1c2835',
+    text: '#edf3f9',
+    muted: '#9bafbf',
+    line: '#374856',
+    accent: '#a1e6d3',
+    cool: '#bcb0ff',
+  },
 } as const
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -187,7 +221,7 @@ function range(value: unknown, min: number, max: number, label: string): void {
 /** Profiles contain data only. Never evaluate CSS, URLs, code, or extra properties from a preset. */
 export function parseThemeProfile(value: unknown): ThemeProfile {
   if (!isRecord(value)) throw new Error('Choose a Winnow appearance profile.')
-  keys(value, ['schemaVersion', 'themeId', 'appearance', 'layout', 'settings'], 'Profile')
+  keys(value, ['schemaVersion', 'themeId', 'appearance', 'layout', 'settings'], 'Profile', ['designs'])
   if (value.schemaVersion !== 1)
     throw new Error('This appearance profile needs a different version of Winnow.')
   if (typeof value.themeId !== 'string' || value.themeId.length > 80 || !idPattern.test(value.themeId))
@@ -269,7 +303,46 @@ export function parseThemeProfile(value: unknown): ThemeProfile {
       throw new Error('Theme settings must contain simple values, without links or code.')
     }
   }
+  if (value.designs !== undefined) {
+    if (!isRecord(value.designs) || Object.keys(value.designs).length > 32)
+      throw new Error('Saved designs must be a map of at most 32 compositions.')
+    for (const [id, design] of Object.entries(value.designs)) {
+      if (!isRecord(design)) throw new Error('A saved design must contain appearance and layout.')
+      keys(design, ['appearance', 'layout'], 'Saved design')
+      // No nested designs: each entry passes the same bounded validation as the active profile.
+      parseThemeProfile({ schemaVersion: 1, themeId: id, ...design, settings: {} })
+    }
+  }
   return structuredClone(value) as unknown as ThemeProfile
+}
+
+/** Select a composition without losing either design's edits or accessibility preferences. */
+export function selectThemeProfile(
+  profile: ThemeProfile,
+  id: string,
+  definition?: ThemeDefinition,
+): ThemeProfile {
+  if (id === profile.themeId) return profile
+  const saved = profile.designs && Object.hasOwn(profile.designs, id) ? profile.designs[id] : undefined
+  const defaults = definition?.defaults
+  const design =
+    saved ??
+    (defaults
+      ? {
+          appearance: { ...DEFAULT_PROFILE.appearance, ...defaults.appearance },
+          layout: { ...DEFAULT_PROFILE.layout, ...defaults.layout },
+        }
+      : { appearance: profile.appearance, layout: profile.layout })
+  const designs = Object.fromEntries(
+    Object.entries(profile.designs ?? {})
+      .filter(([key]) => key !== profile.themeId)
+      .slice(-31),
+  )
+  designs[profile.themeId] = { appearance: profile.appearance, layout: profile.layout }
+  const appearance = { ...design.appearance, reducedMotion: profile.appearance.reducedMotion }
+  if (profile.appearance.scale === undefined) delete appearance.scale
+  else appearance.scale = profile.appearance.scale
+  return parseThemeProfile({ ...profile, themeId: id, ...design, appearance, designs })
 }
 
 export function contrastRatio(first: string, second: string): number {
@@ -320,6 +393,18 @@ export function validateThemeDefinition(value: unknown, expectedId?: string): Th
     throw new Error('The theme identifier does not match its package.')
   if (typeof value.name !== 'string' || !value.name.trim() || value.name.length > 100)
     throw new Error('The theme needs a readable name.')
+  if (value.defaults !== undefined) {
+    if (!isRecord(value.defaults)) throw new Error('Theme defaults must contain appearance or layout.')
+    keys(value.defaults, [], 'Theme defaults', ['appearance', 'layout'])
+    for (const key of ['appearance', 'layout'])
+      if (value.defaults[key] !== undefined && !isRecord(value.defaults[key]))
+        throw new Error('Theme defaults must use appearance and layout maps.')
+    parseThemeProfile({
+      ...DEFAULT_PROFILE,
+      appearance: { ...DEFAULT_PROFILE.appearance, ...((value.defaults.appearance as object) ?? {}) },
+      layout: { ...DEFAULT_PROFILE.layout, ...((value.defaults.layout as object) ?? {}) },
+    })
+  }
   const screens = ['Shell', 'Discover', 'Library', 'Details', 'Journal', 'Settings']
   for (const screen of screens)
     if (value[screen] !== undefined && typeof value[screen] !== 'function')

@@ -64,6 +64,7 @@ function configureRenderer(app: Application, onLost: () => void): ArtworkRendere
     padding: 0,
     resources: { uArtwork: Texture.WHITE.source, finishUniforms: uniforms },
   })
+  const initialInputGroup = filter.groups[0]
   const plane = new Sprite(Texture.WHITE)
   plane.filters = [filter]
   app.stage.addChild(plane)
@@ -120,7 +121,11 @@ function configureRenderer(app: Application, onLost: () => void): ArtworkRendere
       destroyed = true
       app.canvas.removeEventListener('webglcontextlost', onLost)
       plane.filters = []
+      // FilterSystem replaces its input group when drawing; Filter.destroy owns only
+      // the original groups. Release this renderer's replacement before its textures.
+      const inputGroup = filter.groups[0]
       filter.destroy()
+      if (inputGroup && inputGroup !== initialInputGroup) inputGroup.destroy()
       // Do not drain global pools belonging to a developer theme's own Pixi app.
       app.destroy({ removeView: true }, { children: true })
     },

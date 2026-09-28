@@ -102,7 +102,7 @@
 }
 .studio-theme-options {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
   gap: 14px;
   margin: 20px 0;
 }
@@ -144,6 +144,49 @@
   background: var(--raised);
   border: 1px solid var(--line);
   border-radius: 2px;
+}
+.preview-rift {
+  grid-template-columns: 20% 28% 1fr;
+  grid-template-rows: 6px 1fr;
+  background: #080c12;
+}
+.preview-rift i:nth-child(1) {
+  grid-column: 1 / -1;
+  background: #374856;
+}
+.preview-rift i:nth-child(2) {
+  background: #111822;
+}
+.preview-rift i:nth-child(3) {
+  background: linear-gradient(140deg, #a1e6d3, #374856 50%, #bcb0ff);
+  transform: rotate(-9deg) scale(0.85);
+}
+.preview-rift i:nth-child(4) {
+  border-radius: 42% 48% 38% 45%;
+  border-color: #a1e6d3;
+  background: radial-gradient(ellipse at 30% 20%, #374856, #111822);
+}
+.studio-portal-sample {
+  width: calc(100% - 24px);
+  height: 400px;
+  margin: 26px 12px;
+}
+.studio-portal-reading {
+  padding: 64px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 20px;
+  height: 100%;
+  background: linear-gradient(140deg, #080c12bd, #080c12a6);
+  color: #edf3f9;
+}
+.studio-portal-reading h2 {
+  font-size: 26px;
+  overflow-wrap: anywhere;
+}
+.studio-portal-reading p {
+  font-size: 12px;
 }
 .preview-afterglow {
   grid-template-columns: 2fr 1fr;

@@ -4,9 +4,10 @@ The Electron frontend has three levels of customization. Theme Studio changes ap
 and layout without editing code. Appearance profiles share those choices as JSON. Developer
 themes replace React screens and the application shell using theme API 1.
 
-Afterglow and Catalogue use the same `ThemeDefinition` interface as installed themes.
-Afterglow is the spacious, artwork-led default. Catalogue uses an index and a reading desk.
-Both retain the same library, recommendations, journals, and backend commands. These themes
+Afterglow, Rift and Catalogue use the same `ThemeDefinition` interface as installed themes.
+Afterglow is the spacious, artwork-led default. Rift pairs floating covers with artwork
+portals, a focused Discover deck and a dense Library gallery. Catalogue uses an index and
+a reading desk. All retain the same library, recommendations, journals, and backend commands. These themes
 belong to the independent Electron frontend; they do not alter Avalonia themes or backend
 provider plugins.
 
@@ -14,19 +15,25 @@ provider plugins.
 
 Open **Theme Studio** from the palette button. Choose a composition, then adjust:
 
-- Afterglow, Paper trail, or Blue hour colors, plus a custom accent. Expand **Customize every
+- Afterglow, Moonstone, Paper trail, or Blue hour colors, plus a custom accent. Expand **Customize every
   color** to set background, panels, raised surfaces, text, secondary text, borders, and the
   secondary accent individually, using a picker or a hex value.
 - Editorial, sans serif, or monospace typography using bundled fonts.
 - Interface size from 85% to 130%, spacing, corner radius, artwork shading, and reduced motion.
-- Navigation position, library card style, and game-detail arrangement.
+- Navigation position, library card style, and game-detail arrangement for compositions
+  that use those shared layout controls. Rift provides its own cover-size control.
 - Artwork materials: Matte, Satin, Foil, or no surface finish; finish intensity; selective
   foil on bright areas in silver, gold, or holographic colors; brightness cutoff and foil
   strength; pointer tracking, floating depth, and maximum tilt from 0° to 12°.
-- Discover section order and visibility. At least one section remains visible.
+- Afterglow Discover section order and visibility. At least one section remains visible.
 - Additional controls declared by the selected developer theme.
 
 Changes apply immediately and save automatically. **Reset** restores the default appearance.
+Switching compositions saves each design's appearance and layout independently. Returning
+restores those choices; the first Rift selection starts with Moonstone and modern typography.
+Interface size and reduced motion remain shared across designs. The optional `designs`
+profile map holds at most 32 inactive appearance/layout pairs, validated like the active pair.
+Older profiles without this map remain valid.
 The studio checks text and accent contrast against the current custom backgrounds and warns
 when a pair has less than 4.5:1 contrast. Buttons filled with the accent use whichever of black
 or white has greater contrast. Individual color resets return to the selected preset;
@@ -35,8 +42,12 @@ System reduced-motion preferences still apply when the explicit preference is of
 Artwork settings apply to themes that opt into the shared effect components. Afterglow's
 covers stay still and unlit, with captions over the artwork. It retains saved material
 settings for other themes. Catalogue's Library continues to use materials and side previews.
-Keyboard focus,
-reduced motion, and disabling **Follow the pointer** use a steady light and level card.
+Rift reuses the same card materials and exposes **Portal roundness**, **Portal edge shape**,
+**Portal edge activity**, **Star field**, **Star brightness** and **Cover size** as theme
+settings. Zero activity holds the rim still; 40 is the normal pace and 100 is about four
+times faster. The star field draws only on creation or resize; brightness changes opacity.
+Keyboard focus, reduced motion, and disabling **Follow the pointer** use a steady light
+and level card.
 **Movement and depth** explains when the profile or system preference pauses motion and
 disables the affected controls without discarding their saved values. The notice can turn
 off the profile's **Reduce motion** setting when the system allows motion; it never
@@ -192,6 +203,7 @@ Each optional screen is a React component receiving the same `ThemeContext`:
 | `profile` | Validated appearance, layout, and theme-specific settings. |
 | `setPage(page)` | Navigate to Discover, Library, Journal, Settings, Studio, or Details. |
 | `openGame(workId)` | Select a game and navigate to its details. |
+| `closeGame?()`, `previousPage?` | Return from details and inspect the preceding destination; optional additions for older API-1 hosts. |
 | `toggleFullscreen()` | Change the window mode. |
 | `children` | The active screen, supplied to the shell. |
 | `renderScreen(page?)` | Render a host screen, bypassing theme overrides to avoid recursion. |
@@ -201,8 +213,12 @@ Each optional screen is a React component receiving the same `ThemeContext`:
 | `components.Artwork` | Authenticated artwork without a card layout; takes `workId`, optional `hero`, `className`, and `eager`. |
 | `components.ArtworkEffects` | Reusable material and depth surface around artwork; takes `children`, optional `className`, `effects`, and `interactionRef`. |
 | `components.GamePreview` | Game information flyout around a theme-owned trigger; takes `game`, `children`, optional `reason`, `disabled`, and `className`. |
+| `components.PortalSurface?` | Reusable fixed-plane reveal with optional cached artwork, shape/activity options, cursor origin and full-view expansion. Older API-1 hosts may omit it. |
 
 A definition can replace `Shell`, `Discover`, `Library`, `Details`, `Journal`, and `Settings`.
+Optional `defaults` supplies partial `appearance` and `layout` maps for the first explicit
+selection. They pass the same validation as profiles. Saved design choices, startup hydration,
+profile imports and changes made while an external theme is loading take precedence.
 Omitted screens use host implementations. Theme Studio and the recovery controls belong to
 the host so every theme has an exit path. `renderScreen('details')` uses the currently selected
 game; call `openGame` to select one first.
@@ -221,6 +237,24 @@ require the revisions, uncertainty handling, and event reconciliation described 
 [`frontend-api.md`](frontend-api.md). A theme does not gain permission to call arbitrary URLs.
 
 ### Reuse artwork materials and previews
+
+`PortalSurface` is independent of Rift's layout and navigation. Give it a fixed-size parent,
+`children`, optional `artwork` (normally `Artwork` with `hero: true`), and `options` containing
+roundness, waviness and activity from 0 to 100. Optional `origin: {x, y}` starts the aperture
+at a local cursor position. `expansion: {x, y, width, height}` starts with a source rectangle
+and reveals the whole destination without scaling or reflowing its content. All coordinates
+are local CSS pixels; callers account for interface zoom when converting viewport bounds.
+`onExpanded` fires when the fixed content is fully exposed and the entrance renderer has
+been released. `active: false` hides and disposes the effect; `reducedMotion` and the system
+preference reveal the content immediately. Normal portals pause offscreen, on window blur,
+and in hidden documents; ambient drawing is capped at 30 Hz. The DOM artwork remains the
+cached source, and graphics failure leaves the reading surface usable.
+
+Rift's adapter owns cover-relative placement, preview intent, focus and the route transition.
+Other themes can reuse the surface without adopting those interactions. Check that
+`context.components.PortalSurface` exists before using it on older hosts. The inherited
+`--portal-rim-a` and `--portal-rim-b` variables hold three RGB components from 0 to 1 and
+follow the profile's accent and secondary accent.
 
 The shared effects do not depend on Afterglow's screen layout. For a complete host card,
 set `presentation` to `poster`, `landscape`, or `record`, and `preview` to `flyout`, `inline`,

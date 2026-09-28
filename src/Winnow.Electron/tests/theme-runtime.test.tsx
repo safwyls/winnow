@@ -34,6 +34,62 @@ afterEach(() => {
 })
 
 describe('theme runtime recovery and lifecycle', () => {
+  it.each([false, true])(
+    'applies external first-selection defaults without overwriting edits during load (edited=%s)',
+    async (edited) => {
+      const loadTheme = vi.fn(async (): Promise<ThemeDefinition> => ({
+        apiVersion: 1,
+        id: installed.id,
+        name: 'Room',
+        defaults: { appearance: { palette: 'paper', accent: '#88502f' } },
+      }))
+      const { result } = renderHook(() => useThemeRuntime(builtins, { loadTheme }))
+      await waitFor(() => expect(result.current.loading).toBe(false))
+      act(() => result.current.selectTheme(installed.id))
+      await waitFor(() => expect(document.querySelector('link[data-winnow-theme]')).not.toBeNull())
+      if (edited)
+        act(() =>
+          result.current.setProfile((profile) => ({
+            ...profile,
+            appearance: { ...profile.appearance, accent: '#abcdef' },
+          })),
+        )
+      act(() => document.querySelector('link[data-winnow-theme]')!.dispatchEvent(new Event('load')))
+      await waitFor(() => expect(result.current.theme.id).toBe(installed.id))
+      expect(result.current.profile.appearance.accent).toBe(edited ? '#abcdef' : '#88502f')
+      expect(result.current.profile.appearance.palette).toBe(edited ? 'afterglow' : 'paper')
+    },
+  )
+
+  it('persists Rift selection and restores the saved Afterglow appearance on return', async () => {
+    const rift: ThemeDefinition = {
+      apiVersion: 1,
+      id: 'rift',
+      name: 'Rift',
+      defaults: { appearance: { palette: 'rift', accent: '#a1e6d3', font: 'modern' } },
+    }
+    const themes = [...builtins, rift]
+    const { result, unmount } = renderHook(() => useThemeRuntime(themes))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    act(() =>
+      result.current.setProfile((p) => ({ ...p, appearance: { ...p.appearance, accent: '#ffaaaa' } })),
+    )
+    act(() => result.current.selectTheme('rift'))
+    await waitFor(() => expect(result.current.theme.id).toBe('rift'))
+    expect(result.current.profile.appearance.palette).toBe('rift')
+    await waitFor(() =>
+      expect(window.winnow.savePreferences).toHaveBeenLastCalledWith(result.current.profile),
+    )
+    const saved = structuredClone(result.current.profile)
+    unmount()
+    vi.mocked(window.winnow.loadPreferences).mockResolvedValue(saved)
+    const resumed = renderHook(() => useThemeRuntime(themes))
+    await waitFor(() => expect(resumed.result.current.theme.id).toBe('rift'))
+    act(() => resumed.result.current.selectTheme('afterglow'))
+    await waitFor(() => expect(resumed.result.current.theme.id).toBe('afterglow'))
+    expect(resumed.result.current.profile.appearance.accent).toBe('#ffaaaa')
+  })
+
   it('restores a safe profile when stored appearance is incompatible', async () => {
     vi.mocked(window.winnow.loadPreferences).mockResolvedValue({ schemaVersion: 9000 })
     const { result } = renderHook(() => useThemeRuntime(builtins))

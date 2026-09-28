@@ -22,6 +22,9 @@ import {
 import type { ThemeRuntime } from './runtime'
 import { normalizeArtworkEffects, type ArtworkEffectOptions } from '../../shared/artworkEffects'
 import { useSystemReducedMotion } from '../useSystemReducedMotion'
+import { useLibrary } from '../api/hooks'
+import { Artwork } from '../components/Artwork'
+import { PortalSurface } from '../components/portal-effects'
 import './studio.css'
 
 const sectionLabels: Record<string, string> = {
@@ -38,6 +41,34 @@ const colorLabels: { key: ThemeColorKey; label: string }[] = [
   { key: 'line', label: 'Borders' },
   { key: 'cool', label: 'Secondary accent' },
 ]
+
+function RiftStudioPreview({
+  settings,
+  reducedMotion,
+}: {
+  settings: Record<string, ThemeSettingValue>
+  reducedMotion: boolean
+}) {
+  const sample = useLibrary().data?.games[0]
+  return (
+    <PortalSurface
+      className="studio-portal-sample"
+      options={{
+        roundness: Number(settings.portalRoundness),
+        waviness: Number(settings.portalWaviness),
+        activity: Number(settings.portalActivity),
+      }}
+      reducedMotion={reducedMotion}
+      artwork={sample && <Artwork workId={sample.workId} hero eager />}
+    >
+      <div className="studio-portal-reading">
+        <span className="studio-kicker">A window into your library</span>
+        <h2>{sample?.title ?? 'A world within.'}</h2>
+        <p>Adjust the portal shape and activity to see the edge respond here.</p>
+      </div>
+    </PortalSurface>
+  )
+}
 
 function ColorControl({
   label,
@@ -143,7 +174,9 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
       description:
         item.id === 'afterglow'
           ? 'Cinematic artwork, open space, and warm editorial type.'
-          : 'A compact library catalog with an index and a reading desk.',
+          : item.id === 'rift'
+            ? 'Floating covers, artwork portals, and a dense gallery beneath the stars.'
+            : 'A compact library catalog with an index and a reading desk.',
     })),
     ...runtime.packages.filter((item) => !runtime.builtins.some((builtin) => builtin.id === item.id)),
   ]
@@ -182,7 +215,7 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
               <LayoutTemplate size={18} />
               <h2 id="studio-composition">Composition</h2>
             </div>
-            <p>A theme can change the entire layout, including navigation and game screens.</p>
+            <p>Choose an independent design. Each remembers its colors and layout when you switch.</p>
             <div className="studio-theme-options">
               {themes.map((item) => (
                 <button
@@ -193,7 +226,7 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
                   onClick={() => runtime.selectTheme(item.id)}
                 >
                   <span
-                    className={`studio-layout-preview ${item.id === 'afterglow' ? 'preview-afterglow' : 'preview-catalogue'}`}
+                    className={`studio-layout-preview ${item.id === 'afterglow' ? 'preview-afterglow' : item.id === 'rift' ? 'preview-rift' : 'preview-catalogue'}`}
                     aria-hidden="true"
                   >
                     <i />
@@ -515,104 +548,108 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
               <p className="studio-help">Keyboard focus and reduced motion keep the card and light steady.</p>
             </fieldset>
           </section>
-          <section className="studio-panel" aria-labelledby="studio-layout">
-            <div className="studio-section-title">
-              <LayoutTemplate size={18} />
-              <h2 id="studio-layout">Arrange your space</h2>
-            </div>
-            <p>
-              Included themes use these preferences. Installed themes can provide their own controls below.
-            </p>
-            <div className="studio-field-grid">
-              <label className="studio-field">
-                Navigation
-                <select
-                  value={layout.navigation}
-                  onChange={(event) =>
-                    layoutChange({ navigation: event.target.value as ThemeProfile['layout']['navigation'] })
-                  }
-                >
-                  <option value="top">Across the top</option>
-                  <option value="left">Along the left</option>
-                </select>
-              </label>
-              <label className="studio-field">
-                Library cards
-                <select
-                  value={layout.cardStyle}
-                  onChange={(event) =>
-                    layoutChange({ cardStyle: event.target.value as ThemeProfile['layout']['cardStyle'] })
-                  }
-                >
-                  <option value="landscape">Landscape artwork</option>
-                  <option value="poster">Portrait covers</option>
-                  <option value="record">Compact records</option>
-                </select>
-              </label>
-              <label className="studio-field">
-                Game details
-                <select
-                  value={layout.detailArrangement}
-                  onChange={(event) =>
-                    layoutChange({
-                      detailArrangement: event.target.value as ThemeProfile['layout']['detailArrangement'],
-                    })
-                  }
-                >
-                  <option value="aside">Actions beside the story</option>
-                  <option value="stacked">One reading column</option>
-                </select>
-              </label>
-            </div>
-            <fieldset className="studio-fieldset">
-              <legend>Discover sections</legend>
-              <p className="studio-help">Move sections or hide them. Keep at least one visible.</p>
-              <ol className="studio-section-order">
-                {layout.discoverSections.map((section, index) => (
-                  <li key={section}>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={!layout.hiddenSections.includes(section)}
-                        disabled={
-                          !layout.hiddenSections.includes(section) && layout.hiddenSections.length === 2
-                        }
-                        onChange={(event) =>
-                          layoutChange({
-                            hiddenSections: event.target.checked
-                              ? layout.hiddenSections.filter((item) => item !== section)
-                              : [...layout.hiddenSections, section],
-                          })
-                        }
-                      />
-                      <span>{sectionLabels[section]}</span>
-                    </label>
-                    <div>
-                      <button
-                        type="button"
-                        disabled={index === 0}
-                        onClick={() => moveSection(index, -1)}
-                        aria-label={`Move ${sectionLabels[section].toLowerCase()} up`}
-                      >
-                        <ArrowUp size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        disabled={index === layout.discoverSections.length - 1}
-                        onClick={() => moveSection(index, 1)}
-                        aria-label={`Move ${sectionLabels[section].toLowerCase()} down`}
-                      >
-                        <ArrowDown size={16} />
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </fieldset>
-          </section>
+          {theme.id !== 'rift' && (
+            <section className="studio-panel" aria-labelledby="studio-layout">
+              <div className="studio-section-title">
+                <LayoutTemplate size={18} />
+                <h2 id="studio-layout">Arrange your space</h2>
+              </div>
+              <p>
+                These preferences arrange Afterglow and shared screens. Other designs can provide their own
+                controls below.
+              </p>
+              <div className="studio-field-grid">
+                <label className="studio-field">
+                  Navigation
+                  <select
+                    value={layout.navigation}
+                    onChange={(event) =>
+                      layoutChange({ navigation: event.target.value as ThemeProfile['layout']['navigation'] })
+                    }
+                  >
+                    <option value="top">Across the top</option>
+                    <option value="left">Along the left</option>
+                  </select>
+                </label>
+                <label className="studio-field">
+                  Library cards
+                  <select
+                    value={layout.cardStyle}
+                    onChange={(event) =>
+                      layoutChange({ cardStyle: event.target.value as ThemeProfile['layout']['cardStyle'] })
+                    }
+                  >
+                    <option value="landscape">Landscape artwork</option>
+                    <option value="poster">Portrait covers</option>
+                    <option value="record">Compact records</option>
+                  </select>
+                </label>
+                <label className="studio-field">
+                  Game details
+                  <select
+                    value={layout.detailArrangement}
+                    onChange={(event) =>
+                      layoutChange({
+                        detailArrangement: event.target.value as ThemeProfile['layout']['detailArrangement'],
+                      })
+                    }
+                  >
+                    <option value="aside">Actions beside the story</option>
+                    <option value="stacked">One reading column</option>
+                  </select>
+                </label>
+              </div>
+              <fieldset className="studio-fieldset">
+                <legend>Discover sections</legend>
+                <p className="studio-help">Move sections or hide them. Keep at least one visible.</p>
+                <ol className="studio-section-order">
+                  {layout.discoverSections.map((section, index) => (
+                    <li key={section}>
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={!layout.hiddenSections.includes(section)}
+                          disabled={
+                            !layout.hiddenSections.includes(section) && layout.hiddenSections.length === 2
+                          }
+                          onChange={(event) =>
+                            layoutChange({
+                              hiddenSections: event.target.checked
+                                ? layout.hiddenSections.filter((item) => item !== section)
+                                : [...layout.hiddenSections, section],
+                            })
+                          }
+                        />
+                        <span>{sectionLabels[section]}</span>
+                      </label>
+                      <div>
+                        <button
+                          type="button"
+                          disabled={index === 0}
+                          onClick={() => moveSection(index, -1)}
+                          aria-label={`Move ${sectionLabels[section].toLowerCase()} up`}
+                        >
+                          <ArrowUp size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={index === layout.discoverSections.length - 1}
+                          onClick={() => moveSection(index, 1)}
+                          aria-label={`Move ${sectionLabels[section].toLowerCase()} down`}
+                        >
+                          <ArrowDown size={16} />
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </fieldset>
+            </section>
+          )}
           {!!theme.settings?.length && (
             <section className="studio-panel" aria-labelledby="studio-extra">
               <h2 id="studio-extra">{theme.name} details</h2>
+              {theme.id === 'rift' && reducedMotion && <p>Reduced motion keeps the portal edge still.</p>}
               <div className="studio-field-grid">
                 {theme.settings.map((field) => (
                   <label
@@ -653,6 +690,7 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
                               min={field.min}
                               max={field.max}
                               step={field.step ?? 1}
+                              disabled={theme.id === 'rift' && field.id === 'portalActivity' && reducedMotion}
                               value={Number(themeSettings[field.id])}
                               onChange={(event) => settingChange(field.id, Number(event.target.value))}
                             />
@@ -672,7 +710,10 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
             <span>Live appearance</span>
             <span className="studio-preview-dot" />
           </div>
-          <div className="studio-specimen">
+          {theme.id === 'rift' && (
+            <RiftStudioPreview settings={themeSettings} reducedMotion={reducedMotion} />
+          )}
+          <div className="studio-specimen" hidden={theme.id === 'rift'}>
             <p className="studio-kicker">A little room to wander</p>
             <h2>
               A library,
@@ -694,7 +735,7 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
             <p className="studio-sample-caption">Changes apply as you make them.</p>
           </div>
           <div className="studio-preview-foot">
-            <span>TYPE / COLOR / SPACE</span>
+            <span>{theme.id === 'rift' ? 'COLOR / SHAPE / MOTION' : 'TYPE / COLOR / SPACE'}</span>
             <span>01</span>
           </div>
         </aside>

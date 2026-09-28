@@ -6,6 +6,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { WinnowBridge } from '../src/shared/bridge'
 import { App } from '../src/renderer/App'
 
+// Geometry and GPU lifetime have their own controlled-clock tests; this suite checks routes and data.
+vi.mock('../src/renderer/components/portal-effects', () => ({
+  PortalSurface: ({ children, onExpanded }: { children: React.ReactNode; onExpanded?: () => void }) => {
+    React.useEffect(() => {
+      onExpanded?.()
+    }, [onExpanded])
+    return <div className="winnow-portal-surface">{children}</div>
+  },
+}))
+
 const game = {
   workId: 1,
   title: 'A real API title',
@@ -25,6 +35,7 @@ const game = {
 }
 let fullscreen: (value: boolean) => void = () => {}
 beforeEach(() => {
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -41,16 +52,14 @@ beforeEach(() => {
       unobserve() {}
     },
   )
-  window.matchMedia = vi
-    .fn()
-    .mockImplementation((query) => ({
-      matches: false,
-      media: query,
-      addEventListener() {},
-      removeEventListener() {},
-      addListener() {},
-      removeListener() {},
-    }))
+  window.matchMedia = vi.fn().mockImplementation((query) => ({
+    matches: false,
+    media: query,
+    addEventListener() {},
+    removeEventListener() {},
+    addListener() {},
+    removeListener() {},
+  }))
   window.winnow = {
     request: vi.fn(async ({ route }) => ({
       ok: true,
@@ -61,26 +70,33 @@ beforeEach(() => {
           : route === 'feed.get'
             ? { shelves: [], candidateCount: 0, confidence: 0, failed: false }
             : route === 'library.workspace'
-              ? { externalIds: [], pluginActions: {}, epicLaunchKeys: {} }
+              ? {
+                  works: [{ id: 1, title: game.title }],
+                  externalIds: [],
+                  pluginActions: {},
+                  epicLaunchKeys: {},
+                }
               : route === 'artworkState'
                 ? { current: null, revision: 'a' }
-                : route === 'activity.query'
-                  ? { rows: [], next: null }
-                  : route === 'statistics.gameplay'
-                    ? {
-                        recordedSeconds: 0,
-                        gamesPlayedCount: 0,
-                        startedSessionCount: 0,
-                        periods: [],
-                        topGames: [],
-                      }
-                    : route === 'preferences.library.get'
-                      ? { showNonGameEntries: false, showExplicitContent: false, maturityCap: 'all' }
-                      : route === 'connections.get'
-                        ? { steam: { hasUsableCredential: false } }
-                        : route === 'connections.igdb.get'
-                          ? { clientId: '', hasSavedCredentials: false }
-                          : [],
+                : route === 'game.details'
+                  ? { workId: 1, events: [], sessions: {}, ratings: [], journalEntries: [], achievements: [] }
+                  : route === 'activity.query'
+                    ? { rows: [], next: null }
+                    : route === 'statistics.gameplay'
+                      ? {
+                          recordedSeconds: 0,
+                          gamesPlayedCount: 0,
+                          startedSessionCount: 0,
+                          periods: [],
+                          topGames: [],
+                        }
+                      : route === 'preferences.library.get'
+                        ? { showNonGameEntries: false, showExplicitContent: false, maturityCap: 'all' }
+                        : route === 'connections.get'
+                          ? { steam: { hasUsableCredential: false } }
+                          : route === 'connections.igdb.get'
+                            ? { clientId: '', hasSavedCredentials: false }
+                            : [],
     })),
     connection: vi.fn(async () => ({ connected: true, message: 'Connected' })),
     onConnection: () => () => {},
@@ -103,6 +119,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })
 function mount() {
@@ -117,6 +134,30 @@ function mount() {
   return client
 }
 describe('integrated frontend', () => {
+  it('offers Rift beside quiet Afterglow and retains full game details on both surfaces', async () => {
+    mount()
+    await screen.findByRole('heading', { name: 'A real API title' })
+    fireEvent.click(screen.getByRole('button', { name: 'Theme Studio' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Rift.*Floating covers/i }))
+    await waitFor(() => expect(document.querySelector('.rift-shell.desktop')).not.toBeNull())
+    expect(document.documentElement.dataset.palette).toBe('rift')
+    fireEvent.click(screen.getByRole('button', { name: 'Discover' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'View game' }))
+    await screen.findByRole('heading', { name: 'A real API title' })
+    expect(screen.getByRole('button', { name: 'History', hidden: true })).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Artwork', hidden: true })).toBeDefined()
+    act(() => fullscreen(true))
+    await waitFor(() => expect(document.querySelector('.rift-shell.fullscreen')).not.toBeNull())
+    fireEvent.click(await screen.findByRole('button', { name: 'View game' }))
+    await screen.findByRole('heading', { name: 'A real API title' })
+    expect(screen.getByRole('button', { name: 'Metadata', hidden: true })).toBeDefined()
+    fireEvent.click(screen.getByRole('button', { name: 'Theme Studio' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Afterglow.*Cinematic artwork/i }))
+    await waitFor(() => expect(document.querySelector('.afterglow-shell.fullscreen')).not.toBeNull())
+    expect(document.documentElement.dataset.palette).toBe('afterglow')
+    expect(document.querySelector('.winnow-portal-surface')).toBeNull()
+  })
+
   it('renders real snapshots, retains separate desktop/fullscreen filters, and handles native fullscreen changes', async () => {
     mount()
     await screen.findByRole('heading', { name: 'A real API title' })

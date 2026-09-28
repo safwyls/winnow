@@ -16,6 +16,7 @@ import {
   contrastRatio,
   parseThemeProfile,
   resolvedThemeColors,
+  selectThemeProfile,
   themeSettingValues,
   validateThemeDefinition,
   type ThemeDefinition,
@@ -85,6 +86,8 @@ export async function loadExternalTheme(
 
 export function applyThemeProfile(profile: ThemeProfile, root: HTMLElement = document.documentElement): void {
   const palette = resolvedThemeColors(profile)
+  const rgb = (hex: string) =>
+    [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16) / 255).join(' ')
   const variables: Record<string, string> = {
     bg: palette.background,
     surface: palette.surface,
@@ -99,6 +102,8 @@ export function applyThemeProfile(profile: ThemeProfile, root: HTMLElement = doc
         ? '#000000'
         : '#ffffff',
     cool: palette.cool,
+    'portal-rim-a': rgb(palette.accent),
+    'portal-rim-b': rgb(palette.cool),
     'font-display':
       profile.appearance.font === 'editorial'
         ? 'Newsreader, Georgia, serif'
@@ -165,6 +170,9 @@ export function useThemeRuntime(
   const loadTheme = options?.loadTheme ?? loadExternalTheme
   const profileRef = useRef(profile)
   profileRef.current = profile
+  const pendingSelection = useRef<{ id: string; source: ThemeProfile; provisional: ThemeProfile } | null>(
+    null,
+  )
 
   useEffect(() => {
     installThemeSDK()
@@ -208,7 +216,7 @@ export function useThemeRuntime(
 
   const recoverTheme = useCallback(() => {
     setTheme(fallback)
-    setProfile((current) => ({ ...current, themeId: fallback.id }))
+    setProfile((current) => selectThemeProfile(current, fallback.id, fallback))
     setNotice(
       'The theme could not render this screen. Afterglow has been restored. Your library is unchanged.',
     )
@@ -225,7 +233,7 @@ export function useThemeRuntime(
     const installed = packages.find((candidate) => candidate.id === profile.themeId)
     if (!installed) {
       setTheme(fallback)
-      setProfile((current) => ({ ...current, themeId: fallback.id }))
+      setProfile((current) => selectThemeProfile(current, fallback.id, fallback))
       setNotice(
         'This profile uses a theme that is not installed. Afterglow is available until you install it.',
       )
@@ -258,6 +266,17 @@ export function useThemeRuntime(
           await loaded
         }
         if (!cancelled) {
+          const pending = pendingSelection.current
+          // Apply authored defaults only to an explicit, untouched first selection. Imports,
+          // startup hydration and edits made while the module loads must retain their values.
+          if (pending?.id === installed.id) {
+            if (profileRef.current === pending.provisional) {
+              const resolved = selectThemeProfile(pending.source, installed.id, definition)
+              profileRef.current = resolved
+              setProfile(resolved)
+            }
+            pendingSelection.current = null
+          }
           setTheme(definition)
           setLoading(false)
         }
@@ -266,7 +285,7 @@ export function useThemeRuntime(
         if (cancelled) return
         style?.remove()
         setTheme(fallback)
-        setProfile((current) => ({ ...current, themeId: fallback.id }))
+        setProfile((current) => selectThemeProfile(current, fallback.id, fallback))
         setLoading(false)
         setNotice(`${message(error)} Afterglow has been restored.`)
       })
@@ -279,7 +298,13 @@ export function useThemeRuntime(
 
   const selectTheme = (id: string) => {
     setNotice(null)
-    setProfile((current) => ({ ...current, themeId: id }))
+    const source = profileRef.current
+    if (source.themeId === id) return
+    const definition = builtins.find((item) => item.id === id)
+    const provisional = selectThemeProfile(source, id, definition)
+    pendingSelection.current = definition ? null : { id, source, provisional }
+    profileRef.current = provisional
+    setProfile(provisional)
   }
   const importProfile = async () => {
     try {

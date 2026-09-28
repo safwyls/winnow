@@ -1,12 +1,15 @@
-# Winnow Afterglow
+# Winnow Electron
 
-An independent Electron/TypeScript frontend for Winnow's local backend. Afterglow uses
-portrait covers, a panoramic featured game and editorial typography; Catalogue presents the same library as a
-reading desk and index. Both use the public theme interface available to installed themes.
+An independent Electron/TypeScript frontend for Winnow's local backend. Choose **Afterglow**
+or **Rift** in Theme Studio. Afterglow uses portrait covers, a panoramic featured game and
+editorial typography. Rift uses a floating recommendation deck, artwork portals and a dense
+library gallery against a quiet star field. Catalogue remains available as a reading desk
+and index. All compositions use the public theme interface available to installed themes.
 
-The separate [Rift design study](../../docs/spikes/2026-09-28-rift-design/README.md)
-explores a composition built around floating materials and artwork portals. It is an
-interactive mock for review, not an installed frontend theme.
+The approved [Rift design study](../../docs/spikes/2026-09-28-rift-design/README.md)
+records the composition that informed the production theme. Production screens use the
+real backend and cached artwork; the mock's sample games are not shipped with the app.
+The existing executable and application ID retain their Afterglow names for compatibility.
 
 Navigation and the footer stay visible as you browse. Library results and the list index
 scroll independently; other screens scroll within the content pane. Afterglow's featured
@@ -27,6 +30,19 @@ retains material effects and descriptive side previews. Themes can reuse `Artwor
 `GamePreview` or the composed `GameCard` independently. One lazy Pixi renderer draws an active cover using
 its already-decoded image; static artwork remains available when WebGL is unavailable.
 System and profile reduced-motion settings keep focus effects stationary.
+
+Rift's Library opens a fixed-size artwork portal beside a hovered or focused cover. It flips
+left or docks inside narrow windows, and Tab reaches its **View game** action. Opening a game
+expands the portal across the content pane into the complete shared details screen, including
+editions, external links, history, journal, metadata and artwork controls. Back restores the
+browsing position. Portal roundness, edge shape and activity, star brightness and cover size
+are Rift settings in Theme Studio; activity at zero holds the edge still. The star field has
+no continuous animation. Portals stop when inactive, and the full-page renderer is released
+after the entrance. `PortalSurface` can be reused by other themes independently of Rift.
+
+Switching compositions remembers each one's appearance and layout. Interface size and
+reduced motion remain shared accessibility preferences. Afterglow stays the default, with
+still covers and its original composition.
 
 Artwork selection still refreshes with library events. Unchanged images reuse encoded bytes
 for up to two minutes, with explicit artwork changes and reconnects forcing revalidation.
@@ -70,7 +86,7 @@ frontend leaves the backend running, as described in the [API guide](../../docs/
   separate from recorded sessions.
 - Settings for Steam API credentials, IGDB credentials, Epic and provider connections,
   library preferences, background operations and recommendation feedback history.
-- Theme Studio with three palettes, semantic color overrides, fonts, spacing, scale,
+- Theme Studio with four palettes, semantic color overrides, fonts, spacing, scale,
   artwork finishes and depth, motion, navigation placement, card styles, section ordering
   and JSON profile sharing.
 - Developer themes that replace the shell and individual screens, with versioned contracts,
@@ -101,7 +117,7 @@ Steam-mapped copy owned elsewhere. These links do not launch a game.
 
 See [Electron themes](../../docs/electron-themes.md) for profile sharing, installation and
 the complete authoring contract. Install `examples/themes/reading-room` from Theme Studio
-to try a third composition loaded as an independent package. It needs no build tools.
+to try a composition loaded as an independent package. It needs no build tools.
 
 Developer packages execute trusted JavaScript with library command access. Appearance
 profiles are passive JSON. Use Ctrl+Shift+T to restore Afterglow, the native View menu's
@@ -159,3 +175,7 @@ Lucide and bundled fonts. It never opens SQLite or duplicates backend scoring ru
 `src/renderer/features` holds reusable backend feature screens. Theme packages can reuse
 those screens through the public context. See the [implementation evidence](../../docs/spikes/2026-09-26-electron-implementation/README.md)
 for the validation scope and native screenshots.
+
+The [Rift integration evidence](../../docs/spikes/2026-09-28-rift-integration/README.md)
+records the alternative design's desktop/fullscreen checks, browser captures and remaining
+device-validation limits.

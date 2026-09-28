@@ -307,10 +307,13 @@ export function Details({
             ))}
           </section>
           {game && workspace.data && (
-            <GameLinks key={workId} links={gameLinks(game, workspace.data, details.data?.events)} />
+            <GameLinks
+              key={`links:${workId}`}
+              links={gameLinks(game, workspace.data, details.data?.events)}
+            />
           )}
           <ListMembership workId={workId} />
-          <HideGame key={workId} workId={workId} onHidden={onClose} />
+          <HideGame key={`visibility:${workId}`} workId={workId} onHidden={onClose} />
         </aside>
       </div>
       {editing != null && <JournalEditor sessionId={editing} onClose={() => setEditing(null)} />}

@@ -11,17 +11,19 @@ import { Journal } from './features/Journal'
 import { Settings } from './features/Settings'
 import { afterglow, AfterglowShell, AfterglowDiscover, AfterglowLibrary } from './themes/afterglow'
 import { catalogue } from './themes/catalogue'
+import { rift } from './themes/rift'
 import { useThemeRuntime, ThemeBoundary, installThemeSDK } from './theming/runtime'
 import { ThemeStudio } from './theming/ThemeStudio'
 import { GameCard, Impression } from './components/primitives'
 import { Artwork } from './components/Artwork'
 import { GamePreview } from './components/GamePreview'
 import { ArtworkEffects, ArtworkEffectsProvider } from './components/artwork-effects'
+import { PortalSurface } from './components/portal-effects'
 import { normalizeArtworkEffects } from '../shared/artworkEffects'
 import { RefreshQueue, refreshSnapshots, shouldRefreshArtwork } from './refresh'
 
 installThemeSDK()
-const builtins = [afterglow, catalogue]
+const builtins = [afterglow, rift, catalogue]
 interface Position {
   page: ThemePage
   workId: number | null
@@ -63,6 +65,7 @@ export function App() {
       })),
     [mode],
   )
+  const closeGame = useCallback(() => navigate(position.previous), [navigate, position.previous])
   const toggleFullscreen = useCallback(() => {
     const next = mode === 'desktop' ? 'fullscreen' : 'desktop'
     void window.winnow
@@ -130,15 +133,21 @@ export function App() {
   useEffect(() => {
     document.title = `Winnow · ${runtime.theme.name}`
   }, [runtime.theme.name])
-  const didNavigate = useRef(false)
+  const lastNavigation = useRef<{ page: ThemePage; mode: string; themeId: string } | null>(null)
   useEffect(() => {
-    if (didNavigate.current) {
+    const previous = lastNavigation.current
+    const portalJourney =
+      runtime.theme.id === 'rift' &&
+      previous?.themeId === 'rift' &&
+      previous.mode === mode &&
+      (previous.page === 'details' || position.page === 'details')
+    if (previous && !portalJourney) {
       document.getElementById('main-content')?.focus({ preventScroll: true })
       const content = document.getElementById('main-content')
       if (content) content.scrollTop = 0
     }
-    didNavigate.current = true
-  }, [position.page, position.workId, mode])
+    lastNavigation.current = { page: position.page, mode, themeId: runtime.theme.id }
+  }, [position.page, position.workId, mode, runtime.theme.id])
   useGamepad(mode === 'fullscreen')
   let context: ThemeContext
   const renderScreen = (page: ThemePage = position.page) => {
@@ -148,7 +157,7 @@ export function App() {
     if (page === 'journal') return <Journal mode={mode} onOpenGame={openGame} />
     if (page === 'settings') return <Settings mode={mode} />
     return position.workId !== null ? (
-      <Details workId={position.workId} mode={mode} onClose={() => navigate(position.previous)} />
+      <Details workId={position.workId} mode={mode} onClose={closeGame} />
     ) : (
       <p>Choose a game from your library.</p>
     )
@@ -159,6 +168,8 @@ export function App() {
     selectedWorkId: position.workId,
     setPage: navigate,
     openGame,
+    closeGame,
+    previousPage: position.previous,
     toggleFullscreen,
     games: library.data?.games ?? [],
     feed: feed.data,
@@ -188,7 +199,7 @@ export function App() {
         }
       },
     },
-    components: { GameCard, Impression, Artwork, ArtworkEffects, GamePreview },
+    components: { GameCard, Impression, Artwork, ArtworkEffects, GamePreview, PortalSurface },
   }
   const screenNames = {
     discover: 'Discover',
@@ -296,7 +307,10 @@ function useGamepad(enabled: boolean) {
           'button:not(:disabled), input, select, textarea, [tabindex="0"]',
         ),
       ].filter(
-        (element) => element.getBoundingClientRect().width > 0 && element.getBoundingClientRect().height > 0,
+        (element) =>
+          !element.closest('[inert], [hidden]') &&
+          element.getBoundingClientRect().width > 0 &&
+          element.getBoundingClientRect().height > 0,
       )
       const index = candidates.indexOf(document.activeElement as HTMLElement)
       candidates[(index + direction + candidates.length) % candidates.length]?.focus()
@@ -307,7 +321,9 @@ function useGamepad(enabled: boolean) {
         const buttons = pad.buttons.map((button) => button.pressed)
         if (buttons[0] && !previousButtons[0]) (document.activeElement as HTMLElement)?.click()
         if (buttons[1] && !previousButtons[1])
-          window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+          (document.activeElement ?? document.body).dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+          )
         const axis = pad.axes[1] ?? 0
         if (time - last > 180) {
           if (buttons[13] || buttons[15] || axis > 0.5) {
