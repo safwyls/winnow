@@ -1,6 +1,6 @@
 # Afterglow artwork and caption study
 
-September 27, 2026 · TASK-354 / TASK-355 / TASK-356 / TASK-357 / TASK-358 / TASK-359 / TASK-360 · Proposal for user review
+September 27–28, 2026 · TASK-354 / TASK-355 / TASK-356 / TASK-357 / TASK-358 / TASK-359 / TASK-360 / TASK-363 · Proposal for user review
 
 This standalone mock explores portrait covers and compact captions for Afterglow, Winnow's
 Electron frontend. It preserves the Discover hero composition, warm palette and typography.
@@ -27,6 +27,10 @@ local. The mock makes no API calls and requires no running Winnow backend.
   flyout beside the card with its full title, store, playtime, installation status, revisit
   reason and description. It prefers the right, flips left near the edge and keeps inside
   the header/footer bounds. Very narrow windows use a bottom panel when neither side fits.
+  The current portal treatment grows from the pointer into that space, with a softly
+  shifting rim and a dim star field behind stationary text. **Display options → Details
+  portal** offers Living portal, Still portal and the earlier Simple preview. Keyboard
+  focus and system reduced motion always use a stationary portal.
   You can move into the flyout to read or scroll it. Escape dismisses it before leaving
   Library; Page Up/Down scroll an overflowing preview while the card has keyboard focus.
   Selecting the cover opens the full-title dialog, including its description, on all input
@@ -178,10 +182,10 @@ syntax and Git whitespace checks passed, and no browser warnings or errors were 
 screen-reader output were not exercised; controls retain accessible full names and active
 previews use aria-describedby. Reduced motion disables the flyout's entrance animation.
 
-Current capture: [artwork with a side preview](13-side-preview.png). Move across covers in
+Previous capture: [artwork with a side preview](13-side-preview.png). Move across covers in
 the interactive mock to assess the depth and reflection; a still capture cannot show their response.
 
-The current effect uses one lazy-initialized WebGL renderer and a single custom fragment
+The cover finish uses one lazy-initialized WebGL renderer and a single custom fragment
 filter. It creates textures from the cover images already decoded by the browser, keyed
 by image URL; it does not fetch secondary art. The private ticker runs at up to 60 fps
 while following or fading, stops once the light settles, and stays stopped for stationary
@@ -204,6 +208,40 @@ The mock does not measure production artwork latency. Proposed follow-up work in
 targeted artwork invalidation, size-aware requests, cached encoded variants and avoiding
 base64 transport. These require implementation and cold/warm timing checks after design
 review; fast local mock images are not evidence that those changes have shipped.
+
+## Portal flyout revision — September 28, 2026
+
+`portal-surface.js` provides a content-independent `WinnowPortalSurface` with show, resize,
+hide and dispose methods. `flyout.js` owns the accessible HTML, hover/focus lifecycle,
+cursor origin and viewport placement. `portal-preview.css` keeps the text level and gives
+the surface a 620 ms entrance from the last pointer position. The words fade in after the
+opening starts; they are never distorted by the shader.
+
+The procedural field draws sparse stars, faint clouds and a gently uneven contour. A second,
+private Pixi renderer is created lazily for the active flyout, capped at 30 fps and 1.5×
+resolution. It does not load textures or secondary artwork. Only Living portal runs a loop;
+Still portal and keyboard focus draw once. Hiding, navigation, scrolling, dialogs, visibility
+changes and blur stop rendering and detach the canvas. Page teardown destroys this renderer
+without releasing resources shared with the independent cover renderer. A CSS star field
+keeps the text available if graphics initialization fails or the context is lost.
+
+Browser checks covered Library and Discover shelves on desktop, fullscreen keyboard
+navigation, left/right placement, the complete Guns, Love and Tentacles title, Still and
+Simple comparisons, and Escape cleanup. Fullscreen at 760×560 retained a scrollable side
+portal; Page Down moved the reading area. At 390×700 it docked above the footer with no
+horizontal overflow. Temporary viewport overrides were reset. The live pointer entrance
+used offsets from the cursor to the resting portal center; screenshots showed the opening
+and settled states. The browser reported no warnings or errors.
+
+A Node/JSDOM smoke check exercised the pointer hover delay, movement into the preview,
+live system reduced-motion changes and Escape cleanup. A separate simulated WebGL
+initialization failure left the fallback visible and verified stop/detach behavior.
+JavaScript syntax and Git whitespace checks passed. OS preference switching, physical
+touch, screen-reader output and GPU timings were not measured. No production frontend
+code or real library preferences changed.
+
+Current capture: [portal details beside Outer Wilds](14-portal-preview.png). Use the live
+mock to assess the growth, edge movement and star field.
 
 ## Asset provenance
 
