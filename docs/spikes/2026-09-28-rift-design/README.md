@@ -1,11 +1,16 @@
 # Winnow Rift
 
-September 28, 2026 · TASK-367 · Interactive design proposal
+September 28, 2026 · TASK-368 · Interactive design proposal
 
-Rift gives the material cards and artwork portals their own visual setting. Its graphite
-and blue-black surfaces, moonstone green and violet edges, sans serif headings and fine
-monospace labels make light and depth part of the whole interface. The working name is a
-theme concept within Winnow, not a renamed product or a separately shipped frontend.
+Rift makes browsing a sequence of selected worlds. A searchable collection index leads
+into a floating deck of covers and a persistent artwork portal. The portal is the reading
+surface: it stays open while the pointer moves away, and choosing another game changes
+both the deck and its details. This composition replaces the banner, shelves and grid of
+the first study. Graphite, blue-black, moonstone and violet remain the palette; DM Sans
+and fine monospace labels keep the interface quiet around the artwork.
+
+The working name is a theme concept within Winnow, not a renamed product or a separately
+shipped frontend. This is a mock for review; production Afterglow is unchanged.
 
 ## Review
 
@@ -13,73 +18,78 @@ From the repository root:
 
     python -m http.server 8774 --bind 127.0.0.1 --directory docs/spikes
 
-Open [Rift Discover](http://127.0.0.1:8774/2026-09-28-rift-design/index.html?page=discover)
-or [Rift Library](http://127.0.0.1:8774/2026-09-28-rift-design/index.html?page=library).
-The footer also links to [restored Afterglow](../2026-09-27-afterglow-artwork-mock/index.html?page=library).
+Open [Rift Library](http://127.0.0.1:8774/2026-09-28-rift-design/index.html?page=library)
+or [Rift Discover](http://127.0.0.1:8774/2026-09-28-rift-design/index.html?page=discover).
+The footer links to [restored Afterglow](../2026-09-27-afterglow-artwork-mock/index.html?page=library).
 Keep both directories together: images, bundled fonts, Lucide and Pixi are referenced from
-the preceding study to avoid duplicating its assets. No network service, backend, live
-library or launcher files are used.
+the preceding study to avoid duplicating assets. No backend, live library or launcher
+files are used.
 
-Discover treats the featured game as a physical cover suspended in its world, with a
-panoramic background and a small stack of translucent plates. Eight covers form the next
-shelf; eight compact records provide a return path into recently sampled games. Library
-uses the full canvas, with horizontal filters and search above the covers. Desktop has a
-slim navigation rail. Fullscreen brings navigation into a central bottom dock and enlarges
-covers; short windows reduce the heading and card dimensions to keep a full row visible.
+The index is the fast path for scanning and search. Library orders it alphabetically;
+Discover offers a sample recommendation sequence. Four lenses select all games, four
+unplayed games, eight games to return to, or five installed games. These are fixture
+selections, not measured recommendation scores. The selected cover and its two neighbors
+form a small deck; clicking a neighbor or using the arrow controls advances through the
+current selection. The selected cover and **View game** open the complete description.
 
-Hovering or focusing artwork reveals its game details through a separate aperture. The
-image and text stay at their final size; the opening reveals them. Only the active card
-and portal render effects. The body does not scroll; the current page or collection pane
-does. Long descriptions are excerpted in the portal and remain complete in the game dialog.
+The portal gives details a stable home beside the cover. Pointer selection opens its
+aperture from the nearby deck edge toward the reading plane. Its artwork and text never
+scale during the reveal. Keyboard selection opens it still. The portal remains open
+rather than appearing over other games when the pointer crosses the index.
 
-**Tune the atmosphere** controls cover size, compact captions, Matte/Satin/Foil, intensity,
-selective metallic highlights, depth, maximum tilt and portal contour. Moonstone, Amethyst
-and Ember change the interface palette. Still mode and system reduced motion keep the
-material light and portal stationary. These are in-memory mock controls and reset on reload.
-Search, filters, grid/records, featured-game switching, game dialogs and keyboard navigation
-are functional against twelve sample games. No game launch action is simulated.
+Desktop keeps the searchable index alongside the scene. Fullscreen hides it and enlarges
+the scene; the index button or `/` brings it back. Selecting a result closes the drawer
+and restores keyboard focus to the selected cover. Arrow keys move through the current
+selection; up/down also work within the index. On narrow windows the cover and portal
+stack in one scrolling workspace. Header and footer stay visible, and the portal itself
+has no scrollbar. Short windows scroll the workspace as needed.
+
+**Atmosphere** retains Matte/Satin/Foil, intensity, metallic highlights, floating depth,
+maximum tilt, roundness, waviness and Still mode. Card scale changes the deck cover size;
+index text can be minimal or include a reason to return. Moonstone, Amethyst and Ember
+change the interface palette. Controls are in-memory and reset on reload. System reduced
+motion shares the still path. Search with no matches shows a recoverable empty state;
+missing/loading artwork keeps the reading layout and metadata available.
 
 ## Reuse boundary
 
-`rift.css` and `index.html` define a new composition. `app.js` owns static fixtures and
-navigation. `effects/` preserves the finish, depth, flyout and portal modules from the
-pre-fork mock at 66dbf61. They retain their own lifecycle, image reuse and graphics fallback;
-the fork supplies a shared motion preference and a cooler portal rim. This is separate
-from the production React `ArtworkEffects`, `GamePreview` and `GameCard` APIs, which remain
-available to themes. Porting Rift to those APIs is a subsequent step after design review.
+`index.html`, `rift.css` and `app.js` own the workspace composition, fixtures and selection.
+`options.css` holds the options dialog. `effects/aperture.js` connects selection to the
+existing portal renderer; it owns the persistent surface lifecycle, sizing and settings.
+The cover finish, pointer depth and portal shader retain their separate modules, image
+reuse and graphics fallback. `effects/flyout.js` is the prior hover adapter and is no longer
+loaded by this study. Only the active cover uses a material renderer. The portal renders
+at 30 Hz while ambient motion is active, and settles for keyboard input, Still mode or
+window blur. Hidden documents and dialogs stop its loop.
 
-The original Afterglow mock uses its pre-effect layout with the later filled-frame and
-eight-title browsing improvements. Production Afterglow explicitly opts out of shared
-materials and uses the new optional `overlay` caption mode; existing theme defaults,
-Catalogue behavior, artwork cache improvements and saved material settings are preserved.
+This mock remains separate from the production React `ArtworkEffects`, `GamePreview`
+and `GameCard` APIs. Integration into the Electron frontend follows design review. The
+first Rift proposal and the Afterglow restoration are recorded at commit 257d5e5; their
+captures remain evidence of that version.
 
 ## Verification
 
-Browser checks covered desktop Discover and Library, featured-game switching, search,
-unplayed filtering, compact records and complete game descriptions. Hades and Borderlands
-hero/cover fallbacks rendered through WebGL. Keyboard focus produced a still portal and
-level raised card. Amethyst plus Still mode preserved the material finish with the portal
-loop stopped; Roundness reached its maximum and Restore defaults restored the controls.
-Pointer input tilted the artwork. Next/Previous keyboard focus left the featured panel
-at zero internal scroll after switching its visual boundary to `overflow: clip`.
-No browser warnings or errors were reported. Both entrypoints passed unique-ID, local
-asset-reference and JavaScript syntax checks.
+Browser checks covered desktop at 2025 and 1280 px widths and fullscreen at 1280 and
+760 px widths. The 390 px fallback stacked the deck and portal without horizontal scroll;
+the complete long Guns, Love and Tentacles title and its View game action remained
+readable. Portal content height stayed fixed with no scrollable reading plane. The
+workspace scrolls at constrained heights while the app bar and footer remain pinned.
 
-Fullscreen at 760×560 displayed a complete row and a 370 px preview without scrollable
-portal descendants. At 390×700 the complete long Guns, Love and Tentacles title wrapped
-in a docked preview, its description excerpted, and the navigation stayed visible. Discover
-had no horizontal overflow at that width. Temporary viewport overrides were reset.
+Search, no matches, single-result controls, eight-game return filtering, direct selection,
+fullscreen index dismissal and full-description dialogs were exercised. Keyboard selection
+produced a still portal. Missing artwork and the mixed-proportion Hades cover preserved
+the 2:3 card frame and details. Foil, 60% intensity, Amethyst, 100% portal roundness and
+Still mode worked together; the portal loop stopped. After disabling Still mode, pointer
+input produced nonzero X/Y card tilt and a material canvas with the changed palette.
 
-Production Afterglow passed TypeScript and build checks, with 199 tests passing and eight
-existing backend-dependent tests skipped. Eight focused checks cover desktop/fullscreen
-captions, retained material preferences, Catalogue and eight returning games. Browser
-checks at 1280×720 and 680×620 covered quiet cards, keyboard captions, reduced motion and
-no horizontal overflow. Build output retained two existing Zod annotation warnings.
-No native app or real library was used. Physical controller, touch and GPU performance
-were not measured for this study.
+All JavaScript modules passed Node syntax checks. The entrypoint passed 53 unique-ID and
+10 local-reference checks. The Rift browser tab reported no warnings or errors. Production
+files and the restored Afterglow study were unchanged; no production build was needed.
+Physical controllers, touch hardware and GPU performance were not measured.
 
-Captures: [Discover](01-rift-discover.png), [Library portal](02-rift-library.png),
-[restored Afterglow](../2026-09-27-afterglow-artwork-mock/19-restored-afterglow.png).
+Current captures: [Desktop workspace](03-rift-workspace.png),
+[Focused fullscreen](04-rift-fullscreen.png).
+Previous study: [Discover](01-rift-discover.png), [Library portal](02-rift-library.png).
 
 ## Assets
 

@@ -35,164 +35,171 @@ const portalArtwork = game => {
     && ['borderlands3','tentacles','hades','disco'].includes(game.id);
   return unavailable?null:`${assetRoot}${portalHeroes[game.id]||game.id}.jpg`;
 };
-const state = { page:'discover', filter:'all', query:'', view:'grid', hero:0 };
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
 const icon = name => `<i data-lucide="${name}" aria-hidden="true"></i>`;
 const hydrateIcons = () => window.lucide.createIcons({attrs:{'aria-hidden':'true'}});
 const say = message => { $('#live-message').textContent = message; };
+const discoveryOrder = ['outer','hades','hollow','celeste','enshrouded','disco','sable','borderlands2','borderlands3','bounty','tentacles','jackpot'];
+const state = {page:'library',filter:'all',query:'',selected:'outer',input:'keyboard'};
+const lensTitles = {all:'Every game, an opening.',unplayed:'Begin somewhere new.',returning:'There is more to your story.',installed:'Your next world is ready.'};
 
-function cover(game, sample = document.body.dataset.state) {
+function cover(game) {
+  const sample = document.body.dataset.state;
   const affected = ['borderlands3','tentacles','hades','disco'].includes(game.id);
   if (sample === 'missing' && affected) return `<span class="cover" role="img" aria-label="Artwork unavailable"><span class="cover-empty">${icon('image-off')}<small>No artwork yet</small></span></span>`;
-  if (sample === 'loading' && affected) return `<span class="cover" role="img" aria-label="Artwork loading"><span class="cover-loading"><span class="loading-mark"></span></span></span>`;
+  if (sample === 'loading' && affected) return '<span class="cover" role="img" aria-label="Artwork loading"><span class="cover-loading"><span class="loading-mark"></span></span></span>';
   const file = sample === 'mixed' && game.id === 'hades' ? 'hades-landscape' : game.id;
   return `<span class="cover"><img src="${assetRoot}${file}.jpg" alt="" loading="lazy" decoding="async" draggable="false"></span>`;
 }
 
-function metadata(game) {
-  return `<span class="card-meta"><span>${game.store}</span><span class="separator">·</span><span>${game.time}</span>${game.installed ? '<span class="installed" title="Installed" aria-label="Installed">'+icon('hard-drive')+'</span>' : ''}</span>`;
+function visibleGames() {
+  const ordered = state.page === 'discover' ? discoveryOrder.map(id=>byId.get(id)) : [...games].sort((a,b)=>a.title.localeCompare(b.title));
+  return ordered.filter(game=>game.title.toLowerCase().includes(state.query.toLowerCase()) &&
+    (state.filter==='all' || state.filter==='unplayed' && game.time==='Unplayed' ||
+     state.filter==='returning' && game.time!=='Unplayed' || state.filter==='installed' && game.installed));
 }
 
-function card(game) {
-  return `<button class="game-card" data-game="${game.id}" aria-label="View ${escapeHtml(game.title)}"><span class="card-surface">${cover(game)}</span><span class="card-caption"><span class="card-title">${escapeHtml(game.title)}</span>${metadata(game)}<span class="card-reason">${game.reason}</span></span></button>`;
+function renderIndex() {
+  const visible = visibleGames();
+  if (!visible.some(game=>game.id===state.selected)) state.selected=visible[0]?.id||null;
+  $('#game-index').innerHTML=visible.map(game=>`<button class="index-game" data-select="${game.id}" aria-label="Select ${escapeHtml(game.title)}" aria-pressed="${game.id===state.selected}">${cover(game)}<span><strong>${escapeHtml(game.title)}</strong><small>${game.store} · ${game.time==='Unplayed'?'Never played':game.time+' played'}</small><span class="index-reason">${escapeHtml(game.reason)}</span></span></button>`).join('')||'<p class="empty-index">No matching games.</p>';
+  $('#result-count').textContent=String(visible.length);
+  $$('[data-filter]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.filter===state.filter)));
+  $('#browse-title').textContent=lensTitles[state.filter];
+  renderSelection('keyboard');
 }
 
-function renderLibrary() {
-  const filtered = games.filter(game => game.title.toLowerCase().includes(state.query.toLowerCase()) && (state.filter === 'all' || state.filter === 'unplayed' && game.time === 'Unplayed' || state.filter === 'installed' && game.installed));
-  $('#collection').classList.toggle('records', state.view === 'list');
-  $('#collection').innerHTML = filtered.map(card).join('') || '<p class="empty-result">No games match. Try another search.</p>';
-  $('#result-count').textContent = `${filtered.length} ${filtered.length === 1 ? 'game' : 'games'}`;
-  $('.collection-end').hidden = filtered.length === 0;
-  $('.collection-end').textContent = filtered.length === games.length ? 'Twelve worlds. Already yours.' : 'More worlds are waiting in your collection.';
+function deckCard(game, slot) {
+  const selected=slot==='selected';
+  return `<button class="game-card" data-slot="${slot}" data-game="${game.id}" ${selected?'data-view':'data-select'}="${game.id}" aria-label="${selected?'View':'Select'} ${escapeHtml(game.title)}"><span class="card-surface">${cover(game)}</span></button>`;
+}
+
+function renderSelection(input='keyboard') {
+  const visible=visibleGames(),game=byId.get(state.selected);
+  state.input=input;
+  $('#world-stage').hidden=!game;
+  $('.browse-bottom').hidden=!game;
+  $('#empty-workspace').hidden=!!game;
+  $$('[data-select]').forEach(button=>{if(button.classList.contains('index-game'))button.setAttribute('aria-pressed',String(button.dataset.select===state.selected));});
+  $('.index-game[aria-pressed=true]')?.scrollIntoView({block:'nearest'});
+  if(!game){$('#position').textContent='00 / 00';document.dispatchEvent(new CustomEvent('rift:selection'));say('No matching games.');return;}
+  const index=visible.findIndex(item=>item.id===game.id);
+  const previous=visible[(index-1+visible.length)%visible.length],next=visible[(index+1)%visible.length];
+  $('#deck').innerHTML=(visible.length>2?deckCard(previous,'previous'):'')+(visible.length>1?deckCard(next,'next'):'')+deckCard(game,'selected');
+  $('#deck-title').textContent=game.title;
+  $('#position').textContent=`${String(index+1).padStart(2,'0')} / ${String(visible.length).padStart(2,'0')}`;
+  $('#sequence-dots').innerHTML=visible.map((item,i)=>`<span class="${i===index?'active':''}" aria-hidden="true"></span>`).join('');
+  $('#sequence-dots').setAttribute('aria-label',`Game ${index+1} of ${visible.length}`);
+  const label=game.time==='Unplayed'?'A WORLD YOU HAVE YET TO EXPLORE':'PICK UP THE THREAD';
+  $('#portal-copy').innerHTML=`<div class="portal-reading"><span class="eyebrow">${label}</span><h2 id="selected-title" class="${game.title.length>45?'long-title':''}">${escapeHtml(game.title)}</h2><div class="portal-meta"><span>${game.store}</span><span>${game.time==='Unplayed'?'Never played':game.time+' played'}</span></div><p class="portal-reason">${escapeHtml(game.reason)}</p><p class="portal-description">${escapeHtml(game.description)}</p><div class="portal-actions"><button class="primary" data-view="${game.id}">View game ${icon('arrow-up-right')}</button>${game.installed?`<span class="portal-installed">${icon('hard-drive')} Installed</span>`:''}</div></div>`;
+  $('#portal-foot-status').textContent=game.time==='Unplayed'?'Your first chapter is waiting':game.time+' in your story';
+  $('#previous').disabled=$('#next').disabled=$('#surprise').disabled=visible.length<2;
   hydrateIcons();
+  document.dispatchEvent(new CustomEvent('rift:selection',{detail:{game,input}}));
+  say(`${game.title}. ${game.reason}`);
 }
 
-function renderArt() {
-  $('#returning').innerHTML = ['hades','borderlands2','hollow','celeste','disco','enshrouded','borderlands3','sable'].map(id => {
-    const game = byId.get(id);
-    return `<button class="return-item" data-game="${id}" aria-label="View ${game.title}">${cover(game)}<span><strong>${game.title}</strong><small>${game.reason}</small></span>${icon('arrow-up-right')}</button>`;
-  }).join('');
-  $('#shelf').innerHTML = ['hollow','hades','celeste','enshrouded','disco','sable','borderlands2','bounty'].map(id => card(byId.get(id))).join('');
-  renderLibrary();
-  selectHero(state.hero);
+function selectGame(id,input='keyboard',fromIndex=false) {
+  if(id!==state.selected){state.selected=id;renderSelection(input);}
+  if(fromIndex&&(document.body.dataset.mode==='fullscreen'||innerWidth<=800)) {
+    setIndex(false);
+    if(input==='keyboard')$('.game-card[data-slot=selected]')?.focus({preventScroll:true});
+  }
+}
+
+function moveSelection(step,input='keyboard') {
+  const visible=visibleGames(); if(!visible.length)return;
+  const index=visible.findIndex(game=>game.id===state.selected);
+  selectGame(visible[(index+step+visible.length)%visible.length].id,input);
+}
+
+function setIndex(open) {
+  document.body.dataset.index=open?'open':'closed';
+  $('#toggle-index').setAttribute('aria-expanded',String(open));
+  document.dispatchEvent(new Event('rift:layout'));
 }
 
 function navigate(page) {
-  state.page = page;
-  $$('.page').forEach(element => { element.hidden = element.id !== page; });
-  $$('.navigation button').forEach(button => {
-    if (button.dataset.page === page) button.setAttribute('aria-current','page');
-    else button.removeAttribute('aria-current');
-  });
-  const url = new URL(location.href);
-  url.searchParams.set('page', page);
-  history.replaceState(null,'',url);
-  if (document.body.dataset.mode === 'fullscreen' && page === 'library') $('#collection .game-card')?.focus({preventScroll:true});
-}
-
-function selectHero(index) {
-  state.hero = (index + 2) % 2;
-  const game = byId.get(state.hero ? 'hades' : 'outer');
-  $('#hero-art').src = `${assetRoot}${game.id}-hero.jpg`;
-  $('#featured-card').innerHTML=card(game);
-  hydrateIcons();
-  $('#hero-title').textContent = game.title;
-  $('#hero-reason').textContent = game.heroDescription;
-  $('#hero-kicker').textContent = state.hero ? 'Pick up the thread' : 'Still waiting for you';
-  $('#hero-position').textContent = `0${state.hero + 1} / 02`;
-  $('#hero-meta').innerHTML = `${game.store}<span>${state.hero ? '2020' : '2019'}</span>${game.time === 'Unplayed' ? 'Never played' : game.time+' played'}`;
-  $$('[data-hero]').forEach(button => button.setAttribute('aria-pressed',String(Number(button.dataset.hero) === state.hero)));
-  say(`Featured game: ${game.title}`);
+  state.page=page; state.query=''; $('#search').value=''; state.filter='all';
+  state.selected=page==='discover'?'outer':state.selected||'outer';
+  $$('[data-page]').forEach(button=>{if(button.dataset.page===page)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');});
+  $('#index-kicker').textContent=page==='discover'?'FIND YOUR NEXT GAME':'YOUR COLLECTION';
+  $('#index-title').textContent=page==='discover'?'Where to next?':'Find a world.';
+  $('#browse-kicker').textContent=page==='discover'?'DISCOVER / FROM YOUR COLLECTION':'LIBRARY / ALL YOUR WORLDS';
+  $('#index-list-label').textContent=page==='discover'?'PLACES TO BEGIN':'IN YOUR COLLECTION';
+  const url=new URL(location.href);url.searchParams.set('page',page);history.replaceState(null,'',url);
+  renderIndex();
 }
 
 function openGame(id) {
-  const game = byId.get(id);
-  $('#game-preview').innerHTML = `<div class="preview-layout">${cover(game)}<div><span class="eyebrow">In your collection</span><h2 id="preview-title">${escapeHtml(game.title)}</h2><p>${game.description || game.reason}</p>${metadata(game)}<p class="preview-note">Design preview · sample activity.<br>Select a cover to inspect its complete title.</p></div></div>`;
-  hydrateIcons();
-  $('#game-dialog').showModal();
+  const game=byId.get(id);
+  $('#game-preview').innerHTML=`<div class="preview-layout">${cover(game)}<div><span class="eyebrow">In your collection</span><h2 id="preview-title">${escapeHtml(game.title)}</h2><p>${escapeHtml(game.description)}</p><div class="card-meta">${game.store} · ${game.time==='Unplayed'?'Never played':game.time+' played'}</div><p class="preview-note">Design preview · sample activity.</p></div></div>`;
+  hydrateIcons();$('#game-dialog').showModal();
 }
 
-document.addEventListener('click', event => {
-  const button = event.target.closest('button');
-  if (!button) return;
-  if (button.dataset.page) navigate(button.dataset.page);
-  if (button.dataset.game) openGame(button.dataset.game);
-  if (button.dataset.hero) selectHero(Number(button.dataset.hero));
-  if (button.dataset.filter) {
-    state.filter = button.dataset.filter;
-    $$('[data-filter]').forEach(item => item.setAttribute('aria-pressed',String(item === button)));
-    renderLibrary();
-    $('#collection-scroll').scrollTop = 0;
-    say(`${$('#result-count').textContent} shown`);
+document.addEventListener('click',event=>{
+  const button=event.target.closest('button');if(!button)return;
+  const input=event.detail===0?'keyboard':'pointer';
+  if(button.dataset.page)navigate(button.dataset.page);
+  if(button.dataset.select){const fromDeck=button.classList.contains('game-card');selectGame(button.dataset.select,input,button.classList.contains('index-game'));if(fromDeck&&input==='keyboard')$('.game-card[data-slot=selected]')?.focus({preventScroll:true});}
+  if(button.dataset.view)openGame(button.dataset.view);
+  if(button.dataset.filter){state.filter=button.dataset.filter;renderIndex();$('#game-index').scrollTop=0;say(`${visibleGames().length} games shown`);}
+  if(button.dataset.size){document.body.dataset.size=button.dataset.size;$$('button[data-size]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));}
+  if(button.dataset.palette){document.body.dataset.palette=button.dataset.palette;$$('button[data-palette]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));}
+});
+$('#search').addEventListener('input',event=>{state.query=event.target.value;renderIndex();});
+$('#clear-search').addEventListener('click',()=>{state.query='';state.filter='all';$('#search').value='';renderIndex();$('#toggle-index').focus();});
+$('#previous').addEventListener('click',event=>moveSelection(-1,event.detail?'pointer':'keyboard'));
+$('#next').addEventListener('click',event=>moveSelection(1,event.detail?'pointer':'keyboard'));
+$('#surprise').addEventListener('click',event=>moveSelection(1+Math.floor(Math.random()*(visibleGames().length-1)),event.detail?'pointer':'keyboard'));
+$('#appearance').addEventListener('click',()=>$('#studio').showModal());
+$('#toggle-index').addEventListener('click',()=>setIndex(getComputedStyle($('.collection-index')).display==='none'));
+$('#sample').addEventListener('change',event=>{document.body.dataset.state=event.target.value;renderIndex();});
+$('#surface').addEventListener('change',event=>{
+  document.body.dataset.mode=event.target.value;document.body.dataset.index='auto';
+  $('#toggle-index').setAttribute('aria-expanded',String(event.target.value==='desktop'&&innerWidth>800));
+  const url=new URL(location.href);url.searchParams.set('mode',event.target.value);history.replaceState(null,'',url);
+  document.dispatchEvent(new Event('rift:layout'));
+});
+$$('[name=caption]').forEach(input=>input.addEventListener('change',()=>{document.body.dataset.caption=input.value;}));
+$('#reset-options').addEventListener('click',()=>{
+  document.body.dataset.size='balanced';document.body.dataset.caption='essential';document.body.dataset.palette='rift';
+  stillControl.checked=false;stillControl.dispatchEvent(new Event('change'));
+  $$('button[data-size]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.size==='balanced')));
+  $$('button[data-palette]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.palette==='rift')));
+  $('[name=caption][value=essential]').checked=true;
+});
+document.addEventListener('keydown',event=>{
+  if($('dialog[open]')||event.target.matches('input,select,textarea'))return;
+  if(event.key==='/'){event.preventDefault();setIndex(true);$('#search').focus();return;}
+  if(event.key==='Escape'&&document.body.dataset.index==='open'){setIndex(false);$('#toggle-index').focus();return;}
+  if(['ArrowLeft','ArrowRight'].includes(event.key)){
+    event.preventDefault();const onCard=!!event.target.closest('.game-card');
+    moveSelection(event.key==='ArrowLeft'?-1:1);
+    if(onCard)$('.game-card[data-slot=selected]')?.focus({preventScroll:true});
   }
-  if (button.dataset.size) {
-    document.body.dataset.size = button.dataset.size;
-    $$('button[data-size]').forEach(item => item.setAttribute('aria-pressed',String(item === button)));
-  }
-  if (button.dataset.palette) {
-    document.body.dataset.palette = button.dataset.palette;
-    $$('button[data-palette]').forEach(item => item.setAttribute('aria-pressed',String(item === button)));
+  if(event.target.matches('.index-game')&&['ArrowUp','ArrowDown'].includes(event.key)){
+    event.preventDefault();const buttons=$$('.index-game'),index=buttons.indexOf(event.target);
+    const next=buttons[Math.max(0,Math.min(buttons.length-1,index+(event.key==='ArrowDown'?1:-1)))];
+    next?.focus();state.selected=next.dataset.select;renderSelection();
   }
 });
-$('#search').addEventListener('input', event => { state.query = event.target.value; renderLibrary(); $('#collection-scroll').scrollTop = 0; });
-$('#grid-view').addEventListener('click', () => setView('grid'));
-$('#list-view').addEventListener('click', () => setView('list'));
-function setView(view) {
-  state.view = view;
-  $('#grid-view').setAttribute('aria-pressed',String(view === 'grid'));
-  $('#list-view').setAttribute('aria-pressed',String(view === 'list'));
-  renderLibrary();
-}
-$('#find-game').addEventListener('click', () => { navigate('library'); $('#search').focus(); });
-$('#appearance').addEventListener('click', () => $('#studio').showModal());
-$('#library-appearance').addEventListener('click', () => $('#studio').showModal());
-$('#hero-prev').addEventListener('click', () => selectHero(state.hero-1));
-$('#hero-next').addEventListener('click', () => selectHero(state.hero+1));
-$('#hero-skip').addEventListener('click', () => selectHero(state.hero+1));
-$('#hero-view').addEventListener('click', () => openGame(state.hero ? 'hades' : 'outer'));
-$('#sample').addEventListener('change', event => { document.body.dataset.state = event.target.value; renderArt(); say(`Showing ${event.target.selectedOptions[0].textContent.toLowerCase()}`); });
-$('#surface').addEventListener('change', event => {
-  document.body.dataset.mode = event.target.value;
-  const url = new URL(location.href);
-  url.searchParams.set('mode',event.target.value);
-  history.replaceState(null,'',url);
-  if (state.page === 'library' && event.target.value === 'fullscreen') $('#collection .game-card')?.focus({preventScroll:true});
-});
-$$('[name=caption]').forEach(input => input.addEventListener('change', () => { document.body.dataset.caption = input.value; }));
-$('#reset-options').addEventListener('click', () => {
-  document.body.dataset.size = 'balanced';
-  document.body.dataset.caption = 'essential';
-  document.body.dataset.palette = 'rift';
-  stillControl.checked=false; stillControl.dispatchEvent(new Event('change'));
-  $$('button[data-size]').forEach(button => button.setAttribute('aria-pressed',String(button.dataset.size === 'balanced')));
-  $$('button[data-palette]').forEach(button => button.setAttribute('aria-pressed',String(button.dataset.palette === 'rift')));
-  $('[name=caption][value=essential]').checked = true;
-});
-
-document.addEventListener('keydown', event => {
-  if (event.key === 'Escape' && !$('dialog[open]') && state.page === 'library') navigate('discover');
-  if (event.key === '/' && !$('dialog[open]') && !event.target.matches('input,select,textarea')) { event.preventDefault(); navigate('library'); $('#search').focus(); }
-  if (document.body.dataset.mode !== 'fullscreen' || !$('button.game-card:focus') || !['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)) return;
-  const current = document.activeElement;
-  const grid = current.parentElement;
-  const cards = [...grid.querySelectorAll('.game-card')];
-  const index = cards.indexOf(current);
-  const columns = grid.classList.contains('records') ? 1 : getComputedStyle(grid).gridTemplateColumns.split(' ').length;
-  const step = {ArrowLeft:-1, ArrowRight:1, ArrowUp:-columns, ArrowDown:columns}[event.key];
-  event.preventDefault();
-  cards[Math.max(0,Math.min(cards.length-1,index+step))]?.focus();
-});
-// Background clicks close dialogs; native <dialog> supplies focus trapping and Escape.
-$$('dialog').forEach(dialog => dialog.addEventListener('click', event => {
-  if (event.target !== dialog) return;
-  const bounds = dialog.getBoundingClientRect();
-  if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dialog.close();
+$$('dialog').forEach(dialog=>dialog.addEventListener('click',event=>{
+  if(event.target!==dialog)return;const box=dialog.getBoundingClientRect();
+  if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)dialog.close();
 }));
-const params = new URLSearchParams(location.search);
-$('#studio').setAttribute('aria-label', 'Display options');
-$('#game-dialog').setAttribute('aria-labelledby', 'preview-title');
-if (params.get('mode') === 'fullscreen') { document.body.dataset.mode = 'fullscreen'; $('#surface').value = 'fullscreen'; }
-renderArt();
-navigate(params.get('page') === 'library' ? 'library' : 'discover');
+const params=new URLSearchParams(location.search);
+$('#studio').setAttribute('aria-label','Display options');
+$('#game-dialog').setAttribute('aria-labelledby','preview-title');
+document.body.dataset.index='auto';
+if(params.get('mode')==='fullscreen'){document.body.dataset.mode='fullscreen';$('#surface').value='fullscreen';}
+$('#toggle-index').setAttribute('aria-expanded',String(document.body.dataset.mode!=='fullscreen'&&innerWidth>800));
+navigate(params.get('page')==='library'?'library':'discover');
+function syncIndexVisibility() {
+  $('.index-game[aria-pressed=true]')?.scrollIntoView({block:'nearest'});
+  $('#toggle-index').setAttribute('aria-expanded',String(getComputedStyle($('.collection-index')).display!=='none'));
+}
+document.fonts.ready.then(syncIndexVisibility);
+window.addEventListener('resize',()=>requestAnimationFrame(syncIndexVisibility));
