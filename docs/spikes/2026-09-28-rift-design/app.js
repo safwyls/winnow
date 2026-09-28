@@ -66,8 +66,10 @@ function renderIndex() {
   if (!visible.some(game=>game.id===state.selected)) state.selected=visible[0]?.id||null;
   $('#game-index').innerHTML=visible.map(game=>`<button class="index-game" data-select="${game.id}" aria-label="Select ${escapeHtml(game.title)}" aria-pressed="${game.id===state.selected}">${cover(game)}<span><strong>${escapeHtml(game.title)}</strong><small>${game.store} · ${game.time==='Unplayed'?'Never played':game.time+' played'}</small><span class="index-reason">${escapeHtml(game.reason)}</span></span></button>`).join('')||'<p class="empty-index">No matching games.</p>';
   $('#result-count').textContent=String(visible.length);
+  $('#gallery-count').textContent=`${visible.length} ${visible.length===1?'game':'games'} · Alphabetical`;
+  $('#gallery').innerHTML=visible.map(game=>`<button class="game-card gallery-card" data-game="${game.id}" data-select="${game.id}" aria-label="Inspect ${escapeHtml(game.title)}" aria-pressed="${game.id===state.selected}"><span class="card-surface">${cover(game)}</span><span class="gallery-caption"><span class="gallery-title">${escapeHtml(game.title)}</span><span class="gallery-meta">${game.store} <span>·</span> ${game.time}</span><span class="gallery-reason">${escapeHtml(game.reason)}</span></span></button>`).join('');
   $$('[data-filter]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.filter===state.filter)));
-  $('#browse-title').textContent=lensTitles[state.filter];
+  $('#browse-title').textContent=state.page==='library'?({all:'The whole collection.',unplayed:'Still unexplored.',returning:'Worlds to return to.',installed:'Ready when you are.'}[state.filter]):lensTitles[state.filter];
   renderSelection('keyboard');
 }
 
@@ -80,9 +82,10 @@ function renderSelection(input='keyboard') {
   const visible=visibleGames(),game=byId.get(state.selected);
   state.input=input;
   $('#world-stage').hidden=!game;
-  $('.browse-bottom').hidden=!game;
+  $('.browse-bottom').hidden=!game||state.page==='library';
   $('#empty-workspace').hidden=!!game;
-  $$('[data-select]').forEach(button=>{if(button.classList.contains('index-game'))button.setAttribute('aria-pressed',String(button.dataset.select===state.selected));});
+  $('#toggle-details').disabled=!game;
+  $$('[data-select]').forEach(button=>{if(button.matches('.index-game,.gallery-card'))button.setAttribute('aria-pressed',String(button.dataset.select===state.selected));});
   $('.index-game[aria-pressed=true]')?.scrollIntoView({block:'nearest'});
   if(!game){$('#position').textContent='00 / 00';document.dispatchEvent(new CustomEvent('rift:selection'));say('No matching games.');return;}
   const index=visible.findIndex(item=>item.id===game.id);
@@ -105,7 +108,7 @@ function selectGame(id,input='keyboard',fromIndex=false) {
   if(id!==state.selected){state.selected=id;renderSelection(input);}
   if(fromIndex&&(document.body.dataset.mode==='fullscreen'||innerWidth<=800)) {
     setIndex(false);
-    if(input==='keyboard')$('.game-card[data-slot=selected]')?.focus({preventScroll:true});
+    if(input==='keyboard')focusSelectedCard();
   }
 }
 
@@ -123,14 +126,37 @@ function setIndex(open) {
 
 function navigate(page) {
   state.page=page; state.query=''; $('#search').value=''; state.filter='all';
+  document.body.dataset.page=page;
+  $('.library-gallery').hidden=page!=='library';
+  $('.deck-zone').hidden=page==='library';
+  $('#toggle-details').hidden=page!=='library';
+  $('#position').hidden=page==='library';
   state.selected=page==='discover'?'outer':state.selected||'outer';
   $$('[data-page]').forEach(button=>{if(button.dataset.page===page)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');});
   $('#index-kicker').textContent=page==='discover'?'FIND YOUR NEXT GAME':'YOUR COLLECTION';
-  $('#index-title').textContent=page==='discover'?'Where to next?':'Find a world.';
+  $('#index-title').textContent=page==='discover'?'Where to next?':'Your library.';
   $('#browse-kicker').textContent=page==='discover'?'DISCOVER / FROM YOUR COLLECTION':'LIBRARY / ALL YOUR WORLDS';
   $('#index-list-label').textContent=page==='discover'?'PLACES TO BEGIN':'IN YOUR COLLECTION';
   const url=new URL(location.href);url.searchParams.set('page',page);history.replaceState(null,'',url);
   renderIndex();
+  syncDetails();
+}
+
+function focusSelectedCard() {
+  $(state.page==='library'?'.gallery-card[aria-pressed=true]':'.game-card[data-slot=selected]')?.focus({preventScroll:true});
+}
+
+function syncDetails() {
+  const visible=getComputedStyle($('.portal-zone')).display!=='none';
+  $('#toggle-details').textContent=visible?'Hide details':'Show details';
+  $('#toggle-details').setAttribute('aria-expanded',String(visible));
+  $('#close-details').hidden=state.page!=='library'||innerWidth>1000||!visible;
+  document.dispatchEvent(new Event('rift:layout'));
+}
+
+function setLibraryDetails(open) {
+  document.body.dataset.libraryDetails=open?'open':'closed';
+  syncDetails();
 }
 
 function openGame(id) {
@@ -143,7 +169,12 @@ document.addEventListener('click',event=>{
   const button=event.target.closest('button');if(!button)return;
   const input=event.detail===0?'keyboard':'pointer';
   if(button.dataset.page)navigate(button.dataset.page);
-  if(button.dataset.select){const fromDeck=button.classList.contains('game-card');selectGame(button.dataset.select,input,button.classList.contains('index-game'));if(fromDeck&&input==='keyboard')$('.game-card[data-slot=selected]')?.focus({preventScroll:true});}
+  if(button.dataset.select){
+    const fromDeck=button.closest('#deck');
+    if(button.classList.contains('gallery-card')&&innerWidth<=1000)setLibraryDetails(true);
+    selectGame(button.dataset.select,input,button.classList.contains('index-game'));
+    if(fromDeck&&input==='keyboard')focusSelectedCard();
+  }
   if(button.dataset.view)openGame(button.dataset.view);
   if(button.dataset.filter){state.filter=button.dataset.filter;renderIndex();$('#game-index').scrollTop=0;say(`${visibleGames().length} games shown`);}
   if(button.dataset.size){document.body.dataset.size=button.dataset.size;$$('button[data-size]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));}
@@ -156,12 +187,15 @@ $('#next').addEventListener('click',event=>moveSelection(1,event.detail?'pointer
 $('#surprise').addEventListener('click',event=>moveSelection(1+Math.floor(Math.random()*(visibleGames().length-1)),event.detail?'pointer':'keyboard'));
 $('#appearance').addEventListener('click',()=>$('#studio').showModal());
 $('#toggle-index').addEventListener('click',()=>setIndex(getComputedStyle($('.collection-index')).display==='none'));
+$('#toggle-details').addEventListener('click',()=>setLibraryDetails(getComputedStyle($('.portal-zone')).display==='none'));
+$('#close-details').addEventListener('click',()=>{setLibraryDetails(false);focusSelectedCard();});
 $('#sample').addEventListener('change',event=>{document.body.dataset.state=event.target.value;renderIndex();});
 $('#surface').addEventListener('change',event=>{
   document.body.dataset.mode=event.target.value;document.body.dataset.index='auto';
   $('#toggle-index').setAttribute('aria-expanded',String(event.target.value==='desktop'&&innerWidth>800));
   const url=new URL(location.href);url.searchParams.set('mode',event.target.value);history.replaceState(null,'',url);
   document.dispatchEvent(new Event('rift:layout'));
+  syncDetails();
 });
 $$('[name=caption]').forEach(input=>input.addEventListener('change',()=>{document.body.dataset.caption=input.value;}));
 $('#reset-options').addEventListener('click',()=>{
@@ -175,10 +209,19 @@ document.addEventListener('keydown',event=>{
   if($('dialog[open]')||event.target.matches('input,select,textarea'))return;
   if(event.key==='/'){event.preventDefault();setIndex(true);$('#search').focus();return;}
   if(event.key==='Escape'&&document.body.dataset.index==='open'){setIndex(false);$('#toggle-index').focus();return;}
+  if(event.key==='Escape'&&state.page==='library'&&innerWidth<=1000&&document.body.dataset.libraryDetails==='open'){setLibraryDetails(false);focusSelectedCard();return;}
+  if(event.target.matches('.gallery-card')&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(event.key)){
+    event.preventDefault();
+    const cards=$$('.gallery-card'),index=cards.indexOf(event.target);
+    const columns=getComputedStyle($('#gallery')).gridTemplateColumns.split(' ').length;
+    const step={ArrowLeft:-1,ArrowRight:1,ArrowUp:-columns,ArrowDown:columns}[event.key];
+    const next=cards[event.key==='Home'?0:event.key==='End'?cards.length-1:Math.max(0,Math.min(cards.length-1,index+step))];
+    next?.focus();selectGame(next.dataset.select,'keyboard');return;
+  }
   if(['ArrowLeft','ArrowRight'].includes(event.key)){
     event.preventDefault();const onCard=!!event.target.closest('.game-card');
     moveSelection(event.key==='ArrowLeft'?-1:1);
-    if(onCard)$('.game-card[data-slot=selected]')?.focus({preventScroll:true});
+    if(onCard)focusSelectedCard();
   }
   if(event.target.matches('.index-game')&&['ArrowUp','ArrowDown'].includes(event.key)){
     event.preventDefault();const buttons=$$('.index-game'),index=buttons.indexOf(event.target);
@@ -194,12 +237,14 @@ const params=new URLSearchParams(location.search);
 $('#studio').setAttribute('aria-label','Display options');
 $('#game-dialog').setAttribute('aria-labelledby','preview-title');
 document.body.dataset.index='auto';
+document.body.dataset.libraryDetails='auto';
 if(params.get('mode')==='fullscreen'){document.body.dataset.mode='fullscreen';$('#surface').value='fullscreen';}
 $('#toggle-index').setAttribute('aria-expanded',String(document.body.dataset.mode!=='fullscreen'&&innerWidth>800));
 navigate(params.get('page')==='library'?'library':'discover');
 function syncIndexVisibility() {
   $('.index-game[aria-pressed=true]')?.scrollIntoView({block:'nearest'});
   $('#toggle-index').setAttribute('aria-expanded',String(getComputedStyle($('.collection-index')).display!=='none'));
+  syncDetails();
 }
 document.fonts.ready.then(syncIndexVisibility);
 window.addEventListener('resize',()=>requestAnimationFrame(syncIndexVisibility));

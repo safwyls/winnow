@@ -13,7 +13,7 @@
 
   function show(input=source) {
     source=input;portal.hide();
-    if(!game||document.hidden||document.querySelector('dialog[open]'))return;
+    if(!game||document.hidden||document.querySelector('dialog[open]')||!panel.getClientRects().length)return;
     const plain=motion.value==='plain';
     panel.dataset.plain=String(plain);
     panel.querySelector('.portal-scene').hidden=plain;
@@ -34,6 +34,8 @@
         const lines=Math.max(1,Math.floor((description.clientHeight+1)/parseFloat(getComputedStyle(description).lineHeight)));
         description.style.webkitLineClamp=String(lines);
       }
+      if(!panel.getClientRects().length){portal.hide();return;}
+      if(!portal.active)show('keyboard');
       portal.resize();
     });
   }
@@ -41,7 +43,7 @@
   document.addEventListener('rift:selection',event=>{
     game=event.detail?.game;show(event.detail?.input||'keyboard');fit();
   });
-  document.addEventListener('rift:layout',fit);
+  document.addEventListener('rift:layout',()=>{show('keyboard');fit();});
   function updateShape() {
     portal.configure(Number(roundness.value),Number(waviness.value));
     document.querySelector('#portal-roundness-amount').value=`${roundness.value}%`;

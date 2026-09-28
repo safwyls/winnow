@@ -1,0 +1,105 @@
+/* Library favors an overview; Discover keeps its deliberately small deck. */
+#starfield{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+.workspace{z-index:1}
+body[data-page=library]{--index:220px;--gallery-min:100px}
+body[data-page=library][data-size=compact]{--gallery-min:90px}
+body[data-page=library][data-size=large]{--gallery-min:145px}
+body[data-page=library] .world-browser{padding:24px 28px 20px;overflow:clip}
+body[data-page=library] .browser-heading{flex-shrink:0;min-height:53px}
+body[data-page=library] .browser-heading h2{font-size:28px}
+body[data-page=library] .collection-index{background:#0b111af5}
+body[data-page=library] .index-heading h1{font-size:27px}
+body[data-page=library] .index-scroll{display:none}
+body[data-page=library] .index-label{border-top:1px solid var(--line);padding-top:20px;margin-top:4px}
+body[data-page=library] .index-foot{margin-top:auto;font-size:8px;line-height:1.8;padding-inline:4px}
+body[data-page=library] .world-stage{grid-template-columns:minmax(0,1fr) 340px;gap:28px;max-width:none;margin:22px 0 0;align-items:stretch;flex:1;min-height:0}
+.details-toggle{font-size:11px;font-weight:400;padding:8px 13px;background:#0b111acc}
+.library-gallery{display:flex;flex-direction:column;min-width:0;min-height:0}
+.gallery-heading{display:flex;justify-content:space-between;gap:12px;align-items:center;font:9px var(--mono);color:var(--muted);padding:0 8px 6px;flex-shrink:0}
+.gallery-heading>span:last-child{font:10px var(--display);color:#91a9b8}
+.gallery-scroll{overflow:auto;min-height:0;flex:1;scrollbar-width:thin;scrollbar-color:#536579 transparent;overscroll-behavior:contain;padding:18px 8px 25px}
+.gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--gallery-min)),1fr));gap:25px 20px;align-content:start}
+.gallery-card{width:100%;min-width:0;position:relative;border-radius:7px;align-self:start}
+.gallery-card .card-surface{border-radius:7px;box-shadow:0 6px 18px #0008}
+.gallery-card[aria-pressed=true] .card-surface{outline:1px solid var(--accent);outline-offset:4px;box-shadow:0 0 25px #a1e6d313,0 10px 22px #0009}
+.gallery-card[aria-pressed=true]:after{content:'';position:absolute;top:8px;right:8px;width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px #091219cc;pointer-events:none}
+.gallery-caption{display:block;padding:12px 0 0}
+.gallery-title{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;line-height:1.4;color:#d7e1e8}
+.gallery-card[aria-pressed=true] .gallery-title{color:var(--accent)}
+.gallery-meta{display:flex;align-items:center;gap:6px;margin-top:4px;color:#91a7ba;font:8px var(--mono)}
+body[data-caption=quiet] .gallery-meta{display:none}
+.gallery-reason{display:none;font-size:10px;line-height:1.6;color:var(--muted);margin-top:7px;min-height:32px;overflow:hidden;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+body[data-caption=context] .gallery-reason{display:-webkit-box}
+body[data-page=library] .portal-zone{padding:0;align-self:center;gap:13px;min-height:0}
+body[data-page=library] .world-portal{height:clamp(340px,calc(100dvh - 290px),640px)}
+body[data-page=library] .world-portal .portal-content{padding:40px 32px}
+body[data-page=library] .portal-reading h2{font-size:31px;margin:14px 0}
+body[data-page=library] .portal-reading h2.long-title{font-size:23px;line-height:1.15}
+body[data-page=library] .portal-reading>.eyebrow{font-size:7px;letter-spacing:.07em}
+body[data-page=library] .portal-meta{font-size:8px;gap:10px}
+body[data-page=library] .portal-meta span+span{padding-left:10px}
+body[data-page=library] .portal-reason{font-size:13px;margin:22px 0 10px}
+body[data-page=library] .portal-description{font-size:12px;line-height:1.7}
+body[data-page=library] .portal-actions{margin-top:20px;gap:10px}
+body[data-page=library] .primary{font-size:11px;padding:10px 14px}
+body[data-page=library] .portal-installed{font-size:8px}
+body[data-page=library] .aperture-label{font-size:6px;letter-spacing:.1em;padding:0 20px;gap:7px}
+body[data-page=library] .portal-foot{padding:0 24px;font-size:9px}
+body[data-page=library] .portal-foot>span:first-child{display:none}
+body[data-page=library][data-library-details=closed] .world-stage{grid-template-columns:minmax(0,1fr)}
+body[data-page=library][data-library-details=closed] .portal-zone{display:none}
+.portal-close{position:absolute;right:12px;top:-12px;z-index:3;background:var(--surface)}
+body[data-page=library][data-mode=fullscreen]{--index:0px;--gallery-min:145px}
+body[data-page=library][data-mode=fullscreen][data-size=compact]{--gallery-min:110px}
+body[data-page=library][data-mode=fullscreen][data-size=large]{--gallery-min:185px}
+@media(min-width:1700px){
+  body[data-page=library]{--index:250px;--gallery-min:155px}
+  body[data-page=library] .world-browser{padding:36px 44px 28px}
+  body[data-page=library] .world-stage{grid-template-columns:minmax(0,1fr) 400px;gap:40px;margin-top:30px}
+  body[data-page=library] .gallery-grid{gap:32px 26px}
+  body[data-page=library] .gallery-title{font-size:12px}
+  body[data-page=library] .world-portal .portal-content{padding:48px 40px}
+  body[data-page=library] .portal-reading h2{font-size:35px}
+  body[data-page=library] .portal-reading h2.long-title{font-size:27px}
+  body[data-page=library] .portal-description{font-size:13px}
+  body[data-page=library][data-library-details=closed] .world-stage{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-height:850px){
+  body[data-page=library] .portal-reading:has(.long-title)>.eyebrow,
+  body[data-page=library] .portal-reading:has(.long-title)>.portal-reason{display:none}
+  body[data-page=library][data-mode=fullscreen]{--gallery-min:100px}
+  body[data-page=library][data-mode=fullscreen][data-size=compact]{--gallery-min:80px}
+  body[data-page=library][data-mode=fullscreen][data-size=large]{--gallery-min:135px}
+}
+@media(max-width:1000px){
+  body[data-page=library]{--index:0px;--gallery-min:125px}
+  body[data-page=library] .collection-index{display:none}
+  body[data-page=library][data-index=open] .collection-index{display:flex;position:absolute;inset:0 auto 0 0;width:250px;z-index:4;box-shadow:20px 0 80px #000c}
+  body[data-page=library] .world-stage{grid-template-columns:minmax(0,1fr);margin-top:20px}
+  body[data-page=library] .portal-zone{display:none}
+  body[data-page=library][data-library-details=open] .portal-zone{display:flex;position:fixed;z-index:4;right:16px;bottom:calc(var(--footer) + 24px);width:min(360px,calc(100vw - 32px));max-height:calc(100dvh - var(--bar) - var(--footer) - 40px);filter:drop-shadow(0 15px 35px #000);background:#080c12ed;border-radius:50px}
+  body[data-page=library] .world-portal{height:min(465px,calc(100dvh - var(--bar) - var(--footer) - 40px))}
+  body[data-page=library] .portal-zone :is(.aperture-label,.portal-foot){display:none}
+  body[data-page=library] .gallery-heading>span:last-child{display:none}
+}
+@media(max-width:600px){
+  body[data-page=library]{--gallery-min:88px}
+  body[data-page=library][data-size=compact]{--gallery-min:72px}
+  body[data-page=library][data-size=large]{--gallery-min:125px}
+  body[data-page=library][data-mode=fullscreen]{--gallery-min:105px}
+  body[data-page=library][data-mode=fullscreen][data-size=compact]{--gallery-min:88px}
+  body[data-page=library][data-mode=fullscreen][data-size=large]{--gallery-min:125px}
+  body[data-page=library] .world-browser{padding:18px 15px 10px}
+  body[data-page=library] .world-stage{display:grid;flex:1;min-height:0;padding:0;margin-top:18px}
+  body[data-page=library] .browser-heading{min-height:45px;gap:8px}
+  body[data-page=library] .browser-heading h2{font-size:23px}
+  body[data-page=library] .browser-heading>.details-toggle{font-size:9px;padding:7px 8px}
+  body[data-page=library] .library-gallery{height:100%}
+  body[data-page=library] .gallery-grid{gap:20px 16px}
+  body[data-page=library] .gallery-title{font-size:10px}
+  body[data-page=library] .gallery-meta{font-size:7px;gap:4px}
+  body[data-page=library] .gallery-caption{padding-top:9px}
+  body[data-page=library] .portal-zone{margin:0}
+  body[data-page=library] .portal-reading h2{font-size:29px}
+  body[data-page=library] .portal-reading h2.long-title{font-size:24px}
+}
