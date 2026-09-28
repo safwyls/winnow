@@ -1,6 +1,6 @@
 # Afterglow artwork and caption study
 
-September 27–28, 2026 · TASK-354 / TASK-355 / TASK-356 / TASK-357 / TASK-358 / TASK-359 / TASK-360 / TASK-363 / TASK-364 · Proposal for user review
+September 27–28, 2026 · TASK-354 / TASK-355 / TASK-356 / TASK-357 / TASK-358 / TASK-359 / TASK-360 / TASK-363 / TASK-364 / TASK-365 · Proposal for user review
 
 This standalone mock explores portrait covers and compact captions for Afterglow, Winnow's
 Electron frontend. It preserves the Discover hero composition, warm palette and typography.
@@ -222,16 +222,21 @@ use 85% of that space for a docked preview. Description excerpts fit whole lines
 an ellipsis when necessary; selecting the cover shows the complete description.
 
 A 128-point CSS clip path and the shader use the same superellipse and ripple geometry.
-The aperture grows and travels from the pointer for 620 ms, revealing the already laid-out
-words without scaling, translating or scrolling them. Its canvas includes the cursor
+The aperture grows and travels from the pointer for 360 ms after a 120 ms hover delay,
+revealing the already laid-out words without scaling, translating or scrolling them.
+Once revealed, the inset text drops its clip path; only the decorative rim keeps moving.
+Its canvas includes the cursor
 origin, allowing the opening to begin outside the final panel. Roundness changes the
 superellipse exponent; Edge waviness changes ripple amplitude. Both controls run from
 0–100%, default to 70% and 45%, update an outline preview and reset with Restore defaults.
 They remain available for Still portal and are disabled for Simple preview.
 
 The procedural field draws sparse stars, faint clouds and a gently uneven contour. A second,
-private Pixi renderer is created lazily for the active flyout, drawing at up to 30 fps and
-1.5× resolution. A single animation clock updates both the HTML mask and shader uniforms.
+private Pixi renderer is created lazily on cover hover or focus, at up to 1.5× resolution.
+Pointer hover intent warms the renderer and shader before the visible entrance. The
+entrance follows each display frame; the quiet ambient field targets 30 updates per second
+without discarding fractional frame time. A wall-clock deadline prevents delayed frames
+from extending the entrance. One clock updates the opening mask and shader uniforms.
 It does not load textures or secondary artwork. Only Living portal runs a loop;
 Still portal and keyboard focus draw once. Hiding, navigation, scrolling, dialogs, visibility
 changes and blur stop rendering and detach the canvas. Page teardown destroys this renderer
@@ -262,6 +267,48 @@ code or real library preferences changed.
 Current captures: [fixed portal details beside Outer Wilds](15-fixed-portal-reveal.png)
 and [shape controls](16-portal-shape-controls.png). Use the live mock to assess the reveal,
 edge movement and star field. Capture 14 records the earlier TASK-363 treatment.
+
+## Portal pacing check — September 28, 2026
+
+TASK-365 addresses the reported sluggish, jittery reveal after TASK-364. The old 30 fps
+gate reset its timestamp to the latest callback and discarded the remainder. The visible
+entrance therefore skipped irregular numbers of display frames. Capping elapsed time also
+extended the animation after a stall. Both HTML masks were rebuilt even after the text was
+fully revealed.
+
+Controlled Node calls to the actual surface's `tick` method compared commit `6d7976c` with
+the revised clock. They supplied timestamps for 60/120 Hz displays, captured draw calls and
+checked the opening deadline. A separate draw harness counted DOM lookups and mask writes
+over 300 settled WebGL frames.
+
+| Check | Before | After |
+| --- | --- | --- |
+| Entrance intervals at simulated 60 Hz | 33.3 / 50 ms | 16.7 ms |
+| Entrance intervals at simulated 120 Hz | 33.3 / 41.7 ms | 8.3 ms |
+| Completion after a 200 ms stall at 150 ms | 783.3 ms | 366.7 ms |
+| DOM mask writes over 300 settled draws | 600 | 0 |
+| DOM queries over 300 settled draws | 600 | 0 |
+
+The new 360 ms entrance completes on the first available frame at or after its deadline;
+the controlled tests settled at 366.7 ms. Ambient intervals were consistently 33.3 ms at
+both simulated refresh rates. Invisible pixels beyond the halo now skip the expensive
+star/cloud calculations. This last change was checked visually, not timed on the GPU.
+
+For browser observations, append `&portalProfile=1` to the mock URL, hover a cover and
+inspect `#card-flyout`'s `data-portal-profile`. The opt-in probe records up to 400 calls to
+`draw`; without that query flag it does not wrap any methods. It measures JavaScript and
+render-command submission, not GPU completion or presented frames. In this in-app browser,
+Borderlands 2's desktop entrance measured 652.8 ms before and 360.9 ms after. The respective
+225/390-sample snapshots reported median submission costs of 0.3/0.2 ms and 95th percentiles
+of 0.5/0.4 ms. These are local observations, not a cross-device performance guarantee.
+
+Browser checks exercised live pointer opening on desktop and fullscreen (560/620 px fixed
+planes with no scrollable descendants), both shape sliders at maximum with a long title in
+760×560 fullscreen, reset defaults and keyboard focus. Node/JSDOM verified the shorter hover
+delay, a completed and stopped graphics fallback, live reduced-motion changes and Escape/ARIA
+cleanup. Syntax and whitespace checks passed. Viewport overrides were reset. The normal
+review URL is left without profiling enabled; [capture 17](17-smooth-portal.png) records the
+settled appearance, while the live mock shows the timing change.
 
 ## Asset provenance
 

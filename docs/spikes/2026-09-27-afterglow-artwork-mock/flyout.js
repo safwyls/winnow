@@ -94,7 +94,10 @@
     clearTimeout(showTimer);
     pendingCard = card;
     if (input === 'keyboard') show(card, input);
-    else showTimer = setTimeout(() => show(card, input), 180);
+    else {
+      if(motion.value!=='plain') void portal.prepare();
+      showTimer = setTimeout(() => show(card, input), 120);
+    }
   }
 
   function leave() {

@@ -2,6 +2,8 @@
 
 // One aperture clips a fixed HTML plane and shades its rim; content never scales.
 window.WinnowPortalSurface = class {
+  static openingMs = 360;
+  static ambientFrameMs = 1000/30;
   static contour(cx, cy, rx, ry, exponent, wave, time) {
     return Array.from({length:128}, (_, i) => {
       const angle=i*Math.PI/64, x=Math.cos(angle), y=Math.sin(angle);
@@ -62,6 +64,8 @@ window.WinnowPortalSurface = class {
       float contour=pow(pow(abs(q.x),uShape.x)+pow(abs(q.y),uShape.x),1.0/uShape.x);
       float ripple=(sin(angle*3.0+uTime*.32)+sin(angle*7.0-uTime*.23)*.62)*uShape.y;
       float distance=(contour-1.0)*min(uRadius.x,uRadius.y)+ripple;
+      // Pixels beyond the faint halo do not need the star and cloud calculations.
+      if(distance>48.0) { finalColor=vec4(0.0); return; }
       float inside=1.0-smoothstep(-.8,1.0,distance);
       float edge=exp(-abs(distance)*.8);
       float halo=exp(-abs(distance)*.13)*.18;
@@ -95,7 +99,13 @@ window.WinnowPortalSurface = class {
   configure(roundness, waviness) {
     this.exponent=5.8-Math.max(0,Math.min(100,roundness))*.028;
     this.wave=Math.max(0,Math.min(100,waviness))*.08;
+    this.fallbackMaskDirty=true;
     if(this.active) this.draw();
+  }
+
+  async prepare() {
+    if(this.failed||this.disposed) return;
+    try { await this.initialize(); } catch { this.fallback(); }
   }
 
   async initialize() {
@@ -122,6 +132,8 @@ window.WinnowPortalSurface = class {
         }}});
       this.plane.filters=[this.filter];
       app.stage.addChild(this.plane);
+      // Compile the tiny first frame during hover intent, before the visible entrance.
+      app.render();
     })();
     return this.initialization;
   }
@@ -132,22 +144,24 @@ window.WinnowPortalSurface = class {
     this.moving=moving;
     this.origin=moving?origin:null;
     this.progress=moving?0:1;
-    this.elapsed=0;
-    this.lastFrame=performance.now();
+    this.started=performance.now();
+    this.lastFrame=this.started;
+    this.timeAtStart=this.time;
+    this.content=this.panel.querySelector('.portal-content');
+    this.fallbackElement=this.panel.querySelector('.portal-fallback');
+    this.scene=this.panel.querySelector('.portal-scene');
+    this.contentRevealed=false;
     this.panel.dataset.renderer='fallback';
     this.resize();
-    this.draw();
     if(moving) this.frame=requestAnimationFrame(now=>this.tick(now));
     if(this.failed||this.disposed) return;
     try {
       await this.initialize();
       if(!this.active||this.disposed||generation!==this.generation) return;
-      const scene=this.panel.querySelector('.portal-scene');
-      if(!scene) return;
-      scene.append(this.app.canvas);
-      this.resize();
+      if(!this.scene) return;
+      this.scene.append(this.app.canvas);
       this.panel.dataset.renderer='webgl';
-      this.draw();
+      this.resize();
       if(moving&&!this.frame) this.frame=requestAnimationFrame(now=>this.tick(now));
     } catch { this.fallback(); }
   }
@@ -160,9 +174,9 @@ window.WinnowPortalSurface = class {
     this.sceneX=Math.min(-24,origin.x-24); this.sceneY=Math.min(-24,origin.y-24);
     const width=Math.ceil(Math.max(this.width+24,origin.x+24)-this.sceneX);
     const height=Math.ceil(Math.max(this.height+24,origin.y+24)-this.sceneY);
-    const scene=this.panel.querySelector('.portal-scene');
-    if(!scene) return;
-    Object.assign(scene.style,{left:`${this.sceneX}px`,top:`${this.sceneY}px`,width:`${width}px`,height:`${height}px`});
+    if(!this.scene) return;
+    Object.assign(this.scene.style,{left:`${this.sceneX}px`,top:`${this.sceneY}px`,width:`${width}px`,height:`${height}px`});
+    this.fallbackMaskDirty=true;
     if(this.app) {
       if(this.app.screen.width!==width||this.app.screen.height!==height) this.app.renderer.resize(width,height);
       this.plane.width=width; this.plane.height=height;
@@ -173,12 +187,13 @@ window.WinnowPortalSurface = class {
   tick(now) {
     this.frame=0;
     if(!this.active||this.panel.hidden||document.hidden) {this.hide();return;}
-    const delta=now-this.lastFrame;
-    if(delta>=1000/30) {
-      this.lastFrame=now;
-      this.elapsed+=Math.min(delta,80);
-      this.progress=Math.min(1,this.elapsed/620);
-      this.time+=Math.min(delta,80)/1000;
+    const delta=now-this.lastFrame, interval=WinnowPortalSurface.ambientFrameMs;
+    const opening=this.progress<1;
+    if(opening||delta>=interval-.1) {
+      // Entrance follows each display frame. Keep the remainder for the quiet ambient loop.
+      this.lastFrame=opening?now:this.lastFrame+Math.max(1,Math.floor((delta+.1)/interval))*interval;
+      this.progress=Math.min(1,Math.max(0,now-this.started)/WinnowPortalSurface.openingMs);
+      this.time=this.timeAtStart+Math.max(0,now-this.started)/1000;
       this.draw();
     }
     // The CSS fallback completes the entrance, then remains still without a loop.
@@ -195,12 +210,25 @@ window.WinnowPortalSurface = class {
     const cx=origin.x+(restX-origin.x)*reveal, cy=origin.y+(restY-origin.y)*reveal;
     const rx=Math.max(1,(restX-8)*scale), ry=Math.max(1,(restY-8)*scale);
     const wave=this.wave*scale, time=this.moving?this.time:0;
-    const points=WinnowPortalSurface.contour(cx,cy,rx,ry,this.exponent,wave,time);
-    const polygon=(dx=0,dy=0)=>`polygon(${points.map(([x,y])=>`${(x-dx).toFixed(2)}px ${(y-dy).toFixed(2)}px`).join(',')})`;
-    this.panel.querySelector('.portal-content').style.clipPath=polygon();
-    this.panel.querySelector('.portal-fallback').style.clipPath=polygon(this.sceneX,this.sceneY);
-    this.panel.dataset.portalOpening=String(this.progress<1);
-    this.panel.dataset.portalRunning=String(this.moving&&(this.progress<1||this.panel.dataset.renderer==='webgl'));
+    const opening=this.progress<1;
+    const fallbackMask=this.panel.dataset.renderer==='fallback'&&(opening||this.fallbackMaskDirty);
+    if(opening||fallbackMask) {
+      const points=WinnowPortalSurface.contour(cx,cy,rx,ry,this.exponent,wave,time);
+      const polygon=(dx=0,dy=0)=>`polygon(${points.map(([x,y])=>`${(x-dx).toFixed(2)}px ${(y-dy).toFixed(2)}px`).join(',')})`;
+      if(opening) this.content.style.clipPath=polygon();
+      if(fallbackMask) {
+        this.fallbackElement.style.clipPath=polygon(this.sceneX,this.sceneY);
+        this.fallbackMaskDirty=false;
+      }
+    }
+    if(!opening&&!this.contentRevealed) {
+      // Text is inset from the moving rim; after reveal it needs no animated DOM mask.
+      this.content.style.clipPath='none';
+      this.contentRevealed=true;
+    }
+    const running=String(this.moving&&(opening||this.panel.dataset.renderer==='webgl'));
+    if(this.panel.dataset.portalOpening!==String(opening)) this.panel.dataset.portalOpening=String(opening);
+    if(this.panel.dataset.portalRunning!==running) this.panel.dataset.portalRunning=running;
     if(this.app&&!this.failed) {
       const uniforms=this.filter.resources.portalUniforms.uniforms;
       uniforms.uCenter.set([cx-this.sceneX,cy-this.sceneY]);
@@ -223,6 +251,7 @@ window.WinnowPortalSurface = class {
 
   fallback() {
     this.failed=true;
+    this.fallbackMaskDirty=true;
     this.app?.stop();
     this.app?.canvas.remove();
     this.panel.dataset.renderer='fallback';
