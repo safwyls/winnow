@@ -5,6 +5,8 @@
   const selector = '.poster-grid:not(.records) .game-card';
   const portal = new WinnowPortalSurface(panel);
   const motion = document.querySelector('#preview-motion');
+  const roundness = document.querySelector('#portal-roundness');
+  const waviness = document.querySelector('#portal-waviness');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   let pointer = null;
   let active, pendingCard, dismissed, showTimer, hideTimer, frame;
@@ -39,15 +41,26 @@
     const docked = available < 240;
     panel.dataset.placement = docked ? 'docked' : side;
     panel.style.width = `${docked ? Math.min(370, innerWidth - gutter * 2) : Math.min(preferredWidth, available)}px`;
-    panel.style.maxHeight = `${Math.max(80, (bottomEdge - topEdge) * (docked ? 0.55 : 1))}px`;
-    panel.style.setProperty('--flyout-max-height', panel.style.maxHeight);
+    const availableHeight = Math.max(80, (bottomEdge - topEdge) * (docked ? (isPortal ? 0.85 : 0.55) : 1));
+    panel.style.maxHeight = `${availableHeight}px`;
+    panel.style.height = isPortal ? `${Math.min(document.body.dataset.mode === 'fullscreen' ? 620 : 560, availableHeight)}px` : '';
+    panel.dataset.compact = String(isPortal && (availableHeight < 500 || parseFloat(panel.style.width) < 330));
+    panel.dataset.short = String(isPortal && availableHeight < 350);
     const height = panel.offsetHeight, width = panel.offsetWidth;
     const top = docked ? bottomEdge - height
       : Math.max(topEdge, Math.min(bottomEdge - height, box.top + box.height * 0.38 - height * 0.5));
     const left = docked ? (innerWidth - width) * 0.5 : side === 'right' ? box.right + gap : box.left - gap - width;
     panel.style.left = `${Math.round(left)}px`;
     panel.style.top = `${Math.round(top)}px`;
+    if(isPortal) fitDescription();
     portal.resize();
+  }
+
+  function fitDescription() {
+    const description=panel.querySelector('.flyout-description');
+    description.style.webkitLineClamp='unset';
+    const lines=Math.max(1,Math.floor(description.clientHeight/parseFloat(getComputedStyle(description).lineHeight)));
+    description.style.webkitLineClamp=String(lines);
   }
 
   function show(card, input) {
@@ -61,20 +74,18 @@
     panel.dataset.motion = moving ? 'live' : 'still';
     panel.dataset.input = input;
     panel.dataset.game = game.id;
-    panel.innerHTML = `${isPortal ? '<div class="portal-scene" aria-hidden="true"><div class="portal-fallback"></div></div>' : ''}<div class="flyout-scroll"><div class="flyout-body"><span class="eyebrow">In your collection</span>
+    panel.innerHTML = `${isPortal ? '<div class="portal-scene" aria-hidden="true"><div class="portal-fallback"></div></div>' : ''}<div class="${isPortal ? 'portal-content' : 'flyout-content'}"><div class="flyout-body"><span class="eyebrow">In your collection</span>
       <h3>${escapeHtml(game.title)}</h3>
       <div class="flyout-meta"><span>${escapeHtml(game.store)}</span><span aria-hidden="true">·</span><span>${game.time === 'Unplayed' ? 'Never played' : `${escapeHtml(game.time)} played`}</span>${game.installed ? '<span class="flyout-installed">Installed</span>' : ''}</div>
       <p class="flyout-reason">${escapeHtml(game.reason)}</p>
       <p class="flyout-description">${escapeHtml(game.description || 'No description available yet.')}</p>
-      <div class="flyout-hint">Select the cover to view game <span aria-hidden="true">↗</span></div></div></div>`;
+      <div class="flyout-hint">Select the cover for full details <span aria-hidden="true">↗</span></div></div></div>`;
     panel.hidden = false;
     panel.scrollTop = 0;
     card.setAttribute('aria-describedby', panel.id);
     position();
     const origin = pointer || {x: card.getBoundingClientRect().right, y: card.getBoundingClientRect().top};
-    panel.style.setProperty('--portal-from-x', `${origin.x - panel.offsetLeft - panel.offsetWidth / 2}px`);
-    panel.style.setProperty('--portal-from-y', `${origin.y - panel.offsetTop - panel.offsetHeight / 2}px`);
-    if (isPortal && active) void portal.show(moving);
+    if (isPortal && active) void portal.show(moving, {x:origin.x-panel.offsetLeft,y:origin.y-panel.offsetTop});
   }
 
   function queue(card, input) {
@@ -121,9 +132,8 @@
   });
   // Consume Escape before the page's library-to-Discover shortcut.
   document.addEventListener('keydown', event => {
-    const scroller = panel.hasAttribute('data-portal') ? panel.querySelector('.flyout-scroll') : panel;
-    if (active && ['PageDown', 'PageUp'].includes(event.key) && scroller.scrollHeight > scroller.clientHeight) {
-      scroller.scrollBy({top: scroller.clientHeight * (event.key === 'PageDown' ? 0.8 : -0.8)});
+    if (active && !panel.hasAttribute('data-portal') && ['PageDown', 'PageUp'].includes(event.key) && panel.scrollHeight > panel.clientHeight) {
+      panel.scrollBy({top: panel.clientHeight * (event.key === 'PageDown' ? 0.8 : -0.8)});
       event.preventDefault(); event.stopImmediatePropagation(); return;
     }
     if (event.key !== 'Escape' || (!active && !pendingCard)) return;
@@ -139,8 +149,24 @@
   window.addEventListener('blur', hide);
   window.addEventListener('resize', hide);
   reduced.addEventListener('change', () => { if(active) show(active,source); });
-  motion.addEventListener('change', hide);
-  document.querySelector('#reset-options').addEventListener('click', () => { motion.value='live'; hide(); });
+  function updateShape() {
+    portal.configure(Number(roundness.value),Number(waviness.value));
+    document.querySelector('#portal-roundness-amount').value=`${roundness.value}%`;
+    document.querySelector('#portal-waviness-amount').value=`${waviness.value}%`;
+    const points=WinnowPortalSurface.contour(160,66,112,51,portal.exponent,portal.wave*.45,0);
+    document.querySelector('#portal-shape-outline').setAttribute('points',points.map(point=>point.join(',')).join(' '));
+    const disabled=motion.value==='plain';
+    roundness.disabled=waviness.disabled=disabled;
+    document.querySelector('.portal-shape-preview').hidden=disabled;
+  }
+  roundness.addEventListener('input',updateShape);
+  waviness.addEventListener('input',updateShape);
+  motion.addEventListener('change',()=>{hide();updateShape();});
+  document.querySelector('#reset-options').addEventListener('click', () => {
+    motion.value='live'; roundness.value='70'; waviness.value='45'; hide(); updateShape();
+  });
+  updateShape();
+  document.fonts.ready.then(() => { if(active) position(); });
   const changes = new MutationObserver(() => {
     const card = active || pendingCard;
     if (card && (!card.isConnected || card.closest('[hidden]') || !card.matches(selector)

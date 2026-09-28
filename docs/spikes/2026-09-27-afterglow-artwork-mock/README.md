@@ -1,6 +1,6 @@
 # Afterglow artwork and caption study
 
-September 27–28, 2026 · TASK-354 / TASK-355 / TASK-356 / TASK-357 / TASK-358 / TASK-359 / TASK-360 / TASK-363 · Proposal for user review
+September 27–28, 2026 · TASK-354 / TASK-355 / TASK-356 / TASK-357 / TASK-358 / TASK-359 / TASK-360 / TASK-363 / TASK-364 · Proposal for user review
 
 This standalone mock explores portrait covers and compact captions for Afterglow, Winnow's
 Electron frontend. It preserves the Discover hero composition, warm palette and typography.
@@ -30,9 +30,12 @@ local. The mock makes no API calls and requires no running Winnow backend.
   The current portal treatment grows from the pointer into that space, with a softly
   shifting rim and a dim star field behind stationary text. **Display options → Details
   portal** offers Living portal, Still portal and the earlier Simple preview. Keyboard
-  focus and system reduced motion always use a stationary portal.
-  You can move into the flyout to read or scroll it. Escape dismisses it before leaving
-  Library; Page Up/Down scroll an overflowing preview while the card has keyboard focus.
+  focus and system reduced motion always use a stationary portal. Roundness and Edge
+  waviness sliders tune the contour, with a small outline preview beside the controls.
+  You can move into the flyout to read it. Portal details occupy a fixed plane with no
+  scrolling; the aperture reveals the text at its final size. A shorter viewport uses an
+  ellipsis for descriptions that cannot fit. Escape dismisses the preview before leaving
+  Library. Simple preview retains scrolling and Page Up/Down support.
   Selecting the cover opens the full-title dialog, including its description, on all input
   paths. Compact records retain visible text beside the thumbnail.
 - Discover keeps its large landscape hero and editorial invitation. Eight returning games
@@ -211,37 +214,54 @@ review; fast local mock images are not evidence that those changes have shipped.
 
 ## Portal flyout revision — September 28, 2026
 
-`portal-surface.js` provides a content-independent `WinnowPortalSurface` with show, resize,
-hide and dispose methods. `flyout.js` owns the accessible HTML, hover/focus lifecycle,
-cursor origin and viewport placement. `portal-preview.css` keeps the text level and gives
-the surface a 620 ms entrance from the last pointer position. The words fade in after the
-opening starts; they are never distorted by the shader.
+`portal-surface.js` provides `WinnowPortalSurface` with configure, show, resize, hide and
+dispose methods. `flyout.js` owns the accessible HTML, hover/focus lifecycle, cursor origin
+and viewport placement. The HTML reading plane has a fixed height of 560 px on desktop
+and 620 px in fullscreen, capped to the available viewport before opening. Narrow windows
+use 85% of that space for a docked preview. Description excerpts fit whole lines and end in
+an ellipsis when necessary; selecting the cover shows the complete description.
+
+A 128-point CSS clip path and the shader use the same superellipse and ripple geometry.
+The aperture grows and travels from the pointer for 620 ms, revealing the already laid-out
+words without scaling, translating or scrolling them. Its canvas includes the cursor
+origin, allowing the opening to begin outside the final panel. Roundness changes the
+superellipse exponent; Edge waviness changes ripple amplitude. Both controls run from
+0–100%, default to 70% and 45%, update an outline preview and reset with Restore defaults.
+They remain available for Still portal and are disabled for Simple preview.
 
 The procedural field draws sparse stars, faint clouds and a gently uneven contour. A second,
-private Pixi renderer is created lazily for the active flyout, capped at 30 fps and 1.5×
-resolution. It does not load textures or secondary artwork. Only Living portal runs a loop;
+private Pixi renderer is created lazily for the active flyout, drawing at up to 30 fps and
+1.5× resolution. A single animation clock updates both the HTML mask and shader uniforms.
+It does not load textures or secondary artwork. Only Living portal runs a loop;
 Still portal and keyboard focus draw once. Hiding, navigation, scrolling, dialogs, visibility
 changes and blur stop rendering and detach the canvas. Page teardown destroys this renderer
 without releasing resources shared with the independent cover renderer. A CSS star field
-keeps the text available if graphics initialization fails or the context is lost.
+keeps the text available if graphics initialization fails or the context is lost. Its mask
+completes the entrance and then stops updating.
 
-Browser checks covered Library and Discover shelves on desktop, fullscreen keyboard
-navigation, left/right placement, the complete Guns, Love and Tentacles title, Still and
-Simple comparisons, and Escape cleanup. Fullscreen at 760×560 retained a scrollable side
-portal; Page Down moved the reading area. At 390×700 it docked above the footer with no
-horizontal overflow. Temporary viewport overrides were reset. The live pointer entrance
-used offsets from the cursor to the resting portal center; screenshots showed the opening
-and settled states. The browser reported no warnings or errors.
+TASK-364 browser checks covered Library and Discover shelves on desktop, fullscreen
+keyboard navigation, the complete Guns, Love and Tentacles title, both slider endpoints,
+restoring defaults, and Still/Simple comparisons. During the pointer entrance the panel
+and text plane both measured 560 px high, with no text transform and `overflow: clip`.
+After opening they retained those dimensions and had zero scrollable descendants.
+Fullscreen at 760×560 used a 362 px side portal with a one-line description excerpt.
+At 390×700 both surfaces docked above the footer without horizontal overflow; desktop
+retained three description lines. Temporary viewport overrides were reset. The browser
+reported no warnings or errors.
 
-A Node/JSDOM smoke check exercised the pointer hover delay, movement into the preview,
-live system reduced-motion changes and Escape cleanup. A separate simulated WebGL
-initialization failure left the fallback visible and verified stop/detach behavior.
+A Node/JSDOM smoke check exercised the pointer hover delay, fixed panel height, live
+system reduced-motion changes and Escape/ARIA cleanup. A simulated WebGL initialization
+failure completed the reveal, stopped its animation loop and kept still mode loop-free.
+A contour check compared the HTML polygon against the shader's analytic boundary at nine
+combinations of control values and four time samples; maximum numerical error was below
+1.3e-13 pixels. Hide/dispose canceled pending animation frames.
 JavaScript syntax and Git whitespace checks passed. OS preference switching, physical
 touch, screen-reader output and GPU timings were not measured. No production frontend
 code or real library preferences changed.
 
-Current capture: [portal details beside Outer Wilds](14-portal-preview.png). Use the live
-mock to assess the growth, edge movement and star field.
+Current captures: [fixed portal details beside Outer Wilds](15-fixed-portal-reveal.png)
+and [shape controls](16-portal-shape-controls.png). Use the live mock to assess the reveal,
+edge movement and star field. Capture 14 records the earlier TASK-363 treatment.
 
 ## Asset provenance
 

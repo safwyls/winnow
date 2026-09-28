@@ -1,7 +1,16 @@
 'use strict';
 
-// A content-independent surface: the flyout owns placement, text and interaction.
+// One aperture clips a fixed HTML plane and shades its rim; content never scales.
 window.WinnowPortalSurface = class {
+  static contour(cx, cy, rx, ry, exponent, wave, time) {
+    return Array.from({length:128}, (_, i) => {
+      const angle=i*Math.PI/64, x=Math.cos(angle), y=Math.sin(angle);
+      const ripple=(Math.sin(angle*3+time*.32)+Math.sin(angle*7-time*.23)*.62)*wave;
+      const r=(1-ripple/Math.min(rx,ry))/Math.pow(Math.abs(x)**exponent+Math.abs(y)**exponent,1/exponent);
+      return [cx+x*rx*r,cy+y*ry*r];
+    });
+  }
+
   static vertex = `
     precision highp float;
     in vec2 aPosition;
@@ -22,7 +31,10 @@ window.WinnowPortalSurface = class {
     in vec2 vTextureCoord;
     out vec4 finalColor;
     uniform vec4 uInputSize;
-    uniform vec2 uSize;
+    uniform vec2 uCenter;
+    uniform vec2 uRadius;
+    uniform vec2 uRestCenter;
+    uniform vec2 uShape;
     uniform float uTime;
     float hash(vec2 p) { return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
     float noise(vec2 p) {
@@ -45,17 +57,15 @@ window.WinnowPortalSurface = class {
     }
     void main() {
       vec2 pixel=vTextureCoord*uInputSize.xy;
-      vec2 p=pixel-uSize*.5;
-      vec2 radius=uSize*.5-vec2(32.0);
-      vec2 q=p/radius;
+      vec2 q=(pixel-uCenter)/uRadius;
       float angle=atan(q.y,q.x);
-      float contour=pow(pow(abs(q.x),3.4)+pow(abs(q.y),3.4),1.0/3.4);
-      float ripple=sin(angle*3.0+uTime*.32)*3.4+sin(angle*7.0-uTime*.23)*2.1;
-      float distance=(contour-1.0)*min(radius.x,radius.y)+ripple;
+      float contour=pow(pow(abs(q.x),uShape.x)+pow(abs(q.y),uShape.x),1.0/uShape.x);
+      float ripple=(sin(angle*3.0+uTime*.32)+sin(angle*7.0-uTime*.23)*.62)*uShape.y;
+      float distance=(contour-1.0)*min(uRadius.x,uRadius.y)+ripple;
       float inside=1.0-smoothstep(-.8,1.0,distance);
       float edge=exp(-abs(distance)*.8);
       float halo=exp(-abs(distance)*.13)*.18;
-      vec2 space=pixel+vec2(uTime*.6,-uTime*.3);
+      vec2 space=pixel-uRestCenter+vec2(uTime*.6,-uTime*.3);
       float cloud=noise(space*.008)+noise(space*.016)*.5;
       float nebula=pow(max(0.0,cloud-.35),2.0);
       float fringe=smoothstep(.18,.97,contour);
@@ -79,6 +89,13 @@ window.WinnowPortalSurface = class {
     this.active=false;
     this.failed=false;
     this.disposed=false;
+    this.configure(70,45);
+  }
+
+  configure(roundness, waviness) {
+    this.exponent=5.8-Math.max(0,Math.min(100,roundness))*.028;
+    this.wave=Math.max(0,Math.min(100,waviness))*.08;
+    if(this.active) this.draw();
   }
 
   async initialize() {
@@ -97,25 +114,30 @@ window.WinnowPortalSurface = class {
       this.plane=new PIXI.Sprite(PIXI.Texture.WHITE);
       this.filter=PIXI.Filter.from({gl:{vertex:WinnowPortalSurface.vertex,fragment:WinnowPortalSurface.fragment},
         resolution:'inherit',padding:0,resources:{portalUniforms:{
-          uSize:{value:new Float32Array([1,1]),type:'vec2<f32>'},
+          uCenter:{value:new Float32Array([0,0]),type:'vec2<f32>'},
+          uRadius:{value:new Float32Array([1,1]),type:'vec2<f32>'},
+          uRestCenter:{value:new Float32Array([0,0]),type:'vec2<f32>'},
+          uShape:{value:new Float32Array([3.4,3.6]),type:'vec2<f32>'},
           uTime:{value:0,type:'f32'},
         }}});
       this.plane.filters=[this.filter];
       app.stage.addChild(this.plane);
-      app.ticker.maxFPS=30;
-      app.ticker.add(ticker=>{
-        if(!this.active||this.panel.hidden||document.hidden) {this.hide();return;}
-        this.time+=Math.min(ticker.deltaMS,80)/1000;
-        this.filter.resources.portalUniforms.uniforms.uTime=this.time;
-      });
     })();
     return this.initialization;
   }
 
-  async show(moving) {
+  async show(moving, origin) {
     const generation=++this.generation;
     this.active=true;
+    this.moving=moving;
+    this.origin=moving?origin:null;
+    this.progress=moving?0:1;
+    this.elapsed=0;
+    this.lastFrame=performance.now();
     this.panel.dataset.renderer='fallback';
+    this.resize();
+    this.draw();
+    if(moving) this.frame=requestAnimationFrame(now=>this.tick(now));
     if(this.failed||this.disposed) return;
     try {
       await this.initialize();
@@ -124,35 +146,87 @@ window.WinnowPortalSurface = class {
       if(!scene) return;
       scene.append(this.app.canvas);
       this.resize();
-      this.filter.resources.portalUniforms.uniforms.uTime=moving?this.time:0;
-      this.app.render();
       this.panel.dataset.renderer='webgl';
-      this.panel.dataset.portalRunning=String(moving);
-      if(moving) this.app.start(); else this.app.stop();
+      this.draw();
+      if(moving&&!this.frame) this.frame=requestAnimationFrame(now=>this.tick(now));
     } catch { this.fallback(); }
   }
 
   resize() {
-    if(!this.app||!this.active||this.panel.hidden) return;
-    const width=this.panel.offsetWidth+48, height=this.panel.offsetHeight+48;
-    if(this.app.screen.width!==width||this.app.screen.height!==height) this.app.renderer.resize(width,height);
-    this.plane.width=width; this.plane.height=height;
-    this.filter.resources.portalUniforms.uniforms.uSize.set([width,height]);
-    this.app.render();
+    if(!this.active||this.panel.hidden) return;
+    this.width=this.panel.offsetWidth; this.height=this.panel.offsetHeight;
+    const origin=this.origin||{x:this.width/2,y:this.height/2};
+    // Include the cursor and its halo so the opening can travel outside the final panel.
+    this.sceneX=Math.min(-24,origin.x-24); this.sceneY=Math.min(-24,origin.y-24);
+    const width=Math.ceil(Math.max(this.width+24,origin.x+24)-this.sceneX);
+    const height=Math.ceil(Math.max(this.height+24,origin.y+24)-this.sceneY);
+    const scene=this.panel.querySelector('.portal-scene');
+    if(!scene) return;
+    Object.assign(scene.style,{left:`${this.sceneX}px`,top:`${this.sceneY}px`,width:`${width}px`,height:`${height}px`});
+    if(this.app) {
+      if(this.app.screen.width!==width||this.app.screen.height!==height) this.app.renderer.resize(width,height);
+      this.plane.width=width; this.plane.height=height;
+    }
+    this.draw();
+  }
+
+  tick(now) {
+    this.frame=0;
+    if(!this.active||this.panel.hidden||document.hidden) {this.hide();return;}
+    const delta=now-this.lastFrame;
+    if(delta>=1000/30) {
+      this.lastFrame=now;
+      this.elapsed+=Math.min(delta,80);
+      this.progress=Math.min(1,this.elapsed/620);
+      this.time+=Math.min(delta,80)/1000;
+      this.draw();
+    }
+    // The CSS fallback completes the entrance, then remains still without a loop.
+    if(this.progress<1||this.panel.dataset.renderer==='webgl') this.frame=requestAnimationFrame(next=>this.tick(next));
+    else this.panel.dataset.portalRunning='false';
+  }
+
+  draw() {
+    if(!this.active||!this.width) return;
+    const restX=this.width/2, restY=this.height/2;
+    const origin=this.origin||{x:restX,y:restY};
+    const reveal=1-(1-this.progress)**3;
+    const scale=.025+.975*reveal;
+    const cx=origin.x+(restX-origin.x)*reveal, cy=origin.y+(restY-origin.y)*reveal;
+    const rx=Math.max(1,(restX-8)*scale), ry=Math.max(1,(restY-8)*scale);
+    const wave=this.wave*scale, time=this.moving?this.time:0;
+    const points=WinnowPortalSurface.contour(cx,cy,rx,ry,this.exponent,wave,time);
+    const polygon=(dx=0,dy=0)=>`polygon(${points.map(([x,y])=>`${(x-dx).toFixed(2)}px ${(y-dy).toFixed(2)}px`).join(',')})`;
+    this.panel.querySelector('.portal-content').style.clipPath=polygon();
+    this.panel.querySelector('.portal-fallback').style.clipPath=polygon(this.sceneX,this.sceneY);
+    this.panel.dataset.portalOpening=String(this.progress<1);
+    this.panel.dataset.portalRunning=String(this.moving&&(this.progress<1||this.panel.dataset.renderer==='webgl'));
+    if(this.app&&!this.failed) {
+      const uniforms=this.filter.resources.portalUniforms.uniforms;
+      uniforms.uCenter.set([cx-this.sceneX,cy-this.sceneY]);
+      uniforms.uRestCenter.set([restX-this.sceneX,restY-this.sceneY]);
+      uniforms.uRadius.set([rx,ry]);
+      uniforms.uShape.set([this.exponent,wave]);
+      uniforms.uTime=time;
+      this.app.render();
+    }
   }
 
   hide() {
     this.active=false;
     this.generation++;
+    cancelAnimationFrame(this.frame); this.frame=0;
     this.app?.stop();
     this.app?.canvas.remove();
     this.panel.dataset.portalRunning='false';
   }
 
   fallback() {
-    this.hide();
     this.failed=true;
+    this.app?.stop();
+    this.app?.canvas.remove();
     this.panel.dataset.renderer='fallback';
+    this.draw();
   }
 
   dispose() {

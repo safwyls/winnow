@@ -1,22 +1,13 @@
-/* The hit area and text stay level; only the aperture grows from the cursor. */
+/* The aperture moves; its fixed reading plane never scales, reflows or scrolls. */
 .card-flyout[data-portal] {
-  padding: 58px 48px;
-  isolation: isolate;
-  background: transparent;
-  color: #f3eef7;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  overflow: visible;
-  animation: none;
-  --portal-muted: #c1bfd2;
-  --portal-accent: #ebbe9a;
+  padding:0; isolation:isolate; background:transparent; color:#f3eef7;
+  border:0; border-radius:0; box-shadow:none; overflow:visible; animation:none;
+  --portal-muted:#c1bfd2; --portal-accent:#ebbe9a;
 }
-.portal-scene { position:absolute; inset:-24px; z-index:-1; pointer-events:none; }
+.portal-scene { position:absolute; z-index:-1; pointer-events:none; }
 .portal-scene canvas { display:block; width:100%; height:100%; }
 .portal-fallback {
-  position:absolute; inset:24px; border-radius:27% 23% 29% 24% / 18% 25% 20% 27%;
-  border:1px solid #beabc07a;
+  position:absolute; inset:0;
   background:
     radial-gradient(circle at 15% 23%, #fff9 0 1px, transparent 1.5px),
     radial-gradient(circle at 83% 19%, #a7cfffcc 0 1px, transparent 1.7px),
@@ -24,36 +15,42 @@
     radial-gradient(circle at 25% 86%, #ffffffa8 0 1px, transparent 1.5px),
     radial-gradient(ellipse at 92% 16%, #4c325b66, transparent 60%),
     radial-gradient(ellipse at 0% 90%, #16445680, transparent 60%), #0c101e;
-  box-shadow: 0 0 20px #b5adcf22, 0 18px 50px #0009;
 }
 .card-flyout[data-renderer=webgl] .portal-fallback { visibility:hidden; }
-.flyout-scroll { min-height:0; max-height:calc(var(--flyout-max-height) - 116px); overflow:auto; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:#9386a477 transparent; }
-.card-flyout:not([data-portal]) .flyout-scroll { max-height:none; overflow:visible; }
-.card-flyout[data-portal] .flyout-body { text-shadow:0 1px 12px #070b17,0 1px 3px #070b17; }
+.portal-content { position:absolute; inset:0; overflow:clip; clip-path:inset(50%); }
+.card-flyout[data-portal] .flyout-body {
+  height:100%; padding:64px 54px; display:flex; flex-direction:column; overflow:clip;
+  text-shadow:0 1px 12px #070b17,0 1px 3px #070b17;
+}
+.card-flyout[data-portal] .flyout-body > * { flex-shrink:0; }
 .card-flyout[data-portal] .eyebrow { color:var(--portal-accent); font-size:8px; letter-spacing:.17em; }
+.card-flyout[data-portal] :is(.eyebrow,.flyout-hint) { margin-inline:18px; }
 .card-flyout[data-portal] h3 { font-size:32px; line-height:1.06; margin:14px 0 18px; }
 .card-flyout[data-portal] :is(.flyout-description,.flyout-meta,.flyout-hint) { color:var(--portal-muted); }
 .card-flyout[data-portal] .flyout-reason { color:var(--portal-accent); border-color:#c4b3d42b; }
 .card-flyout[data-portal] .flyout-installed { color:#abced8; border-color:#b6c7e12e; }
-.card-flyout[data-portal] .flyout-hint { padding-top:8px; }
+.card-flyout[data-portal] .flyout-description {
+  flex-shrink:1; min-height:0; overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical;
+}
+.card-flyout[data-portal] .flyout-hint { padding-top:8px; margin-top:auto; }
 .card-flyout[data-portal] .flyout-hint span { color:var(--portal-accent); }
-.card-flyout[data-motion=live] .portal-scene { animation:portal-open 620ms cubic-bezier(.16,.75,.2,1) both; }
-.card-flyout[data-motion=live] .flyout-body { animation:portal-words 360ms 210ms ease-out both; }
-@keyframes portal-open {
-  from { transform:translate(var(--portal-from-x),var(--portal-from-y)) scale(.025); opacity:0; }
-  12% { opacity:1; }
-  to { transform:translate(0,0) scale(1); opacity:1; }
-}
-@keyframes portal-words { from { opacity:0; translate:0 6px; } to { opacity:1; translate:0 0; } }
-body[data-mode=fullscreen] .card-flyout[data-portal] { padding:62px 52px; }
+body[data-mode=fullscreen] .card-flyout[data-portal] { padding:0; }
+body[data-mode=fullscreen] .card-flyout[data-portal] .flyout-body { padding:68px 58px; }
 body[data-mode=fullscreen] .card-flyout[data-portal] h3 { font-size:35px; }
-body[data-mode=fullscreen] .flyout-scroll { max-height:calc(var(--flyout-max-height) - 124px); }
+body .card-flyout[data-portal][data-compact=true] .flyout-body { padding:38px 36px; }
+body .card-flyout[data-portal][data-compact=true] h3 { font-size:26px; margin:10px 0 12px; }
+body .card-flyout[data-portal][data-compact=true] .flyout-reason { font-size:18px; padding-top:12px; margin-top:12px; }
+body .card-flyout[data-portal][data-compact=true] .flyout-description { font-size:12px; line-height:1.65; margin-top:10px; }
+body .card-flyout[data-portal][data-short=true] .flyout-body { padding:26px 32px; }
+body .card-flyout[data-portal][data-short=true] :is(.eyebrow,.flyout-reason) { display:none; }
+body .card-flyout[data-portal][data-short=true] h3 { font-size:23px; margin-top:0; }
 #preview-motion { width:100%; border:1px solid var(--line); border-radius:5px; padding:9px; background:var(--surface); font:12px 'DM Sans',sans-serif; }
-@media(max-width:540px) {
-  .card-flyout[data-portal],body[data-mode=fullscreen] .card-flyout[data-portal] { padding:38px 38px; }
-  .card-flyout[data-portal] h3,body[data-mode=fullscreen] .card-flyout[data-portal] h3 { font-size:27px; }
-  .flyout-scroll,body[data-mode=fullscreen] .flyout-scroll { max-height:calc(var(--flyout-max-height) - 76px); }
-}
-@media(prefers-reduced-motion:reduce) {
-  .card-flyout .portal-scene,.card-flyout .flyout-body { animation:none!important; }
-}
+.portal-options input[type=range] { width:100%; accent-color:var(--accent); cursor:pointer; }
+.portal-options output { color:var(--accent); font:11px var(--mono); }
+.portal-range-ends { display:flex; justify-content:space-between; font-size:10px; color:var(--muted); }
+.portal-shape-preview { margin-top:18px; border:1px solid var(--line); border-radius:8px; background:#0b101b; }
+.portal-shape-preview svg { display:block; width:100%; height:132px; }
+.portal-shape-preview polygon { fill:#151b2d; stroke:#d6b8b8; stroke-width:1.2; }
+.portal-shape-preview circle { fill:#d1daee; }
+.portal-shape-preview text { fill:#c1bfd2; font:9px 'JetBrains Mono',monospace; text-anchor:middle; letter-spacing:2px; }
+.portal-options:has(#preview-motion option[value=plain]:checked) :is(.finish-intensity-label,.portal-range-ends,input[type=range]) { opacity:.4; }
