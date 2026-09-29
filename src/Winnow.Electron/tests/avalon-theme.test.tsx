@@ -160,6 +160,32 @@ afterEach(() => {
 })
 
 describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
+  it.each([21, 22])('routes linked release %s from Home to its grouped game identity', (releaseId) => {
+    const ctx = context(mode)
+    const prey = game(1, { title: 'Prey', playtimeMinutes: 390 })
+    prey.entries = [
+      { ...prey.entries[0], ownershipId: 11, releaseId: 21, title: 'Prey', store: 'steam' },
+      { ...prey.entries[0], ownershipId: 12, releaseId: 22, workId: 2, title: 'Prey Deluxe', store: 'epic' },
+    ]
+    ctx.games = [prey]
+    ctx.feed = {
+      ...ctx.feed!,
+      shelves: [
+        {
+          ...ctx.feed!.shelves[0],
+          items: [
+            { ownershipId: releaseId - 10, releaseId, title: 'Prey Deluxe', reason: 'Worth another visit.' },
+          ],
+        },
+      ],
+    }
+    mount(ctx, AvalonDiscover)
+    const cover = screen.getByRole('button', { name: 'View Prey. Owned on Steam, Epic' })
+    expect(document.querySelectorAll('.avalon-cover')).toHaveLength(1)
+    fireEvent.click(cover)
+    expect(ctx.openGame).toHaveBeenCalledExactlyOnceWith(1)
+    expect(ctx.actions.launch).not.toHaveBeenCalled()
+  })
   it('renders each unlinked source entry separately with its own title total and store', () => {
     const ctx = context(mode)
     ctx.games = [

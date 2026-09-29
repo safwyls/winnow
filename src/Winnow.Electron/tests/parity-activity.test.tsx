@@ -212,6 +212,47 @@ describe('journal editing parity', () => {
 })
 
 describe('activity browsing parity', () => {
+  it.each(['desktop', 'fullscreen'] as const)(
+    'opens the same grouped game from either member ownership in %s Activity',
+    async (mode) => {
+      const prey = {
+        ...game,
+        title: 'Prey',
+        playtimeMinutes: 390,
+        entries: [
+          { ...game.entries[0], title: 'Prey' },
+          {
+            ...game.entries[0],
+            title: 'Prey Deluxe',
+            workId: 2,
+            ownershipId: 12,
+            releaseId: 22,
+            store: 'epic',
+            playtimeMinutes: 90,
+          },
+        ],
+      }
+      const secondary = {
+        ...row(102),
+        ownershipId: 12,
+        store: 'epic',
+        session: { ...row(102).session, ownershipId: 12 },
+      }
+      bridge((input) =>
+        input.route === 'library.get'
+          ? ok({ games: [prey], lists: [] })
+          : input.route === 'activity.query'
+            ? ok({ rows: [row(101), secondary], next: null })
+            : undefined,
+      )
+      const open = vi.fn()
+      host(<Journal mode={mode} onOpenGame={open} />)
+      const articles = await screen.findAllByRole('article')
+      expect(articles).toHaveLength(2)
+      for (const article of articles) fireEvent.click(within(article).getByRole('button', { name: 'Prey' }))
+      expect(open.mock.calls).toEqual([[1], [1]])
+    },
+  )
   it('uses Monday local weeks through DST and never selects a future week', () => {
     vi.stubEnv('TZ', 'America/Los_Angeles')
     expect(mondayWeek(0, new Date('2026-11-01T20:00:00Z'))).toEqual({

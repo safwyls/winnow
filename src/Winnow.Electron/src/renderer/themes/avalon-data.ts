@@ -137,6 +137,14 @@ export function coverGrid(width: number, height: number, preferred: number, full
   const gap = fullscreen ? 24 : 16
   const target = fullscreen ? Math.max(80, Math.min(240, (height - gap) / 3)) : preferred
   const columns = Math.max(1, (fullscreen ? Math.ceil : Math.floor)((width + gap) / (target + gap)))
-  const coverWidth = Math.max(1, (width - (columns - 1) * gap) / columns)
-  return { columns, gap, rowHeight: coverWidth * 1.5 + gap }
+  const divided = (width - (columns - 1) * gap) / columns
+  const coverWidth = Math.max(1, fullscreen ? divided : Math.floor(divided))
+  const coverHeight = Math.max(1, fullscreen ? coverWidth * 1.5 : Math.floor(coverWidth * 1.5))
+  return { columns, gap, coverWidth, coverHeight, rowHeight: coverHeight + gap }
+}
+
+/** The final row has no trailing gutter, including a one-cover wall. */
+export function coverWallExtent(count: number, columns: number, coverHeight: number, gap: number) {
+  const rows = Math.ceil(count / Math.max(1, columns))
+  return rows === 0 ? 0 : rows * coverHeight + (rows - 1) * gap
 }

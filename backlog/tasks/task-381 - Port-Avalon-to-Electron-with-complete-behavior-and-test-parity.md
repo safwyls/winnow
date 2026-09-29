@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-29 18:39'
+updated_date: '2026-09-29 18:58'
 labels: []
 dependencies: []
 priority: high
@@ -74,6 +74,8 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 24. Audit the remaining LibraryGrain contracts against actual production HTTP grouping and renderer consumers: raw ownership identity, cross-store totals/dates/buckets, chips and accessible names, lookup by all member IDs, update aggregation, installed-copy actions and manual-list ordering. Add source-exact API and desktop/fullscreen evidence before classifying each method; keep original tests until the full gate passes.
 
 25. Finish the remaining grouped-library member lookup, secondary-release manual-list ordering and exact desktop wall geometry/extent contracts. Continue isolating native teardown timing with captured lifecycle evidence, then retain complete build/test and visual evidence before the next milestone.
+
+26. Complete remaining theme arithmetic and appearance lifecycle contracts using independent contrast/compositing measurements across calibrated palettes, every transparency percentage, both layouts and source greyscale artwork. Verify semantic token consumption in native desktop/fullscreen rendering, preserve documented compositor-report limitations, and keep original assertions explicit before updating migration mappings.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -126,4 +128,6 @@ Checkpoint ten: metadata Back now visibly locks during save/publication on both 
 Checkpoints eleven/twelve restore the desktop alphabet/notch spine and close-time Library scroll, fix a deterministic late-preference merge-header race, add case-insensitive store chips/initials and accessible store names, and align cover/Details compact totals. Ten more original grouped-library methods now have backend plus composed-renderer evidence; seven new production HTTP tests pass. Native full137 yielded136pass with a reduced-motion fixture leak; corrected layout20 and Details9/Library8 pass. Spine teardown remains intermittently slow: strict cleanup failed in the combined rerun, but five diagnostic repetitions (25 cases) exited successfully. Capturing quit events and child status rather than masking the timeout. Latest full component2490 had one observer-notification timing assertion; fixture now separately checks immediate fresh cache and waits for the batched React publication. All acceptance criteria remain unchecked.
 
 Final checkpoint-eleven/twelve component and live-backend repeat: all2490 cases in127files pass with no skips (43.12s). Composed App39 passes, including original grouped Prey totals, selection/clamping, both owned copies, secondary updates and installed-Epic action. Seven production grouping HTTP tests pass. Native layout20/Details9/Library8 and repeated spine25 pass; the intermittent strict teardown timeout remains recorded and instrumented. Evidence is in docs/spikes/2026-09-28-electron-parity/checkpoint-eleven-twelve.md. Inventory856ported540retained13framework with863pending163partial; migration is not complete.
+
+Checkpoint thirteen completes all24 LibraryGrain source methods: whole-pixel desktop wall and exact extents, linked-member Home/Activity navigation, one-game list counts and secondary-release list order. Full component/live-backend2509/127 passes with no skips. Full native139 test cases pass, but worker teardown exceeds60s and the command fails; strict spine and Library close assertions themselves pass. Open cleanup failure is recorded, not waived. Desktop/fullscreen screenshots inspected. Inventory861ported540retained13framework,859pending162partial; all AC remain unchecked. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-thirteen.md.
 <!-- SECTION:NOTES:END -->

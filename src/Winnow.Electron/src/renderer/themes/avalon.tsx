@@ -42,7 +42,7 @@ import '../features/parity-library-projection.css'
 import { usePresentationPreferences } from '../features/SettingsPreferences'
 import { clearViewState, libraryScroll, useViewState } from '../viewState'
 import dragon from '../assets/dragon.svg'
-import { avalonFilter, coverGrid, dormancy, matchesBucket } from './avalon-data'
+import { avalonFilter, coverGrid, coverWallExtent, dormancy, matchesBucket } from './avalon-data'
 import { AVALON_PALETTES, avalonPaletteStyle } from './avalon-palettes'
 import { avalonFacts, matchesAvalonRules, type AvalonFactMap, type AvalonWorkspace } from './avalon-filters'
 import { AvalonFilterPanel } from './avalon-filter-panel'
@@ -1261,7 +1261,15 @@ export function AvalonLibrary(context: ThemeContext) {
                       )}
                     </AvalonFullscreenGrid>
                   ) : (
-                    <div style={{ height: virtual.getTotalSize(), position: 'relative' }}>
+                    <div
+                      className="avalon-wall"
+                      style={{
+                        height: listMode
+                          ? virtual.getTotalSize()
+                          : coverWallExtent(games.length, columns, grid.coverHeight, grid.gap),
+                        position: 'relative',
+                      }}
+                    >
                       {virtual.getVirtualItems().map((row) => (
                         <div
                           key={row.key}
@@ -1272,9 +1280,13 @@ export function AvalonLibrary(context: ThemeContext) {
                             left: 0,
                             width: '100%',
                             transform: `translateY(${row.start}px)`,
-                            gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+                            gridTemplateColumns: listMode
+                              ? '1fr'
+                              : `repeat(${columns}, ${grid.coverWidth}px)`,
+                            gridAutoRows: listMode ? undefined : grid.coverHeight,
                             gap: grid.gap,
-                            paddingBottom: listMode ? 0 : grid.gap,
+                            paddingBottom:
+                              listMode || (row.index + 1) * columns >= games.length ? 0 : grid.gap,
                           }}
                         >
                           {games.slice(row.index * columns, (row.index + 1) * columns).map((game, index) =>

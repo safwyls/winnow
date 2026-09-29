@@ -225,6 +225,90 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       expect(errors).toEqual([])
     })
 
+for (const width of [1200, 1920])
+  test(`desktop wall at ${width} uses whole-pixel cells and removes only complete rows without a trailing gutter`, async () => {
+    const data = fixture([10])
+    const original = data.library.games[0]
+    const games = Array.from({ length: 1012 }, (_, index) => ({
+      ...original,
+      workId: index + 1,
+      title: `Wall game ${String(index + 1).padStart(4, '0')}`,
+      entries: [{ ...original.entries[0], workId: index + 1, ownershipId: index + 1, releaseId: index + 1 }],
+    }))
+    const publish = async (count: number) => {
+      data.library.games = games.slice(0, count)
+      await application.evaluate(({ BrowserWindow }, data) => {
+        ;(globalThis as unknown as { __winnowLayoutFixture: Fixture }).__winnowLayoutFixture = data
+        BrowserWindow.getAllWindows()[0].webContents.send('winnow:event', {
+          kind: 'library.changed',
+          resource: 'library',
+        })
+      }, data)
+    }
+    await publish(1012)
+    await page.reload()
+    await surface('desktop', width, 900)
+    await page
+      .getByRole('navigation', { name: 'Main navigation' })
+      .getByRole('button', { name: 'Library', exact: true })
+      .click()
+    await page.getByRole('button', { name: 'Grid view', exact: true }).click()
+    await page.getByLabel('Sort', { exact: true }).selectOption('title')
+    await page.mouse.move(2, 2)
+    const count = page.locator('.avalon-results-count'),
+      scroll = page.locator('.avalon-library-scroll')
+    for (const density of [108, 148, 200]) {
+      await publish(1012)
+      await expect(count).toHaveText('1,012 games')
+      await scroll.evaluate((element) => {
+        element.scrollTop = 0
+      })
+      await page.getByRole('slider', { name: 'Density', exact: true }).fill(String(density))
+      await measured()
+      const geometry = await page
+        .locator('.avalon-grid-row')
+        .first()
+        .evaluate((row) => {
+          const style = getComputedStyle(row),
+            cell = row.querySelector('.avalon-cover')!
+          return {
+            columns: style.gridTemplateColumns.split(' ').length,
+            gap: parseFloat(style.columnGap),
+            width: row.getBoundingClientRect().width,
+            cellWidth: cell.getBoundingClientRect().width,
+            cellHeight: cell.getBoundingClientRect().height,
+          }
+        })
+      const { columns, gap, cellWidth, cellHeight } = geometry
+      const used = columns * cellWidth + (columns - 1) * gap
+      expect(used).toBeLessThanOrEqual(geometry.width)
+      expect(geometry.width - used).toBeLessThan(columns + 1)
+      expect(Number.isInteger(cellWidth)).toBe(true)
+      expect(cellHeight).toBe(Math.floor(cellWidth * 1.5))
+      const extent = (items: number) => Math.ceil(items / columns) * (cellHeight + gap) - gap
+      await expect(page.locator('.avalon-wall')).toHaveCSS('height', `${extent(1012)}px`)
+      await publish(1011)
+      await expect(count).toHaveText('1,011 games')
+      await expect(page.locator('.avalon-wall')).toHaveCSS('height', `${extent(1011)}px`)
+      await scroll.evaluate((element) => {
+        element.scrollTop = element.scrollHeight
+      })
+      await expect(page.locator('.avalon-cover[data-work-id="1011"]')).toBeVisible()
+      const bottom = await page.locator('.avalon-wall').evaluate((wall) => ({
+        wall: wall.getBoundingClientRect().bottom,
+        last: wall.querySelector('.avalon-cover[data-work-id="1011"]')!.getBoundingClientRect().bottom,
+      }))
+      expect(Math.abs(bottom.wall - bottom.last)).toBeLessThan(0.1)
+      await publish(1)
+      await expect(count).toHaveText('1 game')
+      await expect(page.locator('.avalon-wall')).toHaveCSS('height', `${cellHeight}px`)
+    }
+    await publish(0)
+    await expect(count).toHaveText('0 games')
+    await expect(page.locator('.avalon-wall')).toHaveCount(0)
+    expect(errors).toEqual([])
+  })
+
 test('fullscreen Home retains each overflow page and carries the visible column across shelves', async () => {
   await surface('fullscreen', 1920, 1080)
   await replace(fixture([24, 24, 2]))

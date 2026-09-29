@@ -728,6 +728,10 @@
   .avalon-grid-row {
     display: grid;
   }
+  .avalon-shell.desktop .avalon-grid-row > .avalon-cover {
+    height: 100%;
+    aspect-ratio: auto;
+  }
   .avalon-record {
     width: 100%;
     height: 60px;

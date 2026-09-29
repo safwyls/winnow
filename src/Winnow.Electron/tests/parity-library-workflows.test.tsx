@@ -783,6 +783,48 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
     await waitFor(() => expect(cards()).toEqual([1, 2, 3]))
     expect((screen.getByLabelText('My lists') as HTMLSelectElement).value).toBe('all')
   })
+  it('counts a list holding both linked releases once and moves a grouped tile by its secondary member', async () => {
+    const prey = {
+      ...current.games[0],
+      title: 'Prey',
+      playtimeMinutes: 390,
+      entries: [
+        { ...current.games[0].entries[0], title: 'Prey', store: 'steam', playtimeMinutes: 300 },
+        { ...current.games[0].entries[1], title: 'Prey Deluxe', store: 'epic', playtimeMinutes: 90 },
+      ],
+    }
+    const other = { ...current.games[2], title: 'Dishonored', entries: [current.games[2].entries[0]] }
+    current.games = [prey, other]
+    current.lists[0] = { ...current.lists[0], name: 'Co-op night', releaseIds: [100, 101] }
+    handler = (input) => {
+      if (input.route !== 'list.order') return undefined
+      current.lists[0] = {
+        ...current.lists[0],
+        releaseIds: (input.body as { releaseIds: number[] }).releaseIds,
+        revision: 'm2',
+      }
+      return ok(current.lists[0])
+    }
+    const view = setup(mode)
+    openList(10)
+    expect(cards()).toEqual([1])
+    expect(screen.getByRole('button', { name: 'View Prey. Owned on Steam, Epic' })).toBeTruthy()
+    expect(screen.getByText('1 game')).toBeTruthy()
+    current.lists[0] = { ...current.lists[0], releaseIds: [101, 300] }
+    act(() => view.client.setQueryData(['api', 'library.get'], structuredClone(current)))
+    await waitFor(() => expect(cards()).toEqual([1, 3]))
+    expect((screen.getByLabelText('Sort') as HTMLSelectElement).value).toBe('list-order')
+    act(() => document.querySelector<HTMLButtonElement>('[data-avalon-game="1"]')!.focus())
+    expect((screen.getByRole('button', { name: 'Move earlier' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Move later' }) as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Move later' }))
+    await waitFor(() => expect(cards()).toEqual([3, 1]))
+    expect(view.request.mock.calls.find(([input]) => input.route === 'list.order')?.[0].body).toEqual({
+      releaseIds: [300, 101],
+      expectedRevision: 'm1',
+    })
+    expect((screen.getByLabelText('My lists') as HTMLSelectElement).value).toBe('10')
+  })
   it('moves and removes handpicked games with boundary guards and keeps the list open after a failed write', async () => {
     let fail = true
     handler = (input) => {

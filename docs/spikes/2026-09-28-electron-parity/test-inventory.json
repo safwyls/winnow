@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 863,
-    "partial": 163,
-    "ported": 856,
+    "pending": 859,
+    "partial": 162,
+    "ported": 861,
     "retained-backend": 540,
     "framework-specific": 13
   },
@@ -8216,14 +8216,22 @@
     {
       "id": "LibraryGrainTests.A_collapsed_tile_answers_to_every_ownership_and_release_it_folded",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "../../tests/Winnow.Backend.Tests/LibraryGrainParityTests.cs",
           "case": "Linked_pairs_keep_primary_order_and_every_original_member_identifier"
+        },
+        {
+          "file": "tests/avalon-theme.test.tsx",
+          "case": "routes linked release %s from Home to its grouped game identity"
+        },
+        {
+          "file": "tests/parity-activity.test.tsx",
+          "case": "opens the same grouped game from either member ownership in %s Activity"
         }
       ],
-      "reason": "The production API preserves all member ownership/release identities and lookups over its grouped result find the same game. The original frontend lookup consumers still need an explicit all-members navigation regression before this contract is complete."
+      "reason": "The production API preserves all member ownership/release identities and lookups over its grouped result find the same game. Both Electron Home surfaces resolve each original release to the primary Prey identity; both Activity surfaces resolve each original ownership to that same identity and open it. The member display name never becomes an extra tile or a different Details destination."
     },
     {
       "id": "LibraryGrainTests.The_modal_lists_updates_from_every_entry_of_the_game",
@@ -8276,22 +8284,58 @@
     {
       "id": "LibraryGrainTests.A_row_of_the_wall_fills_the_width_it_was_given",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-data.test.ts",
+          "case": "fills the original desktop wall width %s at density %s with whole-pixel cells and no lost column"
+        },
+        {
+          "file": "tests/electron/avalon-layout.spec.ts",
+          "case": "uses whole-pixel cells and removes only complete rows without a trailing gutter"
+        }
+      ],
+      "reason": "The exact eight source width/density pairs preserve at least one column, used width no greater than available width, less than one pixel slack per column plus one, 16px gutters and floor(width*1.5) heights. Native measurement verifies actual integer CSS cells and no lost column at two window sizes and all three density settings. Fullscreen retains its separate two-row geometry."
     },
     {
       "id": "LibraryGrainTests.Fewer_tiles_shortens_the_wall_by_whole_rows",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-data.test.ts",
+          "case": "collapsing 1012 to 1011 games at width %s and density %s removes only whole rows with no trailing gap"
+        },
+        {
+          "file": "tests/electron/avalon-layout.spec.ts",
+          "case": "uses whole-pixel cells and removes only complete rows without a trailing gutter"
+        }
+      ],
+      "reason": "All three original width/density pairs compare 1012 and 1011 items, verify a zero-or-one-row change and exact row-height-plus-gutter difference, and cover empty/single-item extents. Native virtualized grids verify both counts, last-cover bottom equal to wall bottom without a trailing gutter, one-row height for one game, and no wall for an empty library."
     },
     {
       "id": "LibraryGrainTests.A_list_holding_both_entries_of_one_game_shows_one_row",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "counts a list holding both linked releases once and moves a grouped tile by its secondary member"
+        }
+      ],
+      "reason": "Both composed Library surfaces open a Co-op night list containing the Steam and Epic releases of Prey and render exactly one grouped game with a displayed count of one. The unrelated Dishonored game remains outside the list."
     },
     {
       "id": "LibraryGrainTests.A_collapsed_tile_sorts_and_moves_by_the_entry_the_list_holds",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "counts a list holding both linked releases once and moves a grouped tile by its secondary member"
+        }
+      ],
+      "reason": "The original Prey/Dishonored list is held by Prey's secondary Epic release. Both modes use list order, start with Prey first, disable Move earlier and enable Move later, send the observed revision plus [Dishonored release, Epic release], and render Dishonored first after publication while keeping the list open."
     },
     {
       "id": "LibraryScanCoalescingTests.A_first_stable_read_a_completed_pass_already_covered_starts_no_scan",

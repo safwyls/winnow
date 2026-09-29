@@ -5,6 +5,7 @@ import {
   avalonFilter,
   avalonShelves,
   coverGrid,
+  coverWallExtent,
   dormancy,
 } from '../src/renderer/themes/avalon-data'
 import { readFileSync } from 'node:fs'
@@ -257,4 +258,43 @@ describe('Avalon presentation facts', () => {
     const tv = coverGrid(1600, 600, 148, true)
     expect(tv.rowHeight * 2 - tv.gap).toBeLessThanOrEqual(640)
   })
+  it.each([
+    [1200, 108],
+    [1200, 148],
+    [1200, 200],
+    [1600, 108],
+    [1920, 148],
+    [3440, 200],
+    [437, 148],
+    [101, 108],
+  ])(
+    'fills the original desktop wall width %s at density %s with whole-pixel cells and no lost column',
+    (width, density) => {
+      const { columns, coverWidth, coverHeight, gap } = coverGrid(width, 800, density, false)
+      const used = columns * coverWidth + (columns - 1) * gap
+      expect(columns).toBeGreaterThanOrEqual(1)
+      expect(used).toBeLessThanOrEqual(width)
+      expect(width - used).toBeLessThan(columns + 1)
+      expect(Number.isInteger(coverWidth)).toBe(true)
+      expect(coverHeight).toBe(Math.floor(coverWidth * 1.5))
+      expect(gap).toBe(16)
+    },
+  )
+  it.each([
+    [1200, 148],
+    [3440, 200],
+    [1600, 108],
+  ])(
+    'collapsing 1012 to 1011 games at width %s and density %s removes only whole rows with no trailing gap',
+    (width, density) => {
+      const { columns, coverHeight, gap } = coverGrid(width, 800, density, false)
+      const lost = Math.ceil(1012 / columns) - Math.ceil(1011 / columns)
+      expect(lost).toBeGreaterThanOrEqual(0)
+      expect(lost).toBeLessThanOrEqual(1)
+      const extent = (count: number) => coverWallExtent(count, columns, coverHeight, gap)
+      expect(extent(1012) - extent(1011)).toBe(lost * (coverHeight + gap))
+      expect(extent(0)).toBe(0)
+      expect(extent(1)).toBe(coverHeight)
+    },
+  )
 })
