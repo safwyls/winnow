@@ -424,7 +424,7 @@ export function RiftDiscover(context: ThemeContext) {
 function DiscoveryImpression({ item, shelf }: { item: FeedItem; shelf: FeedShelf }) {
   return (
     <div className="rift-impression">
-      <Impression releaseId={item.releaseId} shelfId={shelf.id}>
+      <Impression releaseId={item.releaseId} shelfId={shelf.id} enabled={shelf.supportsFeedback}>
         <span />
       </Impression>
     </div>

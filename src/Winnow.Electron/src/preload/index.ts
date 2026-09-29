@@ -15,6 +15,7 @@ function subscribe<T>(channel: string, callback: (value: T) => void): () => void
 }
 const bridge: WinnowBridge = {
   request: (request) => ipcRenderer.invoke('winnow:request', request),
+  cancelRequest: (requestId) => ipcRenderer.invoke('winnow:request:cancel', requestId),
   connection: () => ipcRenderer.invoke('winnow:connection'),
   onEvent: (callback) => subscribe<BackendEvent>('winnow:event', callback),
   onConnection: (callback) => subscribe<ConnectionState>('winnow:connection', callback),
@@ -47,6 +48,11 @@ const bridge: WinnowBridge = {
   chooseManualExecutableFacts: () => ipcRenderer.invoke('winnow:manual-executable-facts'),
   exportAcquisitions: () => ipcRenderer.invoke('winnow:acquisitions:export'),
   steamSignIn: (options) => ipcRenderer.invoke('winnow:steam:signin', options),
+  prepareEpicSignIn: () => ipcRenderer.invoke('winnow:epic:prepare'),
+  epicSignIn: (options) => ipcRenderer.invoke('winnow:epic:signin', options),
+  openEpicSignInInBrowser: (options) => ipcRenderer.invoke('winnow:epic:browser', options),
+  completeEpicSignIn: (options) => ipcRenderer.invoke('winnow:epic:complete', options),
+  cancelEpicSignIn: () => ipcRenderer.invoke('winnow:epic:cancel'),
   cancelSteamWindow: () => ipcRenderer.invoke('winnow:steam:cancel'),
   steamCapturePages: (options) => ipcRenderer.invoke('winnow:steam:capture', options),
   applicationInfo: () => ipcRenderer.invoke('winnow:application:info'),

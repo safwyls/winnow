@@ -60,6 +60,21 @@ root, so portaled dialogs and native form controls follow it. Avalon keeps the o
 Bricolage Grotesque, Plus Jakarta Sans and IBM Plex Mono typography. **Dim dormant covers**
 controls its gradual desaturation; hover and focus restore the cover's color.
 
+Avalon's desktop recommendation shelves keep one row of five readable covers, from 180px
+to 240px wide. Narrow windows scroll that row; arrow keys reveal the selected cover and
+carry its column between shelves. Fullscreen Home retains adjacent shelves during a 220ms
+slide, with immediate destination focus and inactive outgoing rows. Rapid reversal starts
+at the current position. Reduced motion, viewport changes and distant jumps settle directly
+at the destination. The cover row and shelf rail share a bottom anchor; Home sizes covers
+from the unscaled canvas so a smaller interface adds room without enlarging its covers.
+Each shelf retains its horizontal overflow page; moving between shelves carries the current
+visible column and clamps shorter pages. Only the current page's covers are realized.
+Fullscreen Library keeps two visible rows, retaining overlapping covers during each vertical
+slide. Arrows, Page Up/Down and the wheel share its selection state; filtering follows the
+selected game when it remains in the results. Returning from another section restores the
+selected game and row window. The inline search uses this same grid; the original separate
+Search page's results-entry focus and LT/RT paging are not yet reproduced.
+
 Avalon's **Theme typography** controls choose heading, interface and data fonts separately.
 The bundled families are always listed. **Find installed fonts** queries local family names;
 it does not read font files. You can also enter an installed family name. Missing families
@@ -67,6 +82,9 @@ fall back to the bundled font for that role. **Theme text size** ranges from 80%
 independent of interface zoom, cover dimensions and icon sizes. Each original palette keeps
 its own fonts and size. **Reset theme typography** removes that palette's overrides and
 restores its authored fonts and size, or the bundled defaults when none are authored.
+Fullscreen reserves chrome and Home hero space for the supported 120% theme size, so live
+font changes leave cover geometry stable. The description still occupies two lines at the
+chosen text size; unused height remains between the hero and its bottom-anchored shelf.
 
 **Authored palettes** reads schema-1 JSON files from the library's existing `themes` folder,
 including installs that still use the legacy data location. **Open themes folder** opens

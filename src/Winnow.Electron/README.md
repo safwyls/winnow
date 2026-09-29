@@ -127,6 +127,12 @@ Set `WINNOW_BACKEND_PATH` to an absolute backend executable or DLL to use anothe
 Startup switches configure a newly started backend, not one already running. Closing the
 frontend leaves the backend running, as described in the [API guide](../../docs/frontend-api.md).
 
+An invalid startup argument or unusable frontend data directory exits with code 2. A failure
+during frontend initialization shows a diagnostic message and exits with code 3; cancellation
+exits cleanly. Messages redact credentials and incidental paths. When the selected library
+directory exists, initialization failures also write a bounded, redacted log in its `logs`
+folder. An unavailable logger or native alert does not replace the original exit status.
+
 ## What is available
 
 - Discover with real recommendation reasons, visible-card impressions, Play/Install, snooze,
@@ -144,6 +150,8 @@ frontend leaves the backend running, as described in the [API guide](../../docs/
   library preferences, background operations, provider package management and feedback history.
 - Resumable first-run setup and embedded Steam sign-in, with separately optional account-page
   capture and explicit review before import. See [Steam capture](../../docs/electron-steam-capture.md).
+- Embedded Epic sign-in with explicit consent, desktop/fullscreen account input and a system-browser
+  fallback. See [Epic sign-in](../../docs/electron-epic-sign-in.md) for capture boundaries and verification.
 - Theme Studio with five shared color presets and Avalon's nine original palettes, semantic color overrides, fonts, spacing, scale,
   artwork finishes and depth, motion, navigation placement, card styles, section ordering
   and JSON profile sharing.
@@ -250,6 +258,12 @@ loading recovery, event races and transport boundaries without external accounts
 package storage. `src/preload` exposes named operations. The sandboxed renderer has no Node
 integration or bearer token. It uses React, TanStack Query/Virtual, Radix dialogs, Motion,
 Lucide and bundled fonts. It never opens SQLite or duplicates backend scoring rules.
+
+Renderer requests can carry an AbortSignal. The preload forwards cancellation by an
+opaque request identity; main accepts it only from the owning trusted renderer while
+that request is active. Completion and renderer destruction clean up the request.
+Leaving identity review cancels its manual suggestion refresh, and late responses
+cannot replace the next page's data or focus.
 
 `src/shared/theme.ts` is the theme contract; `src/renderer/theming` hosts packages and Studio;
 `src/renderer/features` holds reusable backend feature screens. Theme packages can reuse

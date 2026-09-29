@@ -1,0 +1,476 @@
+{
+  "SteamTokenClaimsTests.A_token_payload_yields_its_expiry_subject_audience_and_issuer": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Core/Auth/SteamJwtClaims.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamTokenClaims.cs",
+      "src/Winnow.Enrich.SteamWeb/SteamId.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamTokenClaimsTests.A_single_string_audience_reads_as_one_entry": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Core/Auth/SteamJwtClaims.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamTokenClaims.cs",
+      "src/Winnow.Enrich.SteamWeb/SteamId.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamTokenClaimsTests.A_malformed_token_is_unreadable_rather_than_an_exception": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Core/Auth/SteamJwtClaims.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamTokenClaims.cs",
+      "src/Winnow.Enrich.SteamWeb/SteamId.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamTokenClaimsTests.A_payload_that_is_valid_base64_but_not_a_json_object_is_unreadable": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Core/Auth/SteamJwtClaims.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamTokenClaims.cs",
+      "src/Winnow.Enrich.SteamWeb/SteamId.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamTokenClaimsTests.Claims_of_the_wrong_json_type_are_absent_rather_than_coerced": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Core/Auth/SteamJwtClaims.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamTokenClaims.cs",
+      "src/Winnow.Enrich.SteamWeb/SteamId.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamTokenClaimsTests.A_subject_outside_the_individual_account_range_yields_no_steam_id": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Core/Auth/SteamJwtClaims.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamTokenClaims.cs",
+      "src/Winnow.Enrich.SteamWeb/SteamId.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamTokenClaimsTests.The_browser_and_the_product_read_the_same_claims": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Core/Auth/SteamJwtClaims.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamTokenClaims.cs",
+      "src/Winnow.Enrich.SteamWeb/SteamId.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionCreationTests.Expiry_and_account_come_from_the_token_rather_than_from_the_caller": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSession.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamTokenClaims.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionCreationTests.A_refresh_token_that_does_not_decode_leaves_its_expiry_unknown": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSession.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamTokenClaims.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionCreationTests.A_malformed_access_token_yields_no_session": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSession.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamTokenClaims.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionCreationTests.A_token_stating_no_expiry_or_no_account_yields_no_session": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSession.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamTokenClaims.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionCreationTests.A_missing_refresh_token_still_yields_a_session": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSession.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamTokenClaims.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionKindTests.A_token_only_session_is_live_for_its_whole_life": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionProvider.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SettingsSteamSessionStore.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialSelector.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionKindTests.A_token_only_session_goes_straight_to_expired": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionProvider.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SettingsSteamSessionStore.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialSelector.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionKindTests.A_renewable_session_still_passes_through_renewal_due": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionProvider.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SettingsSteamSessionStore.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialSelector.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionKindTests.A_token_only_session_round_trips_through_the_store": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionProvider.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SettingsSteamSessionStore.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialSelector.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionKindTests.The_stored_shape_of_a_token_only_session_is_the_same_closed_list": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionProvider.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SettingsSteamSessionStore.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialSelector.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionKindTests.A_stored_session_whose_refresh_token_is_blank_reads_back_as_token_only": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionProvider.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SettingsSteamSessionStore.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialSelector.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionKindTests.The_credential_selector_sends_a_token_only_session": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionProvider.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SettingsSteamSessionStore.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialSelector.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionProviderTests.No_stored_session_reads_as_not_signed_in": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionProvider.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionProviderTests.A_live_session_reads_as_live_and_the_store_is_read_once": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionProvider.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionProviderTests.A_session_inside_the_renewal_lead_window_reads_as_renewal_due": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionProvider.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionProviderTests.An_expired_access_token_with_a_live_refresh_token_reads_as_renewal_due": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionProvider.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionProviderTests.An_expired_access_token_with_a_dead_refresh_token_reads_as_expired": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionProvider.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionProviderTests.A_recorded_renewal_failure_reads_as_renewal_failing": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionProvider.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionProviderTests.A_live_session_on_a_host_that_cannot_encrypt_reads_as_not_persisted": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionProvider.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionProviderTests.Signing_out_forgets_the_session_in_memory_and_on_disk": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionProvider.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionProviderTests.Concurrent_first_reads_load_the_store_exactly_once": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionProvider.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionRegistrationTests.The_session_source_and_provider_are_registered_as_singletons": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/ServiceCollectionExtensions.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionProvider.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialProvider.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionCredentialSource.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionRegistrationTests.With_no_session_stored_the_key_path_is_exactly_what_it_was": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/ServiceCollectionExtensions.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionProvider.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialProvider.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionCredentialSource.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionRegistrationTests.Once_a_session_is_stored_the_selector_sees_it": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/ServiceCollectionExtensions.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionProvider.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialProvider.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionCredentialSource.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionRegistrationTests.An_expired_session_is_registered_but_not_usable": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/ServiceCollectionExtensions.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionProvider.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialProvider.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionCredentialSource.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSessionRegistrationTests.Nothing_about_a_session_reaches_even_a_trace_level_log": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/ServiceCollectionExtensions.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionProvider.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialProvider.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamSessionCredentialSource.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Audited the exact original assertion and unchanged implementation. Production AddWinnowApplication calls AddSteamWebApi and registers these same claims/session/store/provider/selector implementations. The original 33 methods (43 cases) pass; real HTTP composition, persistence and reconnect are independently exercised by SteamSessionParityTests. The browser/product claim-projection test calls Core directly, not an Avalonia adapter."
+  },
+  "SteamSignInServiceTests.Successful_sign_in_and_sign_out_request_background_ownership_refresh": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamSessionParityTests.cs",
+        "case": "Sign_out_clears_memory_disk_identity_and_pending_attempts_and_requests_refresh"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamSessionParityTests.cs",
+        "case": "Refused_or_cancelled_sign_in_changes_no_session_and_requests_no_refresh"
+      }
+    ],
+    "reason": "Replaces the LegacySteamSignInService test seam with the actual backend HTTP coordinator, production encrypted store and session selector, with native main-process capture evidence where the browser owns that behavior. No legacy coordinator is classified as retained."
+  },
+  "SteamSignInServiceTests.A_minted_session_is_written_where_the_credential_selector_will_find_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamSessionParityTests.cs",
+        "case": "Minted_session_reaches_the_real_selector_and_survives_backend_restart"
+      }
+    ],
+    "reason": "Replaces the LegacySteamSignInService test seam with the actual backend HTTP coordinator, production encrypted store and session selector, with native main-process capture evidence where the browser owns that behavior. No legacy coordinator is classified as retained."
+  },
+  "SteamSignInServiceTests.A_declined_purchase_history_capture_still_produces_a_working_session": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamSessionParityTests.cs",
+        "case": "Minted_session_reaches_the_real_selector_and_survives_backend_restart"
+      },
+      {
+        "file": "tests/parity-native-auth-integration.test.ts",
+        "case": "does not collect refresh cookies without stay-signed-in consent"
+      }
+    ],
+    "reason": "Replaces the LegacySteamSignInService test seam with the actual backend HTTP coordinator, production encrypted store and session selector, with native main-process capture evidence where the browser owns that behavior. No legacy coordinator is classified as retained."
+  },
+  "SteamSignInServiceTests.A_consented_capture_carries_its_pages_through_without_storing_them": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-auth-integration.test.ts",
+        "case": "captures account pages only after separate opt-in and leaves their import to review"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamSessionParityTests.cs",
+        "case": "Minted_session_reaches_the_real_selector_and_survives_backend_restart"
+      }
+    ],
+    "reason": "Replaces the LegacySteamSignInService test seam with the actual backend HTTP coordinator, production encrypted store and session selector, with native main-process capture evidence where the browser owns that behavior. No legacy coordinator is classified as retained."
+  },
+  "SteamSignInServiceTests.A_refused_sign_in_writes_nothing": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamSessionParityTests.cs",
+        "case": "Refused_or_cancelled_sign_in_changes_no_session_and_requests_no_refresh"
+      },
+      {
+        "file": "tests/parity-native-auth-integration.test.ts",
+        "case": "A_refused_identity_carries_no_credential_at_all and never reaches the session store"
+      }
+    ],
+    "reason": "Replaces the LegacySteamSignInService test seam with the actual backend HTTP coordinator, production encrypted store and session selector, with native main-process capture evidence where the browser owns that behavior. No legacy coordinator is classified as retained."
+  },
+  "SteamSignInServiceTests.A_cancelled_sign_in_writes_nothing_and_says_why": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamSessionParityTests.cs",
+        "case": "Refused_or_cancelled_sign_in_changes_no_session_and_requests_no_refresh"
+      },
+      {
+        "file": "tests/parity-native-auth-integration.test.ts",
+        "case": "does not persist credentials when the user closes while cookies are being read"
+      }
+    ],
+    "reason": "Replaces the LegacySteamSignInService test seam with the actual backend HTTP coordinator, production encrypted store and session selector, with native main-process capture evidence where the browser owns that behavior. No legacy coordinator is classified as retained."
+  },
+  "SteamSignInServiceTests.A_sign_in_with_no_refresh_token_is_kept_and_reported_rather_than_discarded": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamSessionParityTests.cs",
+        "case": "Token_only_session_is_kept_explained_live_then_expired_and_can_reconnect"
+      }
+    ],
+    "reason": "Replaces the LegacySteamSignInService test seam with the actual backend HTTP coordinator, production encrypted store and session selector, with native main-process capture evidence where the browser owns that behavior. No legacy coordinator is classified as retained."
+  },
+  "SteamSignInServiceTests.A_stored_token_only_session_is_live_then_expired_with_nothing_in_between": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamSessionParityTests.cs",
+        "case": "Token_only_session_is_kept_explained_live_then_expired_and_can_reconnect"
+      }
+    ],
+    "reason": "Replaces the LegacySteamSignInService test seam with the actual backend HTTP coordinator, production encrypted store and session selector, with native main-process capture evidence where the browser owns that behavior. No legacy coordinator is classified as retained."
+  },
+  "SteamSignInServiceTests.Signing_out_discards_the_stored_session": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamSessionParityTests.cs",
+        "case": "Sign_out_clears_memory_disk_identity_and_pending_attempts_and_requests_refresh"
+      }
+    ],
+    "reason": "Replaces the LegacySteamSignInService test seam with the actual backend HTTP coordinator, production encrypted store and session selector, with native main-process capture evidence where the browser owns that behavior. No legacy coordinator is classified as retained."
+  },
+  "SteamSignInSessionTests.A_refused_identity_carries_no_credential_at_all": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-auth-integration.test.ts",
+        "case": "A_refused_identity_carries_no_credential_at_all and never reaches the session store"
+      }
+    ],
+    "reason": "A mismatched provider identity returns outcome3 with no credential or account fields and does not call backend completion or read refresh cookies."
+  },
+  "SteamSignInSessionTests.The_sign_in_starts_and_mints_on_the_store_origin_only": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-auth-integration.test.ts",
+        "case": "never executes a probe on a credential page and the injected script refuses it independently"
+      },
+      {
+        "file": "tests/parity-steam-policy.test.ts",
+        "case": "Nothing_off_the_store_origin_is_mintable: %s"
+      }
+    ],
+    "reason": "The actual native host starts on the Steam store login page, probes only noncredential store pages, and the executed probe independently rejects credential pages."
+  },
+  "SteamSignInResultRedactionTests.A_whitespace_refresh_token_is_no_refresh_token": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamSessionParityTests.cs",
+        "case": "Token_only_session_is_kept_explained_live_then_expired_and_can_reconnect"
+      }
+    ],
+    "reason": "Actual HTTP completion normalizes whitespace refresh tokens to absent, stores a token-only session and reports RefreshTokenCaptured=false."
+  },
+  "SteamSignInServiceTests.The_request_reaches_the_browser_session_unchanged": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamSessionParityTests.cs",
+        "case": "Minted_session_reaches_the_real_selector_and_survives_backend_restart"
+      },
+      {
+        "file": "tests/parity-native-auth-integration.test.ts",
+        "case": "captures account pages only after separate opt-in and leaves their import to review"
+      },
+      {
+        "file": "tests/parity-native-auth-integration.test.ts",
+        "case": "The_request_reaches_the_browser_session_unchanged including nondefault capture bounds"
+      }
+    ],
+    "reason": "The backend HTTP challenge preserves the complete original request. The actual native main coordinator forwards consent, declined refresh permission and nondefault7-click/3-page bounds to that challenge and the capture reader without changing them. Reader safety ceilings remain enforced independently."
+  }
+}

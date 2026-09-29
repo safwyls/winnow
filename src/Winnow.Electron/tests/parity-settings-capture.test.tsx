@@ -106,7 +106,7 @@ describe.each(['desktop', 'fullscreen'])('%s Steam capture consent and import pa
     await screen.findByText('2 licence facts and 3 transaction facts recorded; 1 library entries filled.')
   })
 
-  it('requires separate capture consent and permits discarding a partial capture without any import', async () => {
+  it('requires separate capture consent then imports partial pages under their observed identity', async () => {
     const steamCapturePages = vi
       .fn()
       .mockResolvedValue({
@@ -125,13 +125,11 @@ describe.each(['desktop', 'fullscreen'])('%s Steam capture consent and import pa
     fireEvent.click(screen.getByRole('button', { name: 'Cancel capture' }))
     expect(steamCapturePages).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Capture account pages in Winnow' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Agree and capture pages' }))
-    await screen.findByText(/These facts will remain under an unknown account/)
+    fireEvent.click(screen.getByRole('button', { name: 'Agree and import pages' }))
+    await screen.findByText('2 licence facts and 3 transaction facts recorded; 1 library entries filled.')
     expect(steamCapturePages).toHaveBeenCalledWith({ consentGranted: true })
-    expect(screen.getByText(/You can import these pages and capture the remainder later/)).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Discard capture' }))
-    expect(request).not.toHaveBeenCalled()
-    expect(screen.queryByRole('region', { name: 'Review Steam capture' })).toBeNull()
+    expect(request).toHaveBeenCalledExactlyOnceWith({ route: 'imports.steam.pages', params: undefined, body: { ...captured.pages, steamId: null } })
+    expect(screen.queryByRole('button', { name: 'Import captured pages' })).toBeNull()
   })
 
   it('hides unavailable Steam link routing while keeping browser and in-app choices', async () => {

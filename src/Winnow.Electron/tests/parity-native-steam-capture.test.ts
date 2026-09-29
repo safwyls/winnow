@@ -101,6 +101,10 @@ describe('bounded Steam account capture using sanitized real-page fixtures', () 
     expect(result.pages?.steamId).toBe(steamId)
     expect(result.licensesTruncated).toBe(false)
     expect(result.historyTruncated).toBe(false)
+    expect(result.captureOutcome).toBe('captured')
+    expect(result.licensesStoppedBecause).toBe('exhausted')
+    expect(result.historyStoppedBecause).toBe('exhausted')
+    expect(result.licensesPagesWalked).toBe(2)
     expect(result.pages?.licensesHtml).toContain('license_date_col')
     expect(result.pages?.historyHtml).toContain('wallet_table_row')
     expect(JSON.stringify(result.pages)).not.toContain('must-not-cross-the-bridge')
@@ -113,6 +117,8 @@ describe('bounded Steam account capture using sanitized real-page fixtures', () 
     const result = await capture(new Browser())
     expect(result.pages?.additionalLicensesHtml).toHaveLength(1)
     expect(result.licensesTruncated).toBe(true)
+    expect(result.licensesStoppedBecause).toBe('stalled')
+    expect(result.captureOutcome).toBe('partial')
   })
 
   it('refuses account and login sibling paths before reading any document', () => {
@@ -148,6 +154,7 @@ describe('bounded Steam account capture using sanitized real-page fixtures', () 
     const result = await capture(browser)
     expect(result.pages).toBeUndefined()
     expect(result.captureDetail).toContain('identity changed')
+    expect(result.captureOutcome).toBe('failed')
   })
 
   it('leaves all pages under an unknown account when neither page exposes an identity', async () => {
@@ -175,6 +182,9 @@ describe('bounded Steam account capture using sanitized real-page fixtures', () 
     expect(browser.loaded).toHaveLength(2)
     expect(result.licensesTruncated).toBe(true)
     expect(result.historyTruncated).toBe(true)
+    expect(result.licensesStoppedBecause).toBe('cap')
+    expect(result.historyStoppedBecause).toBe('cap')
+    expect(result.loadMoreClicks).toBe(0)
     expect(result.pages?.licensesHtml).toContain('license_paginator_next')
     expect(result.pages?.historyHtml).toContain('load_more_button')
   })
@@ -196,6 +206,8 @@ describe('bounded Steam account capture using sanitized real-page fixtures', () 
     const result = await capture(browser)
     expect(result.historyTruncated).toBe(false)
     expect(result.pages?.historyHtml).not.toContain('load_more_button')
+    expect(result.historyStoppedBecause).toBe('exhausted')
+    expect(result.loadMoreClicks).toBe(1)
   })
 
   it('reports a stalled history as incomplete instead of clicking forever', async () => {
@@ -208,6 +220,8 @@ describe('bounded Steam account capture using sanitized real-page fixtures', () 
     const result = await pending
     expect(result.historyTruncated).toBe(true)
     expect(result.pages?.historyHtml).toContain('load_more_button')
+    expect(result.historyStoppedBecause).toBe('stalled')
+    expect(result.loadMoreClicks).toBe(1)
   })
 
   it('returns already captured pages when the private window is closed during a later read', async () => {
@@ -219,6 +233,8 @@ describe('bounded Steam account capture using sanitized real-page fixtures', () 
     expect(result.pages?.licensesHtml).toBeTruthy()
     expect(result.pages?.historyHtml).toBeUndefined()
     expect(result.historyTruncated).toBe(true)
+    expect(result.historyStoppedBecause).toBe('interrupted')
+    expect(result.captureOutcome).toBe('partial')
   })
 
   it('stops a pending script when the private window closes without returning its late contents', async () => {
@@ -234,7 +250,9 @@ describe('bounded Steam account capture using sanitized real-page fixtures', () 
     await vi.advanceTimersByTimeAsync(500)
     browser.close()
     await vi.advanceTimersByTimeAsync(250)
-    expect((await pending).pages).toBeUndefined()
+    const stopped = await pending
+    expect(stopped.pages).toBeUndefined()
+    expect(stopped.captureOutcome).toBe('cancelled')
     resolve({ steamId, rows: 1, nextUrl: null, hasMore: false, html: 'late-private-data' })
     await Promise.resolve()
     expect(browser.webContents.executeJavaScript).toHaveBeenCalledOnce()
@@ -250,5 +268,60 @@ describe('bounded Steam account capture using sanitized real-page fixtures', () 
     const result = await capture(browser)
     expect(browser.loaded.some((url) => url.includes('example.com'))).toBe(false)
     expect(result.licensesTruncated).toBe(true)
+    expect(result.licensesStoppedBecause).toBe('failed')
+  })
+
+  it('reports licence rendering count differences as complete when contiguous ranges and visible controls reach the end', async () => {
+    const browser = new Browser((url) => ({
+      fixture: url.includes('/history/')
+        ? 'purchase-history-exhausted'
+        : url.includes('?')
+          ? 'licenses-final-page'
+          : 'licenses-page1',
+      identity: steamId,
+      mutate: (doc) => {
+        for (const span of doc.querySelectorAll('.license_paginator_ctn span'))
+          span.textContent = url.includes('?')
+            ? 'Showing licenses 101-200 of 200'
+            : 'Showing licenses 1-100 of 200'
+      },
+    }))
+    const result = await capture(browser)
+    const html = result.pages!.licensesHtml! + result.pages!.additionalLicensesHtml.join('')
+    expect((html.match(/license_date_col/g) ?? []).length).toBeLessThan(200)
+    expect(result.licensesStoppedBecause).toBe('exhausted')
+    expect(result.licensesTruncated).toBe(false)
+  })
+
+  it('ignores a stylesheet-hidden load-more control in the live DOM', async () => {
+    const browser = new Browser((url) => ({
+      fixture: url.includes('/history/') ? 'purchase-history' : 'licenses-final-page',
+      identity: steamId,
+      mutate: (doc) => {
+        const more = doc.querySelector<HTMLButtonElement>('#load_more_button')
+        if (more) more.parentElement!.style.display = 'none'
+      },
+    }))
+    const result = await capture(browser)
+    expect(result.historyStoppedBecause).toBe('exhausted')
+    expect(result.loadMoreClicks).toBe(0)
+    expect(result.pages!.historyHtml).not.toContain('load_more_button')
+  })
+
+  it('keeps an unsigned-in timeout neutral and a recognizable-page failure actionable', async () => {
+    const unsigned = new Browser()
+    unsigned.loadURL = async () => {
+      unsigned.webContents.url = 'https://store.steampowered.com/login/'
+    }
+    const noSession = captureSteamAccountPages(unsigned as unknown as BrowserWindow, {
+      deadline: Date.now() + 500,
+    })
+    await vi.advanceTimersByTimeAsync(750)
+    expect((await noSession).captureOutcome).toBe('no-session')
+    const broken = new Browser()
+    broken.webContents.executeJavaScript.mockResolvedValue(null)
+    const failed = captureSteamAccountPages(broken as unknown as BrowserWindow)
+    await vi.advanceTimersByTimeAsync(32_000)
+    expect((await failed).captureOutcome).toBe('failed')
   })
 })

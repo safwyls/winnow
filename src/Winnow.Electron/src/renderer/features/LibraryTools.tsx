@@ -48,7 +48,7 @@ export function LibraryTools({
       )}
       {tab === 'Manual games' && <ManualGames mode={mode} onOpenGame={onOpenGame} />}
       {tab === 'Hidden games' && <HiddenGames />}
-      {tab === 'Identity review' && <IdentityTools onOpenGame={onOpenGame} />}
+      {tab === 'Identity review' && <IdentityTools onOpenGame={onOpenGame} mode={mode} />}
       {selectedWorkId && (
         <section className="feature-panel">
           <h2>Selected game</h2>

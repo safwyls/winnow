@@ -37,6 +37,22 @@ Consecutive refusals accumulate in a seven-second undo dock. Group state survive
 navigation and pending writes remain disabled across a remount. Same-title rows receive
 distinct accessible names based on their displayed store, year, publisher and position.
 
+The September 29 merge follow-up gives desktop rows compact playtime and idle columns,
+ownership and unread details, store chips and covers from the shared artwork selection
+path. The live dormancy preference updates covers without reloading the queue. Row-body
+promotion is separate from Details, radio and inclusion actions. Fullscreen opens a
+proposal sheet, then a member sheet; Open game and eligible Make header actions remain
+separate. A confirms the focused action, B returns one layer, X opens grouping confirmation,
+and Y changes group selection. Returning from Details retains the tools panel and restores
+the specific row or proposal. Return intent is consumed on remount, after the departing
+page's animation, so the exit cannot consume it early.
+
+Suggestion refresh reports progress, failure, retry and truncated completion without
+answering proposals. Leaving the page cancels the named request. Main binds cancellation
+to its owning renderer and active lifetime; malformed or duplicate identities are refused,
+completion removes the registration, and renderer destruction aborts pending requests.
+Late responses cannot reload identity data or move focus on the next page.
+
 ## Measured checks
 
 The earlier focused library/details/activity checkpoint passed 208 tests across 13
@@ -63,9 +79,21 @@ was `.tmp/parity-full-tests/Debug/net10.0/Winnow.Backend.exe`. Fullscreen checks
 production mode event in a fixed client window; they do not establish physical display
 fullscreen or controller hardware behavior.
 
+The September 29 follow-up passed 130 focused tests across nine merge/library/transport
+files. The expanded native suite has eight cases. Six original cases passed in the combined
+run; the two new long-title cases passed on the corrected build in 18.0 seconds. They check
+desktop windows at 1920, 1200, 1280 and 1200 pixels, fullscreen sheets at 1920 and 1280,
+native pointer and keyboard actions, simulated Gamepad API A/B/X/Y, live backend dormancy
+preference changes, and Details-return focus. Native testing found and corrected a grid
+track minimum that pushed trailing row controls outside the desktop card, and a return
+intent consumed during the departing page's animation. Screenshots were inspected in
+`.tmp/electron-rendered-results/library-details-*/merge-*.png`. The physical hardware and
+display-fullscreen limits above still apply.
+
 `tests/migration-library-details.json`, `tests/migration-library-workflows.json`,
 `tests/migration-manual-flows.json`, `tests/migration-activity.json` and
-`tests/migration-merges.json` record the exact original methods, replacement tests and
+`tests/migration-merges.json`, `tests/migration-merge-completeness.json` and
+`tests/migration-merges-remaining.json` record the exact original methods, replacement tests and
 remaining differences. `npm run migration:report` validates those references against
 the frozen inventory. A green focused suite does not establish full migration parity.
 
@@ -97,12 +125,44 @@ renderer parity for these excluded behaviors.
 
 ## Remaining differences in this package
 
-The merge queue still needs the original cover-selection pipeline and dormancy styling,
-compact idle facts, fullscreen member-overlay hierarchy, detailed controller shortcuts,
-and the complete refresh/cancellation/performance matrix. Its snapshot refresh after
-each answer also differs from the original no-read answer-path performance contract.
-Several source cases have only component evidence for preferred-platform reload,
-excluded-member persistence, expansion refusal, restored position and disclosure geometry.
+The September 29 merge continuation passed 174 focused tests across nine Electron files,
+plus all three cases of `MergeArtworkParityTests` against the real backend composition.
+Four new native cases in `tests/electron/merge-contracts.spec.ts` passed in 18.4 seconds:
+both modes preserve answered card slots through separation, retain work/release/ownership
+rows, and change a saved group's header storefront without changing its identity act.
+Fullscreen sort sheets also return keyboard focus to their trigger. These runs use the
+isolated `.tmp/merge-art-parity/Debug/net10.0/Winnow.Backend.exe` build. Captured screenshots
+were inspected, although the initial screenshots show toolbar context rather than every
+saved strip; they do not establish the complete resolved-strip geometry matrix.
+
+The identity coordinator uses the existing TanStack cache key across surfaces. Named GET
+requests consume cancellation signals, and a completed explicit refresh cancels older
+reads before publishing its snapshot. Hidden surfaces defer invalidation work until entry.
+Queue mutations register their lifetime with the existing mutation cache so application
+event invalidation can wait for a batch. Presentation-only act-to-slot keys and slot order
+retain card positions through answers and Undo; identity membership and revision always
+come from the backend. Explicit sorting moves resolved strips behind pending cards.
+Saved-group header-store controls, fullscreen sort/kind/preference sheets, empty-section
+copy and total-to-shown counts are implemented on their respective surfaces.
+
+The original 89-method `MergeQueueViewModelTests` class currently has 58 ported methods,
+one retained backend method, 24 partial methods and six pending methods. The backend
+artwork matrix proves user art precedes Steam, a live IGDB pin precedes Steam, and the same
+unpinned IGDB URL keeps Steam; renderer tests verify the returned keys are used unchanged.
+The pending methods cover a preference change with both an expansion and an existing act,
+the pre-load empty model, stale structural refusal, rejecting every candidate edge in one
+card, separation of a strip loaded from history, and rejected-candidate persistence through
+the actual resolver. These are not classified as framework-only work.
+
+Partial methods include source dock wording and boundary timing, the complete exact-match
+bulk matrix, refresh with a sweep-retired candidate, native failure recovery, initial
+saved-off dormancy, multiple-store/resolved geometry, and several persisted exclusion and
+history matrices. The snapshot refresh after each answer also differs from the original
+zero-read performance contract. Backend compare-and-swap revision calculation deliberately
+retains its repository reads. The API offers no count-only identity endpoint, so hidden
+pages defer loading instead of executing the source's lightweight count query. The final
+desktop cursor initialization and viewport-follow correction passed the focused suite;
+the four native cases above ran immediately before that narrow keyboard correction.
 
 Library collection sections are not yet independently collapsible. Original deep
 controller options and Quick-menu focus restoration still need native evidence.

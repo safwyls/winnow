@@ -10,6 +10,7 @@ import {
   steamFrameNavigationAllowed,
   steamNavigationAllowed,
   steamTokenProbe,
+  SteamIdentityMismatchError,
 } from './steam-auth-policy'
 
 let active = false
@@ -24,6 +25,12 @@ export async function signInToSteam(
   transport: BackendTransport,
   options: SteamSignInOptions,
 ): Promise<SteamSignInResult> {
+  if (options?.consentGranted === false)
+    return {
+      signedIn: false,
+      outcome: 4,
+      detail: 'Steam sign-in was not started because permission was declined.',
+    }
   if (
     !options ||
     options.consentGranted !== true ||
@@ -31,6 +38,9 @@ export async function signInToSteam(
     (options.capturePurchaseHistory !== undefined && typeof options.capturePurchaseHistory !== 'boolean')
   )
     throw new Error('Agree to connect your Steam account before signing in.')
+  if ([options.maxLoadMoreClicks, options.maxLicensesPages].some(
+    (value) => value !== undefined && (!Number.isSafeInteger(value) || value < 0 || value > 2147483647),
+  )) throw new Error('Steam capture limits must be nonnegative whole numbers.')
   if (active) throw new Error('A Steam sign-in is already open.')
   active = true
   const clientId = randomUUID().replaceAll('-', '')
@@ -65,6 +75,8 @@ export async function signInToSteam(
           staySignedIn: options.staySignedIn,
           capturePurchaseHistory: options.capturePurchaseHistory === true,
           timeout: '00:15:00',
+          ...(options.maxLoadMoreClicks === undefined ? {} : { maxLoadMoreClicks: options.maxLoadMoreClicks }),
+          ...(options.maxLicensesPages === undefined ? {} : { maxLicensesPages: options.maxLicensesPages }),
         },
       },
     })
@@ -135,12 +147,12 @@ export async function signInToSteam(
       }
       parent.once('closed', close)
       authWindow.once('closed', () => {
-        if (!completed) finish({ signedIn: false, detail: 'Steam sign-in cancelled.' })
+        if (!completed) finish({ signedIn: false, outcome: 4, detail: 'Steam sign-in cancelled.' })
       })
       const poll = async () => {
         if (completed || settled || authWindow.isDestroyed()) return
         if (Date.now() >= deadline) {
-          finish({ signedIn: false, detail: 'Steam sign-in expired. Try again.' })
+          finish({ signedIn: false, outcome: 2, detail: 'Steam sign-in expired. Try again.' })
           return
         }
         if (busy) return
@@ -168,6 +180,7 @@ export async function signInToSteam(
               else
                 finish({
                   signedIn: false,
+                  outcome: 1,
                   detail: 'Steam did not provide a session. Try again or use a Web API key.',
                 })
             }
@@ -199,7 +212,11 @@ export async function signInToSteam(
             throw new Error(result.message || 'Steam sign-in could not be saved. Try again.')
           const capture =
             options.capturePurchaseHistory === true
-              ? await captureSteamAccountPages(authWindow, { expectedSteamId: identity.steamId, deadline })
+              ? await captureSteamAccountPages(authWindow, {
+                  expectedSteamId: identity.steamId, deadline,
+                  maxLoadMoreClicks: options.maxLoadMoreClicks,
+                  maxLicensesPages: options.maxLicensesPages,
+                })
               : {}
           finish({ ...result.data, ...capture })
         } catch (error) {
@@ -216,6 +233,16 @@ export async function signInToSteam(
       browser?.close()
     })
     return await outcome
+  } catch (error) {
+    if (error instanceof SteamIdentityMismatchError)
+      return { signedIn: false, outcome: 3, detail: error.message }
+    return {
+      signedIn: false,
+      outcome: browser ? 6 : 5,
+      detail: browser
+        ? 'Steam sign-in could not be completed. Try again; your Web API key is unaffected.'
+        : 'The Steam sign-in window could not open. Try again or use a Web API key.',
+    }
   } finally {
     try {
       if (browser && !browser.isDestroyed()) browser.destroy()
@@ -266,6 +293,13 @@ export async function captureSteamPages(
     browser.webContents.on('will-attach-webview', (event) => event.preventDefault())
     parent.once('closed', close)
     return await captureSteamAccountPages(browser)
+  } catch {
+    return {
+      captureOutcome: browser ? 'failed' : 'unavailable',
+      captureDetail: browser
+        ? 'Steam account pages could not be read. Try again or import saved pages.'
+        : 'The Steam capture window could not open. You can still import saved pages.',
+    }
   } finally {
     parent.off('closed', close)
     try {

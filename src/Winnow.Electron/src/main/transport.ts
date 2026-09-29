@@ -190,21 +190,34 @@ export class BackendTransport {
       this.waiters.clear()
     }
   }
-  private async ready(): Promise<Discovery> {
+  private async ready(requestSignal?: AbortSignal): Promise<Discovery> {
+    const signal = requestSignal ? AbortSignal.any([this.lifetime.signal, requestSignal]) : this.lifetime.signal
+    signal.throwIfAborted()
     this.start()
     if (!this.active || !this.state.connected)
       await new Promise<void>((resolve, reject) => {
         const ready = () => {
           clearTimeout(timer)
           this.waiters.delete(ready)
+          signal.removeEventListener('abort', aborted)
           resolve()
+        }
+        const aborted = () => {
+          clearTimeout(timer)
+          this.waiters.delete(ready)
+          signal.removeEventListener('abort', aborted)
+          reject(signal.reason)
         }
         const timer = setTimeout(() => {
           this.waiters.delete(ready)
+          signal.removeEventListener('abort', aborted)
           reject(new Error('The backend is unavailable. Your edits have not been sent.'))
         }, 12000)
         this.waiters.add(ready)
+        signal.addEventListener('abort', aborted, { once: true })
+        if (signal.aborted) aborted()
       })
+    signal.throwIfAborted()
     if (!this.active) throw new Error('The backend is unavailable')
     return this.active
   }
@@ -265,7 +278,9 @@ export class BackendTransport {
       )
     }
   }
-  async request<T = unknown>(request: ApiRequest): Promise<ApiResult<T>> {
+  async request<T = unknown>(request: ApiRequest, requestSignal?: AbortSignal): Promise<ApiResult<T>> {
+    const cancelled = (): ApiResult<T> => ({ ok: false, status: 499, message: 'Request cancelled.' })
+    if (requestSignal?.aborted) return cancelled()
     let route: ReturnType<typeof resolveRoute>
     try {
       route = resolveRoute(request)
@@ -274,8 +289,9 @@ export class BackendTransport {
     }
     let connection: Discovery
     try {
-      connection = await this.ready()
+      connection = await this.ready(requestSignal)
     } catch {
+      if (requestSignal?.aborted) return cancelled()
       return { ok: false, status: 503, message: 'The backend is unavailable. Reconnect before trying again.' }
     }
     try {
@@ -288,10 +304,11 @@ export class BackendTransport {
         },
         body: route.body,
         redirect: 'error',
-        signal: AbortSignal.any([this.lifetime.signal, AbortSignal.timeout(120000)]),
+        signal: AbortSignal.any([this.lifetime.signal, AbortSignal.timeout(120000), ...(requestSignal ? [requestSignal] : [])]),
       })
       if (response.status === 401) this.attempt?.abort()
       const responseText = await response.text()
+      requestSignal?.throwIfAborted()
       const text = response.ok ? responseText : responseText.replaceAll(connection.token, '[redacted]')
       const responseLimit = request.route === 'imports.steam.load' ? 180 * 1024 * 1024 : 32 * 1024 * 1024
       if (text.length > responseLimit) throw new Error('Response too large')
@@ -318,6 +335,7 @@ export class BackendTransport {
       }
       return { ok: true, status: response.status, data: data as T }
     } catch {
+      if (requestSignal?.aborted) return cancelled()
       return {
         ok: false,
         status: 0,

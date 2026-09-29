@@ -82,7 +82,10 @@ export async function captureSteamAccountPages(
   } = {},
 ): Promise<SteamCaptureResult> {
   if (browser.isDestroyed())
-    return { captureDetail: 'The window closed before account pages could be captured.' }
+    return {
+      captureOutcome: 'cancelled',
+      captureDetail: 'The window closed before account pages could be captured.',
+    }
   const deadline = options.deadline ?? Date.now() + 15 * 60_000
   const licensesCap = Math.min(200, Math.max(0, options.maxLicensesPages ?? 50))
   const historyCap = Math.min(500, Math.max(0, options.maxLoadMoreClicks ?? 100))
@@ -96,6 +99,11 @@ export async function captureSteamAccountPages(
     generation = 0,
     licensesTruncated = false,
     historyTruncated = false
+  let licensesStoppedBecause: SteamCaptureResult['licensesStoppedBecause'],
+    historyStoppedBecause: SteamCaptureResult['historyStoppedBecause'],
+    licensesPagesWalked = 0,
+    loadMoreClicks = 0,
+    interrupted = false
   const notes: string[] = []
   const navigation = (_event: unknown, _url: string, _inPlace: boolean, main: boolean) => {
     if (main !== false) generation++
@@ -169,6 +177,7 @@ export async function captureSteamAccountPages(
       for (let followed = 0; ; followed++) {
         if (visited.has(url)) {
           licensesTruncated = true
+          licensesStoppedBecause = 'stalled'
           break
         }
         visited.add(url)
@@ -183,6 +192,7 @@ export async function captureSteamAccountPages(
           throw new Error('The capture reached its size limit.')
         if (!pages.licensesHtml) pages.licensesHtml = capture.html
         else pages.additionalLicensesHtml.push(capture.html)
+        licensesPagesWalked++
         if (capture.range) {
           const { from, to, total } = capture.range
           if (
@@ -198,9 +208,13 @@ export async function captureSteamAccountPages(
         } else if (followed > 0 || capture.nextUrl) contiguous = false
         licensesTruncated =
           !!capture.nextUrl || !contiguous || (expectedTotal !== undefined && covered !== expectedTotal)
-        if (!capture.nextUrl) break
+        if (!capture.nextUrl) {
+          licensesStoppedBecause = licensesTruncated ? 'stalled' : 'exhausted'
+          break
+        }
         if (followed >= licensesCap || capture.rows === 0) {
           licensesTruncated = true
+          licensesStoppedBecause = followed >= licensesCap ? 'cap' : 'stalled'
           break
         }
         if (steamCapturePage(capture.nextUrl) !== 'licenses')
@@ -210,6 +224,7 @@ export async function captureSteamAccountPages(
     } catch (failure) {
       if (failure instanceof IdentityChanged || failure instanceof CaptureStopped) throw failure
       licensesTruncated = true
+      licensesStoppedBecause = 'failed'
       notes.push('Some licence pages could not be captured.')
     }
     try {
@@ -219,13 +234,16 @@ export async function captureSteamAccountPages(
       for (let clicks = 0; latest.hasMore; clicks++) {
         if (clicks >= historyCap) {
           historyTruncated = true
+          historyStoppedBecause = 'cap'
           break
         }
         browser.setTitle(`Loading Steam purchase history (${clicks + 1} of at most ${historyCap}) · Winnow`)
         if (!(await execute('more'))) {
           historyTruncated = true
+          historyStoppedBecause = 'stalled'
           break
         }
+        loadMoreClicks++
         const growthDeadline = Math.min(deadline, Date.now() + 15_000),
           before = latest.rows
         do {
@@ -237,6 +255,7 @@ export async function captureSteamAccountPages(
         } while (latest.rows <= before && latest.hasMore && Date.now() < growthDeadline)
         if (latest.rows <= before && latest.hasMore) {
           historyTruncated = true
+          historyStoppedBecause = 'stalled'
           break
         }
       }
@@ -250,19 +269,25 @@ export async function captureSteamAccountPages(
         throw new Error('The purchase-history page is too large to capture.')
       pages.historyHtml = capture.html
       historyTruncated ||= capture.hasMore
+      historyStoppedBecause ??= historyTruncated ? 'stalled' : 'exhausted'
     } catch (failure) {
       if (failure instanceof IdentityChanged || failure instanceof CaptureStopped) throw failure
       historyTruncated = true
+      historyStoppedBecause = 'failed'
       notes.push('Purchase history could not be captured completely.')
     }
   } catch (failure) {
     if (failure instanceof IdentityChanged)
       return {
+        captureOutcome: 'failed',
         captureDetail:
           'Steam account identity changed or could not be confirmed. These pages were discarded.',
       }
     licensesTruncated ||= !pages.licensesHtml
     historyTruncated ||= !pages.historyHtml
+    interrupted = failure instanceof CaptureStopped
+    licensesStoppedBecause ??= 'interrupted'
+    historyStoppedBecause ??= 'interrupted'
     notes.push('Capture stopped before every page was read.')
   } finally {
     clearInterval(watch)
@@ -270,6 +295,19 @@ export async function captureSteamAccountPages(
   }
   const any = !!pages.licensesHtml || !!pages.historyHtml
   return {
+    captureOutcome: any
+      ? licensesTruncated || historyTruncated
+        ? 'partial'
+        : 'captured'
+      : interrupted
+        ? browser.isDestroyed()
+          ? 'cancelled'
+          : 'no-session'
+        : 'failed',
+    licensesStoppedBecause,
+    historyStoppedBecause,
+    licensesPagesWalked,
+    loadMoreClicks,
     ...(any ? { pages } : {}),
     licensesTruncated,
     historyTruncated,

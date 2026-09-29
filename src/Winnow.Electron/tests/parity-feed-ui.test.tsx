@@ -39,22 +39,18 @@ function mount(mode: ThemeContext['mode'], configure?: (context: ThemeContext) =
         title: 'Your next game',
         blurb: 'Waiting for you',
         supportsFeedback: true,
-        items: games
-          .slice(0, 6)
-          .map((item) => ({
-            ownershipId: item.workId,
-            releaseId: item.workId,
-            title: item.title,
-            reason: `Reason for ${item.title}.`,
-          })),
-        reserve: games
-          .slice(6)
-          .map((item) => ({
-            ownershipId: item.workId,
-            releaseId: item.workId,
-            title: item.title,
-            reason: `Reason for ${item.title}.`,
-          })),
+        items: games.slice(0, 6).map((item) => ({
+          ownershipId: item.workId,
+          releaseId: item.workId,
+          title: item.title,
+          reason: `Reason for ${item.title}.`,
+        })),
+        reserve: games.slice(6).map((item) => ({
+          ownershipId: item.workId,
+          releaseId: item.workId,
+          title: item.title,
+          reason: `Reason for ${item.title}.`,
+        })),
       },
     ],
   }
@@ -152,7 +148,7 @@ beforeEach(() => {
   failWrite = false
   failUndo = false
   for (const mode of ['desktop', 'fullscreen'])
-    for (const key of ['shelf', 'column']) clearViewState(`avalon:home:${mode}:${key}`)
+    for (const key of ['shelf', 'column', 'positions']) clearViewState(`avalon:home:${mode}:${key}`)
   vi.useFakeTimers()
   vi.spyOn(document, 'hasFocus').mockReturnValue(true)
   vi.stubGlobal(
@@ -173,6 +169,69 @@ afterEach(() => {
 })
 
 describe.each(['desktop', 'fullscreen'] as const)('feed feedback in %s', (mode) => {
+  function withReplacement(configure?: (context: ThemeContext) => void) {
+    const view = mount(mode, (context) => {
+      if (mode === 'fullscreen')
+        context.feed!.shelves[0].reserve = context.feed!.shelves[0].reserve.slice(0, 4)
+      configure?.(context)
+    })
+    return () => {
+      if (mode !== 'fullscreen') return
+      // Fullscreen displays the initial reserve. A later pass can supply new
+      // replacement games while the current receipt stays in its original slot.
+      view.context.feed!.shelves[0].reserve.push(
+        ...[11, 12].map((id) => ({
+          ownershipId: id,
+          releaseId: id,
+          title: `Game ${id}`,
+          reason: `Reason for Game ${id}.`,
+        })),
+      )
+      view.context.feed = { ...view.context.feed! }
+      view.update()
+    }
+  }
+  it('retains both verdict attempts and the revocation stamp after dismiss, Undo and dismiss again', async () => {
+    mount(mode)
+    await click('Not interested')
+    await click('Undo')
+    await click('Not interested')
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /What you've told the feed/ }))
+      await vi.advanceTimersByTimeAsync(10)
+    })
+    const dialog = within(screen.getByRole('dialog'))
+    expect(dialog.getAllByRole('listitem')).toHaveLength(2)
+    expect(dialog.getAllByRole('button', { name: 'Undo' })).toHaveLength(1)
+    expect(dialog.getByText(/Undone on/)).toBeDefined()
+    expect(dialog.getByText(/Off the feed since/)).toBeDefined()
+    expect(history.map((row) => row.status)).toEqual([1, 0])
+    expect(history[0].revokedAt).toBeTruthy()
+  })
+  it('states the history count only after responses exist and stays quiet for recent play alone', async () => {
+    const { context, update } = mount(mode, (context) => {
+      context.feed!.candidateCount = 0
+      context.feed!.shelves[0].supportsFeedback = false
+      context.feed!.shelves[0].id = 'recently_played'
+    })
+    await tick(10)
+    expect(screen.getByRole('button', { name: "What you've told the feed" })).toBeDefined()
+    expect(screen.queryByText(/games scored/)).toBeNull()
+    expect(screen.queryByText(/Improves as you play/)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Not now' })).toBeNull()
+    context.feed = {
+      ...context.feed!,
+      shelves: context.feed!.shelves.map((shelf) => ({
+        ...shelf,
+        id: 'recommended',
+        supportsFeedback: true,
+      })),
+    }
+    update()
+    await click('Not now')
+    await tick(10)
+    expect(screen.getByRole('button', { name: /What you've told the feed\s*1/ })).toBeDefined()
+  })
   it('launches the installed supported entry, prevents repeat dispatch and offers retry after a failure', async () => {
     let reject!: (failure: Error) => void
     const launch = vi
@@ -232,10 +291,11 @@ describe.each(['desktop', 'fullscreen'] as const)('feed feedback in %s', (mode) 
     expect(screen.getByRole('button', { name: 'View Game 1' })).toBeDefined()
   })
   it('steps a reduced-motion receipt once a second and pauses it while the window is inactive', async () => {
-    mount(mode, (context) => {
+    const refill = withReplacement((context) => {
       context.profile.appearance.reducedMotion = true
     })
     await click('Not interested')
+    refill()
     await tick(800)
     expect(screen.getByRole('progressbar').getAttribute('value')).toBe('0')
     await tick(200)
@@ -270,13 +330,14 @@ describe.each(['desktop', 'fullscreen'] as const)('feed feedback in %s', (mode) 
     )
   })
   it('holds a focused undo and the hovered cover before replacing only that card', async () => {
-    mount(mode)
+    const refill = withReplacement()
     const response = screen.getAllByRole('button', { name: 'Not interested' })[0]
     await act(async () => {
       response.focus()
       fireEvent.click(response)
       await vi.advanceTimersByTimeAsync(1)
     })
+    refill()
     expect(document.activeElement?.textContent).toBe('Undo')
     await tick(6000)
     expect(screen.getByRole('progressbar').getAttribute('value')).toBe('0')
@@ -372,6 +433,38 @@ describe.each(['desktop', 'fullscreen'] as const)('feed feedback in %s', (mode) 
     expect(within(dialog).queryByRole('button', { name: 'Undo' })).toBeNull()
   })
 })
+
+it('renders a thin shelf as complete and places its own count beside the desktop heading', () => {
+  mount('desktop', (context) => {
+    context.feed!.shelves[0].items = context.feed!.shelves[0].items.slice(0, 3)
+    context.feed!.shelves[0].reserve = []
+  })
+  const heading = screen.getByRole('heading', { name: 'Your next game' })
+  expect(heading.closest('header')?.querySelector('.avalon-shelf-count')?.textContent).toBe('3')
+  expect(screen.getAllByRole('button', { name: /^View Game/ })).toHaveLength(3)
+  expect(screen.queryByText('Building the feed…')).toBeNull()
+})
+
+it.each([0, 1, 2])(
+  'calibrates desktop confidence copy for tier %s and shows the candidate count once known',
+  (confidence) => {
+    const { context, update } = mount('desktop', (context) => {
+      context.feed!.confidence = confidence
+      context.feed!.candidateCount = 0
+    })
+    expect(screen.queryByText(/games scored/)).toBeNull()
+    context.feed = { ...context.feed!, candidateCount: 997 }
+    update()
+    expect(screen.getByText('997')).toBeDefined()
+    if (confidence === 0) expect(screen.getByText(/Improves as you play/)).toBeDefined()
+    else if (confidence === 1)
+      expect(screen.getByText('Recorded sessions help refine your picks.')).toBeDefined()
+    else {
+      expect(screen.queryByText(/Improves as you play/)).toBeNull()
+      expect(screen.queryByText('Recorded sessions help refine your picks.')).toBeNull()
+    }
+  },
+)
 
 it('history dates refer to the act each status names', () => {
   const row = {

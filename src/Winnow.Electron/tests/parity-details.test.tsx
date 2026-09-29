@@ -509,7 +509,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s details parity', (mode) => {
     expect(screen.getByText('Screenshot 1 of 2')).toBeTruthy()
     fireEvent.keyDown(dialog, { key: 'ArrowRight' })
     expect(screen.getByText('Screenshot 2 of 2')).toBeTruthy()
-    await waitFor(() => expect(artwork).toHaveBeenCalledWith('igdb-shot', 'shot_two', 1920))
+    await waitFor(() => expect(artwork).toHaveBeenCalledWith('igdb-shot', 'shot_two', 1280))
     fireEvent.click(screen.getByRole('button', { name: 'Close screenshots' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
@@ -525,7 +525,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s details parity', (mode) => {
     expect(document.activeElement).toBe(overview)
     expect(overview.getAttribute('aria-pressed')).toBe('true')
   })
-  it('scrolls the screenshot strip sideways without consuming the wheel at its edge', async () => {
+  it('scrolls the screenshot strip sideways and retains wheel input at its edge', async () => {
     setup(mode)
     const strip = await screen.findByLabelText('Screenshots')
     Object.defineProperties(strip, { scrollWidth: { value: 1000 }, clientWidth: { value: 300 } })
@@ -537,7 +537,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s details parity', (mode) => {
     strip.scrollLeft = 700
     const edge = new WheelEvent('wheel', { deltaY: 120, bubbles: true, cancelable: true })
     fireEvent(strip, edge)
-    expect(edge.defaultPrevented).toBe(false)
+    expect(edge.defaultPrevented).toBe(true)
   })
   it('keeps a new patch out of a pending acknowledgement batch', async () => {
     let finish!: (value: unknown) => void

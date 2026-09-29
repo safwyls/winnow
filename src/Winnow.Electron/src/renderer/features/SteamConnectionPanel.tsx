@@ -4,6 +4,7 @@ import { steamConnectionState } from './steamConnection'
 import { AccountVisibility } from './SettingsPreferences'
 import { Notice } from './shared'
 import './steam-connections.css'
+import { useSteamAccountBusy } from './SteamAccountOperation'
 
 export function SteamConnectionPanel({
   snapshot,
@@ -26,6 +27,7 @@ export function SteamConnectionPanel({
 }) {
   const state = steamConnectionState(snapshot),
     steam = snapshot.steam
+  const accountBusy = useSteamAccountBusy(busy)
   return (
     <section className="feature-panel steam-connections" aria-label="Steam connection">
       <header>
@@ -83,7 +85,7 @@ export function SteamConnectionPanel({
         )}
         {signIn}
         {steam.hasSession && (
-          <button disabled={busy} onClick={onSignOut}>
+          <button disabled={accountBusy} onClick={onSignOut}>
             Sign out of Steam
           </button>
         )}
@@ -120,7 +122,7 @@ export function SteamConnectionPanel({
         </h3>
         {keyEditor}
         {steam.apiKeyIsAppManaged && (
-          <button disabled={busy} onClick={onClearKey}>
+          <button disabled={accountBusy} onClick={onClearKey}>
             Remove saved API key
           </button>
         )}

@@ -148,13 +148,42 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
 }
 
 test('fullscreen combines page and theme text scales without scaling the chrome or icons twice', async () => {
-  await page.getByRole('button', { name: 'Winnow home', exact: true }).click()
-  const metric = () => page.evaluate(() => {
-    const size = (selector: string) => parseFloat(getComputedStyle(document.querySelector(selector)!).fontSize)
-    return { heading: size('.avalon-home-hero h1'), copy: size('.avalon-home-hero > p'), chrome: size('.avalon-brand'), icon: document.querySelector('.avalon-utilities svg')!.getBoundingClientRect().width }
+  const pageTextSize = async (value: string) => {
+    await page.evaluate(async (value) => {
+      const result = await window.winnow.request({
+        route: 'preferences.presentation.put',
+        params: { preference: 'FullscreenTextScale' },
+        body: { value },
+      })
+      if (!result.ok) throw new Error('Could not save the isolated fullscreen text preference')
+    }, value)
+    await expect(page.locator('html')).toHaveCSS('--fullscreen-text-scale', value)
+  }
+  await application.evaluate(({ BrowserWindow }) => {
+    const window = BrowserWindow.getAllWindows()[0]
+    window.setFullScreen(false)
+    window.setContentSize(1280, 720)
+    window.webContents.send('winnow:fullscreen:changed', true)
   })
+  await expect(page.locator('.avalon-shell')).toHaveClass(/fullscreen/)
+  await studio()
+  await page.getByRole('button', { name: 'Reset theme typography' }).click()
+  await pageTextSize('1')
+  await page.getByRole('button', { name: 'Winnow home', exact: true }).click()
+  await expect(page.locator('.avalon-home-hero h1')).toBeVisible()
+  const metric = () =>
+    page.evaluate(() => {
+      const size = (selector: string) =>
+        parseFloat(getComputedStyle(document.querySelector(selector)!).fontSize)
+      return {
+        heading: size('.avalon-home-hero h1'),
+        copy: size('.avalon-home-hero > p'),
+        chrome: size('.avalon-brand'),
+        icon: document.querySelector('.avalon-utilities svg')!.getBoundingClientRect().width,
+      }
+    })
   const baseline = await metric()
-  await page.evaluate(() => document.documentElement.style.setProperty('--fullscreen-text-scale', '1.4'))
+  await pageTextSize('1.4')
   const pageScale = await metric()
   expect(pageScale.copy / baseline.copy).toBeCloseTo(1.4, 2)
   expect(pageScale.heading).toBeCloseTo(baseline.heading, 2)
@@ -162,12 +191,13 @@ test('fullscreen combines page and theme text scales without scaling the chrome 
   await studio()
   await textSize(120)
   await page.getByRole('button', { name: 'Winnow home', exact: true }).click()
+  await expect(page.locator('.avalon-home-hero h1')).toBeVisible()
   const both = await metric()
   expect(both.copy / baseline.copy).toBeCloseTo(1.4 * 1.2, 2)
   expect(both.heading / baseline.heading).toBeCloseTo(1.2, 2)
   expect(both.chrome / baseline.chrome).toBeCloseTo(1.2, 2)
   expect(both.icon).toBeCloseTo(baseline.icon, 2)
-  await page.evaluate(() => document.documentElement.style.setProperty('--fullscreen-text-scale', '1'))
+  await pageTextSize('1')
   await studio()
   await page.getByRole('button', { name: 'Reset theme typography' }).click()
 })

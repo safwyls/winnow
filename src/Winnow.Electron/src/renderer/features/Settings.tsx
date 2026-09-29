@@ -31,8 +31,11 @@ import type { SteamCaptureResult } from '../../shared/bridge'
 import { BackendRestart } from './BackendRestart'
 import { SteamConnectionPanel } from './SteamConnectionPanel'
 import { steamConnectionState } from './steamConnection'
+import { NativeEpicAccount } from './EpicAccount'
+import { SteamAccountOperation, useSteamAccountBusy } from './SteamAccountOperation'
 
 export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
+  const [epicBusy, setEpicBusy] = useState(false)
   const [tab, setTab] = useViewState(`${mode}:settings:tab`, 'Connections')
   const stores = useApiQuery<StoreConnections>('connections.get')
   const igdb = useApiQuery<IgdbConnection>('connections.igdb.get')
@@ -69,32 +72,45 @@ export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
       {tab === 'Connections' && (
         <div className="feature-grid">
           {stores.data && steamState ? (
-            <SteamConnectionPanel
-              snapshot={stores.data}
-              busy={command.isPending}
-              error={stores.error}
-              signIn={
-                <SteamAccount
-                  key={`steam-account:${mode}`}
-                  label={steamState.signInLabel}
-                  showAction={steamState.showSignIn}
-                />
-              }
-              keyEditor={<SteamKeyForm key={`steam-key:${mode}`} />}
-              purchase={
-                <>
-                  <SteamPageImport />
-                  <SteamCapture />
-                </>
-              }
-              onSignOut={() => command.mutate({ route: 'connections.steam.signOut' })}
-              onClearKey={() => command.mutate({ route: 'connections.steam.key', body: { key: null } })}
-            />
+            <SteamAccountOperation>
+              <SteamConnectionPanel
+                snapshot={stores.data}
+                busy={command.isPending}
+                error={stores.error}
+                signIn={
+                  <SteamAccount
+                    key={`steam-account:${mode}`}
+                    label={steamState.signInLabel}
+                    showAction={steamState.showSignIn}
+                    sessionPresent={stores.data.steam.hasSession}
+                  />
+                }
+                keyEditor={<SteamKeyForm key={`steam-key:${mode}`} hasKey={stores.data.steam.hasApiKey} />}
+                purchase={
+                  <>
+                    <SteamPageImport />
+                    <SteamCapture />
+                  </>
+                }
+                onSignOut={() => command.mutate({ route: 'connections.steam.signOut' })}
+                onClearKey={() => command.mutate({ route: 'connections.steam.key', body: { key: null } })}
+              />
+            </SteamAccountOperation>
           ) : (
             <Notice error={stores.error} message="Loading Steam connection…" />
           )}
           <section className="feature-panel">
             <h2>Epic Games</h2>
+            <p
+              className="connection-state"
+              data-tone={stores.data?.epic?.isLive ? 'live' : stores.data?.epic ? 'attention' : 'quiet'}
+            >
+              {stores.data?.epic?.isLive
+                ? 'SIGNED IN'
+                : stores.data?.epic
+                  ? 'SESSION EXPIRED'
+                  : 'NOT SIGNED IN'}
+            </p>
             <p>
               {stores.data?.epic?.isLive
                 ? `Connected${stores.data.epic.displayName ? ` as ${stores.data.epic.displayName}` : '. Epic did not provide a display name'}.`
@@ -104,18 +120,18 @@ export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
             </p>
             {stores.data?.epic ? (
               <button
-                disabled={command.isPending}
+                disabled={command.isPending || epicBusy}
                 onClick={() => command.mutate({ route: 'connections.epic.signOut' })}
               >
                 Sign out of Epic
               </button>
             ) : null}
-            {!stores.data?.epic?.isLive && (
-              <EpicAccount
-                key={mode}
-                label={stores.data?.epic ? 'Sign in to Epic again' : 'Connect Epic Games'}
-              />
-            )}
+            <EpicAccount
+              key={mode}
+              showAction={!stores.data?.epic?.isLive}
+              onBusyChange={setEpicBusy}
+              label={stores.data?.epic ? 'Sign in to Epic again' : 'Connect Epic Games'}
+            />
             <p className="muted">Existing account connections are shared with other Winnow frontends.</p>
           </section>
           <section className="feature-panel">
@@ -289,12 +305,21 @@ export function FeedbackHistory() {
   )
 }
 
-export function SteamKeyForm() {
+export function SteamKeyForm({ hasKey }: { hasKey?: boolean } = {}) {
   const [key, setKey] = useState('')
   const [message, setMessage] = useState('')
+  const [linkError, setLinkError] = useState<unknown>(null)
+  const hadKey = useRef(hasKey)
+  useEffect(() => {
+    if (hadKey.current && hasKey === false) setMessage('Saved API key removed.')
+    hadKey.current = hasKey
+  }, [hasKey])
   const command = useCommand<number>()
+  const busy = useSteamAccountBusy(command.isPending)
   useSetupBusy(command.isPending)
   async function save() {
+    if (busy) return
+    setMessage('')
     const result = await command.mutateAsync({ route: 'connections.steam.key', body: { key } })
     if (result === 0) setKey('')
     setMessage(
@@ -320,17 +345,26 @@ export function SteamKeyForm() {
         />
       </label>
       <div className="form-actions">
-        <button disabled={command.isPending || !key.trim()}>Save API key</button>
+        <button disabled={busy || !key.trim()}>Save API key</button>
         <button
           type="button"
           onClick={() => {
-            void openExternal('https://steamcommunity.com/dev/apikey')
+            setLinkError(null)
+            void openExternal('https://steamcommunity.com/dev/apikey', { failure: 'inline' }).catch(
+              setLinkError,
+            )
           }}
         >
           Get a key
         </button>
       </div>
       <Notice error={command.error} message={message} />
+      {linkError != null && (
+        <>
+          <Notice error={linkError} />
+          <p>You can open this address in your browser: https://steamcommunity.com/dev/apikey</p>
+        </>
+      )}
     </form>
   )
 }
@@ -338,7 +372,8 @@ export function SteamKeyForm() {
 export function SteamAccount({
   label = 'Sign in to Steam',
   showAction = true,
-}: { label?: string; showAction?: boolean } = {}) {
+  sessionPresent,
+}: { label?: string; showAction?: boolean; sessionPresent?: boolean } = {}) {
   const [consent, setConsent] = useState(false)
   const [staySignedIn, setStaySignedIn] = useState(true)
   const [capturePurchaseHistory, setCapturePurchaseHistory] = useState(false)
@@ -347,9 +382,30 @@ export function SteamAccount({
   const [message, setMessage] = useState('')
   const [error, setError] = useState<unknown>(null)
   const client = useQueryClient()
+  const busy = useSteamAccountBusy(pending)
+  const alive = useRef(true)
+  const active = useRef(false)
+  const hadSession = useRef(sessionPresent)
+  useEffect(() => {
+    if (hadSession.current && sessionPresent === false) {
+      setCapturePurchaseHistory(false)
+      setCapture(null)
+      setMessage('')
+      setError(null)
+    }
+    hadSession.current = sessionPresent
+  }, [sessionPresent])
+  useEffect(() => {
+    alive.current = true
+    return () => {
+      alive.current = false
+      if (active.current) void window.winnow.cancelSteamWindow?.().catch(() => {})
+    }
+  }, [])
   useSetupBusy(pending || consent)
   async function signIn() {
-    if (!window.winnow.steamSignIn || pending) return
+    if (!window.winnow.steamSignIn || busy) return
+    active.current = true
     setPending(true)
     setError(null)
     setMessage('')
@@ -360,6 +416,7 @@ export function SteamAccount({
         staySignedIn,
         ...(capturePurchaseHistory ? { capturePurchaseHistory: true } : {}),
       })
+      if (!alive.current) return
       setCapture(result.captureDetail || result.pages ? result : null)
       if (!result.signedIn && [1, 3, 5, 6].includes(result.outcome ?? -1))
         throw Error(result.detail || 'Steam sign-in did not succeed. Try again; an API key is unaffected.')
@@ -377,9 +434,10 @@ export function SteamAccount({
       })
       await client.invalidateQueries({ queryKey: ['api'] })
     } catch (failure) {
-      setError(failure)
+      if (alive.current) setError(failure)
     } finally {
-      setPending(false)
+      active.current = false
+      if (alive.current) setPending(false)
     }
   }
   if (!window.winnow.steamSignIn)
@@ -397,7 +455,7 @@ export function SteamAccount({
       >
         {showAction && (
           <Dialog.Trigger asChild>
-            <button>{label}</button>
+            <button disabled={busy}>{label}</button>
           </Dialog.Trigger>
         )}
         <Dialog.Portal>
@@ -786,7 +844,28 @@ interface Challenge {
   expiresAt: string
   pollIntervalSeconds: number
 }
-export function EpicAccount({ label = 'Connect Epic Games' }: { label?: string } = {}) {
+export function EpicAccount({
+  label = 'Connect Epic Games',
+  showAction = true,
+  onBusyChange,
+}: { label?: string; showAction?: boolean; onBusyChange?: (busy: boolean) => void } = {}) {
+  return window.winnow.prepareEpicSignIn &&
+    window.winnow.epicSignIn &&
+    window.winnow.cancelEpicSignIn &&
+    window.winnow.openEpicSignInInBrowser &&
+    window.winnow.completeEpicSignIn ? (
+    <NativeEpicAccount label={label} showAction={showAction} onBusyChange={onBusyChange} />
+  ) : showAction ? (
+    <LegacyEpicAccount label={label} onBusyChange={onBusyChange} />
+  ) : null
+}
+function LegacyEpicAccount({
+  label,
+  onBusyChange,
+}: {
+  label: string
+  onBusyChange?: (busy: boolean) => void
+}) {
   const [challenge, setChallenge] = useState<EpicChallenge | null>(null)
   const [accepted, setAccepted] = useState(false)
   const [callback, setCallback] = useState('')
@@ -794,6 +873,10 @@ export function EpicAccount({ label = 'Connect Epic Games' }: { label?: string }
   const [error, setError] = useState<unknown>(null)
   const [pending, setPending] = useState(false)
   useSetupBusy(pending || !!challenge)
+  useEffect(() => {
+    onBusyChange?.(pending || !!challenge)
+    return () => onBusyChange?.(false)
+  }, [pending, challenge, onBusyChange])
   const clientId = useRef(createClientId()).current
   const client = useQueryClient()
   useEffect(() => {

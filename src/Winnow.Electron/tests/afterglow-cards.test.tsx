@@ -111,6 +111,7 @@ beforeEach(() => {
     'IntersectionObserver',
     class {
       observe() {}
+      unobserve() {}
       disconnect() {}
     },
   )

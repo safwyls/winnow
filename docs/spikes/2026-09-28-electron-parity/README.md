@@ -7,10 +7,13 @@ tests remain available while equivalent Electron coverage is added.
 
 ## Original contract inventory
 
-`source-contracts.json` freezes 2,310 test methods from 290 files at
+`source-contracts.json` freezes 2,435 test methods from 299 files at
 `cf45d9f1127243a987d3cf6e664a32fc767ecb67`. Collection includes every test in
-`tests/Winnow.Ui.Tests`, recursively, and main test-project files mentioning `Winnow.App`
-or importing Avalonia. Roslyn identifies attributed methods and their containing class,
+`tests/Winnow.Ui.Tests`, recursively, and main test-project files mentioning `Winnow.App`,
+`Winnow.Auth.WebView`, `Winnow.Core.Auth`, `Winnow.Presentation`, `Winnow.Covers.Avalonia`,
+or importing Avalonia. The account sign-in filter adds 125 methods from nine files that
+the initial collection missed; all 2,310 initially collected methods remain at the same
+revision and source paths. Roslyn identifies attributed methods and their containing class,
 including files with multiple test classes. Theory rows count as one source method.
 This is a source-based inventory, not a count of executed test cases or a proof that
 every product requirement has a test.
@@ -50,15 +53,19 @@ Chromium profiles stay in those directories and are excluded from committed evid
 |---|---|
 | Full .NET Release solution | 6,772 passed; two Linux-only skips on Windows, across 13 assemblies. |
 | Original Avalonia UI assembly | All 896 tests passed within the full Release run. |
-| Electron unit/component and live API suite | All 1,183 tests passed across 81 files, without skips, against the isolated Debug backend. |
+| Electron unit/component and live API suite | All 1,705 tests passed across 99 files, without skips, against the isolated Debug backend. This run includes the account, feed, merge, navigation and shared details fact packages. |
 | Live API coverage within that run | All eight integration tests passed, including journal conflict and metadata operation cases. |
 | Rendered core Electron checkpoint | Twelve tests passed for startup, layout, search/details return, settings/activity, secondary-instance activation and simulated controller overlays. |
-| Complete rendered Electron checkpoint | All 40 tests passed in one run, including the individual groups below, against the freshly built frontend and isolated Debug backend. |
+| Complete rendered Electron checkpoint | All 40 tests passed in one run at commit `a8c7ad0`. Later focused groups below pass; the expanded full rendered suite has not yet had a final combined pass. |
+| Rendered Home and Library navigation | All 16 layout/navigation tests plus five typography tests passed together after saved paging, two-row retention and text/cover geometry corrections. |
+| Rendered Steam imports | Both surfaces passed with immediate import through the real backend, deduplicated licence counts, per-source truncation notices and narrow-layout checks. |
+| Rendered merge review additions | Four tests passed for retained answered slots, separation, sort-sheet focus and preferred storefront headers across both modes. |
+| Rendered screenshot gallery | Three tests passed for desktop/fullscreen wheel containment, uncropped 1280×720 image caps, trapped focus, one-layer Escape and original-thumbnail return. See [details evidence](details-facts.md). |
 | Rendered typography | Five tests passed for both surfaces, per-palette font retention, installed-font enumeration and combined theme/fullscreen text scaling. |
 | Rendered account statistics | Two tests passed for currency boundaries, chart focus, narrow panels and enlarged text across both surfaces. |
 | Native reading browser | Two tests passed for desktop/fullscreen navigation, toolbar and controller input against isolated HTTP/HTTPS fixtures. See [reader evidence](native-reader.md). |
 | Native library and details | Six tests passed for grouping, immediate exact-act Undo, bulk relationship acceptance/Undo, and metadata changes updating an open live list while unsaved title text remains. |
-| Native feed | Two tests passed for dated receipts, focused Undo, history after navigation and modal geometry across both surfaces. See [feed evidence](feed.md). |
+| Native feed | Four tests passed for dated receipts, focused Undo, history after navigation, modal geometry and database-verified exposed-card impressions across both surfaces. See [feed evidence](feed.md). |
 | Native authored themes | Two tests passed for palette selection, file watching, typography reset, export and saved transparency after reload across both surfaces. |
 | Native account input | One intercepted-provider test passed for masked fullscreen input, cancellation, navigation invalidation and input locking. See [account evidence](account-input.md). |
 | Native modal layout and focus | Six tests passed for short and long lists, trapped keyboard focus, Cancel-first destructive actions and retained fullscreen state. |

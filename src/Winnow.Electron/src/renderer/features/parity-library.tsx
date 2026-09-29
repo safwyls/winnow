@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { ApiError, dateLabel, storeLabel } from '../api/client'
 import { useApiQuery, useCommand, useLibrary, useWorkspace } from '../api/hooks'
-import type { GameList, IdentityReview, LibraryFilter, Workspace } from '../api/types'
+import type { GameList, IdentityReview, LibraryFilter, Mode, Workspace } from '../api/types'
 import { useViewState } from '../viewState'
 import { Empty, Notice } from './shared'
 import './parity-library.css'
 import { useInlineEditorFocus } from './parity-library-focus'
 import { MergeQueue } from './parity-merge'
+import { MergeRefresh } from './parity-merge-refresh'
+import { useIdentityReview } from './parity-merge-query'
 
 type Facet = { id: number; kind: string; slug: string; name: string }
 type FilterWorkspace = Workspace & { facets?: Facet[]; ownerships?: { store: string }[] }
@@ -373,8 +375,8 @@ type Undo = {
 }
 type LinkDraft = { parent: number; children: number[]; kind: string; label: string; revision: string }
 
-export function IdentityTools({ onOpenGame }: { onOpenGame?: (workId: number) => void } = {}) {
-  const review = useApiQuery<Review>('identity.get')
+export function IdentityTools({ onOpenGame, mode = 'desktop' }: { onOpenGame?: (workId: number) => void; mode?: Mode } = {}) {
+  const review = useIdentityReview<Review>()
   const command = useCommand<{ revision: string; actId?: number; truncated?: boolean }>()
   const [draft, setDraft] = useViewState<LinkDraft | null>('draft:identity-link', null)
   const [undo, setUndo] = useViewState<Undo | null>('identity:last-undo', null)
@@ -382,7 +384,9 @@ export function IdentityTools({ onOpenGame }: { onOpenGame?: (workId: number) =>
   const [message, setMessage] = useState('')
   const [confirmSeparate, setConfirmSeparate] = useState<number | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
-  const [queueBusy] = useViewState('identity:queue-busy', false)
+  const [refreshBusy, setRefreshBusy] = useState(false)
+  const [queueWriting] = useViewState('identity:queue-busy', false)
+  const queueBusy = queueWriting || refreshBusy
   const facts = review.data
   const works = facts?.workspace.works ?? []
   const title = (id: number) => works.find((work) => work.id === id)?.name ?? `Game ${id}`
@@ -425,12 +429,7 @@ export function IdentityTools({ onOpenGame }: { onOpenGame?: (workId: number) =>
             <h2>Are these the same game?</h2>
             <p>Similar names are suggestions. You decide whether editions belong together.</p>
           </div>
-          <button
-            disabled={command.isPending || queueBusy || !facts}
-            onClick={() => void mutate('identity.refresh', {})}
-          >
-            Look for suggestions
-          </button>
+          <MergeRefresh disabled={command.isPending || queueBusy} onBusy={setRefreshBusy} />
         </div>
         <Notice error={review.error || command.error} message={message} />
         {command.isPending && (
@@ -469,10 +468,11 @@ export function IdentityTools({ onOpenGame }: { onOpenGame?: (workId: number) =>
         )}
         {facts && (
           <MergeQueue
+            mode={mode}
             review={facts}
             onReview={prepare}
             onOpenGame={onOpenGame}
-            disabled={command.isPending || queueBusy}
+            disabled={command.isPending || queueBusy || refreshBusy}
           />
         )}
       </section>

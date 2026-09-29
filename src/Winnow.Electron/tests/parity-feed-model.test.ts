@@ -56,6 +56,49 @@ function deferred<T>() {
 }
 
 describe('feed receipts and reserve replacement', () => {
+  it('appends optional shelves without replacing the existing shelf or card objects', () => {
+    const { deck, card, write } = setup()
+    const first = deck.shelves[0]
+    deck.receive([shelf(), shelf([9], [], 'extra')], 'library')
+    expect(deck.shelves).toHaveLength(2)
+    expect(deck.shelves[0]).toBe(first)
+    expect(deck.shelves[0].rows[0]).toBe(card)
+    expect(write).not.toHaveBeenCalled()
+  })
+  it('never writes a verdict or starts replacement for an unscored recent shelf', async () => {
+    const { deck, card, write } = setup([{ ...shelf(), feedback: false }])
+    await deck.respond(card, 0)
+    await deck.respond(card, 1)
+    deck.tick(30_000)
+    expect(write).not.toHaveBeenCalled()
+    expect(card.receipt).toBeUndefined()
+    expect(deck.shelves[0].rows[0]).toBe(card)
+  })
+  it('releases cards on disposal and ignores late reads, incoming snapshots and old card actions', async () => {
+    const { deck, card, refill, write, changed } = setup()
+    const gate = deferred<AvalonShelf[]>()
+    refill.mockReturnValue(gate.promise)
+    const reading = deck.backfill()
+    deck.dispose()
+    deck.receive([shelf([9], [10])], 'new-library')
+    await deck.respond(card, 0)
+    gate.resolve([shelf([1], [99])])
+    await reading
+    expect(deck.shelves).toEqual([])
+    expect(write).not.toHaveBeenCalled()
+    expect(changed).not.toHaveBeenCalled()
+  })
+  it('detaches the departing card from history refreshes and ignores stale swaps', async () => {
+    const { deck, card, write, changed } = setup()
+    await deck.respond(card, 0)
+    deck.tick(3000)
+    expect(deck.shelves[0].rows[0]).not.toBe(card)
+    await deck.respond(card, 0, true)
+    deck.tick(3000)
+    expect(write).toHaveBeenCalledTimes(1)
+    expect(changed).toHaveBeenCalledTimes(1)
+    expect(deck.shelves[0].rows[0].releaseId).toBe(6)
+  })
   it.each([0, 1])(
     'keeps the saved kind %s and the backend snooze date on the original card',
     async (kind) => {
@@ -79,6 +122,18 @@ describe('feed receipts and reserve replacement', () => {
     expect(card.error).toContain('could not be saved')
     expect(card.pending).toBe(false)
     expect(changed).not.toHaveBeenCalled()
+  })
+  it('a thrown verdict failure becomes a retryable card error without claiming a saved receipt', async () => {
+    const { deck, write, card, changed } = setup()
+    write.mockRejectedValueOnce(Error('Could not save your response.'))
+    await deck.respond(card, 0)
+    expect(card.error).toBe('Could not save your response.')
+    expect(card.receipt).toBeUndefined()
+    expect(card.pending).toBe(false)
+    expect(changed).not.toHaveBeenCalled()
+    await deck.respond(card, 0)
+    expect(card.receipt?.kind).toBe(0)
+    expect(card.error).toBeUndefined()
   })
   it('duplicate presses cannot write twice while the first response is pending', async () => {
     const { deck, write, card } = setup(),
@@ -221,9 +276,11 @@ describe('feed receipts and reserve replacement', () => {
     gate.resolve([shelf([1], [99])])
     await loading
     expect(deck.shelves[0].reserve.map((item) => item.releaseId)).toEqual([11])
+    const removed = deck.shelves[0].rows[0]
     deck.dispose()
-    await deck.respond(deck.shelves[0].rows[0], 0)
-    expect(deck.shelves[0].rows[0].receipt).toBeUndefined()
+    await deck.respond(removed, 0)
+    expect(removed.receipt).toBeUndefined()
+    expect(deck.shelves).toEqual([])
   })
   it('coalesces reserve reads to one running and one waiting even if the first fails', async () => {
     const { deck, refill } = setup(),

@@ -117,6 +117,40 @@ afterEach(() => {
 })
 
 describe('Steam native sign-in races and credential boundaries', () => {
+  it.each([false, true])(
+    'declined consent cancels before any window or backend request even with purchase capture=%s',
+    async (capturePurchaseHistory) => {
+      const result = await signInToSteam(new EventEmitter() as BrowserWindow, transport, {
+        consentGranted: false,
+        staySignedIn: true,
+        capturePurchaseHistory,
+      })
+      expect(result).toMatchObject({ signedIn: false, outcome: 4 })
+      expect(result.detail).toBeTruthy()
+      expect(native.partition).not.toHaveBeenCalled()
+      expect(native.windows).toHaveLength(0)
+      expect(request).not.toHaveBeenCalled()
+      expect(result.pages).toBeUndefined()
+    },
+  )
+
+  it('exhausted signed-in mint pages return NoToken rather than a neutral closed-window result', async () => {
+    native.probe.mockResolvedValue({ loggedIn: true, token: null, steamid: steamId })
+    const result = start(false)
+    const browser = await windowReady()
+    const navigate = vi.spyOn(browser, 'loadURL')
+    await browser.loadURL('https://store.steampowered.com/')
+    await vi.advanceTimersByTimeAsync(17_000)
+    expect(await result).toMatchObject({ signedIn: false, outcome: 1 })
+    expect(native.cookies).not.toHaveBeenCalled()
+    expect(request.mock.calls.some(([call]) => call.route === 'connections.steam.complete')).toBe(false)
+    expect(navigate.mock.calls.map(([url]) => url)).toEqual([
+      'https://store.steampowered.com/',
+      'https://store.steampowered.com/explore/',
+      'https://store.steampowered.com/replay/',
+      'https://store.steampowered.com/points/shop/',
+    ])
+  })
   it('permits HTTPS challenge frames without granting them top-level navigation or application origins', () => {
     expect(steamFrameNavigationAllowed('https://www.google.com/recaptcha/api2/anchor', false)).toBe(true)
     expect(steamFrameNavigationAllowed('https://www.google.com/recaptcha/api2/anchor', true)).toBe(false)
@@ -223,7 +257,7 @@ describe('Steam native sign-in races and credential boundaries', () => {
     await vi.advanceTimersByTimeAsync(1000)
     expect(native.cookies).toHaveBeenCalledOnce()
     browser.close()
-    expect(await result).toEqual({ signedIn: false, detail: 'Steam sign-in cancelled.' })
+    expect(await result).toEqual({ signedIn: false, outcome: 4, detail: 'Steam sign-in cancelled.' })
     cookies.resolve([{ httpOnly: true, secure: true, value: 'late-refresh' }])
     await vi.advanceTimersByTimeAsync(1000)
     expect(request.mock.calls.some(([call]) => call.route === 'connections.steam.complete')).toBe(false)
@@ -238,7 +272,7 @@ describe('Steam native sign-in races and credential boundaries', () => {
     const browser = await windowReady()
     await browser.loadURL('https://store.steampowered.com/')
     await vi.advanceTimersByTimeAsync(15 * 60_000)
-    expect(await result).toEqual({ signedIn: false, detail: 'Steam sign-in expired. Try again.' })
+    expect(await result).toEqual({ signedIn: false, outcome: 2, detail: 'Steam sign-in expired. Try again.' })
     probe.resolve(identity())
     await Promise.resolve()
     await Promise.resolve()
@@ -280,6 +314,31 @@ describe('Steam native sign-in races and credential boundaries', () => {
     expect(native.clearCache).toHaveBeenCalledOnce()
   })
 
+  it('A_refused_identity_carries_no_credential_at_all and never reaches the session store', async () => {
+    native.probe.mockResolvedValue({ ...identity(), steamid: '76561198000000002' })
+    const result = start()
+    const browser = await windowReady()
+    await browser.loadURL('https://store.steampowered.com/')
+    await vi.advanceTimersByTimeAsync(1000)
+    const refusal = await result
+    expect(refusal).toEqual({ signedIn: false, outcome: 3, detail: 'Steam returned a different account from the signed-in page. Sign in again.' })
+    expect(request.mock.calls.some(([call]) => call.route === 'connections.steam.complete')).toBe(false)
+    expect(native.cookies).not.toHaveBeenCalled()
+    expect(native.clearStorage).toHaveBeenCalledOnce()
+  })
+
+  it('a browser failure exposes no provider document or credential in the returned explanation', async () => {
+    native.probe.mockRejectedValue(new Error('private-page-body private-access-token'))
+    const result = start()
+    const browser = await windowReady()
+    await browser.loadURL('https://store.steampowered.com/')
+    await vi.advanceTimersByTimeAsync(1000)
+    const failed = await result
+    expect(failed).toMatchObject({ signedIn: false, outcome: 6 })
+    expect(JSON.stringify(failed)).not.toMatch(/private-page-body|private-access-token/)
+    expect(request.mock.calls.some(([call]) => call.route === 'connections.steam.complete')).toBe(false)
+  })
+
   it('does not collect refresh cookies without stay-signed-in consent', async () => {
     const result = start(false)
     const browser = await windowReady()
@@ -297,6 +356,8 @@ describe('Steam native sign-in races and credential boundaries', () => {
   })
 
   it('captures account pages only after separate opt-in and leaves their import to review', async () => {
+    const pages = { licensesHtml: '<table>private licence contents</table>', historyHtml: '<table>private history contents</table>', additionalLicensesHtml: [], capturedAt: '2026-09-29T00:00:00Z', source: 0, steamId }
+    native.capture.mockResolvedValue({ pages, captureDetail: 'Pages ready for review.' })
     const result = signInToSteam(new EventEmitter() as BrowserWindow, transport, {
       consentGranted: true,
       staySignedIn: false,
@@ -305,19 +366,50 @@ describe('Steam native sign-in races and credential boundaries', () => {
     const browser = await windowReady()
     await browser.loadURL('https://store.steampowered.com/')
     await vi.advanceTimersByTimeAsync(1000)
-    expect((await result).captureDetail).toBe('Pages ready for review.')
+    expect(await result).toMatchObject({ pages, captureDetail: 'Pages ready for review.' })
     expect(native.capture).toHaveBeenCalledWith(
       browser,
       expect.objectContaining({ expectedSteamId: steamId }),
     )
     expect(request.mock.calls.some(([call]) => call.route === 'imports.steam.pages')).toBe(false)
+    expect(request.mock.calls.some(([call]) => JSON.stringify(call).includes('private licence contents'))).toBe(false)
+  })
+
+  it('The_request_reaches_the_browser_session_unchanged including nondefault capture bounds', async () => {
+    const result = signInToSteam(new EventEmitter() as BrowserWindow, transport, {
+      consentGranted: true, staySignedIn: false, capturePurchaseHistory: true,
+      maxLoadMoreClicks: 7, maxLicensesPages: 3,
+    })
+    const browser = await windowReady()
+    await browser.loadURL('https://store.steampowered.com/')
+    await vi.advanceTimersByTimeAsync(1000)
+    expect((await result).signedIn).toBe(true)
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({
+      route: 'connections.steam.signin',
+      body: expect.objectContaining({ request: {
+        consentGranted: true, staySignedIn: false, capturePurchaseHistory: true,
+        maxLoadMoreClicks: 7, maxLicensesPages: 3, timeout: '00:15:00',
+      } }),
+    }))
+    expect(native.capture).toHaveBeenCalledWith(browser, expect.objectContaining({
+      expectedSteamId: steamId, maxLoadMoreClicks: 7, maxLicensesPages: 3,
+    }))
+    expect(native.cookies).not.toHaveBeenCalled()
+  })
+
+  it.each([-1, 0.5, Infinity, NaN, 2147483648])('rejects malformed capture bound %s before opening a browser', async (maxLoadMoreClicks) => {
+    await expect(signInToSteam(new EventEmitter() as BrowserWindow, transport, {
+      consentGranted: true, staySignedIn: true, maxLoadMoreClicks,
+    })).rejects.toThrow('capture limits')
+    expect(native.partition).not.toHaveBeenCalled()
+    expect(request).not.toHaveBeenCalled()
   })
 
   it('releases the active-sign-in guard when creation of a private session fails', async () => {
     native.partition.mockImplementationOnce(() => {
       throw new Error('Session unavailable')
     })
-    await expect(start()).rejects.toThrow('Session unavailable')
+    expect(await start()).toMatchObject({ signedIn: false, outcome: 5 })
     const result = start()
     const browser = await windowReady()
     browser.close()

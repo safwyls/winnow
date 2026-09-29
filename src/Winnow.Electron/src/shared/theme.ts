@@ -95,7 +95,7 @@ export interface ThemeContext {
   actions: { launch(ownershipId: number): Promise<void> }
   components: {
     GameCard: ComponentType<ThemeGameCardProps>
-    Impression: ComponentType<{ releaseId: number; shelfId: string; children: ReactNode }>
+    Impression: ComponentType<{ releaseId: number; shelfId: string; enabled?: boolean; children: ReactNode }>
     Artwork: ComponentType<{ workId: number; hero?: boolean; className?: string; eager?: boolean }>
     ArtworkEffects: ComponentType<ThemeArtworkEffectsProps>
     GamePreview: ComponentType<ThemeGamePreviewProps>
@@ -396,7 +396,9 @@ export function typographyKey(profile: ThemeProfile): string {
 }
 
 export function resolvedTypography(profile: ThemeProfile): ThemeTypography {
-  return parseTypography(profile.appearance.typography?.[typographyKey(profile)] ?? defaultTypography(typographyKey(profile)))
+  return parseTypography(
+    profile.appearance.typography?.[typographyKey(profile)] ?? defaultTypography(typographyKey(profile)),
+  )
 }
 
 export function themeSettingValues(

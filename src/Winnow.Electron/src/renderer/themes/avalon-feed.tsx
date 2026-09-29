@@ -67,10 +67,13 @@ export function useAvalonFeed(context: ThemeContext) {
     context.games.map((game) => [game.workId, game.entries.map((entry) => entry.releaseId)]),
   ])
   useLayoutEffect(() => {
+    deck.activate()
+    return () => deck.dispose()
+  }, [deck])
+  useLayoutEffect(() => {
     deck.receive(source, libraryKey, false, context.feedFailed || context.feed?.failed)
   }, [deck, source, libraryKey, context.feedFailed])
   useEffect(() => {
-    deck.activate()
     const media = window.matchMedia?.('(prefers-reduced-motion: reduce)')
     let timer: ReturnType<typeof setInterval>
     const start = () => {
@@ -92,7 +95,6 @@ export function useAvalonFeed(context: ThemeContext) {
       media?.removeEventListener('change', start)
     }
   }, [deck, context.profile.appearance.reducedMotion])
-  useEffect(() => () => deck.dispose(), [deck])
   const hold = (row: FeedRow, scope: string, value: boolean) => {
     const reasons = held.current.get(row) ?? new Set<string>()
     if (value) reasons.add(scope)

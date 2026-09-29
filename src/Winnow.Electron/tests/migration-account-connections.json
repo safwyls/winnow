@@ -103,11 +103,11 @@
     "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-steam-connections.test.tsx",
-        "case": "uses the completed sign-in report account confirmation=%s without inferring identity"
+        "file": "tests/parity-steam-transitions.test.tsx",
+        "case": "A_successful_sign_in_renders_the_reports_own_account_confirmation"
       }
     ],
-    "reason": "Both true and false AccountConfirmed are rendered directly from the completed report, with its safe detail."
+    "reason": "Both modes mount actual Settings, send the named connection command, refresh shared queries and verify the resulting method/account state rather than only testing a prebuilt snapshot."
   },
   "SteamConnectionPanelTests.A_refused_sign_in_is_reported_as_a_problem": {
     "status": "ported",
@@ -140,14 +140,14 @@
     "reason": "A pending native request holds Continue, exposes cancellation and ends with a neutral cancellation result."
   },
   "SteamConnectionPanelTests.Saving_a_key_hands_it_over_empties_the_field_and_says_it_is_in_use": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-steam-connections.test.tsx",
-        "case": "retains a refused key input and clears it only after a successful protected save"
+        "file": "tests/parity-steam-transitions.test.tsx",
+        "case": "Saving_a_key_hands_it_over_empties_the_field_and_says_it_is_in_use"
       }
     ],
-    "reason": "The form preserves a refused secret for retry and empties it after a successful backend save. Carrying-credential state is tested separately; the original single-flow assertion of the refreshed card status after saving still needs an integrated equivalent."
+    "reason": "Both modes mount actual Settings, send the named connection command, refresh shared queries and verify the resulting method/account state rather than only testing a prebuilt snapshot."
   },
   "SteamConnectionPanelTests.A_host_with_no_sign_in_still_offers_the_key_and_says_the_window_cannot_open": {
     "status": "partial",
@@ -228,5 +228,79 @@
       }
     ],
     "reason": "External key ownership is explained beside the heading and no clear command is offered."
+  },
+  "SteamConnectionPanelTests.Clearing_removes_the_key_and_withdraws_the_clear_command": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-transitions.test.tsx",
+        "case": "Clearing_removes_the_key_and_withdraws_the_clear_command"
+      }
+    ],
+    "reason": "Both modes mount actual Settings, send the named connection command, refresh shared queries and verify the resulting method/account state rather than only testing a prebuilt snapshot."
+  },
+  "SteamConnectionPanelTests.A_sign_in_with_no_refresh_token_is_reported_rather_than_dressed_up": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-transitions.test.tsx",
+        "case": "A_sign_in_with_no_refresh_token_is_reported_rather_than_dressed_up"
+      }
+    ],
+    "reason": "Both modes mount actual Settings, send the named connection command, refresh shared queries and verify the resulting method/account state rather than only testing a prebuilt snapshot."
+  },
+  "SteamConnectionPanelTests.The_key_page_is_opened_through_the_shared_dispatcher": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-transitions.test.tsx",
+        "case": "The_key_page_is_opened_through_the_shared_dispatcher and failures retain its address"
+      }
+    ],
+    "reason": "The real key form calls the shared named link dispatcher; a declined launch gives an inline error and readable registration address, and a successful retry clears the error."
+  },
+  "SteamConnectionPanelTests.A_platform_that_declines_the_link_says_so_rather_than_failing_silently": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-transitions.test.tsx",
+        "case": "The_key_page_is_opened_through_the_shared_dispatcher and failures retain its address"
+      }
+    ],
+    "reason": "The real key form calls the shared named link dispatcher; a declined launch gives an inline error and readable registration address, and a successful retry clears the error."
+  },
+  "SteamConnectionPanelTests.A_link_that_will_not_open_still_gives_the_address": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-transitions.test.tsx",
+        "case": "The_key_page_is_opened_through_the_shared_dispatcher and failures retain its address"
+      }
+    ],
+    "reason": "The real key form calls the shared named link dispatcher; a declined launch gives an inline error and readable registration address, and a successful retry clears the error."
+  },
+  "SteamConnectionPanelTests.Signing_out_withdraws_the_permission": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-transitions.test.tsx",
+        "case": "Signing_out_clears_the_identity_the_session_earned and withdraws capture permission"
+      }
+    ],
+    "reason": "The actual Settings lifecycle completes an opted-in sign-in, signs out, refreshes identity and asks for fresh unticked purchase permission on reconnect."
+  },
+  "SteamConnectionPanelTests.Signing_out_clears_the_identity_the_session_earned": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-transitions.test.tsx",
+        "case": "Signing_out_clears_the_identity_the_session_earned and withdraws capture permission"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamSessionParityTests.cs",
+        "case": "Sign_out_clears_memory_disk_identity_and_pending_attempts_and_requests_refresh"
+      }
+    ],
+    "reason": "Both actual Settings presentation paths clear account identity and status after sign-out. The replacement production HTTP test additionally proves that memory, encrypted disk state and account confirmation are removed and cannot return after backend restart."
   }
 }

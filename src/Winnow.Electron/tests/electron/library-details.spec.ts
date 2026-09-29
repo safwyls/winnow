@@ -3,8 +3,8 @@ import { mkdtemp, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
 import type { ApiRequest } from '../../src/shared/bridge'
-import type { LibraryResponse, ManualGame } from '../../src/renderer/api/types'
-import type { MergeReview } from '../../src/renderer/features/parity-merge-model'
+import type { LibraryResponse, ManualGame, Metadata } from '../../src/renderer/api/types'
+import { buildMergeCards, type MergeReview } from '../../src/renderer/features/parity-merge-model'
 
 let application: ElectronApplication, page: Page, directory: string
 const failures: string[] = []
@@ -94,6 +94,34 @@ async function manual(title: string) {
     },
   })
 }
+async function controller() {
+  await page.evaluate(() => {
+    const state = { pressed: [] as number[] }
+    ;(window as unknown as { mergeController: typeof state }).mergeController = state
+    Object.defineProperty(navigator, 'getGamepads', {
+      configurable: true,
+      value: () => [
+        {
+          index: 0,
+          connected: true,
+          axes: [0, 0, 0, 0],
+          buttons: Array.from({ length: 17 }, (_, index) => ({
+            pressed: state.pressed.includes(index),
+            touched: false,
+            value: state.pressed.includes(index) ? 1 : 0,
+          })),
+        },
+      ],
+    })
+  })
+  return async (button: number) => {
+    for (const value of [[], [button], []])
+      await page.evaluate(async (value) => {
+        ;(window as unknown as { mergeController: { pressed: number[] } }).mergeController.pressed = value
+        await new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done())))
+      }, value)
+  }
+}
 for (const mode of ['desktop', 'fullscreen'] as const) {
   test(`${mode} searches real workspace names, groups editions and undoes the exact saved identity act`, async () => {
     const parent = await manual(`Parity ${mode} primary`),
@@ -163,23 +191,25 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await page.getByRole('button', { name: 'Identity review', exact: true }).click()
     const queue = page.locator('.merge-queue')
     await expect(queue.locator('.merge-card:not(.resolved)').nth(1)).toBeVisible()
-    const rows = queue.locator('[data-merge-row]')
-    await rows.first().focus()
-    await rows.first().press('ArrowDown')
-    await expect(rows.nth(1)).toBeFocused()
+    if (mode === 'desktop') {
+      const rows = queue.locator('[data-merge-row]')
+      await rows.first().focus()
+      await rows.first().press('ArrowDown')
+      await expect(rows.nth(1)).toBeFocused()
+    }
     const before = await api<MergeReview>({ route: 'identity.get' })
     const standing = new Set(before.history.filter((link) => !link.retractedAt).map((link) => link.actId))
-    await queue
-      .locator('.merge-card:not(.resolved)')
-      .nth(0)
-      .getByRole('checkbox', { name: /^Select .* group$/ })
-      .check()
-    await queue
-      .locator('.merge-card:not(.resolved)')
-      .nth(1)
-      .getByRole('checkbox', { name: /^Select .* group$/ })
-      .check()
+    for (const index of [0, 1]) {
+      const card = queue.locator('.merge-card:not(.resolved)').nth(index)
+      if (mode === 'desktop') await card.getByRole('checkbox', { name: /^Select .* group$/ }).check()
+      else {
+        await card.getByRole('button').click()
+        await page.getByRole('button', { name: 'Select for grouping', exact: true }).click()
+        await page.getByRole('button', { name: 'Back to proposals', exact: true }).click()
+      }
+    }
     await queue.getByRole('button', { name: 'Merge 2 selected', exact: true }).click()
+    if (mode === 'fullscreen') await page.getByRole('button', { name: 'Continue', exact: true }).click()
     await expect(queue.getByRole('button', { name: 'Undo review decisions', exact: true })).toBeEnabled()
     await expect(queue.getByText('2 rolled up · Nothing deleted', { exact: true })).toBeVisible()
     const linked = await api<MergeReview>({ route: 'identity.get' })
@@ -215,6 +245,146 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     expect(geometry.left).toBeGreaterThanOrEqual(0)
     expect(geometry.right).toBeLessThanOrEqual(geometry.width)
     expect(geometry.overflow).toBe(false)
+    await page.getByRole('button', { name: 'Close tools' }).click()
+    expect(failures).toEqual([])
+  })
+  test(`${mode} keeps long merge members and independent actions inside the pane with correct focus hierarchy`, async ({}, testInfo) => {
+    const review = await api<MergeReview>({ route: 'identity.get' })
+    const proposal = buildMergeCards(review).find((card) => !card.actId && card.kind === 'same_game')!
+    const title = "Metal Gear Solid V: The Phantom Pain — The Definitive Experience Collector's Edition"
+    for (const row of proposal.rows) {
+      const metadata = await api<Metadata>({ route: 'metadata.get', params: { workId: row.workId } })
+      await api({
+        route: 'metadata.put',
+        params: { workId: row.workId },
+        body: { field: 'name', value: title, expectedRevision: metadata.revision },
+      })
+    }
+    await surface(mode)
+    await page.getByRole('button', { name: 'Manage library' }).click()
+    await page.getByRole('button', { name: 'Identity review', exact: true }).click()
+    const card = page.getByRole('article', { name: `${title} proposal`, exact: true })
+    await expect(card).toBeVisible()
+    const assertFits = async () => {
+      const overflow = await page
+        .locator(mode === 'desktop' ? '.merge-card' : '.merge-sheet')
+        .evaluateAll((cards) =>
+          cards.flatMap((card) => {
+            const bounds = card.getBoundingClientRect()
+            return [...card.querySelectorAll<HTMLElement>('button,input,select,.merge-row-mark,.merge-store')]
+              .filter((control) => control.getBoundingClientRect().width > 0)
+              .filter((control) => {
+                const rect = control.getBoundingClientRect()
+                return rect.left < bounds.left - 1 || rect.right > bounds.right + 1
+              })
+              .map((control) => ({
+                html: control.outerHTML,
+                window: innerWidth,
+                card: { left: bounds.left, right: bounds.right },
+                children: [...(control.closest('.merge-row')?.children ?? [])].map((entry) => {
+                  const rect = entry.getBoundingClientRect()
+                  const style = getComputedStyle(entry)
+                  return {
+                    class: entry.className,
+                    left: rect.left,
+                    width: rect.width,
+                    flex: style.flex,
+                    min: style.minWidth,
+                  }
+                }),
+              }))
+          }),
+        )
+      expect(overflow).toEqual([])
+    }
+    if (mode === 'desktop') {
+      for (const width of [1920, 1200, 1280, 1200]) {
+        await application.evaluate(
+          ({ BrowserWindow }, width) => BrowserWindow.getAllWindows()[0]!.setContentSize(width, 800),
+          width,
+        )
+        await expect.poll(() => page.evaluate(() => innerWidth)).toBe(width)
+        await card.scrollIntoViewIfNeeded()
+        await assertFits()
+      }
+      const rows = card.locator('.merge-row')
+      const radio = rows.nth(1).getByRole('radio')
+      await rows.nth(1).locator('.merge-cover').click()
+      await expect(radio).toBeChecked()
+      await rows.first().getByRole('radio').press('Space')
+      await expect(rows.first().getByRole('radio')).toBeChecked()
+      await rows.nth(1).getByRole('checkbox').uncheck()
+      await expect(card.getByRole('button', { name: 'Same game', exact: true })).toBeDisabled()
+      await rows.nth(1).getByRole('checkbox').check()
+      const cover = rows.first().locator('.merge-cover')
+      await api({
+        route: 'preferences.presentation.put',
+        params: { preference: 'DimDormantCovers' },
+        body: { value: 'false' },
+      })
+      await expect(cover).toHaveCSS('filter', 'none')
+      await api({
+        route: 'preferences.presentation.put',
+        params: { preference: 'DimDormantCovers' },
+        body: { value: 'true' },
+      })
+      await expect(cover).not.toHaveCSS('filter', 'none')
+      await page.screenshot({ path: testInfo.outputPath('merge-desktop-1200.png') })
+      await rows
+        .nth(1)
+        .getByRole('button', { name: /^Details for / })
+        .click()
+      await expect(page.locator('.screen-details')).toBeVisible()
+      await page.getByRole('button', { name: 'Back to your library', exact: true }).click()
+      await expect(page.locator('.merge-queue')).toBeVisible()
+      await expect(card.locator('[data-merge-row]').nth(1)).toBeFocused()
+    } else {
+      for (const width of [1920, 1280]) {
+        await application.evaluate(
+          ({ BrowserWindow }, width) =>
+            BrowserWindow.getAllWindows()[0]!.setContentSize(width, (width * 9) / 16),
+          width,
+        )
+        await expect.poll(() => page.evaluate(() => innerWidth)).toBe(width)
+        const button = card.getByRole('button')
+        await button.click()
+        await page
+          .getByRole('button', { name: / · Included$/ })
+          .first()
+          .click()
+        const promote = page.getByRole('button', { name: 'Make header', exact: true })
+        await expect(page.getByRole('button', { name: 'Open game', exact: true })).toBeVisible()
+        await assertFits()
+        await page.screenshot({ path: testInfo.outputPath(`merge-fullscreen-member-${width}.png`) })
+        await promote.press('Enter')
+        await page.getByRole('button', { name: / · Header$/ }).click()
+        await expect(page.getByRole('button', { name: 'Make header', exact: true })).toHaveCount(0)
+        await page.keyboard.press('Escape')
+        await expect(page.getByRole('button', { name: 'Same game', exact: true })).toBeVisible()
+        await page.keyboard.press('Escape')
+        await expect(button).toBeFocused()
+      }
+      const tap = await controller()
+      await tap(0)
+      await expect(page.getByRole('dialog')).toBeVisible()
+      await tap(3)
+      await expect(page.getByRole('button', { name: 'Remove from selection', exact: true })).toBeVisible()
+      await tap(2)
+      await expect(page.getByRole('dialog', { name: 'Group these entries?', exact: true })).toBeVisible()
+      await tap(1)
+      await expect(page.getByRole('button', { name: 'Same game', exact: true })).toBeVisible()
+      await tap(1)
+      await expect(card.getByRole('button')).toBeFocused()
+      await page.evaluate(() =>
+        Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: () => [] }),
+      )
+      await card.getByRole('button').click()
+      await page.getByRole('button', { name: / · Header$/ }).click()
+      await page.getByRole('button', { name: 'Open game', exact: true }).click()
+      await expect(page.locator('.screen-details')).toBeVisible()
+      await page.getByRole('button', { name: 'Back to your library', exact: true }).click()
+      await expect(card.getByRole('button')).toBeFocused()
+    }
     await page.getByRole('button', { name: 'Close tools' }).click()
     expect(failures).toEqual([])
   })

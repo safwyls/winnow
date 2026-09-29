@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
+import { useLayoutEffect, useRef } from 'react'
 import { z } from 'zod'
 import { request } from './client'
 import type {
@@ -103,7 +104,8 @@ export function useLibrary() {
 export function useFeed() {
   const primary = useQuery({
     queryKey: ['api', 'feed.get'],
-    queryFn: async () => feedSchema.parse(await request('feed.get')) as FeedSnapshot,
+    queryFn: async ({ signal }) =>
+      feedSchema.parse(await request('feed.get', undefined, undefined, signal)) as FeedSnapshot,
     retry: false,
     staleTime: 60_000,
   })
@@ -111,27 +113,31 @@ export function useFeed() {
   // A slow previous pass must not append stale cards after feedback or a reload.
   const supplement = useQuery({
     queryKey: ['api', 'feed.supplement', primary.dataUpdatedAt],
-    queryFn: async () => feedSupplementSchema.parse(await request('feed.supplement')),
+    queryFn: async ({ signal }) =>
+      feedSupplementSchema.parse(await request('feed.supplement', undefined, undefined, signal)),
     enabled: !!primary.data && !primary.isFetching && !primary.data.failed,
     retry: false,
     staleTime: 60_000,
   })
   const additional = !primary.isFetching ? (supplement.data?.shelves ?? []) : []
+  const settled = useRef<FeedSnapshot | undefined>(undefined)
+  const combined = primary.data
+    ? {
+        ...primary.data,
+        shelves: [
+          ...primary.data.shelves,
+          ...additional.filter((shelf) => !primary.data.shelves.some((existing) => existing.id === shelf.id)),
+        ],
+        candidateCount:
+          primary.data.candidateCount + (!primary.isFetching ? (supplement.data?.candidateCount ?? 0) : 0),
+      }
+    : undefined
+  useLayoutEffect(() => {
+    if (!primary.isFetching && combined) settled.current = combined
+  }, [primary.isFetching, combined])
   return {
     ...primary,
-    data: primary.data
-      ? {
-          ...primary.data,
-          shelves: [
-            ...primary.data.shelves,
-            ...additional.filter(
-              (shelf) => !primary.data.shelves.some((existing) => existing.id === shelf.id),
-            ),
-          ],
-          candidateCount:
-            primary.data.candidateCount + (!primary.isFetching ? (supplement.data?.candidateCount ?? 0) : 0),
-        }
-      : undefined,
+    data: primary.isFetching && settled.current ? settled.current : combined,
   }
 }
 export function useWorkspace() {

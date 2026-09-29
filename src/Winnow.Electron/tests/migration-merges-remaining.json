@@ -1,0 +1,531 @@
+{
+  "MergeQueueViewModelTests.Completed_pass_reloads_changed_proposals_even_when_pending_count_is_unchanged": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-query.test.tsx",
+        "case": "publishes changed proposals after a completed sweep even when the pending count is unchanged"
+      },
+      {
+        "file": "tests/parity-merge-query.test.tsx",
+        "case": "defers hidden invalidation until entry and reuses an unchanged snapshot on subsequent entry"
+      }
+    ],
+    "reason": "Visible refresh replaces changed contents at an unchanged count; hidden invalidation defers work until reentry, on both surfaces."
+  },
+  "MergeQueueViewModelTests.Earlier_queue_read_cannot_replace_a_newer_refresh_result": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-query.test.tsx",
+        "case": "cancels an earlier read and cannot publish its late result over a newer refresh"
+      }
+    ],
+    "reason": "A newer refresh cancels the prior named GET and its late result cannot replace the current cached review."
+  },
+  "MergeQueueViewModelTests.Refresh_in_one_surface_reloads_an_already_loaded_other_surface_on_entry": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-query.test.tsx",
+        "case": "reopens another surface on the shared refreshed snapshot without rebuilding or rereading it"
+      }
+    ],
+    "reason": "Desktop and fullscreen use the same TanStack identity key; reopening consumes the latest completed refresh."
+  },
+  "MergeQueueViewModelTests.Manual_refresh_forces_reload_and_preserves_the_previous_answers": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "refreshes after dismissing and merging without losing either previous answer or the current Undo revision"
+      }
+    ],
+    "reason": "Both surfaces force a new review after a sweep while retaining the prior dismissal and saved identity act."
+  },
+  "MergeQueueViewModelTests.Dismiss_refresh_then_undo_restores_a_current_registered_proposal": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "refreshes a dismissal then restores the current pending proposal with Undo"
+      }
+    ],
+    "reason": "Undo after an explicit refresh restores the current proposal and that proposal can be answered again."
+  },
+  "MergeQueueViewModelTests.Merge_refresh_then_undo_removes_the_current_resolved_strip": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "refreshes after dismissing and merging without losing either previous answer or the current Undo revision"
+      }
+    ],
+    "reason": "The refreshed act is undone using the new revision and its pending proposal returns. The source variant where the sweep retires the confirmed candidate is not yet reproduced."
+  },
+  "MergeQueueViewModelTests.Cancellation_recovers_the_command_and_truncated_pass_reports_more_work": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-merge-refresh.test.tsx",
+        "case": "leaving the page cancels its named request and a late success cannot reload or move focus"
+      },
+      {
+        "file": "tests/parity-merge-refresh.test.tsx",
+        "case": "preserves the current review on failure and offers the same control for a bounded retry"
+      }
+    ],
+    "reason": "Exit cancellation prevents late publication and retry can report a truncated sweep. The original explicit cancellation followed by retry on the same mounted command is not yet covered."
+  },
+  "MergeQueueViewModelTests.Merge_covers_follow_the_saved_display_preference_and_live_changes": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "desktop covers react to the display toggle without reloading review or cover state"
+      }
+    ],
+    "reason": "Live display changes update existing cover filters without new identity or artwork reads. Initial saved-off and page reload cases remain to be asserted."
+  },
+  "MergeQueueViewModelTests.Preferred_platform_updates_hidden_cards_and_accept_uses_the_chosen_parent": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "applies platform changes to hidden cards, preserves unavailable headers, and accepts the chosen parent"
+      }
+    ],
+    "reason": "A hidden pending cross-store card adopts the requested platform, an unavailable platform preserves its header, and acceptance writes the chosen parent. The source triple with two resulting children is not reproduced in this preference-specific test."
+  },
+  "MergeQueueViewModelTests.Preferred_platform_reincludes_matching_row_and_syncs_when_another_surface_reopens": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "reincludes an excluded preferred member and syncs a cached preference when the page reopens"
+      },
+      {
+        "file": "tests/parity-merge-query.test.tsx",
+        "case": "reopens another surface on the shared refreshed snapshot without rebuilding or rereading it"
+      }
+    ],
+    "reason": "A changed shared preference is applied on reentry, promotes the matching excluded member and restores inclusion on both presentation paths."
+  },
+  "MergeQueueViewModelTests.Preferred_platform_keeps_matching_header_when_multiple_rows_offer_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "retains the current matching header when multiple rows offer the preferred platform"
+      }
+    ],
+    "reason": "Both surfaces preserve the manually chosen header when more than one member offers the requested platform."
+  },
+  "MergeQueueViewModelTests.Saved_platform_without_a_matching_row_leaves_automatic_header_available": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "treats an unknown saved platform as None while keeping the automatic header available"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "applies platform changes to hidden cards, preserves unavailable headers, and accepts the chosen parent"
+      }
+    ],
+    "reason": "Unavailable supported platforms preserve the default header; unknown persisted platform IDs resolve to None."
+  },
+  "MergeQueueViewModelTests.A_hidden_pane_answers_a_library_change_with_a_count_and_builds_nothing": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-merge-query.test.tsx",
+        "case": "defers hidden invalidation until entry and reuses an unchanged snapshot on subsequent entry"
+      }
+    ],
+    "reason": "Hidden pages defer identity GET and card construction. The HTTP API has no count-only endpoint, so the original hidden COUNT query and immediate count update are not replicated."
+  },
+  "MergeQueueViewModelTests.Showing_the_pane_after_a_change_builds_the_screen_once": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-query.test.tsx",
+        "case": "defers hidden invalidation until entry and reuses an unchanged snapshot on subsequent entry"
+      }
+    ],
+    "reason": "Invalidation while hidden produces exactly one GET on entry; subsequent unchanged entry reuses the cached snapshot."
+  },
+  "MergeQueueViewModelTests.A_change_while_the_pane_is_showing_rebuilds_at_once": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-query.test.tsx",
+        "case": "reloads a visible surface immediately on an external library invalidation"
+      }
+    ],
+    "reason": "Active desktop and fullscreen review observers publish a changed library immediately after query invalidation."
+  },
+  "MergeQueueViewModelTests.An_unmoved_queue_that_has_been_swept_is_not_rebuilt": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-merge-query.test.tsx",
+        "case": "defers hidden invalidation until entry and reuses an unchanged snapshot on subsequent entry"
+      }
+    ],
+    "reason": "Unchanged reentry reuses the authoritative snapshot. External invalidation still performs a complete revision-checked GET rather than the original count-only repository check."
+  },
+  "MergeQueueViewModelTests.The_pending_count_query_agrees_with_the_pending_read": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Data/Repositories/MergeCandidateRepository.cs"
+    ],
+    "reason": "The original method directly compares CountPendingAsync and GetPendingAsync on the retained repository. Both use the same pending-status and distinct-work predicates; no frontend behavior is asserted."
+  },
+  "MergeQueueViewModelTests.An_empty_load_before_any_sweep_says_the_library_is_still_being_scanned": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "keeps all five empty sections and distinguishes an unfinished sweep from nothing left to decide"
+      }
+    ],
+    "reason": "Both surfaces render the five original section names, nothing-waiting count, scanning copy before completion and settled empty copy afterwards."
+  },
+  "MergeQueueViewModelTests.An_empty_load_after_a_sweep_says_there_is_nothing_to_decide": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "keeps all five empty sections and distinguishes an unfinished sweep from nothing left to decide"
+      }
+    ],
+    "reason": "Both surfaces render the five original section names, nothing-waiting count, scanning copy before completion and settled empty copy afterwards."
+  },
+  "MergeQueueViewModelTests.A_pair_owned_on_two_stores_lands_in_ACROSS_STORES": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "projects cross-store and same-store pairs into separate sections with one card per connected triple"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "filters kinds with the total-to-shown count and preserves selected groups outside the filter"
+      }
+    ],
+    "reason": "Actual workspace ownerships distinguish sections; a three-store triangle is one card with all three candidate IDs and distinct accessible member labels."
+  },
+  "MergeQueueViewModelTests.A_pair_owned_on_one_store_lands_in_EDITIONS": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "projects cross-store and same-store pairs into separate sections with one card per connected triple"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "filters kinds with the total-to-shown count and preserves selected groups outside the filter"
+      }
+    ],
+    "reason": "Actual workspace ownerships distinguish sections; a three-store triangle is one card with all three candidate IDs and distinct accessible member labels."
+  },
+  "MergeQueueViewModelTests.Three_stores_of_one_game_are_one_card_with_three_rows": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "projects cross-store and same-store pairs into separate sections with one card per connected triple"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "filters kinds with the total-to-shown count and preserves selected groups outside the filter"
+      }
+    ],
+    "reason": "Actual workspace ownerships distinguish sections; a three-store triangle is one card with all three candidate IDs and distinct accessible member labels."
+  },
+  "MergeQueueViewModelTests.A_priority_pair_with_identical_titles_is_an_exact_match": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "renders exact, edition-normalized and forced-review evidence without recomputing the stored band"
+      }
+    ],
+    "reason": "The original stored-band/title/publisher/year matrix yields Exact, Likely and Worth a look, with the corresponding evidence copy; a forced Review band stays Review even at score 1."
+  },
+  "MergeQueueViewModelTests.A_priority_pair_that_differs_only_by_edition_is_likely_and_says_so": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "renders exact, edition-normalized and forced-review evidence without recomputing the stored band"
+      }
+    ],
+    "reason": "The original stored-band/title/publisher/year matrix yields Exact, Likely and Worth a look, with the corresponding evidence copy; a forced Review band stays Review even at score 1."
+  },
+  "MergeQueueViewModelTests.A_pair_below_the_band_is_worth_a_look": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "renders exact, edition-normalized and forced-review evidence without recomputing the stored band"
+      }
+    ],
+    "reason": "The original stored-band/title/publisher/year matrix yields Exact, Likely and Worth a look, with the corresponding evidence copy; a forced Review band stays Review even at score 1."
+  },
+  "MergeQueueViewModelTests.A_forced_review_band_arrives_worth_a_look_whatever_the_titles": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "renders exact, edition-normalized and forced-review evidence without recomputing the stored band"
+      }
+    ],
+    "reason": "The original stored-band/title/publisher/year matrix yields Exact, Likely and Worth a look, with the corresponding evidence copy; a forced Review band stays Review even at score 1."
+  },
+  "MergeQueueViewModelTests.Answering_twice_writes_only_the_first_answer": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "does not answer a group twice and retains exact zero-hour resolved metadata"
+      }
+    ],
+    "reason": "Rapid duplicate activation issues one link, and resolved strips expose neither Same game nor Different games on either surface."
+  },
+  "MergeQueueViewModelTests.The_review_path_destroys_nothing": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/merge-contracts.spec.ts",
+        "case": "keeps a real answered slot through separation and opens keyboard sort actions"
+      }
+    ],
+    "reason": "Actual backend grouping preserves all works, releases and ownership rows; separation restores the original proposal in both native surfaces."
+  },
+  "MergeQueueViewModelTests.Separate_again_on_a_card_answered_this_session_returns_it_to_pending_in_place": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "keeps an answered card in its original slot, separates in place, and puts saved strips last only after sorting"
+      },
+      {
+        "file": "tests/electron/merge-contracts.spec.ts",
+        "case": "keeps a real answered slot through separation and opens keyboard sort actions"
+      }
+    ],
+    "reason": "A presentation-only act-to-slot key preserves the same DOM card through answer and separation; explicit sorting moves resolved strips behind pending cards. API history remains authoritative."
+  },
+  "MergeQueueViewModelTests.A_standing_same_game_act_across_two_stores_loads_as_a_strip_in_ACROSS_STORES": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "loads standing %s acts in %s without duplicating their proposal"
+      }
+    ],
+    "reason": "The standing-history matrix preserves exact act ID, parent, children, relationship kind and label; it chooses the correct section and suppresses the answered proposal."
+  },
+  "MergeQueueViewModelTests.A_standing_same_game_act_on_one_store_loads_as_a_strip_in_EDITIONS": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "loads standing %s acts in %s without duplicating their proposal"
+      }
+    ],
+    "reason": "The standing-history matrix preserves exact act ID, parent, children, relationship kind and label; it chooses the correct section and suppresses the answered proposal."
+  },
+  "MergeQueueViewModelTests.A_standing_expansion_act_loads_as_a_strip_in_EXPANSIONS": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "loads standing %s acts in %s without duplicating their proposal"
+      }
+    ],
+    "reason": "The standing-history matrix preserves exact act ID, parent, children, relationship kind and label; it chooses the correct section and suppresses the answered proposal."
+  },
+  "MergeQueueViewModelTests.A_standing_variant_act_loads_as_a_strip_in_TEST_BUILDS": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "loads standing %s acts in %s without duplicating their proposal"
+      }
+    ],
+    "reason": "The standing-history matrix preserves exact act ID, parent, children, relationship kind and label; it chooses the correct section and suppresses the answered proposal."
+  },
+  "MergeQueueViewModelTests.Different_games_on_an_expansion_card_writes_refusals_that_undo_removes": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "writes and retracts all directional expansion refusals without regrouping or reviving them on refresh"
+      }
+    ],
+    "reason": "Both surfaces submit every base-to-pack refusal, retain those refusals across refresh, undo them, link both packs in one expansion act, and restore the scan proposal by separating that act."
+  },
+  "MergeQueueViewModelTests.Same_game_on_an_expansion_card_writes_one_act_of_expansion_links": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "writes and retracts all directional expansion refusals without regrouping or reviving them on refresh"
+      }
+    ],
+    "reason": "Both surfaces submit every base-to-pack refusal, retain those refusals across refresh, undo them, link both packs in one expansion act, and restore the scan proposal by separating that act."
+  },
+  "MergeQueueViewModelTests.A_refused_expansion_pair_does_not_come_back_on_the_next_load": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "writes and retracts all directional expansion refusals without regrouping or reviving them on refresh"
+      }
+    ],
+    "reason": "Both surfaces submit every base-to-pack refusal, retain those refusals across refresh, undo them, link both packs in one expansion act, and restore the scan proposal by separating that act."
+  },
+  "MergeQueueViewModelTests.Separate_again_on_an_expansion_strip_brings_the_scan_proposal_back": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "writes and retracts all directional expansion refusals without regrouping or reviving them on refresh"
+      }
+    ],
+    "reason": "Both surfaces submit every base-to-pack refusal, retain those refusals across refresh, undo them, link both packs in one expansion act, and restore the scan proposal by separating that act."
+  },
+  "MergeQueueViewModelTests.The_sort_label_names_the_current_order": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "orders all three source confidence bands, summed playtime and titles and identifies the selected sort"
+      }
+    ],
+    "reason": "The source Stanley/Witcher/Prey fixture checks all three bands, 0/60/600 minute totals, title order and selected menu/combobox state on both surfaces."
+  },
+  "MergeQueueViewModelTests.Filtering_to_STORES_hides_every_other_section_and_counts_only_what_is_shown": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "filters kinds with the total-to-shown count and preserves selected groups outside the filter"
+      }
+    ],
+    "reason": "Filtering retains the total, displays the total-to-shown count and singular pending line, shows only Stores, preserves hidden selections and restores all five sections on clear."
+  },
+  "MergeQueueViewModelTests.Covers_are_asked_for_per_visible_section": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "desktop asks for covers only in visible sections and reuses them when the filter is cleared"
+      }
+    ],
+    "reason": "Only displayed desktop rows request artwork; revealing another section asks only for new works and revisiting reuses cached state. Fullscreen uses text proposal rows as in the source; Avalonia VividAndFloor leases are replaced by shared artwork plus CSS dormancy."
+  },
+  "MergeQueueViewModelTests.Focus_starts_on_the_first_row_of_the_first_pending_card": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "desktop starts its keyboard cursor on the first pending row and an empty queue has no action target"
+      }
+    ],
+    "reason": "Queue-level desktop navigation starts from the first pending row; empty queues retain focus without proposing or issuing any write."
+  },
+  "MergeQueueViewModelTests.Moving_focus_on_an_empty_queue_returns_nothing": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "desktop starts its keyboard cursor on the first pending row and an empty queue has no action target"
+      }
+    ],
+    "reason": "Queue-level desktop navigation starts from the first pending row; empty queues retain focus without proposing or issuing any write."
+  },
+  "MergeQueueViewModelTests.Promote_focused_makes_the_cursors_row_the_header": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "desktop keyboard promotion keeps the cursor and row movement asks the viewport to follow"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "retains current group choices across detail navigation, and arrows walk visible rows without wrapping"
+      }
+    ],
+    "reason": "Space promotes the focused member without moving its cursor. Arrow/Home/End navigation clamps and calls scrollIntoView; direct DOM focus does not echo a scroll request."
+  },
+  "MergeQueueViewModelTests.A_keyboard_move_asks_the_view_to_follow": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "desktop keyboard promotion keeps the cursor and row movement asks the viewport to follow"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "retains current group choices across detail navigation, and arrows walk visible rows without wrapping"
+      }
+    ],
+    "reason": "Space promotes the focused member without moving its cursor. Arrow/Home/End navigation clamps and calls scrollIntoView; direct DOM focus does not echo a scroll request."
+  },
+  "MergeQueueViewModelTests.Setting_a_rows_radio_moves_the_header": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "desktop row body promotes while Details, include and radio remain separate actions"
+      }
+    ],
+    "reason": "Both radio directions choose the corresponding header; the independent Details and inclusion controls do not accidentally promote another member."
+  },
+  "MergeQueueViewModelTests.User_set_art_outranks_the_store_capsule_on_a_queue_row": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "desktop queue rows use the authoritative %s artwork key without substituting a store capsule"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MergeArtworkParityTests.cs",
+        "case": "Queue_artwork_state_preserves_user_pin_and_store_precedence"
+      }
+    ],
+    "reason": "The real backend composition returns user art before Steam, pinned IGDB before Steam, and Steam for the same unpinned IGDB URL; the other entry remains Steam. Renderer queue rows use those returned keys unchanged."
+  },
+  "MergeQueueViewModelTests.A_live_igdb_pin_outranks_the_store_capsule_on_a_queue_row": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "desktop queue rows use the authoritative %s artwork key without substituting a store capsule"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MergeArtworkParityTests.cs",
+        "case": "Queue_artwork_state_preserves_user_pin_and_store_precedence"
+      }
+    ],
+    "reason": "The real backend composition returns user art before Steam, pinned IGDB before Steam, and Steam for the same unpinned IGDB URL; the other entry remains Steam. Renderer queue rows use those returned keys unchanged."
+  },
+  "MergeQueueViewModelTests.An_unpinned_work_keeps_the_store_capsule_on_a_queue_row": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "desktop queue rows use the authoritative %s artwork key without substituting a store capsule"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MergeArtworkParityTests.cs",
+        "case": "Queue_artwork_state_preserves_user_pin_and_store_precedence"
+      }
+    ],
+    "reason": "The real backend composition returns user art before Steam, pinned IGDB before Steam, and Steam for the same unpinned IGDB URL; the other entry remains Steam. Renderer queue rows use those returned keys unchanged."
+  }
+}

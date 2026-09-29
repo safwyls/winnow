@@ -1,6 +1,7 @@
 /** Public renderer boundary. Discovery credentials and arbitrary filesystem access never cross it. */
 export interface ApiRequest {
   route: string
+  requestId?: string
   params?: Record<string, string | number>
   body?: unknown
 }
@@ -35,6 +36,8 @@ export interface SteamSignInOptions {
   consentGranted: boolean
   staySignedIn: boolean
   capturePurchaseHistory?: boolean
+  maxLoadMoreClicks?: number
+  maxLicensesPages?: number
 }
 export interface SteamCapturedPages {
   licensesHtml?: string | null
@@ -45,6 +48,11 @@ export interface SteamCapturedPages {
   steamId: string | null
 }
 export interface SteamCaptureResult {
+  captureOutcome?: 'captured' | 'partial' | 'cancelled' | 'unavailable' | 'failed' | 'no-session'
+  licensesStoppedBecause?: 'exhausted' | 'cap' | 'stalled' | 'interrupted' | 'failed'
+  historyStoppedBecause?: 'exhausted' | 'cap' | 'stalled' | 'interrupted' | 'failed'
+  licensesPagesWalked?: number
+  loadMoreClicks?: number
   pages?: SteamCapturedPages
   captureDetail?: string
   licensesTruncated?: boolean
@@ -75,7 +83,13 @@ export type ApplicationActivation =
   | { kind: 'game'; ownershipId: number }
   | { kind: 'plugin'; pluginId: string; releaseTag: string }
 export interface WinnowBridge {
+  prepareEpicSignIn?(): Promise<import('./epic').EpicSignInPreparation | null>
+  epicSignIn?(options: import('./epic').EpicSignInOptions): Promise<import('./epic').EpicSignInResult>
+  openEpicSignInInBrowser?(options: import('./epic').EpicSignInOptions): Promise<void>
+  completeEpicSignIn?(options: import('./epic').EpicSignInOptions & { callback: string }): Promise<import('./epic').EpicSignInResult>
+  cancelEpicSignIn?(): Promise<boolean>
   request<T = unknown>(request: ApiRequest): Promise<ApiResult<T>>
+  cancelRequest?(requestId: string): Promise<boolean>
   connection(): Promise<ConnectionState>
   onEvent(callback: (event: BackendEvent) => void): () => void
   onConnection(callback: (state: ConnectionState) => void): () => void

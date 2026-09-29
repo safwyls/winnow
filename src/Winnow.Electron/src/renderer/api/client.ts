@@ -17,8 +17,22 @@ export class ApiError extends Error {
   }
 }
 
-export async function request<T>(route: string, params?: ApiRequest['params'], body?: unknown): Promise<T> {
-  const result = await window.winnow.request<T>({ route, params, body })
+export async function request<T>(route: string, params?: ApiRequest['params'], body?: unknown, signal?: AbortSignal): Promise<T> {
+  signal?.throwIfAborted()
+  const requestId = signal ? crypto.randomUUID().replaceAll('-', '') : undefined
+  const cancel = () => {
+    if (requestId) void window.winnow.cancelRequest?.(requestId).catch(() => undefined)
+  }
+  const pending = window.winnow.request<T>({ route, params, body, ...(requestId ? { requestId } : {}) })
+  signal?.addEventListener('abort', cancel, { once: true })
+  if (signal?.aborted) cancel()
+  let result
+  try {
+    result = await pending
+    signal?.throwIfAborted()
+  } finally {
+    signal?.removeEventListener('abort', cancel)
+  }
   if (!result.ok)
     throw new ApiError(
       result.status,

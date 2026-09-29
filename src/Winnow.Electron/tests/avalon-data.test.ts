@@ -130,7 +130,82 @@ describe('Avalon presentation facts', () => {
       true,
     )
     expect(shelves).toHaveLength(1)
-    expect(shelves[0].rows[0].releaseId).toBeUndefined()
+    expect(shelves[0].rows[0].releaseId).toBe(1)
+    expect(shelves[0].rows[0].reason).toBe('Ready to play.')
+  })
+
+  it.each([false, true])(
+    'preserves source shelf order, pitches, reasons and recent capacity with fullscreen=%s',
+    (fullscreen) => {
+      const games = Array.from({ length: 12 }, (_, index) => game(index + 1, { lastPlayedAt: '2026-09-01' }))
+      const items = games
+        .slice()
+        .reverse()
+        .map((game) => ({
+          ownershipId: game.workId,
+          releaseId: game.workId,
+          title: game.title,
+          reason: `Last played on ${game.workId} September 2026.`,
+        }))
+      const feed: FeedSnapshot = {
+        candidateCount: 0,
+        confidence: 0,
+        failed: false,
+        shelves: [
+          {
+            id: 'recently_played',
+            title: 'Recently played',
+            blurb: 'Your latest games.',
+            supportsFeedback: false,
+            items: items.slice(0, 6),
+            reserve: items.slice(6),
+          },
+          {
+            id: 'recommended',
+            title: 'Recommended',
+            blurb: 'A different pitch.',
+            supportsFeedback: true,
+            items: [items[0]],
+            reserve: [],
+          },
+        ],
+      }
+      const [recent, recommended] = avalonShelves(games, feed, fullscreen)
+      expect(recent.id).toBe('recently_played')
+      expect(recent.blurb).toBe('Your latest games.')
+      expect(recent.feedback).toBe(false)
+      expect(recent.rows.map((row) => row.releaseId)).toEqual(
+        items.slice(0, fullscreen ? 12 : 5).map((item) => item.releaseId),
+      )
+      expect(recent.rows.map((row) => row.reason)).toEqual(
+        items.slice(0, fullscreen ? 12 : 5).map((item) => item.reason),
+      )
+      expect(recent.reserve?.map((row) => row.releaseId)).toEqual(
+        fullscreen ? [] : items.slice(5).map((item) => item.releaseId),
+      )
+      expect(recommended).toMatchObject({
+        id: 'recommended',
+        title: 'Recommended',
+        blurb: 'A different pitch.',
+        feedback: true,
+      })
+      expect(recommended.rows).toHaveLength(1)
+    },
+  )
+
+  it('keeps omitted or empty shelves absent even when the library has recent play', () => {
+    const games = [game(1, { lastPlayedAt: '2026-09-01' })]
+    const shelves = avalonShelves(
+      games,
+      {
+        candidateCount: 1,
+        confidence: 2,
+        failed: false,
+        shelves: [{ id: 'empty', title: 'Empty', blurb: '', items: [], reserve: [], supportsFeedback: true }],
+      },
+      false,
+    )
+    expect(shelves).toEqual([])
   })
 
   it('intersects search, installation, stores and lists across linked releases', () => {

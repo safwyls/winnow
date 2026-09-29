@@ -4,6 +4,7 @@ import { Artwork } from './Artwork'
 import type { ThemeGameCardProps } from '../../shared/theme'
 import { ArtworkEffects } from './artwork-effects'
 import { GamePreview } from './GamePreview'
+import { observeFeedCard } from './feed-impressions'
 
 export function hours(minutes: number) {
   return minutes < 60
@@ -85,39 +86,20 @@ export function GameCard({
 export function Impression({
   releaseId,
   shelfId,
+  enabled = true,
   children,
 }: {
   releaseId: number
   shelfId: string
+  enabled?: boolean
   children: React.ReactNode
 }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    let visible = false,
-      sent = false
-    const report = () => {
-      if (!visible || sent || document.visibilityState !== 'visible' || !document.hasFocus()) return
-      sent = true
-      void window.winnow.request({ route: 'feedImpression', body: { releaseId, shelfId } })
-    }
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        visible = entry.isIntersecting && entry.intersectionRatio >= 0.5
-        report()
-      },
-      { threshold: 0.5 },
-    )
-    if (ref.current) observer.observe(ref.current)
-    window.addEventListener('focus', report)
-    document.addEventListener('visibilitychange', report)
-    return () => {
-      observer.disconnect()
-      window.removeEventListener('focus', report)
-      document.removeEventListener('visibilitychange', report)
-    }
-  }, [releaseId, shelfId])
+    if (enabled && ref.current) return observeFeedCard(ref.current, releaseId, shelfId)
+  }, [enabled, releaseId, shelfId])
   return (
-    <div ref={ref} className="impression">
+    <div ref={ref} className="impression" data-feed-release-id={releaseId}>
       {children}
     </div>
   )

@@ -1,0 +1,130 @@
+{
+  "MergeDormancyTests.Visible_merge_covers_follow_the_display_toggle_without_reloading": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "desktop covers react to the display toggle without reloading review or cover state"
+      },
+      {
+        "file": "tests/electron/library-details.spec.ts",
+        "case": "keeps long merge members and independent actions inside the pane with correct focus hierarchy"
+      }
+    ],
+    "reason": "The existing rows react to DimDormantCovers without repeating identity or artwork-state reads. Native Electron also checks the computed cover filter after preference writes through the real backend. CSS uses the same dormancy policy as Electron library covers."
+  },
+  "MergeRowActionsTests.Fullscreen_keeps_open_game_and_eligible_header_actions_separate": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/library-details.spec.ts",
+        "case": "keeps long merge members and independent actions inside the pane with correct focus hierarchy"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "keeps expansion parents fixed and leaves member details independently available"
+      }
+    ],
+    "reason": "Native 1920px and 1280px windows retain separate Open game and Make header controls for a long title, promote by Enter, and remove Make header from the chosen parent. Fixed expansion members retain Open game without promotion."
+  },
+  "MergeRowActionsTests.Long_titles_keep_cards_and_trailing_actions_inside_the_desktop_pane_when_resized": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/electron/library-details.spec.ts",
+        "case": "keeps long merge members and independent actions inside the pane with correct focus hierarchy"
+      }
+    ],
+    "reason": "Native resizing from 1920 to 1200 to 1280 to 1200 verifies trailing controls stay inside each card, independent radio/include/Details actions and Details return focus. The original multiple-store chip fixture and resolved-strip geometry matrix remain."
+  },
+  "MergeRowActionsTests.Row_body_promotes_while_details_and_radio_have_independent_pointer_and_keyboard_actions": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "desktop row body promotes while Details, include and radio remain separate actions"
+      },
+      {
+        "file": "tests/electron/library-details.spec.ts",
+        "case": "keeps long merge members and independent actions inside the pane with correct focus hierarchy"
+      }
+    ],
+    "reason": "Pointer body promotion, independent Details, include and native Space radio activation are covered. The original resolved-row visibility and automation ItemStatus assertions are not fully migrated."
+  },
+  "MergeSuggestionRefreshTests.Leaving_fullscreen_cancels_manual_refresh_without_late_page_updates": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-refresh.test.tsx",
+        "case": "leaving the page cancels its named request and a late success cannot reload or move focus"
+      },
+      {
+        "file": "tests/parity-merge-request.test.ts",
+        "case": "registers before dispatch and only the requesting renderer can cancel"
+      }
+    ],
+    "reason": "Unmount aborts the exact page-owned request, forwards its cancellation through the bridge, and prevents a late response from reloading identity data or changing the next page's focus. Main-process ownership isolates cancellation from other renderers."
+  },
+  "MergeQueueViewModelTests.A_pack_row_with_no_playtime_shows_an_em_dash_for_both": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-facts.test.ts",
+        "case": "distinguishes unplayed games from packs without their own playtime"
+      }
+    ],
+    "reason": "An expansion with no separate playtime has em dashes in both columns and the original absence explanation; its unplayed base instead shows 0h and never."
+  },
+  "MergeQueueViewModelTests.An_unplayed_card_rolls_up_zero_hours": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "does not answer a group twice and retains exact zero-hour resolved metadata"
+      },
+      {
+        "file": "tests/parity-merge-facts.test.ts",
+        "case": "distinguishes unplayed games from packs without their own playtime"
+      }
+    ],
+    "reason": "Unplayed row formatting and 0h rollup are covered; a saved two-game desktop strip reports 2 entries, 0h and nested/nothing-deleted metadata."
+  },
+  "MergeQueueViewModelTests.A_patch_after_the_last_session_marks_the_row_unread_and_the_card_says_so": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-facts.test.ts",
+        "case": "retains the earliest ownership year and patched row count while excluding only played totals"
+      }
+    ],
+    "reason": "The authoritative patched bucket marks only its row unread, adds the original detail suffix and reports exactly one patched entry in the card rollup. The bucket calculation remains in the shared backend."
+  },
+  "MergeQueueViewModelTests.Each_row_wears_the_stores_it_is_owned_on": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-merge-facts.test.ts",
+        "case": "shows all owned stores and suppresses installation claims for mixed or absent evidence"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "retains current group choices across detail navigation, and arrows walk visible rows without wrapping"
+      }
+    ],
+    "reason": "Ownership rows retain all store names and duplicated game titles get distinct member labels. Original rendered uppercase chip combinations still need their own native fixture."
+  },
+  "MergeQueueViewModelTests.Answering_reads_nothing_however_long_the_queue_is": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "merges all selected groups under their chosen parents with sequential revisions and one bulk Undo"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "retains only completed bulk acts for Undo when a later group conflicts"
+      }
+    ],
+    "reason": "Bulk answers chain revisions without a queue read between writes and preserve completed acts on partial failure. The renderer reloads once after the action, and the retained backend calculates its compare-and-swap revision from repository facts. The original zero-read performance guarantee is not met."
+  }
+}

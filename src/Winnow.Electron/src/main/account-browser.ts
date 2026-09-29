@@ -14,7 +14,7 @@ export type AccountBrowser = Pick<
 > & { setInputEnabled?(enabled: boolean): void }
 
 /** Provider pages and the local masked composer never share a document or application preload. */
-export function createAccountBrowser(parent: BrowserWindow, profile: Session, title: string): AccountBrowser {
+export function createAccountBrowser(parent: BrowserWindow, profile: Session, title: string, capture?: { preload: string }): AccountBrowser {
   const fullscreen = parent.isFullScreen?.() === true
   const preferences = {
     session: profile,
@@ -26,6 +26,7 @@ export function createAccountBrowser(parent: BrowserWindow, profile: Session, ti
     webSecurity: true,
     disableDialogs: true,
     navigateOnDragDrop: false,
+    nodeIntegrationInSubFrames: false,
   }
   const window = new BrowserWindow({
     parent,
@@ -34,7 +35,7 @@ export function createAccountBrowser(parent: BrowserWindow, profile: Session, ti
     title,
     fullscreen,
     autoHideMenuBar: true,
-    webPreferences: preferences,
+    webPreferences: fullscreen ? preferences : { ...preferences, ...capture },
   })
   if (!fullscreen) {
     let enabled = true
@@ -53,7 +54,7 @@ export function createAccountBrowser(parent: BrowserWindow, profile: Session, ti
       },
     })
   }
-  const provider = new WebContentsView({ webPreferences: preferences })
+  const provider = new WebContentsView({ webPreferences: { ...preferences, ...capture } })
   window.contentView.addChildView(provider)
   const contents = provider.webContents,
     controls = window.webContents,

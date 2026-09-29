@@ -5,9 +5,14 @@ import type { JournalResponse } from './api/types'
 import { patchJournalCaches } from './features/activity-model'
 
 export async function refreshJournalSnapshot(client: QueryClient, sessionId: number): Promise<void> {
-  const reads = client.getQueryCache().findAll({ fetchStatus: 'fetching', predicate: query =>
-    ['activity.query', 'game.details', 'journal.get'].includes(String(query.queryKey[1])) })
-  await Promise.allSettled(reads.map(query => query.promise))
+  const reads = client
+    .getQueryCache()
+    .findAll({
+      fetchStatus: 'fetching',
+      predicate: (query) =>
+        ['activity.query', 'game.details', 'journal.get'].includes(String(query.queryKey[1])),
+    })
+  await Promise.allSettled(reads.map((query) => query.promise))
   const saved = await request<JournalResponse>('journal.get', { sessionId })
   patchJournalCaches(client, sessionId, saved)
 }
@@ -22,10 +27,22 @@ export async function refreshSnapshots(
   client: QueryClient,
   options: { artwork?: boolean } = {},
 ): Promise<void> {
-  const inFlight = client.getQueryCache().findAll({ type: 'active', fetchStatus: 'fetching' })
+  // Optional feed providers must never hold up a primary library/feed refresh.
+  // The completed primary pass gives its supplement a new query generation.
+  const inFlight = client
+    .getQueryCache()
+    .findAll({
+      type: 'active',
+      fetchStatus: 'fetching',
+      predicate: (query) => query.queryKey[1] !== 'feed.supplement',
+    })
   await Promise.allSettled(inFlight.map((query) => query.promise))
   await client.invalidateQueries(
-    { predicate: (query) => query.queryKey[0] !== 'artwork-image' || Boolean(options.artwork) },
+    {
+      predicate: (query) =>
+        query.queryKey[1] !== 'feed.supplement' &&
+        (query.queryKey[0] !== 'artwork-image' || Boolean(options.artwork)),
+    },
     { cancelRefetch: false },
   )
 }

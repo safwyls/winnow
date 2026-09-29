@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
+import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, dateLabel, hours, request, storeLabel, openExternal } from '../api/client'
 import { useApiQuery, useCommand, useWorkspace } from '../api/hooks'
@@ -8,6 +9,8 @@ import { useViewState } from '../viewState'
 import { Artwork } from '../components/Artwork'
 import { Empty, Notice } from './shared'
 import './parity-details.css'
+import { acquisitionFacts, playtimeRecordLine, updatePageUrl } from './details-facts'
+import { timelineUpdates } from './activity-timeline-model'
 
 interface IgdbCandidate {
   igdbId: number
@@ -308,8 +311,6 @@ type DetailFacts = GameDetails & {
     store: string
     acquiredAt?: string | null
     licenseType?: string | null
-    pricePaidCents?: number | null
-    priceSource?: string | null
     installPath?: string | null
   }[]
   history?: Record<string, { id: number; playtimeMinutes: number; observedAt: string }[]>
@@ -322,8 +323,11 @@ type DetailFacts = GameDetails & {
   }[]
 }
 
-export function Screenshots({ details }: { details?: GameDetails }) {
+export function Screenshots({ details, previewCount }: { details?: GameDetails; previewCount?: number }) {
   const [selected, setSelected] = useState<string | null>(null)
+  const [open, setOpen] = useState(false)
+  const origin = useRef<HTMLButtonElement | null>(null)
+  const closeButton = useRef<HTMLButtonElement | null>(null)
   const strip = useRef<HTMLDivElement>(null)
   const images = (details as DetailFacts | undefined)?.images ?? []
   const keys = images
@@ -344,16 +348,19 @@ export function Screenshots({ details }: { details?: GameDetails }) {
     const node = strip.current
     if (!node) return
     function wheel(event: WheelEvent) {
-      if (!node || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return
-      const max = node.scrollWidth - node.clientWidth
-      if (
-        max <= 0 ||
-        (event.deltaY < 0 && node.scrollLeft <= 0) ||
-        (event.deltaY > 0 && node.scrollLeft >= max)
-      )
-        return
-      node.scrollLeft = Math.max(0, Math.min(max, node.scrollLeft + event.deltaY))
+      if (!node) return
       event.preventDefault()
+      event.stopPropagation()
+      const max = node.scrollWidth - node.clientWidth
+      const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY
+      node.scrollLeft = Math.max(
+        0,
+        Math.min(
+          max,
+          node.scrollLeft +
+            delta * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? node.clientWidth : 1),
+        ),
+      )
     }
     node.addEventListener('wheel', wheel, { passive: false })
     return () => node.removeEventListener('wheel', wheel)
@@ -361,6 +368,7 @@ export function Screenshots({ details }: { details?: GameDetails }) {
   const index = shots.findIndex((shot) => `${shot.provider}:${shot.id}` === selected)
   const current = shots[index]
   const move = (delta: number) => {
+    if (!open || shots.length < 2) return
     const shot = shots[(index + delta + shots.length) % shots.length]
     if (shot) setSelected(`${shot.provider}:${shot.id}`)
   }
@@ -368,50 +376,100 @@ export function Screenshots({ details }: { details?: GameDetails }) {
   return (
     <section className="feature-panel">
       <h2>Screenshots</h2>
-      <div className="screenshot-strip" aria-label="Screenshots" ref={strip}>
-        {shots.map((shot, index) => (
+      <div className={`screenshot-strip${previewCount ? ' screenshot-previews' : ''}`} aria-label="Screenshots" ref={strip}>
+        {(previewCount ? shots.slice(0, previewCount) : shots).map((shot, index) => (
           <button
             key={`${shot.provider}:${shot.id}`}
             aria-label={`Open screenshot ${index + 1} of ${shots.length}`}
-            onClick={() => setSelected(`${shot.provider}:${shot.id}`)}
+            aria-pressed={`${shot.provider}:${shot.id}` === selected}
+            onFocus={(event) => event.currentTarget.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })}
+            onClick={(event) => {
+              origin.current = event.currentTarget
+              setSelected(`${shot.provider}:${shot.id}`)
+              setOpen(true)
+            }}
           >
-            <ScreenshotImage asset={shot} width={400} />
+            <ScreenshotImage asset={shot} width={previewCount ? 1280 : 400} />
           </button>
         ))}
       </div>
-      <Dialog.Root
-        open={Boolean(current)}
-        onOpenChange={(open) => {
-          if (!open) setSelected(null)
-        }}
-      >
+      <p className="muted screenshot-caption">
+        {shots.length} {shots.length === 1 ? 'screenshot' : 'screenshots'} from{' '}
+        {[
+          ...new Set(shots.map((shot) => (shot.provider === 'igdb-shot' ? 'IGDB' : shot.provider.slice(7)))),
+        ].join(', ')}
+      </p>
+      {previewCount && <button className="screenshot-gallery-link" onClick={(event) => {
+        origin.current = event.currentTarget
+        if (!selected || !current) setSelected(`${shots[0].provider}:${shots[0].id}`)
+        setOpen(true)
+      }}>View gallery →</button>}
+      <Dialog.Root open={open && Boolean(current)} onOpenChange={setOpen}>
         <Dialog.Portal>
           <Dialog.Overlay className="dialog-overlay" />
           <Dialog.Content
             className="dialog-content screenshot-dialog"
+            onOpenAutoFocus={(event) => {
+              event.preventDefault()
+              closeButton.current?.focus()
+            }}
+            onCloseAutoFocus={(event) => {
+              event.preventDefault()
+              if (origin.current?.isConnected) {
+                origin.current.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+                origin.current.focus({ preventScroll: true })
+              }
+            }}
+            onEscapeKeyDown={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              setOpen(false)
+            }}
             onKeyDown={(event) => {
               if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
                 event.preventDefault()
+                event.stopPropagation()
                 move(event.key === 'ArrowRight' ? 1 : -1)
               }
             }}
           >
-            <Dialog.Title>
-              Screenshot {index + 1} of {shots.length}
-            </Dialog.Title>
-            <Dialog.Description>
+            <Dialog.Description className="sr-only">
               Use the previous and next buttons or the arrow keys to browse.
             </Dialog.Description>
-            {current && <ScreenshotImage asset={current} width={1920} />}
-            <div className="form-actions">
-              <button disabled={shots.length < 2} onClick={() => move(-1)}>
-                Previous screenshot
-              </button>
-              <button disabled={shots.length < 2} onClick={() => move(1)}>
-                Next screenshot
-              </button>
-              <Dialog.Close>Close screenshots</Dialog.Close>
+            <div className="screenshot-frame">
+              {open && current && <ScreenshotImage asset={current} width={1280} />}
+              <Dialog.Close
+                ref={closeButton}
+                className="screenshot-close"
+                aria-label="Close screenshots"
+                title="Close screenshots"
+              >
+                <X size={24} aria-hidden="true" />
+              </Dialog.Close>
+              {shots.length > 1 && (
+                <>
+                  <button
+                    className="screenshot-previous"
+                    aria-label="Previous screenshot"
+                    title="Previous screenshot"
+                    onClick={() => move(-1)}
+                  >
+                    <ChevronLeft size={24} aria-hidden="true" />
+                  </button>
+                  <button
+                    className="screenshot-next"
+                    aria-label="Next screenshot"
+                    title="Next screenshot"
+                    onClick={() => move(1)}
+                  >
+                    <ChevronRight size={24} aria-hidden="true" />
+                  </button>
+                </>
+              )}
             </div>
+            <Dialog.Title aria-live="polite" className="screenshot-position">
+              Screenshot {index + 1} of {shots.length}
+            </Dialog.Title>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
@@ -447,14 +505,19 @@ function ScreenshotImage({ asset, width }: { asset: { provider: string; id: stri
   )
 }
 
-export function UpdateSignals({ details }: { details?: GameDetails }) {
+export function UpdateSignals({ details, game }: { details?: GameDetails; game?: LibraryGame }) {
   const facts = details as DetailFacts | undefined
   const command = useCommand<{ result: string }>()
   const [busy, setBusy] = useViewState(`updates:${details?.workId}:sending`, false)
   const [message, setMessage] = useState('')
   const [actionError, setActionError] = useState<unknown>(null)
   const [linkError, setLinkError] = useState<unknown>(null)
-  const events = facts?.events ?? []
+  const events = timelineUpdates(
+    facts?.events ?? [],
+    facts?.acknowledgements ?? {},
+    game?.lastPlayedAt,
+    game?.playtimeMinutes ?? 0,
+  )
   const standing = Object.keys(facts?.acknowledgements ?? {}).map(Number)
   async function change(restore: boolean) {
     if (busy) return
@@ -508,12 +571,24 @@ export function UpdateSignals({ details }: { details?: GameDetails }) {
         <Empty>No update signals recorded.</Empty>
       ) : (
         events.map((event) => (
-          <article className="update-row" key={event.id}>
+          <article
+            className="update-row"
+            key={event.id}
+            data-unread={event.unread}
+            aria-label={`${event.title ?? event.kind.replaceAll('_', ' ')} · ${dateLabel(event.occurredAt)}${event.unread ? ' · unread' : ''}`}
+          >
             <div>
               <time>{dateLabel(event.occurredAt)}</time>
-              <h3>{event.title ?? event.kind.replaceAll('_', ' ')}</h3>
+              <h3>
+                {event.unread && (
+                  <span className="update-unread-dot" aria-hidden="true">
+                    ●{' '}
+                  </span>
+                )}
+                {event.title ?? event.kind.replaceAll('_', ' ')}
+              </h3>
             </div>
-            {event.url && (
+            {updatePageUrl(event.url) ? (
               <button
                 onClick={async () => {
                   try {
@@ -528,6 +603,8 @@ export function UpdateSignals({ details }: { details?: GameDetails }) {
               >
                 Read
               </button>
+            ) : (
+              <p className="muted">No patch notes page was recorded for this update.</p>
             )}
           </article>
         ))
@@ -549,6 +626,21 @@ export function UpdateSignals({ details }: { details?: GameDetails }) {
   )
 }
 
+export function AcquisitionSummary({
+  ownerships,
+}: {
+  ownerships?: import('./details-facts').AcquisitionInput[]
+}) {
+  const facts = acquisitionFacts(ownerships)
+  if (!facts) return null
+  return (
+    <div className="acquisition-facts">
+      {facts.dateText && <p>Acquired {facts.dateText}</p>}
+      {facts.licenseText && <p>{facts.licenseText}</p>}
+    </div>
+  )
+}
+
 export function LibraryFacts({ game, details }: { game?: LibraryGame; details?: GameDetails }) {
   const facts = details as DetailFacts | undefined
   const workspace = useWorkspace()
@@ -561,18 +653,7 @@ export function LibraryFacts({ game, details }: { game?: LibraryGame; details?: 
           <article className="metadata-row" key={entry.id}>
             <div>
               <h3>{storeLabel(entry.store)}</h3>
-              <p>
-                {entry.acquiredAt
-                  ? `Acquired ${dateLabel(entry.acquiredAt)}`
-                  : 'Acquisition date not recorded'}
-              </p>
-              {entry.licenseType && <p>{entry.licenseType}</p>}
-              {entry.pricePaidCents != null && (
-                <p>
-                  Recorded price: {(entry.pricePaidCents / 100).toFixed(2)}
-                  {entry.priceSource ? ` · ${entry.priceSource}` : ''}
-                </p>
-              )}
+              <AcquisitionSummary ownerships={[entry]} />
               <details>
                 <summary>Installation & identifiers</summary>
                 <p>{entry.installPath ?? 'Installation path not recorded'}</p>
@@ -616,6 +697,7 @@ export function LibraryFacts({ game, details }: { game?: LibraryGame; details?: 
               )}{' '}
               · {rows.length} readings
             </summary>
+            <p>{playtimeRecordLine(rows)}</p>
             {[...rows]
               .sort((a, b) => b.observedAt.localeCompare(a.observedAt))
               .map((row) => (

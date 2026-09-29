@@ -1582,6 +1582,154 @@
       "source": "tests/Winnow.Tests/EpicSyncInstallOrderingTests.cs"
     },
     {
+      "id": "AuthCodeBodyTests.The_verbatim_no_session_body_is_no_session_not_no_code",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthCodeBodyTests.cs"
+    },
+    {
+      "id": "AuthCodeBodyTests.A_populated_body_yields_the_code_and_its_grant",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthCodeBodyTests.cs"
+    },
+    {
+      "id": "AuthCodeBodyTests.An_exchange_code_is_found_and_carries_the_exchange_grant",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthCodeBodyTests.cs"
+    },
+    {
+      "id": "AuthCodeBodyTests.Field_order_is_the_callers_priority_order",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthCodeBodyTests.cs"
+    },
+    {
+      "id": "AuthCodeBodyTests.Anything_that_is_not_the_providers_code_body_is_classified_as_such",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthCodeBodyTests.cs"
+    },
+    {
+      "id": "AuthCodeBodyTests.A_present_but_blank_field_is_still_no_session",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthCodeBodyTests.cs"
+    },
+    {
+      "id": "AuthCodeBodyTests.A_wrongly_typed_field_is_still_recognised_as_the_code_body",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthCodeBodyTests.cs"
+    },
+    {
+      "id": "AuthCodeBodyTests.The_reading_never_prints_the_code_it_found",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthCodeBodyTests.cs"
+    },
+    {
+      "id": "AuthCodeBodyTests.With_no_fields_to_look_for_nothing_is_a_code_body",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthCodeBodyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.The_trusted_set_is_exactly_the_origins_the_request_named",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.A_message_from_the_wrong_origin_is_refused",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.A_message_from_an_unidentifiable_source_is_refused",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.A_third_party_iframe_on_the_sign_in_page_is_not_trusted",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.Plaintext_http_is_never_trusted_even_when_the_request_named_it",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.The_bridge_is_offered_only_to_trusted_origins",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.The_redirect_must_match_on_the_port_as_well",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.The_redirect_must_match_on_scheme_host_and_path_too",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.There_is_no_redirect_target_when_the_request_registered_none",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.The_sign_in_journey_and_the_redirect_are_the_two_allowed_outcomes",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.An_unapproved_navigation_is_blocked_rather_than_hosted",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.A_configured_social_provider_is_navigable",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.The_redirect_is_only_captured_when_that_strategy_is_armed",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.An_unapproved_popup_goes_to_the_users_own_browser",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.An_approved_popup_is_still_folded_into_the_same_window",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.A_popup_can_carry_the_redirect_and_is_captured_not_opened",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.A_popup_to_something_that_is_not_a_web_page_is_refused_outright",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.The_matching_state_is_the_only_one_that_passes",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.A_missing_state_is_reported_as_missing_rather_than_accepted",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.A_wrong_state_is_a_mismatch_however_close_it_is",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.A_state_that_needed_escaping_still_matches_after_the_round_trip",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthFlowPolicyTests.No_state_sent_means_nothing_to_verify",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthStateTests.Every_state_is_unique_and_carries_its_full_entropy",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthStateTests.A_state_survives_a_query_string_without_escaping",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthStateTests.Matching_is_exact_and_never_matches_nothing",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthBridgeScriptTests.The_bridge_refuses_to_define_itself_outside_a_trusted_top_level_document",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthBridgeScriptTests.An_empty_trusted_set_produces_a_bridge_that_can_never_arm",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
+      "id": "AuthBridgeScriptTests.The_harvester_carries_the_same_guard_and_its_url_as_a_literal",
+      "source": "tests/Winnow.Tests/EpicWeb/AuthFlowPolicyTests.cs"
+    },
+    {
       "id": "EpicInteractiveSignInTests.An_authorization_code_is_spent_on_the_authorization_code_grant",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs"
     },
@@ -5250,6 +5398,202 @@
       "source": "tests/Winnow.Tests/StartupReadsOnceTests.cs"
     },
     {
+      "id": "SteamAccountPagePolicyTests.Only_the_store_origin_can_be_read",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs"
+    },
+    {
+      "id": "SteamAccountPagePolicyTests.Valves_login_and_support_origins_are_navigable_but_never_read",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs"
+    },
+    {
+      "id": "SteamAccountPagePolicyTests.Anything_outside_the_flow_is_refused_and_a_popup_to_it_leaves_the_window",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs"
+    },
+    {
+      "id": "SteamAccountPagePolicyTests.Plaintext_http_on_the_right_host_is_still_refused",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs"
+    },
+    {
+      "id": "SteamAccountPagePolicyTests.A_non_web_scheme_is_blocked_and_not_handed_anywhere",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs"
+    },
+    {
+      "id": "SteamAccountPagePolicyTests.There_is_no_redirect_to_capture_in_this_flow",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs"
+    },
+    {
+      "id": "SteamAccountPagePolicyTests.The_two_pages_are_recognised",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs"
+    },
+    {
+      "id": "SteamAccountPagePolicyTests.Nothing_else_is_ever_read",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs"
+    },
+    {
+      "id": "SteamAccountPagePolicyTests.The_session_only_ever_navigates_to_those_two_pages",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs"
+    },
+    {
+      "id": "SteamAccountPagePolicyTests.The_cap_is_clamped_into_range_whatever_the_request_asks_for",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs"
+    },
+    {
+      "id": "SteamAccountPagePolicyTests.Clicking_continues_while_the_control_is_there_and_the_rows_grow",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs"
+    },
+    {
+      "id": "SteamAccountPagePolicyTests.Clicking_stops_when_the_control_goes_away",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs"
+    },
+    {
+      "id": "SteamAccountPagePolicyTests.Clicking_stops_at_the_cap_even_with_more_to_load",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs"
+    },
+    {
+      "id": "SteamAccountPagePolicyTests.The_licences_cap_is_clamped_independently_of_the_load_more_one",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs"
+    },
+    {
+      "id": "SteamAccountPagePolicyTests.The_paginator_is_followed_while_there_is_a_next_page_and_the_rows_grow",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs"
+    },
+    {
+      "id": "SteamAccountPagePolicyTests.The_paginator_stops_when_there_is_no_next_page",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs"
+    },
+    {
+      "id": "SteamAccountPagePolicyTests.The_paginator_stops_at_the_cap_with_more_pages_to_go",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs"
+    },
+    {
+      "id": "SteamAccountPagePolicyTests.The_paginator_stops_when_a_page_adds_no_rows",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs"
+    },
+    {
+      "id": "SteamAccountPagePolicyTests.Both_pages_are_judged_by_one_rule",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs"
+    },
+    {
+      "id": "SteamAccountPagePolicyTests.Clicking_stops_when_a_click_stops_producing_rows",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs"
+    },
+    {
+      "id": "SteamAccountPageTruncationTests.The_last_licences_page_is_complete_even_though_the_advertised_total_is_higher",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPageTruncationTests.cs"
+    },
+    {
+      "id": "SteamAccountPageTruncationTests.A_page_with_a_next_link_is_still_truncated",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPageTruncationTests.cs"
+    },
+    {
+      "id": "SteamAccountPageTruncationTests.The_count_mismatch_is_reported_as_a_fact_rather_than_a_verdict",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPageTruncationTests.cs"
+    },
+    {
+      "id": "SteamAccountPageTruncationTests.A_page_with_no_paginator_at_all_reports_no_mismatch",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPageTruncationTests.cs"
+    },
+    {
+      "id": "SteamAccountPageTruncationTests.A_hidden_load_more_control_means_the_history_is_complete",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPageTruncationTests.cs"
+    },
+    {
+      "id": "SteamAccountPageTruncationTests.A_load_more_control_hidden_by_the_area_around_it_also_means_complete",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPageTruncationTests.cs"
+    },
+    {
+      "id": "SteamAccountPageTruncationTests.A_visible_load_more_control_still_means_there_is_more",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPageTruncationTests.cs"
+    },
+    {
+      "id": "SteamAccountPageTruncationTests.The_session_reports_completeness_from_what_it_watched_happen",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPageTruncationTests.cs"
+    },
+    {
+      "id": "SteamAccountPageTruncationTests.A_cap_that_stopped_the_walk_is_not_completeness",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPageTruncationTests.cs"
+    },
+    {
+      "id": "SteamAccountPagesContractTests.A_complete_capture_carries_both_documents_and_when_it_happened",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs"
+    },
+    {
+      "id": "SteamAccountPagesContractTests.The_embedded_session_and_the_saved_files_produce_the_same_shape",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs"
+    },
+    {
+      "id": "SteamAccountPagesContractTests.A_page_at_a_time_is_representable",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs"
+    },
+    {
+      "id": "SteamAccountPagesContractTests.Whitespace_is_not_a_page",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs"
+    },
+    {
+      "id": "SteamAccountPagesContractTests.Byte_counts_are_utf8_and_are_the_only_measure_of_a_document",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs"
+    },
+    {
+      "id": "SteamAccountPagesContractTests.Neither_the_pages_nor_the_result_render_their_contents",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs"
+    },
+    {
+      "id": "SteamAccountPagesContractTests.A_complete_run_reports_how_far_the_history_was_expanded",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs"
+    },
+    {
+      "id": "SteamAccountPagesContractTests.A_capped_run_says_so_so_the_parser_knows_the_page_is_truncated",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs"
+    },
+    {
+      "id": "SteamAccountPagesContractTests.The_licences_walk_is_reported_the_same_way_the_history_clicks_are",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs"
+    },
+    {
+      "id": "SteamAccountPagesContractTests.A_caller_that_ignores_the_licences_walk_still_compiles_and_reads_sensibly",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs"
+    },
+    {
+      "id": "SteamAccountPagesContractTests.A_partial_run_still_hands_over_what_it_got",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs"
+    },
+    {
+      "id": "SteamAccountPagesContractTests.Every_failure_carries_a_reason_and_no_pages",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs"
+    },
+    {
+      "id": "SteamAccountPagesContractTests.A_request_will_not_run_without_consent_being_recorded",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs"
+    },
+    {
+      "id": "SteamHarvestScriptsTests.The_walk_replaces_the_paginator_it_followed",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamHarvestScriptsTests.cs"
+    },
+    {
+      "id": "SteamHarvestScriptsTests.The_walk_merges_rows_into_the_table_the_parser_recognises",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamHarvestScriptsTests.cs"
+    },
+    {
+      "id": "SteamHarvestScriptsTests.The_walk_asks_steam_for_its_own_next_page",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamHarvestScriptsTests.cs"
+    },
+    {
+      "id": "SteamHarvestScriptsTests.Every_script_answers_rather_than_throwing_into_the_page",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamHarvestScriptsTests.cs"
+    },
+    {
+      "id": "SteamPageHarvesterAvailabilityTests.A_console_less_host_is_told_so_rather_than_left_waiting",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamPageHarvesterAvailabilityTests.cs"
+    },
+    {
+      "id": "SteamPageHarvesterAvailabilityTests.Nothing_opens_without_consent_having_been_recorded",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamPageHarvesterAvailabilityTests.cs"
+    },
+    {
+      "id": "SteamPageHarvesterAvailabilityTests.A_null_request_is_a_programming_error_not_an_outcome",
+      "source": "tests/Winnow.Tests/SteamAccount/SteamPageHarvesterAvailabilityTests.cs"
+    },
+    {
       "id": "SteamAccountIdentityTests.A_sign_in_confirms_the_account_and_the_toggle_goes_live_with_no_http_call",
       "source": "tests/Winnow.Tests/SteamAccountIdentityTests.cs"
     },
@@ -5830,6 +6174,30 @@
       "source": "tests/Winnow.Tests/SteamConnectionSeamTests.cs"
     },
     {
+      "id": "SteamHarvestScriptSelectorTests.The_row_counter_no_longer_looks_for_an_id_that_is_not_on_the_page",
+      "source": "tests/Winnow.Tests/SteamHarvestScriptSelectorTests.cs"
+    },
+    {
+      "id": "SteamHarvestScriptSelectorTests.The_row_counter_uses_the_selectors_the_real_history_page_carries",
+      "source": "tests/Winnow.Tests/SteamHarvestScriptSelectorTests.cs"
+    },
+    {
+      "id": "SteamHarvestScriptSelectorTests.The_history_fixture_carries_the_ids_and_classes_the_scripts_target",
+      "source": "tests/Winnow.Tests/SteamHarvestScriptSelectorTests.cs"
+    },
+    {
+      "id": "SteamHarvestScriptSelectorTests.The_signed_in_probe_targets_a_marker_both_real_pages_carry",
+      "source": "tests/Winnow.Tests/SteamHarvestScriptSelectorTests.cs"
+    },
+    {
+      "id": "SteamHarvestScriptSelectorTests.The_licences_page_is_paginated_and_the_scripts_know_how_to_see_it",
+      "source": "tests/Winnow.Tests/SteamHarvestScriptSelectorTests.cs"
+    },
+    {
+      "id": "SteamHarvestScriptSelectorTests.Every_script_is_a_self_contained_expression_that_catches_its_own_errors",
+      "source": "tests/Winnow.Tests/SteamHarvestScriptSelectorTests.cs"
+    },
+    {
       "id": "SteamInstallRefreshTests.Stable_install_and_uninstall_refresh_manifest_only_ownership_without_erasing_history",
       "source": "tests/Winnow.Tests/SteamInstallRefreshTests.cs"
     },
@@ -5980,6 +6348,138 @@
     {
       "id": "SteamPlaytimeBackfillTests.Matching_credentials_recover_all_years_after_an_unconfirmed_pass",
       "source": "tests/Winnow.Tests/SteamWeb/SteamPlaytimeBackfillTests.cs"
+    },
+    {
+      "id": "SteamTokenClaimsTests.A_token_payload_yields_its_expiry_subject_audience_and_issuer",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamTokenClaimsTests.A_single_string_audience_reads_as_one_entry",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamTokenClaimsTests.A_malformed_token_is_unreadable_rather_than_an_exception",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamTokenClaimsTests.A_payload_that_is_valid_base64_but_not_a_json_object_is_unreadable",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamTokenClaimsTests.Claims_of_the_wrong_json_type_are_absent_rather_than_coerced",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamTokenClaimsTests.A_subject_outside_the_individual_account_range_yields_no_steam_id",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamTokenClaimsTests.The_browser_and_the_product_read_the_same_claims",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionCreationTests.Expiry_and_account_come_from_the_token_rather_than_from_the_caller",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionCreationTests.A_refresh_token_that_does_not_decode_leaves_its_expiry_unknown",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionCreationTests.A_malformed_access_token_yields_no_session",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionCreationTests.A_token_stating_no_expiry_or_no_account_yields_no_session",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionCreationTests.A_missing_refresh_token_still_yields_a_session",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionKindTests.A_token_only_session_is_live_for_its_whole_life",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionKindTests.A_token_only_session_goes_straight_to_expired",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionKindTests.A_renewable_session_still_passes_through_renewal_due",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionKindTests.A_token_only_session_round_trips_through_the_store",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionKindTests.The_stored_shape_of_a_token_only_session_is_the_same_closed_list",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionKindTests.A_stored_session_whose_refresh_token_is_blank_reads_back_as_token_only",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionKindTests.The_credential_selector_sends_a_token_only_session",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionProviderTests.No_stored_session_reads_as_not_signed_in",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionProviderTests.A_live_session_reads_as_live_and_the_store_is_read_once",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionProviderTests.A_session_inside_the_renewal_lead_window_reads_as_renewal_due",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionProviderTests.An_expired_access_token_with_a_live_refresh_token_reads_as_renewal_due",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionProviderTests.An_expired_access_token_with_a_dead_refresh_token_reads_as_expired",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionProviderTests.A_recorded_renewal_failure_reads_as_renewal_failing",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionProviderTests.A_live_session_on_a_host_that_cannot_encrypt_reads_as_not_persisted",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionProviderTests.Signing_out_forgets_the_session_in_memory_and_on_disk",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionProviderTests.Concurrent_first_reads_load_the_store_exactly_once",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionRegistrationTests.The_session_source_and_provider_are_registered_as_singletons",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionRegistrationTests.With_no_session_stored_the_key_path_is_exactly_what_it_was",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionRegistrationTests.Once_a_session_is_stored_the_selector_sees_it",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionRegistrationTests.An_expired_session_is_registered_but_not_usable",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
+    },
+    {
+      "id": "SteamSessionRegistrationTests.Nothing_about_a_session_reaches_even_a_trace_level_log",
+      "source": "tests/Winnow.Tests/SteamWeb/SteamSessionProviderTests.cs"
     },
     {
       "id": "SteamAccountPagePolicyTierTests.The_store_root_may_be_minted_from",

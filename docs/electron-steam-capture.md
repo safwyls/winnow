@@ -29,12 +29,17 @@ B or Escape can still cancel.
 Purchase and licence capture is a separate consent, off by default when opening sign-in.
 Connections also offers a separate capture window that does not save sign-in credentials.
 Both routes read only `/account/licenses/` and `/account/history/` on Steam's store origin.
-The window title reports progress; closing the window stops further reads. Pages already
-captured can be reviewed or discarded. Capture never starts an import automatically.
+The window title reports progress; closing the window stops further reads. In the dedicated
+purchase-import route, agreeing to capture also authorizes import of the available pages,
+including a partial capture. Selecting saved HTML files likewise reads and imports them in
+one operation. Optional capture during ordinary account sign-in remains separate: its pages
+are offered for explicit import or discard after sign-in succeeds.
 
 The licence walker follows at most fifty further pages by default. Purchase history permits
 at most one hundred load-more clicks, waiting up to fifteen seconds for a click to add rows.
-These limits, stalled pages and rejected pagination are reported as incomplete captures.
+The native sign-in request can override these counts; the reader clamps them to two hundred
+further licence pages and five hundred history clicks. Malformed counts are rejected before
+opening a browser. These limits, stalled pages and rejected pagination are reported as incomplete captures.
 Page content is limited to 64 MiB per document and 128 MiB across the capture. The import API
 still applies its own payload and parsing limits. Large accounts can import additional saved
 pages separately.
@@ -48,9 +53,35 @@ provide an account label for unidentified page contents.
 Only the account tables and pagination evidence cross into the application renderer. The
 capture removes scripts, account configuration, forms, session fields and irrelevant link
 parameters. Licence package IDs and purchase app IDs remain available to the existing parser.
-The review screen shows which page types were captured and any incompleteness, and offers
-explicit import or discard. Import uses the same backend service as saved HTML files and
-reports each page type's result and the facts recorded or already present.
+The optional sign-in review shows which page types were captured and any incompleteness, and
+offers explicit import or discard. Dedicated capture and saved-file import show the result
+directly; a failed import retains its pages for an explicit retry. Import uses the same backend service and
+reports each page type's result and the facts recorded or already present. Both routes show
+grouped counts in reading, matching and update order, followed by only the skip reasons that
+occurred. Steam's reported licence total appears beside the rows read when they differ; that
+difference alone is not evidence of missing pages.
+
+Live capture records a separate stop reason for licences and history. A completed walk
+outranks a static parser's truncation guess. A gap, stalled control, safety limit or interrupted
+walk remains incomplete. Saved pages instead explain how to gather the remaining pages;
+licence files with at least ninety rendered or parser-skipped rows and no advertised total
+receive the same pagination hint as the original frontend. Parser failures keep the successful
+page's counts visible and report the failed page's reason.
+
+The purchase routes and connection changes share a busy state, so importing, saving a key,
+signing in and signing out cannot overlap within the Steam settings card. A new import attempt
+clears the previous attempt's report. Selected filenames and their outcomes remain visible
+after import, including duplicate and different-account results. Closing the settings host
+cancels its pending private browser. Signing out clears the session's status message and
+purchase-capture permission while preserving an independent API key.
+
+The backend owns the encrypted session store and credential selector. An unrenewable session
+remains usable until its expiry, then stays visibly expired until reconnect or sign-out.
+Successful sign-in and sign-out request an ownership refresh. Sign-out clears the session
+from memory and disk, reconciles account confirmation and invalidates pending Steam sign-ins.
+A host that cannot encrypt keeps the session for the current backend run and reports that
+limitation. Native account mismatches and browser failures return distinct safe outcomes;
+provider exception text never becomes their displayed explanation.
 
 Tests execute the capture scripts against the sanitized account-page fixtures in
 `tests/fixtures/steam-account-pages/`, alongside mocked browser navigation, cancellation,

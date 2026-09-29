@@ -54,3 +54,53 @@ export function mergeFixture(): MergeReview {
     },
   }
 }
+
+export function sourceSortFixture(review: MergeReview) {
+  review.workspace.works = [
+    { id: 1, name: 'The Witcher 3: Wild Hunt' },
+    { id: 2, name: 'The Witcher 3: Wild Hunt GOTY' },
+    { id: 3, name: 'Prey' },
+    { id: 4, name: 'Prey' },
+    { id: 5, name: 'The Stanley Parable' },
+    { id: 6, name: 'The Stanley Parable' },
+  ]
+  review.workspace.releases = review.workspace.works.map((work) => ({ id: 100 + work.id, workId: work.id }))
+  review.workspace.ownerships = review.workspace.works.map((work) => ({
+    id: work.id,
+    releaseId: 100 + work.id,
+    store: 'steam',
+  }))
+  review.workspace.buckets = review.workspace.works.map((work) => ({
+    ownershipId: work.id,
+    releaseId: 100 + work.id,
+    workId: work.id,
+    playtimeMinutes: work.id === 3 ? 600 : work.id <= 2 ? 30 : 0,
+    bucket: 'active',
+  }))
+  review.candidates = [
+    {
+      id: 11,
+      leftReleaseId: 103,
+      rightReleaseId: 104,
+      score: 0.65,
+      status: 'pending',
+      signalsJson: JSON.stringify({ band: 'Review', title_similarity: 1 }),
+    },
+    {
+      id: 10,
+      leftReleaseId: 101,
+      rightReleaseId: 102,
+      score: 0.99,
+      status: 'pending',
+      signalsJson: JSON.stringify({ band: 'Priority', title_similarity: 1 }),
+    },
+    {
+      id: 12,
+      leftReleaseId: 105,
+      rightReleaseId: 106,
+      score: 0.98,
+      status: 'pending',
+      signalsJson: JSON.stringify({ band: 'Priority', title_similarity: 1 }),
+    },
+  ]
+}

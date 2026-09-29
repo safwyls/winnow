@@ -30,14 +30,18 @@
     "reason": "A work outside the current group throws without changing the selected parent."
   },
   "MergeQueueViewModelTests.Rows_on_an_expansion_card_cannot_be_promoted": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-merge-model.test.ts",
         "case": "promotes a group member, reincludes it, rejects foreign rows and protects expansion parents"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "keeps expansion parents fixed and leaves member details independently available"
       }
     ],
-    "reason": "Expansion parent promotion is refused in the pure model. Original disabled-radio automation and native rendered member actions remain."
+    "reason": "The model refuses expansion promotion; desktop omits its radios and fullscreen omits Make header, while both surfaces retain the independent member Details action."
   },
   "MergeQueueViewModelTests.A_non_same_game_child_is_not_offered_as_a_same_game_parent": {
     "status": "ported",
@@ -60,14 +64,18 @@
     "reason": "Both modes write the selected parent and children, show the saved group and retain its exact act for Undo. The original pending card's object identity, resolved-strip copy and native cover lifetime assertions are not reproduced."
   },
   "MergeQueueViewModelTests.Consecutive_dismissals_share_one_dock_and_one_undo_restores_them_in_place": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "restores consecutive dismissed groups to their original slots with one Undo"
+      },
       {
         "file": "tests/parity-merge.test.tsx",
         "case": "accumulates consecutive dismissals and restores their candidate IDs in one Undo"
       }
     ],
-    "reason": "Both modes accumulate sequential candidate refusals under the latest revision and restore them with one Undo. Original repository persistence, card object identity and exact restored position require additional native evidence."
+    "reason": "Consecutive refusals accumulate candidate IDs and the latest revision in one Undo; restoration uses the original visual slot order on both surfaces."
   },
   "MergeQueueViewModelTests.Undo_after_same_game_retracts_the_act_and_closes_the_dock": {
     "status": "partial",
@@ -164,78 +172,82 @@
     "reason": "Both presentation modes identify the single eligible action as Accept 1 exact match."
   },
   "MergeQueueViewModelTests.Strongest_match_orders_exact_before_likely_before_worth_a_look": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-merge-model.test.ts",
-        "case": "sorts confidence before score, supports summed hours and title, and leaves saved acts last"
+        "file": "tests/parity-merge.test.tsx",
+        "case": "orders all three source confidence bands, summed playtime and titles and identifies the selected sort"
       }
     ],
-    "reason": "The pure renderer comparator orders confidence, score and stable card identity. The test presently covers exact and likely; the full original three-band fixture still needs a migrated assertion."
+    "reason": "The source Stanley/Witcher/Prey fixture checks all three bands, 0/60/600 minute totals, title order and selected menu/combobox state on both surfaces."
   },
   "MergeQueueViewModelTests.Playtime_at_stake_orders_by_summed_minutes_descending": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-merge-model.test.ts",
-        "case": "sorts confidence before score, supports summed hours and title, and leaves saved acts last"
+        "file": "tests/parity-merge.test.tsx",
+        "case": "orders all three source confidence bands, summed playtime and titles and identifies the selected sort"
       }
     ],
-    "reason": "Included-row playtime determines descending proposal order. Original view-model notification and complete repository fixture assertions remain."
+    "reason": "The source Stanley/Witcher/Prey fixture checks all three bands, 0/60/600 minute totals, title order and selected menu/combobox state on both surfaces."
   },
   "MergeQueueViewModelTests.Title_orders_by_the_header_title": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-merge-model.test.ts",
-        "case": "sorts confidence before score, supports summed hours and title, and leaves saved acts last"
+        "file": "tests/parity-merge.test.tsx",
+        "case": "orders all three source confidence bands, summed playtime and titles and identifies the selected sort"
       }
     ],
-    "reason": "The renderer sorts by current parent title with stable tie breakers. Original culture and header-change notification cases remain."
+    "reason": "The source Stanley/Witcher/Prey fixture checks all three bands, 0/60/600 minute totals, title order and selected menu/combobox state on both surfaces."
   },
   "MergeQueueViewModelTests.Resolved_strips_sit_after_pending_cards_after_a_resort": {
     "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-merge-model.test.ts",
-        "case": "sorts confidence before score, supports summed hours and title, and leaves saved acts last"
+        "file": "tests/parity-merge.test.tsx",
+        "case": "keeps an answered card in its original slot, separates in place, and puts saved strips last only after sorting"
+      },
+      {
+        "file": "tests/electron/merge-contracts.spec.ts",
+        "case": "keeps a real answered slot through separation and opens keyboard sort actions"
       }
     ],
-    "reason": "Strength and playtime ordering both retain saved acts after every pending proposal."
+    "reason": "A presentation-only act-to-slot key preserves the same DOM card through answer and separation; explicit sorting moves resolved strips behind pending cards. API history remains authoritative."
   },
   "MergeQueueViewModelTests.A_played_row_reads_its_hours_and_idle_time_from_the_library": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-merge-model.test.ts",
-        "case": "rolls up entry hours and ownership evidence from the same included rows"
+        "file": "tests/parity-merge-facts.test.ts",
+        "case": "reads played and unplayed row hours and idle facts from workspace and rolls them up"
       }
     ],
-    "reason": "Rows use workspace entry minutes and last-played facts, and included-row totals exclude left-out members. Original compact idle text and rendered row hover details are not fully asserted."
+    "reason": "The source 300-minute/100-day matrix produces 5h, 3mo, no unread marker and the same rollup; the unplayed member produces 0h, never and never-opened details from the actual workspace shape."
   },
   "MergeQueueViewModelTests.The_earliest_ownership_year_appears_in_the_rollup": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-merge-model.test.ts",
-        "case": "rolls up entry hours and ownership evidence from the same included rows"
+        "file": "tests/parity-merge-facts.test.ts",
+        "case": "retains the earliest ownership year and patched row count while excluding only played totals"
       }
     ],
-    "reason": "Ownership acquisition dates are retained from the matching release facts. The original multi-date rollup copy assertion still needs a migrated test."
+    "reason": "The same 2021 and 2019 acquisition dates select owned since 2019 and exclude 2021 from rollup text."
   },
   "MergeQueueViewModelTests.Focus_walks_rows_across_cards_and_clamps_at_both_ends": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-merge.test.tsx",
-        "case": "retains current group choices across detail navigation, and arrows walk visible rows without wrapping"
+        "case": "desktop keyboard promotion keeps the cursor and row movement asks the viewport to follow"
       },
       {
-        "file": "tests/electron/library-details.spec.ts",
-        "case": "reviews grouped proposals, merges selected groups and retracts their exact acts through one Undo"
+        "file": "tests/parity-merge.test.tsx",
+        "case": "retains current group choices across detail navigation, and arrows walk visible rows without wrapping"
       }
     ],
-    "reason": "Both component modes and native Electron move focus between visible rows. Current assertions check the start clamp and next row; original final-row and cross-card traversal matrix remains."
+    "reason": "Space promotes the focused member without moving its cursor. Arrow/Home/End navigation clamps and calls scrollIntoView; direct DOM focus does not echo a scroll request."
   },
   "MergeQueueViewModelTests.Answering_the_focused_card_moves_the_cursor_to_the_card_that_took_its_place": {
     "status": "partial",
@@ -278,14 +290,14 @@
     "reason": "The submitted answer excludes left-out members and rejects only crossing candidate edges. Native persistence and reversing those exclusions through Undo remain to be checked."
   },
   "MergeQueueViewModelTests.Same_game_is_refused_while_every_other_row_is_left_out": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-merge-model.test.ts",
-        "case": "promotes a group member, reincludes it, rejects foreign rows and protects expansion parents"
+        "file": "tests/parity-merge.test.tsx",
+        "case": "leaving every child out disables grouping and making it the header restores inclusion"
       }
     ],
-    "reason": "Excluding the only child produces an empty child set, which disables and guards the link path. The original rendered disabled action and no-database-write assertions need direct UI coverage."
+    "reason": "Both surfaces disable the action and issue no identity link when every other row is excluded; promoting the excluded member restores inclusion and eligibility."
   },
   "MergeQueueViewModelTests.Making_a_left_out_row_the_header_brings_it_back_in": {
     "status": "ported",

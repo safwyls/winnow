@@ -53,7 +53,7 @@ export function avalonShelves(
     .filter((game) => game.lastPlayedAt && Number.isFinite(Date.parse(game.lastPlayedAt)))
     .sort((a, b) => Date.parse(b.lastPlayedAt!) - Date.parse(a.lastPlayedAt!))
     .slice(0, fullscreen ? 10 : 5)
-  if (recent.length)
+  if (!feed && recent.length)
     result.push({
       id: 'recently-played',
       title: 'Recently played',
@@ -65,8 +65,6 @@ export function avalonShelves(
     games.flatMap((game) => game.entries.map((entry) => [entry.releaseId, game] as const)),
   )
   for (const shelf of feed?.shelves ?? []) {
-    // The backend names its unscored history shelf with an underscore.
-    if (shelf.id === 'recently_played' || shelf.id === 'recently-played') continue
     const seen = new Set<number>()
     const rows: AvalonShelf['rows'] = []
     for (const item of [...shelf.items, ...shelf.reserve]) {
@@ -81,8 +79,8 @@ export function avalonShelves(
         title: shelf.title,
         blurb: shelf.blurb,
         feedback: shelf.supportsFeedback,
-        rows: rows.slice(0, fullscreen ? 10 : 5),
-        reserve: rows.slice(fullscreen ? 10 : 5),
+        rows: fullscreen ? rows : rows.slice(0, 5),
+        reserve: fullscreen ? [] : rows.slice(5),
       })
   }
   return result

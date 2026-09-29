@@ -297,7 +297,11 @@ export function AfterglowDiscover(context: ThemeContext) {
             </div>
           </motion.div>
           {picked && firstShelf && (
-            <Impression releaseId={picked.releaseId} shelfId={firstShelf.id}>
+            <Impression
+              releaseId={picked.releaseId}
+              shelfId={firstShelf.id}
+              enabled={firstShelf.supportsFeedback}
+            >
               <span className="hero-impression-sentinel" />
             </Impression>
           )}
@@ -390,7 +394,12 @@ export function AfterglowDiscover(context: ThemeContext) {
               {shelf.items.slice(0, context.mode === 'fullscreen' ? 6 : 8).map((item) => {
                 const game = gameFor(context, item.releaseId)
                 return game ? (
-                  <Impression key={item.releaseId} releaseId={item.releaseId} shelfId={shelf.id}>
+                  <Impression
+                    key={item.releaseId}
+                    releaseId={item.releaseId}
+                    shelfId={shelf.id}
+                    enabled={shelf.supportsFeedback}
+                  >
                     <GameCard
                       game={game}
                       reason={item.reason}

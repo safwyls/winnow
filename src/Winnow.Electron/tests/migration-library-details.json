@@ -160,14 +160,14 @@
     "reason": "Fullscreen component coverage verifies busy status, duplicate suppression, failure/retry and refreshed pending proposals without accepting matches. Original native controller/keyboard activation and live-region geometry remain unverified."
   },
   "ScreenshotScrollInteractionTests.Wheel_scrolls_screenshots_sideways_without_moving_the_details_body": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-details.test.tsx",
-        "case": "scrolls the screenshot strip sideways without consuming the wheel at its edge"
+        "file": "tests/electron/gallery.spec.ts",
+        "case": "gallery keeps wheel input, full image geometry, keyboard focus and origin return"
       }
     ],
-    "reason": "Both modes route wheel input horizontally and yield it at the edge. Tests inject DOM scroll dimensions; actual rendered geometry and the outer detail-body scroll still need browser verification."
+    "reason": "Actual Electron desktop and fullscreen tests verify horizontal wheel movement and unchanged outer details scrolling at the strip edge. Component tests additionally cover Shift-wheel, horizontal trackpad input and reverse movement."
   },
   "UpdateAcknowledgementCompositionTests.Production_details_marks_and_restores_only_the_displayed_group_releases": {
     "status": "partial",

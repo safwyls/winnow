@@ -40,6 +40,10 @@ import type { ApiRequest, ApplicationActivation, BackendEvent, ConnectionState }
 import { quoteArgument, readActivation, validateActivationArguments, validatedActivation } from './activation'
 import { BackendTransport } from './transport'
 import { cancelSteamWindow, captureSteamPages, signInToSteam } from './steam-auth'
+import { EpicSignInController } from './epic-auth'
+import type { EpicSignInOptions } from '../shared/epic'
+import { RequestLifetimes } from './request-lifetimes'
+import { dataDirectoryRefusalCode, reportStartupFailure } from './startup-failure'
 import { openLinkBrowser } from './link-browser'
 import { routeLink } from './link-routing'
 import { deliverNotification } from './notifications'
@@ -398,7 +402,22 @@ async function initialize(): Promise<void> {
       return handler(...args)
     })
   }
-  handle('winnow:request', (request: ApiRequest) => transport!.request(request))
+  const requestLifetimes = new RequestLifetimes()
+  const requestOwners = new WeakSet<object>()
+  ipcMain.handle('winnow:request', (event, request: ApiRequest) => {
+    validateSender(event)
+    if (!requestOwners.has(event.sender)) {
+      const owner = event.sender
+      requestOwners.add(owner)
+      owner.once('destroyed', () => requestLifetimes.close(owner))
+      owner.on('render-process-gone', () => requestLifetimes.close(owner))
+    }
+    return requestLifetimes.run(event.sender, request, (signal) => transport!.request(request, signal))
+  })
+  ipcMain.handle('winnow:request:cancel', (event, requestId: unknown) => {
+    validateSender(event)
+    return requestLifetimes.cancel(event.sender, requestId)
+  })
   handle('winnow:connection', () => transport!.connection())
   handle('winnow:fonts', () => fonts.read(window!.webContents))
   handle('winnow:window:appearance', value => new WindowAppearanceController(window!, () => ({
@@ -544,6 +563,13 @@ async function initialize(): Promise<void> {
     return true
   })
   handle('winnow:steam:signin', (options: SteamSignInOptions) => signInToSteam(window!, transport!, options))
+  const epicSignIn = new EpicSignInController(transport!, join(app.getPath('userData'), 'account-profiles'), join(here, '../preload/epic.cjs'))
+  app.once('will-quit', () => epicSignIn.dispose())
+  handle('winnow:epic:prepare', () => epicSignIn.prepare(window!))
+  handle('winnow:epic:signin', (options: EpicSignInOptions) => epicSignIn.signIn(window!, options))
+  handle('winnow:epic:browser', (options: EpicSignInOptions) => epicSignIn.openManual(window!, options))
+  handle('winnow:epic:complete', (options: EpicSignInOptions & { callback: string }) => epicSignIn.completeManual(window!, options))
+  handle('winnow:epic:cancel', () => epicSignIn.cancel(window!))
   handle('winnow:steam:cancel', () => cancelSteamWindow(window!))
   handle('winnow:steam:capture', (options: { consentGranted: boolean }) =>
     captureSteamPages(window!, options),
@@ -745,18 +771,16 @@ async function initialize(): Promise<void> {
 
 if (!ownsInstance) app.quit()
 else if (startupArgumentError) {
-  dialog.showErrorBox('Winnow could not start', startupArgumentError.message)
-  app.exit(2)
+  app.exit(reportStartupFailure(startupArgumentError, {
+    exitCode: dataDirectoryRefusalCode,
+    surface: dialog.showErrorBox,
+  }))
 } else
   app
     .whenReady()
     .then(initialize)
     .catch((error) => {
-      dialog.showErrorBox(
-        'Winnow could not start',
-        error instanceof Error ? error.message : 'Startup failed.',
-      )
-      app.exit(3)
+      app.exit(reportStartupFailure(error, { directory: dataDirectory, surface: dialog.showErrorBox }))
     })
 app.on('before-quit', () => {
   quitting = true

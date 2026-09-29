@@ -59,7 +59,7 @@ export interface MergeRow {
   lastPlayedAt: string | null
   acquiredAt: string | null
   unread: boolean
-  installed: boolean
+  installed: boolean | null
   year: number | null
   publisher: string | null
   pack: boolean
@@ -90,6 +90,7 @@ export interface MergeCard {
   actId?: number
   selected: boolean
   reason: string
+  header?: { root: number; store: string; title: string; options: { value: string; label: string }[] }
 }
 export interface MergeAnswer {
   parentWorkId: number
@@ -135,7 +136,7 @@ export function relationSection(kind: string, label?: string | null): MergeSecti
       : 'expansions'
 }
 export function mergeTitle(card: MergeCard) {
-  return card.rows.find((row) => row.workId === card.parent)!.title
+  return card.header?.title ?? card.rows.find((row) => row.workId === card.parent)!.title
 }
 export function mergeMemberLabels(card: MergeCard): string[] {
   const labels = (depth: number) =>
@@ -267,6 +268,13 @@ export function exactMergeCards(cards: MergeCard[], section: MergeSection | 'all
           mergeAnswer(card).childWorkIds.length > 0,
       )
 }
+
+/** Decisions keep their visual slots until the user deliberately chooses another order. */
+export function stableMergeCards(cards: MergeCard[], slots: string[], sort: MergeSort) {
+  const sorted = sortMergeCards(cards, sort)
+  const index = new Map(slots.map((key, position) => [key, position]))
+  return sorted.sort((a, b) => (index.get(a.key) ?? Infinity) - (index.get(b.key) ?? Infinity))
+}
 export function extendMergeUndo(
   previous: MergeUndo | null,
   next: Omit<MergeUndo, 'expiresAt'>,
@@ -337,7 +345,12 @@ export function buildMergeCards(review: MergeReview): MergeCard[] {
           .filter((date): date is string => Boolean(date))
           .sort()[0] ?? null,
       unread: played.some((entry) => entry.bucket === 'stale_but_patched'),
-      installed: owned.some((entry) => entry.installed),
+      installed:
+        owned.length && owned.every((entry) => entry.installed === true)
+          ? true
+          : owned.length && owned.every((entry) => entry.installed === false)
+            ? false
+            : null,
       year: work?.firstReleaseYear ?? null,
       publisher: work?.publisher ?? null,
       pack,
@@ -483,6 +496,32 @@ export function buildMergeCards(review: MergeReview): MergeCard[] {
     const rows = [...new Set([first.parentWorkId, ...actLinks.map((link) => link.childWorkId)])].map((id) =>
       row(id),
     )
+    const root = resolve(first.parentWorkId)
+    const available = ownerships
+      .flatMap((ownership) => {
+        const work = releases.get(ownership.releaseId)
+        return work !== undefined && resolve(work) === root ? [{ work, store: ownership.store }] : []
+      })
+      .sort((a, b) => Number(b.work === root) - Number(a.work === root) || a.work - b.work)
+    const headers = review.workspace.preferredHeaderStores as Record<string, string | null> | undefined
+    const preferred = headers?.[String(root)] ?? ''
+    const stores = [...new Set(available.map((entry) => entry.store))].sort()
+    const selectedWork = (available.find((entry) => entry.store === preferred) ?? available[0])?.work ?? root
+    const header =
+      first.kind === 'same_game'
+        ? {
+            root,
+            store: preferred,
+            title: works.get(selectedWork)?.name ?? rows[0]!.title,
+            options: [
+              { value: '', label: 'Automatic' },
+              ...stores.map((store) => ({ value: store, label: storeLabel(store) })),
+              ...(preferred && !stores.includes(preferred)
+                ? [{ value: preferred, label: `${storeLabel(preferred)} (unavailable)` }]
+                : []),
+            ],
+          }
+        : undefined
     cards.push({
       key: `act-${actId}`,
       section:
@@ -503,6 +542,7 @@ export function buildMergeCards(review: MergeReview): MergeCard[] {
       actId,
       selected: false,
       reason: '',
+      header,
     })
   }
   return cards

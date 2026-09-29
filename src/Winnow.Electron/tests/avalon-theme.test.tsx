@@ -141,12 +141,15 @@ beforeEach(() => {
       'sort',
       'view',
       'density',
+      'rows',
+      'viewport',
       'selected',
       'selection',
       'rules',
+      'tools',
     ])
       clearViewState(`avalon:library:${mode}:${key}`)
-    for (const key of ['shelf', 'column']) clearViewState(`avalon:home:${mode}:${key}`)
+    for (const key of ['shelf', 'column', 'positions']) clearViewState(`avalon:home:${mode}:${key}`)
   }
 })
 afterEach(() => {
@@ -186,12 +189,17 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
   })
   it('shows real recommendations with reasons and retains the complete title', () => {
     const ctx = context(mode)
+    ctx.feed!.shelves[0].supportsFeedback = true
     mount(ctx, AvalonDiscover)
     const cover = screen.getByRole('button', { name: 'View Library game 1' })
     expect(screen.getAllByText('Still waiting for your first visit.').length).toBeGreaterThan(0)
     fireEvent.click(cover)
     expect(ctx.openGame).toHaveBeenCalledWith(1)
     expect(document.querySelectorAll('[data-impression]')).toHaveLength(1)
+  })
+  it('does not record feed exposures for an unscored supplemental shelf', () => {
+    mount(context(mode), AvalonDiscover)
+    expect(document.querySelectorAll('[data-impression]')).toHaveLength(0)
   })
   it('exposes empty and failed recommendation states with a recovery route', () => {
     const ctx = context(mode)
@@ -324,6 +332,43 @@ it('navigates the complete ten-card fullscreen shelf with directional keys', () 
   expect(document.activeElement).toBe(screen.getByRole('button', { name: 'View Library game 10' }))
 })
 
+it.each(['desktop', 'fullscreen'] as const)(
+  'carries the current column on revisits and clamps short %s shelves',
+  (mode) => {
+    const ctx = context(mode)
+    ctx.games = Array.from({ length: 10 }, (_, index) => game(index + 1))
+    ctx.feed!.shelves = [
+      [1, 2, 3, 4],
+      [5, 6, 7, 8],
+      [9, 10],
+    ].map((ids, index) => ({
+      id: `shelf-${index}`,
+      title: `Shelf ${index}`,
+      blurb: '',
+      supportsFeedback: false,
+      reserve: [],
+      items: ids.map((id) => ({
+        ownershipId: id,
+        releaseId: id,
+        title: `Library game ${id}`,
+        reason: 'Waiting.',
+      })),
+    }))
+    mount(ctx, AvalonDiscover)
+    const move = (id: number, key: string, target: number) => {
+      const cover = screen.getByRole('button', { name: `View Library game ${id}` })
+      act(() => cover.focus())
+      fireEvent.keyDown(cover, { key })
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: `View Library game ${target}` }))
+    }
+    move(4, 'ArrowDown', 8)
+    move(6, 'ArrowUp', 2)
+    move(4, 'ArrowDown', 8)
+    move(8, 'ArrowDown', 10)
+    move(10, 'ArrowUp', 6)
+  },
+)
+
 it('appending deferred shelves retains the current cover element and keyboard focus', () => {
   const ctx = context('fullscreen'),
     client = new QueryClient()
@@ -346,6 +391,49 @@ it('appending deferred shelves retains the current cover element and keyboard fo
   expect(screen.getByRole('button', { name: 'Show Deferred shelf' }).getAttribute('aria-current')).toBe(
     'true',
   )
+})
+
+it('retains each Home overflow page while carrying only the current visible column', () => {
+  const ctx = context('fullscreen')
+  ctx.games = Array.from({ length: 50 }, (_, index) => game(index + 1))
+  ctx.feed!.shelves = [
+    [1, 24],
+    [25, 48],
+    [49, 50],
+  ].map(([first, last], index) => ({
+    id: `pages-${index}`,
+    title: `Paged shelf ${index}`,
+    blurb: '',
+    supportsFeedback: false,
+    reserve: [],
+    items: Array.from({ length: last - first + 1 }, (_, offset) => ({
+      ownershipId: first + offset,
+      releaseId: first + offset,
+      title: `Library game ${first + offset}`,
+      reason: 'Waiting.',
+    })),
+  }))
+  mount(ctx, AvalonDiscover)
+  const cover = (id: number) => screen.getByRole('button', { name: `View Library game ${id}` })
+  const press = (key: string) => fireEvent.keyDown(document.activeElement!, { key })
+  act(() => cover(9).focus())
+  press('ArrowRight')
+  press('ArrowRight')
+  expect(document.activeElement).toBe(cover(11))
+  expect(screen.queryByRole('button', { name: 'View Library game 1' })).toBeNull()
+  expect(
+    document.querySelector('[data-row-active="true"] .avalon-home-row')?.getAttribute('data-home-page'),
+  ).toBe('1')
+  press('ArrowDown')
+  expect(document.activeElement).toBe(cover(25))
+  for (let index = 0; index < 3; index++) press('ArrowRight')
+  press('ArrowUp')
+  expect(document.activeElement).toBe(cover(14))
+  press('ArrowDown')
+  press('ArrowDown')
+  expect(document.activeElement).toBe(cover(50))
+  press('ArrowUp')
+  expect(document.activeElement).toBe(cover(26))
 })
 
 it('uses current data after hidden shelves are inserted or the feed is replaced', () => {
@@ -371,11 +459,21 @@ it('uses current data after hidden shelves are inserted or the feed is replaced'
         reserve: [],
         items: [{ ownershipId: 2, releaseId: 2, title: 'Library game 2', reason: 'Inserted reason.' }],
       },
+      {
+        id: 'second-inserted',
+        title: 'Second inserted shelf',
+        blurb: '',
+        supportsFeedback: false,
+        reserve: [],
+        items: [{ ownershipId: 3, releaseId: 3, title: 'Library game 3', reason: 'Another reason.' }],
+      },
     ],
   }
   mounted.rerender(tree())
   fireEvent.keyDown(screen.getByRole('button', { name: 'View Library game 1' }), { key: 'ArrowDown' })
   expect(screen.getByRole('button', { name: 'View Library game 2' })).toBeDefined()
+  fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' })
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'View Library game 3' }))
   ctx.feed = {
     ...ctx.feed,
     shelves: [
@@ -405,14 +503,28 @@ it('keeps desktop search separate from fullscreen search', () => {
 })
 
 it('does not take focus from another control when Home data is replaced', () => {
-  const ctx = context('fullscreen'), client = new QueryClient()
+  const ctx = context('fullscreen'),
+    client = new QueryClient()
   ctx.games = [game(1), game(2)]
-  const tree = () => <QueryClientProvider client={client}><button>Another control</button><AvalonDiscover {...ctx} /></QueryClientProvider>
+  const tree = () => (
+    <QueryClientProvider client={client}>
+      <button>Another control</button>
+      <AvalonDiscover {...ctx} />
+    </QueryClientProvider>
+  )
   const mounted = render(tree())
   screen.getByRole('button', { name: 'View Library game 1' }).focus()
   const other = screen.getByRole('button', { name: 'Another control' })
   other.focus()
-  ctx.feed = { ...ctx.feed!, shelves: [{ ...ctx.feed!.shelves[0], items: [{ ownershipId: 2, releaseId: 2, title: 'Library game 2', reason: 'Updated reason.' }] }] }
+  ctx.feed = {
+    ...ctx.feed!,
+    shelves: [
+      {
+        ...ctx.feed!.shelves[0],
+        items: [{ ownershipId: 2, releaseId: 2, title: 'Library game 2', reason: 'Updated reason.' }],
+      },
+    ],
+  }
   mounted.rerender(tree())
   expect(screen.getByRole('button', { name: 'View Library game 2' })).toBeDefined()
   expect(document.activeElement).toBe(other)

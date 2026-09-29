@@ -37,11 +37,12 @@ for (const { id, source } of baseline.tests) {
     if (!entry.tests?.length) throw new Error(`Missing tests for ${id}`)
     for (const test of entry.tests) {
       const path = resolve(root, 'src/Winnow.Electron', test.file)
-      if (
-        !relative(resolve(root, 'src/Winnow.Electron/tests'), path).startsWith('..') &&
-        test.case &&
-        (await readFile(path, 'utf8')).includes(test.case)
-      )
+      const electronTest = !relative(resolve(root, 'src/Winnow.Electron/tests'), path).startsWith('..')
+      // Legacy frontend coordinators moved into backend HTTP use cases. Their
+      // replacement tests must exercise that production boundary, not a retired alias.
+      const backendTest =
+        !relative(resolve(root, 'tests/Winnow.Backend.Tests'), path).startsWith('..') && path.endsWith('.cs')
+      if ((electronTest || backendTest) && test.case && (await readFile(path, 'utf8')).includes(test.case))
         continue
       throw new Error(`Missing test evidence ${test.file}: ${test.case} for ${id}`)
     }
@@ -52,7 +53,13 @@ for (const { id, source } of baseline.tests) {
     if (!entry.reason || !entry.implementation?.length || !source.startsWith('tests/Winnow.Tests/'))
       throw new Error(`Missing retained backend evidence for ${id}`)
     for (const file of entry.implementation) {
-      if ((!/^src\/Winnow\.(Application|Data|Core|Plugins|Recommend|Resolve|Api\.Contracts|Enrich\.SteamWeb|Ingest\.Epic)\//.test(file) && !reviewedBackendFiles.has(file)) || file.includes('..'))
+      if (
+        (!/^src\/Winnow\.(Application|Data|Core|Plugins|Recommend|Resolve|Api\.Contracts|Enrich\.SteamWeb|Ingest\.Epic)\//.test(
+          file,
+        ) &&
+          !reviewedBackendFiles.has(file)) ||
+        file.includes('..')
+      )
         throw new Error(`Not a backend implementation: ${file}`)
       await readFile(resolve(root, file), 'utf8')
     }

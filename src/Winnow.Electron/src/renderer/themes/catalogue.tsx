@@ -81,7 +81,12 @@ function CatalogueDiscover(context: ThemeContext) {
         {ranked.slice(0, 12).map(
           ({ game, item, shelf }, index) =>
             game && (
-              <Impression key={`${shelf.id}-${item.releaseId}`} releaseId={item.releaseId} shelfId={shelf.id}>
+              <Impression
+                key={`${shelf.id}-${item.releaseId}`}
+                releaseId={item.releaseId}
+                shelfId={shelf.id}
+                enabled={shelf.supportsFeedback}
+              >
                 <button className="ledger-entry" onClick={() => context.openGame(game.workId)}>
                   <span className="ledger-number">{String(index + 1).padStart(2, '0')}</span>
                   {showArt && <Artwork workId={game.workId} />}

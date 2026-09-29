@@ -37,7 +37,7 @@ import { LiveListActions } from '../features/parity-live-actions'
 import { ListOrderActions } from '../features/parity-list-actions'
 import { useAvalonLists } from './avalon-list-state'
 import { usePresentationPreferences } from '../features/SettingsPreferences'
-import { libraryScroll, useViewState } from '../viewState'
+import { clearViewState, libraryScroll, useViewState } from '../viewState'
 import dragon from '../assets/dragon.svg'
 import { avalonFilter, coverGrid, dormancy, matchesBucket } from './avalon-data'
 import { AVALON_PALETTES, avalonPaletteStyle } from './avalon-palettes'
@@ -55,6 +55,16 @@ import './avalon.css'
 import { useAvalonAppearance } from './avalon-appearance'
 import { FeedFeedback, FeedHistory, FeedLaunch, FeedReason, useAvalonFeed } from './avalon-feed'
 import type { FeedDeckShelf, FeedRow } from './avalon-feed-model'
+import {
+  AvalonDesktopShelf,
+  AvalonHomeRow,
+  AvalonRowViewport,
+  useHomeRowGeometry,
+} from './avalon-row-viewport'
+import { revealShelfCover } from './avalon-row-motion'
+import { homePageStart, homeShelfPosition } from './avalon-navigation'
+import { AvalonFullscreenGrid } from './avalon-fullscreen-grid'
+import { useSystemReducedMotion } from '../useSystemReducedMotion'
 
 const destinations = [
   { id: 'discover', label: 'For you', Icon: Compass },
@@ -329,6 +339,11 @@ export function AvalonDiscover(context: ThemeContext) {
   const { deck, shelves, handlers, refresh } = useAvalonFeed(context)
   const [shelfId, setShelfId] = useViewState(`avalon:home:${context.mode}:shelf`, '')
   const [column, setColumn] = useViewState(`avalon:home:${context.mode}:column`, 0)
+  const [positions, setPositions] = useViewState<Record<string, number>>(
+    `avalon:home:${context.mode}:positions`,
+    {},
+  )
+  const [capacity, setCapacity] = useState(10)
   const shelfIndex = Math.max(
     0,
     shelves.findIndex((shelf) => shelf.id === shelfId),
@@ -339,6 +354,13 @@ export function AvalonDiscover(context: ThemeContext) {
   const rowRef = useRef<HTMLDivElement>(null),
     focusPending = useRef(false),
     rowHadFocus = useRef(false)
+  const homeRef = useRef<HTMLDivElement>(null)
+  useHomeRowGeometry(
+    homeRef,
+    fullscreen && !!picked && !context.loading && (!context.feedLoading || !!context.feed),
+    setCapacity,
+  )
+  const systemReducedMotion = useSystemReducedMotion()
   const { Artwork, Impression } = context.components
   useEffect(() => {
     if (shelf && shelf.id !== shelfId) setShelfId(shelf.id)
@@ -353,11 +375,46 @@ export function AvalonDiscover(context: ThemeContext) {
   function changeShelf(next: number) {
     const target = shelves[Math.max(0, Math.min(shelves.length - 1, next))]
     if (!target) return
+    if (fullscreen) focusPending.current = true
+    if (target.id === shelf?.id) {
+      focusCover()
+      return
+    }
+    const position = fullscreen
+      ? homeShelfPosition(rowIndex, positions[target.id] ?? 0, capacity, target.rows.length)
+      : Math.min(column, target.rows.length - 1)
     setShelfId(target.id)
-    setColumn(Math.min(column, target.rows.length - 1))
+    setColumn(position)
+    setPositions((saved) => ({ ...saved, [target.id]: position }))
   }
-  function key(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    if (!fullscreen) return
+  function key(event: KeyboardEvent<HTMLButtonElement>, index: number, current: FeedDeckShelf) {
+    if (!fullscreen) {
+      let targetShelf = current,
+        targetIndex = index
+      if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+        targetShelf =
+          shelves[
+            Math.max(
+              0,
+              Math.min(shelves.length - 1, shelves.indexOf(current) + (event.key === 'ArrowDown' ? 1 : -1)),
+            )
+          ]
+      } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight')
+        targetIndex += event.key === 'ArrowRight' ? 1 : -1
+      else return
+      event.preventDefault()
+      event.stopPropagation()
+      targetIndex = Math.max(0, Math.min(targetShelf.rows.length - 1, targetIndex))
+      const target = rowRef.current
+        ?.querySelectorAll<HTMLElement>('.avalon-desktop-covers')
+        [shelves.indexOf(targetShelf)]?.querySelectorAll<HTMLButtonElement>('[data-avalon-game]')[targetIndex]
+      target?.focus({ preventScroll: true })
+      target
+        ?.closest('.avalon-shelf')
+        ?.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior: 'instant' })
+      if (target) revealShelfCover(target)
+      return
+    }
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
       event.preventDefault()
       event.stopPropagation()
@@ -367,20 +424,25 @@ export function AvalonDiscover(context: ThemeContext) {
       event.preventDefault()
       event.stopPropagation()
       focusPending.current = true
-      setColumn(
-        Math.max(0, Math.min((shelf?.rows.length ?? 1) - 1, index + (event.key === 'ArrowRight' ? 1 : -1))),
+      const position = Math.max(
+        0,
+        Math.min((shelf?.rows.length ?? 1) - 1, index + (event.key === 'ArrowRight' ? 1 : -1)),
       )
+      setColumn(position)
+      setPositions((saved) => ({ ...saved, [current.id]: position }))
     }
   }
-  useLayoutEffect(() => {
+  function focusCover() {
     if (!fullscreen) return
     const cover = rowRef.current?.querySelector<HTMLButtonElement>(
-      `[data-avalon-game="${picked?.game.workId}"]`,
+      `[data-row-active="true"] [data-avalon-game="${picked?.game.workId}"]`,
     )
+    if (!cover) return
     if (focusPending.current || rowHadFocus.current) cover?.focus({ preventScroll: true })
     focusPending.current = false
-    cover?.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior: 'instant' })
-  }, [fullscreen, picked?.game.workId, shelf?.id])
+    revealShelfCover(cover)
+  }
+  useLayoutEffect(focusCover, [fullscreen, picked?.game.workId, shelf?.id, capacity])
   if (context.loading || (context.feedLoading && !context.feed))
     return (
       <div className="avalon-empty" role="status">
@@ -419,14 +481,17 @@ export function AvalonDiscover(context: ThemeContext) {
         context={context}
         game={entry.game}
         reason={entry.reason}
-        selected={fullscreen && index === rowIndex}
+        selected={fullscreen && current.id === shelf?.id && index === rowIndex}
         onFocus={() => {
-          if (fullscreen) setColumn(index)
+          if (fullscreen) {
+            setColumn(index)
+            setPositions((saved) => (saved[current.id] === index ? saved : { ...saved, [current.id]: index }))
+          }
         }}
-        onKeyDown={(event) => key(event, index)}
+        onKeyDown={(event) => key(event, index, current)}
       />
     )
-    return entry.releaseId === undefined ? (
+    return entry.releaseId === undefined || !current.feedback ? (
       <div className="avalon-home-card" key={entry.game.workId}>
         <div {...handlers(entry, 'cover')}>{cover}</div>
       </div>
@@ -438,7 +503,7 @@ export function AvalonDiscover(context: ThemeContext) {
   }
   if (!fullscreen)
     return (
-      <div className="avalon-discover">
+      <div className="avalon-discover" ref={rowRef}>
         <header className="avalon-page-heading">
           <h1>For you</h1>
           <p>Something worth coming back to.</p>
@@ -468,14 +533,19 @@ export function AvalonDiscover(context: ThemeContext) {
         {shelves.map((current) => (
           <section className="avalon-shelf" key={current.id}>
             <header>
-              <h2>{current.title}</h2>
+              <div className="avalon-shelf-label">
+                <h2>{current.title}</h2>
+                <span className="avalon-shelf-count" aria-label={`${current.rows.length} games`}>
+                  {current.rows.length.toLocaleString()}
+                </span>
+              </div>
               <p>{current.blurb}</p>
             </header>
-            <div className="avalon-desktop-covers">
+            <AvalonDesktopShelf id={current.id}>
               {current.rows.map((entry, index) => (
                 <div key={entry.game.workId} {...handlers(entry, 'card')}>
                   {card(current, entry, index)}
-                  <FeedLaunch key={entry.game.workId} context={context} row={entry} />
+                  <FeedLaunch context={context} row={entry} />
                   <FeedFeedback deck={deck} shelf={current} row={entry} />
                   <AddToListButton
                     games={[entry.game]}
@@ -485,7 +555,7 @@ export function AvalonDiscover(context: ThemeContext) {
                   />
                 </div>
               ))}
-            </div>
+            </AvalonDesktopShelf>
           </section>
         ))}
       </div>
@@ -493,22 +563,23 @@ export function AvalonDiscover(context: ThemeContext) {
   return (
     <div
       className="avalon-home"
+      ref={homeRef}
       onWheel={(event) => {
         if (Math.abs(event.deltaY) > 8) changeShelf(shelfIndex + Math.sign(event.deltaY))
       }}
     >
-      <div className="avalon-feed-summary">
-        <FeedHistory games={context.games} deck={deck} />
-        {feedFailed && (
-          <span role="alert">
-            Recommendations could not be refreshed. <button onClick={refresh}>Try again</button>
-          </span>
-        )}
-      </div>
       <div className="avalon-home-backdrop" aria-hidden="true">
         <Artwork workId={picked.game.workId} hero eager />
       </div>
       <div className="avalon-home-hero" {...handlers(picked, 'hero')}>
+        <div className="avalon-feed-summary">
+          <FeedHistory games={context.games} deck={deck} />
+          {feedFailed && (
+            <span role="alert">
+              Recommendations could not be refreshed. <button onClick={refresh}>Try again</button>
+            </span>
+          )}
+        </div>
         <span className="avalon-label">{shelf.title}</span>
         <h1 title={picked.game.title}>{picked.game.title}</h1>
         <p title={picked.reason}>
@@ -523,49 +594,65 @@ export function AvalonDiscover(context: ThemeContext) {
       </div>
       <section className="avalon-home-shelf">
         <h2>{shelf.title}</h2>
-        <div
-          ref={rowRef}
-          className="avalon-home-row"
-          onFocusCapture={() => {
-            rowHadFocus.current = true
-          }}
-          onBlurCapture={(event) => {
-            // Removing a focused card may report no destination; retain that
-            // intent until the replacement row can take focus in layout.
-            if (event.relatedTarget instanceof Node && !event.currentTarget.contains(event.relatedTarget))
-              rowHadFocus.current = false
-          }}
+        <AvalonRowViewport
+          rows={shelves}
+          first={shelfIndex}
+          reducedMotion={context.profile.appearance.reducedMotion || systemReducedMotion}
+          viewportRef={rowRef}
+          onReady={focusCover}
         >
-          {shelf.rows.map((entry, index) => card(shelf, entry, index))}
+          {(current) => {
+            const offset = homePageStart(
+              current.id === shelf.id ? rowIndex : (positions[current.id] ?? 0),
+              capacity,
+              current.rows.length,
+            )
+            return (
+              <AvalonHomeRow
+                id={current.id}
+                page={Math.floor(offset / capacity)}
+                onFocusChange={(value) => {
+                  rowHadFocus.current = value
+                }}
+              >
+                {current.rows
+                  .slice(offset, offset + capacity)
+                  .map((entry, index) => card(current, entry, offset + index))}
+              </AvalonHomeRow>
+            )
+          }}
+        </AvalonRowViewport>
+        <div className="avalon-shelf-navigation" aria-label="Recommendation shelves">
+          <button
+            tabIndex={-1}
+            aria-label="Previous shelf"
+            disabled={shelfIndex === 0}
+            onClick={() => changeShelf(shelfIndex - 1)}
+          >
+            <ChevronUp />
+          </button>
+          {shelves.map((entry, index) => (
+            <button
+              tabIndex={-1}
+              key={entry.id}
+              data-controller-tab
+              aria-label={`Show ${entry.title}`}
+              aria-current={index === shelfIndex ? 'true' : undefined}
+              onClick={() => changeShelf(index)}
+            >
+              <i />
+            </button>
+          ))}
+          <button
+            tabIndex={-1}
+            aria-label="Next shelf"
+            disabled={shelfIndex === shelves.length - 1}
+            onClick={() => changeShelf(shelfIndex + 1)}
+          >
+            <ChevronDown />
+          </button>
         </div>
       </section>
-      <div className="avalon-shelf-navigation" aria-label="Recommendation shelves">
-        <button
-          aria-label="Previous shelf"
-          disabled={shelfIndex === 0}
-          onClick={() => changeShelf(shelfIndex - 1)}
-        >
-          <ChevronUp />
-        </button>
-        {shelves.map((entry, index) => (
-          <button
-            key={entry.id}
-            data-controller-tab
-            aria-label={`Show ${entry.title}`}
-            aria-current={index === shelfIndex ? 'true' : undefined}
-            onClick={() => changeShelf(index)}
-          >
-            <i />
-          </button>
-        ))}
-        <button
-          aria-label="Next shelf"
-          disabled={shelfIndex === shelves.length - 1}
-          onClick={() => changeShelf(shelfIndex + 1)}
-        >
-          <ChevronDown />
-        </button>
-      </div>
     </div>
   )
 }
@@ -575,6 +662,7 @@ export function AvalonLibrary(context: ThemeContext) {
     fullscreen = context.mode === 'fullscreen',
     prefix = stateKey(context)
   const preferences = usePresentationPreferences()
+  const systemReducedMotion = useSystemReducedMotion()
   const workspace = useWorkspace(),
     client = useQueryClient()
   const facts = useMemo(
@@ -594,7 +682,7 @@ export function AvalonLibrary(context: ThemeContext) {
   }
   const sort = savedSort ?? defaultSort[preferences.values.DefaultSort ?? 'DormantLongest'] ?? 'dormant'
   const [density, setDensity] = useViewState(`${prefix}:density`, 148),
-    [tools, setTools] = useState(false)
+    [tools, setTools] = useViewState(`${prefix}:tools`, false)
   const [selected, setSelected] = useViewState<number | null>(`${prefix}:selected`, null)
   const [selection, setSelection] = useViewState<number[]>(`${prefix}:selection`, [])
   const [filtersOpen, setFiltersOpen] = useState(false),
@@ -605,7 +693,7 @@ export function AvalonLibrary(context: ThemeContext) {
   const manageButton = useRef<HTMLButtonElement>(null)
   const toolsPanel = useRef<HTMLDivElement>(null)
   const scroll = useRef<HTMLDivElement>(null),
-    [size, setSize] = useState({ width: 950, height: 660 })
+    [size, setSize] = useViewState(`${prefix}:viewport`, { width: 950, height: 660 })
   const games = useMemo(
     () =>
       avalonFilter(context.games, library.data?.lists ?? [], {
@@ -622,6 +710,12 @@ export function AvalonLibrary(context: ThemeContext) {
     const retained = selection.filter((id) => visible.has(id))
     if (retained.length !== selection.length) setSelection(retained)
   }, [games, selection])
+  useEffect(() => {
+    if (fullscreen && !games.length) {
+      setSelected(null)
+      clearViewState(`${prefix}:rows`)
+    }
+  }, [fullscreen, games.length, prefix])
   const grid = coverGrid(size.width, size.height, density, fullscreen),
     listMode = !fullscreen && view === 'list'
   const columns = listMode ? 1 : grid.columns,
@@ -1060,6 +1154,30 @@ export function AvalonLibrary(context: ThemeContext) {
                       {context.games.length ? 'Clear filters' : 'Open settings'}
                     </button>
                   </div>
+                ) : fullscreen ? (
+                  <AvalonFullscreenGrid
+                    games={games}
+                    columns={columns}
+                    gap={grid.gap}
+                    prefix={prefix}
+                    selected={selected}
+                    onSelected={setSelected}
+                    reducedMotion={context.profile.appearance.reducedMotion || systemReducedMotion}
+                    onKeyDown={key}
+                  >
+                    {(game, index, handlers) => (
+                      <AvalonCover
+                        key={game.workId}
+                        context={context}
+                        game={game}
+                        selected={selected === game.workId || selection.includes(game.workId)}
+                        onClick={(event) => selectGame(event, game, index)}
+                        onContextMenu={(event) => contextGame(event, game)}
+                        onFocus={handlers.onFocus}
+                        onKeyDown={handlers.onKeyDown}
+                      />
+                    )}
+                  </AvalonFullscreenGrid>
                 ) : (
                   <div style={{ height: virtual.getTotalSize(), position: 'relative' }}>
                     {virtual.getVirtualItems().map((row) => (

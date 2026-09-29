@@ -41,6 +41,16 @@ export function steamMintAllowed(value: string): boolean {
   )
 }
 
+export function steamIdentitiesAgree(page: string | null | undefined, subject: string | null | undefined) {
+  return !page || !subject || page === subject
+}
+
+export class SteamIdentityMismatchError extends Error {
+  constructor() {
+    super('Steam returned a different account from the signed-in page. Sign in again.')
+  }
+}
+
 export function readSteamIdentity(
   probe: unknown,
   now = Date.now(),
@@ -61,11 +71,11 @@ export function readSteamIdentity(
       return null
     // The backend validates the token's remaining claims before storing it. These
     // checks bind the observed page to its credential without logging either.
-    if (steamid && String(steamid) !== claims.sub)
-      throw new Error('Steam returned a different account from the signed-in page. Sign in again.')
+    if (!steamIdentitiesAgree(steamid == null ? null : String(steamid), claims.sub))
+      throw new SteamIdentityMismatchError()
     return { steamId: claims.sub, token }
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith('Steam returned')) throw error
+    if (error instanceof SteamIdentityMismatchError) throw error
     return null
   }
 }

@@ -18,7 +18,8 @@ foreach ($file in $files) {
     if (-not $file.EndsWith('.cs')) { continue }
     $source = (& git -C $repository show "${resolvedRevision}:$file") -join "`n"
     if ($LASTEXITCODE -ne 0) { throw "The source file could not be read: $file" }
-    if (-not $file.StartsWith('tests/Winnow.Ui.Tests/') -and $source -notmatch 'Winnow\.App|using Avalonia') { continue }
+    # The embedded sign-in host and its pure capture policies also move with the UI.
+    if (-not $file.StartsWith('tests/Winnow.Ui.Tests/') -and $source -notmatch 'Winnow\.(App|Auth\.WebView|Core\.Auth|Presentation|Covers\.Avalonia)|using Avalonia') { continue }
     $tree = [Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree]::ParseText($source)
     foreach ($method in $tree.GetRoot().DescendantNodes()) {
         if ($method -isnot [Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax]) { continue }

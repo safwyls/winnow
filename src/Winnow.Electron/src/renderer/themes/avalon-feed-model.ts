@@ -56,11 +56,17 @@ export class FeedDeck {
     )
   }
   receive(source: AvalonShelf[], libraryKey: string, force = false, failed = false) {
+    if (this.disposed) return
     if (failed && !force && libraryKey === this.libraryKey && this.shelves.length) return
     const key = JSON.stringify(source)
     if (!force && key === this.sourceKey && libraryKey === this.libraryKey) return
+    const additionsOnly =
+      this.shelves.length > 0 &&
+      libraryKey === this.libraryKey &&
+      source.length >= this.shelves.length &&
+      JSON.stringify(source.slice(0, this.shelves.length)) === this.sourceKey
     this.sourceKey = key
-    if (force || !this.engaged || libraryKey !== this.libraryKey) {
+    if (force || (!this.engaged && !additionsOnly) || libraryKey !== this.libraryKey) {
       this.generation++
       this.engaged = false
       this.libraryKey = libraryKey
@@ -114,7 +120,13 @@ export class FeedDeck {
     )
   }
   async respond(row: FeedRow, kind: number, undo = false) {
-    if (row.pending || row.releaseId === undefined || !this.live(row, this.generation)) return
+    if (
+      row.pending ||
+      row.releaseId === undefined ||
+      !this.live(row, this.generation) ||
+      !this.shelves.some((shelf) => shelf.feedback && shelf.rows.includes(row))
+    )
+      return
     const generation = this.generation
     this.engaged = true
     row.pending = true
@@ -199,6 +211,11 @@ export class FeedDeck {
   dispose() {
     this.disposed = true
     this.generation++
+    this.shelves = []
+    this.sourceKey = ''
+    this.libraryKey = ''
+    this.spent.clear()
+    this.spentWorks.clear()
     this.listeners.clear()
   }
 }

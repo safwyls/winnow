@@ -302,6 +302,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s library parity', (mode) => {
   it('reviews and confirms expansion relationships without merging their identity', async () => {
     const { request } = setup(mode)
     fireEvent.click(screen.getByRole('button', { name: 'Identity review' }))
+    if (mode === 'fullscreen') fireEvent.click(await screen.findByRole('button', { name: /Original game · 2 entries/ }))
     fireEvent.click(await screen.findByRole('button', { name: 'Review relationship…' }))
     expect((screen.getByLabelText('Relationship') as HTMLSelectElement).value).toBe('expansion_of')
     expect(request.mock.calls.some(([input]) => input.route === 'identity.link')).toBe(false)
@@ -388,6 +389,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s library parity', (mode) => {
       }
     })
     fireEvent.click(screen.getByRole('button', { name: 'Identity review' }))
+    if (mode === 'fullscreen') fireEvent.click(await screen.findByRole('button', { name: /Original game · 2 entries/ }))
     fireEvent.click(await screen.findByRole('button', { name: 'Review relationship…' }))
     fireEvent.click(screen.getByRole('button', { name: 'Confirm relationship' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Undo last decision' }))
@@ -437,7 +439,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s library parity', (mode) => {
         }
     })
     fireEvent.click(screen.getByRole('button', { name: 'Identity review' }))
-    const refresh = await screen.findByRole('button', { name: 'Look for suggestions' })
+    const refresh = await screen.findByRole('button', { name: 'Refresh suggestions' })
     await waitFor(() => expect((refresh as HTMLButtonElement).disabled).toBe(false))
     fireEvent.click(refresh)
     await screen.findByText('Checking your library for matches…')
@@ -445,14 +447,14 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s library parity', (mode) => {
     fireEvent.click(refresh)
     expect(request.mock.calls.filter(([input]) => input.route === 'identity.refresh')).toHaveLength(1)
     finish({ ok: false, status: 503, message: 'Could not check suggestions' })
-    await screen.findByText(/Could not check suggestions/)
+    await screen.findByText("Couldn't refresh suggestions. Choose Refresh suggestions to try again.")
     expect((refresh as HTMLButtonElement).disabled).toBe(false)
     fireEvent.click(refresh)
     await screen.findByText('Checking your library for matches…')
     completed = true
     finish({ ok: true, status: 200, data: { truncated: true } })
-    await screen.findByText('Suggestions refreshed. Check again to look for more matches.')
-    await screen.findByRole('button', { name: 'Same game…' })
+    await screen.findByText('Suggestions refreshed. Choose Refresh suggestions again to check more matches.')
+    expect(await screen.findAllByRole('article', { name: 'Original game proposal' })).toHaveLength(2)
     expect((refresh as HTMLButtonElement).disabled).toBe(false)
     expect(
       request.mock.calls.some(([input]) => ['identity.link', 'identity.dismiss'].includes(input.route)),
