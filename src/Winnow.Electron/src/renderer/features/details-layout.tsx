@@ -30,6 +30,7 @@ import { InstallFolderButton } from './install-folder'
 import { detailIdle, detailPlaytime } from './details-facts'
 import { ArtworkBrowserDialog } from './artwork-browser'
 import { AvalonBackdrop } from '../themes/avalon-backdrop'
+import { restoreFocusWhenReady } from './restore-focus'
 import './details-layout.css'
 
 const desktopSections = ['Overview', 'Activity', 'Updates', 'Journal', 'Library'] as const
@@ -601,9 +602,7 @@ export function AvalonDetailsLayout({
           }}
           onCloseAutoFocus={(event) => {
             event.preventDefault()
-            requestAnimationFrame(() => {
-              if (opener.current?.isConnected) opener.current.focus({ preventScroll: true })
-            })
+            restoreFocusWhenReady(opener.current)
           }}
         >
           {content}

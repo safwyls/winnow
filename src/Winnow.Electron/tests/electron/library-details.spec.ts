@@ -1,3 +1,4 @@
+import { libraryAction, returnToLibrary } from './library-controls'
 import { selectCollection, collectionChoice, expectCollection } from './collection-controls'
 import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
@@ -10,6 +11,15 @@ import { buildMergeCards, type MergeReview } from '../../src/renderer/features/p
 
 let application: ElectronApplication, page: Page, directory: string
 const failures: string[] = []
+type IdentityTrace = {
+  path: string
+  method: string
+  expected?: string
+  revision?: string
+  status?: number
+  message?: string
+}
+type TraceHost = { __identityTrace: IdentityTrace[] }
 test.beforeAll(async () => {
   directory = await mkdtemp(join(resolve('../..', '.tmp'), 'winnow-electron-library-'))
   const environment = Object.fromEntries(
@@ -24,6 +34,30 @@ test.beforeAll(async () => {
     chromiumSandbox: true,
     timeout: 60_000,
   })
+  await application.evaluate(() => {
+    const trace: IdentityTrace[] = []
+    ;(globalThis as unknown as TraceHost).__identityTrace = trace
+    const fetch = globalThis.fetch
+    globalThis.fetch = async (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : input)
+      if (url.hostname !== '127.0.0.1' || !url.pathname.startsWith('/api/v1/identity'))
+        return fetch(input, init)
+      const entry: IdentityTrace = { path: url.pathname, method: init?.method ?? 'GET' }
+      if (typeof init?.body === 'string') entry.expected = JSON.parse(init.body).expectedRevision
+      trace.push(entry)
+      const response = await fetch(input, init)
+      entry.status = response.status
+      void response
+        .clone()
+        .json()
+        .then((body) => {
+          entry.revision = body.revision
+          entry.message = body.detail ?? body.message
+        })
+        .catch(() => {})
+      return response
+    }
+  })
   page = await application.firstWindow()
   page.on('pageerror', (error) => failures.push(error.message))
   await expect(page.getByRole('button', { name: 'Winnow home', exact: true })).toBeVisible()
@@ -32,6 +66,17 @@ test.beforeAll(async () => {
   await expect(page.locator('.avalon-cover').first()).toBeVisible()
 })
 test.afterAll(async () => closeFixture(application, directory))
+test.afterEach(async ({}, info) => {
+  if (info.status !== info.expectedStatus)
+    await info.attach('identity-revisions', {
+      body: JSON.stringify(
+        await application.evaluate(() => (globalThis as unknown as TraceHost).__identityTrace),
+        null,
+        2,
+      ),
+      contentType: 'application/json',
+    })
+})
 async function api<T>(input: ApiRequest): Promise<T> {
   return page.evaluate(async (input) => {
     const result = await window.winnow.request(input)
@@ -99,7 +144,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     const parent = await manual(`Parity ${mode} primary`),
       child = await manual(`Parity ${mode} edition`)
     await surface(mode)
-    await page.getByRole('button', { name: 'Manage library' }).click()
+    await (await libraryAction(page, 'Manage library')).click()
     await page.getByRole('button', { name: 'Identity review', exact: true }).click()
     await page.getByRole('button', { name: 'Create a relationship' }).click()
     await page.getByRole('combobox', { name: 'Main game', exact: true }).selectOption(String(parent.workId))
@@ -188,17 +233,20 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     expect(saved.games.find((item) => item.workId === game.workId)?.firstReleaseYear).toBe(2017)
     expect(saved.games.find((item) => item.workId === game.workId)?.title).toBe(game.title)
     expect(saved.lists.find((item) => item.id === list.id)?.releaseIds).toEqual([])
-    await page.getByRole('button', { name: 'Leave this list', exact: true }).click()
+    await (await libraryAction(page, 'Leave this list')).click()
+    await returnToLibrary(page)
     expect(failures).toEqual([])
   })
   test(`${mode} reviews grouped proposals, merges selected groups and retracts their exact acts through one Undo`, async () => {
     await surface(mode)
-    await page.getByRole('button', { name: 'Manage library' }).click()
+    await (await libraryAction(page, 'Manage library')).click()
     await page.getByRole('button', { name: 'Identity review', exact: true }).click()
     const queue = page.locator('.merge-queue')
     await expect(queue.locator('.merge-card:not(.resolved)').nth(1)).toBeVisible()
     if (mode === 'desktop') {
       const rows = queue.locator('[data-merge-row]')
+      await expect(rows.first()).toBeEnabled()
+      await expect(rows.nth(1)).toBeEnabled()
       await rows.first().focus()
       await rows.first().press('ArrowDown')
       await expect(rows.nth(1)).toBeFocused()
@@ -267,7 +315,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       })
     }
     await surface(mode)
-    await page.getByRole('button', { name: 'Manage library' }).click()
+    await (await libraryAction(page, 'Manage library')).click()
     await page.getByRole('button', { name: 'Identity review', exact: true }).click()
     const card = page.getByRole('article', { name: `${title} proposal`, exact: true })
     await expect(card).toBeVisible()
@@ -315,6 +363,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       }
       const rows = card.locator('.merge-row')
       const radio = rows.nth(1).getByRole('radio')
+      await expect(radio).toBeEnabled()
       await rows.nth(1).locator('.merge-cover').click()
       await expect(radio).toBeChecked()
       await rows.first().getByRole('radio').press('Space')
@@ -367,6 +416,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
         await expect(page.getByRole('button', { name: 'Open game', exact: true })).toBeVisible()
         await assertFits()
         await page.screenshot({ path: testInfo.outputPath(`merge-fullscreen-member-${width}.png`) })
+        await expect(promote).toBeEnabled()
         await promote.press('Enter')
         await page.getByRole('button', { name: / · Header$/ }).click()
         await expect(page.getByRole('button', { name: 'Make header', exact: true })).toHaveCount(0)

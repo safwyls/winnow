@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-29 21:19'
+updated_date: '2026-09-29 22:48'
 labels: []
 dependencies: []
 priority: high
@@ -90,6 +90,10 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 32. Restore exact fullscreen Browse collection and filter-draft contracts: four trigger-cycled collections independent of desktop, retained per-collection cover selection/viewport, and atomic draft filter/sort/bucket apply or cancel. Verify source directional/resize/queued-notification behavior with native and renderer tests; retain separate compact-toolbar and remaining fullscreen visual work until its source assertions are covered.
 
 33. Restore the fullscreen Library composition from the source: compact heading and collection/tools row, dimmed retained selection backdrop, separate My lists and Library options panels, and all existing list/selection actions with return focus. Keep desktop presentation intact, adapt fullscreen interaction tests to the source paths, and verify both surfaces with native size/text/controller matrices before mapping additional original methods.
+
+34. Diagnose the intermittent identity-review revision refusal seen in the complete native suite. Capture only test-owned request revisions, reproduce stale-read behavior with controlled reads, preserve optimistic concurrency and explicit refusal recovery, then verify desktop/fullscreen mutation flows and repeat the integrated gates. Continue the remaining original fullscreen feed/history contracts after Library options verification.
+
+35. After checkpoint-twenty verification, port original FullscreenActionOverlay contracts: retain and disable the origin, trap keyboard/controller input, restore its trigger, treat right-click as Back, support nested actions and child editors, and preserve the original right-edge panel, safe margins, typography, wrapping, scroll and reduced-motion behavior. Integrate shared action presentation into Avalon Library and Details while preserving the desktop dropdown and existing child workflows. Verify source-equivalent component/native behavior and both-surface regression gates before mapping original methods.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -162,4 +166,8 @@ Plan32 implements four fullscreen collections, per-collection cover state and at
 Checkpoint eighteen closes9original fullscreen Browse methods. Complete native repeat152/152passes with clean completion in6.1m; repeated focused20/20passes. Component/live2627/130passes, no skips; build/typecheck pass. The first full native resize failure was corrected by saving the owned preference and polling settled columns; expected geometry/focus assertions unchanged. Captures inspected; compact Browse layout remains unfinished. Inventory923ported540retained13framework821pending138partial. Evidence:checkpoint-eighteen.md. No AC checked; plan33implementation continues.
 
 Checkpoint nineteen adds the missing fullscreen Library selection backdrop with original45%opacity, stable node reuse, retained loading pixels and cancellation/release on departure. Build/typecheck pass, full component/live2627/130passes without skips, and all9affected native Home/Details/Library/Browse cases pass cleanly. Capture inspected; desktop unchanged. Two more source methods mapped:925ported540retained13framework819pending138partial. Full native152passed in prior checkpoint; next composition changes still require another full run. Evidence:checkpoint-nineteen.md. Plan33compact layout/options/list work continues; no AC checked.
+
+Checkpoint twenty implements compact fullscreen Library controls and retained options/list/filter return, including sixty-row navigation in 900 games, empty-grid focus, manual reorder/remove, live-rule save/restore, list naming/deletion and original feed-history cases. The full component/live-backend suite now passes 2643 cases in132files with no skips (43.55s). Repeated identity native cases pass16/16 after fixing refresh readiness for platform/Details actions and delayed opener focus; the full157native suite is running sequentially. Prior failures and controlled red-before-fix evidence remain recorded in checkpoint-twenty.md. Inventory930ported540retained13framework815pending137partial. All AC stay unchecked.
+
+Checkpoint twenty verification is complete: all157native cases pass with clean worker completion in6.1m; eight repeated batch-review cases pass37.8s, and sixteen repeated long-title/preference cases pass1.7m. All2643component/live cases in132files pass without skips; build/typecheck and migration report pass. The penultimate native run passed156/157 and exposed a fixture ArrowDown before its rows became enabled; explicit readiness now precedes unchanged focus/merge/Undo assertions. Fullscreen screenshots inspected. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-twenty.md. No AC checked. Plan35 has an unconnected action-panel primitive under development; it is separate from this verified checkpoint.
 <!-- SECTION:NOTES:END -->

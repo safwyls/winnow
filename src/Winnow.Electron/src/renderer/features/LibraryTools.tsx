@@ -70,14 +70,17 @@ export function LibraryTools({
   )
 }
 
-export function CreateListButton({ mode }: { mode: Mode }) {
+export function CreateListButton({ mode, onClosed }: { mode: Mode; onClosed?(): void }) {
   const [open, setOpen] = useState(false),
     [busy, setBusy] = useState(false)
   return (
     <Dialog.Root
       open={open}
       onOpenChange={(value) => {
-        if (!busy) setOpen(value)
+        if (!busy) {
+          setOpen(value)
+          if (!value) onClosed?.()
+        }
       }}
     >
       <Dialog.Trigger asChild>
@@ -97,7 +100,13 @@ export function CreateListButton({ mode }: { mode: Mode }) {
             <Dialog.Description>
               Choose games yourself, or let a live list follow your filters.
             </Dialog.Description>
-            <CreateList onCreated={() => setOpen(false)} onPendingChange={setBusy} />
+            <CreateList
+              onCreated={() => {
+                setOpen(false)
+                onClosed?.()
+              }}
+              onPendingChange={setBusy}
+            />
             <Dialog.Close asChild>
               <button disabled={busy}>Close</button>
             </Dialog.Close>
@@ -304,7 +313,15 @@ export function CreateList({
   )
 }
 
-function ListEditor({ list }: { list: GameList }) {
+export function ListEditor({
+  list,
+  actionsOnly = false,
+  onClosed,
+}: {
+  list: GameList
+  actionsOnly?: boolean
+  onClosed?(): void
+}) {
   const [draft, setDraft] = useViewState<{
     name: string
     description: string
@@ -326,19 +343,22 @@ function ListEditor({ list }: { list: GameList }) {
         body: { name: draft.name, description: draft.description || null, expectedRevision: draft.revision },
       })
       setDraft(null)
+      onClosed?.()
     } catch {
       setDraft((previous) => (previous ? { ...previous, sending: false } : null))
     }
   }
   return (
-    <section className="feature-panel">
+    <section className={actionsOnly ? 'avalon-list-edit-actions' : 'feature-panel'}>
       <div className="feature-heading">
-        <div>
-          <h2>{list.name}</h2>
-          <p>
-            {list.releaseIds.length} editions · {list.isLive ? 'Live list' : 'Handpicked'}
-          </p>
-        </div>
+        {!actionsOnly && (
+          <div>
+            <h2>{list.name}</h2>
+            <p>
+              {list.releaseIds.length} editions · {list.isLive ? 'Live list' : 'Handpicked'}
+            </p>
+          </div>
+        )}
         <button
           ref={focus.trigger}
           disabled={draft?.sending}
@@ -353,19 +373,19 @@ function ListEditor({ list }: { list: GameList }) {
             command.reset()
           }}
         >
-          Edit
+          {actionsOnly ? 'Rename list' : 'Edit'}
         </button>
       </div>
-      <p>{list.description}</p>
-      {list.isLive && (
+      {!actionsOnly && <p>{list.description}</p>}
+      {!actionsOnly && list.isLive && (
         <p className="muted">
           {list.filter?.installed ? 'Installed games' : 'All install states'}
           {list.filter?.stores?.length ? ` · ${list.filter.stores.join(', ')}` : ''}
           {list.filter?.search ? ` · “${list.filter.search}”` : ''}
         </p>
       )}
-      {list.isLive && <LiveListFilterEditor list={list} />}
-      <ListMembers list={list} />
+      {!actionsOnly && list.isLive && <LiveListFilterEditor list={list} />}
+      {!actionsOnly && <ListMembers list={list} />}
       {draft && (
         <form
           ref={focus.editor}
@@ -416,7 +436,14 @@ function ListEditor({ list }: { list: GameList }) {
             <button disabled={draft.sending || command.isPending || Boolean(changed)}>
               {draft.sending ? 'Saving…' : 'Save list'}
             </button>
-            <button disabled={draft.sending} type="button" onClick={() => setDraft(null)}>
+            <button
+              disabled={draft.sending}
+              type="button"
+              onClick={() => {
+                setDraft(null)
+                onClosed?.()
+              }}
+            >
               Cancel
             </button>
           </div>
@@ -427,7 +454,7 @@ function ListEditor({ list }: { list: GameList }) {
         onOpenChange={setConfirm}
         trigger={
           <button disabled={draft?.sending} className="text-button">
-            Delete list…
+            {actionsOnly ? 'Delete list' : 'Delete list…'}
           </button>
         }
         title={`Delete ${list.name}?`}
@@ -443,7 +470,12 @@ function ListEditor({ list }: { list: GameList }) {
               params: { listId: list.id },
               body: { expectedRevision: list.revision },
             },
-            { onSuccess: () => setConfirm(false) },
+            {
+              onSuccess: () => {
+                setConfirm(false)
+                onClosed?.()
+              },
+            },
           )
         }
       />

@@ -1,4 +1,11 @@
 import { selectCollection, collectionChoice } from './collection-controls'
+import {
+  fillLibrarySearch,
+  libraryAction,
+  returnToLibrary,
+  setLibrarySort,
+  expectLibrarySort,
+} from './library-controls'
 import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { mkdtemp, readFile } from 'node:fs/promises'
@@ -106,8 +113,9 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await preference('DimDormantCovers', 'true')
     await navigate('Library')
     if (mode === 'desktop') await page.getByRole('button', { name: 'Grid view', exact: true }).click()
-    await page.getByLabel('Sort', { exact: true }).selectOption('dormant')
-    await page.getByLabel('Sort', { exact: true }).focus()
+    await setLibrarySort(page, 'dormant')
+    if (mode === 'desktop') await page.getByLabel('Sort', { exact: true }).focus()
+    else await page.getByRole('button', { name: 'Filter & sort', exact: true }).focus()
     await page.mouse.move(5, 5)
     const covers = page.locator('.avalon-library .avalon-cover:not([data-selected="true"])')
     await expect(covers.first()).toBeVisible()
@@ -217,10 +225,10 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await preference('GroupExpansions', 'false')
     await preference('DefaultSort', 'DormantLongest')
     await navigate('Library')
-    await page.getByLabel('Search games', { exact: true }).fill(prefix)
+    await fillLibrarySearch(page, prefix)
     await expect(page.locator('.avalon-library [data-avalon-game]')).toHaveCount(2)
-    await expect(page.getByLabel('Sort', { exact: true })).toHaveValue('dormant')
-    await page.getByLabel('Sort', { exact: true }).selectOption('title-desc')
+    await expectLibrarySort(page, 'dormant')
+    await setLibrarySort(page, 'title-desc')
     await page.locator(`.avalon-library [data-avalon-game="${pack.workId}"]`).focus()
     const rawBefore = await api<LibraryResponse>({ route: 'library.get' })
     const workspaceBefore = await api<{ buckets: { workId: number; bucket: string }[] }>({
@@ -246,7 +254,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await expect(page.getByLabel('Group expansions with their base game', { exact: true })).toBeChecked()
     await expect(page.getByLabel('Group expansions with their base game', { exact: true })).toBeEnabled()
     await navigate('Library')
-    await expect(page.getByLabel('Sort', { exact: true })).toHaveValue('title')
+    await expectLibrarySort(page, 'title')
     await expect(page.locator('.avalon-library [data-avalon-game]')).toHaveCount(1)
     const cover = page.locator(`.avalon-library [data-avalon-game="${base.workId}"]`)
     await expect(cover).toHaveAccessibleName(
@@ -254,7 +262,8 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     )
     const mark = cover.locator('.avalon-expansion-mark')
     await expect(mark).toHaveText('+1')
-    await page.getByLabel('Search games', { exact: true }).focus()
+    if (mode === 'desktop') await page.getByLabel('Search games', { exact: true }).focus()
+    else await page.getByRole('button', { name: 'Filter & sort', exact: true }).focus()
     await page.mouse.move(0, 0)
     await expect(mark).toHaveCSS('opacity', '1')
     const markBounds = await mark.boundingBox(),
@@ -320,8 +329,9 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     })
     await navigate('Library')
     await selectCollection(page, 'all')
-    await page.getByRole('textbox', { name: 'Search games', exact: true }).fill(prefix)
+    await fillLibrarySearch(page, prefix)
     await expect(page.locator('.avalon-library [data-avalon-game]')).toHaveCount(2)
+    if (mode === 'fullscreen') await (await libraryAction(page, 'More')).click()
     await expect(page.locator('.avalon-cut-count')).toContainText('→ 2')
     const cut = page.getByRole('region', { name: 'Current library filters' })
     await expect(cut.getByRole('button', { name: 'Remove search filter' })).toHaveAttribute(
@@ -389,12 +399,14 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     }
     await selectCollection(page, list.id)
     await expect(page.locator('.avalon-library [data-avalon-game]')).toHaveCount(1)
+    if (mode === 'fullscreen') await (await libraryAction(page, 'More')).click()
     await expect(cut.getByRole('button', { name: 'Leave this list' })).toHaveText(`LIST${prefix} favorites`)
     await cut.getByRole('button', { name: 'Remove search filter' }).click()
     await expect(page.locator('.avalon-library [data-avalon-game]')).toHaveCount(1)
     await page.screenshot({ path: info.outputPath(`${mode}-library-chrome.png`) })
     await cut.getByRole('button', { name: 'Leave this list' }).click()
     await expect(cut).toHaveCount(0)
+    await returnToLibrary(page)
     expect(failures).toEqual([])
   })
 }

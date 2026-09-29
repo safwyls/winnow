@@ -375,7 +375,10 @@ type Undo = {
 }
 type LinkDraft = { parent: number; children: number[]; kind: string; label: string; revision: string }
 
-export function IdentityTools({ onOpenGame, mode = 'desktop' }: { onOpenGame?: (workId: number) => void; mode?: Mode } = {}) {
+export function IdentityTools({
+  onOpenGame,
+  mode = 'desktop',
+}: { onOpenGame?: (workId: number) => void; mode?: Mode } = {}) {
   const review = useIdentityReview<Review>()
   const command = useCommand<{ revision: string; actId?: number; truncated?: boolean }>()
   const [draft, setDraft] = useViewState<LinkDraft | null>('draft:identity-link', null)
@@ -386,7 +389,8 @@ export function IdentityTools({ onOpenGame, mode = 'desktop' }: { onOpenGame?: (
   const [historyOpen, setHistoryOpen] = useState(false)
   const [refreshBusy, setRefreshBusy] = useState(false)
   const [queueWriting] = useViewState('identity:queue-busy', false)
-  const queueBusy = queueWriting || refreshBusy
+  // Cached proposals remain readable during a refresh, but their revision cannot authorize a new decision.
+  const queueBusy = queueWriting || refreshBusy || review.isFetching
   const facts = review.data
   const works = facts?.workspace.works ?? []
   const title = (id: number) => works.find((work) => work.id === id)?.name ?? `Game ${id}`
@@ -432,6 +436,9 @@ export function IdentityTools({ onOpenGame, mode = 'desktop' }: { onOpenGame?: (
           <MergeRefresh disabled={command.isPending || queueBusy} onBusy={setRefreshBusy} />
         </div>
         <Notice error={review.error || command.error} message={message} />
+        {facts && review.isFetching && !queueWriting && !refreshBusy && (
+          <p role="status">Updating possible matches…</p>
+        )}
         {command.isPending && (
           <p role="status">
             {command.variables?.route === 'identity.refresh'

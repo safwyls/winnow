@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { libraryRole } from './library-controls'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { AvalonLibrary, avalon } from '../src/renderer/themes/avalon'
@@ -159,7 +160,7 @@ it.each([
     const card = document.querySelectorAll<HTMLButtonElement>('[data-avalon-game]')[2]!
     const id = card.dataset.avalonGame
     act(() => card.focus())
-    fireEvent.click(screen.getByRole('button', { name: 'Manage library' }))
+    fireEvent.click(libraryRole('button', { name: 'Manage library' }))
     flushFrames()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Lists' }))
     if (close === 'button') fireEvent.click(screen.getByRole('button', { name: 'Close tools' }))

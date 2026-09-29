@@ -199,6 +199,7 @@ export function MergeQueue({
     }))
   }
   function openGame(card: MergeCard, workId: number) {
+    if (blocked) return
     focusedRow.current = mode === 'fullscreen' ? card.key : `${card.key}:${workId}`
     setDetailReturn(focusedRow.current)
     if (mode === 'desktop') {
@@ -210,7 +211,7 @@ export function MergeQueue({
     onOpenGame?.(workId)
   }
   useEffect(() => {
-    if (!restoreDetail.current) return
+    if (!restoreDetail.current || blocked) return
     let second = 0
     const first = requestAnimationFrame(() => {
       second = requestAnimationFrame(() => {
@@ -231,7 +232,7 @@ export function MergeQueue({
       cancelAnimationFrame(first)
       cancelAnimationFrame(second)
     }
-  }, [detailReturn, projection, setDetailReturn])
+  }, [detailReturn, projection, setDetailReturn, blocked])
   useEffect(() => {
     mounted.current = true
     return () => {
@@ -422,7 +423,7 @@ export function MergeQueue({
     })
   }
   async function savePreferred(value: string) {
-    if (writing.current || busy || disabled) return
+    if (writing.current || blocked) return
     writing.current = true
     setBusy(true)
     setProblem(undefined)
@@ -511,7 +512,7 @@ export function MergeQueue({
             <button onClick={() => setOptionSheet('kind')}>
               Kind · {section === 'all' ? 'All proposals' : sectionNames[section]}
             </button>
-            <button disabled={busy} onClick={() => setOptionSheet('platform')}>
+            <button disabled={blocked} onClick={() => setOptionSheet('platform')}>
               Preferred platform ·{' '}
               {platformOptions.find((option) => option.value === preferred)?.label ?? storeLabel(preferred)}
             </button>
@@ -539,7 +540,7 @@ export function MergeQueue({
               <select
                 aria-label="Preferred main platform"
                 value={preferred}
-                disabled={busy}
+                disabled={blocked}
                 onChange={(event) => void savePreferred(event.target.value)}
               >
                 <option value="">None</option>
@@ -789,6 +790,7 @@ export function MergeQueue({
                               {onOpenGame && (
                                 <button
                                   className="merge-row-details"
+                                  disabled={blocked}
                                   aria-label={`Details for ${rowLabels.get(card.key)![index]}`}
                                   onClick={() => openGame(card, row.workId)}
                                 >
@@ -885,6 +887,7 @@ export function MergeQueue({
       )}
       {optionSheet && (
         <MergeOptionsSheet
+          disabled={optionSheet === 'platform' && blocked}
           title={
             optionSheet === 'sort'
               ? 'Sort possible matches'

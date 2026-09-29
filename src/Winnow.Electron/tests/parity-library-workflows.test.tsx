@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { libraryRole, libraryLabel, returnToLibrary } from './library-controls'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AvalonDiscover, AvalonLibrary, AvalonShell, avalon } from '../src/renderer/themes/avalon'
@@ -218,6 +219,74 @@ function setup(mode: Mode, origin = 'library') {
   )
   return { ...view, request, client }
 }
+
+it('fullscreen Weekend options move the selected first game later and remove it while preserving the other two', async () => {
+  current.lists = [{ id: 999, name: 'Weekend', isLive: false, revision: 'w1', releaseIds: [100, 200, 300] }]
+  handler = (input) => {
+    if (!['list.order', 'list.member.remove'].includes(input.route)) return undefined
+    const ids = (input.body as { releaseIds: number[] }).releaseIds
+    const saved = {
+      ...current.lists[0],
+      revision: `${current.lists[0].revision}+`,
+      releaseIds:
+        input.route === 'list.order' ? ids : current.lists[0].releaseIds.filter((id) => !ids.includes(id)),
+    }
+    current = { ...current, lists: [saved] }
+    return ok(saved)
+  }
+  const view = setup('fullscreen')
+  openList(999)
+  act(() => document.querySelector<HTMLButtonElement>('[data-avalon-game="1"]')!.focus())
+  fireEvent.click(libraryRole('button', { name: 'Move later' }))
+  await waitFor(() => expect(cards()).toEqual([2, 1, 3]))
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  expect(current.lists[0].releaseIds[1]).toBe(100)
+  const remove = libraryRole('button', { name: 'Remove from Weekend' }) as HTMLButtonElement
+  expect(remove.disabled).toBe(false)
+  fireEvent.click(remove)
+  await waitFor(() =>
+    expect(view.request.mock.calls.filter(([input]) => input.route === 'list.member.remove')).toHaveLength(1),
+  )
+  await waitFor(() => expect(cards()).toEqual([2, 3]))
+  expect(current.lists[0].releaseIds).toEqual([200, 300])
+  expect(screen.queryByRole('dialog')).toBeNull()
+})
+
+it('fullscreen Store options save changed GOG rules and restore that saved cut after a later Steam edit', async () => {
+  current.lists = [
+    { id: 999, name: 'Store', isLive: true, revision: 's1', releaseIds: [], filter: { stores: ['steam'] } },
+  ]
+  handler = (input) => {
+    if (input.route !== 'list.filter') return undefined
+    const saved = {
+      ...current.lists[0],
+      revision: 's2',
+      filter: (input.body as { filter: LibraryFilter }).filter,
+    }
+    current = { ...current, lists: [saved] }
+    return ok(saved)
+  }
+  const view = setup('fullscreen')
+  openList(999)
+  const changeStore = async (from: string, to: string) => {
+    fireEvent.click(libraryRole('button', { name: 'Filter & sort' }))
+    const panel = within(screen.getByRole('dialog', { name: 'Library filters' }))
+    fireEvent.click(await panel.findByRole('checkbox', { name: new RegExp(`^${from},`) }))
+    fireEvent.click(panel.getByRole('checkbox', { name: new RegExp(`^${to},`) }))
+    fireEvent.click(panel.getByRole('button', { name: 'Apply filters' }))
+  }
+  await changeStore('Steam', 'GOG')
+  expect(cards()).toEqual([3])
+  fireEvent.click(libraryRole('button', { name: 'Update Store' }))
+  await waitFor(() => expect(current.lists[0].filter?.stores).toEqual(['gog']))
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  await changeStore('GOG', 'Steam')
+  expect(cards()).toEqual([1, 2])
+  fireEvent.click(libraryRole('button', { name: 'Revert Store' }))
+  expect(cards()).toEqual([3])
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(view.request.mock.calls.filter(([input]) => input.route === 'list.filter')).toHaveLength(1)
+})
 const cards = () =>
   [...document.querySelectorAll<HTMLButtonElement>('.avalon-library [data-avalon-game]')].map((element) =>
     Number(element.dataset.avalonGame),
@@ -231,13 +300,12 @@ const selectedCards = () =>
 
 function chooseBucket(mode: Mode, key: string, label: string) {
   if (mode === 'desktop') {
-    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${label}\\d`) }))
+    fireEvent.click(libraryRole('button', { name: new RegExp(`^${label}\\d`) }))
     return
   }
-  const leave = screen.queryByRole('button', { name: 'Leave this list' })
-  if (leave) fireEvent.click(leave)
-  fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
-  const panel = within(screen.getByRole('dialog', { name: 'Library filters' }))
+  if (selectedCollection() !== 'all') openList('all')
+  fireEvent.click(libraryRole('button', { name: 'Filters' }))
+  const panel = within(libraryRole('dialog', { name: 'Library filters' }))
   fireEvent.change(panel.getByLabelText('Collection'), { target: { value: key } })
   fireEvent.click(panel.getByRole('button', { name: 'Apply filters' }))
 }
@@ -276,12 +344,10 @@ function chromeLibrary() {
   return workspace
 }
 async function genre(mode: Mode, name: string) {
-  const filters = screen.getByRole('button', { name: 'Filters' })
+  const filters = libraryRole('button', { name: 'Filters' })
   if (filters.getAttribute('aria-expanded') !== 'true') fireEvent.click(filters)
   fireEvent.click(await screen.findByRole('checkbox', { name: new RegExp(`^${name},`) }))
-  fireEvent.click(
-    screen.getByRole('button', { name: mode === 'fullscreen' ? 'Apply filters' : 'Close filters' }),
-  )
+  fireEvent.click(libraryRole('button', { name: mode === 'fullscreen' ? 'Apply filters' : 'Close filters' }))
 }
 
 describe('Library column and density controls', () => {
@@ -289,15 +355,15 @@ describe('Library column and density controls', () => {
     setup('desktop')
     expect(document.querySelector('.avalon-grid-row')).not.toBeNull()
     expect(document.querySelector('.avalon-record')).toBeNull()
-    act(() => screen.getByRole('button', { name: 'View Alpha. Owned on Steam, Manual' }).focus())
+    act(() => libraryRole('button', { name: 'View Alpha. Owned on Steam, Manual' }).focus())
     expect(selectedCards()).toEqual([1])
-    fireEvent.click(screen.getByRole('button', { name: 'List view' }))
+    fireEvent.click(libraryRole('button', { name: 'List view' }))
     expect(document.querySelector('.avalon-grid-row')).toBeNull()
     expect(document.querySelector('.avalon-record')).not.toBeNull()
     expect(selectedCards()).toEqual([1])
-    act(() => screen.getByRole('button', { name: 'View Bravo. Owned on Steam, Manual' }).focus())
+    act(() => libraryRole('button', { name: 'View Bravo. Owned on Steam, Manual' }).focus())
     expect(selectedCards()).toEqual([2])
-    fireEvent.click(screen.getByRole('button', { name: 'Grid view' }))
+    fireEvent.click(libraryRole('button', { name: 'Grid view' }))
     expect(document.querySelector('.avalon-record')).toBeNull()
     expect(selectedCards()).toEqual([2])
   })
@@ -305,8 +371,8 @@ describe('Library column and density controls', () => {
     'an empty search replaces the %s and its headers until the search is cleared',
     (view) => {
       setup('desktop')
-      if (view === 'list') fireEvent.click(screen.getByRole('button', { name: 'List view' }))
-      fireEvent.change(screen.getByRole('textbox', { name: 'Search games' }), {
+      if (view === 'list') fireEvent.click(libraryRole('button', { name: 'List view' }))
+      fireEvent.change(libraryRole('textbox', { name: 'Search games' }), {
         target: { value: 'nothing matches this' },
       })
       expect(cards()).toEqual([])
@@ -314,7 +380,7 @@ describe('Library column and density controls', () => {
       expect(document.querySelector('.avalon-record-row')).toBeNull()
       expect(document.querySelector('.avalon-grid-row')).toBeNull()
       expect(screen.getByText('No titles match “nothing matches this”.')).toBeTruthy()
-      fireEvent.click(screen.getByRole('button', { name: 'Clear search' }))
+      fireEvent.click(libraryRole('button', { name: 'Clear search' }))
       expect(cards()).toHaveLength(3)
       expect(!!document.querySelector('.avalon-record-header')).toBe(view === 'list')
     },
@@ -322,7 +388,7 @@ describe('Library column and density controls', () => {
   it('toggles all three column headers through the shared menu state with one active direction', () => {
     chromeLibrary()
     setup('desktop')
-    fireEvent.click(screen.getByRole('button', { name: 'List view' }))
+    fireEvent.click(libraryRole('button', { name: 'List view' }))
     for (const [column, sort, direction, order] of [
       ['playtime', 'time', 'descending', [1, 2, 3]],
       ['playtime', 'time-low', 'ascending', [3, 2, 1]],
@@ -331,21 +397,21 @@ describe('Library column and density controls', () => {
       ['idle', 'dormant', 'descending', [3, 1, 2]],
       ['idle', 'recent', 'ascending', [2, 1, 3]],
     ] as const) {
-      fireEvent.click(screen.getByRole('button', { name: `Sort by ${column}` }))
-      expect((screen.getByRole('combobox', { name: 'Sort' }) as HTMLSelectElement).value).toBe(sort)
+      fireEvent.click(libraryRole('button', { name: `Sort by ${column}` }))
+      expect((libraryRole('combobox', { name: 'Sort' }) as HTMLSelectElement).value).toBe(sort)
       expect(cards()).toEqual(order)
       expect(document.querySelectorAll('.avalon-record-header [data-sort-direction]')).toHaveLength(1)
-      expect(
-        screen.getByRole('button', { name: `Sort by ${column}` }).getAttribute('data-sort-direction'),
-      ).toBe(direction)
+      expect(libraryRole('button', { name: `Sort by ${column}` }).getAttribute('data-sort-direction')).toBe(
+        direction,
+      )
     }
-    fireEvent.change(screen.getByRole('combobox', { name: 'Sort' }), { target: { value: 'title' } })
-    expect(screen.getByRole('button', { name: 'Sort by title' }).getAttribute('aria-pressed')).toBe('true')
-    expect(screen.getByRole('button', { name: 'Sort by idle' }).getAttribute('aria-pressed')).toBe('false')
+    fireEvent.change(libraryRole('combobox', { name: 'Sort' }), { target: { value: 'title' } })
+    expect(libraryRole('button', { name: 'Sort by title' }).getAttribute('aria-pressed')).toBe('true')
+    expect(libraryRole('button', { name: 'Sort by idle' }).getAttribute('aria-pressed')).toBe('false')
   })
   it('mirrors density across the declared 108 to 200 range and adds grid columns toward the right', () => {
     setup('desktop')
-    const slider = screen.getByRole('slider', { name: 'Density' }) as HTMLInputElement
+    const slider = libraryRole('slider', { name: 'Density' }) as HTMLInputElement
     expect([slider.min, slider.max, slider.value]).toEqual(['108', '200', '160'])
     fireEvent.change(slider, { target: { value: '108' } })
     expect(document.querySelector<HTMLElement>('.avalon-grid-row')!.style.gridTemplateColumns).toContain(
@@ -355,8 +421,8 @@ describe('Library column and density controls', () => {
     expect(document.querySelector<HTMLElement>('.avalon-grid-row')!.style.gridTemplateColumns).toContain(
       'repeat(7,',
     )
-    fireEvent.click(screen.getByRole('button', { name: 'List view' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Grid view' }))
+    fireEvent.click(libraryRole('button', { name: 'List view' }))
+    fireEvent.click(libraryRole('button', { name: 'Grid view' }))
     expect(slider.value).toBe('200')
   })
 })
@@ -367,10 +433,11 @@ describe.each(['desktop', 'fullscreen'] as const)('Library cut bar in %s', (mode
     current.lists[1] = { ...current.lists[1], filter: { genreIds: [1], stores: ['gog'] }, releaseIds: [] }
     setup(mode)
     openList(11)
+    if (mode === 'fullscreen') fireEvent.click(libraryRole('button', { name: 'More' }))
     await screen.findByRole('button', { name: 'Remove RPG filter' })
     expect(cards()).toEqual([])
     expect(screen.getByText('No titles match these filters. Drop one to widen the cut.')).toBeDefined()
-    fireEvent.click(screen.getByRole('button', { name: 'Remove RPG filter' }))
+    fireEvent.click(libraryRole('button', { name: 'Remove RPG filter' }))
     expect(cards()).toEqual([3])
   })
   it('states total and remaining games and removes every bucket and genre rule independently', async () => {
@@ -379,7 +446,7 @@ describe.each(['desktop', 'fullscreen'] as const)('Library cut bar in %s', (mode
     expect(screen.queryByRole('region', { name: 'Current library filters' })).toBeNull()
     chooseBucket(mode, 'bounced', 'Started')
     await genre(mode, 'RPG')
-    const bar = screen.getByRole('region', { name: 'Current library filters' })
+    const bar = libraryRole('region', { name: 'Current library filters' })
     expect(within(bar).getByLabelText('3 → 1')).toBeDefined()
     const chips = [...bar.querySelectorAll('[data-filter-origin]')]
     expect(chips.map((chip) => chip.textContent)).toEqual(['Started', 'RPG'])
@@ -412,17 +479,18 @@ describe.each(['desktop', 'fullscreen'] as const)('Library cut bar in %s', (mode
     }
     setup(mode)
     openList(11)
+    if (mode === 'fullscreen') fireEvent.click(libraryRole('button', { name: 'More' }))
     const brought = await screen.findByRole('button', { name: 'Remove RPG filter' })
     expect(brought.getAttribute('aria-description')).toBe('GENRE: RPG — from this live list')
-    expect(screen.getByRole('button', { name: 'Leave this list' }).textContent).toContain('LIVE LISTRPGs')
-    expect(screen.getByRole('button', { name: 'Leave this list' }).getAttribute('data-filter-origin')).toBe(
+    expect(libraryRole('button', { name: 'Leave this list' }).textContent).toContain('LIVE LISTRPGs')
+    expect(libraryRole('button', { name: 'Leave this list' }).getAttribute('data-filter-origin')).toBe(
       'context',
     )
     expect(selectedCollection()).toBe('11')
     expect(document.querySelector('.avalon-cut-chips')!.firstElementChild).toBe(
-      screen.getByRole('button', { name: 'Leave this list' }),
+      libraryRole('button', { name: 'Leave this list' }),
     )
-    const rail = screen.getByRole('group', { name: 'Library collections' })
+    const rail = libraryRole('group', { name: 'Library collections' })
     expect(
       within(rail)
         .getAllByRole('button')
@@ -434,20 +502,20 @@ describe.each(['desktop', 'fullscreen'] as const)('Library cut bar in %s', (mode
       )
     else
       expect(
-        screen.getByRole('button', { name: 'Remove Started filter' }).getAttribute('data-filter-origin'),
+        libraryRole('button', { name: 'Remove Started filter' }).getAttribute('data-filter-origin'),
       ).toBe('list')
     await genre(mode, 'Action')
-    const added = screen.getByRole('button', { name: 'Remove Action filter' })
+    const added = libraryRole('button', { name: 'Remove Action filter' })
     expect(added.getAttribute('aria-description')).toBe('GENRE: Action — yours, not saved to this list')
     expect(added.getAttribute('data-filter-origin')).toBe('unsaved')
     expect(cards()).toEqual([1, 2])
-    fireEvent.click(screen.getByRole('button', { name: 'Update RPGs' }))
+    fireEvent.click(libraryRole('button', { name: 'Update RPGs' }))
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Update RPGs' })).toBeNull())
     for (const chip of document.querySelectorAll(
       '.avalon-cut-chips [data-filter-origin]:not([data-filter-origin="context"])',
     ))
       expect(chip.getAttribute('data-filter-origin')).toBe('list')
-    fireEvent.click(screen.getByRole('button', { name: 'Leave this list' }))
+    fireEvent.click(libraryRole('button', { name: 'Leave this list' }))
     expect(cards()).toEqual([1, 2, 3])
     expect(screen.queryByRole('region', { name: 'Current library filters' })).toBeNull()
   })
@@ -460,19 +528,19 @@ describe.each(['desktop', 'fullscreen'] as const)('Library cut bar in %s', (mode
     setup(mode)
     openList(10)
     await genre(mode, 'RPG')
-    expect(screen.getByRole('button', { name: 'Leave this list' }).textContent).toContain('LISTHandpicked')
-    expect(screen.getByRole('button', { name: 'Leave this list' }).getAttribute('data-filter-origin')).toBe(
+    expect(libraryRole('button', { name: 'Leave this list' }).textContent).toContain('LISTHandpicked')
+    expect(libraryRole('button', { name: 'Leave this list' }).getAttribute('data-filter-origin')).toBe(
       'context',
     )
-    expect(screen.getByRole('button', { name: 'Remove RPG filter' }).getAttribute('data-filter-origin')).toBe(
+    expect(libraryRole('button', { name: 'Remove RPG filter' }).getAttribute('data-filter-origin')).toBe(
       'user',
     )
     expect(cards()).toEqual([1])
-    fireEvent.click(screen.getByRole('button', { name: 'Leave this list' }))
+    fireEvent.click(libraryRole('button', { name: 'Leave this list' }))
     expect(cards()).toEqual([1, 3])
-    fireEvent.change(screen.getByRole('textbox', { name: 'Search games' }), { target: { value: 'no match' } })
+    fireEvent.change(libraryRole('textbox', { name: 'Search games' }), { target: { value: 'no match' } })
     expect(cards()).toEqual([])
-    fireEvent.click(screen.getByRole('button', { name: 'Remove search filter' }))
+    fireEvent.click(libraryRole('button', { name: 'Remove search filter' }))
     expect(cards()).toEqual([1, 3])
   })
   it('clears the current bucket and panel rules through the controls for each surface', async () => {
@@ -480,19 +548,18 @@ describe.each(['desktop', 'fullscreen'] as const)('Library cut bar in %s', (mode
     setup(mode)
     chooseBucket(mode, 'bounced', 'Started')
     if (mode === 'desktop') chooseBucket(mode, 'bounced', 'Started')
-    else fireEvent.click(screen.getByRole('button', { name: 'Remove Started filter' }))
+    else fireEvent.click(libraryRole('button', { name: 'Remove Started filter' }))
     expect(cards()).toEqual([1, 2, 3])
     chooseBucket(mode, 'bounced', 'Started')
     await genre(mode, 'RPG')
-    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
-    const panel = screen.getByRole(mode === 'fullscreen' ? 'dialog' : 'region', { name: 'Library filters' })
+    fireEvent.click(libraryRole('button', { name: 'Filters' }))
+    const panel = libraryRole(mode === 'fullscreen' ? 'dialog' : 'region', { name: 'Library filters' })
     fireEvent.click(within(panel).getByRole('button', { name: 'Clear filters' }))
     fireEvent.click(
       within(panel).getByRole('button', { name: mode === 'fullscreen' ? 'Apply filters' : 'Close filters' }),
     )
     expect(cards()).toEqual(mode === 'desktop' ? [1, 2] : [1, 2, 3])
-    if (mode === 'desktop')
-      expect(screen.getByRole('button', { name: 'Remove Started filter' })).toBeDefined()
+    if (mode === 'desktop') expect(libraryRole('button', { name: 'Remove Started filter' })).toBeDefined()
     else expect(screen.queryByRole('button', { name: 'Remove Started filter' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Remove RPG filter' })).toBeNull()
     if (mode === 'fullscreen') {
@@ -516,20 +583,20 @@ describe.each(['desktop', 'fullscreen'] as const)('library selection in %s', (mo
         games: current.games.map((game) => ({ ...game, summary: 'Fresh summary' })),
       }),
     )
-    fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'title-desc' } })
+    fireEvent.change(libraryLabel('Sort'), { target: { value: 'title-desc' } })
     expect(selectedCards()).toEqual([2, 1])
     act(() => card(3).focus())
     fireEvent.keyDown(card(3), { key: 'ArrowRight' })
     await waitFor(() => expect(selectedCards()).toEqual([2]))
-    expect(screen.getByRole('group', { name: 'Selected games' }).textContent).toContain('1 selected')
+    expect(libraryRole('group', { name: 'Selected games' }).textContent).toContain('1 selected')
   })
   it('prunes hidden multi-selection without bringing it back when the filter is cleared', () => {
     setup(mode)
     fireEvent.click(document.querySelector('[data-avalon-game="1"]')!, { ctrlKey: true })
     fireEvent.click(document.querySelector('[data-avalon-game="2"]')!, { ctrlKey: true })
-    fireEvent.change(screen.getByLabelText('Search games'), { target: { value: 'Bravo' } })
+    fireEvent.change(libraryLabel('Search games'), { target: { value: 'Bravo' } })
     expect(selectedCards()).toEqual([2])
-    fireEvent.click(screen.getByRole('button', { name: 'Clear search' }))
+    fireEvent.click(libraryRole('button', { name: 'Clear search' }))
     expect(selectedCards()).toEqual([2])
   })
 })
@@ -538,12 +605,12 @@ it.each(['grid', 'list'] as const)(
   'clears filtered and explicitly cleared primary selection in the desktop %s',
   (kind) => {
     setup('desktop')
-    if (kind === 'list') fireEvent.click(screen.getByRole('button', { name: 'List view' }))
+    if (kind === 'list') fireEvent.click(libraryRole('button', { name: 'List view' }))
     act(() => document.querySelector<HTMLButtonElement>('[data-avalon-game="2"]')!.focus())
     expect(selectedCards()).toEqual([2])
-    fireEvent.change(screen.getByLabelText('Search games'), { target: { value: 'Alpha' } })
+    fireEvent.change(libraryLabel('Search games'), { target: { value: 'Alpha' } })
     expect(selectedCards()).toEqual([])
-    fireEvent.click(screen.getByRole('button', { name: 'Clear search' }))
+    fireEvent.click(libraryRole('button', { name: 'Clear search' }))
     expect(selectedCards()).toEqual([])
     fireEvent.click(document.querySelector('[data-avalon-game="1"]')!, { ctrlKey: true })
     expect(selectedCards()).toEqual([1])
@@ -551,7 +618,7 @@ it.each(['grid', 'list'] as const)(
     expect(selectedCards()).toEqual([])
     expect(document.querySelector<HTMLElement>('.avalon-selection-actions')!.style.visibility).toBe('hidden')
     fireEvent.click(document.querySelector('[data-avalon-game="2"]')!, { ctrlKey: true })
-    fireEvent.click(screen.getByRole('button', { name: 'Clear selection' }))
+    fireEvent.click(libraryRole('button', { name: 'Clear selection' }))
     expect(selectedCards()).toEqual([])
   },
 )
@@ -577,14 +644,14 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
           })
         : undefined
     setup(mode)
-    fireEvent.click(screen.getByRole('button', { name: 'Manage library' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Identity review' }))
+    fireEvent.click(libraryRole('button', { name: 'Manage library' }))
+    fireEvent.click(libraryRole('button', { name: 'Identity review' }))
     await screen.findByRole('heading', { name: 'Are these the same game?' })
     expect(cards()).toEqual([])
-    fireEvent.click(screen.getByRole('button', { name: mode === 'desktop' ? 'All games3' : 'Close tools' }))
+    fireEvent.click(libraryRole('button', { name: mode === 'desktop' ? 'All games3' : 'Close tools' }))
     expect(screen.queryByRole('heading', { name: 'Are these the same game?' })).toBeNull()
     expect(cards()).toEqual([1, 2, 3])
-    expect(screen.getByRole('button', { name: 'All games3' }).getAttribute('aria-pressed')).toBe('true')
+    expect(libraryRole('button', { name: 'All games3' }).getAttribute('aria-pressed')).toBe('true')
   })
   it('defaults to longest dormancy with never-opened first and reverses for recent play', () => {
     delete preferences.values.DefaultSort
@@ -595,9 +662,9 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
       playtimeMinutes: index === 2 ? 0 : 600,
     }))
     setup(mode)
-    expect((screen.getByLabelText('Sort') as HTMLSelectElement).value).toBe('dormant')
+    expect((libraryLabel('Sort') as HTMLSelectElement).value).toBe('dormant')
     expect(cards()).toEqual([3, 2, 1])
-    fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'recent' } })
+    fireEvent.change(libraryLabel('Sort'), { target: { value: 'recent' } })
     expect(cards()).toEqual([1, 2, 3])
   })
   it('sorts unequal playtimes both ways and names with mixed case independently', () => {
@@ -613,7 +680,7 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
       ['title', [2, 1, 3]],
       ['title-desc', [3, 1, 2]],
     ] as const) {
-      fireEvent.change(screen.getByLabelText('Sort'), { target: { value: sort } })
+      fireEvent.change(libraryLabel('Sort'), { target: { value: sort } })
       expect(cards()).toEqual(order)
     }
   })
@@ -632,30 +699,29 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
       playtimeMinutes: index === 3 ? 5000 : 0,
     }))
     setup(mode)
-    const all = screen.getByRole('button', { name: 'All games4' })
-    const rail = screen.getByRole('group', { name: 'Library collections' })
+    const all = libraryRole('button', { name: 'All games4' })
+    const rail = libraryRole('group', { name: 'Library collections' })
     const selected = () =>
       within(rail)
         .getAllByRole('button')
         .filter((button) => button.getAttribute('aria-pressed') === 'true')
     expect(selected()).toEqual([all])
     expect(cards()).toHaveLength(4)
-    const never = screen.getByRole('button', { name: 'Never played3' })
+    const never = libraryRole('button', { name: 'Never played3' })
     fireEvent.click(never)
     expect(selected()).toEqual([never])
-    fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'title-desc' } })
-    fireEvent.change(screen.getByLabelText('Search games'), { target: { value: 'alpha' } })
+    fireEvent.change(libraryLabel('Sort'), { target: { value: 'title-desc' } })
+    fireEvent.change(libraryLabel('Search games'), { target: { value: 'alpha' } })
     expect(cards()).toEqual([1])
-    fireEvent.change(screen.getByLabelText('Search games'), { target: { value: 'zero' } })
+    fireEvent.change(libraryLabel('Search games'), { target: { value: 'zero' } })
     expect(cards()).toEqual([3, 2, 1])
     for (let click = 0; click < 2; click++) {
+      returnToLibrary()
       fireEvent.click(all)
       expect(selected()).toEqual([all])
       expect(cards()).toEqual([3, 2, 1, 4])
-      expect((screen.getByLabelText('Search games') as HTMLInputElement).value).toBe(
-        mode === 'desktop' ? 'zero' : '',
-      )
-      expect((screen.getByLabelText('Sort') as HTMLSelectElement).value).toBe('title-desc')
+      expect((libraryLabel('Search games') as HTMLInputElement).value).toBe(mode === 'desktop' ? 'zero' : '')
+      expect((libraryLabel('Sort') as HTMLSelectElement).value).toBe('title-desc')
     }
   })
   it('counts grouped games once in the rail and per store and keeps a multi-store game in either store cut', () => {
@@ -675,9 +741,9 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
     for (const label of mode === 'desktop'
       ? ['All games3', 'Started1', 'In rotation1', 'Never played1']
       : ['All games3', 'Installed1', 'Never played1', 'Patched0'])
-      expect(screen.getByRole('button', { name: label })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
-    const panel = screen.getByRole(mode === 'fullscreen' ? 'dialog' : 'region', { name: 'Library filters' })
+      expect(libraryRole('button', { name: label })).toBeTruthy()
+    fireEvent.click(libraryRole('button', { name: 'Filters' }))
+    const panel = libraryRole(mode === 'fullscreen' ? 'dialog' : 'region', { name: 'Library filters' })
     fireEvent.click(within(panel).getByText('Stores', { exact: true }))
     expect(within(panel).getByRole('checkbox', { name: 'Steam, 2 matching titles' })).toBeTruthy()
     expect(within(panel).getByRole('checkbox', { name: 'GOG, 1 matching title' })).toBeTruthy()
@@ -685,7 +751,7 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
     if (mode === 'fullscreen') fireEvent.click(within(panel).getByRole('button', { name: 'Apply filters' }))
     else fireEvent.click(within(panel).getByRole('button', { name: 'Close filters' }))
     expect(cards()).toEqual([1])
-    expect(screen.getByRole('button', { name: 'All games3' })).toBeTruthy()
+    expect(libraryRole('button', { name: 'All games3' })).toBeTruthy()
   })
   it.each([0, 45])(
     'folds expansions with %s minutes before rail list and search cuts and restores their own tiles when grouping is disabled',
@@ -711,19 +777,19 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
       const view = setup(mode)
       await waitFor(() => expect(cards()).toEqual([1, 3]))
       const name = `View Alpha. Owned on Steam, Manual. Includes 1 expansion${minutes ? '' : ', one of them never played'}.`
-      expect(screen.getByRole('button', { name })).toBeTruthy()
+      expect(libraryRole('button', { name })).toBeTruthy()
       expect(document.querySelector('[data-avalon-game="1"] .avalon-expansion-mark')?.textContent).toBe('+1')
-      expect(screen.getByRole('button', { name: 'All games2' })).toBeTruthy()
-      expect(screen.getByRole('button', { name: 'Never played1' })).toBeTruthy()
+      expect(libraryRole('button', { name: 'All games2' })).toBeTruthy()
+      expect(libraryRole('button', { name: 'Never played1' })).toBeTruthy()
       if (mode === 'desktop') {
         expect(document.querySelector('.avalon-library-total strong')?.textContent).toBe('2')
-        fireEvent.click(screen.getByRole('button', { name: 'List view' }))
-        expect(screen.getByRole('button', { name }).textContent).toContain('+1')
+        fireEvent.click(libraryRole('button', { name: 'List view' }))
+        expect(libraryRole('button', { name }).textContent).toContain('+1')
       }
       openList(10)
       expect(cards()).toEqual([])
       openList('all')
-      fireEvent.change(screen.getByLabelText('Search games'), { target: { value: 'Bravo' } })
+      fireEvent.change(libraryLabel('Search games'), { target: { value: 'Bravo' } })
       expect(cards()).toEqual([])
       preferences.values.GroupExpansions = 'false'
       view.rerender(
@@ -732,7 +798,7 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
         </QueryClientProvider>,
       )
       expect(cards()).toEqual([2])
-      fireEvent.click(screen.getByRole('button', { name: 'Clear search' }))
+      fireEvent.click(libraryRole('button', { name: 'Clear search' }))
       expect(cards()).toEqual([1, 2, 3])
       expect(document.querySelector('.avalon-expansion-mark')).toBeNull()
       expect(current.games[0]!.playtimeMinutes).toBe(12000)
@@ -756,29 +822,29 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
         lastPlayedAt: [null, '2026-09-01T00:00:00Z', '2025-09-01T00:00:00Z'][index],
       }))
       const view = setup(mode)
-      fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'title-desc' } })
+      fireEvent.change(libraryLabel('Sort'), { target: { value: 'title-desc' } })
       preferences.values.DefaultSort = saved
       view.rerender(
         <QueryClientProvider client={view.client}>
           <Fixture mode={mode} />
         </QueryClientProvider>,
       )
-      expect((screen.getByLabelText('Sort') as HTMLSelectElement).value).toBe(sort)
+      expect((libraryLabel('Sort') as HTMLSelectElement).value).toBe(sort)
       expect(cards()).toEqual(order)
-      fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'title-desc' } })
+      fireEvent.change(libraryLabel('Sort'), { target: { value: 'title-desc' } })
       expect(preferences.values.DefaultSort).toBe(saved)
       expect(view.request.mock.calls.some(([input]) => input.route === 'preferences.presentation.put')).toBe(
         false,
       )
       view.unmount()
       setup(mode)
-      expect((screen.getByLabelText('Sort') as HTMLSelectElement).value).toBe('title-desc')
+      expect((libraryLabel('Sort') as HTMLSelectElement).value).toBe('title-desc')
       expect(preferences.values.DefaultSort).toBe(saved)
     },
   )
   it('applies a saved default on return while retaining a manual list until it closes', () => {
     const view = setup(mode)
-    fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'title-desc' } })
+    fireEvent.change(libraryLabel('Sort'), { target: { value: 'title-desc' } })
     openList(10)
     expect(cards()).toEqual([3, 1, 2])
     view.unmount()
@@ -787,15 +853,15 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
     current.games[2]!.playtimeMinutes = 60
     setup(mode)
     expect(cards()).toEqual([3, 1, 2])
-    expect((screen.getByLabelText('Sort') as HTMLSelectElement).value).toBe('list-order')
+    expect((libraryLabel('Sort') as HTMLSelectElement).value).toBe('list-order')
     openList('all')
-    expect((screen.getByLabelText('Sort') as HTMLSelectElement).value).toBe('time')
+    expect((libraryLabel('Sort') as HTMLSelectElement).value).toBe('time')
     expect(cards()).toEqual([2, 3, 1])
   })
   it('updates the order of a live list without changing its rules or writing its revision', () => {
     const view = setup(mode)
     openList(11)
-    fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'time-low' } })
+    fireEvent.change(libraryLabel('Sort'), { target: { value: 'time-low' } })
     preferences.values.DefaultSort = 'NameDescending'
     view.rerender(
       <QueryClientProvider client={view.client}>
@@ -845,16 +911,16 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
     const view = setup(mode)
     openList(10)
     expect(cards()).toEqual([1])
-    expect(screen.getByRole('button', { name: 'View Prey. Owned on Steam, Epic' })).toBeTruthy()
+    expect(libraryRole('button', { name: 'View Prey. Owned on Steam, Epic' })).toBeTruthy()
     expect(screen.getByText('1 game')).toBeTruthy()
     current.lists[0] = { ...current.lists[0], releaseIds: [101, 300] }
     act(() => view.client.setQueryData(['api', 'library.get'], structuredClone(current)))
     await waitFor(() => expect(cards()).toEqual([1, 3]))
-    expect((screen.getByLabelText('Sort') as HTMLSelectElement).value).toBe('list-order')
+    expect((libraryLabel('Sort') as HTMLSelectElement).value).toBe('list-order')
     act(() => document.querySelector<HTMLButtonElement>('[data-avalon-game="1"]')!.focus())
-    expect((screen.getByRole('button', { name: 'Move earlier' }) as HTMLButtonElement).disabled).toBe(true)
-    expect((screen.getByRole('button', { name: 'Move later' }) as HTMLButtonElement).disabled).toBe(false)
-    fireEvent.click(screen.getByRole('button', { name: 'Move later' }))
+    expect((libraryRole('button', { name: 'Move earlier' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((libraryRole('button', { name: 'Move later' }) as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(libraryRole('button', { name: 'Move later' }))
     await waitFor(() => expect(cards()).toEqual([3, 1]))
     expect(view.request.mock.calls.find(([input]) => input.route === 'list.order')?.[0].body).toEqual({
       releaseIds: [300, 101],
@@ -879,18 +945,18 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
     const view = setup(mode)
     openList(10)
     act(() => document.querySelector<HTMLButtonElement>('[data-avalon-game="3"]')!.focus())
-    expect((screen.getByRole('button', { name: 'Move earlier' }) as HTMLButtonElement).disabled).toBe(true)
-    fireEvent.click(screen.getByRole('button', { name: 'Remove from Handpicked' }))
+    expect((libraryRole('button', { name: 'Move earlier' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(libraryRole('button', { name: 'Remove from Handpicked' }))
     await screen.findByText("Couldn't save list changes. Try again.")
     expect(cards()).toEqual([3, 1, 2])
     expect(selectedCollection()).toBe('10')
     fail = false
-    fireEvent.click(screen.getByRole('button', { name: 'Move later' }))
+    fireEvent.click(libraryRole('button', { name: 'Move later' }))
     await waitFor(() => expect(cards()).toEqual([1, 3, 2]))
-    fireEvent.click(screen.getByRole('button', { name: 'Remove from Handpicked' }))
+    fireEvent.click(libraryRole('button', { name: 'Remove from Handpicked' }))
     await waitFor(() => expect(cards()).toEqual([1, 2]))
     act(() => document.querySelector<HTMLButtonElement>('[data-avalon-game="2"]')!.focus())
-    expect((screen.getByRole('button', { name: 'Move later' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((libraryRole('button', { name: 'Move later' }) as HTMLButtonElement).disabled).toBe(true)
     expect(view.request.mock.calls.find(([input]) => input.route === 'list.order')![0].body).toEqual({
       releaseIds: [100, 300, 200],
       expectedRevision: 'm1',
@@ -904,16 +970,16 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
     const view = setup(mode)
     fireEvent.click(document.querySelector('[data-avalon-game="1"]')!, { ctrlKey: true })
     fireEvent.click(document.querySelector('[data-avalon-game="2"]')!, { ctrlKey: true })
-    fireEvent.click(screen.getByRole('button', { name: mode === 'desktop' ? 'New list' : 'New list…' }))
-    if (mode === 'desktop') fireEvent.click(screen.getByRole('menuitem', { name: 'Static list' }))
-    fireEvent.change(screen.getByLabelText('List name'), { target: { value: 'Empty list' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Create list' }))
+    fireEvent.click(libraryRole('button', { name: mode === 'desktop' ? 'New list' : 'New list…' }))
+    if (mode === 'desktop') fireEvent.click(libraryRole('menuitem', { name: 'Static list' }))
+    fireEvent.change(libraryLabel('List name'), { target: { value: 'Empty list' } })
+    fireEvent.click(libraryRole('button', { name: 'Create list' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(view.request.mock.calls.find(([input]) => input.route === 'list.create')![0].body).toEqual({
       name: 'Empty list',
       releaseIds: [],
     })
-    expect(screen.getByText('2 selected')).toBeTruthy()
+    expect(libraryRole('group', { name: 'Selected games' }).textContent).toContain('2 selected')
   })
   it('opens manual lists in member order, leaves predefined buckets, and restores the prior/default sort on exit', async () => {
     const view = setup(mode)
@@ -921,7 +987,7 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
     expect(cards()).toEqual([2])
     openList(10)
     expect(cards()).toEqual([3, 1, 2])
-    expect((screen.getByLabelText('Sort') as HTMLSelectElement).value).toBe('list-order')
+    expect((libraryLabel('Sort') as HTMLSelectElement).value).toBe('list-order')
     preferences.values.DefaultSort = 'NameDescending'
     view.rerender(
       <QueryClientProvider client={view.client}>
@@ -929,22 +995,22 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
       </QueryClientProvider>,
     )
     expect(cards()).toEqual([3, 1, 2])
-    fireEvent.click(screen.getByRole('button', { name: 'Leave this list' }))
+    fireEvent.click(libraryRole('button', { name: 'Leave this list' }))
     expect(cards()).toEqual([3, 2, 1])
-    expect((screen.getByLabelText('Sort') as HTMLSelectElement).value).toBe('title-desc')
-    fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'title' } })
+    expect((libraryLabel('Sort') as HTMLSelectElement).value).toBe('title-desc')
+    fireEvent.change(libraryLabel('Sort'), { target: { value: 'title' } })
     openList(10)
     openList('all')
     expect(cards()).toEqual([1, 2, 3])
   })
   it('reopens saved live rules without inherited filters, includes newly matching titles, and clears rules when leaving', async () => {
     const view = setup(mode)
-    fireEvent.change(screen.getByLabelText('Search games'), { target: { value: 'Charlie' } })
+    fireEvent.change(libraryLabel('Search games'), { target: { value: 'Charlie' } })
     chooseBucket(mode, 'derelict', 'Derelict')
     openList(11)
     expect(cards()).toEqual([1, 2])
-    expect((screen.getByLabelText('Search games') as HTMLInputElement).value).toBe('')
-    expect(screen.getByLabelText('Live list rules').textContent).toContain('Rules for Steam evenings')
+    expect((libraryLabel('Search games') as HTMLInputElement).value).toBe('')
+    expect(libraryLabel('Live list rules').textContent).toContain('Rules for Steam evenings')
     const incoming = {
       ...games[0]!,
       workId: 4,
@@ -961,7 +1027,7 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
     expect(cards()).toEqual([2])
     expect(screen.queryByLabelText('Live list rules')).toBeNull()
     openList(11)
-    fireEvent.click(screen.getByRole('button', { name: 'Leave this list' }))
+    fireEvent.click(libraryRole('button', { name: 'Leave this list' }))
     expect(cards()).toEqual([1, 2, 3, 4])
   })
   it('updates and reverts named live rules using the observed revision while preserving drafts after conflicts', async () => {
@@ -982,25 +1048,25 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
     }
     const view = setup(mode)
     openList(11)
-    fireEvent.change(screen.getByLabelText('Search games'), { target: { value: 'Bravo' } })
+    fireEvent.change(libraryLabel('Search games'), { target: { value: 'Bravo' } })
     expect(cards()).toEqual([2])
-    fireEvent.click(screen.getByRole('button', { name: 'Revert Steam evenings' }))
+    fireEvent.click(libraryRole('button', { name: 'Revert Steam evenings' }))
     expect(cards()).toEqual([1, 2])
-    fireEvent.change(screen.getByLabelText('Search games'), { target: { value: 'Alpha' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Update Steam evenings' }))
+    fireEvent.change(libraryLabel('Search games'), { target: { value: 'Alpha' } })
+    fireEvent.click(libraryRole('button', { name: 'Update Steam evenings' }))
     await screen.findByRole('button', { name: 'Keep these rules and use latest revision' })
-    expect((screen.getByLabelText('Search games') as HTMLInputElement).value).toBe('Alpha')
-    expect(
-      (screen.getByRole('button', { name: 'Update Steam evenings' }) as HTMLButtonElement).disabled,
-    ).toBe(true)
-    conflict = false
-    fireEvent.click(screen.getByRole('button', { name: 'Keep these rules and use latest revision' }))
-    await waitFor(() =>
-      expect(
-        (screen.getByRole('button', { name: 'Update Steam evenings' }) as HTMLButtonElement).disabled,
-      ).toBe(false),
+    expect((libraryLabel('Search games') as HTMLInputElement).value).toBe('Alpha')
+    expect((libraryRole('button', { name: 'Update Steam evenings' }) as HTMLButtonElement).disabled).toBe(
+      true,
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Update Steam evenings' }))
+    conflict = false
+    fireEvent.click(libraryRole('button', { name: 'Keep these rules and use latest revision' }))
+    await waitFor(() =>
+      expect((libraryRole('button', { name: 'Update Steam evenings' }) as HTMLButtonElement).disabled).toBe(
+        false,
+      ),
+    )
+    fireEvent.click(libraryRole('button', { name: 'Update Steam evenings' }))
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Update Steam evenings' })).toBeNull())
     const writes = view.request.mock.calls.filter(([input]) => input.route === 'list.filter')
     expect(writes.map(([input]) => (input.body as { expectedRevision: string }).expectedRevision)).toEqual([
@@ -1012,10 +1078,10 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
   it('keeps filters changed inside a manual list and saves the complete current cut as a new live list', async () => {
     const view = setup(mode)
     openList(10)
-    fireEvent.change(screen.getByLabelText('Search games'), { target: { value: 'Alpha' } })
+    fireEvent.change(libraryLabel('Search games'), { target: { value: 'Alpha' } })
     openList('all')
     expect(cards()).toEqual([1])
-    expect((screen.getByLabelText('Search games') as HTMLInputElement).value).toBe('Alpha')
+    expect((libraryLabel('Search games') as HTMLInputElement).value).toBe('Alpha')
     handler = (input) =>
       input.route === 'list.live'
         ? ok({
@@ -1027,9 +1093,9 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
             revision: 'new',
           })
         : undefined
-    fireEvent.click(screen.getByRole('button', { name: 'Save filters as a live list…' }))
-    fireEvent.change(screen.getByLabelText('List name'), { target: { value: 'My cut' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Create live list' }))
+    fireEvent.click(libraryRole('button', { name: 'Save filters as a live list…' }))
+    fireEvent.change(libraryLabel('List name'), { target: { value: 'My cut' } })
+    fireEvent.click(libraryRole('button', { name: 'Create live list' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     const body = view.request.mock.calls.find(([input]) => input.route === 'list.live')![0].body as {
       name: string
@@ -1055,11 +1121,11 @@ describe.each(['desktop', 'fullscreen'] as const)('list prompts in %s', (mode) =
       if (origin === 'library')
         act(() => document.querySelector<HTMLButtonElement>('[data-avalon-game="1"]')!.focus())
       fireEvent.click(
-        await screen.findByRole('button', {
+        libraryRole('button', {
           name: origin === 'feed' && mode === 'desktop' ? 'Add Alpha to list…' : 'Add to list…',
         }),
       )
-      const dialog = screen.getByRole('dialog')
+      const dialog = libraryRole('dialog')
       expect(within(dialog).getByRole('button', { name: 'Handpicked' })).toBeTruthy()
       expect(within(dialog).queryByText('Steam evenings')).toBeNull()
       fireEvent.change(within(dialog).getByLabelText('New list name'), {
@@ -1094,10 +1160,10 @@ describe.each(['desktop', 'fullscreen'] as const)('list prompts in %s', (mode) =
     const view = setup(mode)
     fireEvent.click(document.querySelector('[data-avalon-game="1"]')!, { ctrlKey: true })
     fireEvent.click(document.querySelector('[data-avalon-game="2"]')!, { ctrlKey: true })
-    fireEvent.click(screen.getByRole('button', { name: 'Add 2 to list…' }))
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Handpicked' }))
+    fireEvent.click(libraryRole('button', { name: 'Add 2 to list…' }))
+    fireEvent.click(within(libraryRole('dialog')).getByRole('button', { name: 'Handpicked' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-    expect(screen.getByText('2 selected')).toBeTruthy()
+    expect(libraryRole('group', { name: 'Selected games' }).textContent).toContain('2 selected')
     expect(cards()).toEqual([1, 2, 3])
     expect(view.request.mock.calls.find(([input]) => input.route === 'list.member.add')![0].body).toEqual({
       releaseIds: [100, 200],
@@ -1124,12 +1190,17 @@ describe.each(['desktop', 'fullscreen'] as const)('original manual list contract
     source()
     current.lists = []
     setup(mode)
+    if (mode === 'fullscreen') fireEvent.click(libraryRole('button', { name: 'My lists' }))
     expect(
-      screen.getByText('No lists yet. Choose New list below to create a static or live list.'),
+      screen.getByText(
+        mode === 'desktop'
+          ? 'No lists yet. Choose New list below to create a static or live list.'
+          : 'No lists yet. Create a list to keep games together.',
+      ),
     ).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: mode === 'desktop' ? 'New list' : 'New list…' }))
+    fireEvent.click(libraryRole('button', { name: mode === 'desktop' ? 'New list' : 'New list…' }))
     if (mode === 'desktop') {
-      const menu = screen.getByRole('menu', { name: 'New list' })
+      const menu = libraryRole('menu', { name: 'New list' })
       expect(within(menu).getByRole('menuitem', { name: 'Static list' }).title).toBe(
         'Choose the games yourself. Add or remove titles whenever you like.',
       )
@@ -1137,11 +1208,11 @@ describe.each(['desktop', 'fullscreen'] as const)('original manual list contract
         'Save the current library filters. Matching games update automatically.',
       )
       fireEvent.click(within(menu).getByRole('menuitem', { name: 'Static list' }))
-      expect(screen.getByRole('dialog', { name: 'Name this list' })).toBeTruthy()
-      expect(screen.getByRole('button', { name: 'Create list' })).toBeTruthy()
+      expect(libraryRole('dialog', { name: 'Name this list' })).toBeTruthy()
+      expect(libraryRole('button', { name: 'Create list' })).toBeTruthy()
       return
     }
-    const dialog = screen.getByRole('dialog')
+    const dialog = libraryRole('dialog')
     expect(
       within(dialog).getByText('Choose games yourself, or let a live list follow your filters.'),
     ).toBeTruthy()
@@ -1156,7 +1227,7 @@ describe.each(['desktop', 'fullscreen'] as const)('original manual list contract
     setup(mode, 'details')
     expect(await screen.findByText('Create a list in Library tools.')).toBeTruthy()
     expect(screen.queryAllByRole('checkbox')).toEqual([])
-    expect(screen.getByRole('button', { name: 'Add to list…' })).toBeTruthy()
+    expect(libraryRole('button', { name: 'Add to list…' })).toBeTruthy()
   })
 
   it.each(['feed', 'details'])(
@@ -1189,30 +1260,30 @@ describe.each(['desktop', 'fullscreen'] as const)('original manual list contract
       )
       const add = () =>
         fireEvent.click(
-          screen.getByRole('button', {
+          libraryRole('button', {
             name: origin === 'feed' && mode === 'desktop' ? 'Add Hades to list…' : 'Add to list…',
           }),
         )
       add()
-      expect(screen.getByRole('heading', { name: 'Add Hades to a list' })).toBeTruthy()
+      expect(libraryRole('heading', { name: 'Add Hades to a list' })).toBeTruthy()
       expect(
-        within(screen.getByRole('group', { name: 'Existing lists' }))
+        within(libraryRole('group', { name: 'Existing lists' }))
           .getAllByRole('button')
           .map((button) => button.textContent),
       ).toEqual(['Friday'])
-      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Friday' }))
+      fireEvent.click(within(libraryRole('dialog')).getByRole('button', { name: 'Friday' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
       add()
-      fireEvent.change(screen.getByLabelText('New list name'), { target: { value: 'Next up' } })
-      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'New list' }))
+      fireEvent.change(libraryLabel('New list name'), { target: { value: 'Next up' } })
+      fireEvent.click(within(libraryRole('dialog')).getByRole('button', { name: 'New list' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
       if (origin === 'details')
-        expect(
-          (screen.getByRole('checkbox', { name: 'Remove from Next up' }) as HTMLInputElement).checked,
-        ).toBe(true)
+        expect((libraryRole('checkbox', { name: 'Remove from Next up' }) as HTMLInputElement).checked).toBe(
+          true,
+        )
       else expect(screen.getAllByText('Ready to play.').length).toBeGreaterThan(0)
       add()
-      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
+      fireEvent.click(within(libraryRole('dialog')).getByRole('button', { name: 'Cancel' }))
       expect(screen.queryByRole('dialog')).toBeNull()
       expect(
         view.request.mock.calls
@@ -1253,11 +1324,11 @@ describe.each(['desktop', 'fullscreen'] as const)('original manual list contract
       fireEvent.click(document.querySelector('[data-avalon-game="1"]')!, { ctrlKey: true })
       fireEvent.click(document.querySelector('[data-avalon-game="2"]')!, { ctrlKey: true })
       const elements = [...document.querySelectorAll('.avalon-library [data-avalon-game]')]
-      fireEvent.click(screen.getByRole('button', { name: 'Add 2 to list…' }))
+      fireEvent.click(libraryRole('button', { name: 'Add 2 to list…' }))
       if (createNew) {
-        fireEvent.change(screen.getByLabelText('New list name'), { target: { value: 'New destination' } })
-        fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'New list' }))
-      } else fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Later' }))
+        fireEvent.change(libraryLabel('New list name'), { target: { value: 'New destination' } })
+        fireEvent.click(within(libraryRole('dialog')).getByRole('button', { name: 'New list' }))
+      } else fireEvent.click(within(libraryRole('dialog')).getByRole('button', { name: 'Later' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
       expect(selectedCollection()).toBe('10')
       expect(cards()).toEqual([1, 2])
@@ -1278,11 +1349,11 @@ describe.each(['desktop', 'fullscreen'] as const)('original manual list contract
     expect(cards()).toEqual([2, 1, 3])
     openList(10)
     expect(cards()).toEqual([1, 2, 3])
-    expect((screen.getByLabelText('Sort') as HTMLSelectElement).value).toBe('list-order')
+    expect((libraryLabel('Sort') as HTMLSelectElement).value).toBe('list-order')
     for (const id of [1, 2, 3]) {
       focus(id)
-      const earlier = screen.getByRole('button', { name: 'Move earlier' }),
-        later = screen.getByRole('button', { name: 'Move later' })
+      const earlier = libraryRole('button', { name: 'Move earlier' }),
+        later = libraryRole('button', { name: 'Move later' })
       expect((earlier as HTMLButtonElement).disabled).toBe(id === 1)
       expect((later as HTMLButtonElement).disabled).toBe(id === 3)
       if (id !== 2) fireEvent.click(id === 1 ? earlier : later)
@@ -1314,28 +1385,28 @@ describe.each(['desktop', 'fullscreen'] as const)('original manual list contract
     }
     const view = setup(mode)
     openList(10)
-    fireEvent.click(screen.getByRole('button', { name: 'Manage library' }))
-    const panel = screen.getByRole('heading', { name: 'Middle' }).closest('section')!
+    fireEvent.click(libraryRole('button', { name: 'Manage library' }))
+    const panel = libraryRole('heading', { name: 'Middle' }).closest('section')!
     fireEvent.click(within(panel).getByRole('button', { name: 'Edit' }))
     expect((within(panel).getByLabelText('List name') as HTMLInputElement).value).toBe('Middle')
     fireEvent.change(within(panel).getByLabelText('List name'), { target: { value: 'Aardvark' } })
     fireEvent.click(within(panel).getByRole('button', { name: 'Save list' }))
     await screen.findByRole('heading', { name: 'Aardvark' })
     fireEvent.click(within(panel).getByRole('button', { name: 'Delete list…' }))
-    expect(screen.getByRole('dialog', { name: 'Delete Aardvark?' })).toBeTruthy()
+    expect(libraryRole('dialog', { name: 'Delete Aardvark?' })).toBeTruthy()
     expect(screen.getByText('Its games will stay in your library.')).toBeTruthy()
     expect(view.request.mock.calls.some(([input]) => input.route === 'list.delete')).toBe(false)
-    fireEvent.click(screen.getByRole('button', { name: 'Keep list' }))
+    fireEvent.click(libraryRole('button', { name: 'Keep list' }))
     expect(screen.queryByRole('dialog')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Close tools' }))
+    fireEvent.click(libraryRole('button', { name: 'Close tools' }))
     expect(collectionNames()).toEqual(['All games', 'Aardvark', 'Zebra'])
     expect(selectedCollection()).toBe('10')
-    fireEvent.click(screen.getByRole('button', { name: 'Manage library' }))
-    const renamed = screen.getByRole('heading', { name: 'Aardvark' }).closest('section')!
+    fireEvent.click(libraryRole('button', { name: 'Manage library' }))
+    const renamed = libraryRole('heading', { name: 'Aardvark' }).closest('section')!
     fireEvent.click(within(renamed).getByRole('button', { name: 'Delete list…' }))
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete list' }))
+    fireEvent.click(within(libraryRole('dialog')).getByRole('button', { name: 'Delete list' }))
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'Aardvark' })).toBeNull())
-    fireEvent.click(screen.getByRole('button', { name: 'Close tools' }))
+    fireEvent.click(libraryRole('button', { name: 'Close tools' }))
     expect(cards()).toEqual([2, 1, 3])
     expect(selectedCollection()).toBe('all')
     expect(
@@ -1361,7 +1432,7 @@ describe.each(['desktop', 'fullscreen'] as const)('original manual list contract
       ],
     })
     act(() => view.client.setQueryData(['api', 'library.get'], structuredClone(current)))
-    await waitFor(() => expect(screen.getByLabelText('4 → 1')).toBeTruthy())
+    await waitFor(() => expect(libraryLabel('4 → 1')).toBeTruthy())
     expect(cards()).toEqual([1])
     expect(screen.getByText('1 game')).toBeTruthy()
     expect(current.lists[0].releaseIds).toEqual([100, 900])
@@ -1376,7 +1447,7 @@ describe.each(['desktop', 'fullscreen'] as const)('original manual list contract
     focus(2)
     fireEvent.keyDown(celeste, { key: 'ArrowRight' })
     expect(selectedCards()).toHaveLength(1)
-    expect((screen.getByRole('button', { name: 'Add to list…' }) as HTMLButtonElement).disabled).toBe(false)
+    expect((libraryRole('button', { name: 'Add to list…' }) as HTMLButtonElement).disabled).toBe(false)
     fireEvent.keyDown(document.querySelector('[data-avalon-game="1"]')!, { key: ' ', ctrlKey: true })
     fireEvent.click(document.querySelector('[data-avalon-game="2"]')!, { ctrlKey: true })
     expect(selectedCards()).toHaveLength(2)
@@ -1395,9 +1466,9 @@ describe.each(['desktop', 'fullscreen'] as const)('original manual list contract
       ((await screen.findByRole('checkbox', { name: 'Remove from Finish these first' })) as HTMLInputElement)
         .checked,
     ).toBe(true)
-    expect(
-      (screen.getByRole('checkbox', { name: 'Add to Couch co-op night' }) as HTMLInputElement).checked,
-    ).toBe(false)
+    expect((libraryRole('checkbox', { name: 'Add to Couch co-op night' }) as HTMLInputElement).checked).toBe(
+      false,
+    )
     expect(screen.queryByRole('checkbox', { name: /Unplayed/ })).toBeNull()
     expect(screen.getAllByRole('checkbox')).toHaveLength(2)
   })
@@ -1418,17 +1489,17 @@ describe.each(['desktop', 'fullscreen'] as const)('original manual list contract
     fireEvent.click(await screen.findByRole('checkbox', { name: 'Add to Friday night' }))
     await waitFor(() =>
       expect(
-        (screen.getByRole('checkbox', { name: 'Remove from Friday night' }) as HTMLInputElement).checked,
+        (libraryRole('checkbox', { name: 'Remove from Friday night' }) as HTMLInputElement).checked,
       ).toBe(true),
     )
     expect(view.client.getQueryData<LibraryResponse>(['api', 'library.get'])!.lists[0].releaseIds).toEqual([
       100,
     ])
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Remove from Friday night' }))
+    fireEvent.click(libraryRole('checkbox', { name: 'Remove from Friday night' }))
     await waitFor(() =>
-      expect(
-        (screen.getByRole('checkbox', { name: 'Add to Friday night' }) as HTMLInputElement).checked,
-      ).toBe(false),
+      expect((libraryRole('checkbox', { name: 'Add to Friday night' }) as HTMLInputElement).checked).toBe(
+        false,
+      ),
     )
     expect(view.client.getQueryData<LibraryResponse>(['api', 'library.get'])!.lists[0].releaseIds).toEqual([])
     expect(
@@ -1483,25 +1554,25 @@ describe.each(['desktop', 'fullscreen'] as const)('original live list contracts 
     openList(12)
     expect(cards()).toEqual([2])
     expect(screen.queryByRole('button', { name: 'Remove RPG filter' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Remove Action filter' })).toBeTruthy()
+    expect(libraryRole('button', { name: 'Remove Action filter' })).toBeTruthy()
     openList(11)
-    fireEvent.change(screen.getByRole('textbox', { name: 'Search games' }), { target: { value: 'Disco' } })
+    fireEvent.change(libraryRole('textbox', { name: 'Search games' }), { target: { value: 'Disco' } })
     chooseBucket(mode, 'bounced', 'Started')
     expect(cards()).toEqual([2])
     expect(selectedCollection()).toBe('all')
-    expect((screen.getByRole('textbox', { name: 'Search games' }) as HTMLInputElement).value).toBe('')
+    expect((libraryRole('textbox', { name: 'Search games' }) as HTMLInputElement).value).toBe('')
     expect([...document.querySelectorAll('[data-filter-origin]')].map((chip) => chip.textContent)).toEqual([
       'Started',
     ])
     if (mode === 'desktop') {
-      expect(screen.getByRole('button', { name: 'Started1' }).getAttribute('aria-pressed')).toBe('true')
-      expect(screen.getByRole('button', { name: 'Started1' }).getAttribute('data-filter-rule')).toBeNull()
+      expect(libraryRole('button', { name: 'Started1' }).getAttribute('aria-pressed')).toBe('true')
+      expect(libraryRole('button', { name: 'Started1' }).getAttribute('data-filter-rule')).toBeNull()
     } else expect(document.querySelectorAll('.avalon-buckets [aria-pressed="true"]')).toHaveLength(0)
     openList(11)
-    fireEvent.click(screen.getByRole('button', { name: 'All games3' }))
+    fireEvent.click(libraryRole('button', { name: 'All games3' }))
     expect(cards()).toEqual([1, 2, 3])
     expect(screen.queryByRole('region', { name: 'Current library filters' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'All games3' }).getAttribute('aria-pressed')).toBe('true')
+    expect(libraryRole('button', { name: 'All games3' }).getAttribute('aria-pressed')).toBe('true')
     expect(document.querySelectorAll('.avalon-buckets [aria-pressed="true"]')).toHaveLength(1)
     expect(document.querySelectorAll('[data-filter-rule="true"]')).toHaveLength(0)
   })
@@ -1525,12 +1596,12 @@ describe.each(['desktop', 'fullscreen'] as const)('original live list contracts 
     await waitFor(() => expect(cards()).toEqual([1]))
     await genre(mode, 'Action')
     expect(cards()).toEqual([1, 2])
-    expect(screen.getByRole('button', { name: 'Update Every RPG' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Revert Every RPG' }))
+    expect(libraryRole('button', { name: 'Update Every RPG' })).toBeTruthy()
+    fireEvent.click(libraryRole('button', { name: 'Revert Every RPG' }))
     expect(cards()).toEqual([1])
     expect(screen.queryByRole('button', { name: 'Update Every RPG' })).toBeNull()
     await genre(mode, 'Action')
-    fireEvent.click(screen.getByRole('button', { name: 'Update Every RPG' }))
+    fireEvent.click(libraryRole('button', { name: 'Update Every RPG' }))
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Update Every RPG' })).toBeNull())
     expect(
       view.client.getQueryData<LibraryResponse>(['api', 'library.get'])!.lists[0].filter?.genreIds,
@@ -1589,11 +1660,11 @@ describe.each(['desktop', 'fullscreen'] as const)('original live list contracts 
     const view = setup(mode)
     chooseBucket(mode, 'bounced', 'Started')
     await genre(mode, 'RPG')
-    fireEvent.click(screen.getByRole('button', { name: 'Save filters as a live list…' }))
-    expect(screen.getByRole('dialog', { name: 'Name this live list' })).toBeTruthy()
-    expect((screen.getByLabelText('List name') as HTMLInputElement).value).toBe('Started · RPG')
-    fireEvent.change(screen.getByLabelText('List name'), { target: { value: 'Unfinished RPGs' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Create live list' }))
+    fireEvent.click(libraryRole('button', { name: 'Save filters as a live list…' }))
+    expect(libraryRole('dialog', { name: 'Name this live list' })).toBeTruthy()
+    expect((libraryLabel('List name') as HTMLInputElement).value).toBe('Started · RPG')
+    fireEvent.change(libraryLabel('List name'), { target: { value: 'Unfinished RPGs' } })
+    fireEvent.click(libraryRole('button', { name: 'Create live list' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(selectedCollection()).toBe('20')
     expect(cards()).toEqual([1])
@@ -1608,14 +1679,14 @@ describe.each(['desktop', 'fullscreen'] as const)('original live list contracts 
     expect(cards()).toEqual([1, 2, 3])
     openList(20)
     expect(cards()).toEqual([1])
-    expect(screen.getByRole('button', { name: 'Remove RPG filter' }).getAttribute('data-filter-origin')).toBe(
+    expect(libraryRole('button', { name: 'Remove RPG filter' }).getAttribute('data-filter-origin')).toBe(
       'list',
     )
     if (mode === 'desktop')
-      expect(screen.getByRole('button', { name: 'Started2' }).getAttribute('data-filter-rule')).toBe('true')
+      expect(libraryRole('button', { name: 'Started2' }).getAttribute('data-filter-rule')).toBe('true')
     else
       expect(
-        screen.getByRole('button', { name: 'Remove Started filter' }).getAttribute('data-filter-origin'),
+        libraryRole('button', { name: 'Remove Started filter' }).getAttribute('data-filter-origin'),
       ).toBe('list')
     expect(screen.queryByRole('button', { name: 'Update Unfinished RPGs' })).toBeNull()
   })
@@ -1630,7 +1701,7 @@ describe.each(['desktop', 'fullscreen'] as const)('original live list contracts 
       </QueryClientProvider>,
     )
     expect(
-      screen.getByRole('navigation', { name: 'Main navigation' }).querySelector('[aria-current="page"]')
+      libraryRole('navigation', { name: 'Main navigation' }).querySelector('[aria-current="page"]')
         ?.textContent,
     ).toBe('For you')
     expect(selectedCollection()).toBe('all')
@@ -1642,7 +1713,7 @@ describe.each(['desktop', 'fullscreen'] as const)('original live list contracts 
     expect(selectedCollection()).toBe('11')
     expect(cards()).toEqual([1])
     expect(
-      screen.getByRole('navigation', { name: 'Main navigation' }).querySelector('[aria-current="page"]')
+      libraryRole('navigation', { name: 'Main navigation' }).querySelector('[aria-current="page"]')
         ?.textContent,
     ).toContain('Library')
   })
@@ -1659,14 +1730,14 @@ it.each([false, true])(
           })
         : undefined
     const view = setup('fullscreen', 'feed')
-    fireEvent.click(screen.getByRole('button', { name: 'Add to list…' }))
-    fireEvent.change(screen.getByLabelText('New list name'), { target: { value: 'Held save' } })
-    fireEvent.click(screen.getByRole('button', { name: 'New list' }))
-    const dialog = screen.getByRole('dialog')
+    fireEvent.click(libraryRole('button', { name: 'Add to list…' }))
+    fireEvent.change(libraryLabel('New list name'), { target: { value: 'Held save' } })
+    fireEvent.click(libraryRole('button', { name: 'New list' }))
+    const dialog = libraryRole('dialog')
     for (const button of within(dialog).getAllByRole('button'))
       expect((button as HTMLButtonElement).disabled).toBe(true)
     fireEvent.keyDown(dialog, { key: 'Escape' })
-    expect(screen.getByRole('dialog')).toBeTruthy()
+    expect(libraryRole('dialog')).toBeTruthy()
     if (dispose) {
       view.unmount()
       render(<p>Another screen</p>)
@@ -1685,12 +1756,12 @@ it('checks an uncertain creation before allowing a retry and can use the saved l
     input.route === 'list.create' ? { ok: false, status: 503, message: 'Disconnected' } : undefined
   const view = setup('desktop', 'details')
   fireEvent.click(await screen.findByRole('button', { name: 'Add to list…' }))
-  fireEvent.change(screen.getByLabelText('New list name'), { target: { value: 'Already saved' } })
-  fireEvent.click(screen.getByRole('button', { name: 'New list' }))
+  fireEvent.change(libraryLabel('New list name'), { target: { value: 'Already saved' } })
+  fireEvent.click(libraryRole('button', { name: 'New list' }))
   await screen.findByRole('button', { name: 'Check saved lists' })
-  expect((screen.getByRole('button', { name: 'New list' }) as HTMLButtonElement).disabled).toBe(true)
+  expect((libraryRole('button', { name: 'New list' }) as HTMLButtonElement).disabled).toBe(true)
   current.lists.push({ id: 90, name: 'Already saved', isLive: false, releaseIds: [100], revision: 'new' })
-  fireEvent.click(screen.getByRole('button', { name: 'Check saved lists' }))
+  fireEvent.click(libraryRole('button', { name: 'Check saved lists' }))
   fireEvent.click(await screen.findByRole('button', { name: 'Use saved list: Already saved' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   expect(view.request.mock.calls.filter(([input]) => input.route === 'list.create')).toHaveLength(1)
@@ -1701,15 +1772,15 @@ describe('desktop collection rows', () => {
     'opens the original %s naming prompt and returns cancellation focus to New list',
     async (label) => {
       const view = setup('desktop')
-      const trigger = screen.getByRole('button', { name: 'New list' })
+      const trigger = libraryRole('button', { name: 'New list' })
       act(() => trigger.focus())
       fireEvent.click(trigger)
-      const choice = screen.getByRole('menuitem', { name: label })
+      const choice = libraryRole('menuitem', { name: label })
       expect(choice.getAttribute('aria-description')).toBe(choice.title)
       expect(choice.title.length).toBeGreaterThan(20)
       fireEvent.click(choice)
       expect(screen.queryByRole('menu')).toBeNull()
-      const dialog = screen.getByRole('dialog', {
+      const dialog = libraryRole('dialog', {
         name: label === 'Static list' ? 'Name this list' : 'Name this live list',
       })
       expect(document.activeElement).toBe(within(dialog).getByLabelText('List name'))
@@ -1724,16 +1795,16 @@ describe('desktop collection rows', () => {
 
   it('navigates the creation menu with arrows and Escape returns focus without creating anything', () => {
     setup('desktop')
-    const trigger = screen.getByRole('button', { name: 'New list' })
+    const trigger = libraryRole('button', { name: 'New list' })
     fireEvent.click(trigger)
-    const menu = screen.getByRole('menu')
-    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Static list' }))
+    const menu = libraryRole('menu')
+    expect(document.activeElement).toBe(libraryRole('menuitem', { name: 'Static list' }))
     fireEvent.keyDown(menu, { key: 'ArrowDown' })
-    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Live list' }))
+    expect(document.activeElement).toBe(libraryRole('menuitem', { name: 'Live list' }))
     fireEvent.keyDown(menu, { key: 'ArrowDown' })
-    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Static list' }))
+    expect(document.activeElement).toBe(libraryRole('menuitem', { name: 'Static list' }))
     fireEvent.keyDown(menu, { key: 'End' })
-    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Live list' }))
+    expect(document.activeElement).toBe(libraryRole('menuitem', { name: 'Live list' }))
     fireEvent.keyDown(menu, { key: 'Escape' })
     expect(screen.queryByRole('menu')).toBeNull()
     expect(document.activeElement).toBe(trigger)
@@ -1760,19 +1831,19 @@ describe('desktop collection rows', () => {
       return previous(input)
     }
     const view = setup('desktop')
-    fireEvent.click(screen.getByRole('button', { name: 'Started2' }))
+    fireEvent.click(libraryRole('button', { name: 'Started2' }))
     await genre('desktop', 'RPG')
-    fireEvent.change(screen.getByLabelText('Search games'), { target: { value: 'Alpha' } })
-    fireEvent.click(screen.getByRole('button', { name: 'New list' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Live list' }))
-    const dialog = screen.getByRole('dialog', { name: 'Name this live list' })
+    fireEvent.change(libraryLabel('Search games'), { target: { value: 'Alpha' } })
+    fireEvent.click(libraryRole('button', { name: 'New list' }))
+    fireEvent.click(libraryRole('menuitem', { name: 'Live list' }))
+    const dialog = libraryRole('dialog', { name: 'Name this live list' })
     expect((within(dialog).getByLabelText('List name') as HTMLInputElement).value).toBe('Started · RPG')
     fireEvent.change(within(dialog).getByLabelText('List name'), { target: { value: 'Tonight' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(selectedCollection()).toBe('77')
     expect(cards()).toEqual([1])
-    expect(screen.getByRole('region', { name: 'Library filters' })).toBeTruthy()
+    expect(libraryRole('region', { name: 'Library filters' })).toBeTruthy()
     const body = view.request.mock.calls.find(([input]) => input.route === 'list.live')![0].body as {
       name: string
       filter: LibraryFilter
@@ -1793,37 +1864,37 @@ describe('desktop collection rows', () => {
             })
         : undefined
     const view = setup('desktop')
-    fireEvent.click(screen.getByRole('button', { name: 'New list' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Static list' }))
-    fireEvent.change(screen.getByLabelText('List name'), { target: { value: 'Weekend' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Create list' }))
+    fireEvent.click(libraryRole('button', { name: 'New list' }))
+    fireEvent.click(libraryRole('menuitem', { name: 'Static list' }))
+    fireEvent.change(libraryLabel('List name'), { target: { value: 'Weekend' } })
+    fireEvent.click(libraryRole('button', { name: 'Create list' }))
     await screen.findByText('Cannot create this list')
-    expect((screen.getByLabelText('List name') as HTMLInputElement).value).toBe('Weekend')
+    expect((libraryLabel('List name') as HTMLInputElement).value).toBe('Weekend')
     fail = false
-    fireEvent.click(screen.getByRole('button', { name: 'Create list' }))
-    const dialog = screen.getByRole('dialog')
+    fireEvent.click(libraryRole('button', { name: 'Create list' }))
+    const dialog = libraryRole('dialog')
     for (const button of within(dialog).getAllByRole('button'))
       expect((button as HTMLButtonElement).disabled).toBe(true)
     fireEvent.keyDown(dialog, { key: 'Escape' })
-    expect(screen.getByRole('dialog')).toBe(dialog)
+    expect(libraryRole('dialog')).toBe(dialog)
     await waitFor(() => expect(typeof finish).toBe('function'))
     await act(async () =>
       finish(ok({ id: 78, name: 'Weekend', isLive: false, releaseIds: [], revision: 'new' })),
     )
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(view.request.mock.calls.filter(([input]) => input.route === 'list.create')).toHaveLength(2)
-    fireEvent.click(screen.getByRole('button', { name: 'New list' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Static list' }))
-    expect((screen.getByLabelText('List name') as HTMLInputElement).value).toBe('')
-    expect((screen.getByRole('button', { name: 'Cancel' }) as HTMLButtonElement).disabled).toBe(false)
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    fireEvent.click(libraryRole('button', { name: 'New list' }))
+    fireEvent.click(libraryRole('menuitem', { name: 'Static list' }))
+    expect((libraryLabel('List name') as HTMLInputElement).value).toBe('')
+    expect((libraryRole('button', { name: 'Cancel' }) as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(libraryRole('button', { name: 'Cancel' }))
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('collapses manual and live sections independently and retains their state across Home navigation', () => {
     const view = setup('desktop')
-    const manual = screen.getByRole('button', { name: 'LISTS' })
-    const live = screen.getByRole('button', { name: 'LIVE LISTS' })
+    const manual = libraryRole('button', { name: 'LISTS' })
+    const live = libraryRole('button', { name: 'LIVE LISTS' })
     const section = (button: HTMLElement) => document.getElementById(button.getAttribute('aria-controls')!)!
     expect(manual.getAttribute('aria-expanded')).toBe('true')
     expect(live.getAttribute('aria-expanded')).toBe('true')
@@ -1842,10 +1913,10 @@ describe('desktop collection rows', () => {
           <Fixture mode="desktop" origin={origin} />
         </QueryClientProvider>,
       )
-      expect(screen.getByRole('button', { name: 'LISTS' }).getAttribute('aria-expanded')).toBe('true')
-      expect(screen.getByRole('button', { name: 'LIVE LISTS' }).getAttribute('aria-expanded')).toBe('false')
+      expect(libraryRole('button', { name: 'LISTS' }).getAttribute('aria-expanded')).toBe('true')
+      expect(libraryRole('button', { name: 'LIVE LISTS' }).getAttribute('aria-expanded')).toBe('false')
       expect(screen.queryByRole('button', { name: 'Steam evenings, 2 games' })).toBeNull()
-      expect(screen.getByRole('button', { name: 'Handpicked, 3 games' })).toBeTruthy()
+      expect(libraryRole('button', { name: 'Handpicked, 3 games' })).toBeTruthy()
     }
   })
 
@@ -1853,24 +1924,24 @@ describe('desktop collection rows', () => {
     current.lists[0].releaseIds = [100, 101, 200, 99999]
     current.lists[1].releaseIds = [300]
     const view = setup('desktop')
-    expect(screen.getByRole('button', { name: 'Handpicked, 2 games' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Steam evenings, 2 games' })).toBeTruthy()
-    fireEvent.change(screen.getByLabelText('Search games'), { target: { value: 'Alpha' } })
+    expect(libraryRole('button', { name: 'Handpicked, 2 games' })).toBeTruthy()
+    expect(libraryRole('button', { name: 'Steam evenings, 2 games' })).toBeTruthy()
+    fireEvent.change(libraryLabel('Search games'), { target: { value: 'Alpha' } })
     expect(cards()).toEqual([1])
-    expect(screen.getByRole('button', { name: 'Steam evenings, 2 games' })).toBeTruthy()
+    expect(libraryRole('button', { name: 'Steam evenings, 2 games' })).toBeTruthy()
     current = { ...current, games: current.games.filter((game) => game.workId !== 2) }
     act(() => view.client.setQueryData(['api', 'library.get'], current))
     await screen.findByRole('button', { name: 'Handpicked, 1 game' })
-    expect(screen.getByRole('button', { name: 'Steam evenings, 1 game' })).toBeTruthy()
+    expect(libraryRole('button', { name: 'Steam evenings, 1 game' })).toBeTruthy()
   })
 
   it('opens live filters inline and toggles the same actual rail row off while leaving the panel open', () => {
     setup('desktop')
-    const live = screen.getByRole('button', { name: 'Steam evenings, 2 games' })
+    const live = libraryRole('button', { name: 'Steam evenings, 2 games' })
     expect(screen.queryByRole('region', { name: 'Library filters' })).toBeNull()
     fireEvent.click(live)
-    expect(screen.getByRole('region', { name: 'Library filters' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Filters' }).getAttribute('aria-expanded')).toBe('true')
+    expect(libraryRole('region', { name: 'Library filters' })).toBeTruthy()
+    expect(libraryRole('button', { name: 'Filters' }).getAttribute('aria-expanded')).toBe('true')
     expect(live.getAttribute('aria-pressed')).toBe('true')
     expect(
       document.querySelectorAll(
@@ -1883,7 +1954,7 @@ describe('desktop collection rows', () => {
     expect(selectedCollection()).toBe('all')
     expect(cards()).toEqual([1, 2, 3])
     expect(screen.queryByRole('button', { name: 'Remove Steam filter' })).toBeNull()
-    expect(screen.getByRole('region', { name: 'Library filters' })).toBeTruthy()
+    expect(libraryRole('region', { name: 'Library filters' })).toBeTruthy()
     expect(
       document.querySelectorAll(
         '.avalon-buckets [aria-pressed="true"], [data-avalon-list][aria-pressed="true"]',
@@ -1896,9 +1967,9 @@ describe('desktop collection rows', () => {
     openList(10)
     expect(screen.queryByRole('region', { name: 'Library filters' })).toBeNull()
     openList(11)
-    expect(screen.getByRole('region', { name: 'Library filters' })).toBeTruthy()
+    expect(libraryRole('region', { name: 'Library filters' })).toBeTruthy()
     openList(10)
-    expect(screen.getByRole('region', { name: 'Library filters' })).toBeTruthy()
+    expect(libraryRole('region', { name: 'Library filters' })).toBeTruthy()
     expect(cards()).toEqual([3, 1, 2])
     expect(selectedCollection()).toBe('10')
   })
@@ -1908,7 +1979,7 @@ it('fullscreen returns to its Browse results after selecting a live list without
   setup('fullscreen')
   openList(11)
   expect(cards()).toEqual([1, 2])
-  expect(screen.getByRole('button', { name: 'Filters' }).getAttribute('aria-expanded')).toBe('false')
+  expect(libraryRole('button', { name: 'Filters' }).getAttribute('aria-expanded')).toBe('false')
   expect(screen.queryByRole('dialog', { name: 'Library filters' })).toBeNull()
 })
 
@@ -1925,7 +1996,7 @@ it('clicking the current live list again leaves its rules and preserves explicit
   }
   render(<State />)
   fireEvent.click(screen.getByText('Toggle list'))
-  expect(screen.getByRole('status').textContent).toContain('plugin:missing')
+  expect(libraryRole('status').textContent).toContain('plugin:missing')
   fireEvent.click(screen.getByText('Toggle list'))
-  expect(screen.getByRole('status').textContent).toBe('{"id":"all","filter":{"search":null}}')
+  expect(libraryRole('status').textContent).toBe('{"id":"all","filter":{"search":null}}')
 })

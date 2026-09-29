@@ -139,7 +139,9 @@ export function MergeMemberSheet({
             ) : row ? (
               <>
                 {onOpenGame && (
-                  <button onClick={() => finish(() => onOpenGame(row.workId))}>Open game</button>
+                  <button disabled={disabled} onClick={() => finish(() => onOpenGame(row.workId))}>
+                    Open game
+                  </button>
                 )}
                 {!card.actId && card.kind === 'same_game' && row.workId !== card.parent && (
                   <button
@@ -262,12 +264,14 @@ export function MergeBatchConfirmation({
 }
 
 export function MergeOptionsSheet({
+  disabled = false,
   title,
   value,
   options,
   onChoose,
   onClose,
 }: {
+  disabled?: boolean
   title: string
   value: string
   options: { value: string; label: string }[]
@@ -298,6 +302,7 @@ export function MergeOptionsSheet({
             {options.map((option) => (
               <button
                 key={option.value}
+                disabled={disabled}
                 aria-pressed={value === option.value}
                 onClick={() => {
                   onClose()

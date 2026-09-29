@@ -3,6 +3,9 @@ import { mkdtemp, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
 import { closeFixture } from './fixture-cleanup'
+import type { LibraryResponse, FeedSnapshot } from '../../src/renderer/api/types'
+
+type FixtureHost = { __winnowLayoutFixture: { library: LibraryResponse; feed: FeedSnapshot } }
 
 let application: ElectronApplication, page: Page, directory: string
 const errors: string[] = []
@@ -266,12 +269,12 @@ test('fullscreen filter drafts apply with Y from the top, cancel with B and keep
   await surface('fullscreen', 1280, 720)
   await page.evaluate(() => document.documentElement.style.setProperty('--fullscreen-text-scale', '1.4'))
   await controller()
-  await page.getByRole('button', { name: 'Filters', exact: true }).click()
+  await page.getByRole('button', { name: 'Filter & sort', exact: true }).click()
   const panel = page.getByRole('dialog', { name: 'Library filters' })
   await panel.getByRole('combobox', { name: 'Sort', exact: true }).selectOption('title-desc')
   await panel.getByRole('combobox', { name: 'Collection', exact: true }).selectOption('never_played')
   await panel.getByRole('combobox', { name: 'Installation', exact: true }).selectOption('true')
-  await expect(page.locator('.avalon-toolbar select[aria-label="Sort"]')).toHaveValue('dormant')
+  await expect(page.locator('.avalon-fullscreen-library-summary')).toContainText('Dormant longest')
   const apply = panel.getByRole('button', { name: 'Apply filters' })
   const geometry = await apply.evaluate((element) => {
     const bounds = element.getBoundingClientRect()
@@ -290,14 +293,14 @@ test('fullscreen filter drafts apply with Y from the top, cancel with B and keep
   await panel.getByRole('button', { name: 'Cancel' }).focus()
   await tap(3)
   await expect(panel).toHaveCount(0)
-  await expect(page.getByLabel('Sort', { exact: true })).toHaveValue('title-desc')
+  await expect(page.locator('.avalon-fullscreen-library-summary')).toContainText('Name Z–A')
   await expect(page.locator('.avalon-results-count')).toHaveText('10 games')
-  await page.getByRole('button', { name: 'Filters', exact: true }).click()
+  await page.getByRole('button', { name: 'Filter & sort', exact: true }).click()
   await panel.getByRole('combobox', { name: 'Sort', exact: true }).selectOption('dormant')
   await panel.getByRole('button', { name: 'Cancel' }).focus()
   await tap(1)
   await expect(panel).toHaveCount(0)
-  await expect(page.getByLabel('Sort', { exact: true })).toHaveValue('title-desc')
+  await expect(page.locator('.avalon-fullscreen-library-summary')).toContainText('Name Z–A')
   expect(errors).toEqual([])
 })
 
@@ -358,4 +361,238 @@ test('ultrawide fit and large text reflow both fullscreen browse grids without l
     .toBe(true)
   await page.screenshot({ path: info.outputPath('search-ultrawide-large-text.png') })
   expect(errors).toEqual([])
+})
+
+test('fullscreen compact Library keeps its control row and opens one options panel with direct return from lists and filters', async ({}, info) => {
+  await page.reload()
+  for (const [width, height, textScale] of [
+    [1920, 1080, 1],
+    [1280, 720, 1.4],
+  ]) {
+    await surface('fullscreen', width, height)
+    const scaleResult = await page.evaluate(
+      (scale) =>
+        window.winnow.request({
+          route: 'preferences.presentation.put',
+          params: { preference: 'FullscreenTextScale' },
+          body: { value: String(scale) },
+        }),
+      textScale,
+    )
+    expect(scaleResult.ok).toBe(true)
+    await expect
+      .poll(() =>
+        page.evaluate(() => document.documentElement.style.getPropertyValue('--fullscreen-text-scale')),
+      )
+      .toBe(String(textScale))
+    await frames()
+    await expect(page.getByRole('heading', { name: 'Your library', exact: true })).toBeVisible()
+    await expect(page.locator('.avalon-library > .avalon-toolbar')).toHaveCount(0)
+    await expect(page.locator('.avalon-selection-actions')).toHaveCount(0)
+    await expect
+      .poll(async () => {
+        const tabs = (await collections().boundingBox())!,
+          actions = (await page.locator('.avalon-fullscreen-library-actions').boundingBox())!
+        return Math.abs(tabs.y + tabs.height / 2 - actions.y - actions.height / 2)
+      })
+      .toBeLessThanOrEqual(2)
+    await controller()
+    await active().first().focus()
+    await page.keyboard.press('Control+Home')
+    await page.keyboard.press('ArrowUp')
+    await expect(collections().getByRole('button', { name: 'All games', exact: true })).toBeFocused()
+    await active().first().focus()
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowDown')
+    await page.keyboard.press('ArrowDown')
+    const selected = await grid().getAttribute('data-selected-id')
+    const row = await grid().locator('.avalon-row-viewport').getAttribute('data-first-row')
+    const bounds = await grid().boundingBox()
+    await page.evaluate(() => {
+      ;(window as unknown as { retainedGrid: Element }).retainedGrid =
+        document.querySelector('.avalon-fullscreen-grid')!
+    })
+    await tap(3)
+    const options = page.getByRole('dialog', { name: 'Library options' })
+    await expect(options).toBeVisible()
+    await expect(options.getByRole('button').first()).toHaveText('My lists')
+    await expect(options.getByRole('button').nth(1)).toHaveText('Filter & sort')
+    await tap(3)
+    await tap(3)
+    await expect(options).toHaveCount(1)
+    expect(await grid().boundingBox()).toEqual(bounds)
+    expect(
+      await page.evaluate(
+        () =>
+          (window as unknown as { retainedGrid: Element }).retainedGrid ===
+          document.querySelector('.avalon-fullscreen-grid'),
+      ),
+    ).toBe(true)
+    await page.screenshot({ path: info.outputPath(`library-options-${width}.png`) })
+    await tap(1)
+    await expect(options).toHaveCount(0)
+    await expect(grid().locator(`[data-avalon-game="${selected}"]`)).toBeFocused()
+    for (const destination of ['My lists', 'Filter & sort']) {
+      await page.getByRole('button', { name: 'More', exact: true }).click()
+      await options.getByRole('button', { name: destination, exact: true }).click()
+      await expect(options).toHaveCount(0)
+      const panel = page.getByRole('dialog', {
+        name: destination === 'My lists' ? 'My lists' : 'Library filters',
+        exact: true,
+      })
+      await expect(panel).toBeVisible()
+      await tap(1)
+      await expect(panel).toHaveCount(0)
+      await expect(grid()).toHaveAttribute('data-selected-id', selected!)
+      await expect(grid().locator('.avalon-row-viewport')).toHaveAttribute('data-first-row', row!)
+      await expect(grid().locator(`[data-avalon-game="${selected}"]`)).toBeFocused()
+    }
+    await page.screenshot({ path: info.outputPath(`library-compact-${width}.png`) })
+  }
+  expect(errors).toEqual([])
+})
+
+test('fullscreen options and tools retain the same viewport and column sixty rows into nine hundred games', async ({}, info) => {
+  const original = await application.evaluate(() => {
+    const fixture = (globalThis as unknown as FixtureHost).__winnowLayoutFixture
+    const original = fixture.library.games
+    fixture.library.games = Array.from({ length: 900 }, (_, index) => ({
+      ...original[0],
+      workId: index + 1,
+      title: `Game ${String(index + 1).padStart(4, '0')}`,
+      entries: [
+        { ...original[0].entries[0], workId: index + 1, releaseId: index + 1, ownershipId: index + 1 },
+      ],
+    }))
+    return original
+  })
+  try {
+    await page.reload()
+    await surface('fullscreen', 1920, 1080)
+    for (const [preference, value] of [
+      ['FullscreenTextScale', '1'],
+      ['FullscreenFitUltrawide', 'false'],
+    ]) {
+      const response = await page.evaluate(
+        ({ preference, value }) =>
+          window.winnow.request({
+            route: 'preferences.presentation.put',
+            params: { preference },
+            body: { value },
+          }),
+        { preference, value },
+      )
+      expect(response.ok).toBe(true)
+    }
+    await expect(page.locator('.avalon-results-count')).toHaveText('900 games')
+    await controller()
+    await active().nth(2).focus()
+    for (let row = 0; row < 60; row++) {
+      const previous = await grid().getAttribute('data-selected-id')
+      await page.evaluate(() => {
+        ;(window as unknown as { browsePad: { pressed: number[] } }).browsePad.pressed = [13]
+      })
+      // Hold each direction until the production controller repeat interval accepts it.
+      await page.waitForFunction(
+        (previous) =>
+          document.querySelector('.avalon-fullscreen-grid')?.getAttribute('data-selected-id') !== previous,
+        previous,
+      )
+      await page.evaluate(() => {
+        ;(window as unknown as { browsePad: { pressed: number[] } }).browsePad.pressed = []
+      })
+      await frames()
+    }
+    const viewport = grid().locator('.avalon-row-viewport')
+    const firstRow = await viewport.getAttribute('data-first-row')
+    expect(Number(firstRow)).toBeGreaterThanOrEqual(50)
+    const selected = await grid().getAttribute('data-selected-id')
+    const selectedCover = grid().locator(`[data-avalon-game="${selected}"]`)
+    const selectedName = await selectedCover.getAttribute('aria-label')
+    const column = () =>
+      selectedCover.evaluate((element) => [...element.parentElement!.children].indexOf(element))
+    expect(await column()).toBe(2)
+    const retained = await viewport.elementHandle()
+    const bounds = await viewport.boundingBox()
+    for (const destination of [null, 'My lists', 'Filter & sort']) {
+      await tap(3)
+      const options = page.getByRole('dialog', { name: 'Library options', exact: true })
+      await expect(options).toBeVisible()
+      await expect(options.getByRole('button').first()).toHaveText('My lists')
+      await expect(options.getByRole('button').first()).toBeFocused()
+      await expect(options.getByRole('button').first()).toHaveCSS('outline-style', 'solid')
+      await expect(options.getByRole('button').first()).toHaveCSS('outline-width', '2px')
+      await expect(options.getByRole('button').nth(1)).toHaveText('Filter & sort')
+      await expect(options.getByRole('button', { name: 'Add to list…', exact: true })).toBeVisible()
+      expect(await grid().evaluate((element) => Boolean(element.closest('[aria-hidden="true"]')))).toBe(true)
+      await selectedCover.focus()
+      await expect(options.getByRole('button').first()).toBeFocused()
+      expect(await viewport.boundingBox()).toEqual(bounds)
+      expect(
+        await retained!.evaluate((element) => element === document.querySelector('.avalon-row-viewport')),
+      ).toBe(true)
+      for (let repeat = 0; repeat < 4; repeat++) await tap(3)
+      await expect(options).toHaveCount(1)
+      if (destination) {
+        if (destination === 'Filter & sort') await tap(13)
+        await tap(0)
+        await expect(options).toHaveCount(0)
+        await expect(
+          page.getByRole('dialog', {
+            name: destination === 'My lists' ? 'My lists' : 'Library filters',
+            exact: true,
+          }),
+        ).toBeVisible()
+      } else await page.screenshot({ path: info.outputPath('library-options-deep.png') })
+      await tap(1)
+      await expect(page.getByRole('dialog')).toHaveCount(0)
+      await expect(selectedCover).toBeFocused()
+      await expect(selectedCover).toHaveAccessibleName(selectedName!)
+      await expect(viewport).toHaveAttribute('data-first-row', firstRow!)
+      expect(await column()).toBe(2)
+      expect(
+        await retained!.evaluate((element) => element === document.querySelector('.avalon-row-viewport')),
+      ).toBe(true)
+      await tap(9)
+      await expect(page.getByRole('dialog', { name: 'Quick menu' })).toBeVisible()
+      await tap(1)
+      await expect(page.getByRole('dialog')).toHaveCount(0)
+      await expect(selectedCover).toBeFocused()
+      await expect(viewport).toHaveAttribute('data-first-row', firstRow!)
+    }
+    expect(errors).toEqual([])
+  } finally {
+    await application.evaluate((_, games) => {
+      ;(globalThis as unknown as FixtureHost).__winnowLayoutFixture.library.games = games
+    }, original)
+    await page.reload()
+  }
+})
+
+test('fullscreen empty Library restores a collection focus after options lists and filters close', async () => {
+  const original = await application.evaluate(() => {
+    const fixture = (globalThis as unknown as FixtureHost).__winnowLayoutFixture
+    const original = fixture.library.games
+    fixture.library.games = []
+    return original
+  })
+  try {
+    await page.reload()
+    await surface('fullscreen')
+    await expect(page.getByRole('heading', { name: 'Your library starts here.' })).toBeVisible()
+    await controller()
+    for (const action of ['More', 'My lists', 'Filter & sort']) {
+      await page.getByRole('button', { name: action, exact: true }).click()
+      await expect(page.getByRole('dialog')).toBeVisible()
+      await tap(1)
+      await expect(page.getByRole('dialog')).toHaveCount(0)
+      await expect(collections().getByRole('button', { name: 'All games', exact: true })).toBeFocused()
+    }
+    expect(errors).toEqual([])
+  } finally {
+    await application.evaluate((_, games) => {
+      ;(globalThis as unknown as FixtureHost).__winnowLayoutFixture.library.games = games
+    }, original)
+    await page.reload()
+  }
 })

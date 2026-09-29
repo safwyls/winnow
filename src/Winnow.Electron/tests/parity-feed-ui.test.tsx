@@ -132,7 +132,7 @@ function mount(mode: ThemeContext['mode'], configure?: (context: ThemeContext) =
   const rendered = render(tree())
   return { request, context, client, update: () => rendered.rerender(tree()) }
 }
-async function click(name: string, index = 0) {
+async function click(name: string | RegExp, index = 0) {
   await act(async () => {
     fireEvent.click(screen.getAllByRole('button', { name })[index])
     await vi.advanceTimersByTimeAsync(1)
@@ -169,6 +169,39 @@ afterEach(() => {
 })
 
 describe.each(['desktop', 'fullscreen'] as const)('feed feedback in %s', (mode) => {
+  it('opens response history from an empty feed and returns to the same empty surface', async () => {
+    mount(mode, (context) => {
+      context.feed = { ...context.feed!, candidateCount: 0, shelves: [] }
+    })
+    await tick(10)
+    await click("What you've told the feed")
+    const historyPanel = screen.getByRole('dialog', { name: "What you've told the feed" })
+    expect(within(historyPanel).getByText('Nothing yet. Your feed responses will appear here.')).toBeTruthy()
+    await click('Back to the feed')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.getByRole('button', { name: "What you've told the feed" })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^View Game/ })).toBeNull()
+  })
+  it('undoes the original Not interested verdict from history and retains that same history row', async () => {
+    const original = { releaseId: 1, kind: 0, createdAt: '2026-09-28T12:00:00Z', status: 0 }
+    history = [original]
+    const { request } = mount(mode)
+    await tick(10)
+    await click(/What you've told the feed/)
+    const panel = within(screen.getByRole('dialog', { name: "What you've told the feed" }))
+    expect(panel.getAllByRole('listitem')).toHaveLength(1)
+    expect(panel.getByText('NOT INTERESTED')).toBeTruthy()
+    await click('Undo')
+    expect(
+      request.mock.calls.filter(([input]) => input.route === 'feedRevoke').map(([input]) => input.body),
+    ).toEqual([{ releaseId: 1, kind: 0 }])
+    expect(history).toEqual([{ ...original, status: 1, revokedAt: '2026-09-30T12:00:00Z' }])
+    expect(panel.getAllByRole('listitem')).toHaveLength(1)
+    expect(panel.getByText('Game 1')).toBeTruthy()
+    expect(panel.getByText('NOT INTERESTED')).toBeTruthy()
+    expect(panel.getByText(/Undone on/)).toBeTruthy()
+    expect(panel.queryByRole('button', { name: 'Undo' })).toBeNull()
+  })
   function withReplacement(configure?: (context: ThemeContext) => void) {
     const view = mount(mode, (context) => {
       if (mode === 'fullscreen')

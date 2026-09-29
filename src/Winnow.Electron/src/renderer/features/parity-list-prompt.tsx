@@ -31,23 +31,41 @@ export function AddToListButton({
   origin = 'library',
   label,
   icon,
+  onClosed,
 }: {
   games: LibraryGame[]
   mode?: Mode
   origin?: string
   label?: string
   icon?: ReactNode
+  onClosed?(): void
 }) {
   const [open, setOpen] = useState(false)
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
+    <Dialog.Root
+      open={open}
+      onOpenChange={(value) => {
+        setOpen(value)
+        if (!value) onClosed?.()
+      }}
+    >
       <Dialog.Trigger asChild>
         <button disabled={!games.length} onClick={(event) => event.stopPropagation()}>
           {icon}
           {label ?? (games.length > 1 ? `Add ${games.length} to list…` : 'Add to list…')}
         </button>
       </Dialog.Trigger>
-      {open && <ListPrompt games={games} mode={mode} origin={origin} onClose={() => setOpen(false)} />}
+      {open && (
+        <ListPrompt
+          games={games}
+          mode={mode}
+          origin={origin}
+          onClose={() => {
+            setOpen(false)
+            onClosed?.()
+          }}
+        />
+      )}
     </Dialog.Root>
   )
 }

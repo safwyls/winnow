@@ -3,6 +3,10 @@
   :root[data-controller='true'] {
     cursor: none !important;
   }
+  :root[data-controller='true'] :is(button, input, select, textarea, a[href], summary, [tabindex='0']):focus {
+    outline: 2px solid var(--accent-foreground, var(--accent));
+    outline-offset: 3px;
+  }
   .controller-menu {
     width: min(480px, 90vw);
     display: grid;

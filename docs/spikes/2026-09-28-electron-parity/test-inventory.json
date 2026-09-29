@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 819,
-    "partial": 138,
-    "ported": 925,
+    "pending": 815,
+    "partial": 137,
+    "ported": 930,
     "retained-backend": 540,
     "framework-specific": 13
   },
@@ -21009,22 +21009,54 @@
     {
       "id": "FullscreenBrowseTests.Manual_list_actions_reorder_and_remove_the_selected_game",
       "source": "tests/Winnow.Ui.Tests/FullscreenBrowseTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "fullscreen Weekend options move the selected first game later and remove it while preserving the other two"
+        },
+        {
+          "file": "tests/electron/lists.spec.ts",
+          "case": "${mode} keeps original manual order and commits moves and removal through a renderer reload"
+        }
+      ],
+      "reason": "The original Weekend fixture opens More, moves the first selected game later, then opens More again and removes the same game while retaining the other two. Native tests verify both boundary guards and actual revision-aware persistence across reload."
     },
     {
       "id": "FullscreenBrowseTests.Live_list_actions_save_edited_rules_and_restore_saved_rules",
       "source": "tests/Winnow.Ui.Tests/FullscreenBrowseTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "fullscreen Store options save changed GOG rules and restore that saved cut after a later Steam edit"
+        }
+      ],
+      "reason": "The original Store live list begins with Steam rules. Fullscreen Filter & sort changes them to GOG; More saves the new rules. A subsequent Steam draft is reverted from More to the saved GOG cut, without another write. Both successful actions return directly to Browse."
     },
     {
       "id": "FullscreenBrowseTests.Empty_feed_still_reaches_response_history",
       "source": "tests/Winnow.Ui.Tests/FullscreenBrowseTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-feed-ui.test.tsx",
+          "case": "opens response history from an empty feed and returns to the same empty surface"
+        }
+      ],
+      "reason": "With no shelves or candidates, the composed desktop and fullscreen Discover surfaces still open response history, show its empty state and return to the unchanged empty feed."
     },
     {
       "id": "FullscreenBrowseTests.Feed_history_undo_revokes_the_original_verdict_and_keeps_its_history_row",
       "source": "tests/Winnow.Ui.Tests/FullscreenBrowseTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-feed-ui.test.tsx",
+          "case": "undoes the original Not interested verdict from history and retains that same history row"
+        }
+      ],
+      "reason": "Both composed surfaces load the original active NotInterested record, revoke its exact release and kind from history, and retain one row with the same title, kind and original creation time plus the Undone status and revocation stamp."
     },
     {
       "id": "FullscreenBrowseTests.Fullscreen_records_only_the_visible_feed_shelf_as_surfaced",
@@ -21524,14 +21556,18 @@
     {
       "id": "FullscreenLibraryOptionsTests.Options_and_tools_return_to_the_same_game_and_viewport_deep_in_a_large_library",
       "source": "tests/Winnow.Ui.Tests/FullscreenLibraryOptionsTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-library-focus.test.tsx",
           "case": "restores the same deep library game and viewport after closing management"
+        },
+        {
+          "file": "tests/electron/fullscreen-browse.spec.ts",
+          "case": "fullscreen options and tools retain the same viewport and column sixty rows into nine hundred games"
         }
       ],
-      "reason": "Both modes restore a focused game and deep scroll offset after closing management by button or Escape in a 900-game fixture. Virtual row geometry is mocked; the original native-controller options/filter/QuickMenu flows still need rendered coverage."
+      "reason": "The native 900-game fixture advances sixty rows at 1920x1080 from column two. Y opens one options panel with My lists and Filter & sort first; the retained grid is inert and cannot steal focus. Repeated Y does not stack panels. Options, lists and filters each return directly with B to the same viewport node, bounds, row, selected game and column; Start and B preserve that state through Quick menu. Separate component cases cover management close on both surfaces."
     },
     {
       "id": "FullscreenNavigationLayoutTests.Details_tabs_keep_geometry_with_unread_update_badge",

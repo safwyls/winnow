@@ -1,3 +1,4 @@
+import { libraryAction } from './library-controls'
 import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { mkdtemp, readFile } from 'node:fs/promises'
@@ -52,7 +53,7 @@ async function surface(mode: 'desktop' | 'fullscreen') {
     .getByRole('navigation', { name: 'Main navigation' })
     .getByRole('button', { name: 'Library', exact: true })
     .click()
-  await page.getByRole('button', { name: 'Manage library', exact: true }).click()
+  await (await libraryAction(page, 'Manage library')).click()
   await page.getByRole('button', { name: 'Identity review', exact: true }).click()
 }
 for (const mode of ['desktop', 'fullscreen'] as const) {

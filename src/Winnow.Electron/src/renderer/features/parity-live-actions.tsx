@@ -14,11 +14,13 @@ export function LiveListActions({
   mode,
   compact = false,
   nameSuggestion = '',
+  onClosed,
 }: {
   state: ReturnType<typeof useAvalonLists>
   mode: Mode
   compact?: boolean
   nameSuggestion?: string
+  onClosed?(): void
 }) {
   const [open, setOpen] = useState(false),
     [busy, setBusy] = useState(false),
@@ -36,6 +38,7 @@ export function LiveListActions({
     state.selectList(String(created.id))
     setCreated(null)
     setOpen(false)
+    onClosed?.()
   }, [created, state])
   async function save() {
     if (!list?.isLive || !base || writing.current || blocked) return
@@ -50,6 +53,7 @@ export function LiveListActions({
       )
       await cacheSavedList(client, saved)
       state.setBase(saved)
+      onClosed?.()
     } catch (error) {
       setProblem(error)
       setBlocked(true)
@@ -99,7 +103,10 @@ export function LiveListActions({
               disabled={busy}
               onClick={() => {
                 if (blocked) void check(false)
-                else state.revert()
+                else {
+                  state.revert()
+                  onClosed?.()
+                }
               }}
             >
               Revert {list.name}
@@ -122,7 +129,10 @@ export function LiveListActions({
     <Dialog.Root
       open={open}
       onOpenChange={(value) => {
-        if (!creating) setOpen(value)
+        if (!creating) {
+          setOpen(value)
+          if (!value) onClosed?.()
+        }
       }}
     >
       <Dialog.Trigger asChild>

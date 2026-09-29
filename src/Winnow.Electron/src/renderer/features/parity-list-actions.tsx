@@ -8,10 +8,12 @@ export function ListOrderActions({
   list,
   games,
   selected,
+  onCommitted,
 }: {
   list: GameList
   games: LibraryGame[]
   selected: LibraryGame[]
+  onCommitted?(): void
 }) {
   const client = useQueryClient(),
     writing = useRef(false)
@@ -52,6 +54,7 @@ export function ListOrderActions({
           { releaseIds, expectedRevision: list.revision },
         ),
       )
+      onCommitted?.()
     } catch (error) {
       setProblem("Couldn't save list changes. Try again.")
       if (!(error instanceof ApiError) || error.uncertain || error.conflict) setBlocked(true)

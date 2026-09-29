@@ -1,4 +1,5 @@
 import { selectCollection, expectCollection, expectCollectionNames } from './collection-controls'
+import { libraryAction, fillLibrarySearch, expectLibrarySearch, returnToLibrary } from './library-controls'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { mkdtemp } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -63,6 +64,52 @@ const visibleIds = () =>
     .locator('.avalon-library [data-avalon-game]')
     .evaluateAll((nodes) => nodes.map((node) => Number((node as HTMLElement).dataset.avalonGame)))
 
+test('fullscreen options rename the open list and keep deletion cancellable before removing only the list', async () => {
+  const list = await api<GameList>({
+    route: 'list.create',
+    body: { name: 'Weekend', releaseIds: entries.map((entry) => entry.releaseId) },
+  })
+  try {
+    await library('fullscreen', true)
+    await selectCollection(page, list.id)
+    await selectCollection(page, list.id)
+    await expectCollection(page, list.id)
+    await (await libraryAction(page, 'Rename list')).click()
+    await page.getByLabel('List name', { exact: true }).fill('Quiet weekend')
+    await page.getByRole('button', { name: 'Save list', exact: true }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'Quiet weekend', exact: true })).toBeVisible()
+    await expect(card(entries[0])).toBeFocused()
+    await (await libraryAction(page, 'Delete list')).click()
+    const confirmation = page.getByRole('dialog', { name: 'Delete Quiet weekend?', exact: true })
+    await expect(confirmation.getByRole('button', { name: 'Keep list' })).toBeFocused()
+    await confirmation.getByRole('button', { name: 'Keep list' }).click()
+    await expect(confirmation).toHaveCount(0)
+    expect(
+      (await api<LibraryResponse>({ route: 'library.get' })).lists.some((saved) => saved.id === list.id),
+    ).toBe(true)
+    await (await libraryAction(page, 'Delete list')).click()
+    await confirmation.getByRole('button', { name: 'Delete list', exact: true }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expectCollection(page, 'all')
+    await expect.poll(visibleIds).toHaveLength(3)
+    expect(
+      (await api<LibraryResponse>({ route: 'library.get' })).lists.some((saved) => saved.id === list.id),
+    ).toBe(false)
+  } finally {
+    const saved = (await api<LibraryResponse>({ route: 'library.get' })).lists.find(
+      (saved) => saved.id === list.id,
+    )
+    if (saved)
+      await api({
+        route: 'list.delete',
+        params: { listId: saved.id },
+        body: { expectedRevision: saved.revision },
+      })
+  }
+  expect(errors).toEqual([])
+})
+
 for (const mode of ['desktop', 'fullscreen'] as const) {
   test(`${mode} restores alphabetical list names after a saved rename and renderer reload`, async () => {
     const saved: GameList[] = []
@@ -98,13 +145,14 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await selectCollection(page, list.id)
       await expect.poll(visibleIds).toEqual(entries.map((entry) => entry.workId))
       await card(hades).focus()
-      await expect(page.getByRole('button', { name: 'Move earlier', exact: true })).toBeDisabled()
+      await expect(await libraryAction(page, 'Move earlier')).toBeDisabled()
+      await returnToLibrary(page)
       await card(tunic).focus()
-      await expect(page.getByRole('button', { name: 'Move later', exact: true })).toBeDisabled()
-      await page.getByRole('button', { name: 'Move earlier', exact: true }).click()
+      await expect(await libraryAction(page, 'Move later')).toBeDisabled()
+      await (await libraryAction(page, 'Move earlier')).click()
       await expect.poll(visibleIds).toEqual([hades.workId, tunic.workId, celeste.workId])
       await card(celeste).focus()
-      await page.getByRole('button', { name: `Remove from Friday night ${mode}`, exact: true }).click()
+      await (await libraryAction(page, `Remove from Friday night ${mode}`)).click()
       await expect.poll(visibleIds).toEqual([hades.workId, tunic.workId])
       list = (await api<LibraryResponse>({ route: 'library.get' })).lists.find(
         (saved) => saved.id === list.id,
@@ -136,9 +184,9 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     let list: GameList | undefined, added: ManualGame | undefined
     try {
       await library(mode, true)
-      await page.getByRole('textbox', { name: 'Search games' }).fill('Hades')
+      await fillLibrarySearch(page, 'Hades')
       await expect.poll(visibleIds).toEqual([entries[0].workId])
-      await page.getByRole('button', { name: 'Save filters as a live list…' }).click()
+      await (await libraryAction(page, 'Save filters as a live list…')).click()
       const dialog = page.getByRole('dialog', { name: 'Name this live list' })
       await expect(dialog.getByLabel('List name', { exact: true })).toHaveValue('Hades')
       await dialog.getByLabel('List name', { exact: true }).fill(`Every Hades ${mode}`)
@@ -177,10 +225,11 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
             .not.toContain(false)
         }
       } else await expect(page.getByRole('dialog', { name: 'Library filters' })).toHaveCount(0)
-      await expect(page.getByRole('button', { name: 'Remove search filter' })).toHaveAttribute(
+      await expect(await libraryAction(page, 'Remove search filter')).toHaveAttribute(
         'data-filter-origin',
         'list',
       )
+      await returnToLibrary(page)
       added = await api<ManualGame>({ route: 'manual.create', body: { title: 'Hades II' } })
       await expect.poll(visibleIds).toEqual([entries[0].workId, added.workId])
       await page.getByRole('button', { name: 'Winnow home' }).click()
@@ -191,10 +240,10 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await page.screenshot({ path: info.outputPath(`${mode}-live-list.png`) })
       await library(mode, true)
       await selectCollection(page, list.id)
-      await expect(page.getByRole('textbox', { name: 'Search games' })).toHaveValue('Hades')
+      await expectLibrarySearch(page, 'Hades')
       await expect.poll(visibleIds).toEqual([entries[0].workId, added.workId])
-      await page.getByRole('button', { name: 'Leave this list' }).click()
-      await expect(page.getByRole('textbox', { name: 'Search games' })).toHaveValue('')
+      await (await libraryAction(page, 'Leave this list')).click()
+      await expectLibrarySearch(page, '')
       await expect(page.locator('.avalon-library [data-avalon-game]')).toHaveCount(4)
       if (mode === 'desktop') {
         await expect(page.getByRole('region', { name: 'Library filters', exact: true })).toBeVisible()

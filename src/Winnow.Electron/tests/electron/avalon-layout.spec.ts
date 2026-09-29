@@ -1,4 +1,5 @@
 import { closeFixture } from './fixture-cleanup'
+import { fillLibrarySearch, libraryField, returnToLibrary, setLibrarySort } from './library-controls'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -162,8 +163,9 @@ for (const mode of ['desktop', 'fullscreen'] as const)
         await page.getByRole('button', { name: 'Grid view', exact: true }).click()
         await page.getByRole('slider', { name: 'Density', exact: true }).fill('200')
       }
-      await page.getByLabel('Sort', { exact: true }).selectOption('title')
-      await page.getByLabel('Sort', { exact: true }).focus()
+      await setLibrarySort(page, 'title')
+      if (mode === 'desktop') await page.getByLabel('Sort', { exact: true }).focus()
+      else await page.getByRole('button', { name: 'Filter & sort', exact: true }).focus()
       await page.emulateMedia({ reducedMotion: reduced ? 'reduce' : 'no-preference' })
       await page.mouse.move(2, 2)
       const cover = page.locator('.avalon-library .avalon-cover[data-work-id="2"]')
@@ -385,8 +387,7 @@ for (const searching of [false, true])
       .getByRole('navigation', { name: 'Main navigation' })
       .getByRole('button', { name: 'Library', exact: true })
       .click()
-    const search = page.getByRole('textbox', { name: 'Search games', exact: true })
-    await search.fill(searching ? 'Library game' : '')
+    await fillLibrarySearch(page, searching ? 'Library game' : '')
     const grid = page.locator('.avalon-fullscreen-grid'),
       viewport = grid.locator('.avalon-row-viewport')
     await expect(grid).toBeVisible()
@@ -426,6 +427,7 @@ for (const searching of [false, true])
     await settled()
     await grid.dispatchEvent('wheel', { deltaY: 100 })
     await expect(viewport).toHaveAttribute('data-first-row', '2')
+    const search = await libraryField(page, 'Search games')
     await search.fill('Library game 090')
     await expect(activeCovers()).toHaveCount(1)
     await expect(viewport).toHaveAttribute('data-first-row', '0')
@@ -435,6 +437,7 @@ for (const searching of [false, true])
     await expect(grid).toHaveAttribute('data-selected-id', '1')
     await search.fill('Library game')
     await expect(activeCovers().first()).toHaveAttribute('data-avalon-game', '1')
+    await returnToLibrary(page)
     const expandedColumns = await grid
       .locator('[data-row-active="true"]')
       .first()
@@ -457,7 +460,7 @@ for (const searching of [false, true])
     await expect(grid).toHaveAttribute('data-selected-id', selected!)
     await expect(viewport).toHaveAttribute('data-first-row', '1')
     await expect(viewport).not.toHaveAttribute('data-animating')
-    await search.fill('')
+    await fillLibrarySearch(page, '')
     await page
       .getByRole('navigation', { name: 'Main navigation' })
       .getByRole('button', { name: 'For you', exact: true })

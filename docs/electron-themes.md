@@ -87,6 +87,22 @@ control, and Down returns to the same column. LT/RT and Page Up/Down move two ro
 the footer shows the visible row range. Details returns to the retained query and result,
 and Back restores the page that opened Search.
 
+Fullscreen Library places its title and count above one row of collection tabs and
+My lists, Filter & sort and More. More or controller Y opens Library options while
+keeping the two-row cover grid in place and inert beneath the panel. B restores its
+selected game and position; choosing lists or filters replaces the options panel and
+returns directly to Browse.
+Options include selected-game actions, manual ordering, live-rule save/restore,
+list naming and deletion, and library tools. Selecting the already-open list in
+My lists keeps it open. The desktop rail and toolbar retain their separate layout.
+When the fullscreen Library is empty, closing these panels focuses the active collection.
+
+Identity review keeps cached proposals visible while their snapshot refreshes. Decision
+controls, platform preferences and Details actions on both surfaces wait for the new
+revision. Details return also waits for its originating choice to become available.
+A later keyboard or pointer action cancels pending focus restoration, so a delayed
+refresh cannot take focus away from the user's next action.
+
 Both Library presentations keep manual lists in their stored order, with bounded move
 actions and removal that keeps the game in the library. List names stay alphabetical
 after refresh and rename. Adding from a cover, Home or Details targets those games while

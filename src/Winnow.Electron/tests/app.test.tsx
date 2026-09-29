@@ -431,7 +431,7 @@ describe('integrated frontend', () => {
       )
       if (mode === 'desktop') fireEvent.click(await screen.findByRole('button', { name: 'Derelict1' }))
       else {
-        fireEvent.click(await screen.findByRole('button', { name: 'Filters' }))
+        fireEvent.click(await screen.findByRole('button', { name: 'Filter & sort' }))
         const panel = within(screen.getByRole('dialog', { name: 'Library filters' }))
         fireEvent.change(panel.getByLabelText('Collection'), { target: { value: 'derelict' } })
         fireEvent.click(panel.getByRole('button', { name: 'Apply filters' }))

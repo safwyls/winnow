@@ -1,3 +1,4 @@
+import { libraryAction } from './library-controls'
 import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { access, mkdtemp, readFile } from 'node:fs/promises'
@@ -57,7 +58,7 @@ async function library(mode: 'desktop' | 'fullscreen') {
     .click()
   await expect(page.locator('.avalon-cover').first()).toBeVisible()
   await page.locator('.avalon-cover').first().focus()
-  await page.getByRole('button', { name: 'Add to list…', exact: true }).click()
+  await (await libraryAction(page, 'Add to list…')).click()
   await expect(page.getByRole('textbox', { name: 'New list name' })).toBeFocused()
 }
 async function alignChoices() {
@@ -104,7 +105,9 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(page.locator('.avalon-shell')).toHaveClass(new RegExp(mode))
-    await expect(page.getByRole('button', { name: 'Add to list…', exact: true })).toBeFocused()
+    if (mode === 'desktop')
+      await expect(page.getByRole('button', { name: 'Add to list…', exact: true })).toBeFocused()
+    else await expect(page.locator('.avalon-library .avalon-cover[data-selected="true"]')).toBeFocused()
     expect(await origin!.evaluate((element) => element.isConnected)).toBe(true)
     expect((await api<LibraryResponse>({ route: 'library.get' })).lists).toHaveLength(2)
   })
@@ -150,7 +153,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
   })
 
   test(`${mode} destructive list confirmation starts on cancel and Enter preserves the list`, async () => {
-    await page.getByRole('button', { name: 'Manage library', exact: true }).click()
+    await (await libraryAction(page, 'Manage library')).click()
     const panel = page
       .locator('section.feature-panel')
       .filter({ has: page.getByRole('heading', { name: 'Backlog', exact: true }) })

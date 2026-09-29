@@ -1,4 +1,5 @@
 import { closeFixture } from './fixture-cleanup'
+import { fillLibrarySearch } from './library-controls'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { mkdtemp, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -203,7 +204,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       return library.data!.games.find((game) => game.playtimeMinutes > 0 && game.lastPlayedAt)?.title
     })
     expect(title).toBeTruthy()
-    await page.getByRole('textbox', { name: 'Search games', exact: true }).fill(title!)
+    await fillLibrarySearch(page, title!)
     await page.locator('.avalon-cover').first().click()
     const details = page.locator('.avalon-details')
     await expect(details.locator('.avalon-detail-backdrop[data-state="ready"] img')).toBeVisible()

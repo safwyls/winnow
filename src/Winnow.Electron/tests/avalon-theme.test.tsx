@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react'
+import { libraryRole, libraryLabel, returnToLibrary } from './library-controls'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ComponentType, ReactNode } from 'react'
@@ -180,7 +181,7 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
       ],
     }
     mount(ctx, AvalonDiscover)
-    const cover = screen.getByRole('button', { name: 'View Prey. Owned on Steam, Epic' })
+    const cover = libraryRole('button', { name: 'View Prey. Owned on Steam, Epic' })
     expect(document.querySelectorAll('.avalon-cover')).toHaveLength(1)
     fireEvent.click(cover)
     expect(ctx.openGame).toHaveBeenCalledExactlyOnceWith(1)
@@ -244,18 +245,18 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
         <AvalonLibrary {...value} />
       </AvalonShell>
     ))
-    expect(screen.getByRole('button', { name: 'View Prey. Owned on Steam, Epic' }).textContent).toContain(
+    expect(libraryRole('button', { name: 'View Prey. Owned on Steam, Epic' }).textContent).toContain(
       '5h played',
     )
-    if (mode === 'desktop') fireEvent.click(screen.getByRole('button', { name: 'Started1' }))
+    if (mode === 'desktop') fireEvent.click(libraryRole('button', { name: 'Started1' }))
     else {
-      fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
-      const panel = within(screen.getByRole('dialog', { name: 'Library filters' }))
+      fireEvent.click(libraryRole('button', { name: 'Filters' }))
+      const panel = within(libraryRole('dialog', { name: 'Library filters' }))
       fireEvent.change(panel.getByLabelText('Collection'), { target: { value: 'bounced' } })
       fireEvent.click(panel.getByRole('button', { name: 'Apply filters' }))
     }
     expect(document.querySelectorAll('[data-avalon-game]')).toHaveLength(1)
-    fireEvent.click(screen.getByRole('button', { name: 'Never played0' }))
+    fireEvent.click(libraryRole('button', { name: 'Never played0' }))
     expect(document.querySelectorAll('[data-avalon-game]')).toHaveLength(0)
   })
   it('keeps linked copies in one tile with exactly their distinct store words and resting initials', () => {
@@ -276,7 +277,7 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
     ctx.games = [prey, game(3, { title: 'Dishonored' })]
     mount(ctx, AvalonLibrary)
     expect(document.querySelectorAll('[data-avalon-game]')).toHaveLength(2)
-    const grouped = screen.getByRole('button', { name: 'View Prey. Owned on Steam, Epic' })
+    const grouped = libraryRole('button', { name: 'View Prey. Owned on Steam, Epic' })
     expect(
       [...grouped.querySelectorAll('.avalon-store-chips > span')].map((mark) => mark.textContent),
     ).toEqual(['STEAM', 'EPIC'])
@@ -285,12 +286,12 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
     ).toEqual(['S', 'E'])
     expect(grouped.querySelector('.avalon-store-initials')?.getAttribute('aria-hidden')).toBe('true')
     expect(grouped.textContent).toContain('6h played')
-    const single = screen.getByRole('button', { name: 'View Dishonored' })
+    const single = libraryRole('button', { name: 'View Dishonored' })
     expect(single.querySelector('.avalon-store-initials')).toBeNull()
     expect(single.querySelector('.avalon-store-chips')?.textContent).toBe('STEAM')
     if (mode === 'desktop') {
-      fireEvent.click(screen.getByRole('button', { name: 'List view' }))
-      const row = screen.getByRole('button', { name: 'View Prey. Owned on Steam, Epic' })
+      fireEvent.click(libraryRole('button', { name: 'List view' }))
+      const row = libraryRole('button', { name: 'View Prey. Owned on Steam, Epic' })
       expect(row.className).toBe('avalon-record')
       expect(row.textContent).toContain('Steam / Epic')
       expect(document.querySelectorAll('.avalon-record')).toHaveLength(2)
@@ -306,7 +307,7 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
       releaseId: index + 1,
     }))
     render(<AvalonCover context={ctx} game={prey} />)
-    const cover = screen.getByRole('button', { name: 'View Prey. Owned on Steam, GOG' })
+    const cover = libraryRole('button', { name: 'View Prey. Owned on Steam, GOG' })
     expect([...cover.querySelectorAll('.avalon-store-chips > span')].map((mark) => mark.textContent)).toEqual(
       ['STEAM', 'GOG'],
     )
@@ -349,8 +350,8 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
         <AvalonCover context={ctx} game={grouped} />
       </>,
     )
-    const old = screen.getByRole('button', { name: 'View Prey' })
-    const recent = screen.getByRole('button', { name: 'View Prey. Owned on Steam, Epic' })
+    const old = libraryRole('button', { name: 'View Prey' })
+    const recent = libraryRole('button', { name: 'View Prey. Owned on Steam, Epic' })
     const brightness = (element: HTMLElement) =>
       Number(/brightness\(([\d.]+)\)/.exec(element.style.getPropertyValue('--avalon-dormancy'))![1])
     expect(brightness(recent)).toBeGreaterThan(brightness(old))
@@ -363,22 +364,22 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
   it('retains navigation, library operations and full screen controls', () => {
     const ctx = context(mode)
     mount(ctx, AvalonShell)
-    fireEvent.click(screen.getByRole('button', { name: 'Activity' }))
+    fireEvent.click(libraryRole('button', { name: 'Activity' }))
     expect(ctx.setPage).toHaveBeenCalledWith('journal')
-    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    fireEvent.click(libraryRole('button', { name: 'Settings' }))
     expect(ctx.setPage).toHaveBeenCalledWith('settings')
     fireEvent.click(
-      screen.getByRole('button', { name: mode === 'fullscreen' ? 'Leave fullscreen' : 'Enter fullscreen' }),
+      libraryRole('button', { name: mode === 'fullscreen' ? 'Leave fullscreen' : 'Enter fullscreen' }),
     )
     expect(ctx.toggleFullscreen).toHaveBeenCalled()
-    expect(screen.getByRole('main').textContent).toContain('Active screen')
+    expect(libraryRole('main').textContent).toContain('Active screen')
     expect(document.querySelector('.avalon-rail') !== null).toBe(mode === 'desktop')
   })
   it('opens a game without launching it and exposes its unread state', () => {
     const ctx = context(mode),
       item = game(1, { bucket: 'stale_but_patched', playtimeMinutes: 60 })
     render(<AvalonCover context={ctx} game={item} />)
-    fireEvent.click(screen.getByRole('button', { name: `View ${item.title}, patched since you played` }))
+    fireEvent.click(libraryRole('button', { name: `View ${item.title}, patched since you played` }))
     expect(ctx.openGame).toHaveBeenCalledWith(1)
     expect(ctx.actions.launch).not.toHaveBeenCalled()
     expect(document.querySelector('.avalon-unread')).not.toBeNull()
@@ -392,7 +393,7 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
     const ctx = context(mode)
     ctx.feed!.shelves[0].supportsFeedback = true
     mount(ctx, AvalonDiscover)
-    const cover = screen.getByRole('button', { name: 'View Library game 1' })
+    const cover = libraryRole('button', { name: 'View Library game 1' })
     expect(screen.getAllByText('Still waiting for your first visit.').length).toBeGreaterThan(0)
     fireEvent.click(cover)
     expect(ctx.openGame).toHaveBeenCalledWith(1)
@@ -409,20 +410,20 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
     expect(
       screen.getByText('Recommendations could not be loaded. Your library is still available.'),
     ).toBeDefined()
-    fireEvent.click(screen.getByRole('button', { name: 'Browse library' }))
+    fireEvent.click(libraryRole('button', { name: 'Browse library' }))
     expect(ctx.setPage).toHaveBeenCalledWith('library')
   })
   it('searches, clears filters and keeps management available', () => {
     const ctx = context(mode)
     mount(ctx, AvalonLibrary)
-    expect(screen.getByRole('button', { name: 'View Library game 1' })).toBeDefined()
-    fireEvent.change(screen.getByRole('textbox', { name: 'Search games' }), {
+    expect(libraryRole('button', { name: 'View Library game 1' })).toBeDefined()
+    fireEvent.change(libraryRole('textbox', { name: 'Search games' }), {
       target: { value: 'missing title' },
     })
     expect(screen.getByText('No games match these filters.')).toBeDefined()
-    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
-    expect(screen.getByRole('button', { name: 'View Library game 1' })).toBeDefined()
-    fireEvent.click(screen.getByRole('button', { name: 'Manage library' }))
+    fireEvent.click(libraryRole('button', { name: 'Clear filters' }))
+    expect(libraryRole('button', { name: 'View Library game 1' })).toBeDefined()
+    fireEvent.click(libraryRole('button', { name: 'Manage library' }))
     expect(screen.getByText('Library management')).toBeDefined()
     expect(screen.queryByRole('button', { name: 'Cover size' })).toBeNull()
   })
@@ -430,17 +431,17 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
     const ctx = context(mode)
     ctx.games = [game(1, { firstReleaseYear: 2015 }), game(2)]
     const mounted = mount(ctx, AvalonLibrary)
-    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
-    fireEvent.change(screen.getByRole('textbox', { name: 'From this year' }), { target: { value: '2000' } })
+    fireEvent.click(libraryRole('button', { name: 'Filters' }))
+    fireEvent.change(libraryRole('textbox', { name: 'From this year' }), { target: { value: '2000' } })
     fireEvent.click(
-      screen.getByRole('button', { name: mode === 'fullscreen' ? 'Apply filters' : 'Close filters' }),
+      libraryRole('button', { name: mode === 'fullscreen' ? 'Apply filters' : 'Close filters' }),
     )
     expect(screen.queryByRole('button', { name: 'View Library game 2' })).toBeNull()
     ctx.games = [game(2)]
     mounted.update(ctx)
     expect(screen.getByText('No games match these filters.')).toBeDefined()
-    fireEvent.click(screen.getByRole('button', { name: 'Remove release year filter' }))
-    expect(screen.getByRole('button', { name: 'View Library game 2' })).toBeDefined()
+    fireEvent.click(libraryRole('button', { name: 'Remove release year filter' }))
+    expect(libraryRole('button', { name: 'View Library game 2' })).toBeDefined()
     expect(screen.queryByRole('button', { name: 'Remove release year filter' })).toBeNull()
   })
   it('keeps an unknown saved facet visible and removes its individual chip', () => {
@@ -449,11 +450,11 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
     const ctx = context(mode)
     mount(ctx, AvalonLibrary)
     expect(screen.getByText('No games match these filters.')).toBeDefined()
-    fireEvent.click(screen.getByRole('button', { name: 'Remove Unavailable saved filter (999) filter' }))
+    fireEvent.click(libraryRole('button', { name: 'Remove Unavailable saved filter (999) filter' }))
     expect(state.result.current[0]).toEqual({ genreIds: [], installed: true })
-    expect(screen.getByRole('button', { name: 'View Library game 1' })).toBeDefined()
+    expect(libraryRole('button', { name: 'View Library game 1' })).toBeDefined()
     expect(screen.queryByRole('button', { name: 'Remove Unavailable saved filter (999) filter' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Remove installation filter' })).toBeDefined()
+    expect(libraryRole('button', { name: 'Remove installation filter' })).toBeDefined()
   })
   it('adds imported Xbox stores and applies their residual-count filter after refresh', () => {
     const ctx = context(mode)
@@ -462,18 +463,18 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
     imported.entries[0].store = 'plugin:xbox'
     ctx.games = [...ctx.games, imported]
     mounted.update(ctx)
-    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+    fireEvent.click(libraryRole('button', { name: 'Filters' }))
     fireEvent.click(screen.getByText('Stores', { selector: 'summary' }))
-    const xbox = screen.getByRole('checkbox', { name: 'Xbox, 1 matching title' })
+    const xbox = libraryRole('checkbox', { name: 'Xbox, 1 matching title' })
     expect(xbox.hasAttribute('disabled')).toBe(false)
     fireEvent.click(xbox)
-    if (mode === 'fullscreen') fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
-    else fireEvent.click(screen.getByRole('button', { name: 'Close filters' }))
+    if (mode === 'fullscreen') fireEvent.click(libraryRole('button', { name: 'Apply filters' }))
+    else fireEvent.click(libraryRole('button', { name: 'Close filters' }))
     expect(screen.queryByRole('button', { name: 'View Library game 1' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'View Library game 2' })).toBeDefined()
-    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
-    expect(screen.getByRole('checkbox', { name: 'Xbox, 1 matching title' })).toBeDefined()
-    expect(screen.getByRole('checkbox', { name: 'Steam, 1 matching title' })).toBeDefined()
+    expect(libraryRole('button', { name: 'View Library game 2' })).toBeDefined()
+    fireEvent.click(libraryRole('button', { name: 'Filters' }))
+    expect(libraryRole('checkbox', { name: 'Xbox, 1 matching title' })).toBeDefined()
+    expect(libraryRole('checkbox', { name: 'Steam, 1 matching title' })).toBeDefined()
   })
 })
 
@@ -505,12 +506,12 @@ it('uses separate fullscreen shelf navigation and retains the column across shel
     items: [{ ownershipId: 3, releaseId: 3, title: 'Library game 3', reason: 'Third choice.' }],
   })
   mount(ctx, AvalonDiscover)
-  fireEvent.keyDown(screen.getByRole('button', { name: 'View Library game 1' }), { key: 'ArrowRight' })
+  fireEvent.keyDown(libraryRole('button', { name: 'View Library game 1' }), { key: 'ArrowRight' })
   expect(document.querySelector('[data-selected="true"]')?.getAttribute('data-avalon-game')).toBe('2')
-  fireEvent.keyDown(screen.getByRole('button', { name: 'View Library game 2' }), { key: 'ArrowDown' })
+  fireEvent.keyDown(libraryRole('button', { name: 'View Library game 2' }), { key: 'ArrowDown' })
   expect(screen.queryByRole('button', { name: 'View Library game 2' })).toBeNull()
   expect(document.querySelector('[data-selected="true"]')?.getAttribute('data-avalon-game')).toBe('3')
-  expect(screen.getByRole('button', { name: 'Next shelf' }).hasAttribute('disabled')).toBe(true)
+  expect(libraryRole('button', { name: 'Next shelf' }).hasAttribute('disabled')).toBe(true)
 })
 
 it('navigates the complete ten-card fullscreen shelf with directional keys', () => {
@@ -525,12 +526,12 @@ it('navigates the complete ten-card fullscreen shelf with directional keys', () 
   ctx.feed!.shelves[0].items = items.slice(0, 6)
   ctx.feed!.shelves[0].reserve = items.slice(6)
   mount(ctx, AvalonDiscover)
-  const first = screen.getByRole('button', { name: 'View Library game 1' })
+  const first = libraryRole('button', { name: 'View Library game 1' })
   first.focus()
   for (let id = 1; id < 10; id++)
-    fireEvent.keyDown(screen.getByRole('button', { name: `View Library game ${id}` }), { key: 'ArrowRight' })
+    fireEvent.keyDown(libraryRole('button', { name: `View Library game ${id}` }), { key: 'ArrowRight' })
   expect(document.querySelectorAll('[data-avalon-game]')).toHaveLength(10)
-  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'View Library game 10' }))
+  expect(document.activeElement).toBe(libraryRole('button', { name: 'View Library game 10' }))
 })
 
 it.each(['desktop', 'fullscreen'] as const)(
@@ -557,10 +558,10 @@ it.each(['desktop', 'fullscreen'] as const)(
     }))
     mount(ctx, AvalonDiscover)
     const move = (id: number, key: string, target: number) => {
-      const cover = screen.getByRole('button', { name: `View Library game ${id}` })
+      const cover = libraryRole('button', { name: `View Library game ${id}` })
       act(() => cover.focus())
       fireEvent.keyDown(cover, { key })
-      expect(document.activeElement).toBe(screen.getByRole('button', { name: `View Library game ${target}` }))
+      expect(document.activeElement).toBe(libraryRole('button', { name: `View Library game ${target}` }))
     }
     move(4, 'ArrowDown', 8)
     move(6, 'ArrowUp', 2)
@@ -579,17 +580,17 @@ it('appending deferred shelves retains the current cover element and keyboard fo
     </QueryClientProvider>
   )
   const mounted = render(tree())
-  const first = screen.getByRole('button', { name: 'View Library game 1' })
+  const first = libraryRole('button', { name: 'View Library game 1' })
   first.focus()
   ctx.feed = {
     ...ctx.feed!,
     shelves: [...ctx.feed!.shelves, { ...ctx.feed!.shelves[0], id: 'deferred', title: 'Deferred shelf' }],
   }
   mounted.rerender(tree())
-  expect(screen.getByRole('button', { name: 'View Library game 1' })).toBe(first)
+  expect(libraryRole('button', { name: 'View Library game 1' })).toBe(first)
   expect(document.activeElement).toBe(first)
   fireEvent.keyDown(first, { key: 'ArrowDown' })
-  expect(screen.getByRole('button', { name: 'Show Deferred shelf' }).getAttribute('aria-current')).toBe(
+  expect(libraryRole('button', { name: 'Show Deferred shelf' }).getAttribute('aria-current')).toBe(
     'true',
   )
 })
@@ -615,7 +616,7 @@ it('retains each Home overflow page while carrying only the current visible colu
     })),
   }))
   mount(ctx, AvalonDiscover)
-  const cover = (id: number) => screen.getByRole('button', { name: `View Library game ${id}` })
+  const cover = (id: number) => libraryRole('button', { name: `View Library game ${id}` })
   const press = (key: string) => fireEvent.keyDown(document.activeElement!, { key })
   act(() => cover(9).focus())
   press('ArrowRight')
@@ -647,7 +648,7 @@ it('uses current data after hidden shelves are inserted or the feed is replaced'
     </QueryClientProvider>
   )
   const mounted = render(tree())
-  screen.getByRole('button', { name: 'View Library game 1' }).focus()
+  libraryRole('button', { name: 'View Library game 1' }).focus()
   ctx.feed = {
     ...ctx.feed!,
     shelves: [
@@ -671,10 +672,10 @@ it('uses current data after hidden shelves are inserted or the feed is replaced'
     ],
   }
   mounted.rerender(tree())
-  fireEvent.keyDown(screen.getByRole('button', { name: 'View Library game 1' }), { key: 'ArrowDown' })
-  expect(screen.getByRole('button', { name: 'View Library game 2' })).toBeDefined()
+  fireEvent.keyDown(libraryRole('button', { name: 'View Library game 1' }), { key: 'ArrowDown' })
+  expect(libraryRole('button', { name: 'View Library game 2' })).toBeDefined()
   fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' })
-  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'View Library game 3' }))
+  expect(document.activeElement).toBe(libraryRole('button', { name: 'View Library game 3' }))
   ctx.feed = {
     ...ctx.feed,
     shelves: [
@@ -688,18 +689,18 @@ it('uses current data after hidden shelves are inserted or the feed is replaced'
   }
   mounted.rerender(tree())
   expect(screen.queryByRole('button', { name: 'View Library game 2' })).toBeNull()
-  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'View Library game 3' }))
+  expect(document.activeElement).toBe(libraryRole('button', { name: 'View Library game 3' }))
   expect(document.querySelectorAll('.avalon-home-row')).toHaveLength(1)
 })
 
 it('keeps desktop search separate from fullscreen search', () => {
   const desktop = mount(context('desktop'), AvalonLibrary)
-  fireEvent.change(screen.getByRole('textbox', { name: 'Search games' }), {
+  fireEvent.change(libraryRole('textbox', { name: 'Search games' }), {
     target: { value: 'desktop only' },
   })
   desktop.unmount()
   mount(context('fullscreen'), AvalonLibrary)
-  expect((screen.getByRole('textbox', { name: 'Search games' }) as HTMLInputElement).value).toBe('')
+  expect((libraryRole('textbox', { name: 'Search games' }) as HTMLInputElement).value).toBe('')
   expect(screen.queryByRole('slider', { name: 'Cover size' })).toBeNull()
 })
 
@@ -714,8 +715,8 @@ it('does not take focus from another control when Home data is replaced', () => 
     </QueryClientProvider>
   )
   const mounted = render(tree())
-  screen.getByRole('button', { name: 'View Library game 1' }).focus()
-  const other = screen.getByRole('button', { name: 'Another control' })
+  libraryRole('button', { name: 'View Library game 1' }).focus()
+  const other = libraryRole('button', { name: 'Another control' })
   other.focus()
   ctx.feed = {
     ...ctx.feed!,
@@ -727,7 +728,7 @@ it('does not take focus from another control when Home data is replaced', () => 
     ],
   }
   mounted.rerender(tree())
-  expect(screen.getByRole('button', { name: 'View Library game 2' })).toBeDefined()
+  expect(libraryRole('button', { name: 'View Library game 2' })).toBeDefined()
   expect(document.activeElement).toBe(other)
 })
 
@@ -737,9 +738,9 @@ it.each([true, false])(
     const ctx = context('desktop')
     ctx.games = [game(1), game(2), game(3)]
     mount(ctx, AvalonLibrary)
-    if (!grid) fireEvent.click(screen.getByRole('button', { name: 'List view' }))
-    const first = screen.getByRole('button', { name: 'View Library game 1' }),
-      second = screen.getByRole('button', { name: 'View Library game 2' })
+    if (!grid) fireEvent.click(libraryRole('button', { name: 'List view' }))
+    const first = libraryRole('button', { name: 'View Library game 1' }),
+      second = libraryRole('button', { name: 'View Library game 2' })
     fireEvent.click(first, { ctrlKey: true })
     fireEvent.click(second, { ctrlKey: true })
     expect(screen.getByText('2 selected')).toBeDefined()
@@ -748,7 +749,7 @@ it.each([true, false])(
     expect(screen.getByText('2 selected')).toBeDefined()
     fireEvent.click(first, { ctrlKey: true })
     expect(screen.getByText('1 selected')).toBeDefined()
-    fireEvent.contextMenu(screen.getByRole('button', { name: 'View Library game 3' }))
+    fireEvent.contextMenu(libraryRole('button', { name: 'View Library game 3' }))
     const selectedThird = document.querySelector('[data-avalon-game="3"]')
     expect(selectedThird?.getAttribute(grid ? 'data-selected' : 'aria-pressed')).toBe('true')
     expect(screen.getByText('1 selected')).toBeDefined()
@@ -761,20 +762,20 @@ it.each([true, false])(
     const ctx = context('desktop')
     ctx.games = [game(1), game(2), game(3)]
     const mounted = mount(ctx, AvalonLibrary)
-    if (!grid) fireEvent.click(screen.getByRole('button', { name: 'List view' }))
-    fireEvent.click(screen.getByRole('button', { name: 'View Library game 1' }), { ctrlKey: true })
-    fireEvent.click(screen.getByRole('button', { name: 'View Library game 2' }), { ctrlKey: true })
+    if (!grid) fireEvent.click(libraryRole('button', { name: 'List view' }))
+    fireEvent.click(libraryRole('button', { name: 'View Library game 1' }), { ctrlKey: true })
+    fireEvent.click(libraryRole('button', { name: 'View Library game 2' }), { ctrlKey: true })
     ctx.games = ctx.games.map((game) => ({ ...game, summary: 'Refreshed metadata' }))
     mounted.update(ctx)
     expect(screen.getByText('2 selected')).toBeDefined()
-    fireEvent.change(screen.getByRole('combobox', { name: 'Sort' }), { target: { value: 'title-desc' } })
-    fireEvent.click(screen.getByRole('button', { name: grid ? 'List view' : 'Grid view' }))
+    fireEvent.change(libraryRole('combobox', { name: 'Sort' }), { target: { value: 'title-desc' } })
+    fireEvent.click(libraryRole('button', { name: grid ? 'List view' : 'Grid view' }))
     expect(screen.getByText('2 selected')).toBeDefined()
-    fireEvent.change(screen.getByRole('textbox', { name: 'Search games' }), {
+    fireEvent.change(libraryRole('textbox', { name: 'Search games' }), {
       target: { value: 'Library game 2' },
     })
     expect(screen.getByText('1 selected')).toBeDefined()
-    fireEvent.click(screen.getByRole('button', { name: 'Clear search' }))
+    fireEvent.click(libraryRole('button', { name: 'Clear search' }))
     expect(screen.getByText('1 selected')).toBeDefined()
   },
 )
@@ -789,9 +790,9 @@ it('applies Derelict exemptions only to the captured selected games', async () =
   const request = vi.fn().mockResolvedValue({ ok: true, status: 200, data: {} })
   Object.defineProperty(window, 'winnow', { value: { request }, configurable: true })
   mount(ctx, AvalonLibrary)
-  fireEvent.click(screen.getByRole('button', { name: 'View Library game 1' }), { ctrlKey: true })
-  fireEvent.click(screen.getByRole('button', { name: 'View Library game 2' }), { ctrlKey: true })
-  fireEvent.click(screen.getByRole('button', { name: 'Remove from Derelict' }))
+  fireEvent.click(libraryRole('button', { name: 'View Library game 1' }), { ctrlKey: true })
+  fireEvent.click(libraryRole('button', { name: 'View Library game 2' }), { ctrlKey: true })
+  fireEvent.click(libraryRole('button', { name: 'Remove from Derelict' }))
   await waitFor(() =>
     expect(request).toHaveBeenCalledWith(
       expect.objectContaining({ route: 'library.derelict-exemptions', body: { workIds: [1, 2] } }),
@@ -828,10 +829,10 @@ it('marks linked releases as read without swallowing pushes newer than the displ
   }))
   Object.defineProperty(window, 'winnow', { value: { request }, configurable: true })
   mount(ctx, AvalonLibrary)
-  fireEvent.click(screen.getByRole('button', { name: 'View Library game 1, patched since you played' }), {
+  fireEvent.click(libraryRole('button', { name: 'View Library game 1, patched since you played' }), {
     ctrlKey: true,
   })
-  fireEvent.click(screen.getByRole('button', { name: 'Mark as read' }))
+  fireEvent.click(libraryRole('button', { name: 'Mark as read' }))
   await waitFor(() =>
     expect(request).toHaveBeenCalledWith(
       expect.objectContaining({

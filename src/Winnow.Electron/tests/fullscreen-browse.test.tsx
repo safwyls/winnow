@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { useState } from 'react'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { libraryRole, libraryLabel, returnToLibrary } from './library-controls'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { AvalonLibrary, AvalonShell } from '../src/renderer/themes/avalon'
@@ -96,10 +97,10 @@ function setup() {
   )
   return request
 }
-const changeSurface = () => fireEvent.click(screen.getByRole('button', { name: 'Switch surface' }))
-const value = (name: string) => (screen.getByLabelText(name) as HTMLInputElement).value
+const changeSurface = () => fireEvent.click(libraryRole('button', { name: 'Switch surface' }))
+const value = (name: string) => (libraryLabel(name) as HTMLInputElement).value
 const change = (element: HTMLElement, value: string) => fireEvent.change(element, { target: { value } })
-const filterPanel = () => screen.getByRole('dialog', { name: 'Library filters' })
+const filterPanel = () => libraryRole('dialog', { name: 'Library filters' })
 const cards = () =>
   [...document.querySelectorAll('[data-row-active="true"] [data-avalon-game]')].map((element) =>
     Number(element.getAttribute('data-avalon-game')),
@@ -142,22 +143,22 @@ afterEach(() => {
 
 it('keeps fullscreen filter, collection and sort edits local until Apply without changing desktop', () => {
   const request = setup()
-  change(screen.getByLabelText('Search games'), 'desktop')
-  change(screen.getByLabelText('Sort'), 'time')
+  change(libraryLabel('Search games'), 'desktop')
+  change(libraryLabel('Sort'), 'time')
   changeSurface()
   const before = cards()
-  fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+  fireEvent.click(libraryRole('button', { name: 'Filters' }))
   const panel = within(filterPanel())
   change(panel.getByLabelText('Installation'), 'true')
   change(panel.getByLabelText('Collection'), 'never_played')
   change(panel.getByLabelText('Sort'), 'title-desc')
   expect(cards()).toEqual(before)
-  expect(
-    (document.querySelector('.avalon-toolbar select[aria-label="Sort"]') as HTMLSelectElement).value,
-  ).toBe('dormant')
+  expect(document.querySelector('.avalon-fullscreen-library-summary')?.textContent).toContain(
+    'Dormant longest',
+  )
   fireEvent.click(panel.getByRole('button', { name: 'Apply filters' }))
   expect(cards()).toEqual([7, 1])
-  expect(value('Sort')).toBe('title-desc')
+  expect(document.querySelector('.avalon-fullscreen-library-summary')?.textContent).toContain('Name Z–A')
   changeSurface()
   expect(value('Search games')).toBe('desktop')
   expect(value('Sort')).toBe('time')
@@ -167,9 +168,9 @@ it('keeps fullscreen filter, collection and sort edits local until Apply without
 it('discards changed fullscreen sort and collection on Cancel or Back and clears only draft filters', () => {
   setup()
   changeSurface()
-  change(screen.getByLabelText('Sort'), 'time-low')
+  change(libraryLabel('Sort'), 'time-low')
   for (const cancel of ['Cancel', 'Back']) {
-    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+    fireEvent.click(libraryRole('button', { name: 'Filters' }))
     const panel = within(filterPanel())
     change(panel.getByLabelText('Sort'), 'title-desc')
     change(panel.getByLabelText('Collection'), 'derelict')
@@ -177,40 +178,42 @@ it('discards changed fullscreen sort and collection on Cancel or Back and clears
     if (cancel === 'Cancel') fireEvent.click(panel.getByRole('button', { name: 'Cancel' }))
     else fireEvent.keyDown(filterPanel(), { key: 'Escape' })
     expect(value('Sort')).toBe('time-low')
-    expect(screen.getByRole('button', { name: 'All games12' }).getAttribute('aria-pressed')).toBe('true')
+    expect(libraryRole('button', { name: 'All games12' }).getAttribute('aria-pressed')).toBe('true')
   }
-  fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+  fireEvent.click(libraryRole('button', { name: 'Filters' }))
   const panel = within(filterPanel())
   change(panel.getByLabelText('Sort'), 'title-desc')
   change(panel.getByLabelText('Collection'), 'derelict')
   change(panel.getByLabelText('Installation'), 'true')
+  const beforeClear = cards()
   fireEvent.click(panel.getByRole('button', { name: 'Clear filters' }))
   expect((panel.getByLabelText('Sort') as HTMLSelectElement).value).toBe('title-desc')
   expect((panel.getByLabelText('Collection') as HTMLSelectElement).value).toBe('all')
   expect((panel.getByLabelText('Installation') as HTMLSelectElement).value).toBe('')
-  expect(value('Search games')).toBe('')
+  expect(cards()).toEqual(beforeClear)
   fireEvent.click(panel.getByRole('button', { name: 'Apply filters' }))
   expect(value('Sort')).toBe('title-desc')
 })
 
 it('offers exactly four fullscreen shortcuts and clears its current cut without touching desktop', () => {
   setup()
-  change(screen.getByLabelText('Search games'), 'desktop')
+  change(libraryLabel('Search games'), 'desktop')
   changeSurface()
-  const shortcuts = within(screen.getByRole('group', { name: 'Library collections' }))
+  const shortcuts = within(libraryRole('group', { name: 'Library collections' }))
   expect(shortcuts.getAllByRole('button').map((button) => button.textContent)).toEqual([
     'All games12',
     'Installed6',
     'Never played4',
     'Patched4',
   ])
-  change(screen.getByLabelText('Search games'), 'Game 01')
-  fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+  change(libraryLabel('Search games'), 'Game 01')
+  fireEvent.click(libraryRole('button', { name: 'Filters' }))
   change(within(filterPanel()).getByLabelText('Installation'), 'false')
   fireEvent.click(within(filterPanel()).getByRole('button', { name: 'Apply filters' }))
   expect(cards()).toEqual([])
   fireEvent.click(shortcuts.getByRole('button', { name: 'Installed6' }))
   expect(value('Search games')).toBe('')
+  returnToLibrary()
   expect(cards().every((id) => id % 2 === 1)).toBe(true)
   fireEvent.click(shortcuts.getByRole('button', { name: 'Installed6' }))
   expect(shortcuts.getByRole('button', { name: 'Installed6' }).getAttribute('aria-pressed')).toBe('true')

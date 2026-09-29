@@ -1,3 +1,4 @@
+import { libraryAction } from './library-controls'
 import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type Page } from '@playwright/test'
 import { mkdtemp, readFile } from 'node:fs/promises'
@@ -94,7 +95,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await page.screenshot({ path: info.outputPath(`${mode}-platforms.png`) })
 
       await nav.getByRole('button', { name: 'Library', exact: true }).click()
-      await page.getByRole('button', { name: 'Manage library', exact: true }).click()
+      await (await libraryAction(page, 'Manage library')).click()
       await page.getByRole('button', { name: 'Manual games', exact: true }).click()
       await page.getByRole('button', { name: 'Add a game', exact: true }).click()
       await expect(page.getByLabel('Title', { exact: true })).toBeFocused()

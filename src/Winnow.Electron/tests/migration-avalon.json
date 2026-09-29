@@ -294,14 +294,18 @@
     "reason": "Both library surfaces retain the year chip after all dated works disappear. Removing that specific chip reveals an undated work."
   },
   "FullscreenLibraryOptionsTests.Options_and_tools_return_to_the_same_game_and_viewport_deep_in_a_large_library": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-library-focus.test.tsx",
         "case": "restores the same deep library game and viewport after closing management"
+      },
+      {
+        "file": "tests/electron/fullscreen-browse.spec.ts",
+        "case": "fullscreen options and tools retain the same viewport and column sixty rows into nine hundred games"
       }
     ],
-    "reason": "Both modes restore a focused game and deep scroll offset after closing management by button or Escape in a 900-game fixture. Virtual row geometry is mocked; the original native-controller options/filter/QuickMenu flows still need rendered coverage."
+    "reason": "The native 900-game fixture advances sixty rows at 1920x1080 from column two. Y opens one options panel with My lists and Filter & sort first; the retained grid is inert and cannot steal focus. Repeated Y does not stack panels. Options, lists and filters each return directly with B to the same viewport node, bounds, row, selected game and column; Start and B preserve that state through Quick menu. Separate component cases cover management close on both surfaces."
   },
   "DormancyTokenTests.Xaml_resources_procedural_art_and_disk_renderer_share_the_transform_endpoint": {
     "status": "partial",
