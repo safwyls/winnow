@@ -29,36 +29,45 @@ test.beforeAll(async () => {
   ) as Record<string, string>
   application = await electron.launch({
     executablePath: electronPath as unknown as string,
-    args: [resolve('.'), '--data-dir', directory, '--seed-sample', '--no-sync'],
+    args: [
+      resolve('tests/electron/identity-trace-main.mjs'),
+      '--data-dir',
+      directory,
+      '--seed-sample',
+      '--no-sync',
+    ],
     env: environment,
     chromiumSandbox: true,
     timeout: 60_000,
   })
-  await application.evaluate(() => {
-    const trace: IdentityTrace[] = []
-    ;(globalThis as unknown as TraceHost).__identityTrace = trace
-    const fetch = globalThis.fetch
-    globalThis.fetch = async (input, init) => {
-      const url = new URL(input instanceof Request ? input.url : input)
-      if (url.hostname !== '127.0.0.1' || !url.pathname.startsWith('/api/v1/identity'))
-        return fetch(input, init)
-      const entry: IdentityTrace = { path: url.pathname, method: init?.method ?? 'GET' }
-      if (typeof init?.body === 'string') entry.expected = JSON.parse(init.body).expectedRevision
-      trace.push(entry)
-      const response = await fetch(input, init)
-      entry.status = response.status
-      void response
-        .clone()
-        .json()
-        .then((body) => {
-          entry.revision = body.revision
-          entry.message = body.detail ?? body.message
-        })
-        .catch(() => {})
-      return response
-    }
-  })
   page = await application.firstWindow()
+  await page.evaluate(() => {
+    const trace: { event: string; disabled: boolean; form: boolean; time: number }[] = []
+    Object.assign(window, { relationshipInputTrace: trace })
+    for (const type of ['pointerdown', 'pointerup', 'click'])
+      document.addEventListener(
+        type,
+        (event) => {
+          const button = (event.target as Element).closest<HTMLButtonElement>('button')
+          if (button?.textContent?.trim() !== 'Create a relationship') return
+          trace.push({
+            event: type,
+            disabled: button.disabled,
+            form: Boolean(document.querySelector('select[required]')),
+            time: Date.now(),
+          })
+          requestAnimationFrame(() =>
+            trace.push({
+              event: `${type}:frame`,
+              disabled: button.disabled,
+              form: Boolean(document.querySelector('select[required]')),
+              time: Date.now(),
+            }),
+          )
+        },
+        true,
+      )
+  })
   page.on('pageerror', (error) => failures.push(error.message))
   await expect(page.getByRole('button', { name: 'Winnow home', exact: true })).toBeVisible()
   if (await page.getByRole('dialog', { name: 'Winnow setup' }).count())
@@ -67,7 +76,7 @@ test.beforeAll(async () => {
 })
 test.afterAll(async () => closeFixture(application, directory))
 test.afterEach(async ({}, info) => {
-  if (info.status !== info.expectedStatus)
+  if (info.status !== info.expectedStatus) {
     await info.attach('identity-revisions', {
       body: JSON.stringify(
         await application.evaluate(() => (globalThis as unknown as TraceHost).__identityTrace),
@@ -76,6 +85,17 @@ test.afterEach(async ({}, info) => {
       ),
       contentType: 'application/json',
     })
+    await info.attach('relationship-input', {
+      body: JSON.stringify(
+        await page.evaluate(
+          () => (window as unknown as { relationshipInputTrace: unknown }).relationshipInputTrace,
+        ),
+        null,
+        2,
+      ),
+      contentType: 'application/json',
+    })
+  }
 })
 async function api<T>(input: ApiRequest): Promise<T> {
   return page.evaluate(async (input) => {
@@ -173,6 +193,13 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await expect(page.getByRole('checkbox', { name: child.title, exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Cancel relationship' }).click()
     await page.getByRole('button', { name: 'Close tools' }).click()
+    expect(
+      await application.evaluate(() =>
+        (globalThis as unknown as TraceHost).__identityTrace.some(
+          (entry) => entry.path === '/api/v1/identity/review/link' && entry.status === 200,
+        ),
+      ),
+    ).toBe(true)
     expect(failures).toEqual([])
   })
   test(`${mode} saves a metadata year through the real API and refreshes its open live list without losing another draft`, async () => {

@@ -46,6 +46,7 @@ import { avalonFilter, coverGrid, coverWallExtent, dormancy, matchesBucket } fro
 import { AVALON_PALETTES, avalonPaletteStyle } from './avalon-palettes'
 import { avalonFacts, matchesAvalonRules, type AvalonFactMap, type AvalonWorkspace } from './avalon-filters'
 import { AvalonFilterPanel } from './avalon-filter-panel'
+import { AvalonAction } from './avalon-actions'
 import { AvalonBrowseSpine } from './avalon-browse-spine'
 import { AvalonCollectionLists } from './avalon-collection-lists'
 import { AvalonRailFooter } from './avalon-rail-footer'
@@ -1561,34 +1562,34 @@ export function AvalonLibrary(context: ThemeContext) {
                   </>
                 ) : (
                   <>
-                    <button onClick={() => setPanel('lists')}>My lists</button>
-                    <button
-                      onClick={() => {
+                    <AvalonAction label="My lists" icon={List} onChoose={() => setPanel('lists')} />
+                    <AvalonAction
+                      label="Filter & sort"
+                      icon={Settings2}
+                      onChoose={() => {
                         setPanel(null)
                         setFiltersOpen(true)
                       }}
-                    >
-                      Filter &amp; sort
-                    </button>
-                    <button
-                      onClick={() => {
+                    />
+                    <AvalonAction
+                      label="Search"
+                      icon={Search}
+                      onChoose={() => {
                         setPanel(null)
                         if (context.openSearch) context.openSearch()
                         else context.setPage('search')
                       }}
-                    >
-                      Search
-                    </button>
+                    />
                     <CreateListButton mode={context.mode} onClosed={() => setPanel(null)} />
-                    <button
-                      onClick={() => {
+                    <AvalonAction
+                      label="Manage library"
+                      icon={Settings2}
+                      onChoose={() => {
                         toolsReturn.current = { workId: selected, offset: scroll.current?.scrollTop ?? 0 }
                         setPanel(null)
                         setTools(true)
                       }}
-                    >
-                      Manage library
-                    </button>
+                    />
                     {listState.list && (
                       <button
                         onClick={() => {

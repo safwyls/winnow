@@ -1183,8 +1183,10 @@ describe.each(['desktop', 'fullscreen'] as const)('original manual list contract
       { id: 10, name: 'Friday night', isLive: false, releaseIds: [100, 200, 300], revision: 'm1' },
     ]
   }
-  const focus = (id: number) =>
+  const focus = (id: number) => {
+    returnToLibrary()
     act(() => document.querySelector<HTMLButtonElement>(`[data-avalon-game="${id}"]`)!.focus())
+  }
 
   it('explains the original empty collection and offers both static and live creation', () => {
     source()

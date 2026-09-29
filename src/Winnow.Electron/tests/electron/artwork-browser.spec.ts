@@ -77,7 +77,9 @@ async function open(mode: 'desktop' | 'fullscreen', width = 1280, height = 820, 
     .click()
   await page.locator('.avalon-cover').first().click()
   await detail().getByRole('button', { name: 'More', exact: true }).click()
-  await detail().getByRole('button', { name: 'Artwork…', exact: true }).click()
+  const actions =
+    mode === 'fullscreen' ? page.getByRole('dialog', { name: 'More game actions', exact: true }) : detail()
+  await actions.getByRole('button', { name: 'Artwork…', exact: true }).click()
   await expect(dialog()).toBeVisible()
   await expect(dialog().getByRole('button', { name: 'Hero artwork', exact: true })).toBeFocused()
   await expect(candidate()).toBeVisible()

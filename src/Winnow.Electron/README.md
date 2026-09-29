@@ -12,6 +12,9 @@ Avalon's desktop Details opens over the retained library with five sections and 
 header. Fullscreen Details uses the original cinematic layout, two screenshot previews and
 separate About and Play history reading pages. More contains the shared metadata, matching,
 artwork and browsing actions. Closing restores the originating game and library position.
+Fullscreen More and Library options use a right-edge action panel with saved safe margins,
+independent scrolling and retained origin focus. Escape, B, right-click or the scrim closes
+it. Nested Hide starts on Cancel; a child editor returns directly to its originating page.
 Metadata opens in its own desktop dialog, bounded to 1440 × 1000 with a fixed Back button.
 Fullscreen uses an ordered field menu: Back cancels the active field's draft and returns to
 its row; successful saves return with updated attribution. A edits, Y opens the keyboard,

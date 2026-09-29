@@ -113,6 +113,10 @@ export function App() {
       '--fullscreen-safe-margin',
       `${mode === 'fullscreen' ? clamp(preferences.FullscreenSafeMargin, 5, 0, 10) : 0}%`,
     )
+    root.style.setProperty(
+      '--fullscreen-safe-ratio',
+      String(mode === 'fullscreen' ? clamp(preferences.FullscreenSafeMargin, 5, 0, 10) / 100 : 0),
+    )
     root.dataset.fitUltrawide = String(preferences.FullscreenFitUltrawide === 'true')
     root.dataset.dimDormant = String(preferences.DimDormantCovers?.trim().toLowerCase() !== 'false')
     root.classList.toggle('reduced-motion', reducedMotion)
@@ -261,12 +265,40 @@ export function App() {
       if (event.key === 'Escape' && controllerScope() === document) {
         if (position.page === 'details') navigate(position.previous)
         else if (position.page === 'search') closeSearch()
-        else if (mode === 'fullscreen') toggleFullscreen()
+        else if (mode === 'fullscreen') {
+          quickMenuAtRoot.current = ['discover', 'library', 'journal', 'settings'].includes(position.page)
+          setQuickMenu(true)
+        }
       }
     }
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
   }, [mode, position, navigate, openSearch, closeSearch, toggleFullscreen, runtime.resetProfile, setupOpen])
+  useEffect(() => {
+    if (mode !== 'fullscreen') return
+    const back = (event: PointerEvent) => {
+      if (event.button !== 2) return
+      event.preventDefault()
+      event.stopPropagation()
+      ;(document.activeElement ?? document.body).dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Escape',
+          bubbles: true,
+          cancelable: true,
+        }),
+      )
+    }
+    const suppressMenu = (event: MouseEvent) => {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+    window.addEventListener('pointerdown', back, true)
+    window.addEventListener('contextmenu', suppressMenu, true)
+    return () => {
+      window.removeEventListener('pointerdown', back, true)
+      window.removeEventListener('contextmenu', suppressMenu, true)
+    }
+  }, [mode])
   useEffect(() => {
     document.title = `Winnow · ${runtime.theme.name}`
   }, [runtime.theme.name])

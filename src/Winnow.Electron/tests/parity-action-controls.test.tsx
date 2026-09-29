@@ -118,15 +118,19 @@ describe.each(['desktop', 'fullscreen'] as const)('original game actions in %s d
     expect(screen.queryByRole('button', { name: 'All patch notes' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'SteamGridDB' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Uninstall in Steam' })).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'More' }))
+    if (mode === 'fullscreen') fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    else fireEvent.click(screen.getByRole('button', { name: 'More' }))
     fireEvent.click(screen.getByRole('tab', { name: 'Library' }))
     expect(screen.queryByRole('button', { name: 'Uninstall in Steam' })).toBeNull()
   })
   it('orders More destinations before management and tools and makes hiding reachable', async () => {
     const { request } = mount(<Details presentation="avalon" workId={1} mode={mode} />)
     fireEvent.click(await screen.findByRole('button', { name: 'More' }))
-    const buttons = [...document.querySelectorAll('.avalon-details-menu button')].map(
-      (button) => button.textContent,
+    const buttons = [
+      ...document.querySelectorAll('.avalon-details-menu button, .avalon-actions-body button'),
+    ].map((button) => button.getAttribute('aria-label') ?? button.textContent)
+    expect(buttons).toEqual(
+      expect.arrayContaining(['Store page', 'Uninstall in Steam', 'Wrong game?', 'Hide game…']),
     )
     expect(buttons.indexOf('Store page')).toBeLessThan(buttons.indexOf('Uninstall in Steam'))
     expect(buttons.indexOf('Uninstall in Steam')).toBeLessThan(buttons.indexOf('Wrong game?'))
@@ -138,7 +142,7 @@ describe.each(['desktop', 'fullscreen'] as const)('original game actions in %s d
       ),
     )
     fireEvent.click(screen.getByRole('button', { name: 'Hide game…' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Keep visible' }))
+    fireEvent.click(screen.getByRole('button', { name: mode === 'fullscreen' ? 'Cancel' : 'Keep visible' }))
     expect(request.mock.calls.some(([input]) => input.route === 'hidden.put')).toBe(false)
   })
   it('keeps More label and explanatory tooltip unchanged while its menu opens and closes', async () => {
@@ -147,9 +151,10 @@ describe.each(['desktop', 'fullscreen'] as const)('original game actions in %s d
     const tooltip = 'Store and news links, installation, folder, metadata, corrections and hide'
     expect(more.title).toBe(tooltip)
     fireEvent.click(more)
-    expect(screen.getByRole('button', { name: 'More' })).toBe(more)
+    expect(screen.getByRole('button', { name: 'More', hidden: mode === 'fullscreen' })).toBe(more)
     expect(more.title).toBe(tooltip)
-    fireEvent.click(more)
+    if (mode === 'fullscreen') fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    else fireEvent.click(more)
     expect(more.title).toBe(tooltip)
     expect(more.getAttribute('aria-expanded')).toBe('false')
   })

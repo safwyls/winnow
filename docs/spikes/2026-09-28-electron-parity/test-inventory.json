@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 815,
+    "pending": 808,
     "partial": 137,
-    "ported": 930,
+    "ported": 937,
     "retained-backend": 540,
     "framework-specific": 13
   },
@@ -20614,37 +20614,114 @@
     {
       "id": "FullscreenActionOverlayTests.Dismissal_keeps_the_origin_attached_traps_focus_and_restores_its_trigger",
       "source": "tests/Winnow.Ui.Tests/FullscreenActionOverlayTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/action-overlays.spec.ts",
+          "case": "fullscreen More retains Details, traps Tab and Play/Search, and restores its trigger for every dismissal input"
+        },
+        {
+          "file": "tests/avalon-actions.test.tsx",
+          "case": "dismisses with %s and returns to the retained origin trigger"
+        }
+      ],
+      "reason": "The composed native Details origin remains the same attached node and is inert under the panel. Six Tab presses remain in the panel, simultaneous X/View cannot launch or search, and Escape, controller B, right-click and veil click each close exactly one layer and restore More. The component probe also records zero origin detachments."
     },
     {
       "id": "FullscreenActionOverlayTests.Actions_invoke_once_and_disabled_choices_do_not_receive_input",
       "source": "tests/Winnow.Ui.Tests/FullscreenActionOverlayTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/action-panel.spec.ts",
+          "case": "action choices invoke once through ${input} and disabled choices reject focus and clicks"
+        }
+      ],
+      "reason": "The production panel and controller hook run in an isolated Electron renderer. Disabled actions reject focus and physical pointer input; A, Enter and pointer activation invoke the enabled action once, dismiss the panel, retain the origin and restore its trigger."
     },
     {
       "id": "FullscreenActionOverlayTests.Right_click_on_a_page_respects_page_back_handling",
       "source": "tests/Winnow.Ui.Tests/FullscreenActionOverlayTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/app.test.tsx",
+          "case": "fullscreen right-click lets a Details reading page handle Back before closing the game"
+        },
+        {
+          "file": "tests/electron/action-overlays.spec.ts",
+          "case": "fullscreen action opens a child editor once and right-click respects the reading-page Back handler"
+        }
+      ],
+      "reason": "Right-click becomes one Back event. A Details reading page consumes the first event and returns focus to Read more without leaving Details; the next event returns to Library. Back at the root opens Quick menu without leaving fullscreen."
     },
     {
       "id": "FullscreenActionOverlayTests.Action_can_open_another_page_and_back_returns_to_its_origin",
       "source": "tests/Winnow.Ui.Tests/FullscreenActionOverlayTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-actions.test.tsx",
+          "case": "closes before opening a child editor and returns without reopening the old menu"
+        },
+        {
+          "file": "tests/electron/action-overlays.spec.ts",
+          "case": "fullscreen action opens a child editor once and right-click respects the reading-page Back handler"
+        },
+        {
+          "file": "tests/electron/action-panel.spec.ts",
+          "case": "action choices invoke once through ${input} and disabled choices reject focus and clicks"
+        }
+      ],
+      "reason": "Choosing Edit metadata removes the action overlay and opens one interactive editor. Back closes the editor and restores More on the retained Details page without reopening the old menu. The shared action primitive separately verifies controller, keyboard and pointer activation."
     },
     {
       "id": "FullscreenActionOverlayTests.Nested_action_menu_keeps_the_same_origin_without_detaching_it",
       "source": "tests/Winnow.Ui.Tests/FullscreenActionOverlayTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/action-panel.spec.ts",
+          "case": "nested action menu keeps its origin attached and returns to the original trigger"
+        },
+        {
+          "file": "tests/app.test.tsx",
+          "case": "fullscreen nested Hide %s retains the origin and dispatches at most one write"
+        },
+        {
+          "file": "tests/electron/action-overlays.spec.ts",
+          "case": "fullscreen More retains Details, traps Tab and Play/Search, and restores its trigger for every dismissal input"
+        }
+      ],
+      "reason": "Controller A opens the nested Remove/Keep menu over the same attached inert origin; choosing Keep invokes once, records no detachments and restores the original trigger. Composed Hide covers Cancel-first focus, cancellation without writes, one successful write, and an error on the retained page after the overlay closes. Native Details also verifies cancellation through A."
     },
     {
       "id": "FullscreenActionOverlayTests.Edge_panel_has_readable_wrapping_and_scrolling_at_each_text_scale",
       "source": "tests/Winnow.Ui.Tests/FullscreenActionOverlayTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/action-panel.spec.ts",
+          "case": "fourteen action panel wraps and scrolls with controller at text ${text}, reduced ${reduced}"
+        },
+        {
+          "file": "tests/electron/action-overlays.spec.ts",
+          "case": "fullscreen action panel preserves edge alignment, safe margins and type at text ${text}, interface ${scale}, reduced ${reduced}"
+        }
+      ],
+      "reason": "The original fourteen labels and disabled folder action render at 1920x1080 with text scale 1/1.4 and reduced/animated motion. The panel is flush right, full height, 500-900px wide and under 60% of the viewport; labels retain at least 28px times text scale and wrap inside it. The list overflows, D-pad reaches its last action and scrolls. Native composed checks inspect the real 180ms animation at its start and settled transform."
     },
     {
       "id": "FullscreenActionOverlayTests.Panel_controls_respect_the_configured_safe_margin",
       "source": "tests/Winnow.Ui.Tests/FullscreenActionOverlayTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/action-overlays.spec.ts",
+          "case": "fullscreen action panel preserves edge alignment, safe margins and type at text ${text}, interface ${scale}, reduced ${reduced}"
+        }
+      ],
+      "reason": "Real saved preferences apply 10% safe margins, text scale 1.4 and interface scales 1/1.2. Native bounds keep the title below the top safe margin and before the right safe edge, and the footer above the bottom edge. No extra Close button is added."
     },
     {
       "id": "FullscreenActivityTests.Empty_sections_explain_their_content_and_horizontal_navigation_changes_weeks_outside_tabs",

@@ -520,8 +520,14 @@ test('fullscreen options and tools retain the same viewport and column sixty row
       await expect(options).toBeVisible()
       await expect(options.getByRole('button').first()).toHaveText('My lists')
       await expect(options.getByRole('button').first()).toBeFocused()
-      await expect(options.getByRole('button').first()).toHaveCSS('outline-style', 'solid')
-      await expect(options.getByRole('button').first()).toHaveCSS('outline-width', '2px')
+      await expect(options.getByRole('button').first()).toHaveCSS('border-bottom-style', 'solid')
+      await expect(options.getByRole('button').first()).toHaveCSS('border-bottom-width', '3px')
+      expect(
+        await options
+          .getByRole('button')
+          .first()
+          .evaluate((button) => getComputedStyle(button).borderBottomColor),
+      ).not.toBe('rgba(0, 0, 0, 0)')
       await expect(options.getByRole('button').nth(1)).toHaveText('Filter & sort')
       await expect(options.getByRole('button', { name: 'Add to list…', exact: true })).toBeVisible()
       expect(await grid().evaluate((element) => Boolean(element.closest('[aria-hidden="true"]')))).toBe(true)

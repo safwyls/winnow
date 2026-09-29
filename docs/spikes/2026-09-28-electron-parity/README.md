@@ -45,9 +45,13 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [Library and metadata checkpoint](checkpoint-ten.md) records the latest full .NET
-pass, 2,458 passing Electron component/API cases, and the unresolved intermittent
-fullscreen merge-header failure from the native run.
+The [fullscreen action-panel checkpoint](checkpoint-twenty-one.md) records the latest
+complete Electron checks: 2,654 passing component/API cases across 133 files and 170
+passing native cases, with build and typecheck passing. The migration inventory contains
+937 ported, 540 retained backend, 13 framework-specific, 808 pending and 137 partial
+methods. The migration gate remains incomplete. The [Library and metadata checkpoint](checkpoint-ten.md)
+records the latest full .NET pass: 6,839 passed and two Linux-only skips across 13 assemblies,
+including all 896 Avalonia UI cases. The table below preserves earlier measured checkpoints.
 
 All runtime checks use disposable directories beneath the repository's ignored `.tmp`
 folder. No production library or launcher files are modified. Backend credentials and

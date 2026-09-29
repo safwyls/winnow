@@ -97,6 +97,16 @@ list naming and deletion, and library tools. Selecting the already-open list in
 My lists keeps it open. The desktop rail and toolbar retain their separate layout.
 When the fullscreen Library is empty, closing these panels focuses the active collection.
 
+Library options and Details More use a fullscreen action panel flush with the right edge.
+It retains the originating page beneath an inert scrim, traps focus and reserves the saved
+safe margins for its title and footer. Text scaling enlarges its labels and width; a long
+menu scrolls independently without moving the originating page. Its 180 ms entrance is
+disabled by reduced motion. Escape, controller B, right-click and clicking the scrim
+restore the original trigger. Nested Hide confirmation starts on Cancel, and opening a
+child editor removes the action panel before focus enters the editor. Right-click respects
+the active reading page's Back handler; Back at the fullscreen root opens Quick menu.
+Desktop More remains an inline menu.
+
 Identity review keeps cached proposals visible while their snapshot refreshes. Decision
 controls, platform preferences and Details actions on both surfaces wait for the new
 revision. Details return also waits for its originating choice to become available.

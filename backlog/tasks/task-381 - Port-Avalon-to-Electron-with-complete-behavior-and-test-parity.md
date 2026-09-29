@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-29 22:48'
+updated_date: '2026-09-29 23:44'
 labels: []
 dependencies: []
 priority: high
@@ -94,6 +94,8 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 34. Diagnose the intermittent identity-review revision refusal seen in the complete native suite. Capture only test-owned request revisions, reproduce stale-read behavior with controlled reads, preserve optimistic concurrency and explicit refusal recovery, then verify desktop/fullscreen mutation flows and repeat the integrated gates. Continue the remaining original fullscreen feed/history contracts after Library options verification.
 
 35. After checkpoint-twenty verification, port original FullscreenActionOverlay contracts: retain and disable the origin, trap keyboard/controller input, restore its trigger, treat right-click as Back, support nested actions and child editors, and preserve the original right-edge panel, safe margins, typography, wrapping, scroll and reduced-motion behavior. Integrate shared action presentation into Avalon Library and Details while preserving the desktop dropdown and existing child workflows. Verify source-equivalent component/native behavior and both-surface regression gates before mapping original methods.
+
+36. After the action-panel checkpoint, migrate the original two-shelf exposure fixture at1920x1080and1280x720: no surfacing before Home mounts, only its visible shelf, cumulative second-shelf surfacing through RT, and retained LT/RT hints. Then port cover ownership/lifetime contracts with bounded shared image work, cancellation after the last consumer, late-result disposal, transient retry and display-width buckets; verify desktop and fullscreen independently before marking those source methods ported.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -170,4 +172,8 @@ Checkpoint nineteen adds the missing fullscreen Library selection backdrop with 
 Checkpoint twenty implements compact fullscreen Library controls and retained options/list/filter return, including sixty-row navigation in 900 games, empty-grid focus, manual reorder/remove, live-rule save/restore, list naming/deletion and original feed-history cases. The full component/live-backend suite now passes 2643 cases in132files with no skips (43.55s). Repeated identity native cases pass16/16 after fixing refresh readiness for platform/Details actions and delayed opener focus; the full157native suite is running sequentially. Prior failures and controlled red-before-fix evidence remain recorded in checkpoint-twenty.md. Inventory930ported540retained13framework815pending137partial. All AC stay unchecked.
 
 Checkpoint twenty verification is complete: all157native cases pass with clean worker completion in6.1m; eight repeated batch-review cases pass37.8s, and sixteen repeated long-title/preference cases pass1.7m. All2643component/live cases in132files pass without skips; build/typecheck and migration report pass. The penultimate native run passed156/157 and exposed a fixture ArrowDown before its rows became enabled; explicit readiness now precedes unchanged focus/merge/Undo assertions. Fullscreen screenshots inspected. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-twenty.md. No AC checked. Plan35 has an unconnected action-panel primitive under development; it is separate from this verified checkpoint.
+
+Plan35 now integrates the fullscreen edge panel into Library options and Details More, including retained inert origin, Back routing, nested Hide, focus, safe margins, source typography and independent scrolling. All 2654 component/live-backend cases in133files pass without skips in43.91s; build/typecheck passes. All13new native cases pass in26.2s; the complete170case native suite is running. Screenshots inspected. Inventory now937ported540retained13framework808pending137partial. Evidence: checkpoint-twenty-one.md. No acceptance criteria checked.
+
+Checkpoint twenty-one passes all170native cases with clean completion in6.6m; full component/live2654/133and build/typecheck pass. The first native run167/170exposed two old inline-menu selectors and one unreproduced relationship-form click failure;24repeats plus the corrected full suite pass. Startup fetch interception now has a positive Play control and a real identity-request assertion. Evidence:checkpoint-twenty-one.md. All AC remain unchecked. Plan36feed exposure fixtures and an unintegrated bounded artwork cache are under development and are not claimed as completed parity.
 <!-- SECTION:NOTES:END -->

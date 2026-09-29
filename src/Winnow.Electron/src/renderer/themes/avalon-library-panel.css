@@ -45,6 +45,10 @@
     justify-content: flex-start;
   }
   .avalon-library-panel .avalon-cut-bar,
+  .avalon-actions-panel .avalon-cut-bar,
+  .avalon-actions-panel .avalon-cut-actions,
+  .avalon-actions-panel .avalon-selection-actions,
+  .avalon-actions-panel .avalon-applied-filters,
   .avalon-library-panel .avalon-cut-actions,
   .avalon-library-panel .avalon-selection-actions,
   .avalon-library-panel .avalon-applied-filters {
@@ -56,11 +60,13 @@
     align-self: flex-start;
     flex: none;
   }
-  .avalon-library-panel .avalon-toolbar {
+  .avalon-library-panel .avalon-toolbar,
+  .avalon-actions-panel .avalon-toolbar {
     flex-direction: column;
     align-items: stretch;
   }
-  .avalon-library-panel .avalon-toolbar > label {
+  .avalon-library-panel .avalon-toolbar > label,
+  .avalon-actions-panel .avalon-toolbar > label {
     justify-content: space-between;
   }
   .avalon-fullscreen-library-actions {

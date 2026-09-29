@@ -8,8 +8,8 @@ import {
   type ReactNode,
 } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { ArrowLeft, ChevronDown, ListPlus, X } from 'lucide-react'
-import { useApiQuery, useDetails, useLibrary, useWorkspace } from '../api/hooks'
+import { ArrowLeft, ChevronDown, ListPlus, X, Image, Pencil, Search, EyeOff } from 'lucide-react'
+import { useApiQuery, useCommand, useDetails, useLibrary, useWorkspace } from '../api/hooks'
 import { dateLabel, hours, storeLabel } from '../api/client'
 import { primaryEntry } from '../../shared/game-actions'
 import type { GameDetails, LibraryGame, Mode, Workspace } from '../api/types'
@@ -31,6 +31,7 @@ import { detailIdle, detailPlaytime } from './details-facts'
 import { ArtworkBrowserDialog } from './artwork-browser'
 import { AvalonBackdrop } from '../themes/avalon-backdrop'
 import { restoreFocusWhenReady } from './restore-focus'
+import { AvalonAction, AvalonActions } from '../themes/avalon-actions'
 import './details-layout.css'
 
 const desktopSections = ['Overview', 'Activity', 'Updates', 'Journal', 'Library'] as const
@@ -470,6 +471,7 @@ export function AvalonDetailsLayout({
               />
             )}
             <MoreActions
+              fullscreen={fullscreen}
               open={moreOpen}
               setOpen={setMoreOpen}
               buttonRef={more}
@@ -481,6 +483,8 @@ export function AvalonDetailsLayout({
                     : setTool(next)
               }
               workId={workId}
+              gameTitle={game?.title ?? 'this game'}
+              onHidden={onClose}
               links={links}
               management={
                 primary && <EntryActions entry={primary} workspace={workspace.data} managementOnly />
@@ -631,21 +635,27 @@ function Achievements({ game, details }: { game?: LibraryGame; details?: GameDet
   )
 }
 function MoreActions({
+  fullscreen,
   open,
   setOpen,
   buttonRef,
   onChoose,
   workId,
+  gameTitle,
+  onHidden,
   links,
   folder,
   management,
   hide,
 }: {
+  fullscreen: boolean
   open: boolean
   setOpen(open: boolean): void
   buttonRef: React.RefObject<HTMLButtonElement | null>
   onChoose(tool: Tool): void
   workId: number
+  gameTitle: string
+  onHidden?(): void
   links: GameLink[]
   folder: ReactNode
   management: ReactNode
@@ -654,21 +664,79 @@ function MoreActions({
   const menu = useRef<HTMLDivElement>(null),
     root = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => {
-    if (open) menu.current?.querySelector<HTMLButtonElement>('button')?.focus()
-  }, [open])
+    if (open && !fullscreen) menu.current?.querySelector<HTMLButtonElement>('button')?.focus()
+  }, [open, fullscreen])
   useEffect(() => {
     const dismiss = (event: PointerEvent) => {
       if (!root.current?.contains(event.target as Node)) setOpen(false)
     }
-    if (open) document.addEventListener('pointerdown', dismiss)
+    if (open && !fullscreen) document.addEventListener('pointerdown', dismiss)
     return () => document.removeEventListener('pointerdown', dismiss)
-  }, [open])
+  }, [open, fullscreen])
+  const skipRestore = useRef(false)
+  const [confirmHide, setConfirmHide] = useState(false)
+  const hideCommand = useCommand()
+  async function hideGame() {
+    try {
+      await hideCommand.mutateAsync({ route: 'hidden.put', body: { workIds: [workId], hidden: true } })
+      onHidden?.()
+    } catch {
+      /* The retained page displays the failure after the action panel closes. */
+    }
+  }
+  const items = (
+    <>
+      <GameLinks links={links} />
+      {management}
+      {folder}
+      <MetadataRefresh workId={workId} />
+      {tools.map((tool) => {
+        const label =
+          tool === 'Game match' ? 'Wrong game?' : tool === 'Metadata' ? 'Edit metadata…' : 'Artwork…'
+        const choose = () => {
+          skipRestore.current = true
+          setOpen(false)
+          onChoose(tool)
+        }
+        return fullscreen ? (
+          <AvalonAction
+            key={tool}
+            label={label}
+            icon={tool === 'Game match' ? Search : tool === 'Metadata' ? Pencil : Image}
+            description={tool === 'Game match' ? 'Search IGDB for the right entry' : undefined}
+            onChoose={choose}
+          />
+        ) : (
+          <button
+            key={tool}
+            title={tool === 'Game match' ? 'Search IGDB for the right entry' : undefined}
+            onClick={choose}
+          >
+            {label}
+          </button>
+        )
+      })}
+      {fullscreen ? (
+        <AvalonAction
+          label="Hide game…"
+          icon={EyeOff}
+          disabled={hideCommand.isPending}
+          onChoose={() => {
+            setConfirmHide(true)
+            setOpen(true)
+          }}
+        />
+      ) : (
+        hide
+      )}
+    </>
+  )
   return (
     <div
       className="avalon-details-more"
       ref={root}
       onKeyDown={(event) => {
-        if (!open) return
+        if (!open || fullscreen) return
         if (event.key === 'Escape') {
           event.preventDefault()
           event.stopPropagation()
@@ -695,31 +763,46 @@ function MoreActions({
         aria-expanded={open}
         title="Store and news links, installation, folder, metadata, corrections and hide"
         data-controller-context
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          skipRestore.current = false
+          setConfirmHide(false)
+          setOpen(!open)
+        }}
       >
         More <ChevronDown size={16} />
       </button>
-      {open && (
-        <div className="avalon-details-menu" ref={menu} aria-label="More game actions">
-          <GameLinks links={links} />
-          {management}
-          {folder}
-          <MetadataRefresh workId={workId} />
-          {tools.map((tool) => (
-            <button
-              key={tool}
-              title={tool === 'Game match' ? 'Search IGDB for the right entry' : undefined}
-              onClick={() => {
-                setOpen(false)
-                onChoose(tool)
-              }}
-            >
-              {tool === 'Game match' ? 'Wrong game?' : tool === 'Metadata' ? 'Edit metadata…' : 'Artwork…'}
-            </button>
-          ))}
-          {hide}
-        </div>
+      {fullscreen ? (
+        <AvalonActions
+          open={open}
+          title={confirmHide ? `Hide ${gameTitle}?` : 'More game actions'}
+          close={() => setOpen(false)}
+          restoreFocus={() => {
+            if (!skipRestore.current) buttonRef.current?.focus()
+          }}
+        >
+          {confirmHide ? (
+            <>
+              <p>Its history stays saved. You can restore it from Library tools.</p>
+              <AvalonAction label="Cancel" icon={X} onChoose={() => {}} />
+              <AvalonAction
+                label="Hide game"
+                icon={EyeOff}
+                disabled={hideCommand.isPending}
+                onChoose={() => void hideGame()}
+              />
+            </>
+          ) : (
+            items
+          )}
+        </AvalonActions>
+      ) : (
+        open && (
+          <div className="avalon-details-menu" ref={menu} aria-label="More game actions">
+            {items}
+          </div>
+        )
       )}
+      {fullscreen && <Notice error={hideCommand.error} />}
     </div>
   )
 }

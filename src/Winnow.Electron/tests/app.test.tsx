@@ -159,6 +159,109 @@ function mountAfterglow() {
   return mount()
 }
 describe('integrated frontend', () => {
+  it.each(['cancel', 'success', 'failure'] as const)(
+    'fullscreen nested Hide %s retains the origin and dispatches at most one write',
+    async (outcome) => {
+      const original = vi.mocked(window.winnow.request).getMockImplementation()!
+      vi.mocked(window.winnow.request).mockImplementation(async (input) =>
+        input.route === 'hidden.put'
+          ? outcome === 'failure'
+            ? { ok: false, status: 503, message: 'Could not hide this game. Try again.' }
+            : { ok: true, status: 200, data: {} }
+          : original(input),
+      )
+      const client = mount()
+      await screen.findByRole('navigation', { name: 'Main navigation' })
+      act(() => fullscreen(true))
+      fireEvent.click(
+        within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', {
+          name: 'Library',
+        }),
+      )
+      fireEvent.click(await screen.findByRole('button', { name: 'View A real API title' }))
+      const origin = document.querySelector('.avalon-details.fullscreen')
+      const more = await screen.findByRole('button', { name: 'More' })
+      more.focus()
+      fireEvent.click(more)
+      fireEvent.click(await screen.findByRole('button', { name: 'Hide game…' }))
+      const confirmation = await screen.findByRole('dialog', { name: 'Hide A real API title?' })
+      expect(screen.getAllByRole('dialog')).toHaveLength(1)
+      const cancel = within(confirmation).getByRole('button', { name: 'Cancel' })
+      expect(document.activeElement).toBe(cancel)
+      expect(document.querySelector('.avalon-details.fullscreen')).toBe(origin)
+      expect(origin?.closest('[inert]')).not.toBeNull()
+      fireEvent.click(
+        outcome === 'cancel' ? cancel : within(confirmation).getByRole('button', { name: 'Hide game' }),
+      )
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      if (outcome === 'success')
+        await waitFor(() => expect(document.querySelector('.avalon-details.fullscreen')).toBeNull())
+      else {
+        expect(document.querySelector('.avalon-details.fullscreen')).toBe(origin)
+        await waitFor(() => expect(document.activeElement).toBe(more))
+        if (outcome === 'failure')
+          expect((await screen.findByRole('alert')).textContent).toContain(
+            'Could not hide this game. Try again.',
+          )
+      }
+      expect(
+        vi.mocked(window.winnow.request).mock.calls.filter(([input]) => input.route === 'hidden.put'),
+      ).toHaveLength(outcome === 'cancel' ? 0 : 1)
+      client.clear()
+    },
+  )
+  it('fullscreen root Back opens Quick menu and right-click dismisses an action panel exactly once', async () => {
+    vi.stubGlobal('PointerEvent', MouseEvent)
+    const client = mount()
+    await screen.findByRole('navigation', { name: 'Main navigation' })
+    act(() => fullscreen(true))
+    fireEvent.click(
+      within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', {
+        name: 'Library',
+      }),
+    )
+    const trigger = await screen.findByRole('button', { name: 'More' })
+    trigger.focus()
+    fireEvent.click(trigger)
+    const panel = await screen.findByRole('dialog', { name: 'Library options' })
+    expect(document.querySelector('#main-content')?.hasAttribute('inert')).toBe(true)
+    fireEvent.pointerDown(within(panel).getByRole('button', { name: 'My lists' }), { button: 2 })
+    fireEvent.contextMenu(document.body, { button: 2 })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(document.querySelector('#main-content')?.hasAttribute('inert')).toBe(false)
+    expect(window.winnow.setFullscreen).not.toHaveBeenCalled()
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    const quick = await screen.findByRole('dialog', { name: 'Quick menu' })
+    expect(within(quick).getByRole('button', { name: 'Resume' })).toBeTruthy()
+    expect(within(quick).getByRole('button', { name: 'Settings' })).toBeTruthy()
+    expect(window.winnow.setFullscreen).not.toHaveBeenCalled()
+    client.clear()
+  })
+  it('fullscreen right-click lets a Details reading page handle Back before closing the game', async () => {
+    vi.stubGlobal('PointerEvent', MouseEvent)
+    const client = mount()
+    await screen.findByRole('navigation', { name: 'Main navigation' })
+    act(() => fullscreen(true))
+    fireEvent.click(
+      within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', {
+        name: 'Library',
+      }),
+    )
+    fireEvent.click(await screen.findByRole('button', { name: 'View A real API title' }))
+    const read = await screen.findByRole('button', { name: 'Read more →' })
+    fireEvent.click(read)
+    const back = await screen.findByRole('button', { name: 'Back to Overview' })
+    back.focus()
+    fireEvent.pointerDown(back, { button: 2 })
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Back to Overview' })).toBeNull())
+    expect(document.querySelector('.avalon-details.fullscreen')).not.toBeNull()
+    const returnedRead = screen.getByRole('button', { name: 'Read more →' })
+    expect(document.activeElement).toBe(returnedRead)
+    fireEvent.pointerDown(returnedRead, { button: 2 })
+    await waitFor(() => expect(document.querySelector('.avalon-details')).toBeNull())
+    expect(window.winnow.setFullscreen).not.toHaveBeenCalled()
+    client.clear()
+  })
   it.each(['desktop', 'fullscreen'] as const)(
     'keeps grouped Prey selection totals secondary updates and the installed Epic action together on %s',
     async (mode) => {

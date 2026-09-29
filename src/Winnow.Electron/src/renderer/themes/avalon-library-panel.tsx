@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
+import { AvalonActions } from './avalon-actions'
 import './avalon-library-panel.css'
 
 export function AvalonLibraryPanel({
@@ -17,6 +18,22 @@ export function AvalonLibraryPanel({
   useEffect(() => {
     if (kind) content.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus()
   }, [kind])
+  if (kind === 'options')
+    return (
+      <AvalonActions
+        open
+        title="Library options"
+        close={close}
+        restoreFocus={restoreFocus}
+        footer={
+          <button className="avalon-library-panel-back" onClick={close}>
+            Back to library
+          </button>
+        }
+      >
+        {children}
+      </AvalonActions>
+    )
   return (
     <Dialog.Root
       open={kind !== null}
@@ -36,7 +53,7 @@ export function AvalonLibraryPanel({
               restoreFocus()
             }}
           >
-            <Dialog.Title>{kind === 'lists' ? 'My lists' : 'Library options'}</Dialog.Title>
+            <Dialog.Title>My lists</Dialog.Title>
             <div className="avalon-library-panel-body">{children}</div>
             <Dialog.Close asChild>
               <button className="avalon-library-panel-back">Back to library</button>

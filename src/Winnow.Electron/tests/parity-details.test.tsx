@@ -386,7 +386,8 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details compo
     expect(screen.getByRole('button', { name: 'Install' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'More' }))
     expect(screen.queryByRole('button', { name: 'Open install folder' })).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'More' }))
+    if (mode === 'fullscreen') fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    else fireEvent.click(screen.getByRole('button', { name: 'More' }))
     fireEvent.click(screen.getByRole('tab', { name: 'Updates' }))
     expect(screen.getByText('No update signals recorded.')).toBeTruthy()
   })
@@ -639,7 +640,9 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details compo
     expect(screen.getByRole('tabpanel').scrollTop).toBe(320)
     fireEvent.click(screen.getByRole('tab', { name: 'Library' }))
     fireEvent.click(screen.getByRole('button', { name: 'More' }))
-    expect(document.activeElement).toBe(document.querySelector('.avalon-details-menu button'))
+    expect(document.activeElement).toBe(
+      document.querySelector('.avalon-details-menu button, .avalon-actions-body button'),
+    )
     expect(document.activeElement?.textContent).toBe('View in Steam')
     fireEvent.click(screen.getByRole('button', { name: 'Edit metadata…' }))
     if (mode === 'fullscreen') fireEvent.click(await screen.findByRole('button', { name: 'Name · IGDB' }))
