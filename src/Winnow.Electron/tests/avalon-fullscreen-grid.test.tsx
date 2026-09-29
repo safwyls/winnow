@@ -18,10 +18,12 @@ function Harness({
   data = games,
   columns = 6,
   reduced = false,
+  collection,
 }: {
   data?: LibraryGame[]
   columns?: number
   reduced?: boolean
+  collection?: string
 }) {
   const [selected, setSelected] = useState<number | null>(null)
   return (
@@ -30,6 +32,7 @@ function Harness({
       columns={columns}
       gap={24}
       prefix="fixture"
+      collection={collection}
       selected={selected}
       onSelected={setSelected}
       reducedMotion={reduced}
@@ -172,4 +175,61 @@ it('does not steal search focus when a filter selects the nearest remaining game
   )
   expect(document.activeElement).toBe(screen.getByRole('textbox'))
   expect(document.querySelector('[data-selected="true"]')?.textContent).toBe('Game 80')
+})
+
+it('retains an independent selected cover and two-row position for every collection and saved list', () => {
+  const view = render(<Harness collection="all" reduced />)
+  act(() => screen.getByRole('button', { name: 'Game 1' }).focus())
+  press('ArrowRight')
+  press('ArrowDown')
+  press('ArrowDown')
+  expect(document.activeElement?.textContent).toBe('Game 14')
+  expect(firstRow()).toBe('1')
+  view.rerender(<Harness collection="installed" reduced />)
+  expect(document.activeElement?.textContent).toBe('Game 1')
+  press('ArrowDown')
+  expect(document.activeElement?.textContent).toBe('Game 7')
+  view.rerender(<Harness collection="list:10" data={games.slice(20)} reduced />)
+  expect(document.activeElement?.textContent).toBe('Game 21')
+  press('ArrowRight')
+  view.rerender(<Harness collection="all" reduced />)
+  expect(document.activeElement?.textContent).toBe('Game 14')
+  expect(firstRow()).toBe('1')
+  view.rerender(<Harness collection="installed" reduced />)
+  expect(document.activeElement?.textContent).toBe('Game 7')
+  view.rerender(<Harness collection="list:10" data={games.slice(20)} reduced />)
+  expect(document.activeElement?.textContent).toBe('Game 22')
+})
+
+it('keeps the newly selected collection viewport and covers attached after queued frames settle', () => {
+  const view = render(<Harness collection="all" />)
+  act(() => screen.getByRole('button', { name: 'Game 1' }).focus())
+  press('ArrowDown')
+  press('ArrowDown')
+  for (const [index, collection] of ['installed', 'never_played', 'stale_but_patched', 'all'].entries()) {
+    view.rerender(<Harness collection={collection} data={games.slice(index * 10)} />)
+    const viewport = document.querySelector('.avalon-row-viewport')
+    const covers = [...viewport!.querySelectorAll('[data-row-active="true"] button')]
+    expect(covers.length).toBeGreaterThan(0)
+    frame(1000 + index * 500)
+    frame(1220 + index * 500)
+    expect(document.querySelector('.avalon-row-viewport')).toBe(viewport)
+    expect(covers.every((cover) => cover.isConnected)).toBe(true)
+  }
+})
+
+it('resets an emptied collection without losing another collection position', () => {
+  const view = render(<Harness collection="all" reduced />)
+  act(() => screen.getByRole('button', { name: 'Game 1' }).focus())
+  press('ArrowDown')
+  press('ArrowDown')
+  view.rerender(<Harness collection="installed" reduced />)
+  press('ArrowRight')
+  view.rerender(<Harness collection="installed" data={[]} reduced />)
+  expect(document.querySelector('[data-selected-id]')).toBeNull()
+  view.rerender(<Harness collection="all" reduced />)
+  expect(document.querySelector('.avalon-fullscreen-grid')?.getAttribute('data-selected-id')).toBe('13')
+  expect(firstRow()).toBe('1')
+  view.rerender(<Harness collection="installed" reduced />)
+  expect(document.querySelector('.avalon-fullscreen-grid')?.getAttribute('data-selected-id')).toBe('1')
 })

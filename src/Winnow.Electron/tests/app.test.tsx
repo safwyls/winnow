@@ -429,7 +429,13 @@ describe('integrated frontend', () => {
           name: 'Library',
         }),
       )
-      fireEvent.click(await screen.findByRole('button', { name: 'Derelict1' }))
+      if (mode === 'desktop') fireEvent.click(await screen.findByRole('button', { name: 'Derelict1' }))
+      else {
+        fireEvent.click(await screen.findByRole('button', { name: 'Filters' }))
+        const panel = within(screen.getByRole('dialog', { name: 'Library filters' }))
+        fireEvent.change(panel.getByLabelText('Collection'), { target: { value: 'derelict' } })
+        fireEvent.click(panel.getByRole('button', { name: 'Apply filters' }))
+      }
       expect(screen.queryByRole('button', { name: 'View Still waiting' })).toBeNull()
       fireEvent.click(screen.getByRole('button', { name: 'View Closed world' }))
       await screen.findByRole('heading', { name: 'Closed world' })

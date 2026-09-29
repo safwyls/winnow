@@ -74,7 +74,12 @@ visible column and clamps shorter pages. Only the current page's covers are real
 Fullscreen Library keeps two visible rows, retaining overlapping covers during each vertical
 slide. Arrows, Page Up/Down and the wheel share its selection state; filtering follows the
 selected game when it remains in the results. Returning from another section restores the
-selected game and row window. Desktop keeps inline Library search. Fullscreen Ctrl+K,
+selected game and row window. Each fullscreen collection and saved list remembers its
+own position. LT/RT cycles All games, Installed, Never played and Patched. Choosing one
+clears the fullscreen search and filters; desktop collection changes retain their separate
+search. Fullscreen filter drafts include collection and sort: Apply or controller Y commits
+them together, while Cancel or B discards them. Clear filters keeps the draft sort and
+clears the draft collection. Desktop keeps inline Library search. Fullscreen Ctrl+K,
 the search button and controller View open a dedicated Search page over the complete
 visible library. Its query is independent of Library filters. Enter search opens the
 keyboard; Go to results enters the visible grid. Up from the first row reaches that

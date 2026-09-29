@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-29 20:43'
+updated_date: '2026-09-29 21:15'
 labels: []
 dependencies: []
 priority: high
@@ -88,6 +88,8 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 31. Restore the original desktop rail footer: fixed New list and Settings alignment, vector icon, accessible Static list/Live list menu with explanatory tooltips, current-cut live creation and cancellation focus restoration. Preserve fullscreen creation separately. Verify short-window overflow, keyboard actions and both-mode creation persistence before upgrading the remaining rail-section source contract.
 
 32. Restore exact fullscreen Browse collection and filter-draft contracts: four trigger-cycled collections independent of desktop, retained per-collection cover selection/viewport, and atomic draft filter/sort/bucket apply or cancel. Verify source directional/resize/queued-notification behavior with native and renderer tests; retain separate compact-toolbar and remaining fullscreen visual work until its source assertions are covered.
+
+33. Restore the fullscreen Library composition from the source: compact heading and collection/tools row, dimmed retained selection backdrop, separate My lists and Library options panels, and all existing list/selection actions with return focus. Keep desktop presentation intact, adapt fullscreen interaction tests to the source paths, and verify both surfaces with native size/text/controller matrices before mapping additional original methods.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -154,4 +156,8 @@ Footer implementation and initial2618component/live checks pass. The first148-ca
 Footer verification now passes all2621component/live cases in129files and the corrected23native modal/Library/list cases with clean completion. A theme normalization assertion now waits for published profile state rather than already-present fallback colors. Inspected the800x600footer capture. Full148native repeat is in progress; inventory914ported540retained13framework830pending138partial. All acceptance criteria remain unchecked.
 
 Checkpoint seventeen native repeat passes148/148with clean worker completion in5.7minutes. Full component/live2621/129and build/typecheck pass. Desktop source rail footer is complete, including short-window geometry, both naming paths, cancellation focus and API persistence; fullscreen creation remains verified separately. Evidence:docs/spikes/2026-09-28-electron-parity/checkpoint-seventeen.md. Inventory914ported540retained13framework830pending138partial. No acceptance criteria checked; plan32fullscreen source contracts are next.
+
+Plan32 implements four fullscreen collections, per-collection cover state and atomic filter/sort drafts. Component/live suite2627/130 passes; native full152 had151pass and an early resize observation failure. The fixture now saves the real ultrawide preference and polls rendered columns;20repeated native cases pass. Full152repeat is running. Fullscreen compact layout and backdrop remain outstanding.
+
+Checkpoint eighteen closes9original fullscreen Browse methods. Complete native repeat152/152passes with clean completion in6.1m; repeated focused20/20passes. Component/live2627/130passes, no skips; build/typecheck pass. The first full native resize failure was corrected by saving the owned preference and polling settled columns; expected geometry/focus assertions unchanged. Captures inspected; compact Browse layout remains unfinished. Inventory923ported540retained13framework821pending138partial. Evidence:checkpoint-eighteen.md. No AC checked; plan33implementation continues.
 <!-- SECTION:NOTES:END -->

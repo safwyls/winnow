@@ -101,6 +101,12 @@ export function useAvalonLists(mode: Mode, lists: GameList[], ready = true, defa
     setBase(target)
   }
   function selectBucket(value: string) {
+    if (mode === 'fullscreen') {
+      leave()
+      loadRules({})
+      setBucket(value)
+      return
+    }
     const toggleOff = !list?.isLive && value !== 'all' && bucket === value
     leave()
     setRules((current) => ({ ...current, buckets: [] }))

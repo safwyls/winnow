@@ -44,50 +44,50 @@
     "tests": [
       {
         "file": "tests/parity-library-workflows.test.tsx",
-        "case": "All games clears only the bucket while keeping the search and sort and remains selected twice"
+        "case": "All games preserves desktop search, clears fullscreen search and keeps the sort and repeated selection"
       }
     ],
-    "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture, compose bucket/search/descending title order, and preserve search and order across repeated All games clicks."
+    "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture and compose bucket/search/descending title order. Desktop preserves search and order across repeated All games clicks. The distinct fullscreen ChooseCollection source behavior clears search and retains sort."
   },
   "LibraryViewModelTests.All_games_is_selected_on_launch_and_counts_the_whole_library": {
     "status": "ported",
     "tests": [
       {
         "file": "tests/parity-library-workflows.test.tsx",
-        "case": "All games clears only the bucket while keeping the search and sort and remains selected twice"
+        "case": "All games preserves desktop search, clears fullscreen search and keeps the sort and repeated selection"
       }
     ],
-    "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture, compose bucket/search/descending title order, and preserve search and order across repeated All games clicks."
+    "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture and compose bucket/search/descending title order. Desktop preserves search and order across repeated All games clicks. The distinct fullscreen ChooseCollection source behavior clears search and retains sort."
   },
   "LibraryViewModelTests.Selecting_a_bucket_moves_the_rail_selection_off_all_games_and_back": {
     "status": "ported",
     "tests": [
       {
         "file": "tests/parity-library-workflows.test.tsx",
-        "case": "All games clears only the bucket while keeping the search and sort and remains selected twice"
+        "case": "All games preserves desktop search, clears fullscreen search and keeps the sort and repeated selection"
       }
     ],
-    "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture, compose bucket/search/descending title order, and preserve search and order across repeated All games clicks."
+    "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture and compose bucket/search/descending title order. Desktop preserves search and order across repeated All games clicks. The distinct fullscreen ChooseCollection source behavior clears search and retains sort."
   },
   "LibraryViewModelTests.All_games_clears_the_bucket_and_leaves_the_search_and_the_sort_alone": {
     "status": "ported",
     "tests": [
       {
         "file": "tests/parity-library-workflows.test.tsx",
-        "case": "All games clears only the bucket while keeping the search and sort and remains selected twice"
+        "case": "All games preserves desktop search, clears fullscreen search and keeps the sort and repeated selection"
       }
     ],
-    "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture, compose bucket/search/descending title order, and preserve search and order across repeated All games clicks."
+    "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture and compose bucket/search/descending title order. Desktop preserves search and order across repeated All games clicks. The distinct fullscreen ChooseCollection source behavior clears search and retains sort."
   },
   "LibraryViewModelTests.All_games_clicked_twice_stays_selected": {
     "status": "ported",
     "tests": [
       {
         "file": "tests/parity-library-workflows.test.tsx",
-        "case": "All games clears only the bucket while keeping the search and sort and remains selected twice"
+        "case": "All games preserves desktop search, clears fullscreen search and keeps the sort and repeated selection"
       }
     ],
-    "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture, compose bucket/search/descending title order, and preserve search and order across repeated All games clicks."
+    "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture and compose bucket/search/descending title order. Desktop preserves search and order across repeated All games clicks. The distinct fullscreen ChooseCollection source behavior clears search and retains sort."
   },
   "LibraryViewModelTests.The_view_mode_toggles_and_shows_exactly_one_view": {
     "status": "ported",

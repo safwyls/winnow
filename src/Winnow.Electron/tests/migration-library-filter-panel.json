@@ -118,10 +118,10 @@
     "tests": [
       {
         "file": "tests/parity-library-workflows.test.tsx",
-        "case": "toggles the current bucket off outside a live list and clears only panel rules from the panel"
+        "case": "clears the current bucket and panel rules through the controls for each surface"
       }
     ],
-    "reason": "Both composed panels clear the genre while preserving the Started bucket and its two matching games."
+    "reason": "The desktop panel clears the genre while preserving the Started bucket and its two matching games. The distinct fullscreen draft Clear filters action also clears its collection, matching FullscreenBrowseFiltersPage."
   },
   "FilterPanelViewModelTests.An_empty_result_from_a_filter_is_a_direction": {
     "status": "ported",

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { LibraryFilter, LibraryGame } from '../api/types'
+import { matchesBucket } from './avalon-data'
+import { libraryBucketLabel } from './avalon-library-chrome'
 import {
   AVALON_FACET_GROUPS,
   avalonRuleOptions,
@@ -17,6 +19,7 @@ export function AvalonFilterPanel({
   facts,
   workspace,
   fullscreen,
+  browse,
   apply,
   close,
 }: {
@@ -27,13 +30,16 @@ export function AvalonFilterPanel({
   facts: AvalonFactMap
   workspace?: AvalonWorkspace
   fullscreen: boolean
-  apply(filter: LibraryFilter): void
+  browse?: { sort: string; bucket: string; manual: boolean }
+  apply(filter: LibraryFilter, browse?: { sort: string; bucket: string }): void
   close(): void
 }) {
   const [draft, setDraft] = useState(filter),
     [from, setFrom] = useState(String(filter.yearFrom ?? '')),
     [to, setTo] = useState(String(filter.yearTo ?? ''))
   const [error, setError] = useState('')
+  const [draftSort, setDraftSort] = useState(browse?.sort ?? 'dormant')
+  const [draftBucket, setDraftBucket] = useState(browse?.bucket ?? 'all')
   const ref = useRef<HTMLElement>(null),
     origin = useRef(document.activeElement as HTMLElement | null)
   const localOrder = useRef(new Map<string, (string | number)[]>())
@@ -65,8 +71,9 @@ export function AvalonFilterPanel({
     }
   }, [])
   const groups = [['stores', '', 'Stores'], ...AVALON_FACET_GROUPS] as const
+  const population = browse ? games.filter((game) => matchesBucket(game, draftBucket)) : games
   const visibleGroups = groups.flatMap(([key, , label]) => {
-    const options = avalonRuleOptions(games, facts, workspace, draft, key, allGames),
+    const options = avalonRuleOptions(population, facts, workspace, draft, key, allGames),
       selected = (draft[key] ?? []) as (string | number)[]
     if (
       !options.length ||
@@ -136,6 +143,45 @@ export function AvalonFilterPanel({
         <button onClick={close}>{fullscreen ? 'Cancel' : 'Close filters'}</button>
       </header>
       <div className="avalon-filter-fields">
+        {browse && (
+          <>
+            <label>
+              Collection
+              <select value={draftBucket} onChange={(event) => setDraftBucket(event.target.value)}>
+                <option value="all">All games</option>
+                {[
+                  ...new Set([
+                    'never_played',
+                    'bounced',
+                    'active',
+                    'stale_but_patched',
+                    'derelict',
+                    ...allGames.map((game) => game.bucket),
+                    draftBucket,
+                  ]),
+                ]
+                  .filter((key) => key !== 'all')
+                  .map((key) => (
+                    <option key={key} value={key}>
+                      {libraryBucketLabel(key)}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <label>
+              Sort
+              <select value={draftSort} onChange={(event) => setDraftSort(event.target.value)}>
+                <option value="dormant">Dormant longest</option>
+                <option value="title">Name A–Z</option>
+                <option value="title-desc">Name Z–A</option>
+                <option value="recent">Last played</option>
+                <option value="time">Playtime high to low</option>
+                <option value="time-low">Playtime low to high</option>
+                {browse.manual && <option value="list-order">List order</option>}
+              </select>
+            </label>
+          </>
+        )}
         {(datedYears.length > 0 || from || to) && (
           <div className="avalon-filter-year">
             <label>
@@ -216,6 +262,7 @@ export function AvalonFilterPanel({
             setFrom('')
             setTo('')
             setError('')
+            setDraftBucket('all')
             update({})
           }}
         >
@@ -227,7 +274,8 @@ export function AvalonFilterPanel({
             className="primary"
             disabled={!valid}
             onClick={() => {
-              apply({ ...draft, ...valid })
+              if (browse) apply({ ...draft, ...valid }, { sort: draftSort, bucket: draftBucket })
+              else apply({ ...draft, ...valid })
               close()
             }}
           >

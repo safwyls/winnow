@@ -40,7 +40,7 @@ import { libraryDefaultSort, useAvalonLists } from './avalon-list-state'
 import { useLibraryProjection, type ExpansionMark } from '../features/parity-library-projection'
 import '../features/parity-library-projection.css'
 import { usePresentationPreferences } from '../features/SettingsPreferences'
-import { clearViewState, libraryScroll, useViewState } from '../viewState'
+import { libraryScroll, useViewState } from '../viewState'
 import dragon from '../assets/dragon.svg'
 import { avalonFilter, coverGrid, coverWallExtent, dormancy, matchesBucket } from './avalon-data'
 import { AVALON_PALETTES, avalonPaletteStyle } from './avalon-palettes'
@@ -73,8 +73,8 @@ import {
   useHomeRowGeometry,
 } from './avalon-row-viewport'
 import { revealShelfCover } from './avalon-row-motion'
-import { homePageStart, homeShelfPosition } from './avalon-navigation'
-import { AvalonFullscreenGrid } from './avalon-fullscreen-grid'
+import { homePageStart, homeShelfPosition, initialGridPosition } from './avalon-navigation'
+import { AvalonFullscreenGrid, type AvalonGridHandle, type AvalonSavedGrid } from './avalon-fullscreen-grid'
 import { useSystemReducedMotion } from '../useSystemReducedMotion'
 import { Details } from '../features/Details'
 import { AvalonSearch } from './avalon-search'
@@ -97,13 +97,15 @@ function Collections({ context }: { context: ThemeContext }) {
     library.data?.lists ?? [],
     Boolean(library.data),
   )
+  const activeBucket =
+    context.mode === 'fullscreen' && bucket === 'all' && filter.installed === true ? 'installed' : bucket
   const buckets = [
     ...new Set([
       'all',
       'installed',
       'never_played',
       'stale_but_patched',
-      ...context.games.map((game) => game.bucket),
+      ...(context.mode === 'desktop' ? context.games.map((game) => game.bucket) : []),
     ]),
   ]
   return (
@@ -114,7 +116,7 @@ function Collections({ context }: { context: ThemeContext }) {
           <button
             key={id}
             data-controller-tab={context.mode === 'fullscreen' || undefined}
-            aria-pressed={context.page === 'library' && bucket === id && listId === 'all'}
+            aria-pressed={context.page === 'library' && activeBucket === id && listId === 'all'}
             data-filter-rule={
               (context.page === 'library' &&
                 list?.isLive &&
@@ -800,6 +802,18 @@ export function AvalonLibrary(context: ThemeContext) {
   const [density, setDensity] = useViewState(`${prefix}:density`, 148),
     [tools, setTools] = useViewState(`${prefix}:tools`, false)
   const [selected, setSelected] = useViewState<number | null>(`${prefix}:selected`, null)
+  const collection =
+    listId !== 'all' ? `list:${listId}` : bucket === 'all' && rules.installed === true ? 'installed' : bucket
+  const [, saveGrid] = useViewState<AvalonSavedGrid>(`${prefix}:rows`, initialGridPosition())
+  const gridControls = useRef<AvalonGridHandle>(null)
+  const previousCollection = useRef(collection)
+  useEffect(() => {
+    const changed = previousCollection.current !== collection
+    previousCollection.current = collection
+    if (!fullscreen || !changed) return
+    const frame = requestAnimationFrame(() => gridControls.current?.focusSelected())
+    return () => cancelAnimationFrame(frame)
+  }, [fullscreen, collection])
   const [selection, setSelection] = useViewState<number[]>(`${prefix}:selection`, [])
   const { filtersOpen, setFiltersOpen } = listState
   const [selectionError, setSelectionError] = useState(''),
@@ -831,9 +845,12 @@ export function AvalonLibrary(context: ThemeContext) {
   useEffect(() => {
     if (fullscreen && !games.length) {
       setSelected(null)
-      clearViewState(`${prefix}:rows`)
+      saveGrid((previous) => ({
+        ...initialGridPosition(),
+        collections: { ...previous.collections, [collection]: initialGridPosition() },
+      }))
     }
-  }, [fullscreen, games.length, prefix])
+  }, [fullscreen, games.length, prefix, collection])
   const grid = coverGrid(size.width, size.height, density, fullscreen),
     listMode = !fullscreen && view === 'list'
   const columns = listMode ? 1 : grid.columns,
@@ -1274,6 +1291,8 @@ export function AvalonLibrary(context: ThemeContext) {
                       columns={columns}
                       gap={grid.gap}
                       prefix={prefix}
+                      collection={collection}
+                      controls={gridControls}
                       selected={selected}
                       onSelected={setSelected}
                       reducedMotion={context.profile.appearance.reducedMotion || systemReducedMotion}
@@ -1395,12 +1414,25 @@ export function AvalonLibrary(context: ThemeContext) {
             </div>
             {filtersOpen && (
               <AvalonFilterPanel
-                filter={{ ...rules, ...(store === 'all' ? {} : { stores: [store] }) }}
+                filter={{
+                  ...rules,
+                  ...(store === 'all' ? {} : { stores: [store] }),
+                  ...(fullscreen && bucket === 'installed' ? { installed: true } : {}),
+                }}
+                browse={
+                  fullscreen
+                    ? {
+                        sort,
+                        bucket: bucket === 'installed' ? 'all' : bucket,
+                        manual: Boolean(listState.list && !listState.list.isLive),
+                      }
+                    : undefined
+                }
                 allGames={libraryGames}
                 optionOrder={filterOrder}
                 games={avalonFilter(libraryGames, library.data?.lists ?? [], {
                   query,
-                  bucket,
+                  bucket: fullscreen ? 'all' : bucket,
                   store: 'all',
                   listId: listState.list?.isLive ? 'all' : listId,
                   sort,
@@ -1408,8 +1440,14 @@ export function AvalonLibrary(context: ThemeContext) {
                 facts={facts}
                 workspace={workspace.data as AvalonWorkspace | undefined}
                 fullscreen={fullscreen}
-                apply={(next) => {
+                apply={(next, browse) => {
                   setStore('all')
+                  if (browse) {
+                    setSort(browse.sort)
+                    listState.setBucket(browse.bucket)
+                    setRules(next)
+                    return
+                  }
                   setRules({
                     ...next,
                     ...(rules.buckets ? { buckets: rules.buckets } : {}),

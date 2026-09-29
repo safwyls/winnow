@@ -24,12 +24,16 @@ export interface AvalonGridHandle {
   focusSelected(): void
   moveRows(delta: number): void
 }
+export type AvalonSavedGrid = AvalonGridPosition & {
+  collections?: Record<string, AvalonGridPosition>
+}
 
 export function AvalonFullscreenGrid({
   games,
   columns,
   gap,
   prefix,
+  collection,
   selected,
   onSelected,
   reducedMotion,
@@ -42,6 +46,7 @@ export function AvalonFullscreenGrid({
   columns: number
   gap: number
   prefix: string
+  collection?: string
   selected: number | null
   onSelected(id: number | null): void
   reducedMotion: boolean
@@ -56,7 +61,16 @@ export function AvalonFullscreenGrid({
 }) {
   const root = useRef<HTMLDivElement>(null),
     viewport = useRef<HTMLDivElement>(null)
-  const [saved, save] = useViewState(`${prefix}:rows`, { ...initialGridPosition(), selectedId: selected })
+  const [stored, saveStored] = useViewState<AvalonSavedGrid>(`${prefix}:rows`, {
+    ...initialGridPosition(),
+    selectedId: selected,
+  })
+  const saved = collection ? (stored.collections?.[collection] ?? initialGridPosition()) : stored
+  function save(next: AvalonGridPosition) {
+    saveStored((previous) =>
+      collection ? { ...next, collections: { ...previous.collections, [collection]: next } } : next,
+    )
+  }
   const ids = useMemo(() => games.map((game) => game.workId), [games])
   const position = reconcileGrid(saved, columns, ids)
   const rows = useMemo(
@@ -105,7 +119,7 @@ export function AvalonFullscreenGrid({
     if (JSON.stringify(saved) !== JSON.stringify(position)) save(position)
     if (position.selectedId !== selected) onSelected(position.selectedId)
     focusSelection()
-  }, [position.firstRow, position.selectedIndex, position.selectedId, columns, ids, selected])
+  }, [position.firstRow, position.selectedIndex, position.selectedId, columns, ids, selected, collection])
   useEffect(() => {
     const clear = () => {
       hadFocus.current = false

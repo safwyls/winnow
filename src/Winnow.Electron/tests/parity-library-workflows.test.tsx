@@ -229,6 +229,19 @@ const selectedCards = () =>
     )
     .map((card) => Number(card.dataset.avalonGame))
 
+function chooseBucket(mode: Mode, key: string, label: string) {
+  if (mode === 'desktop') {
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${label}\\d`) }))
+    return
+  }
+  const leave = screen.queryByRole('button', { name: 'Leave this list' })
+  if (leave) fireEvent.click(leave)
+  fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+  const panel = within(screen.getByRole('dialog', { name: 'Library filters' }))
+  fireEvent.change(panel.getByLabelText('Collection'), { target: { value: key } })
+  fireEvent.click(panel.getByRole('button', { name: 'Apply filters' }))
+}
+
 function chromeLibrary() {
   current.games = current.games.map((game, index) => ({
     ...game,
@@ -364,7 +377,7 @@ describe.each(['desktop', 'fullscreen'] as const)('Library cut bar in %s', (mode
     chromeLibrary()
     setup(mode)
     expect(screen.queryByRole('region', { name: 'Current library filters' })).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Started2' }))
+    chooseBucket(mode, 'bounced', 'Started')
     await genre(mode, 'RPG')
     const bar = screen.getByRole('region', { name: 'Current library filters' })
     expect(within(bar).getByLabelText('3 → 1')).toBeDefined()
@@ -415,9 +428,14 @@ describe.each(['desktop', 'fullscreen'] as const)('Library cut bar in %s', (mode
         .getAllByRole('button')
         .filter((button) => button.getAttribute('aria-pressed') === 'true'),
     ).toHaveLength(0)
-    expect(within(rail).getByRole('button', { name: 'Started2' }).getAttribute('data-filter-rule')).toBe(
-      'true',
-    )
+    if (mode === 'desktop')
+      expect(within(rail).getByRole('button', { name: 'Started2' }).getAttribute('data-filter-rule')).toBe(
+        'true',
+      )
+    else
+      expect(
+        screen.getByRole('button', { name: 'Remove Started filter' }).getAttribute('data-filter-origin'),
+      ).toBe('list')
     await genre(mode, 'Action')
     const added = screen.getByRole('button', { name: 'Remove Action filter' })
     expect(added.getAttribute('aria-description')).toBe('GENRE: Action — yours, not saved to this list')
@@ -457,14 +475,14 @@ describe.each(['desktop', 'fullscreen'] as const)('Library cut bar in %s', (mode
     fireEvent.click(screen.getByRole('button', { name: 'Remove search filter' }))
     expect(cards()).toEqual([1, 3])
   })
-  it('toggles the current bucket off outside a live list and clears only panel rules from the panel', async () => {
+  it('clears the current bucket and panel rules through the controls for each surface', async () => {
     chromeLibrary()
     setup(mode)
-    const started = screen.getByRole('button', { name: 'Started2' })
-    fireEvent.click(started)
-    fireEvent.click(started)
+    chooseBucket(mode, 'bounced', 'Started')
+    if (mode === 'desktop') chooseBucket(mode, 'bounced', 'Started')
+    else fireEvent.click(screen.getByRole('button', { name: 'Remove Started filter' }))
     expect(cards()).toEqual([1, 2, 3])
-    fireEvent.click(started)
+    chooseBucket(mode, 'bounced', 'Started')
     await genre(mode, 'RPG')
     fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
     const panel = screen.getByRole(mode === 'fullscreen' ? 'dialog' : 'region', { name: 'Library filters' })
@@ -472,8 +490,10 @@ describe.each(['desktop', 'fullscreen'] as const)('Library cut bar in %s', (mode
     fireEvent.click(
       within(panel).getByRole('button', { name: mode === 'fullscreen' ? 'Apply filters' : 'Close filters' }),
     )
-    expect(cards()).toEqual([1, 2])
-    expect(screen.getByRole('button', { name: 'Remove Started filter' })).toBeDefined()
+    expect(cards()).toEqual(mode === 'desktop' ? [1, 2] : [1, 2, 3])
+    if (mode === 'desktop')
+      expect(screen.getByRole('button', { name: 'Remove Started filter' })).toBeDefined()
+    else expect(screen.queryByRole('button', { name: 'Remove Started filter' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Remove RPG filter' })).toBeNull()
     if (mode === 'fullscreen') {
       expect(screen.queryByRole('slider', { name: 'Density' })).toBeNull()
@@ -597,7 +617,7 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
       expect(cards()).toEqual(order)
     }
   })
-  it('All games clears only the bucket while keeping the search and sort and remains selected twice', () => {
+  it('All games preserves desktop search, clears fullscreen search and keeps the sort and repeated selection', () => {
     current.games = [
       ...current.games,
       {
@@ -632,7 +652,9 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
       fireEvent.click(all)
       expect(selected()).toEqual([all])
       expect(cards()).toEqual([3, 2, 1, 4])
-      expect((screen.getByLabelText('Search games') as HTMLInputElement).value).toBe('zero')
+      expect((screen.getByLabelText('Search games') as HTMLInputElement).value).toBe(
+        mode === 'desktop' ? 'zero' : '',
+      )
       expect((screen.getByLabelText('Sort') as HTMLSelectElement).value).toBe('title-desc')
     }
   })
@@ -650,7 +672,9 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
     }))
     setup(mode)
     expect(cards()).toHaveLength(3)
-    for (const label of ['All games3', 'Started1', 'In rotation1', 'Never played1'])
+    for (const label of mode === 'desktop'
+      ? ['All games3', 'Started1', 'In rotation1', 'Never played1']
+      : ['All games3', 'Installed1', 'Never played1', 'Patched0'])
       expect(screen.getByRole('button', { name: label })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
     const panel = screen.getByRole(mode === 'fullscreen' ? 'dialog' : 'region', { name: 'Library filters' })
@@ -893,7 +917,7 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
   })
   it('opens manual lists in member order, leaves predefined buckets, and restores the prior/default sort on exit', async () => {
     const view = setup(mode)
-    fireEvent.click(screen.getByRole('button', { name: /^Derelict/ }))
+    chooseBucket(mode, 'derelict', 'Derelict')
     expect(cards()).toEqual([2])
     openList(10)
     expect(cards()).toEqual([3, 1, 2])
@@ -916,7 +940,7 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
   it('reopens saved live rules without inherited filters, includes newly matching titles, and clears rules when leaving', async () => {
     const view = setup(mode)
     fireEvent.change(screen.getByLabelText('Search games'), { target: { value: 'Charlie' } })
-    fireEvent.click(screen.getByRole('button', { name: /^Derelict/ }))
+    chooseBucket(mode, 'derelict', 'Derelict')
     openList(11)
     expect(cards()).toEqual([1, 2])
     expect((screen.getByLabelText('Search games') as HTMLInputElement).value).toBe('')
@@ -933,7 +957,7 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
     await waitFor(() => expect(cards()).toEqual([1, 2, 4]))
     openList(12)
     expect(cards()).toEqual([1, 4])
-    fireEvent.click(screen.getByRole('button', { name: /^Derelict/ }))
+    chooseBucket(mode, 'derelict', 'Derelict')
     expect(cards()).toEqual([2])
     expect(screen.queryByLabelText('Live list rules')).toBeNull()
     openList(11)
@@ -1450,7 +1474,7 @@ describe.each(['desktop', 'fullscreen'] as const)('original live list contracts 
       revision: 'a1',
     })
     setup(mode)
-    fireEvent.click(screen.getByRole('button', { name: 'Started1' }))
+    chooseBucket(mode, 'bounced', 'Started')
     expect(cards()).toEqual([2])
     openList(11)
     await waitFor(() => expect(cards()).toEqual([1]))
@@ -1462,15 +1486,17 @@ describe.each(['desktop', 'fullscreen'] as const)('original live list contracts 
     expect(screen.getByRole('button', { name: 'Remove Action filter' })).toBeTruthy()
     openList(11)
     fireEvent.change(screen.getByRole('textbox', { name: 'Search games' }), { target: { value: 'Disco' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Started1' }))
+    chooseBucket(mode, 'bounced', 'Started')
     expect(cards()).toEqual([2])
     expect(selectedCollection()).toBe('all')
     expect((screen.getByRole('textbox', { name: 'Search games' }) as HTMLInputElement).value).toBe('')
     expect([...document.querySelectorAll('[data-filter-origin]')].map((chip) => chip.textContent)).toEqual([
       'Started',
     ])
-    expect(screen.getByRole('button', { name: 'Started1' }).getAttribute('aria-pressed')).toBe('true')
-    expect(screen.getByRole('button', { name: 'Started1' }).getAttribute('data-filter-rule')).toBeNull()
+    if (mode === 'desktop') {
+      expect(screen.getByRole('button', { name: 'Started1' }).getAttribute('aria-pressed')).toBe('true')
+      expect(screen.getByRole('button', { name: 'Started1' }).getAttribute('data-filter-rule')).toBeNull()
+    } else expect(document.querySelectorAll('.avalon-buckets [aria-pressed="true"]')).toHaveLength(0)
     openList(11)
     fireEvent.click(screen.getByRole('button', { name: 'All games3' }))
     expect(cards()).toEqual([1, 2, 3])
@@ -1561,7 +1587,7 @@ describe.each(['desktop', 'fullscreen'] as const)('original live list contracts 
       return previous(input)
     }
     const view = setup(mode)
-    fireEvent.click(screen.getByRole('button', { name: 'Started2' }))
+    chooseBucket(mode, 'bounced', 'Started')
     await genre(mode, 'RPG')
     fireEvent.click(screen.getByRole('button', { name: 'Save filters as a live list…' }))
     expect(screen.getByRole('dialog', { name: 'Name this live list' })).toBeTruthy()
@@ -1585,7 +1611,12 @@ describe.each(['desktop', 'fullscreen'] as const)('original live list contracts 
     expect(screen.getByRole('button', { name: 'Remove RPG filter' }).getAttribute('data-filter-origin')).toBe(
       'list',
     )
-    expect(screen.getByRole('button', { name: 'Started2' }).getAttribute('data-filter-rule')).toBe('true')
+    if (mode === 'desktop')
+      expect(screen.getByRole('button', { name: 'Started2' }).getAttribute('data-filter-rule')).toBe('true')
+    else
+      expect(
+        screen.getByRole('button', { name: 'Remove Started filter' }).getAttribute('data-filter-origin'),
+      ).toBe('list')
     expect(screen.queryByRole('button', { name: 'Update Unfinished RPGs' })).toBeNull()
   })
   it('retains a live cut behind Home without marking both Home and its Library collection selected', async () => {

@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 830,
+    "pending": 821,
     "partial": 138,
-    "ported": 914,
+    "ported": 923,
     "retained-backend": 540,
     "framework-specific": 13
   },
@@ -5467,10 +5467,10 @@
       "tests": [
         {
           "file": "tests/parity-library-workflows.test.tsx",
-          "case": "toggles the current bucket off outside a live list and clears only panel rules from the panel"
+          "case": "clears the current bucket and panel rules through the controls for each surface"
         }
       ],
-      "reason": "Both composed panels clear the genre while preserving the Started bucket and its two matching games."
+      "reason": "The desktop panel clears the genre while preserving the Started bucket and its two matching games. The distinct fullscreen draft Clear filters action also clears its collection, matching FullscreenBrowseFiltersPage."
     },
     {
       "id": "FilterPanelViewModelTests.An_empty_result_from_a_filter_is_a_direction",
@@ -8751,10 +8751,10 @@
       "tests": [
         {
           "file": "tests/parity-library-workflows.test.tsx",
-          "case": "All games clears only the bucket while keeping the search and sort and remains selected twice"
+          "case": "All games preserves desktop search, clears fullscreen search and keeps the sort and repeated selection"
         }
       ],
-      "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture, compose bucket/search/descending title order, and preserve search and order across repeated All games clicks."
+      "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture and compose bucket/search/descending title order. Desktop preserves search and order across repeated All games clicks. The distinct fullscreen ChooseCollection source behavior clears search and retains sort."
     },
     {
       "id": "LibraryViewModelTests.The_view_mode_toggles_and_shows_exactly_one_view",
@@ -8979,10 +8979,10 @@
       "tests": [
         {
           "file": "tests/parity-library-workflows.test.tsx",
-          "case": "All games clears only the bucket while keeping the search and sort and remains selected twice"
+          "case": "All games preserves desktop search, clears fullscreen search and keeps the sort and repeated selection"
         }
       ],
-      "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture, compose bucket/search/descending title order, and preserve search and order across repeated All games clicks."
+      "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture and compose bucket/search/descending title order. Desktop preserves search and order across repeated All games clicks. The distinct fullscreen ChooseCollection source behavior clears search and retains sort."
     },
     {
       "id": "LibraryViewModelTests.Selecting_a_bucket_moves_the_rail_selection_off_all_games_and_back",
@@ -8991,10 +8991,10 @@
       "tests": [
         {
           "file": "tests/parity-library-workflows.test.tsx",
-          "case": "All games clears only the bucket while keeping the search and sort and remains selected twice"
+          "case": "All games preserves desktop search, clears fullscreen search and keeps the sort and repeated selection"
         }
       ],
-      "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture, compose bucket/search/descending title order, and preserve search and order across repeated All games clicks."
+      "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture and compose bucket/search/descending title order. Desktop preserves search and order across repeated All games clicks. The distinct fullscreen ChooseCollection source behavior clears search and retains sort."
     },
     {
       "id": "LibraryViewModelTests.All_games_clears_the_bucket_and_leaves_the_search_and_the_sort_alone",
@@ -9003,10 +9003,10 @@
       "tests": [
         {
           "file": "tests/parity-library-workflows.test.tsx",
-          "case": "All games clears only the bucket while keeping the search and sort and remains selected twice"
+          "case": "All games preserves desktop search, clears fullscreen search and keeps the sort and repeated selection"
         }
       ],
-      "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture, compose bucket/search/descending title order, and preserve search and order across repeated All games clicks."
+      "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture and compose bucket/search/descending title order. Desktop preserves search and order across repeated All games clicks. The distinct fullscreen ChooseCollection source behavior clears search and retains sort."
     },
     {
       "id": "LibraryViewModelTests.All_games_clicked_twice_stays_selected",
@@ -9015,10 +9015,10 @@
       "tests": [
         {
           "file": "tests/parity-library-workflows.test.tsx",
-          "case": "All games clears only the bucket while keeping the search and sort and remains selected twice"
+          "case": "All games preserves desktop search, clears fullscreen search and keeps the sort and repeated selection"
         }
       ],
-      "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture, compose bucket/search/descending title order, and preserve search and order across repeated All games clicks."
+      "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture and compose bucket/search/descending title order. Desktop preserves search and order across repeated All games clicks. The distinct fullscreen ChooseCollection source behavior clears search and retains sort."
     },
     {
       "id": "LibraryViewModelTests.All_games_returns_from_the_merge_queue",
@@ -20869,42 +20869,118 @@
     {
       "id": "FullscreenBrowseTests.Switching_collections_keeps_the_new_covers_after_queued_notifications_settle",
       "source": "tests/Winnow.Ui.Tests/FullscreenBrowseTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-fullscreen-grid.test.tsx",
+          "case": "keeps the newly selected collection viewport and covers attached after queued frames settle"
+        },
+        {
+          "file": "tests/electron/fullscreen-browse.spec.ts",
+          "case": "fullscreen triggers cycle exactly four collections, retain cover positions and leave desktop cuts alone"
+        }
+      ],
+      "reason": "All four collections retain their new viewport and cover nodes after queued render frames. The native composition also retains those nodes after library invalidation notifications."
     },
     {
       "id": "FullscreenBrowseTests.Triggers_switch_library_collections_and_leave_desktop_filters_alone",
       "source": "tests/Winnow.Ui.Tests/FullscreenBrowseTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/fullscreen-browse.test.tsx",
+          "case": "offers exactly four fullscreen shortcuts and clears its current cut without touching desktop"
+        },
+        {
+          "file": "tests/electron/fullscreen-browse.spec.ts",
+          "case": "fullscreen triggers cycle exactly four collections, retain cover positions and leave desktop cuts alone"
+        }
+      ],
+      "reason": "Native RT cycles Installed, Never played, Patched and All games; LT reverses to Patched. Each collection restores its own selected cover and row window. Desktop search and sort remain independent. Fullscreen repeats select the same collection, while desktop retains its original toggle behavior."
     },
     {
       "id": "FullscreenBrowseTests.Library_resize_adds_columns_without_cropping_or_losing_the_selected_game",
       "source": "tests/Winnow.Ui.Tests/FullscreenBrowseTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/fullscreen-browse.spec.ts",
+          "case": "fullscreen Library keeps the selected game and uncropped portrait geometry through resize and return navigation"
+        }
+      ],
+      "reason": "The original 60-game fixture at 1728x820 has more than six columns; widening to 2500 adds columns and returning restores the count. Selected identity and focus survive both changes. Test-owned 600x900 PNGs pass through production image IPC, decode, retain contain fitting and remain 2:3 within one pixel."
     },
     {
       "id": "FullscreenBrowseTests.Fitted_ultrawide_and_text_scale_reflow_both_browse_grids_with_focus_intact",
       "source": "tests/Winnow.Ui.Tests/FullscreenBrowseTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/fullscreen-browse.spec.ts",
+          "case": "ultrawide fit and large text reflow both fullscreen browse grids without losing focus or portrait fitting"
+        }
+      ],
+      "reason": "At 2560x1080, real presentation-preference writes enable ultrawide fitting and increase Library columns without losing focus. A 1.4 text scale preserves selection; dedicated Search then reduces columns when fitting is disabled, retaining focus and decoded portrait contain sizing."
     },
     {
       "id": "FullscreenBrowseTests.Filter_draft_does_not_change_collection_until_apply_or_touch_desktop",
       "source": "tests/Winnow.Ui.Tests/FullscreenBrowseTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/fullscreen-browse.test.tsx",
+          "case": "keeps fullscreen filter, collection and sort edits local until Apply without changing desktop"
+        },
+        {
+          "file": "tests/fullscreen-browse.test.tsx",
+          "case": "discards changed fullscreen sort and collection on Cancel or Back and clears only draft filters"
+        }
+      ],
+      "reason": "The composed Library leaves covers and applied sorting unchanged during installation, collection and sort edits; Apply commits them together. Desktop search and sorting remain untouched. Cancel and Escape discard drafts, and Clear filters clears only the draft filter/collection while retaining its sort."
     },
     {
       "id": "FullscreenBrowseTests.Library_directional_navigation_preserves_column_and_restores_selected_game",
       "source": "tests/Winnow.Ui.Tests/FullscreenBrowseTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-fullscreen-grid.test.tsx",
+          "case": "retains an independent selected cover and two-row position for every collection and saved list"
+        },
+        {
+          "file": "tests/electron/fullscreen-browse.spec.ts",
+          "case": "fullscreen Library keeps the selected game and uncropped portrait geometry through resize and return navigation"
+        }
+      ],
+      "reason": "Right then vertical movement preserves the column in the 60-game native grid. Returning from Home restores the selected game and focus. Separate component cases preserve each collection and manual-list row window."
     },
     {
       "id": "FullscreenBrowseTests.Library_dpad_crosses_pages_and_restores_the_previous_row",
       "source": "tests/Winnow.Ui.Tests/FullscreenBrowseTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-fullscreen-grid.test.tsx",
+          "case": "moves within two rows before sliding one row and focuses the destination immediately"
+        },
+        {
+          "file": "tests/electron/fullscreen-browse.spec.ts",
+          "case": "fullscreen Library keeps the selected game and uncropped portrait geometry through resize and return navigation"
+        }
+      ],
+      "reason": "The native grid crosses its two-row edge with two Down presses, returns to the prior row with Up and preserves the selected column. Controlled frame tests verify immediate focus, retained overlap and outgoing-row inertness."
     },
     {
       "id": "FullscreenBrowseTests.Filter_shortcut_applies_from_the_top_and_cancel_keeps_the_previous_sort",
       "source": "tests/Winnow.Ui.Tests/FullscreenBrowseTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/fullscreen-browse.spec.ts",
+          "case": "fullscreen filter drafts apply with Y from the top, cancel with B and keep Apply visible at large text"
+        }
+      ],
+      "reason": "With focus at the top of the native filter dialog, controller Y commits the edited sort, collection and installation filter. A subsequent edited sort is discarded by B, leaving the prior applied sort intact."
     },
     {
       "id": "FullscreenBrowseTests.Library_selection_reuses_its_dimmed_backdrop_for_art_transitions",
@@ -20914,7 +20990,14 @@
     {
       "id": "FullscreenBrowseTests.Filter_apply_stays_visible_at_large_text_without_scrolling",
       "source": "tests/Winnow.Ui.Tests/FullscreenBrowseTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/fullscreen-browse.spec.ts",
+          "case": "fullscreen filter drafts apply with Y from the top, cancel with B and keep Apply visible at large text"
+        }
+      ],
+      "reason": "At the original 1280x720 and 1.4 text scale, native bounds place Apply inside the viewport and outside the scrolling field container. The fullscreen panel fills its available width instead of inheriting the generic 700px dialog limit."
     },
     {
       "id": "FullscreenBrowseTests.Manual_list_actions_reorder_and_remove_the_selected_game",

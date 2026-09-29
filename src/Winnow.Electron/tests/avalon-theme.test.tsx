@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ComponentType, ReactNode } from 'react'
@@ -247,7 +247,13 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
     expect(screen.getByRole('button', { name: 'View Prey. Owned on Steam, Epic' }).textContent).toContain(
       '5h played',
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Started1' }))
+    if (mode === 'desktop') fireEvent.click(screen.getByRole('button', { name: 'Started1' }))
+    else {
+      fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+      const panel = within(screen.getByRole('dialog', { name: 'Library filters' }))
+      fireEvent.change(panel.getByLabelText('Collection'), { target: { value: 'bounced' } })
+      fireEvent.click(panel.getByRole('button', { name: 'Apply filters' }))
+    }
     expect(document.querySelectorAll('[data-avalon-game]')).toHaveLength(1)
     fireEvent.click(screen.getByRole('button', { name: 'Never played0' }))
     expect(document.querySelectorAll('[data-avalon-game]')).toHaveLength(0)
