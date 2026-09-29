@@ -23,12 +23,14 @@ const fixture = (globalThis.__backdropFixture = {
   requests: [],
   aborted: 0,
   pending: [],
+  selections: [],
 })
 const original = globalThis.fetch
 globalThis.fetch = async (input, init) => {
   const url = new URL(input instanceof Request ? input.url : input)
   if (url.hostname === '127.0.0.1' && (!init?.method || init.method === 'GET')) {
-    if (/^\/api\/v1\/works\/\d+\/backdrop$/.test(url.pathname))
+    if (/^\/api\/v1\/works\/\d+\/backdrop$/.test(url.pathname)) {
+      fixture.selections.push(Number(url.pathname.split('/')[4]))
       return Response.json({
         candidates:
           fixture.kind === 'missing'
@@ -45,6 +47,7 @@ globalThis.fetch = async (input, init) => {
               ],
         coverKey: fixture.kind === 'missing' ? null : { provider: 'fixture', id: 'cover' },
       })
+    }
     if (url.pathname === '/api/v1/artwork/image') {
       const id = url.searchParams.get('id')
       fixture.requests.push({

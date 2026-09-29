@@ -121,7 +121,7 @@ game links and install-folder access when available. Edits and library operation
 same shared controls as other compositions. Afterglow, Rift and Catalogue retain the shared
 Details screen and its existing section arrangement.
 
-Avalon's Home and Details backdrops use the backend's ranked candidates, including saved
+Avalon's Home, fullscreen Library and Details backdrops use the backend's ranked candidates, including saved
 artwork, grouped store identities, landscape art, screenshots and portrait fallback.
 Visible artwork remains while its replacement loads. Fullscreen completes each 180 ms
 crossfade before showing the latest queued result; reduced motion replaces it immediately.
@@ -129,6 +129,8 @@ Steam heroes fit their whole composition from 21:9 upward, with independent geom
 each transition layer. Desktop Details uses the palette's Surface color at 92% over art;
 fullscreen uses Ground gradients around its reading areas. The renderer cancels obsolete
 image requests and releases decoded images when replaced or detached.
+Fullscreen Library retains one backdrop across cover selections and dims the complete
+layer to 45%; filter and library-tool pages release it while they replace Browse.
 
 Avalon's **Theme typography** controls choose heading, interface and data fonts separately.
 The bundled families are always listed. **Find installed fonts** queries local family names;

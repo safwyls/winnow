@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-29 21:15'
+updated_date: '2026-09-29 21:19'
 labels: []
 dependencies: []
 priority: high
@@ -160,4 +160,6 @@ Checkpoint seventeen native repeat passes148/148with clean worker completion in5
 Plan32 implements four fullscreen collections, per-collection cover state and atomic filter/sort drafts. Component/live suite2627/130 passes; native full152 had151pass and an early resize observation failure. The fixture now saves the real ultrawide preference and polls rendered columns;20repeated native cases pass. Full152repeat is running. Fullscreen compact layout and backdrop remain outstanding.
 
 Checkpoint eighteen closes9original fullscreen Browse methods. Complete native repeat152/152passes with clean completion in6.1m; repeated focused20/20passes. Component/live2627/130passes, no skips; build/typecheck pass. The first full native resize failure was corrected by saving the owned preference and polling settled columns; expected geometry/focus assertions unchanged. Captures inspected; compact Browse layout remains unfinished. Inventory923ported540retained13framework821pending138partial. Evidence:checkpoint-eighteen.md. No AC checked; plan33implementation continues.
+
+Checkpoint nineteen adds the missing fullscreen Library selection backdrop with original45%opacity, stable node reuse, retained loading pixels and cancellation/release on departure. Build/typecheck pass, full component/live2627/130passes without skips, and all9affected native Home/Details/Library/Browse cases pass cleanly. Capture inspected; desktop unchanged. Two more source methods mapped:925ported540retained13framework819pending138partial. Full native152passed in prior checkpoint; next composition changes still require another full run. Evidence:checkpoint-nineteen.md. Plan33compact layout/options/list work continues; no AC checked.
 <!-- SECTION:NOTES:END -->

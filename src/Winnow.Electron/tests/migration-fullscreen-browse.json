@@ -1,4 +1,20 @@
 {
+  "FullscreenBrowseTests.Library_selection_reuses_its_dimmed_backdrop_for_art_transitions": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/electron/backdrop.spec.ts", "case": "fullscreen Library retains one dimmed backdrop across selected games and releases its pixels and pending request on departure" }
+    ],
+    "reason": "Native Library retains the same attached backdrop node when selection changes, resolves the selected work and keeps ready pixels during a delayed replacement. Its parent has the source opacity of 0.45. Decoded URLs and pending image requests are released on departure."
+  },
+  "FullscreenBrowseTests.Backdrop_uses_repository_screenshot_and_releases_pixels_on_detach": {
+    "status": "ported",
+    "tests": [
+      { "file": "../../tests/Winnow.Backend.Tests/BackdropArtworkTests.cs", "case": "Candidate_endpoint_preserves_grouped_choices_source_order_and_portrait_fallback_without_fetching_images" },
+      { "file": "tests/avalon-backdrop.test.ts", "case": "tries ranked artwork then screenshots before a separately sized cover fallback" },
+      { "file": "tests/electron/backdrop.spec.ts", "case": "fullscreen Library retains one dimmed backdrop across selected games and releases its pixels and pending request on departure" }
+    ],
+    "reason": "The production HTTP candidate query includes repository IGDB screenshots with their source aspect ratio. The renderer consumes ranked artwork and screenshots before cover fallback. Native decoded landscape pixels remain attached while selected, then their object URLs are released and pending image work is aborted when Library detaches."
+  },
   "FullscreenBrowseTests.Switching_collections_keeps_the_new_covers_after_queued_notifications_settle": {
     "status": "ported",
     "tests": [

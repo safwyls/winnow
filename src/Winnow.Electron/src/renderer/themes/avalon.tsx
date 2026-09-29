@@ -188,6 +188,9 @@ function Collections({ context }: { context: ThemeContext }) {
 
 export function AvalonShell(context: ThemeContext) {
   const fullscreen = context.mode === 'fullscreen'
+  const [librarySelected] = useViewState<number | null>('avalon:library:fullscreen:selected', null)
+  const [libraryToolsOpen] = useViewState('avalon:library:fullscreen:tools', false)
+  const [libraryFiltersOpen] = useViewState('avalon:library:fullscreen:filters-open', false)
   const projected = useLibraryProjection(context.games)
   const detailsModal = !fullscreen && context.page === 'details'
   const background = useRef<ReactNode>(null)
@@ -228,6 +231,18 @@ export function AvalonShell(context: ThemeContext) {
       data-pane-layout={appearance.appearance.layout}
       data-reduced-motion={context.profile.appearance.reducedMotion || undefined}
     >
+      {fullscreen &&
+        shellPage === 'library' &&
+        librarySelected !== null &&
+        !libraryToolsOpen &&
+        !libraryFiltersOpen && (
+          <div className="avalon-library-backdrop" aria-hidden="true">
+            <AvalonBackdrop
+              workId={librarySelected}
+              reducedMotion={context.profile.appearance.reducedMotion}
+            />
+          </div>
+        )}
       <header className="avalon-header">
         {fullscreen && context.page === 'details' ? (
           <button className="avalon-details-return" onClick={context.closeGame}>

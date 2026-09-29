@@ -11,6 +11,7 @@ type Fixture = {
   requests: { id: string; width: number }[]
   aborted: number
   pending: (() => void)[]
+  selections: number[]
 }
 const errors: string[] = []
 test.beforeAll(async () => {
@@ -212,7 +213,7 @@ test('detaching Home cancels the real named image request and releases retained 
     .toBeGreaterThan(pendingBefore)
   await page
     .getByRole('navigation', { name: 'Main navigation' })
-    .getByRole('button', { name: 'Library', exact: true })
+    .getByRole('button', { name: 'Activity', exact: true })
     .click()
   await expect(backdrop()).toHaveCount(0)
   await expect.poll(urls).toBe(0)
@@ -263,8 +264,89 @@ for (const mode of ['desktop', 'fullscreen'] as const)
     await expect(details).toHaveCount(0)
     await page
       .getByRole('navigation', { name: 'Main navigation' })
-      .getByRole('button', { name: 'Library', exact: true })
+      .getByRole('button', { name: 'Activity', exact: true })
       .click()
     await expect.poll(urls).toBe(0)
     expect(errors).toEqual([])
   })
+
+test('fullscreen Library retains one dimmed backdrop across selected games and releases its pixels and pending request on departure', async ({}, info) => {
+  const pending = () =>
+    application.evaluate(
+      () => (globalThis as unknown as { __backdropFixture: Fixture }).__backdropFixture.pending.length,
+    )
+  await surface('fullscreen')
+  await choose('hero')
+  await page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('button', { name: 'Library', exact: true })
+    .click()
+  const root = page.locator('.avalon-library-backdrop')
+  await expect(root.locator('[data-key="steam-hero:hero"] img')).toBeVisible()
+  expect(await root.evaluate((element) => getComputedStyle(element).opacity)).toBe('0.45')
+  const cover = page.locator('.avalon-fullscreen-grid [data-row-active="true"] [data-avalon-game]').first()
+  await cover.focus()
+  await page.evaluate(() => {
+    ;(window as unknown as { libraryBackdrop: Element }).libraryBackdrop = document.querySelector(
+      '.avalon-library-backdrop .avalon-backdrop',
+    )!
+  })
+  await application.evaluate(() => {
+    const fixture = (globalThis as unknown as { __backdropFixture: Fixture }).__backdropFixture
+    fixture.kind = 'landscape'
+    fixture.delay = true
+  })
+  await page.keyboard.press('ArrowRight')
+  const selected = Number(await page.locator('.avalon-fullscreen-grid').getAttribute('data-selected-id'))
+  await expect
+    .poll(() =>
+      application.evaluate(() =>
+        (globalThis as unknown as { __backdropFixture: Fixture }).__backdropFixture.selections.at(-1),
+      ),
+    )
+    .toBe(selected)
+  await expect(root.locator('.avalon-backdrop')).toHaveAttribute('data-loading', 'true')
+  await expect(root.locator('[data-key="steam-hero:hero"] img')).toBeVisible()
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { libraryBackdrop: Element }).libraryBackdrop ===
+        document.querySelector('.avalon-library-backdrop .avalon-backdrop'),
+    ),
+  ).toBe(true)
+  await expect.poll(pending).toBeGreaterThan(0)
+  await application.evaluate(() => {
+    const fixture = (globalThis as unknown as { __backdropFixture: Fixture }).__backdropFixture
+    fixture.delay = false
+    fixture.pending.splice(0).forEach((finish) => finish())
+  })
+  await expect(root.locator('[data-key="igdb-backdrop:landscape"] img')).toBeVisible()
+  await expect(root.locator('.avalon-backdrop')).not.toHaveAttribute('data-crossfading')
+  await expect.poll(urls).toBe(1)
+  await page.screenshot({ path: info.outputPath('library-dimmed-backdrop.png') })
+  const before = await application.evaluate(
+    () => (globalThis as unknown as { __backdropFixture: Fixture }).__backdropFixture.aborted,
+  )
+  await choose('hero', true)
+  await expect(root.locator('.avalon-backdrop')).toHaveAttribute('data-loading', 'true')
+  await expect.poll(pending).toBeGreaterThan(0)
+  await page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('button', { name: 'Activity', exact: true })
+    .click()
+  await expect(root).toHaveCount(0)
+  await expect.poll(urls).toBe(0)
+  await expect
+    .poll(() =>
+      application.evaluate(
+        () => (globalThis as unknown as { __backdropFixture: Fixture }).__backdropFixture.aborted,
+      ),
+    )
+    .toBeGreaterThan(before)
+  await application.evaluate(() => {
+    const fixture = (globalThis as unknown as { __backdropFixture: Fixture }).__backdropFixture
+    fixture.delay = false
+    fixture.pending.splice(0).forEach((finish) => finish())
+  })
+  expect(errors).toEqual([])
+})

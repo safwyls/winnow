@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 821,
+    "pending": 819,
     "partial": 138,
-    "ported": 923,
+    "ported": 925,
     "retained-backend": 540,
     "framework-specific": 13
   },
@@ -20985,7 +20985,14 @@
     {
       "id": "FullscreenBrowseTests.Library_selection_reuses_its_dimmed_backdrop_for_art_transitions",
       "source": "tests/Winnow.Ui.Tests/FullscreenBrowseTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/backdrop.spec.ts",
+          "case": "fullscreen Library retains one dimmed backdrop across selected games and releases its pixels and pending request on departure"
+        }
+      ],
+      "reason": "Native Library retains the same attached backdrop node when selection changes, resolves the selected work and keeps ready pixels during a delayed replacement. Its parent has the source opacity of 0.45. Decoded URLs and pending image requests are released on departure."
     },
     {
       "id": "FullscreenBrowseTests.Filter_apply_stays_visible_at_large_text_without_scrolling",
@@ -21032,7 +21039,22 @@
     {
       "id": "FullscreenBrowseTests.Backdrop_uses_repository_screenshot_and_releases_pixels_on_detach",
       "source": "tests/Winnow.Ui.Tests/FullscreenBrowseTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/BackdropArtworkTests.cs",
+          "case": "Candidate_endpoint_preserves_grouped_choices_source_order_and_portrait_fallback_without_fetching_images"
+        },
+        {
+          "file": "tests/avalon-backdrop.test.ts",
+          "case": "tries ranked artwork then screenshots before a separately sized cover fallback"
+        },
+        {
+          "file": "tests/electron/backdrop.spec.ts",
+          "case": "fullscreen Library retains one dimmed backdrop across selected games and releases its pixels and pending request on departure"
+        }
+      ],
+      "reason": "The production HTTP candidate query includes repository IGDB screenshots with their source aspect ratio. The renderer consumes ranked artwork and screenshots before cover fallback. Native decoded landscape pixels remain attached while selected, then their object URLs are released and pending image work is aborted when Library detaches."
     },
     {
       "id": "FullscreenBrowserInputTests.Input_lock_drops_controller_input_before_waiting_for_a_browser",

@@ -875,11 +875,15 @@
     min-height: 0;
     overflow: hidden;
   }
-  .avalon-home-backdrop {
+  .avalon-home-backdrop,
+  .avalon-library-backdrop {
     position: absolute;
     inset: 0;
     pointer-events: none;
     overflow: hidden;
+  }
+  .avalon-library-backdrop {
+    opacity: 0.45;
   }
   .avalon-home-hero {
     flex: 0 0 auto;
