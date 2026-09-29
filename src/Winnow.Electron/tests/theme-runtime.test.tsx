@@ -6,9 +6,10 @@ import type { WinnowBridge, ThemePackage } from '../src/shared/bridge'
 import { DEFAULT_PROFILE, type ThemeDefinition } from '../src/shared/theme'
 import { ThemeBoundary, applyThemeProfile, useThemeRuntime } from '../src/renderer/theming/runtime'
 
-const builtin: ThemeDefinition = { apiVersion: 1, id: 'afterglow', name: 'Afterglow', Shell: () => null }
+const builtin: ThemeDefinition = { apiVersion: 1, id: 'avalon', name: 'Avalon', Shell: () => null }
+const afterglow: ThemeDefinition = { apiVersion: 1, id: 'afterglow', name: 'Afterglow', Shell: () => null }
 const alternative: ThemeDefinition = { apiVersion: 1, id: 'catalogue', name: 'Catalogue', Shell: () => null }
-const builtins = [builtin, alternative]
+const builtins = [builtin, afterglow, alternative]
 const installed: ThemePackage = {
   id: 'reading-room',
   apiVersion: 1,
@@ -34,6 +35,44 @@ afterEach(() => {
 })
 
 describe('theme runtime recovery and lifecycle', () => {
+  it('starts and resets fresh installs with the original Avalon appearance', async () => {
+    const { result } = renderHook(() => useThemeRuntime(builtins))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.theme.id).toBe('avalon')
+    expect(result.current.profile).toEqual(DEFAULT_PROFILE)
+    expect(result.current.profile.appearance).toMatchObject({
+      palette: 'winnow',
+      accent: '#4DE8C2',
+      font: 'modern',
+      radius: 6,
+    })
+    expect(document.documentElement.style.getPropertyValue('--bg')).toBe('#0F1C1E')
+    act(() => result.current.selectTheme('catalogue'))
+    act(() => result.current.resetProfile())
+    await waitFor(() => expect(result.current.theme.id).toBe('avalon'))
+    expect(result.current.profile).toEqual(DEFAULT_PROFILE)
+  })
+
+  it('hydrates a saved Afterglow profile without replacing any appearance or layout choice', async () => {
+    const saved = {
+      ...structuredClone(DEFAULT_PROFILE),
+      themeId: 'afterglow',
+      appearance: {
+        ...DEFAULT_PROFILE.appearance,
+        palette: 'paper' as const,
+        accent: '#aabbcc',
+        font: 'editorial' as const,
+        radius: 21,
+      },
+      layout: { ...DEFAULT_PROFILE.layout, navigation: 'top' as const, cardStyle: 'landscape' as const },
+      settings: { afterglow: { quiet: true } },
+    }
+    vi.mocked(window.winnow.loadPreferences).mockResolvedValue(saved)
+    const { result } = renderHook(() => useThemeRuntime(builtins))
+    await waitFor(() => expect(result.current.theme.id).toBe('afterglow'))
+    expect(result.current.profile).toEqual(saved)
+  })
+
   it.each([false, true])(
     'applies external first-selection defaults without overwriting edits during load (edited=%s)',
     async (edited) => {
@@ -57,11 +96,23 @@ describe('theme runtime recovery and lifecycle', () => {
       act(() => document.querySelector('link[data-winnow-theme]')!.dispatchEvent(new Event('load')))
       await waitFor(() => expect(result.current.theme.id).toBe(installed.id))
       expect(result.current.profile.appearance.accent).toBe(edited ? '#abcdef' : '#88502f')
-      expect(result.current.profile.appearance.palette).toBe(edited ? 'afterglow' : 'paper')
+      expect(result.current.profile.appearance.palette).toBe(edited ? 'winnow' : 'paper')
     },
   )
 
   it('persists Rift selection and restores the saved Afterglow appearance on return', async () => {
+    vi.mocked(window.winnow.loadPreferences).mockResolvedValue({
+      ...structuredClone(DEFAULT_PROFILE),
+      themeId: 'afterglow',
+      appearance: {
+        ...DEFAULT_PROFILE.appearance,
+        palette: 'afterglow',
+        accent: '#efad80',
+        font: 'editorial',
+        radius: 18,
+      },
+      layout: { ...DEFAULT_PROFILE.layout, navigation: 'top' },
+    })
     const rift: ThemeDefinition = {
       apiVersion: 1,
       id: 'rift',
@@ -104,7 +155,7 @@ describe('theme runtime recovery and lifecycle', () => {
       themeId: 'uninstalled',
     })
     const { result } = renderHook(() => useThemeRuntime(builtins))
-    await waitFor(() => expect(result.current.profile.themeId).toBe('afterglow'))
+    await waitFor(() => expect(result.current.profile.themeId).toBe('avalon'))
     await waitFor(() => expect(result.current.notice).toContain('not installed'))
     expect(result.current.profile.appearance).toEqual(DEFAULT_PROFILE.appearance)
   })
@@ -165,8 +216,8 @@ describe('theme runtime recovery and lifecycle', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
     act(() => result.current.selectTheme('reading-room'))
     await waitFor(() => expect(result.current.notice).toContain('Missing theme module'))
-    expect(result.current.theme.id).toBe('afterglow')
-    expect(result.current.profile.themeId).toBe('afterglow')
+    expect(result.current.theme.id).toBe('avalon')
+    expect(result.current.profile.themeId).toBe('avalon')
   })
 
   it('catches a crashing screen and permits recovery after the theme changes', () => {

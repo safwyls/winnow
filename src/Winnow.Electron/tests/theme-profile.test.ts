@@ -16,6 +16,8 @@ import { DEFAULT_ARTWORK_EFFECTS, normalizeArtworkEffects } from '../src/shared/
 describe('portable appearance profiles', () => {
   it('keeps composition edits independently while motion and size follow the user', () => {
     const source = structuredClone(DEFAULT_PROFILE)
+    source.themeId = 'afterglow'
+    source.appearance.palette = 'afterglow'
     source.appearance.accent = '#d495fe'
     source.appearance.reducedMotion = true
     source.appearance.scale = 115
@@ -133,7 +135,7 @@ describe('portable appearance profiles', () => {
       background: '#020204',
       surface: '#161628',
       text: '#eeeeee',
-      muted: PALETTES.afterglow.muted,
+      muted: PALETTES.winnow.muted,
     })
     expect(parseThemeProfile(JSON.parse(JSON.stringify(custom)))).toEqual(custom)
   })

@@ -93,7 +93,7 @@ const bridge = {
       }
     else if (route === 'library.workspace')
       data = {
-        works: games.map((g) => ({ id: g.workId, title: g.title })),
+        works: games.map((g) => ({ id: g.workId, name: g.title })),
         externalIds: [],
         pluginActions: {},
         epicLaunchKeys: {},
@@ -170,7 +170,7 @@ const bridge = {
   installTheme: async () => null,
   importProfile: async () => null,
   exportProfile: async () => true,
-  openExternal: async () => {},
+  openExternal: async () => ({ opened: true }),
 }
 window.winnow = bridge as WinnowBridge
 void import('../../src/renderer/src/main')

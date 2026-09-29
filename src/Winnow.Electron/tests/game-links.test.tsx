@@ -30,7 +30,7 @@ const game: LibraryGame = {
 const workspace: Workspace = {
   preferences: { showNonGameEntries: false, showExplicitContent: false, maturityCap: 'Mature' },
   externalIds: [{ releaseId: 2, provider: 'steam', providerId: '10' }],
-  works: [{ id: 1, title: 'Test game', igdbId: 1942 }],
+  works: [{ id: 1, name: 'Test game', igdbId: 1942 }],
   epicLaunchKeys: {},
   pluginActions: {},
 }
@@ -65,7 +65,7 @@ describe('game destinations', () => {
       }),
     ).toEqual([])
     expect(
-      gameLinks(game, { ...workspace, externalIds: [], works: [{ id: 1, title: 'Game', igdbId: -1 }] }),
+      gameLinks(game, { ...workspace, externalIds: [], works: [{ id: 1, name: 'Game', igdbId: -1 }] }),
     ).toEqual([])
   })
   it('uses known Epic/GOG store URLs and the latest valid update URL', () => {
@@ -191,7 +191,7 @@ it.each(['desktop', 'fullscreen'] as const)(
 )
 
 it('reports failed external navigation and allows retry', async () => {
-  const openExternal = vi.fn().mockRejectedValueOnce(new Error('No handler')).mockResolvedValue(undefined)
+  const openExternal = vi.fn().mockRejectedValueOnce(new Error('No handler')).mockResolvedValue({opened:true})
   Object.defineProperty(window, 'winnow', { value: { openExternal }, configurable: true })
   render(<GameLinks links={[{ label: 'View in Steam', url: expected[0] }]} />)
   fireEvent.click(screen.getByRole('button', { name: 'View in Steam' }))

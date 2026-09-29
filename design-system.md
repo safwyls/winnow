@@ -2812,6 +2812,14 @@ positively — `== Mica`, `== AcrylicBlur`, `== Blur` — and never "not `None`"
 is no, transparency is treated as zero and the settings screen says so in words. The preference
 is remembered either way.
 
+Avalon's Electron path keeps the same palette and two-tier surface arithmetic. It requests
+the selected native material only on Windows 11 22H2 or later, with solid fallback for
+high contrast, reduced transparency, remote sessions and failed requests. Fullscreen is
+solid. Electron exposes no actual-material getter: the bridge reports a supported request,
+not proof of the compositor's visible effect. The normal native window frame stays in place,
+and the renderer never lowers whole-window opacity. The material's visible result needs
+native Windows inspection in addition to renderer alpha and layout tests.
+
 ### 14.4 The dormancy ramp over a translucent window
 
 §5.4's ramp is a two-layer opacity cross-fade, and the two layers are only opaque *together*.

@@ -9,6 +9,33 @@ namespace Winnow.Backend.Tests;
 public sealed class ArtworkTests
 {
     [Fact]
+    public async Task MetadataArtworkUploadAcceptsTheDocumentedSixteenMiBLimitBeforeImageValidation()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "winnow-artwork-limit-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            await using var host = BackendApplication.Build(["--data-dir", directory, "--no-sync"]);
+            var work = await host.Services.GetRequiredService<Winnow.Core.Repositories.IWorkRepository>()
+                .InsertAsync(new Winnow.Core.Domain.Work { Name = "Large artwork" });
+            await host.StartAsync();
+            using var client = WinnowApiClient.Attach(directory);
+            var metadata = await client.GetAsync<Winnow.Api.Contracts.Details.MetadataResponse>($"games/{work}/metadata");
+            // Base64 makes an allowed 16 MiB image larger than the ordinary JSON limit.
+            // Invalid image content should reach domain validation, not fail at HTTP 413.
+            var result = await client.SendAsync<Winnow.Api.Contracts.Details.UploadMetadataArtRequest,
+                Winnow.Api.Contracts.Details.MutationOutcome>(HttpMethod.Post, $"games/{work}/metadata/art-upload",
+                new("cover_url", new byte[16 * 1024 * 1024], metadata.Revision));
+            Assert.NotEqual("Applied", result.Outcome);
+            Assert.NotEqual("TooLarge", result.Outcome);
+            var unchanged = await client.GetAsync<Winnow.Api.Contracts.Details.MetadataResponse>($"games/{work}/metadata");
+            Assert.Equal(metadata.Revision, unchanged.Revision);
+            await host.StopAsync();
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Fact]
     public async Task UploadedArtworkIsVisibleToAnotherClientAndStaleResetIsRefused()
     {
         var directory = Path.Combine(Path.GetTempPath(), "winnow-artwork-edit-tests", Guid.NewGuid().ToString("N"));

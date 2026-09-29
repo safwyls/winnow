@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ApiError, createClientId, launchMessage, primaryAction, request } from '../src/renderer/api/client'
-import { feedSchema, librarySchema } from '../src/renderer/api/hooks'
+import { feedSchema, librarySchema, workspaceSchema } from '../src/renderer/api/hooks'
 import type { GameEntry, Workspace } from '../src/renderer/api/types'
 import { readEpicCallback, type EpicChallenge } from '../src/renderer/api/auth'
 
@@ -21,6 +21,12 @@ const workspace = {
   preferences: { showNonGameEntries: false, showExplicitContent: false, maturityCap: 'all' },
 } satisfies Workspace
 describe('frontend API contracts', () => {
+  it('requires the workspace domain work name instead of a projected library title', () => {
+    expect(
+      workspaceSchema.parse({ ...workspace, works: [{ id: 3, name: 'A game', igdbId: 4 }] }).works[0].name,
+    ).toBe('A game')
+    expect(() => workspaceSchema.parse({ ...workspace, works: [{ id: 3, title: 'A game' }] })).toThrow()
+  })
   it('keeps numeric feed confidence and unknown additive fields while rejecting malformed identity', () => {
     expect(
       feedSchema.parse({ shelves: [], candidateCount: 0, confidence: 2, failed: false }).confidence,

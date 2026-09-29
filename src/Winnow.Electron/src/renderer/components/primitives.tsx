@@ -45,6 +45,7 @@ export function GameCard({
       <button
         ref={interaction}
         className="game-card"
+        data-work-id={game.workId}
         data-presentation={presentation}
         data-preview={preview}
         onClick={onOpen}

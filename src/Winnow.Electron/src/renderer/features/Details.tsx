@@ -1,21 +1,39 @@
-import { useState } from 'react'
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { useInfiniteQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { ArrowLeft, ArrowUpRight, Play, Download, RefreshCw } from 'lucide-react'
-import { ApiError, dateLabel, hours, launchMessage, primaryAction, request, storeLabel } from '../api/client'
+import {
+  ApiError,
+  dateLabel,
+  hours,
+  launchMessage,
+  primaryAction,
+  request,
+  storeLabel,
+  openExternal,
+} from '../api/client'
 import { useApiQuery, useCommand, useDetails, useLibrary, useWorkspace } from '../api/hooks'
-import type { ArtworkPage, ArtworkState, GameEntry, Metadata, Mode, Workspace } from '../api/types'
+import type { ArtworkPage, ArtworkState, GameEntry, Mode, Workspace } from '../api/types'
 import { JournalEditor, SessionRows } from './Journal'
 import { Empty, Notice } from './shared'
 import { Artwork } from '../components/Artwork'
 import { useViewState } from '../viewState'
 import { gameLinks, type GameLink } from '../api/gameLinks'
+import { IgdbMatch, LibraryFacts, MetadataEditor, Screenshots, UpdateSignals } from './parity-details'
+import { SteamReportedActivity } from './activity-steam'
+import { ActivityTimeline } from './activity-timeline'
+import { ListMembershipChoice } from './parity-list-membership'
+import { AddToListButton } from './parity-list-prompt'
+import { DetailsRelationships } from './parity-details-identity'
+
+const detailScrollPositions = new WeakMap<QueryClient, Map<string, number>>()
+const editorSections = new Set(['Metadata', 'Game match', 'Artwork'])
 
 export function GameLinks({ links }: { links: GameLink[] }) {
   const [error, setError] = useState<unknown>(null)
   async function open(url: string) {
     setError(null)
     try {
-      await window.winnow.openExternal(url)
+      await openExternal(url, { failure: 'inline' })
     } catch {
       setError(
         new Error('Could not open this link. Check that a browser or Steam is available, then try again.'),
@@ -138,16 +156,90 @@ export function Details({
 }) {
   const library = useLibrary()
   const workspace = useWorkspace()
+  const client = useQueryClient()
+  let detailPositions = detailScrollPositions.get(client)
+  if (!detailPositions) {
+    detailPositions = new Map()
+    detailScrollPositions.set(client, detailPositions)
+  }
   const details = useDetails(workId)
+  const journalPreferences = useApiQuery<{ promptAfterPlay: boolean }>('journal.preferences.get')
   const game = library.data?.games.find((item) => item.workId === workId)
+  const unreadRows = (workspace.data?.buckets ?? []) as {
+    resolvedWorkId: number
+    releaseId: number
+    game: { unreadUpdateCount: number }
+  }[]
+  // Every ownership row repeats the resolved game's aggregate, including editions on other stores.
+  const unreadCount =
+    game && (game.playtimeMinutes > 0 || game.lastPlayedAt)
+      ? Math.max(
+          0,
+          ...unreadRows
+            .filter((row) => row.resolvedWorkId === workId)
+            .map((row) => row.game.unreadUpdateCount),
+        )
+      : 0
   const [tab, setTab] = useViewState(`${mode}:details:${workId}:tab`, 'Overview')
+  const [previousSection, setPreviousSection] = useViewState(
+    `${mode}:details:${workId}:previous-section`,
+    'Overview',
+  )
+  const page = useRef<HTMLElement>(null),
+    tabs = useRef<HTMLElement>(null)
+  const viewport = useRef<HTMLElement | null>(null)
+  const focusAfterReturn = useRef(false)
+  const scrollKey = `${mode}:${workId}:${tab}`
+  useLayoutEffect(() => {
+    let node = page.current?.parentElement ?? null
+    while (node && !/auto|scroll/.test(getComputedStyle(node).overflowY || getComputedStyle(node).overflow))
+      node = node.parentElement
+    viewport.current = node
+    if (node) node.scrollTop = detailPositions!.get(scrollKey) ?? 0
+    const remember = () => {
+      if (node) detailPositions!.set(scrollKey, node.scrollTop)
+    }
+    node?.addEventListener('scroll', remember)
+    if (focusAfterReturn.current) {
+      tabs.current?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.focus({ preventScroll: true })
+      focusAfterReturn.current = false
+    }
+    return () => {
+      remember()
+      node?.removeEventListener('scroll', remember)
+    }
+  }, [scrollKey])
+  function changeTab(next: string) {
+    if (viewport.current) detailPositions!.set(scrollKey, viewport.current.scrollTop)
+    if (editorSections.has(next) && !editorSections.has(tab)) setPreviousSection(tab)
+    setTab(next)
+  }
+  function backToSection() {
+    focusAfterReturn.current = true
+    changeTab(previousSection)
+  }
   const [editing, setEditing] = useViewState<number | null>(`${mode}:details:${workId}:editing`, null)
   const command = useCommand()
   const sessions = Object.values(details.data?.sessions ?? {})
     .flat()
     .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
   return (
-    <section className={`feature-page details-page mode-${mode}`}>
+    <section
+      ref={page}
+      className={`feature-page details-page mode-${mode}`}
+      onKeyDown={(event) => {
+        if (
+          event.key === 'Escape' &&
+          editorSections.has(tab) &&
+          !event.defaultPrevented &&
+          !(event.target as HTMLElement).closest('[role="dialog"], [role="alertdialog"]')
+        ) {
+          event.preventDefault()
+          event.stopPropagation()
+          backToSection()
+        }
+      }}
+    >
       {onClose && (
         <button className="back-button" onClick={onClose}>
           <ArrowLeft size={16} /> Back to your library
@@ -159,6 +251,16 @@ export function Details({
           <p className="eyebrow">{game?.bucket.replaceAll('_', ' ') ?? 'YOUR LIBRARY'}</p>
           <h1>{game?.title ?? 'Game details'}</h1>
           <p>{[game?.firstReleaseYear, game?.publisher].filter(Boolean).join(' · ')}</p>
+          {unreadCount > 0 && (
+            <button
+              onClick={() => {
+                focusAfterReturn.current = true
+                changeTab('Updates')
+              }}
+            >
+              {unreadCount} unread {unreadCount === 1 ? 'update' : 'updates'}
+            </button>
+          )}
         </div>
         <button
           disabled={command.isPending}
@@ -168,13 +270,44 @@ export function Details({
         </button>
       </header>
       <Notice error={details.error || library.error || workspace.error || command.error} />
-      <nav className="tabs" aria-label="Game information">
-        {['Overview', 'History', 'Journal', 'Metadata', 'Artwork'].map((name) => (
-          <button key={name} aria-pressed={name === tab} onClick={() => setTab(name)}>
-            {name}
-          </button>
-        ))}
+      <nav
+        ref={tabs}
+        className="tabs"
+        aria-label="Game information"
+        onKeyDown={(event) => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+          const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button'))
+          const index = buttons.indexOf(event.target as HTMLButtonElement)
+          if (index < 0) return
+          event.preventDefault()
+          const next =
+            event.key === 'Home'
+              ? 0
+              : event.key === 'End'
+                ? buttons.length - 1
+                : (index + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length
+          buttons[next]?.focus()
+          buttons[next]?.click()
+        }}
+      >
+        {['Overview', 'History', 'Updates', 'Journal', 'Library', 'Metadata', 'Game match', 'Artwork'].map(
+          (name) => (
+            <button
+              key={name}
+              data-controller-tab
+              aria-pressed={name === tab}
+              onClick={() => changeTab(name)}
+            >
+              {name}
+            </button>
+          ),
+        )}
       </nav>
+      {editorSections.has(tab) && (
+        <button className="back-button" onClick={backToSection}>
+          <ArrowLeft size={16} /> Back to {previousSection}
+        </button>
+      )}
       <div className="detail-body">
         <div className="detail-main">
           {tab === 'Overview' && (
@@ -225,63 +358,32 @@ export function Details({
                   ))}
                 </section>
               )}
-              <section className="feature-panel">
-                <h2>Updates</h2>
-                {!details.data?.events.length ? (
-                  <Empty>No update signals recorded.</Empty>
-                ) : (
-                  details.data.events.map((event) => (
-                    <article className="update-row" key={event.id}>
-                      <div>
-                        <time>{dateLabel(event.occurredAt)}</time>
-                        <h3>{event.title ?? event.kind.replaceAll('_', ' ')}</h3>
-                      </div>
-                      {event.url && (
-                        <button
-                          onClick={() => {
-                            void window.winnow.openExternal(event.url!)
-                          }}
-                        >
-                          Read
-                        </button>
-                      )}
-                    </article>
-                  ))
-                )}
-                {!!details.data?.events.length && (
-                  <button
-                    className="acknowledge-updates"
-                    disabled={command.isPending}
-                    onClick={() => {
-                      for (const releaseId of new Set(details.data!.events.map((event) => event.releaseId)))
-                        command.mutate({
-                          route: 'updates.acknowledge',
-                          params: { releaseId },
-                          body: {
-                            observedEventIds: details
-                              .data!.events.filter((event) => event.releaseId === releaseId)
-                              .map((event) => event.id),
-                          },
-                        })
-                    }}
-                  >
-                    Mark these updates read
-                  </button>
-                )}
-              </section>
+              <Screenshots key={workId} details={details.data} />
+              <UpdateSignals details={details.data} />
             </>
           )}
           {tab === 'History' && (
-            <section className="feature-panel">
-              <h2>Recorded sessions</h2>
-              <SessionRows sessions={sessions} onEdit={setEditing} />
-            </section>
+            <>
+              {game && details.data && <ActivityTimeline game={game} details={details.data} mode={mode} />}
+              <section className="feature-panel">
+                <h2>Recorded sessions</h2>
+                <SessionRows sessions={sessions} onEdit={setEditing} />
+              </section>
+              {game && <SteamReportedActivity games={[game]} mode={mode} />}
+            </>
           )}
+          {tab === 'Updates' && <UpdateSignals details={details.data} />}
           {tab === 'Journal' && (
             <section className="feature-panel">
               <h2>Your notes</h2>
               {!details.data?.journalEntries.length ? (
-                <Empty>No notes yet. Add one to a recorded session from History.</Empty>
+                <Empty>
+                  {journalPreferences.data?.promptAfterPlay === false
+                    ? 'Journal prompts are off. Turn them on in Display preferences after a game.'
+                    : journalPreferences.data?.promptAfterPlay
+                      ? 'No notes yet. After you play, Winnow will ask how it went.'
+                      : 'No notes yet. Add one to a recorded session from History.'}
+                </Empty>
               ) : (
                 details.data.journalEntries.map((note) => (
                   <article className="timeline-entry" key={note.sessionId}>
@@ -297,6 +399,13 @@ export function Details({
             </section>
           )}
           {tab === 'Metadata' && <MetadataEditor key={workId} workId={workId} />}
+          {tab === 'Game match' && <IgdbMatch key={workId} workId={workId} title={game?.title ?? ''} />}
+          {tab === 'Library' && (
+            <>
+              <LibraryFacts game={game} details={details.data} />
+              {game && <DetailsRelationships game={game} mode={mode} />}
+            </>
+          )}
           {tab === 'Artwork' && <ArtworkEditor key={workId} workId={workId} />}
         </div>
         <aside className="detail-sidebar">
@@ -312,7 +421,7 @@ export function Details({
               links={gameLinks(game, workspace.data, details.data?.events)}
             />
           )}
-          <ListMembership workId={workId} />
+          <ListMembership workId={workId} mode={mode} />
           <HideGame key={`visibility:${workId}`} workId={workId} onHidden={onClose} />
         </aside>
       </div>
@@ -358,173 +467,20 @@ export function HideGame({ workId, onHidden }: { workId: number; onHidden?: () =
   )
 }
 
-function ListMembership({ workId }: { workId: number }) {
+function ListMembership({ workId, mode }: { workId: number; mode: Mode }) {
   const library = useLibrary()
-  const command = useCommand()
   const game = library.data?.games.find((item) => item.workId === workId)
   return (
     <section className="feature-panel">
       <h2>In your lists</h2>
+      {game && <AddToListButton games={[game]} mode={mode} origin="details" />}
       {!library.data?.lists.length ? (
         <p className="muted">Create a list in Library tools.</p>
       ) : (
-        library.data.lists.map((list) => {
-          const member = game?.entries.some((entry) => list.releaseIds.includes(entry.releaseId)) ?? false
-          return (
-            <label className="check-field" key={list.id}>
-              <input
-                type="checkbox"
-                checked={member}
-                disabled={list.isLive || command.isPending || !game}
-                onChange={() =>
-                  command.mutate({
-                    route: member ? 'list.member.remove' : 'list.member.add',
-                    params: { listId: list.id },
-                    body: {
-                      releaseIds: game!.entries.map((entry) => entry.releaseId),
-                      expectedRevision: list.revision,
-                    },
-                  })
-                }
-              />
-              {list.name}
-              {list.isLive ? ' · Live list' : ''}
-            </label>
-          )
-        })
-      )}
-      <Notice error={command.error} />
-      {command.error instanceof ApiError && command.error.conflict && (
-        <p>The list changed elsewhere. Refresh it before changing membership.</p>
-      )}
-    </section>
-  )
-}
-
-function MetadataEditor({ workId }: { workId: number }) {
-  const metadata = useApiQuery<Metadata>('metadata.get', { workId })
-  const [draft, setDraft] = useViewState<{
-    field: string
-    value: string
-    revision: string
-    sending: boolean
-  } | null>(`draft:metadata:${workId}`, null)
-  const command = useCommand<{ outcome: string }>()
-  async function save(reset = false) {
-    if (!draft || draft.sending) return
-    setDraft({ ...draft, sending: true })
-    try {
-      const result = await command.mutateAsync({
-        route: reset ? 'metadata.reset' : 'metadata.put',
-        params: { workId },
-        body: { field: draft.field, value: draft.value || null, expectedRevision: draft.revision },
-      })
-      if (
-        result.outcome === 'Saved' ||
-        result.outcome === 'Changed' ||
-        result.outcome === 'Applied' ||
-        result.outcome === 'NoChange'
-      )
-        setDraft(null)
-      else setDraft((previous) => (previous ? { ...previous, sending: false } : null))
-    } catch {
-      setDraft((previous) => (previous ? { ...previous, sending: false } : null))
-    }
-  }
-  return (
-    <section className="feature-panel">
-      <h2>Metadata & sources</h2>
-      <p className="muted">Your changes override provider metadata.</p>
-      <Notice
-        error={metadata.error || command.error}
-        message={command.data ? `Metadata: ${command.data.outcome}` : undefined}
-      />
-      {metadata.data?.fields.map((field) => (
-        <div className="metadata-row" key={field.field}>
-          <div>
-            <strong>{field.field.replaceAll('_', ' ')}</strong>
-            <p>{field.value || 'Not recorded'}</p>
-            <small>{field.source ?? 'No source'}</small>
-          </div>
-          <button
-            disabled={draft?.sending}
-            onClick={() => {
-              command.reset()
-              setDraft({
-                field: field.field,
-                value: field.value ?? '',
-                revision: metadata.data!.revision,
-                sending: false,
-              })
-            }}
-          >
-            Edit
-          </button>
-        </div>
-      ))}
-      {draft && (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault()
-            void save()
-          }}
-          className="editor-form"
-        >
-          <label className="field">
-            {draft.field}
-            <textarea
-              disabled={draft.sending}
-              rows={4}
-              value={draft.value}
-              onChange={(event) => setDraft({ ...draft, value: event.target.value })}
-            />
-          </label>
-          {command.error instanceof ApiError && command.error.conflict && (
-            <div className="conflict-panel">
-              <p>
-                This game changed elsewhere. Your draft is preserved. Refresh the saved metadata before
-                deciding which version to keep.
-              </p>
-              <button disabled={draft.sending} type="button" onClick={() => void metadata.refetch()}>
-                Refresh saved metadata
-              </button>
-              {metadata.data?.revision !== draft.revision && (
-                <button
-                  disabled={draft.sending}
-                  type="button"
-                  onClick={() => {
-                    setDraft({ ...draft, revision: metadata.data!.revision })
-                    command.reset()
-                  }}
-                >
-                  Keep my draft for the next save
-                </button>
-              )}
-            </div>
-          )}
-          <div className="form-actions">
-            <button
-              className="primary-button"
-              disabled={
-                draft.sending ||
-                command.isPending ||
-                (command.error instanceof ApiError && command.error.conflict)
-              }
-            >
-              {draft.sending ? 'Saving…' : 'Save field'}
-            </button>
-            <button
-              type="button"
-              disabled={draft.sending || command.isPending}
-              onClick={() => void save(true)}
-            >
-              Use provider value
-            </button>
-            <button type="button" disabled={draft.sending} onClick={() => setDraft(null)}>
-              Cancel
-            </button>
-          </div>
-        </form>
+        game &&
+        library.data.lists
+          .filter((list) => !list.isLive)
+          .map((list) => <ListMembershipChoice key={list.id} list={list} game={game} />)
       )}
     </section>
   )

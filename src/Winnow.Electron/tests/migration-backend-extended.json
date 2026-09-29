@@ -1,0 +1,1213 @@
+{
+  "EpicLibraryTests.The_library_is_the_union_of_every_page": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained Epic HTTP pagination, cache, authentication retry and candidate merge behavior; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs",
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs"
+    ]
+  },
+  "EpicLibraryTests.A_truncated_walk_is_discarded_rather_than_passed_off_as_the_whole_library": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained Epic HTTP pagination, cache, authentication retry and candidate merge behavior; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs",
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs"
+    ]
+  },
+  "EpicLibraryTests.Playtime_absent_from_Epics_list_is_null_never_zero": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained Epic HTTP pagination, cache, authentication retry and candidate merge behavior; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs",
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs"
+    ]
+  },
+  "EpicLibraryTests.A_reported_zero_is_passed_through_as_zero": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained Epic HTTP pagination, cache, authentication retry and candidate merge behavior; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs",
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs"
+    ]
+  },
+  "EpicLibraryTests.The_playtime_unit_is_a_setting_not_a_constant": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained Epic HTTP pagination, cache, authentication retry and candidate merge behavior; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs",
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs"
+    ]
+  },
+  "EpicLibraryTests.A_failed_playtime_call_does_not_cost_the_ownership_data": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained Epic HTTP pagination, cache, authentication retry and candidate merge behavior; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs",
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs"
+    ]
+  },
+  "EpicLibraryTests.Candidates_never_claim_to_know_install_state_or_a_last_played_date": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained Epic HTTP pagination, cache, authentication retry and candidate merge behavior; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs",
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs"
+    ]
+  },
+  "EpicLibraryTests.Acquisition_dates_are_the_thing_only_the_API_can_answer": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained Epic HTTP pagination, cache, authentication retry and candidate merge behavior; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs",
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs"
+    ]
+  },
+  "EpicLibraryTests.The_library_endpoint_supplies_no_title_and_says_so_with_null": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained Epic HTTP pagination, cache, authentication retry and candidate merge behavior; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs",
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs"
+    ]
+  },
+  "EpicLibraryTests.A_second_call_inside_the_TTL_is_served_from_cache": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained Epic HTTP pagination, cache, authentication retry and candidate merge behavior; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs",
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs"
+    ]
+  },
+  "EpicLibraryTests.A_fresh_disk_cache_survives_a_client_restart_without_refetching": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained Epic HTTP pagination, cache, authentication retry and candidate merge behavior; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs",
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs"
+    ]
+  },
+  "EpicLibraryTests.A_cached_library_is_still_served_when_a_later_fetch_fails": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained Epic HTTP pagination, cache, authentication retry and candidate merge behavior; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs",
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs"
+    ]
+  },
+  "EpicLibraryTests.A_failure_is_never_cached_as_an_empty_library": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained Epic HTTP pagination, cache, authentication retry and candidate merge behavior; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs",
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs"
+    ]
+  },
+  "EpicLibraryTests.A_429_with_no_Retry_After_is_retried_on_the_exponential_schedule": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained Epic HTTP pagination, cache, authentication retry and candidate merge behavior; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs",
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs"
+    ]
+  },
+  "EpicLibraryTests.A_401_on_the_library_refreshes_once_and_retries": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained Epic HTTP pagination, cache, authentication retry and candidate merge behavior; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs",
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs"
+    ]
+  },
+  "EpicLibraryTests.A_persistent_401_degrades_instead_of_looping": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained Epic HTTP pagination, cache, authentication retry and candidate merge behavior; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs",
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs"
+    ]
+  },
+  "EpicLibraryTests.Signed_out_but_configured_makes_no_request_at_all": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained Epic HTTP pagination, cache, authentication retry and candidate merge behavior; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs",
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs"
+    ]
+  },
+  "EpicLaunchTripleTests.Moonlighter_keeps_the_same_complete_key_the_launcher_resolved": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained local manifest ingestion, persisted launch keys, sync composition and shared store-action contracts; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Application/Services/EpicLaunchKeys.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs"
+    ]
+  },
+  "EpicLaunchTripleTests.Every_owned_base_game_the_scan_reports_also_gets_a_launch_triple": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained local manifest ingestion, persisted launch keys, sync composition and shared store-action contracts; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Application/Services/EpicLaunchKeys.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs"
+    ]
+  },
+  "EpicLaunchTripleTests.The_triple_carries_the_namespace_the_catalog_holds": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained local manifest ingestion, persisted launch keys, sync composition and shared store-action contracts; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Application/Services/EpicLaunchKeys.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs"
+    ]
+  },
+  "EpicLaunchTripleTests.A_manifest_the_catalog_has_not_caught_up_with_still_yields_a_triple": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained local manifest ingestion, persisted launch keys, sync composition and shared store-action contracts; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Application/Services/EpicLaunchKeys.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs"
+    ]
+  },
+  "EpicLaunchTripleTests.A_title_delivered_by_another_launcher_gets_a_triple_too": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained local manifest ingestion, persisted launch keys, sync composition and shared store-action contracts; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Application/Services/EpicLaunchKeys.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs"
+    ]
+  },
+  "EpicLaunchTripleTests.Dlc_is_not_offered_a_triple_because_it_is_never_a_candidate": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained local manifest ingestion, persisted launch keys, sync composition and shared store-action contracts; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Application/Services/EpicLaunchKeys.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs"
+    ]
+  },
+  "EpicLaunchTripleTests.Scan_returns_exactly_what_ScanLibrary_reports_as_candidates": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained local manifest ingestion, persisted launch keys, sync composition and shared store-action contracts; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Application/Services/EpicLaunchKeys.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs"
+    ]
+  },
+  "EpicLaunchTripleTests.A_missing_launcher_yields_no_triples_and_does_not_throw": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained local manifest ingestion, persisted launch keys, sync composition and shared store-action contracts; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Application/Services/EpicLaunchKeys.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs"
+    ]
+  },
+  "EpicLaunchTripleTests.A_stored_triple_reads_back_as_a_complete_launch_key": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained local manifest ingestion, persisted launch keys, sync composition and shared store-action contracts; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Application/Services/EpicLaunchKeys.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs"
+    ]
+  },
+  "EpicLaunchTripleTests.Saving_the_same_triple_twice_updates_one_row_rather_than_failing": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained local manifest ingestion, persisted launch keys, sync composition and shared store-action contracts; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Application/Services/EpicLaunchKeys.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs"
+    ]
+  },
+  "EpicLaunchTripleTests.The_local_provider_never_overwrites_the_remote_catalog_cache": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained local manifest ingestion, persisted launch keys, sync composition and shared store-action contracts; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Application/Services/EpicLaunchKeys.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs"
+    ]
+  },
+  "EpicLaunchTripleTests.The_reader_unions_both_providers_and_the_local_row_wins": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained local manifest ingestion, persisted launch keys, sync composition and shared store-action contracts; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Application/Services/EpicLaunchKeys.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs"
+    ]
+  },
+  "EpicLaunchTripleTests.An_empty_scan_writes_nothing": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained local manifest ingestion, persisted launch keys, sync composition and shared store-action contracts; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Application/Services/EpicLaunchKeys.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs"
+    ]
+  },
+  "EpicLaunchTripleTests.Every_triple_the_fixture_scan_produces_resolves_to_a_launch_key": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained local manifest ingestion, persisted launch keys, sync composition and shared store-action contracts; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Application/Services/EpicLaunchKeys.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs"
+    ]
+  },
+  "EpicLaunchTripleTests.A_library_with_no_stored_triple_offers_no_Epic_action_at_all": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained local manifest ingestion, persisted launch keys, sync composition and shared store-action contracts; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Application/Services/EpicLaunchKeys.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs"
+    ]
+  },
+  "EpicLaunchTripleTests.One_local_sync_pass_leaves_every_Epic_row_with_a_launch_key": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained local manifest ingestion, persisted launch keys, sync composition and shared store-action contracts; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Application/Services/EpicLaunchKeys.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs"
+    ]
+  },
+  "EpicLaunchTripleTests.A_sync_with_no_store_wired_up_still_resolves_the_library": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained local manifest ingestion, persisted launch keys, sync composition and shared store-action contracts; no frontend controls are instantiated. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Application/Services/EpicLaunchKeys.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs"
+    ]
+  },
+  "AchievementEvidenceTests.Known_schema_distinguishes_zero_unlocks_and_records_global_percentages": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained HTTP evidence, account-scoped achievement storage, query and scheduler behavior with isolated fixtures. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/SteamAchievementClient.cs",
+      "src/Winnow.Application/Services/SteamAchievementSyncService.cs",
+      "src/Winnow.Data/Repositories/AchievementRepository.cs",
+      "src/Winnow.Data/Repositories/AchievementQueryRepository.cs"
+    ]
+  },
+  "AchievementEvidenceTests.Unanswered_or_malformed_schema_is_not_confirmed_absence": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained HTTP evidence, account-scoped achievement storage, query and scheduler behavior with isolated fixtures. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/SteamAchievementClient.cs",
+      "src/Winnow.Application/Services/SteamAchievementSyncService.cs",
+      "src/Winnow.Data/Repositories/AchievementRepository.cs",
+      "src/Winnow.Data/Repositories/AchievementQueryRepository.cs"
+    ]
+  },
+  "AchievementEvidenceTests.Named_game_with_explicit_empty_schema_has_no_achievements": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained HTTP evidence, account-scoped achievement storage, query and scheduler behavior with isolated fixtures. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/SteamAchievementClient.cs",
+      "src/Winnow.Application/Services/SteamAchievementSyncService.cs",
+      "src/Winnow.Data/Repositories/AchievementRepository.cs",
+      "src/Winnow.Data/Repositories/AchievementQueryRepository.cs"
+    ]
+  },
+  "AchievementEvidenceTests.Private_wrong_account_or_incomplete_progress_is_unavailable": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained HTTP evidence, account-scoped achievement storage, query and scheduler behavior with isolated fixtures. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/SteamAchievementClient.cs",
+      "src/Winnow.Application/Services/SteamAchievementSyncService.cs",
+      "src/Winnow.Data/Repositories/AchievementRepository.cs",
+      "src/Winnow.Data/Repositories/AchievementQueryRepository.cs"
+    ]
+  },
+  "AchievementEvidenceTests.Missing_global_answer_does_not_discard_valid_player_progress": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained HTTP evidence, account-scoped achievement storage, query and scheduler behavior with isolated fixtures. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/SteamAchievementClient.cs",
+      "src/Winnow.Application/Services/SteamAchievementSyncService.cs",
+      "src/Winnow.Data/Repositories/AchievementRepository.cs",
+      "src/Winnow.Data/Repositories/AchievementQueryRepository.cs"
+    ]
+  },
+  "AchievementEvidenceTests.Production_pipeline_soft_fails_auth_and_transient_errors_without_logging_identity_or_keys": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained HTTP evidence, account-scoped achievement storage, query and scheduler behavior with isolated fixtures. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/SteamAchievementClient.cs",
+      "src/Winnow.Application/Services/SteamAchievementSyncService.cs",
+      "src/Winnow.Data/Repositories/AchievementRepository.cs",
+      "src/Winnow.Data/Repositories/AchievementQueryRepository.cs"
+    ]
+  },
+  "AchievementEvidenceTests.Production_pipeline_enforces_response_ceiling": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained HTTP evidence, account-scoped achievement storage, query and scheduler behavior with isolated fixtures. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/SteamAchievementClient.cs",
+      "src/Winnow.Application/Services/SteamAchievementSyncService.cs",
+      "src/Winnow.Data/Repositories/AchievementRepository.cs",
+      "src/Winnow.Data/Repositories/AchievementQueryRepository.cs"
+    ]
+  },
+  "AchievementEvidenceTests.No_schema_and_global_failures_preserve_their_distinct_observation_times": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained HTTP evidence, account-scoped achievement storage, query and scheduler behavior with isolated fixtures. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/SteamAchievementClient.cs",
+      "src/Winnow.Application/Services/SteamAchievementSyncService.cs",
+      "src/Winnow.Data/Repositories/AchievementRepository.cs",
+      "src/Winnow.Data/Repositories/AchievementQueryRepository.cs"
+    ]
+  },
+  "AchievementEvidenceTests.Changed_schema_without_progress_does_not_combine_new_total_with_old_unlocks": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained HTTP evidence, account-scoped achievement storage, query and scheduler behavior with isolated fixtures. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/SteamAchievementClient.cs",
+      "src/Winnow.Application/Services/SteamAchievementSyncService.cs",
+      "src/Winnow.Data/Repositories/AchievementRepository.cs",
+      "src/Winnow.Data/Repositories/AchievementQueryRepository.cs"
+    ]
+  },
+  "AchievementEvidenceTests.Older_other_account_response_preserves_newer_shared_schema_and_globals_but_can_record_matching_progress": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained HTTP evidence, account-scoped achievement storage, query and scheduler behavior with isolated fixtures. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/SteamAchievementClient.cs",
+      "src/Winnow.Application/Services/SteamAchievementSyncService.cs",
+      "src/Winnow.Data/Repositories/AchievementRepository.cs",
+      "src/Winnow.Data/Repositories/AchievementQueryRepository.cs"
+    ]
+  },
+  "AchievementEvidenceTests.Account_switch_failure_and_repeat_preserve_separate_known_and_unknown_states": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained HTTP evidence, account-scoped achievement storage, query and scheduler behavior with isolated fixtures. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/SteamAchievementClient.cs",
+      "src/Winnow.Application/Services/SteamAchievementSyncService.cs",
+      "src/Winnow.Data/Repositories/AchievementRepository.cs",
+      "src/Winnow.Data/Repositories/AchievementQueryRepository.cs"
+    ]
+  },
+  "AchievementEvidenceTests.Legacy_unlocks_never_supply_a_named_accounts_progress_and_current_account_controls_query": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained HTTP evidence, account-scoped achievement storage, query and scheduler behavior with isolated fixtures. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/SteamAchievementClient.cs",
+      "src/Winnow.Application/Services/SteamAchievementSyncService.cs",
+      "src/Winnow.Data/Repositories/AchievementRepository.cs",
+      "src/Winnow.Data/Repositories/AchievementQueryRepository.cs"
+    ]
+  },
+  "AchievementEvidenceTests.Sync_requires_confirmed_key_account_positive_membership_and_respects_refresh_ttl": {
+    "status": "retained-backend",
+    "reason": "The tests exercise retained HTTP evidence, account-scoped achievement storage, query and scheduler behavior with isolated fixtures. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/SteamAchievementClient.cs",
+      "src/Winnow.Application/Services/SteamAchievementSyncService.cs",
+      "src/Winnow.Data/Repositories/AchievementRepository.cs",
+      "src/Winnow.Data/Repositories/AchievementQueryRepository.cs"
+    ]
+  },
+  "SteamPlaytimeBackfillTests.Two_years_of_year_in_review_reconstruct_a_cumulative_series": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained historical playtime worker and repositories against isolated databases, with fake history responses and no frontend controls. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs"
+    ]
+  },
+  "SteamPlaytimeBackfillTests.The_backfill_does_not_rewrite_history_up_to_the_present": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained historical playtime worker and repositories against isolated databases, with fake history responses and no frontend controls. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs"
+    ]
+  },
+  "SteamPlaytimeBackfillTests.A_re_run_is_a_no_op": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained historical playtime worker and repositories against isolated databases, with fake history responses and no frontend controls. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs"
+    ]
+  },
+  "SteamPlaytimeBackfillTests.Completed_years_are_never_refetched_and_the_current_year_always_is": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained historical playtime worker and repositories against isolated databases, with fake history responses and no frontend controls. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs"
+    ]
+  },
+  "SteamPlaytimeBackfillTests.A_failed_year_is_retried_while_an_empty_one_is_recorded_as_complete": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained historical playtime worker and repositories against isolated databases, with fake history responses and no frontend controls. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs"
+    ]
+  },
+  "SteamPlaytimeBackfillTests.A_response_for_another_account_imports_nothing_and_marks_nothing": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained historical playtime worker and repositories against isolated databases, with fake history responses and no frontend controls. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs"
+    ]
+  },
+  "SteamPlaytimeBackfillTests.A_zero_first_playtime_writes_no_record": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained historical playtime worker and repositories against isolated databases, with fake history responses and no frontend controls. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs"
+    ]
+  },
+  "SteamPlaytimeBackfillTests.First_played_records_carry_their_own_source_and_their_own_observed_at": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained historical playtime worker and repositories against isolated databases, with fake history responses and no frontend controls. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs"
+    ]
+  },
+  "SteamPlaytimeBackfillTests.A_first_played_record_is_refused_when_it_would_become_the_newest_row": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained historical playtime worker and repositories against isolated databases, with fake history responses and no frontend controls. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs"
+    ]
+  },
+  "SteamPlaytimeBackfillTests.An_unconfigured_backfill_makes_no_request_and_writes_nothing": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained historical playtime worker and repositories against isolated databases, with fake history responses and no frontend controls. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs"
+    ]
+  },
+  "SteamPlaytimeBackfillTests.An_empty_library_asks_about_no_account": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained historical playtime worker and repositories against isolated databases, with fake history responses and no frontend controls. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs"
+    ]
+  },
+  "SteamPlaytimeBackfillTests.Months_with_no_anchor_are_skipped_rather_than_guessed_at": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained historical playtime worker and repositories against isolated databases, with fake history responses and no frontend controls. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs"
+    ]
+  },
+  "SteamPlaytimeBackfillTests.An_anchor_failure_leaves_every_year_pending": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained historical playtime worker and repositories against isolated databases, with fake history responses and no frontend controls. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs"
+    ]
+  },
+  "SteamPlaytimeBackfillTests.Matching_credentials_recover_all_years_after_an_unconfirmed_pass": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained historical playtime worker and repositories against isolated databases, with fake history responses and no frontend controls. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs"
+    ]
+  },
+  "SteamAccountIdentityTests.A_sign_in_confirms_the_account_and_the_toggle_goes_live_with_no_http_call": {
+    "status": "retained-backend",
+    "reason": "LegacyConnectionAliases.cs resolves SteamSignInService to the retained Application implementation. The tests cover backend session/account confirmation and history credentials with a scripted sign-in session; native Electron sign-in is verified separately. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Connections/LegacySteamSignInService.cs",
+      "src/Winnow.Application/Services/SteamAccountConfirmation.cs",
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialFingerprint.cs"
+    ]
+  },
+  "SteamAccountIdentityTests.The_confirmation_a_sign_in_writes_is_stamped_with_the_session_not_the_key": {
+    "status": "retained-backend",
+    "reason": "LegacyConnectionAliases.cs resolves SteamSignInService to the retained Application implementation. The tests cover backend session/account confirmation and history credentials with a scripted sign-in session; native Electron sign-in is verified separately. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Connections/LegacySteamSignInService.cs",
+      "src/Winnow.Application/Services/SteamAccountConfirmation.cs",
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialFingerprint.cs"
+    ]
+  },
+  "SteamAccountIdentityTests.The_disclosure_refetch_is_a_no_op_once_a_sign_in_has_set_the_ref": {
+    "status": "retained-backend",
+    "reason": "LegacyConnectionAliases.cs resolves SteamSignInService to the retained Application implementation. The tests cover backend session/account confirmation and history credentials with a scripted sign-in session; native Electron sign-in is verified separately. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Connections/LegacySteamSignInService.cs",
+      "src/Winnow.Application/Services/SteamAccountConfirmation.cs",
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialFingerprint.cs"
+    ]
+  },
+  "SteamAccountIdentityTests.A_key_only_user_still_gets_the_disclosure_refetch": {
+    "status": "retained-backend",
+    "reason": "LegacyConnectionAliases.cs resolves SteamSignInService to the retained Application implementation. The tests cover backend session/account confirmation and history credentials with a scripted sign-in session; native Electron sign-in is verified separately. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Connections/LegacySteamSignInService.cs",
+      "src/Winnow.Application/Services/SteamAccountConfirmation.cs",
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialFingerprint.cs"
+    ]
+  },
+  "SteamAccountIdentityTests.Signing_out_clears_a_session_earned_confirmation": {
+    "status": "retained-backend",
+    "reason": "LegacyConnectionAliases.cs resolves SteamSignInService to the retained Application implementation. The tests cover backend session/account confirmation and history credentials with a scripted sign-in session; native Electron sign-in is verified separately. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Connections/LegacySteamSignInService.cs",
+      "src/Winnow.Application/Services/SteamAccountConfirmation.cs",
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialFingerprint.cs"
+    ]
+  },
+  "SteamAccountIdentityTests.Signing_out_leaves_a_key_earned_confirmation_alone": {
+    "status": "retained-backend",
+    "reason": "LegacyConnectionAliases.cs resolves SteamSignInService to the retained Application implementation. The tests cover backend session/account confirmation and history credentials with a scripted sign-in session; native Electron sign-in is verified separately. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Connections/LegacySteamSignInService.cs",
+      "src/Winnow.Application/Services/SteamAccountConfirmation.cs",
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialFingerprint.cs"
+    ]
+  },
+  "SteamAccountIdentityTests.A_session_earned_confirmation_survives_a_key_belonging_to_someone_else": {
+    "status": "retained-backend",
+    "reason": "LegacyConnectionAliases.cs resolves SteamSignInService to the retained Application implementation. The tests cover backend session/account confirmation and history credentials with a scripted sign-in session; native Electron sign-in is verified separately. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Connections/LegacySteamSignInService.cs",
+      "src/Winnow.Application/Services/SteamAccountConfirmation.cs",
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialFingerprint.cs"
+    ]
+  },
+  "SteamAccountIdentityTests.Signing_in_as_a_different_account_replaces_the_confirmation": {
+    "status": "retained-backend",
+    "reason": "LegacyConnectionAliases.cs resolves SteamSignInService to the retained Application implementation. The tests cover backend session/account confirmation and history credentials with a scripted sign-in session; native Electron sign-in is verified separately. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Connections/LegacySteamSignInService.cs",
+      "src/Winnow.Application/Services/SteamAccountConfirmation.cs",
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialFingerprint.cs"
+    ]
+  },
+  "SteamAccountIdentityTests.The_api_key_digest_is_byte_identical_to_what_shipped": {
+    "status": "retained-backend",
+    "reason": "LegacyConnectionAliases.cs resolves SteamSignInService to the retained Application implementation. The tests cover backend session/account confirmation and history credentials with a scripted sign-in session; native Electron sign-in is verified separately. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Connections/LegacySteamSignInService.cs",
+      "src/Winnow.Application/Services/SteamAccountConfirmation.cs",
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialFingerprint.cs"
+    ]
+  },
+  "SteamAccountIdentityTests.An_install_confirmed_by_a_key_before_this_stage_is_left_untouched": {
+    "status": "retained-backend",
+    "reason": "LegacyConnectionAliases.cs resolves SteamSignInService to the retained Application implementation. The tests cover backend session/account confirmation and history credentials with a scripted sign-in session; native Electron sign-in is verified separately. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Connections/LegacySteamSignInService.cs",
+      "src/Winnow.Application/Services/SteamAccountConfirmation.cs",
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialFingerprint.cs"
+    ]
+  },
+  "SteamAccountIdentityTests.A_session_fingerprint_cannot_collide_with_a_key_digest": {
+    "status": "retained-backend",
+    "reason": "LegacyConnectionAliases.cs resolves SteamSignInService to the retained Application implementation. The tests cover backend session/account confirmation and history credentials with a scripted sign-in session; native Electron sign-in is verified separately. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Connections/LegacySteamSignInService.cs",
+      "src/Winnow.Application/Services/SteamAccountConfirmation.cs",
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialFingerprint.cs"
+    ]
+  },
+  "SteamAccountIdentityTests.A_session_fingerprint_survives_a_token_rotation": {
+    "status": "retained-backend",
+    "reason": "LegacyConnectionAliases.cs resolves SteamSignInService to the retained Application implementation. The tests cover backend session/account confirmation and history credentials with a scripted sign-in session; native Electron sign-in is verified separately. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Connections/LegacySteamSignInService.cs",
+      "src/Winnow.Application/Services/SteamAccountConfirmation.cs",
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialFingerprint.cs"
+    ]
+  },
+  "SteamAccountIdentityTests.An_unidentified_session_earns_no_fingerprint": {
+    "status": "retained-backend",
+    "reason": "LegacyConnectionAliases.cs resolves SteamSignInService to the retained Application implementation. The tests cover backend session/account confirmation and history credentials with a scripted sign-in session; native Electron sign-in is verified separately. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Connections/LegacySteamSignInService.cs",
+      "src/Winnow.Application/Services/SteamAccountConfirmation.cs",
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialFingerprint.cs"
+    ]
+  },
+  "SteamAccountIdentityTests.Both_backfill_endpoints_send_the_same_credential_in_one_pass": {
+    "status": "retained-backend",
+    "reason": "LegacyConnectionAliases.cs resolves SteamSignInService to the retained Application implementation. The tests cover backend session/account confirmation and history credentials with a scripted sign-in session; native Electron sign-in is verified separately. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Connections/LegacySteamSignInService.cs",
+      "src/Winnow.Application/Services/SteamAccountConfirmation.cs",
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Enrich.SteamWeb/Credentials/SteamCredentialFingerprint.cs"
+    ]
+  },
+  "OfficialPluginInstallerTests.Browser_handoff_accepts_only_named_official_plugins_and_explicit_release": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained plugin installer and package verification lifecycle using isolated archives and stub HTTP. They do not exercise the frontend install confirmation. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/OfficialPluginInstaller.cs"
+    ]
+  },
+  "OfficialPluginInstallerTests.Malformed_handoffs_are_rejected": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained plugin installer and package verification lifecycle using isolated archives and stub HTTP. They do not exercise the frontend install confirmation. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/OfficialPluginInstaller.cs"
+    ]
+  },
+  "OfficialPluginInstallerTests.Verified_install_enables_and_loads_a_new_plugin_without_restart": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained plugin installer and package verification lifecycle using isolated archives and stub HTTP. They do not exercise the frontend install confirmation. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/OfficialPluginInstaller.cs"
+    ]
+  },
+  "OfficialPluginInstallerTests.Official_Xbox_assembly_and_manifest_become_available_without_a_restart_or_account_network_call": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained plugin installer and package verification lifecycle using isolated archives and stub HTTP. They do not exercise the frontend install confirmation. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/OfficialPluginInstaller.cs"
+    ]
+  },
+  "OfficialPluginInstallerTests.Concurrent_repeated_requests_install_once_without_replacing_loaded_code": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained plugin installer and package verification lifecycle using isolated archives and stub HTTP. They do not exercise the frontend install confirmation. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/OfficialPluginInstaller.cs"
+    ]
+  },
+  "OfficialPluginInstallerTests.Existing_builtin_and_disabled_user_plugins_keep_their_version_files_and_state": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained plugin installer and package verification lifecycle using isolated archives and stub HTTP. They do not exercise the frontend install confirmation. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/OfficialPluginInstaller.cs"
+    ]
+  },
+  "OfficialPluginInstallerTests.Installation_waits_for_discovery_before_deciding_whether_to_download": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained plugin installer and package verification lifecycle using isolated archives and stub HTTP. They do not exercise the frontend install confirmation. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/OfficialPluginInstaller.cs"
+    ]
+  },
+  "OfficialPluginInstallerTests.Cancellation_during_discovery_can_be_retried_and_does_not_download": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained plugin installer and package verification lifecycle using isolated archives and stub HTTP. They do not exercise the frontend install confirmation. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/OfficialPluginInstaller.cs"
+    ]
+  },
+  "OfficialPluginInstallerTests.Mismatched_or_unsafe_packages_are_never_published": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained plugin installer and package verification lifecycle using isolated archives and stub HTTP. They do not exercise the frontend install confirmation. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/OfficialPluginInstaller.cs"
+    ]
+  },
+  "OfficialPluginInstallerTests.Downloads_follow_only_explicit_GitHub_release_storage_redirects": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained plugin installer and package verification lifecycle using isolated archives and stub HTTP. They do not exercise the frontend install confirmation. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/OfficialPluginInstaller.cs"
+    ]
+  },
+  "OfficialPluginInstallerTests.Download_length_and_hash_are_checked_even_without_content_length": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained plugin installer and package verification lifecycle using isolated archives and stub HTTP. They do not exercise the frontend install confirmation. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/OfficialPluginInstaller.cs"
+    ]
+  },
+  "OfficialPluginInstallerTests.Cancellation_during_transfer_cleans_partial_download_and_allows_retry": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained plugin installer and package verification lifecycle using isolated archives and stub HTTP. They do not exercise the frontend install confirmation. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/OfficialPluginInstaller.cs"
+    ]
+  },
+  "OfficialPluginInstallerTests.Application_shutdown_cancels_a_transfer_even_without_a_caller_token_and_drains_it": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained plugin installer and package verification lifecycle using isolated archives and stub HTTP. They do not exercise the frontend install confirmation. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/OfficialPluginInstaller.cs"
+    ]
+  },
+  "OfficialPluginInstallerTests.Disposing_during_archive_validation_waits_for_cleanup_and_prevents_publication": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained plugin installer and package verification lifecycle using isolated archives and stub HTTP. They do not exercise the frontend install confirmation. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/OfficialPluginInstaller.cs"
+    ]
+  },
+  "OfficialPluginInstallerTests.Shutdown_after_publication_cancels_registration_before_loading_and_retains_the_package": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained plugin installer and package verification lifecycle using isolated archives and stub HTTP. They do not exercise the frontend install confirmation. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/OfficialPluginInstaller.cs"
+    ]
+  },
+  "OfficialPluginInstallerTests.An_initializer_that_finishes_after_disposal_cannot_become_active": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained plugin installer and package verification lifecycle using isolated archives and stub HTTP. They do not exercise the frontend install confirmation. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/OfficialPluginInstaller.cs"
+    ]
+  },
+  "OfficialPluginInstallerTests.Provider_startup_failure_is_reported_without_exposing_exception_text": {
+    "status": "retained-backend",
+    "reason": "The tests exercise the retained plugin installer and package verification lifecycle using isolated archives and stub HTTP. They do not exercise the frontend install confirmation. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/OfficialPluginInstaller.cs"
+    ]
+  },
+  "WinnowDataLocationTests.Old_only_moves_the_whole_tree_and_renames_the_database": {
+    "status": "retained-backend",
+    "reason": "The backend retains the existing Hoard-to-Winnow data location compatibility logic, including locked-file fallback and all sidecars. These original temporary-directory tests remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "WinnowDataLocationTests.The_moved_database_is_the_same_bytes": {
+    "status": "retained-backend",
+    "reason": "The backend retains the existing Hoard-to-Winnow data location compatibility logic, including locked-file fallback and all sidecars. These original temporary-directory tests remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "WinnowDataLocationTests.New_only_does_nothing": {
+    "status": "retained-backend",
+    "reason": "The backend retains the existing Hoard-to-Winnow data location compatibility logic, including locked-file fallback and all sidecars. These original temporary-directory tests remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "WinnowDataLocationTests.Running_twice_changes_nothing_the_second_time": {
+    "status": "retained-backend",
+    "reason": "The backend retains the existing Hoard-to-Winnow data location compatibility logic, including locked-file fallback and all sidecars. These original temporary-directory tests remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "WinnowDataLocationTests.Neither_directory_is_not_an_error": {
+    "status": "retained-backend",
+    "reason": "The backend retains the existing Hoard-to-Winnow data location compatibility logic, including locked-file fallback and all sidecars. These original temporary-directory tests remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "WinnowDataLocationTests.Both_prefers_the_new_one_and_leaves_the_legacy_tree_alone": {
+    "status": "retained-backend",
+    "reason": "The backend retains the existing Hoard-to-Winnow data location compatibility logic, including locked-file fallback and all sidecars. These original temporary-directory tests remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "WinnowDataLocationTests.A_locked_database_leaves_everything_where_it_is": {
+    "status": "retained-backend",
+    "reason": "The backend retains the existing Hoard-to-Winnow data location compatibility logic, including locked-file fallback and all sidecars. These original temporary-directory tests remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "WinnowDataLocationTests.A_locked_sidecar_also_stops_the_move": {
+    "status": "retained-backend",
+    "reason": "The backend retains the existing Hoard-to-Winnow data location compatibility logic, including locked-file fallback and all sidecars. These original temporary-directory tests remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "WinnowDataLocationTests.The_move_succeeds_once_the_lock_is_released": {
+    "status": "retained-backend",
+    "reason": "The backend retains the existing Hoard-to-Winnow data location compatibility logic, including locked-file fallback and all sidecars. These original temporary-directory tests remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "WinnowDataLocationTests.A_legacy_folder_with_no_database_still_moves_its_contents": {
+    "status": "retained-backend",
+    "reason": "The backend retains the existing Hoard-to-Winnow data location compatibility logic, including locked-file fallback and all sidecars. These original temporary-directory tests remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "WinnowDataLocationTests.A_database_with_no_sidecars_moves_cleanly": {
+    "status": "retained-backend",
+    "reason": "The backend retains the existing Hoard-to-Winnow data location compatibility logic, including locked-file fallback and all sidecars. These original temporary-directory tests remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "WinnowDataLocationTests.A_new_directory_still_holding_hoard_db_is_finished_rather_than_ignored": {
+    "status": "retained-backend",
+    "reason": "The backend retains the existing Hoard-to-Winnow data location compatibility logic, including locked-file fallback and all sidecars. These original temporary-directory tests remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "WinnowDataLocationTests.A_stale_name_that_cannot_be_renamed_is_opened_as_it_is": {
+    "status": "retained-backend",
+    "reason": "The backend retains the existing Hoard-to-Winnow data location compatibility logic, including locked-file fallback and all sidecars. These original temporary-directory tests remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "LegacyMigrationJournalTests.A_journal_written_by_Hoard_is_re_pointed_rather_than_replayed": {
+    "status": "retained-backend",
+    "reason": "The backend retains the existing DbUp journal compatibility logic, covered by these unchanged isolated-database tests in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/DatabaseInitializer.cs"
+    ]
+  },
+  "LegacyMigrationJournalTests.Re_pointing_the_journal_is_idempotent": {
+    "status": "retained-backend",
+    "reason": "The backend retains the existing DbUp journal compatibility logic, covered by these unchanged isolated-database tests in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/DatabaseInitializer.cs"
+    ]
+  },
+  "LegacyMigrationJournalTests.A_journal_holding_both_spellings_does_not_gain_a_duplicate": {
+    "status": "retained-backend",
+    "reason": "The backend retains the existing DbUp journal compatibility logic, covered by these unchanged isolated-database tests in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/DatabaseInitializer.cs"
+    ]
+  },
+  "LegacyMigrationJournalTests.A_fresh_database_has_no_journal_to_re_point": {
+    "status": "retained-backend",
+    "reason": "The backend retains the existing DbUp journal compatibility logic, covered by these unchanged isolated-database tests in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/DatabaseInitializer.cs"
+    ]
+  },
+  "AccountMembershipTests.Merge_unions_accounts_from_both_candidates": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/OwnershipAccountRepository.cs"
+    ]
+  },
+  "AccountMembershipTests.Merge_takes_the_higher_figure_within_one_account": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/OwnershipAccountRepository.cs"
+    ]
+  },
+  "AccountMembershipTests.Merge_never_combines_two_different_accounts": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/OwnershipAccountRepository.cs"
+    ]
+  },
+  "AccountMembershipTests.Merge_keeps_a_null_figure_as_unknown_rather_than_zero": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/OwnershipAccountRepository.cs"
+    ]
+  },
+  "AccountMembershipTests.The_resolver_writes_one_row_per_account": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/OwnershipAccountRepository.cs"
+    ]
+  },
+  "AccountMembershipTests.The_resolver_falls_back_to_the_candidates_own_account": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/OwnershipAccountRepository.cs"
+    ]
+  },
+  "AccountMembershipTests.A_candidate_naming_nobody_writes_nothing": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/OwnershipAccountRepository.cs"
+    ]
+  },
+  "AccountMembershipTests.Re_resolving_keeps_the_first_sighting_and_the_higher_figure": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/OwnershipAccountRepository.cs"
+    ]
+  },
+  "AccountMembershipTests.A_real_reader_retires_the_seed_marker": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/OwnershipAccountRepository.cs"
+    ]
+  },
+  "AccountMembershipTests.Account_refs_are_listed_per_store": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/OwnershipAccountRepository.cs"
+    ]
+  },
+  "AccountMembershipTests.A_within_band_disagreement_settles_at_the_lower_figure": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/OwnershipAccountRepository.cs"
+    ]
+  },
+  "AccountMembershipTests.A_rise_beyond_the_band_is_recorded_as_play": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/OwnershipAccountRepository.cs"
+    ]
+  },
+  "AccountMembershipTests.A_fall_from_a_reader_that_is_behind_is_ignored": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/OwnershipAccountRepository.cs"
+    ]
+  },
+  "AccountMembershipTests.A_fall_a_current_reader_corroborates_is_a_correction": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/OwnershipAccountRepository.cs"
+    ]
+  },
+  "AccountMembershipTests.A_fall_with_no_date_at_all_corroborates_nothing": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/OwnershipAccountRepository.cs"
+    ]
+  },
+  "AccountMembershipTests.The_two_layers_share_one_tolerance_band": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/OwnershipAccountRepository.cs"
+    ]
+  },
+  "LibrarySyncSchedulingTests.The_snapshot_scheduler_ticks_the_local_job_and_never_the_remote_one": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained background worker schedules and cancellation. The original frontend startup source guard is excluded and still requires Electron evidence. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+      "src/Winnow.Application/Services/RemoteOwnershipSchedulerService.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs"
+    ]
+  },
+  "LibrarySyncSchedulingTests.Starting_the_remote_scheduler_awaits_no_backfill": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained background worker schedules and cancellation. The original frontend startup source guard is excluded and still requires Electron evidence. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+      "src/Winnow.Application/Services/RemoteOwnershipSchedulerService.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs"
+    ]
+  },
+  "LibrarySyncSchedulingTests.A_disabled_remote_scheduler_never_backfills": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained background worker schedules and cancellation. The original frontend startup source guard is excluded and still requires Electron evidence. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+      "src/Winnow.Application/Services/RemoteOwnershipSchedulerService.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs"
+    ]
+  },
+  "LibrarySyncSchedulingTests.Stopping_mid_backfill_unwinds_cleanly": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained background worker schedules and cancellation. The original frontend startup source guard is excluded and still requires Electron evidence. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+      "src/Winnow.Application/Services/RemoteOwnershipSchedulerService.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs"
+    ]
+  },
+  "LibrarySyncSchedulingTests.The_sync_gate_admits_one_pass_at_a_time": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained background worker schedules and cancellation. The original frontend startup source guard is excluded and still requires Electron evidence. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+      "src/Winnow.Application/Services/RemoteOwnershipSchedulerService.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs"
+    ]
+  },
+  "LibrarySyncSchedulingTests.A_cancelled_wait_on_the_gate_leaves_it_free": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained background worker schedules and cancellation. The original frontend startup source guard is excluded and still requires Electron evidence. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+      "src/Winnow.Application/Services/RemoteOwnershipSchedulerService.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs"
+    ]
+  },
+  "UpdateFlagTests.The_watermark_is_the_flagging_push_and_never_the_clock": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained update watermark/undo service semantics with a fake acknowledgement store. Details view-model presentation and click flows remain separate migration work. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/UpdateFlagService.cs"
+    ]
+  },
+  "UpdateFlagTests.The_newest_correlated_push_is_the_one_acknowledged": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained update watermark/undo service semantics with a fake acknowledgement store. Details view-model presentation and click flows remain separate migration work. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/UpdateFlagService.cs"
+    ]
+  },
+  "UpdateFlagTests.An_uncorrelated_later_push_does_not_move_the_watermark": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained update watermark/undo service semantics with a fake acknowledgement store. Details view-model presentation and click flows remain separate migration work. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/UpdateFlagService.cs"
+    ]
+  },
+  "UpdateFlagTests.An_announcement_alone_is_nothing_to_dismiss": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained update watermark/undo service semantics with a fake acknowledgement store. Details view-model presentation and click flows remain separate migration work. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/UpdateFlagService.cs"
+    ]
+  },
+  "UpdateFlagTests.Another_releases_push_is_not_a_watermark_for_this_one": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained update watermark/undo service semantics with a fake acknowledgement store. Details view-model presentation and click flows remain separate migration work. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/UpdateFlagService.cs"
+    ]
+  },
+  "UpdateFlagTests.A_store_that_throws_is_reported_as_not_stored": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained update watermark/undo service semantics with a fake acknowledgement store. Details view-model presentation and click flows remain separate migration work. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/UpdateFlagService.cs"
+    ]
+  },
+  "UpdateFlagTests.With_nowhere_to_write_the_answer_is_still_an_answer": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained update watermark/undo service semantics with a fake acknowledgement store. Details view-model presentation and click flows remain separate migration work. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/UpdateFlagService.cs"
+    ]
+  },
+  "UpdateFlagTests.The_undo_revokes_rather_than_deleting": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained update watermark/undo service semantics with a fake acknowledgement store. Details view-model presentation and click flows remain separate migration work. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/UpdateFlagService.cs"
+    ]
+  },
+  "UpdateFlagTests.A_standing_watermark_is_read_back_and_a_failed_read_hides_nothing": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained update watermark/undo service semantics with a fake acknowledgement store. Details view-model presentation and click flows remain separate migration work. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/UpdateFlagService.cs"
+    ]
+  },
+  "UpdateFlagTests.Revoking_nothing_is_not_reported_as_a_failure": {
+    "status": "retained-backend",
+    "reason": "These selected methods exercise retained update watermark/undo service semantics with a fake acknowledgement store. Details view-model presentation and click flows remain separate migration work. These remain executed in the full .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/UpdateFlagService.cs"
+    ]
+  }
+}

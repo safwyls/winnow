@@ -2,13 +2,24 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { MotionConfig } from 'motion/react'
 import { AlertCircle, ArrowLeft, RotateCcw, WifiOff } from 'lucide-react'
-import type { ConnectionState } from '../shared/bridge'
+import type { ApplicationActivation, ConnectionState } from '../shared/bridge'
+import * as Dialog from '@radix-ui/react-dialog'
 import type { ThemeContext, ThemePage } from '../shared/theme'
-import { useLibrary, useFeed, useWorkspace } from './api/hooks'
+import { useLibrary, useFeed, useWorkspace, useApiQuery } from './api/hooks'
 import { ApiError, primaryAction, request } from './api/client'
 import { Details } from './features/Details'
 import { Journal } from './features/Journal'
 import { Settings } from './features/Settings'
+import { Setup } from './features/Setup'
+import type { SetupProgress } from './features/Setup'
+import { SessionNotifications } from './features/SessionNotifications'
+import { UpdateStatus } from './features/Updates'
+import { LinkNotifications } from './features/LinkNotifications'
+import { QuickMenu, OnScreenKeyboard } from './features/ControllerOverlays'
+import { controllerScope, useController } from './controller'
+import type { PresentationPreferenceValue } from './features/SettingsPreferences'
+import { OfficialPluginInstall } from './features/SettingsPreferences'
+import { avalon, AvalonShell, AvalonDiscover, AvalonLibrary } from './themes/avalon'
 import { afterglow, AfterglowShell, AfterglowDiscover, AfterglowLibrary } from './themes/afterglow'
 import { catalogue } from './themes/catalogue'
 import { rift } from './themes/rift'
@@ -20,10 +31,10 @@ import { GamePreview } from './components/GamePreview'
 import { ArtworkEffects, ArtworkEffectsProvider } from './components/artwork-effects'
 import { PortalSurface } from './components/portal-effects'
 import { normalizeArtworkEffects } from '../shared/artworkEffects'
-import { RefreshQueue, refreshSnapshots, shouldRefreshArtwork } from './refresh'
+import { RefreshQueue, refreshJournalSnapshot, refreshSnapshots, shouldRefreshArtwork } from './refresh'
 
 installThemeSDK()
-const builtins = [afterglow, rift, catalogue]
+const builtins = [avalon, afterglow, rift, catalogue]
 interface Position {
   page: ThemePage
   workId: number | null
@@ -45,6 +56,79 @@ export function App() {
     fullscreen: { page: 'discover', workId: null, previous: 'discover' },
   })
   const [notice, setNotice] = useState('')
+  const [setupOpen, setSetupOpen] = useState(false)
+  const setupProgress = useApiQuery<SetupProgress>('setup.get')
+  const [quickMenu, setQuickMenu] = useState(false)
+  const quickMenuAtRoot = useRef(true)
+  const [keyboardInput, setKeyboardInput] = useState<HTMLInputElement | HTMLTextAreaElement | null>(null)
+  const [activations, setActivations] = useState<ApplicationActivation[]>([])
+  const [installRequest, setInstallRequest] = useState<Extract<
+    ApplicationActivation,
+    { kind: 'plugin' }
+  > | null>(null)
+  const handledActivations = useRef(new WeakSet<object>())
+  useEffect(() => {
+    let alive = true
+    let pending = true
+    const buffer: ApplicationActivation[] = []
+    const receive = (value: ApplicationActivation) => {
+      if (!alive) return
+      if (pending) {
+        if (buffer.length < 64) buffer.push(value)
+        return
+      }
+      setActivations((items) => [...items, value].slice(0, 64))
+    }
+    const stop = window.winnow.onActivation?.(receive)
+    void (window.winnow.takeActivations?.() ?? Promise.resolve([]))
+      .then((values) => {
+        pending = false
+        if (alive) setActivations((items) => [...items, ...values, ...buffer].slice(0, 64))
+      })
+      .catch(() => {
+        pending = false
+        if (alive) setActivations((items) => [...items, ...buffer].slice(0, 64))
+      })
+    return () => {
+      alive = false
+      stop?.()
+    }
+  }, [])
+  const presentation = useApiQuery<PresentationPreferenceValue[]>('preferences.presentation.get')
+  const preferences = Object.fromEntries((presentation.data ?? []).map((row) => [row.preference, row.value]))
+  const fullscreenMotion = mode === 'fullscreen' && preferences.FullscreenReducedMotion === 'true'
+  const reducedMotion = runtime.profile.appearance.reducedMotion || fullscreenMotion
+  useEffect(() => {
+    const clamp = (value: string | null | undefined, fallback: number, min: number, max: number) => {
+      const number = value === null || value === undefined ? fallback : Number(value)
+      return Number.isFinite(number) ? Math.max(min, Math.min(max, number)) : fallback
+    }
+    const root = document.documentElement
+    root.dataset.mode = mode
+    root.style.setProperty(
+      '--fullscreen-interface-scale',
+      String(mode === 'fullscreen' ? clamp(preferences.FullscreenInterfaceScale, 1, 0.8, 1.2) : 1),
+    )
+    root.style.setProperty(
+      '--fullscreen-text-scale',
+      String(mode === 'fullscreen' ? clamp(preferences.FullscreenTextScale, 1, 0.7, 1.4) : 1),
+    )
+    root.style.setProperty(
+      '--fullscreen-safe-margin',
+      `${mode === 'fullscreen' ? clamp(preferences.FullscreenSafeMargin, 5, 0, 10) : 0}%`,
+    )
+    root.dataset.fitUltrawide = String(preferences.FullscreenFitUltrawide === 'true')
+    root.dataset.dimDormant = String(preferences.DimDormantCovers !== 'false')
+    root.classList.toggle('reduced-motion', reducedMotion)
+  }, [
+    mode,
+    preferences.FullscreenInterfaceScale,
+    preferences.FullscreenTextScale,
+    preferences.FullscreenSafeMargin,
+    preferences.FullscreenFitUltrawide,
+    preferences.DimDormantCovers,
+    reducedMotion,
+  ])
   const launchAttempts = useRef(new Map<number, { operationId: string; action: string }>())
   const position = positions[mode]
   const navigate = useCallback(
@@ -88,7 +172,19 @@ export function App() {
       refreshArtwork = false
       return refreshSnapshots(client, { artwork })
     })
+    const journalIds = new Set<number>()
+    const journalQueue = new RefreshQueue(async () => {
+      const ids = [...journalIds]
+      journalIds.clear()
+      await Promise.all(ids.map((id) => refreshJournalSnapshot(client, id)))
+    })
     const stop = window.winnow.onEvent((event) => {
+      const journal = /^sessions\/([1-9]\d*)\/journal$/.exec(event.resource ?? '')
+      if (event.kind === 'library.changed' && journal && Number.isSafeInteger(Number(journal[1]))) {
+        journalIds.add(Number(journal[1]))
+        journalQueue.request()
+        return
+      }
       refreshArtwork ||= shouldRefreshArtwork(event)
       queue.request()
     })
@@ -104,11 +200,15 @@ export function App() {
       stop()
       stopConnection()
       queue.dispose()
+      journalQueue.dispose()
     }
   }, [client])
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return
+      if (setupOpen && event.key !== 'F11') return
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        if (controllerScope() !== document) return
         event.preventDefault()
         navigate('library')
         setTimeout(() => document.querySelector<HTMLInputElement>('[data-library-search]')?.focus(), 50)
@@ -122,14 +222,14 @@ export function App() {
         runtime.resetProfile()
         navigate('studio')
       }
-      if (event.key === 'Escape' && !document.querySelector('[role="dialog"]')) {
+      if (event.key === 'Escape' && controllerScope() === document) {
         if (position.page === 'details') navigate(position.previous)
         else if (mode === 'fullscreen') toggleFullscreen()
       }
     }
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
-  }, [mode, position, navigate, toggleFullscreen, runtime.resetProfile])
+  }, [mode, position, navigate, toggleFullscreen, runtime.resetProfile, setupOpen])
   useEffect(() => {
     document.title = `Winnow · ${runtime.theme.name}`
   }, [runtime.theme.name])
@@ -148,12 +248,55 @@ export function App() {
     }
     lastNavigation.current = { page: position.page, mode, themeId: runtime.theme.id }
   }, [position.page, position.workId, mode, runtime.theme.id])
-  useGamepad(mode === 'fullscreen')
+  useEffect(() => {
+    setKeyboardInput(null)
+    setQuickMenu(false)
+  }, [mode, position.page])
+  useController({
+    enabled: mode === 'fullscreen',
+    menu: () => {
+      if (setupOpen || keyboardInput || quickMenu) return
+      if (mode !== 'fullscreen') {
+        toggleFullscreen()
+        return
+      }
+      quickMenuAtRoot.current =
+        controllerScope() === document &&
+        ['discover', 'library', 'journal', 'settings'].includes(position.page)
+      setQuickMenu(true)
+    },
+    search: () => {
+      if (setupOpen) return
+      navigate('library')
+      setTimeout(() => document.querySelector<HTMLInputElement>('[data-library-search]')?.focus(), 50)
+    },
+    switchPage: (delta) => {
+      if (setupOpen) return
+      const pages: ThemePage[] = ['discover', 'library', 'journal', 'settings']
+      const index = pages.indexOf(position.page)
+      if (index >= 0) navigate(pages[(index + delta + pages.length) % pages.length])
+    },
+    keyboard: setKeyboardInput,
+    play: () => {
+      if (controllerScope() !== document) return
+      const workId = Number(
+        document.activeElement?.closest('[data-work-id]')?.getAttribute('data-work-id') ?? position.workId,
+      )
+      const game = library.data?.games.find((game) => game.workId === workId)
+      const entry = game?.entries.find((entry) => entry.installed && primaryAction(entry, workspace.data))
+      if (entry)
+        void context.actions
+          .launch(entry.ownershipId)
+          .catch((error) =>
+            setNotice(error instanceof Error ? error.message : 'The game could not be started.'),
+          )
+    },
+  })
   let context: ThemeContext
   const renderScreen = (page: ThemePage = position.page) => {
     if (page === 'studio') return <ThemeStudio runtime={runtime} />
-    if (page === 'discover') return <AfterglowDiscover {...context} />
-    if (page === 'library') return <AfterglowLibrary {...context} />
+    if (page === 'discover') return <AvalonDiscover {...context} />
+    if (page === 'library') return <AvalonLibrary {...context} />
     if (page === 'journal') return <Journal mode={mode} onOpenGame={openGame} />
     if (page === 'settings') return <Settings mode={mode} />
     return position.workId !== null ? (
@@ -173,8 +316,13 @@ export function App() {
     toggleFullscreen,
     games: library.data?.games ?? [],
     feed: feed.data,
+    feedLoading: feed.isPending,
+    feedFailed: feed.isError || feed.data?.failed,
     loading: library.isPending,
-    profile: runtime.profile,
+    profileHydrated: !runtime.loading,
+    profile: fullscreenMotion
+      ? { ...runtime.profile, appearance: { ...runtime.profile.appearance, reducedMotion: true } }
+      : runtime.profile,
     children: null,
     renderScreen,
     actions: {
@@ -201,6 +349,47 @@ export function App() {
     },
     components: { GameCard, Impression, Artwork, ArtworkEffects, GamePreview, PortalSurface },
   }
+  const activationContext = useRef(context)
+  activationContext.current = context
+  useEffect(() => {
+    const activation = activations[0]
+    if (
+      !activation ||
+      setupProgress.isPending ||
+      setupProgress.isError ||
+      typeof setupProgress.data?.step === 'number' ||
+      setupOpen ||
+      installRequest ||
+      (activation.kind === 'game' && (library.isPending || !workspace.data))
+    )
+      return
+    setActivations((items) => items.slice(1))
+    if (handledActivations.current.has(activation)) return
+    handledActivations.current.add(activation)
+    if (activation.kind === 'fullscreen') {
+      if (mode !== 'fullscreen')
+        void window.winnow
+          .setFullscreen(true)
+          .then(() => setMode('fullscreen'))
+          .catch(() => setNotice('Fullscreen could not be opened.'))
+    } else if (activation.kind === 'game') {
+      void activationContext.current.actions
+        .launch(activation.ownershipId)
+        .catch((error) =>
+          setNotice(error instanceof Error ? error.message : 'This game could not be started.'),
+        )
+    } else if (activation.kind === 'plugin') setInstallRequest(activation)
+  }, [
+    activations,
+    setupProgress.isPending,
+    setupProgress.isError,
+    setupProgress.data?.step,
+    setupOpen,
+    installRequest,
+    library.isPending,
+    workspace.data,
+    mode,
+  ])
   const screenNames = {
     discover: 'Discover',
     library: 'Library',
@@ -216,12 +405,12 @@ export function App() {
       {Screen ? <Screen {...context} /> : renderScreen()}
     </div>
   )
-  const Shell = runtime.theme.Shell ?? AfterglowShell
+  const Shell = runtime.theme.Shell ?? AvalonShell
   return (
-    <MotionConfig reducedMotion={runtime.profile.appearance.reducedMotion ? 'always' : 'user'}>
+    <MotionConfig reducedMotion={reducedMotion ? 'always' : 'user'}>
       <ArtworkEffectsProvider
         options={normalizeArtworkEffects(runtime.profile.appearance.artwork)}
-        reducedMotion={runtime.profile.appearance.reducedMotion}
+        reducedMotion={reducedMotion}
       >
         <a className="skip-link" href="#main-content">
           Skip to content
@@ -271,7 +460,7 @@ export function App() {
                   }}
                 >
                   <RotateCcw size={18} />
-                  Restore Afterglow
+                  Restore Avalon
                 </button>
               </div>
             }
@@ -279,6 +468,64 @@ export function App() {
             <Shell {...context}>{content}</Shell>
           </ThemeBoundary>
         </div>
+        <Setup
+          mode={mode}
+          onOpenChange={setSetupOpen}
+          appearance={
+            <label className="field">
+              Winnow design
+              <select
+                value={runtime.profile.themeId}
+                onChange={(event) => runtime.selectTheme(event.target.value)}
+              >
+                {runtime.builtins.map((theme) => (
+                  <option key={theme.id} value={theme.id}>
+                    {theme.name}
+                  </option>
+                ))}
+              </select>
+              <small>You can adjust colors and typography in Theme Studio.</small>
+            </label>
+          }
+        />
+        <SessionNotifications mode={mode} suspended={setupOpen} />
+        {!setupOpen && <UpdateStatus />}
+        <LinkNotifications />
+        <Dialog.Root
+          open={!!installRequest && !setupOpen}
+          onOpenChange={(open) => {
+            if (!open) setInstallRequest(null)
+          }}
+        >
+          <Dialog.Portal>
+            <Dialog.Overlay className="dialog-overlay" />
+            <Dialog.Content className={`dialog-content mode-${mode}`}>
+              <Dialog.Title>Review provider installation</Dialog.Title>
+              <Dialog.Description>
+                The link selected this official provider. Review it before installing code that runs on this
+                computer.
+              </Dialog.Description>
+              {installRequest && (
+                <OfficialPluginInstall
+                  key={`${installRequest.pluginId}:${installRequest.releaseTag}`}
+                  initialRequest={installRequest}
+                />
+              )}
+              <Dialog.Close asChild>
+                <button>Close</button>
+              </Dialog.Close>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+        {quickMenu && (
+          <QuickMenu
+            atRoot={quickMenuAtRoot.current}
+            close={() => setQuickMenu(false)}
+            navigate={navigate}
+            exit={toggleFullscreen}
+          />
+        )}
+        {keyboardInput && <OnScreenKeyboard input={keyboardInput} close={() => setKeyboardInput(null)} />}
         <button
           className="recovery-shortcut"
           title="Restore default theme (Ctrl+Shift+T)"
@@ -293,52 +540,4 @@ export function App() {
       </ArtworkEffectsProvider>
     </MotionConfig>
   )
-}
-
-function useGamepad(enabled: boolean) {
-  useEffect(() => {
-    if (!enabled) return
-    let frame = 0,
-      last = 0,
-      previousButtons: boolean[] = []
-    const move = (direction: number) => {
-      const candidates = [
-        ...document.querySelectorAll<HTMLElement>(
-          'button:not(:disabled), input, select, textarea, [tabindex="0"]',
-        ),
-      ].filter(
-        (element) =>
-          !element.closest('[inert], [hidden]') &&
-          element.getBoundingClientRect().width > 0 &&
-          element.getBoundingClientRect().height > 0,
-      )
-      const index = candidates.indexOf(document.activeElement as HTMLElement)
-      candidates[(index + direction + candidates.length) % candidates.length]?.focus()
-    }
-    const tick = (time: number) => {
-      const pad = navigator.getGamepads?.().find(Boolean)
-      if (pad) {
-        const buttons = pad.buttons.map((button) => button.pressed)
-        if (buttons[0] && !previousButtons[0]) (document.activeElement as HTMLElement)?.click()
-        if (buttons[1] && !previousButtons[1])
-          (document.activeElement ?? document.body).dispatchEvent(
-            new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
-          )
-        const axis = pad.axes[1] ?? 0
-        if (time - last > 180) {
-          if (buttons[13] || buttons[15] || axis > 0.5) {
-            move(1)
-            last = time
-          } else if (buttons[12] || buttons[14] || axis < -0.5) {
-            move(-1)
-            last = time
-          }
-        }
-        previousButtons = buttons
-      }
-      frame = requestAnimationFrame(tick)
-    }
-    frame = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(frame)
-  }, [enabled])
 }

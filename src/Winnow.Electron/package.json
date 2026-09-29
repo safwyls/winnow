@@ -1,6 +1,6 @@
 {
   "name": "winnow-electron",
-  "productName": "Winnow Afterglow",
+  "productName": "Winnow",
   "version": "0.1.0",
   "private": true,
   "description": "An extensible Electron frontend for Winnow",
@@ -12,6 +12,10 @@
     "build": "tsc --noEmit && electron-vite build",
     "preview": "electron-vite preview --skipBuild --",
     "test": "vitest run",
+    "test:integration": "node scripts/test-integration.mjs",
+    "test:rendered": "npm run build && playwright test",
+    "test:migration": "node scripts/migration-audit.mjs --require-complete",
+    "migration:report": "node scripts/migration-audit.mjs --write-report",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write src tests scripts examples *.json *.ts README.md",
     "backend:publish": "node scripts/publish-backend.mjs",
@@ -44,17 +48,38 @@
       }
     ],
     "win": {
-      "target": "portable",
+      "target": [
+        "nsis",
+        "portable"
+      ],
       "icon": "resources/icon.ico",
       "signExecutable": false
     },
     "linux": {
       "target": "AppImage",
+      "artifactName": "Winnow-Electron-${version}-linux-${arch}.${ext}",
       "category": "Game"
     },
     "mac": {
-      "target": "dmg"
-    }
+      "target": "dmg",
+      "artifactName": "Winnow-Electron-${version}-mac-${arch}.${ext}"
+    },
+    "nsis": {
+      "artifactName": "Winnow-Electron-${version}-win-${arch}-Setup.${ext}",
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false
+    },
+    "portable": {
+      "artifactName": "Winnow-Electron-${version}-win-${arch}-Portable.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "safwyls",
+        "repo": "winnow"
+      }
+    ]
   },
   "dependencies": {
     "@fontsource/dm-sans": "5.3.0",
@@ -63,6 +88,8 @@
     "@radix-ui/react-dialog": "1.1.23",
     "@tanstack/react-query": "5.104.0",
     "@tanstack/react-virtual": "3.14.13",
+    "builder-util-runtime": "9.7.0",
+    "electron-updater": "6.8.9",
     "lucide-react": "1.48.0",
     "motion": "13.4.4",
     "pixi.js": "8.21.0",
@@ -71,6 +98,7 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@testing-library/react": "16.3.3",
     "@types/node": "26.6.3",
     "@types/react": "19.3.0",

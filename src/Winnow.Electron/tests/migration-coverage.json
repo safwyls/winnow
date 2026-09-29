@@ -1,0 +1,27 @@
+{
+  "SingleInstanceActivationTests.Uri_arguments_are_validated_before_accepting_other_startup_options": {
+    "status": "ported",
+    "tests": [{"file":"tests/parity-activation.test.ts","case":"validates URI launch arguments before accepting a data directory"}],
+    "reason": "Covers the original valid and rejected startup argument matrix. The main entry validates URI syntax before reading or creating a data directory."
+  },
+  "TaskbarJumpListControllerTests.Recent_games_are_launchable_ordered_and_limited_to_ten": {
+    "status": "ported",
+    "tests": [{"file":"tests/parity-native-refresh.test.ts","case":"publishes only playable recent games in descending order with a ten-item limit"}],
+    "reason": "Exercises the same recent-item projection contract, including uninstalled entries, missing identity, missing date, descending order and ten-item limit."
+  },
+  "SingleInstanceActivationTests.Typed_requests_preserve_order_until_ready_including_cold_start": {
+    "status": "partial",
+    "tests": [{"file":"tests/app.test.tsx","case":"delivers startup activations before a newer event received during the pending handshake"}],
+    "reason": "The composed renderer preserves startup/event ordering and waits for setup. The original full queue matrix and native process readiness sequences need further migration."
+  },
+  "SingleInstanceActivationTests.Second_process_activates_owner_and_exits_before_database_initialization": {
+    "status": "partial",
+    "tests": [{"file":"tests/electron/parity.spec.ts","case":"a second process delivers fullscreen and reviewed plugin activation to the same library session"}],
+    "reason": "Rendered Electron exercises real second-process handoff and unchanged backend process/epoch for fullscreen and plugin review. Other original process launch variants remain to be migrated."
+  },
+  "GameLinkRouterTests.Store_conversion_rejects_noncanonical_addresses": {
+    "status": "ported",
+    "tests": [{"file":"tests/parity-links.test.ts","case":"keeps other pages out of the native store"}],
+    "reason": "Covers the original noncanonical HTTP, port, userinfo, host suffix, query, fragment and encoded-path cases, plus invalid numeric app identifiers."
+  }
+}

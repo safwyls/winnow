@@ -1,0 +1,412 @@
+{
+  "FeedFeedbackTests.Not_interested_stores_the_durable_verdict_and_the_card_says_so": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "keeps the saved kind %s and the backend snooze date on the original card",
+        "file": "tests/parity-feed-model.test.ts"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedFeedbackTests.Not_now_stores_a_snooze_that_states_the_day_it_ends": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "keeps the saved kind %s and the backend snooze date on the original card",
+        "file": "tests/parity-feed-model.test.ts"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedFeedbackTests.The_two_controls_are_kept_apart_all_the_way_down": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "keeps the saved kind %s and the backend snooze date on the original card",
+        "file": "tests/parity-feed-model.test.ts"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedFeedbackTests.Undo_on_the_card_revokes_and_puts_both_controls_back": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "states a snooze date, keeps the original card and restores controls through Undo",
+        "file": "tests/parity-feed-ui.test.tsx"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedFeedbackTests.A_write_that_did_not_land_shows_no_receipt": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "a failed write keeps both actions and never creates a receipt",
+        "file": "tests/parity-feed-model.test.ts"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedFeedbackTests.The_history_shows_everything_and_names_it_from_the_library": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "history retains missing games and all statuses, and a failed Undo can be retried",
+        "file": "tests/parity-feed-ui.test.tsx"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedFeedbackTests.Only_a_standing_verdict_offers_an_undo": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "history retains missing games and all statuses, and a failed Undo can be retried",
+        "file": "tests/parity-feed-ui.test.tsx"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedFeedbackTests.Undo_from_the_history_puts_a_card_still_showing_a_receipt_back": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "retains receipts through a feed refresh and pauses while history is open",
+        "file": "tests/parity-feed-ui.test.tsx"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedFeedbackTests.The_history_takes_the_body_and_gives_it_back": {
+    "status": "partial",
+    "tests": [
+      {
+        "case": "retains receipts through a feed refresh and pauses while history is open",
+        "file": "tests/parity-feed-ui.test.tsx"
+      }
+    ],
+    "reason": "Electron uses an accessible modal with background content hidden from accessibility and paused receipts; the original alternate-body visibility and focus assertions need a complete equivalent."
+  },
+  "FeedReserveTests.A_receipt_goes_on_the_clock_when_the_shelf_is_holding_a_replacement": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "advances a determinate three-second countdown and replaces only its original slot",
+        "file": "tests/parity-feed-model.test.ts"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedReserveTests.The_clock_runs_its_window_out_and_states_how_far_it_has_got": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "advances a determinate three-second countdown and replaces only its original slot",
+        "file": "tests/parity-feed-model.test.ts"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedReserveTests.The_clock_is_held_while_the_reader_is_on_the_card": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "holds a focused undo and the hovered cover before replacing only that card",
+        "file": "tests/parity-feed-ui.test.tsx"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedReserveTests.Reduced_motion_steps_the_clock_instead_of_sweeping_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "steps a reduced-motion receipt once a second and pauses it while the window is inactive",
+        "file": "tests/parity-feed-ui.test.tsx"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedReserveTests.The_verdict_survives_the_card_that_carried_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "steps a reduced-motion receipt once a second and pauses it while the window is inactive",
+        "file": "tests/parity-feed-ui.test.tsx"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedReserveTests.A_not_now_receipt_states_its_return_date_and_survives_the_press_that_made_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "states a snooze date, keeps the original card and restores controls through Undo",
+        "file": "tests/parity-feed-ui.test.tsx"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedReserveTests.Taking_a_verdict_back_leaves_the_card_where_it_is": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "undo stops the countdown and restores the same card and reason",
+        "file": "tests/parity-feed-model.test.ts"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedReserveTests.A_replacement_never_arrives_saying_what_a_card_on_screen_is_saying": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "skips reserve sentences already shown including the outgoing card sentence",
+        "file": "tests/parity-feed-model.test.ts"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedReserveTests.A_shelf_with_nothing_held_keeps_the_receipt_it_shipped_with": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "keeps a receipt indefinitely when no distinct replacement exists",
+        "file": "tests/parity-feed-model.test.ts"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedReserveTests.A_backfill_never_offers_a_game_that_is_on_screen_or_already_queued": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "backfill never offers a visible queued or previously answered game again",
+        "file": "tests/parity-feed-model.test.ts"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedReserveTests.Backfills_are_coalesced_to_one_reading_and_one_waiting": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "coalesces reserve reads to one running and one waiting even if the first fails",
+        "file": "tests/parity-feed-model.test.ts"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedReserveTests.A_failed_optional_backfill_does_not_drop_the_next_queued_builtin_read": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "coalesces reserve reads to one running and one waiting even if the first fails",
+        "file": "tests/parity-feed-model.test.ts"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedReserveTests.A_backfill_from_a_pass_the_feed_has_replaced_is_discarded": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "an old backfill cannot add cards after explicit reload or disposal",
+        "file": "tests/parity-feed-model.test.ts"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedReserveTests.The_receipt_running_out_puts_the_next_card_in_that_cards_place": {
+    "status": "partial",
+    "tests": [
+      {
+        "case": "holds a focused undo and the hovered cover before replacing only that card",
+        "file": "tests/parity-feed-ui.test.tsx"
+      }
+    ],
+    "reason": "Slot identity and untouched neighboring DOM are asserted on both surfaces. Source additionally asserts surfacing notifications and collection-event shape; visible-only impression integration is still being ported."
+  },
+  "FeedViewModelTests.Missing_tiles_are_skipped_before_filling_visible_slots": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "fills desktop vacancies from the reserve and includes the fullscreen reserve without duplicates",
+        "file": "tests/avalon-data.test.ts"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedViewModelTests.A_card_whose_tile_the_library_does_not_hold_is_dropped_not_faked": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "fills desktop vacancies from the reserve and includes the fullscreen reserve without duplicates",
+        "file": "tests/avalon-data.test.ts"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedViewModelTests.Fullscreen_can_present_the_scored_reserve_while_desktop_keeps_it_hidden": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "fills desktop vacancies from the reserve and includes the fullscreen reserve without duplicates",
+        "file": "tests/avalon-data.test.ts"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedViewModelTests.A_supplement_cannot_publish_after_its_generation_or_feedback_changes": {
+    "status": "partial",
+    "tests": [
+      {
+        "case": "does not append the optional result of a primary pass superseded by a reload",
+        "file": "tests/parity-feed-query.test.tsx"
+      }
+    ],
+    "reason": "Primary-generation reload and optional provider failure/malformed payloads are verified; full feedback/disposal matrix and invalidation replay require additional source-equivalent assertions."
+  },
+  "FeedViewModelTests.The_screen_opens_working_rather_than_empty": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "shows build, quiet, and failure states and retains good cards after a failed reload",
+        "file": "tests/parity-feed-ui.test.tsx"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedViewModelTests.The_working_state_holds_until_the_pass_answers": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "shows build, quiet, and failure states and retains good cards after a failed reload",
+        "file": "tests/parity-feed-ui.test.tsx"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedViewModelTests.A_failed_pass_says_so_offers_a_retry_and_blanks_nothing": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "shows build, quiet, and failure states and retains good cards after a failed reload",
+        "file": "tests/parity-feed-ui.test.tsx"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedViewModelTests.A_refresh_that_fails_leaves_the_shelves_that_are_already_true": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "shows build, quiet, and failure states and retains good cards after a failed reload",
+        "file": "tests/parity-feed-ui.test.tsx"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedViewModelTests.A_quiet_feed_and_an_unloaded_library_are_different_sentences": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "shows build, quiet, and failure states and retains good cards after a failed reload",
+        "file": "tests/parity-feed-ui.test.tsx"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedViewModelTests.Every_word_carrying_a_digit_is_data_and_the_rest_is_prose": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "sets numeric words in the data face without changing the sentence: %s",
+        "file": "tests/parity-feed-ui.test.tsx"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedViewModelTests.A_sentence_with_no_numbers_stays_one_run_of_prose": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "sets numeric words in the data face without changing the sentence: %s",
+        "file": "tests/parity-feed-ui.test.tsx"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedViewModelTests.An_empty_reason_splits_to_nothing_rather_than_to_an_empty_run": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "sets numeric words in the data face without changing the sentence: %s",
+        "file": "tests/parity-feed-ui.test.tsx"
+      }
+    ],
+    "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
+  },
+  "FeedFeedbackTests.A_feed_load_reads_the_verdicts_without_recording_unseen_cards": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Application/Services/FeedService.cs"],
+    "reason": "This method directly exercises the production shared FeedService scoring translation, repository inputs, reserve split or feedback persistence/soft failure, without creating a frontend. The original .NET test remains in the passing full suite."
+  },
+  "FeedFeedbackTests.A_surfacing_write_that_fails_costs_rotation_and_not_the_feed": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Application/Services/FeedService.cs"],
+    "reason": "This method directly exercises the production shared FeedService scoring translation, repository inputs, reserve split or feedback persistence/soft failure, without creating a frontend. The original .NET test remains in the passing full suite."
+  },
+  "FeedFeedbackTests.A_host_with_no_feedback_store_still_computes_a_feed": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Application/Services/FeedService.cs"],
+    "reason": "This method directly exercises the production shared FeedService scoring translation, repository inputs, reserve split or feedback persistence/soft failure, without creating a frontend. The original .NET test remains in the passing full suite."
+  },
+  "FeedFeedbackTests.The_service_pairs_expiry_with_kind_the_way_the_schema_does": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Application/Services/FeedService.cs"],
+    "reason": "This method directly exercises the production shared FeedService scoring translation, repository inputs, reserve split or feedback persistence/soft failure, without creating a frontend. The original .NET test remains in the passing full suite."
+  },
+  "FeedFeedbackTests.A_read_that_throws_is_an_empty_history_and_not_an_exception": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Application/Services/FeedService.cs"],
+    "reason": "This method directly exercises the production shared FeedService scoring translation, repository inputs, reserve split or feedback persistence/soft failure, without creating a frontend. The original .NET test remains in the passing full suite."
+  },
+  "FeedReserveTests.Recently_played_service_ignores_surfacing": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Application/Services/FeedService.cs"],
+    "reason": "This method directly exercises the production shared FeedService scoring translation, repository inputs, reserve split or feedback persistence/soft failure, without creating a frontend. The original .NET test remains in the passing full suite."
+  },
+  "FeedReserveTests.The_service_asks_one_pass_for_more_than_it_shows": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Application/Services/FeedService.cs"],
+    "reason": "This method directly exercises the production shared FeedService scoring translation, repository inputs, reserve split or feedback persistence/soft failure, without creating a frontend. The original .NET test remains in the passing full suite."
+  },
+  "FeedReserveTests.A_shelf_shows_six_and_holds_the_rest": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Application/Services/FeedService.cs"],
+    "reason": "This method directly exercises the production shared FeedService scoring translation, repository inputs, reserve split or feedback persistence/soft failure, without creating a frontend. The original .NET test remains in the passing full suite."
+  },
+  "FeedReserveTests.A_shelf_shallower_than_the_slice_holds_nothing_back": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Application/Services/FeedService.cs"],
+    "reason": "This method directly exercises the production shared FeedService scoring translation, repository inputs, reserve split or feedback persistence/soft failure, without creating a frontend. The original .NET test remains in the passing full suite."
+  },
+  "FeedReserveTests.Generating_cards_and_reserves_records_no_impressions": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Application/Services/FeedService.cs"],
+    "reason": "This method directly exercises the production shared FeedService scoring translation, repository inputs, reserve split or feedback persistence/soft failure, without creating a frontend. The original .NET test remains in the passing full suite."
+  },
+  "FeedReserveTests.A_card_promoted_out_of_the_reserve_logs_itself_when_it_appears": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Application/Services/FeedService.cs"],
+    "reason": "This method directly exercises the production shared FeedService scoring translation, repository inputs, reserve split or feedback persistence/soft failure, without creating a frontend. The original .NET test remains in the passing full suite."
+  },
+  "FeedReserveTests.A_surfacing_write_that_fails_at_swap_time_costs_rotation_and_not_the_card": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Application/Services/FeedService.cs"],
+    "reason": "This method directly exercises the production shared FeedService scoring translation, repository inputs, reserve split or feedback persistence/soft failure, without creating a frontend. The original .NET test remains in the passing full suite."
+  }
+}

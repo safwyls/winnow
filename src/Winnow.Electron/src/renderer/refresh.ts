@@ -1,5 +1,16 @@
 import type { QueryClient } from '@tanstack/react-query'
 import type { BackendEvent } from '../shared/bridge'
+import { request } from './api/client'
+import type { JournalResponse } from './api/types'
+import { patchJournalCaches } from './features/activity-model'
+
+export async function refreshJournalSnapshot(client: QueryClient, sessionId: number): Promise<void> {
+  const reads = client.getQueryCache().findAll({ fetchStatus: 'fetching', predicate: query =>
+    ['activity.query', 'game.details', 'journal.get'].includes(String(query.queryKey[1])) })
+  await Promise.allSettled(reads.map(query => query.promise))
+  const saved = await request<JournalResponse>('journal.get', { sessionId })
+  patchJournalCaches(client, sessionId, saved)
+}
 
 /** Selection revisions do not fingerprint image bytes. Explicit changes and resyncs bypass reuse. */
 export function shouldRefreshArtwork(event: Pick<BackendEvent, 'kind' | 'resource'>): boolean {

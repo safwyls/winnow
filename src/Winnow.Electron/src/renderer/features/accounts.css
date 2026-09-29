@@ -1,0 +1,54 @@
+.account-statistics {
+  min-width: 0;
+}
+.account-statistics .facts-grid dd {
+  font-size: clamp(1.375rem, 2.5vw, 2rem);
+}
+[data-mode='fullscreen'] .account-statistics .facts-grid dd {
+  font-size: 2.5rem;
+}
+.account-chart {
+  min-width: 0;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.account-chart ul {
+  display: grid;
+  gap: 0.9rem;
+  padding: 0;
+  list-style: none;
+}
+.account-chart li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.35rem 0.75rem;
+  min-width: 0;
+}
+.account-chart li > span:first-child {
+  overflow-wrap: anywhere;
+}
+.account-chart strong {
+  grid-area: 1 / 2;
+  font: 500 0.85em var(--font-mono);
+}
+.account-chart-bar {
+  grid-column: 1 / -1;
+  display: block;
+  height: 0.65rem;
+  background: var(--accent);
+  border-radius: 2px;
+}
+.account-chart-bar.negative {
+  background: var(--cool);
+}
+.account-charts {
+  display: grid;
+  gap: 1.5rem;
+  margin-block: 1.5rem;
+}
+.account-statistics table {
+  width: 100%;
+  table-layout: fixed;
+  overflow-wrap: anywhere;
+}

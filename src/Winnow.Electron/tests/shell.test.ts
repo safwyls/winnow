@@ -79,6 +79,7 @@ describe('shell security', () => {
     expect(validateExternalUrl('https://store.steampowered.com/app/10/')).toContain('https:')
     expect(validateExternalUrl('steam://store/10')).toBe('steam://store/10')
     expect(validateExternalUrl('steam://nav/games/details/10')).toBe('steam://nav/games/details/10')
+    expect(validateExternalUrl('http://example.com/article')).toBe('http://example.com/article')
     for (const url of [
       'file:///etc/passwd',
       'javascript:alert(1)',
@@ -93,7 +94,6 @@ describe('shell security', () => {
       'steam://nav:123/games/details/10',
       'steam://nav/console',
       'https://user:password@example.com/',
-      'http://example.com',
       'https://localhost:443/',
     ])
       expect(() => validateExternalUrl(url)).toThrow()

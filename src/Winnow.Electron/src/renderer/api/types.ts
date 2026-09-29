@@ -81,7 +81,7 @@ export interface Workspace {
   externalIds: { releaseId: number; provider: string; providerId: string }[]
   epicLaunchKeys: Record<string, { namespace: string; catalogItemId: string; artifactId: string }>
   pluginActions: Record<string, { sourceLabel?: string | null; canPlay: boolean; canOpenStore: boolean }>
-  works: { id: number; title: string; igdbId?: number | null }[]
+  works: { id: number; name: string; igdbId?: number | null }[]
   storefronts?: Record<string, { storeUrl?: string | null; patchNotes?: string | null }>
   [key: string]: unknown
 }
@@ -200,7 +200,10 @@ export interface StoreConnections {
     hasSession: boolean
     sessionUsable: boolean
     hasUsableCredential: boolean
+    sessionAccount?: string | null
+    sessionExpiresAt?: string | null
   }
+  steamHealth?: number
   epic?: { isLive: boolean; displayName?: string | null } | null
 }
 export interface IgdbConnection {

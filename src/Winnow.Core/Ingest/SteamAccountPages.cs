@@ -43,7 +43,7 @@ public sealed record SteamAccountPages
     /// <summary>The rendered licenses page, or null when it was not captured.</summary>
     public string? LicensesHtml { get; init; }
 
-    /// <summary>Additional saved licence pages from the same import, kept separate for pagination evidence.</summary>
+    /// <summary>Additional licence pages from the same capture or saved-file import, kept separate for pagination evidence.</summary>
     public IReadOnlyList<string> AdditionalLicensesHtml { get; init; } = [];
 
     /// <summary>At least one selected file failed; saved-page coverage cannot be certified complete.</summary>

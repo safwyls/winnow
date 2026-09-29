@@ -4,11 +4,21 @@ on:
   pull_request:
     paths:
       - 'src/Winnow.Electron/**'
+      - 'src/Winnow.Backend/**'
+      - 'src/Winnow.Api.Contracts/**'
+      - 'src/Winnow.Application/**'
+      - 'tests/Winnow.Ui.Tests/**'
+      - 'tests/Winnow.Tests/**'
       - '.github/workflows/electron.yml'
   push:
     branches: [main]
     paths:
       - 'src/Winnow.Electron/**'
+      - 'src/Winnow.Backend/**'
+      - 'src/Winnow.Api.Contracts/**'
+      - 'src/Winnow.Application/**'
+      - 'tests/Winnow.Ui.Tests/**'
+      - 'tests/Winnow.Tests/**'
       - '.github/workflows/electron.yml'
   workflow_dispatch:
 
@@ -18,12 +28,10 @@ permissions:
 jobs:
   frontend:
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: src/Winnow.Electron
-    env:
-      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -31,6 +39,31 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: src/Winnow.Electron/package-lock.json
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '10.0.x'
       - run: npm ci
-      - run: npm test
-      - run: npm run build
+      - name: Ensure the pinned Electron runtime is installed
+        run: node node_modules/electron/install.js
+      - name: Build the isolated integration backend
+        run: |
+          dotnet build ../Winnow.Backend --configuration Debug --artifacts-path ../../.tmp/electron-ci-backend
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $backend = Join-Path (Resolve-Path ../..).Path '.tmp/electron-ci-backend/bin/Winnow.Backend/debug/Winnow.Backend.exe'
+          "WINNOW_BACKEND_PATH=$backend" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Unit and live API tests
+        run: node scripts/test-integration.mjs
+      - name: Rendered desktop and fullscreen tests
+        run: npm run test:rendered
+      - name: Record remaining migration contracts
+        if: always()
+        run: npm run migration:report
+      - name: Preserve rendered results and migration inventory
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: electron-parity-evidence
+          path: |
+            .tmp/electron-rendered-results/
+            docs/spikes/2026-09-28-electron-parity/test-inventory.json
+          if-no-files-found: warn

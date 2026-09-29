@@ -1,0 +1,82 @@
+{
+  "ManualGameFromExecutableTests.Browsing_fills_the_executable_proposes_the_title_and_searches": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-manual-executable.test.tsx",
+        "case": "opens the form and file picker in one gesture, fills inspected facts and searches the proposed title"
+      }
+    ],
+    "reason": "Desktop and fullscreen renderer flows use the native facts bridge, preserve drafts and verify exact search/create requests. The original real SQLite persistence assertions still need an Electron backend integration test; native fact derivation is covered separately."
+  },
+  "ManualGameFromExecutableTests.A_cancelled_dialog_changes_nothing": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-manual-executable.test.tsx",
+        "case": "changes no fields or match evidence when the native picker is canceled"
+      }
+    ],
+    "reason": "Desktop and fullscreen renderer flows use the native facts bridge, preserve drafts and verify exact search/create requests. The original real SQLite persistence assertions still need an Electron backend integration test; native fact derivation is covered separately."
+  },
+  "ManualGameFromExecutableTests.Choosing_a_candidate_fills_the_form_and_writes_nothing": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-manual-executable.test.tsx",
+        "case": "selects candidate metadata without writing until Save and records the chosen executable and its folder"
+      }
+    ],
+    "reason": "Desktop and fullscreen renderer flows use the native facts bridge, preserve drafts and verify exact search/create requests. The original real SQLite persistence assertions still need an Electron backend integration test; native fact derivation is covered separately."
+  },
+  "ManualGameFromExecutableTests.Correcting_the_title_and_searching_again_overrides_the_proposal": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-manual-executable.test.tsx",
+        "case": "searches a corrected title and can dismiss candidates without changing the form or preventing a manual save"
+      }
+    ],
+    "reason": "Desktop and fullscreen renderer flows use the native facts bridge, preserve drafts and verify exact search/create requests. The original real SQLite persistence assertions still need an Electron backend integration test; native fact derivation is covered separately."
+  },
+  "ManualGameFromExecutableTests.Dismissing_the_proposal_leaves_the_form_as_typed": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-manual-executable.test.tsx",
+        "case": "searches a corrected title and can dismiss candidates without changing the form or preventing a manual save"
+      }
+    ],
+    "reason": "Desktop and fullscreen renderer flows use the native facts bridge, preserve drafts and verify exact search/create requests. The original real SQLite persistence assertions still need an Electron backend integration test; native fact derivation is covered separately."
+  },
+  "ManualGameFromExecutableTests.An_executable_that_yields_nothing_still_saves_by_hand": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-manual-executable.test.tsx",
+        "case": "leaves an uninformative executable editable without searching and still saves a manually entered game"
+      }
+    ],
+    "reason": "Desktop and fullscreen renderer flows use the native facts bridge, preserve drafts and verify exact search/create requests. The original real SQLite persistence assertions still need an Electron backend integration test; native fact derivation is covered separately."
+  },
+  "ManualGameFromExecutableTests.The_chosen_executable_is_the_one_stored": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-manual-executable.test.tsx",
+        "case": "selects candidate metadata without writing until Save and records the chosen executable and its folder"
+      }
+    ],
+    "reason": "Desktop and fullscreen renderer flows use the native facts bridge, preserve drafts and verify exact search/create requests. The original real SQLite persistence assertions still need an Electron backend integration test; native fact derivation is covered separately."
+  },
+  "ManualGameFromExecutableTests.A_second_browse_replaces_its_own_guess_but_not_the_users": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-manual-executable.test.tsx",
+        "case": "replaces its previous proposed title on a second browse but preserves a user override on the third"
+      }
+    ],
+    "reason": "Desktop and fullscreen renderer flows use the native facts bridge, preserve drafts and verify exact search/create requests. The original real SQLite persistence assertions still need an Electron backend integration test; native fact derivation is covered separately."
+  }
+}

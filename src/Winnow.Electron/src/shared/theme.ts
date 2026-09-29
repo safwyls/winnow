@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode, RefObject } from 'react'
 import type { LibraryGame, FeedSnapshot } from '../renderer/api/types'
 import { DEFAULT_ARTWORK_EFFECTS, type ArtworkEffectOptions } from './artworkEffects'
+import { defaultTypography, parseTypography, type ThemeTypography } from './typography'
 
 export type { ArtworkEffectOptions } from './artworkEffects'
 
@@ -14,7 +15,7 @@ export interface ThemeProfile {
   schemaVersion: 1
   themeId: string
   appearance: {
-    palette: 'afterglow' | 'paper' | 'bluehour' | 'rift'
+    palette: 'winnow' | 'afterglow' | 'paper' | 'bluehour' | 'rift'
     accent: string
     font: 'editorial' | 'modern' | 'mono'
     density: 'comfortable' | 'compact' | 'spacious'
@@ -24,6 +25,8 @@ export interface ThemeProfile {
     colors?: Partial<Record<ThemeColorKey, string>>
     scale?: number
     artwork?: ArtworkEffectOptions
+    /** Avalon palette IDs keep their own font roles and text size. */
+    typography?: Record<string, ThemeTypography>
   }
   layout: {
     navigation: 'top' | 'left'
@@ -71,6 +74,7 @@ export interface ThemePortalSurfaceProps {
   onExpanded?(): void
 }
 export interface ThemeContext {
+  profileHydrated?: boolean
   mode: ThemeMode
   page: ThemePage
   selectedWorkId: number | null
@@ -81,6 +85,8 @@ export interface ThemeContext {
   toggleFullscreen(): void
   games: LibraryGame[]
   feed: FeedSnapshot | undefined
+  feedLoading?: boolean
+  feedFailed?: boolean
   loading: boolean
   profile: ThemeProfile
   children: ReactNode
@@ -126,19 +132,19 @@ export interface ThemeDefinition {
 
 export const DEFAULT_PROFILE: ThemeProfile = {
   schemaVersion: 1,
-  themeId: 'afterglow',
+  themeId: 'avalon',
   appearance: {
-    palette: 'afterglow',
-    accent: '#efad80',
-    font: 'editorial',
+    palette: 'winnow',
+    accent: '#4DE8C2',
+    font: 'modern',
     density: 'comfortable',
-    radius: 18,
-    scrim: 55,
+    radius: 6,
+    scrim: 70,
     reducedMotion: false,
     artwork: { ...DEFAULT_ARTWORK_EFFECTS },
   },
   layout: {
-    navigation: 'top',
+    navigation: 'left',
     discoverSections: ['hero', 'returning', 'shelves'],
     hiddenSections: [],
     cardStyle: 'poster',
@@ -148,6 +154,17 @@ export const DEFAULT_PROFILE: ThemeProfile = {
 }
 
 export const PALETTES = {
+  winnow: {
+    name: 'Winnow',
+    background: '#0F1C1E',
+    surface: '#16282A',
+    raised: '#1D3437',
+    text: '#F0EDE7',
+    muted: '#8FA5A0',
+    line: '#2B4A4C',
+    accent: '#4DE8C2',
+    cool: '#57A8F0',
+  },
   afterglow: {
     name: 'Afterglow',
     background: '#18191b',
@@ -233,7 +250,7 @@ export function parseThemeProfile(value: unknown): ThemeProfile {
     appearance,
     ['palette', 'accent', 'font', 'density', 'radius', 'scrim', 'reducedMotion'],
     'Appearance',
-    ['colors', 'scale', 'artwork'],
+    ['colors', 'scale', 'artwork', 'typography'],
   )
   enumeration(appearance.palette, Object.keys(PALETTES), 'Palette')
   if (typeof appearance.accent !== 'string' || !/^#[\da-f]{6}$/i.test(appearance.accent))
@@ -244,6 +261,15 @@ export function parseThemeProfile(value: unknown): ThemeProfile {
   range(appearance.scrim, 20, 90, 'Artwork shade')
   if (typeof appearance.reducedMotion !== 'boolean') throw new Error('Reduced motion must be on or off.')
   if ('scale' in appearance) range(appearance.scale, 85, 130, 'Interface scale')
+  if ('typography' in appearance) {
+    if (!isRecord(appearance.typography) || Object.keys(appearance.typography).length > 128)
+      throw new Error('Typography must be a map of at most 128 palettes.')
+    for (const [id, typography] of Object.entries(appearance.typography)) {
+      if (!idPattern.test(id) || id.length > 80 || ['__proto__', 'constructor', 'prototype'].includes(id))
+        throw new Error('The typography palette identifier is invalid.')
+      parseTypography(typography)
+    }
+  }
   if ('artwork' in appearance) {
     if (!isRecord(appearance.artwork)) throw new Error('Artwork effects must be a settings map.')
     const artwork = appearance.artwork
@@ -363,6 +389,14 @@ export function resolvedThemeColors(profile: ThemeProfile): Record<ThemeColorKey
     ...profile.appearance.colors,
     accent: profile.appearance.accent,
   }
+}
+
+export function typographyKey(profile: ThemeProfile): string {
+  return profile.themeId === 'avalon' ? String(profile.settings.avalon?.palette ?? 'winnow') : profile.themeId
+}
+
+export function resolvedTypography(profile: ThemeProfile): ThemeTypography {
+  return parseTypography(profile.appearance.typography?.[typographyKey(profile)] ?? defaultTypography(typographyKey(profile)))
 }
 
 export function themeSettingValues(

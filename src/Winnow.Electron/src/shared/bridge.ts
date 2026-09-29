@@ -4,6 +4,7 @@ export interface ApiRequest {
   params?: Record<string, string | number>
   body?: unknown
 }
+export interface LinkOpenResult { opened: boolean; message?: string }
 export interface ApiResult<T = unknown> {
   ok: boolean
   status: number
@@ -30,6 +31,49 @@ export interface ThemePackage {
   entry: string
   css?: string
 }
+export interface SteamSignInOptions {
+  consentGranted: boolean
+  staySignedIn: boolean
+  capturePurchaseHistory?: boolean
+}
+export interface SteamCapturedPages {
+  licensesHtml?: string | null
+  additionalLicensesHtml: string[]
+  historyHtml?: string | null
+  capturedAt: string
+  source: 0
+  steamId: string | null
+}
+export interface SteamCaptureResult {
+  pages?: SteamCapturedPages
+  captureDetail?: string
+  licensesTruncated?: boolean
+  historyTruncated?: boolean
+}
+export interface SteamSignInResult extends SteamCaptureResult {
+  signedIn: boolean
+  outcome?: number
+  steamId?: string | null
+  expiresAt?: string | null
+  health?: number
+  accountConfirmed?: boolean
+  persisted?: boolean
+  refreshTokenCaptured?: boolean
+  detail?: string | null
+}
+export interface ApplicationInfo {
+  version: string
+  platform: string
+  packaged: boolean
+  autostartSupported: boolean
+  openAtLogin: boolean
+  steamStoreAvailable?: boolean
+}
+export type ApplicationActivation =
+  | { kind: 'show' }
+  | { kind: 'fullscreen' }
+  | { kind: 'game'; ownershipId: number }
+  | { kind: 'plugin'; pluginId: string; releaseTag: string }
 export interface WinnowBridge {
   request<T = unknown>(request: ApiRequest): Promise<ApiResult<T>>
   connection(): Promise<ConnectionState>
@@ -41,11 +85,59 @@ export interface WinnowBridge {
   importProfile(): Promise<unknown | null>
   exportProfile(value: unknown): Promise<boolean>
   listThemes(): Promise<ThemePackage[]>
+  listAvalonThemes?(): Promise<import('./avalonThemeDocument').AvalonThemeCatalogue>
+  exportAvalonTheme?(text: string): Promise<{ file: string | null; diagnostics: import('./avalonThemeDocument').AvalonThemeDiagnostic[] }>
+  onAvalonThemesChanged?(callback: () => void): () => void
+  listFonts?(): Promise<string[]>
+  windowAppearance?(value: import('./windowAppearance').WindowAppearanceRequest): Promise<import('./windowAppearance').WindowAppearanceResult>
+  onWindowAppearanceInvalidated?(callback: () => void): () => void
   installTheme(): Promise<ThemePackage | null>
   setFullscreen(value: boolean): Promise<void>
   isFullscreen(): Promise<boolean>
   onFullscreen(callback: (value: boolean) => void): () => void
-  openExternal(url: string): Promise<void>
+  openExternal(url: string): Promise<LinkOpenResult>
+  quit?(): Promise<void>
+  restartBackend?(): Promise<void>
+  updateSnapshot?(): Promise<ApplicationUpdateSnapshot>
+  updateAction?(action: ApplicationUpdateAction, value?: boolean): Promise<ApplicationUpdateSnapshot>
+  onUpdate?(callback: (snapshot: ApplicationUpdateSnapshot) => void): () => void
+  takeActivations?(): Promise<ApplicationActivation[]>
+  onActivation?(callback: (activation: ApplicationActivation) => void): () => void
+  openDataFolder?(folder: 'logs' | 'plugins' | 'themes'): Promise<void>
+  chooseManualExecutable?(): Promise<string | null>
+  chooseManualExecutableFacts?(): Promise<import('./executable-facts').ExecutableFacts | null>
+  exportAcquisitions?(): Promise<boolean>
+  steamSignIn?(options: SteamSignInOptions): Promise<SteamSignInResult>
+  cancelSteamWindow?(): Promise<boolean>
+  steamCapturePages?(options: { consentGranted: boolean }): Promise<SteamCaptureResult>
+  applicationInfo?(): Promise<ApplicationInfo>
+  setOpenAtLogin?(enabled: boolean): Promise<void>
+  notifySessionEnded?(value: { sessionId: number; title: string }): Promise<boolean>
+  onJournalNotificationActivated?(callback: (sessionId: number) => void): () => void
+  clearJournalNotification?(sessionId: number): Promise<void>
+}
+export type ApplicationUpdateAction =
+  | 'check'
+  | 'download'
+  | 'restart'
+  | 'update-and-restart'
+  | 'cancel'
+  | 'automatic'
+  | 'beta'
+  | 'manual-download'
+export interface ApplicationUpdateSnapshot {
+  automatic: boolean
+  includeBeta: boolean
+  busy: boolean
+  canDownload: boolean
+  canRestart: boolean
+  canCancel: boolean
+  progress: number
+  status: string
+  availableVersion?: string | null
+  releaseUrl?: string | null
+  downloadUrl?: string | null
+  recoveryStatus?: string | null
 }
 declare global {
   interface Window {

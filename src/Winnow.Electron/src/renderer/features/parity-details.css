@@ -1,0 +1,68 @@
+@layer components {
+  .screenshot-strip {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-block: 10px;
+  }
+  .screenshot-strip > button {
+    flex: 0 0 180px;
+    padding: 0;
+  }
+  .screenshot-strip img {
+    display: block;
+    width: 180px;
+    height: 102px;
+    object-fit: cover;
+  }
+  .igdb-candidates {
+    max-height: 340px;
+    overflow: auto;
+    padding-inline-end: 12px;
+  }
+  .igdb-candidates .metadata-row {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+  .igdb-candidates .metadata-row > div {
+    min-width: 0;
+    flex: 1;
+  }
+  .igdb-candidates .metadata-row img {
+    flex: 0 0 34px;
+    object-fit: cover;
+    border-radius: 4px;
+  }
+  .igdb-candidates .metadata-row p {
+    overflow-wrap: anywhere;
+  }
+  .metadata-art-preview {
+    max-width: 380px;
+    max-height: 200px;
+    margin-block: 12px;
+  }
+  .metadata-art-preview img {
+    object-fit: contain;
+  }
+  .screenshot-dialog {
+    width: min(1200px, calc(100vw - 48px));
+    max-width: calc(100vw - 48px);
+  }
+  .screenshot-dialog > img {
+    display: block;
+    width: 100%;
+    max-height: 65vh;
+    object-fit: contain;
+    margin-block: 16px;
+  }
+  .details-page .editor-form + .editor-form {
+    border-top: 1px solid var(--line);
+    padding-block-start: 24px;
+    margin-block-start: 24px;
+  }
+  @media (max-width: 680px) {
+    .igdb-candidates .metadata-row {
+      flex-wrap: wrap;
+    }
+  }
+}

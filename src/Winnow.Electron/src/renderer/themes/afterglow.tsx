@@ -710,6 +710,10 @@ export const afterglow: ThemeDefinition = {
   apiVersion: 1,
   id: 'afterglow',
   name: 'Afterglow',
+  defaults: {
+    appearance: { palette: 'afterglow', accent: '#efad80', font: 'editorial', radius: 18, scrim: 55 },
+    layout: { navigation: 'top' },
+  },
   Shell: AfterglowShell,
   Discover: AfterglowDiscover,
   Library: AfterglowLibrary,

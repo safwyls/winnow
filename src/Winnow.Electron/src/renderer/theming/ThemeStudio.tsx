@@ -25,6 +25,9 @@ import { useSystemReducedMotion } from '../useSystemReducedMotion'
 import { useLibrary } from '../api/hooks'
 import { Artwork } from '../components/Artwork'
 import { PortalSurface } from '../components/portal-effects'
+import { AvalonTypographyControls } from '../themes/avalon-typography'
+import { AvalonAppearanceControls } from '../themes/avalon-appearance'
+import { AvalonJsonControls } from '../themes/avalon-json-controls'
 import './studio.css'
 
 const sectionLabels: Record<string, string> = {
@@ -176,7 +179,9 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
           ? 'Cinematic artwork, open space, and warm editorial type.'
           : item.id === 'rift'
             ? 'Floating covers, artwork portals, and a dense gallery beneath the stars.'
-            : 'A compact library catalog with an index and a reading desk.',
+            : item.id === 'avalon'
+              ? 'The original Winnow palette, typography, living cover grid, and TV interface.'
+              : 'A compact library catalog with an index and a reading desk.',
     })),
     ...runtime.packages.filter((item) => !runtime.builtins.some((builtin) => builtin.id === item.id)),
   ]
@@ -289,19 +294,21 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
                 onChange={(accent) => appearanceChange({ accent })}
                 onReset={() => appearanceChange({ accent: palette.accent })}
               />
-              <label className="studio-field">
-                Typography
-                <select
-                  value={appearance.font}
-                  onChange={(event) =>
-                    appearanceChange({ font: event.target.value as ThemeProfile['appearance']['font'] })
-                  }
-                >
-                  <option value="editorial">Editorial · serif headings</option>
-                  <option value="modern">Modern · sans serif</option>
-                  <option value="mono">Monospace · typewriter</option>
-                </select>
-              </label>
+              {theme.id !== 'avalon' && (
+                <label className="studio-field">
+                  Typography
+                  <select
+                    value={appearance.font}
+                    onChange={(event) =>
+                      appearanceChange({ font: event.target.value as ThemeProfile['appearance']['font'] })
+                    }
+                  >
+                    <option value="editorial">Editorial · serif headings</option>
+                    <option value="modern">Modern · sans serif</option>
+                    <option value="mono">Monospace · typewriter</option>
+                  </select>
+                </label>
+              )}
               <label className="studio-field">
                 Spacing
                 <select
@@ -645,6 +652,14 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
                 </ol>
               </fieldset>
             </section>
+          )}
+          {theme.id === 'avalon' && window.winnow.windowAppearance && <AvalonAppearanceControls profile={profile} />}
+          {theme.id === 'avalon' && window.winnow.listAvalonThemes && <AvalonJsonControls runtime={runtime} />}
+          {theme.id === 'avalon' && (
+            <AvalonTypographyControls
+              profile={profile}
+              onChange={(typography) => appearanceChange({ typography })}
+            />
           )}
           {!!theme.settings?.length && (
             <section className="studio-panel" aria-labelledby="studio-extra">

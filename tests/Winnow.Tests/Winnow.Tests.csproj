@@ -93,12 +93,19 @@
     </MSBuild>
     <PropertyGroup>
       <PluginTestPackageRoot>@(PluginTestAppAssembly->'%(RootDir)%(Directory)plugins\')</PluginTestPackageRoot>
+      <TestBackendCompanionRoot>@(PluginTestAppAssembly->'%(RootDir)%(Directory)backend\')</TestBackendCompanionRoot>
     </PropertyGroup>
     <ItemGroup>
       <PluginTestPackage Include="$(PluginTestPackageRoot)**\*" />
+      <!-- Native startup tests launch the frontend from this directory. Its
+           independent backend needs the complete companion, not a transitive apphost. -->
+      <TestBackendCompanion Include="$(TestBackendCompanionRoot)**\*" />
     </ItemGroup>
     <Copy SourceFiles="@(PluginTestPackage)"
           DestinationFiles="@(PluginTestPackage->'$(OutDir)plugins\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(TestBackendCompanion)"
+          DestinationFiles="@(TestBackendCompanion->'$(OutDir)backend\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true" />
   </Target>
 <ItemGroup><Compile Include="../Shared/LegacyTestServices.cs" Link="Fixtures/LegacyTestServices.cs" /><ProjectReference Include="../../src/Winnow.Application/Winnow.Application.csproj" /></ItemGroup>

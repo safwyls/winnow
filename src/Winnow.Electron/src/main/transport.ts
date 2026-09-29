@@ -293,7 +293,8 @@ export class BackendTransport {
       if (response.status === 401) this.attempt?.abort()
       const responseText = await response.text()
       const text = response.ok ? responseText : responseText.replaceAll(connection.token, '[redacted]')
-      if (text.length > 32 * 1024 * 1024) throw new Error('Response too large')
+      const responseLimit = request.route === 'imports.steam.load' ? 180 * 1024 * 1024 : 32 * 1024 * 1024
+      if (text.length > responseLimit) throw new Error('Response too large')
       let data: unknown
       try {
         data = text ? JSON.parse(text) : undefined

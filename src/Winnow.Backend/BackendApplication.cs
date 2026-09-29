@@ -110,7 +110,8 @@ public static class BackendApplication
                 bodyLimit.MaxRequestBodySize = request.Path.Value switch
                 {
                     "/api/v1/imports/steam/load-files" or "/api/v1/imports/steam/pages" => 180L * 1024 * 1024,
-                    "/api/v1/metadata/art-upload" => 24L * 1024 * 1024,
+                    { } path when path.StartsWith("/api/v1/games/", StringComparison.Ordinal)
+                        && path.EndsWith("/metadata/art-upload", StringComparison.Ordinal) => 24L * 1024 * 1024,
                     _ => 16L * 1024 * 1024
                 };
             }

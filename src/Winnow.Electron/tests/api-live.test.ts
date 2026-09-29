@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { librarySchema, feedSchema } from '../src/renderer/api/hooks'
+import { librarySchema, feedSchema, workspaceSchema } from '../src/renderer/api/hooks'
 import type { ActivityPage, JournalResponse, ManualGame, Metadata } from '../src/renderer/api/types'
 import { createClientId } from '../src/renderer/api/client'
 import { journalPeriod } from '../src/renderer/api/journalPeriod'
@@ -64,7 +64,7 @@ describe.skipIf(!dataDir)('live frontend API on an explicitly supplied test libr
   it('matches actual library, feed, workspace, detail and redacted settings contracts', async () => {
     const library = librarySchema.parse(await api('library'))
     feedSchema.parse(await api('feed'))
-    const workspace = await api<Record<string, unknown>>('library/workspace')
+    const workspace = workspaceSchema.parse(await api('library/workspace'))
     for (const field of ['works', 'externalIds', 'pluginActions', 'epicLaunchKeys'])
       expect(workspace).toHaveProperty(field)
     if (library.games[0]) {

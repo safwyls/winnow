@@ -1,0 +1,64 @@
+@layer components {
+  .list-prompt-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: calc(85dvh / (var(--interface-scale, 1) * var(--fullscreen-interface-scale, 1)));
+    overflow: hidden;
+  }
+  .list-prompt-dialog > :not(.list-prompt-choices) { flex-shrink: 0; }
+  .list-prompt-choices {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    min-height: 0;
+    overflow: auto;
+    scrollbar-gutter: stable;
+  }
+  .list-prompt-choices:empty { display: none; }
+  .list-prompt-choices button {
+    width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    justify-content: flex-start;
+    text-align: left;
+  }
+  .list-prompt-dialog form { margin: 0; overflow: auto; scrollbar-gutter: stable; }
+  .list-prompt-dialog .field { margin-top: 0; }
+  :root[data-mode='fullscreen'] :is(.list-prompt-dialog, .confirmation-dialog) {
+    width: 900px;
+    max-width: calc((100vw - 80px) / (var(--interface-scale, 1) * var(--fullscreen-interface-scale, 1)));
+    font-size: calc(24px * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+  }
+  :root[data-mode='fullscreen'] :is(.list-prompt-dialog, .confirmation-dialog) h2 {
+    font-size: calc(36px * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+  }
+  :root[data-mode='fullscreen'] :is(.list-prompt-dialog, .confirmation-dialog) :is(button, input, .field, p) {
+    font-size: inherit;
+    line-height: 1.3;
+  }
+  .library-tools fieldset.editor-form {
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .library-tools fieldset legend {
+    padding: 0 8px;
+  }
+  .library-tools fieldset details {
+    margin-block: 10px;
+  }
+  .library-tools fieldset summary {
+    cursor: pointer;
+  }
+  .library-tools [aria-label='Games to include'] {
+    max-height: 320px;
+    overflow: auto;
+    padding-inline-end: 12px;
+    scroll-padding: 12px;
+  }
+  .library-tools .conflict-panel {
+    flex-basis: 100%;
+  }
+}

@@ -1,0 +1,76 @@
+@layer components {
+  :root[data-controller='true'] *,
+  :root[data-controller='true'] {
+    cursor: none !important;
+  }
+  .controller-menu {
+    width: min(480px, 90vw);
+    display: grid;
+    gap: 12px;
+  }
+  .controller-menu button {
+    min-height: 48px;
+  }
+  .onscreen-keyboard {
+    width: min(860px, 95vw);
+    max-height: 92vh;
+    overflow-y: auto;
+  }
+  .dialog-overlay.keyboard-overlay {
+    z-index: 1040;
+  }
+  .dialog-content.onscreen-keyboard {
+    z-index: 1041;
+  }
+  .keyboard-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .keyboard-row button {
+    flex: 1;
+    min-width: 0;
+    min-height: 48px;
+    padding: 8px;
+  }
+  .keyboard-preview {
+    display: block;
+    min-height: 52px;
+    padding: 12px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    border: 1px solid var(--line);
+    background: var(--bg);
+  }
+  .keyboard-bottom {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+    align-items: end;
+  }
+  .keyboard-space {
+    flex: 1;
+    min-height: 48px;
+  }
+  .keyboard-arrows {
+    display: grid;
+    grid-template-columns: repeat(3, 48px);
+    gap: 6px;
+  }
+  .keyboard-arrows button {
+    min-height: 48px;
+    padding: 8px;
+  }
+  .keyboard-up {
+    grid-area: 1 / 2;
+  }
+  .keyboard-left {
+    grid-area: 2 / 1;
+  }
+  .keyboard-down {
+    grid-area: 2 / 2;
+  }
+  .keyboard-right {
+    grid-area: 2 / 3;
+  }
+}

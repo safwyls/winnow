@@ -7,7 +7,7 @@ import { DEFAULT_ARTWORK_EFFECTS } from '../src/shared/artworkEffects'
 import { ThemeStudio } from '../src/renderer/theming/ThemeStudio'
 import { useThemeRuntime } from '../src/renderer/theming/runtime'
 
-const builtins: ThemeDefinition[] = [{ apiVersion: 1, id: 'afterglow', name: 'Afterglow' }]
+const builtins: ThemeDefinition[] = [{ apiVersion: 1, id: 'avalon', name: 'Avalon' }]
 let profile: ThemeProfile
 let systemReduced: boolean
 const mediaListeners = new Set<() => void>()

@@ -1,0 +1,44 @@
+.session-notifications {
+  position: fixed;
+  right: 24px;
+  bottom: 72px;
+  z-index: 70;
+  display: grid;
+  gap: 12px;
+  width: min(480px, calc(100vw - 48px));
+  max-height: calc(100dvh - 130px);
+  pointer-events: none;
+}
+.session-notifications > * {
+  pointer-events: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 12px 48px #0004;
+}
+.session-health-notice {
+  padding: 14px 18px;
+  border-radius: var(--radius, 8px);
+  color: var(--text);
+}
+.session-health-notice p {
+  margin-top: 0;
+}
+.session-prompt {
+  overflow: auto;
+}
+.session-prompt textarea {
+  max-height: 110px;
+}
+.session-prompt .feature-heading h2 {
+  margin: 0;
+}
+.session-notifications.mode-fullscreen {
+  right: 5vw;
+  bottom: 7vh;
+  width: min(660px, 90vw);
+  font-size: calc(20px * var(--theme-text-scale, 1));
+}
+.session-notifications.mode-fullscreen button,
+.session-notifications.mode-fullscreen select {
+  min-height: 50px;
+}

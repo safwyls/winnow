@@ -1,0 +1,440 @@
+{
+  "ActivityTimelineSeriesTests.Consecutive_months_preserve_known_zero_and_leave_missing_month_unknown": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "preserves known zero between consecutive month ends and leaves missing months unknown"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityTimelineSeriesTests.Monthly_history_wins_overlap_but_individual_sessions_remain_available": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "prefers imported monthly history while keeping individual sessions available"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityTimelineSeriesTests.Session_crossing_month_boundary_is_split_without_losing_duration": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "splits sessions over UTC month boundaries without losing duration"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityTimelineSeriesTests.Reset_and_conflicting_endpoint_are_unknown_not_zero": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "treats counter resets and conflicting endpoints as unknown rather than zero"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityTimelineSeriesTests.Independent_ownership_counters_are_not_combined": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "never combines independent ownership counters"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityTimelineSeriesTests.Future_incomplete_and_invalid_sessions_are_omitted": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "omits future, incomplete, negative and impossible sessions"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityTimelineSeriesTests.No_temporal_evidence_does_not_invent_a_release_date": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "does not invent a release date when temporal evidence is absent"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityTimelineSeriesTests.Acquisition_cannot_clip_earlier_play_and_future_dates_are_ignored": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "keeps play earlier than acquisition and ignores a future last-played date"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityTimelineSeriesTests.Tracked_range_keeps_older_sessions_and_gives_recent_sessions_room": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "retains older sessions while giving recent sessions thirty days of space"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityTimelineSeriesTests.Tracked_summary_describes_sessions_instead_of_acquisition": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "describes tracked sessions instead of acquisition and keeps an honest empty state"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityTimelineSeriesTests.Baseline_summary_states_dated_counter_without_inventing_when_play_happened": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "dates the baseline counter without inventing when play happened"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityPagingInteractionTests.Week_navigation_discards_an_older_response_even_when_its_reader_ignores_cancellation": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "discards late week reads and preserves a section chosen while waiting"
+      }
+    ],
+    "reason": "Electron ignores late results from obsolete week/section query scopes. The original request cancellation token and native focus behavior need separate transport/browser coverage."
+  },
+  "ActivityRecoveryInteractionTests.Failed_reads_show_a_retry_action_and_retry_the_same_page": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "retries only a failed next page and retains visible rows"
+      }
+    ],
+    "reason": "Retry preserves the failed cursor and loaded rows, including duplicate-boundary records. The original first-page failure variant needs a matching test."
+  },
+  "ActivityRecoveryInteractionTests.Finishing_a_read_preserves_the_section_tab_chosen_while_waiting": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "discards late week reads and preserves a section chosen while waiting"
+      }
+    ],
+    "reason": "Late reads preserve the chosen section. The original exact focused-button assertion remains browser/controller coverage."
+  },
+  "ActivityRecoveryInteractionTests.Saving_a_note_on_an_older_loaded_page_keeps_its_selection_and_does_not_refetch_page_one": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "keeps loaded pages and selection while editing an older note"
+      }
+    ],
+    "reason": "Both modes preserve two loaded pages and the selected note preview without refetching. Real API/SQLite persistence and controller X dispatch are tested separately and are not asserted here."
+  },
+  "ActivityRecoveryInteractionTests.A_library_refresh_while_the_note_editor_is_open_keeps_its_unsaved_text": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "keeps unsaved text through a library refresh and removes hidden games from history"
+      }
+    ],
+    "reason": "The shared editor remains mounted and preserves unsaved text when the visible library snapshot changes."
+  },
+  "ActivityTimelinePlotTests.Lifetime_months_have_equal_width_and_named_pointer_and_keyboard_selection": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "gives lifetime months equal width and accessible selectable labels"
+      }
+    ],
+    "reason": "Month width, accessible names, click selection, focus selection and tooltips are covered. Real keyboard activation and rendered geometry require browser verification."
+  },
+  "ActivityTimelinePlotTests.Session_bars_are_ten_pixels_and_collisions_preserve_all_observations": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "uses ten-pixel session bars and retains every colliding observation"
+      }
+    ],
+    "reason": "The geometry projection preserves ten-pixel marks, combined count, total and longest duration. The original actual arranged bounds need browser measurement."
+  },
+  "ActivityTimelinePlotTests.Updates_cluster_without_a_count_limit_and_request_tracked_range": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "clusters unlimited update marks and requests tracked history on activation"
+      }
+    ],
+    "reason": "All 30 updates remain in one accessible cluster; activation changes range and acknowledgements remove unread state. Computed theme color equivalence requires visual verification."
+  },
+  "ActivityTimelinePlotTests.Narrow_layout_keeps_date_labels_and_update_targets_inside_plot": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "keeps narrow plot marks within its measured width"
+      }
+    ],
+    "reason": "Update hit regions fit a 180-pixel plot. Actual text layout and scaled-font label collisions remain browser checks."
+  },
+  "ActivityTrackerInteractionTests.Range_buttons_switch_units_and_keep_monthly_and_session_records_reachable": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "keeps monthly and individual session records reachable"
+      }
+    ],
+    "reason": "Both mode paths switch ranges, retain active toggle state and expose all recorded hours. Original 360/620-pixel overflow and plot-height assertions need rendered browser coverage."
+  },
+  "ActivityTrackerInteractionTests.Grouped_updates_do_not_hide_history_when_no_sessions_exist": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "keeps grouped updates reachable when there are no sessions"
+      }
+    ],
+    "reason": "Activating grouped updates preserves Lifetime when no tracked sessions exist and exposes every update in the selected detail."
+  },
+  "ActivityTrackerInteractionTests.Sparse_tracker_keeps_an_honest_session_empty_state": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "shows honest sparse history without inventing monthly or session records"
+      }
+    ],
+    "reason": "Absent evidence does not invent a chart, unknown last-played remains explicit, and tracked empty state has no recorded-hours disclosure."
+  },
+  "FullscreenActivityTests.Empty_sections_explain_their_content_and_horizontal_navigation_changes_weeks_outside_tabs": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "changes Monday weeks outside section tabs, clamps the future and offers selected-note reading and editing"
+      }
+    ],
+    "reason": "Fullscreen starts in the current week and requests 50 sessions per page. Keyboard week navigation avoids section tabs and cannot advance beyond this week; reading/editing actions exist. Native controller trigger/copy/hints assertions still need migration."
+  },
+  "FullscreenActivityTests.Library_reload_refreshes_notes_preserves_session_and_removes_hidden_games": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "keeps unsaved text through a library refresh and removes hidden games from history"
+      }
+    ],
+    "reason": "Visible library changes remove hidden ownership rows without discarding an open draft. Live database note refresh and selected-session changes still require integration coverage."
+  },
+  "FullscreenActivityTests.Session_editor_saves_to_the_same_journal_repository_and_keeps_existing_rating": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "edits, retains across navigation and explicitly deletes a details journal note"
+      }
+    ],
+    "reason": "Both modes use the shared journal API and preserve captured rating through save. Original SQLite repository assertion is retained in the C# suite, not replaced by this bridge test."
+  },
+  "FullscreenActivityTests.Missing_activity_repository_is_an_unavailable_state_not_an_empty_history_claim": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "distinguishes unavailable activity from empty history and names prompt-off journal state"
+      }
+    ],
+    "reason": "Unavailable API response produces explicit unavailable history with retry and no false empty-history claim."
+  },
+  "GameplayStatsInteractionTests.Xbox_import_updates_open_gameplay_store_choices_and_library_counts": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "refreshes imported store choices and counts resolved games once"
+      }
+    ],
+    "reason": "Open dashboard reacts to a plugin:xbox ownership snapshot and counts the resolved game once. Real import/persistence and rendered counts need integration coverage."
+  },
+  "GameplayStatsInteractionTests.Both_surfaces_scope_dates_switch_sections_and_render_four_charts": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "renders four selectable charts, scopes dates and stores, and retains state across spending"
+      }
+    ],
+    "reason": "Both modes cover four data charts, store selection, inclusive custom dates, selected chart actions and independent navigation state. Original viewport overflow, text scale, screenshot and spending value assertions remain."
+  },
+  "GameplayStatsInteractionTests.Desktop_error_retry_and_custom_date_validation_remain_actionable": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "clears obsolete figures for invalid custom dates and recovers after correction"
+      }
+    ],
+    "reason": "Invalid custom dates clear obsolete figures and can be corrected; shared query recovery is covered separately. Exact desktop error/retry path remains to be independently exercised."
+  },
+  "GameplayStatsInteractionTests.Fullscreen_gameplay_retry_cancel_and_resume_are_controller_actions": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "retries, cancels and resumes without publishing the canceled result"
+      }
+    ],
+    "reason": "Retry, stop, resume and obsolete response suppression are covered in the fullscreen component. Native controller activation is not exercised here."
+  },
+  "JournalDetailsInteractionTests.Details_modal_edits_then_deletes_a_journal_entry": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "edits, retains across navigation and explicitly deletes a details journal note"
+      }
+    ],
+    "reason": "Both mode Details paths retain an edit across remount, save via the revisioned API and require delete confirmation. Original inline-tab and rendered button-padding assertions differ and require browser evaluation."
+  },
+  "JournalDetailsInteractionTests.Details_modal_names_the_prompt_off_empty_state": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "exposes separate Steam history and a prompt-off empty journal in details"
+      }
+    ],
+    "reason": "Both mode Details paths read the journal preference and display the prompt-off empty state."
+  },
+  "SessionNoteParityTests.Each_editor_rejects_empty_entries_and_trims_successful_notes": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "rejects empty entries and trims notes while preserving ratings"
+      }
+    ],
+    "reason": "The shared editor validates empty entries, trims notes and saves ratings; rating-only coverage is separate. Original complete interaction matrix across every entry point remains to be reproduced."
+  },
+  "SessionNoteParityTests.Failed_saves_keep_the_draft_and_pending_retries_block_conflicting_edits": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "retains failed drafts and blocks uncertain retries until the saved note can be checked"
+      },
+      {
+        "file": "tests/features-journal.test.tsx",
+        "case": "keeps a saving journal locked across a remount until the original request completes"
+      }
+    ],
+    "reason": "Uncertain failures preserve note/rating and prohibit blind retry. Existing Journal concurrency tests lock controls across remount. The original complete error and controller interaction matrix is not yet ported."
+  },
+  "SessionNoteParityTests.A_save_finishing_after_the_editor_is_disposed_cannot_navigate": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "does not navigate when a save completes after the editor is disposed"
+      }
+    ],
+    "reason": "Late save completion invokes only a currently mounted shared editor; a disposed editor cannot navigate. The existing remount test verifies completion can still close the replacement editor."
+  },
+  "SessionRecoveryParityTests.Recovered_sitting_keeps_one_note_and_one_activity_record": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "deduplicates recovered session records before adding their duration"
+      }
+    ],
+    "reason": "Duplicate observed sittings do not inflate timeline records or duration. Original monitoring recovery, persisted note and activity repository lifecycle remain C# integration evidence."
+  },
+  "SteamReportedActivityTests.Scope_filters_other_accounts_hidden_games_and_covered_increases": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "retries failed reads and distinguishes missing account confirmation from an empty result"
+      }
+    ],
+    "reason": "Renderer honors the backend account-confirmation result and suppresses observations until confirmed. Account matching, hidden ownership and covered-increase filtering remain backend responsibilities and need live API integration evidence."
+  },
+  "SteamReportedActivityTests.Both_presentations_label_estimates_and_bounds_without_changing_sessions": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "keeps estimates separate and pages twenty observations"
+      }
+    ],
+    "reason": "Both modes label approximate/unmatched increases, overlap uncertainty and observed bounds, and issue no session or statistics mutation. Original controller reading-page activation and tracker-total assertion remain."
+  },
+  "SteamReportedActivityTests.Non_Steam_games_hide_the_section_on_both_surfaces_but_mixed_games_keep_it": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "hides non-Steam scope and discards pending observations after a scope change"
+      }
+    ],
+    "reason": "The shared projection hides for non-Steam scope and discards pending data. The original mixed-store Details matrix needs additional assertions."
+  },
+  "SteamReportedActivityTests.Desktop_details_activity_hosts_the_separate_projection": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "exposes separate Steam history and a prompt-off empty journal in details"
+      }
+    ],
+    "reason": "The Details History tab hosts the separate Steam projection alongside the recorded-session timeline in both presentation modes."
+  },
+  "SteamReportedActivityTests.Failure_retries_and_scope_changes_discard_pending_reads": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "hides non-Steam scope and discards pending observations after a scope change"
+      },
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "retries failed reads and distinguishes missing account confirmation from an empty result"
+      }
+    ],
+    "reason": "A scope replacement removes old observations and obsolete reads cannot repopulate them; a separate test retries an initial failed read."
+  },
+  "SteamReportedActivityTests.Fullscreen_activity_and_per_game_history_offer_separate_entry_points": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "exposes separate Steam history and a prompt-off empty journal in details"
+      }
+    ],
+    "reason": "Per-game History exposes Steam observations in both modes; global Activity has a separate Steam page. Global fullscreen navigation needs an explicit entry-point test."
+  }
+}

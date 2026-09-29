@@ -11,14 +11,18 @@ export function containedPath(root: string, relativePath: string): string {
 }
 
 export function validateExternalUrl(value: unknown): string {
-  if (typeof value !== 'string' || value.length > 4096 || /[\u0000-\u0020]/.test(value))
+  if (typeof value !== 'string' || value.length > 4096 || /[\u0000-\u0020\u007f]/.test(value))
     throw new Error('Invalid external link')
   const url = new URL(value)
   if (url.username || url.password) throw new Error('Credentials are not allowed in links')
+  const hostname = url.hostname.replace(/\.$/, '')
   if (
-    url.protocol === 'https:' &&
-    url.hostname &&
-    !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
+    (url.protocol === 'https:' || url.protocol === 'http:') &&
+    hostname &&
+    !['localhost', '[::1]', '[::]', '[::ffff:0:0]', '0.0.0.0'].includes(hostname) &&
+    !/^127\./.test(hostname) &&
+    !/^\[::ffff:7f[0-9a-f]{2}:/.test(hostname) &&
+    !hostname.endsWith('.localhost')
   )
     return url.href
   if (
@@ -30,7 +34,29 @@ export function validateExternalUrl(value: unknown): string {
     !url.hash
   )
     return url.href
-  throw new Error('Only HTTPS and Steam store or game-details links may be opened')
+  if (!url.port && !url.search && !url.hash) {
+    if (
+      url.protocol === 'goggalaxy:' &&
+      url.hostname.toLowerCase() === 'opengameview' &&
+      /^\/gog_\d{1,12}$/.test(url.pathname)
+    ) {
+      url.hostname = 'opengameview'
+      return url.href
+    }
+    if (url.protocol === 'com.epicgames.launcher:' && url.hostname === 'store' && url.pathname === '/library')
+      return url.href
+  }
+  throw new Error('This link is unavailable. Game actions must use their library commands.')
+}
+
+/** Page-controlled navigation cannot invoke native launchers or application origins. */
+export function readableWebUrl(value: unknown): string | null {
+  try {
+    const address = validateExternalUrl(value)
+    return /^https?:/.test(address) ? address : null
+  } catch {
+    return null
+  }
 }
 
 export function trustedRendererUrl(value: string, developmentOrigin?: string): boolean {

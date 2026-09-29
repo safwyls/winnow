@@ -57,7 +57,7 @@ export function validateManifest(value: unknown): ThemeManifest {
     typeof manifest.id !== 'string' ||
     manifest.id.length > 80 ||
     !/^[a-z0-9]+(?:[.-][a-z0-9]+)*$/.test(manifest.id) ||
-    ['afterglow', 'rift', 'catalogue', 'index'].includes(manifest.id) ||
+    ['avalon', 'afterglow', 'rift', 'catalogue', 'index'].includes(manifest.id) ||
     /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/.test(manifest.id)
   )
     throw new Error('Invalid or reserved theme ID')

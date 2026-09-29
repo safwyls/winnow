@@ -1,17 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
 import { ApiError, dateLabel, request } from '../api/client'
 import { useApiQuery, useCommand, useLibrary } from '../api/hooks'
-import type {
-  GameList,
-  HiddenGame,
-  IdentityReview,
-  LibraryFilter,
-  LibraryResponse,
-  ManualGame,
-  Mode,
-} from '../api/types'
+import type { GameList, HiddenGame, LibraryFilter, LibraryResponse, ManualGame, Mode } from '../api/types'
 import { Empty, Notice } from './shared'
 import { clearViewState, useViewState } from '../viewState'
+import { IdentityTools, ListMembers, LiveFilterFields, LiveListFilterEditor } from './parity-library'
+import { useInlineEditorFocus } from './parity-library-focus'
+import type { ExecutableFacts } from '../../shared/executable-facts'
+import { ConfirmationDialog } from './ConfirmationDialog'
 
 export function LibraryTools({
   mode = 'desktop',
@@ -51,7 +48,7 @@ export function LibraryTools({
       )}
       {tab === 'Manual games' && <ManualGames mode={mode} onOpenGame={onOpenGame} />}
       {tab === 'Hidden games' && <HiddenGames />}
-      {tab === 'Identity review' && <IdentityTools />}
+      {tab === 'Identity review' && <IdentityTools onOpenGame={onOpenGame} />}
       {selectedWorkId && (
         <section className="feature-panel">
           <h2>Selected game</h2>
@@ -71,48 +68,103 @@ export function LibraryTools({
   )
 }
 
-export function CreateList() {
+export function CreateListButton({ mode }: { mode: Mode }) {
+  const [open, setOpen] = useState(false),
+    [busy, setBusy] = useState(false)
+  return (
+    <Dialog.Root
+      open={open}
+      onOpenChange={(value) => {
+        if (!busy) setOpen(value)
+      }}
+    >
+      <Dialog.Trigger asChild>
+        <button>New list…</button>
+      </Dialog.Trigger>
+      {open && (
+        <Dialog.Portal>
+          <Dialog.Overlay className="dialog-overlay" />
+          <Dialog.Content
+            className={`dialog-content feature-panel mode-${mode}`}
+            onEscapeKeyDown={(event) => {
+              if (busy) event.preventDefault()
+            }}
+            onPointerDownOutside={(event) => event.preventDefault()}
+          >
+            <Dialog.Title>Make room for a list</Dialog.Title>
+            <Dialog.Description>
+              Choose games yourself, or let a live list follow your filters.
+            </Dialog.Description>
+            <CreateList onCreated={() => setOpen(false)} onPendingChange={setBusy} />
+            <Dialog.Close asChild>
+              <button disabled={busy}>Close</button>
+            </Dialog.Close>
+          </Dialog.Content>
+        </Dialog.Portal>
+      )}
+    </Dialog.Root>
+  )
+}
+
+export function CreateList({
+  draftKey = 'draft:list:new',
+  initialFilter,
+  onCreated,
+  onPendingChange,
+}: {
+  draftKey?: string
+  initialFilter?: LibraryFilter
+  onCreated?: (list: GameList) => void
+  onPendingChange?: (busy: boolean) => void
+} = {}) {
   const empty = {
     name: '',
-    live: false,
-    store: '',
-    installed: false,
-    search: '',
+    live: Boolean(initialFilter),
+    filter: initialFilter ?? ({} as LibraryFilter),
     sending: false,
     uncertain: false,
     checked: false,
     matches: [] as GameList[],
   }
-  const [draft, setDraft] = useViewState('draft:list:new', empty)
-  const { name, live, store, installed, search } = draft
+  const [draft, setDraft] = useViewState(draftKey, empty)
+  const active = useRef(true),
+    writing = useRef(false)
+  useEffect(() => {
+    active.current = true
+    return () => {
+      active.current = false
+    }
+  }, [])
+  useEffect(() => {
+    onPendingChange?.(draft.sending)
+  }, [draft.sending, onPendingChange])
+  const { name, live } = draft
   const update = (value: Partial<typeof empty>) => setDraft((previous) => ({ ...previous, ...value }))
   const command = useCommand()
   const [checking, setChecking] = useState(false)
   const [checkError, setCheckError] = useState<unknown>(null)
   const discard = () => {
     setDraft(empty)
-    clearViewState('draft:list:new')
+    clearViewState(draftKey)
     command.reset()
   }
   async function save() {
-    if (draft.uncertain || draft.sending) return
+    if (draft.uncertain || draft.sending || writing.current) return
+    writing.current = true
     update({ sending: true })
     try {
-      await command.mutateAsync({
+      const saved = await command.mutateAsync({
         route: live ? 'list.live' : 'list.create',
         body: live
           ? {
               name,
-              filter: {
-                stores: store ? [store] : [],
-                installed: installed ? true : null,
-                search: search || null,
-              },
+              filter: draft.filter,
             }
           : { name, releaseIds: [] },
       })
       setDraft(empty)
-      clearViewState('draft:list:new')
+      clearViewState(draftKey)
+      if (active.current) onCreated?.(saved as GameList)
     } catch (error) {
       update({
         sending: false,
@@ -120,6 +172,8 @@ export function CreateList() {
           ? { uncertain: true, checked: false, matches: [] }
           : {}),
       })
+    } finally {
+      writing.current = false
     }
   }
   async function reconcile() {
@@ -169,39 +223,11 @@ export function CreateList() {
           Keep this list up to date with filters
         </label>
         {live && (
-          <>
-            <label className="field">
-              Store
-              <select
-                disabled={draft.sending || draft.uncertain}
-                value={store}
-                onChange={(event) => update({ store: event.target.value })}
-              >
-                <option value="">Every store</option>
-                <option value="steam">Steam</option>
-                <option value="epic">Epic Games</option>
-                <option value="gog">GOG</option>
-                <option value="manual">Manual</option>
-              </select>
-            </label>
-            <label className="field">
-              Title contains
-              <input
-                disabled={draft.sending || draft.uncertain}
-                value={search}
-                onChange={(event) => update({ search: event.target.value })}
-              />
-            </label>
-            <label className="check-field">
-              <input
-                type="checkbox"
-                disabled={draft.sending || draft.uncertain}
-                checked={installed}
-                onChange={(event) => update({ installed: event.target.checked })}
-              />
-              Installed games only
-            </label>
-          </>
+          <LiveFilterFields
+            filter={draft.filter}
+            disabled={draft.sending || draft.uncertain}
+            onChange={(filter) => update({ filter })}
+          />
         )}
         {draft.uncertain && (
           <section className="conflict-panel">
@@ -222,7 +248,13 @@ export function CreateList() {
                 {draft.matches.map((list) => (
                   <p key={list.id}>
                     {list.name} · {list.releaseIds.length} editions{' '}
-                    <button type="button" onClick={discard}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        discard()
+                        onCreated?.(list)
+                      }}
+                    >
                       Use saved list
                     </button>
                   </p>
@@ -270,6 +302,7 @@ function ListEditor({ list }: { list: GameList }) {
     filter: LibraryFilter
     sending: boolean
   } | null>(`draft:list:${list.id}`, null)
+  const focus = useInlineEditorFocus(Boolean(draft))
   const [confirm, setConfirm] = useState(false)
   const command = useCommand()
   const changed = draft && list.revision !== draft.revision
@@ -297,6 +330,7 @@ function ListEditor({ list }: { list: GameList }) {
           </p>
         </div>
         <button
+          ref={focus.trigger}
           disabled={draft?.sending}
           onClick={() => {
             setDraft({
@@ -320,8 +354,11 @@ function ListEditor({ list }: { list: GameList }) {
           {list.filter?.search ? ` · “${list.filter.search}”` : ''}
         </p>
       )}
+      {list.isLive && <LiveListFilterEditor list={list} />}
+      <ListMembers list={list} />
       {draft && (
         <form
+          ref={focus.editor}
           onSubmit={(event) => {
             event.preventDefault()
             void save()
@@ -375,29 +412,21 @@ function ListEditor({ list }: { list: GameList }) {
           </div>
         </form>
       )}
-      {confirm ? (
-        <div className="conflict-panel">
-          <p>Delete “{list.name}”? Its games will stay in your library.</p>
-          <button
-            disabled={draft?.sending || command.isPending}
-            onClick={() =>
+      <ConfirmationDialog
+        open={confirm} onOpenChange={setConfirm}
+        trigger={<button disabled={draft?.sending} className="text-button">Delete list…</button>}
+        title={`Delete ${list.name}?`} description="Its games will stay in your library."
+        confirmLabel="Delete list" cancelLabel="Keep list"
+        pending={Boolean(draft?.sending) || command.isPending} error={command.error}
+        onConfirm={() =>
               command.mutate({
                 route: 'list.delete',
                 params: { listId: list.id },
                 body: { expectedRevision: list.revision },
-              })
+              }, { onSuccess: () => setConfirm(false) })
             }
-          >
-            Delete list
-          </button>
-          <button onClick={() => setConfirm(false)}>Keep list</button>
-        </div>
-      ) : (
-        <button disabled={draft?.sending} className="text-button" onClick={() => setConfirm(true)}>
-          Delete list…
-        </button>
-      )}
-      <Notice error={command.error} />
+      />
+      {!confirm && <Notice error={command.error} />}
     </section>
   )
 }
@@ -406,6 +435,9 @@ function ManualGames({ mode, onOpenGame }: { mode: Mode; onOpenGame?: (workId: n
   const games = useApiQuery<ManualGame[]>('manual.get')
   const [editing, setEditing] = useViewState<ManualGame | 'new' | null>(`${mode}:manual:editing`, null)
   const [confirm, setConfirm] = useState<number | null>(null)
+  const [opening, setOpening] = useState(false)
+  const [browseOnOpen, setBrowseOnOpen] = useState(false)
+  const [openError, setOpenError] = useState<unknown>(null)
   const command = useCommand()
   return (
     <>
@@ -417,12 +449,25 @@ function ManualGames({ mode, onOpenGame }: { mode: Mode; onOpenGame?: (workId: n
         <button className="primary-button" onClick={() => setEditing('new')}>
           Add a game
         </button>
+        {(window.winnow.chooseManualExecutableFacts || window.winnow.chooseManualExecutable) && (
+          <button
+            disabled={Boolean(editing)}
+            onClick={() => {
+              setBrowseOnOpen(true)
+              setEditing('new')
+            }}
+          >
+            Add from executable…
+          </button>
+        )}
       </div>
-      <Notice error={games.error || command.error} />
+      <Notice error={games.error || command.error || openError} />
       {editing && (
         <ManualEditor
           key={editing === 'new' ? 'new' : editing.ownershipId}
           initial={editing === 'new' ? null : editing}
+          browseOnOpen={browseOnOpen}
+          onBrowseStarted={() => setBrowseOnOpen(false)}
           onClose={() => setEditing(null)}
         />
       )}
@@ -437,12 +482,27 @@ function ManualGames({ mode, onOpenGame }: { mode: Mode; onOpenGame?: (workId: n
             </h2>
             <p>{[game.firstReleaseYear, game.platformLabel].filter(Boolean).join(' · ')}</p>
             <div className="form-actions">
-              <button onClick={() => setEditing(game)}>Edit game</button>
+              <button
+                disabled={opening}
+                onClick={async () => {
+                  setOpening(true)
+                  setOpenError(null)
+                  try {
+                    setEditing(await request<ManualGame>('manual.detail', { ownershipId: game.ownershipId }))
+                  } catch (error) {
+                    setOpenError(error)
+                  } finally {
+                    setOpening(false)
+                  }
+                }}
+              >
+                {opening ? 'Loading game…' : 'Edit game'}
+              </button>
               <button onClick={() => setConfirm(game.ownershipId)}>Remove…</button>
             </div>
             {confirm === game.ownershipId && (
               <div className="conflict-panel">
-                <p>Remove this manual entry and its recorded library data?</p>
+                <p>Remove this manual entry? Other store editions and their library data will stay.</p>
                 <button
                   disabled={command.isPending}
                   onClick={() =>
@@ -461,19 +521,54 @@ function ManualGames({ mode, onOpenGame }: { mode: Mode; onOpenGame?: (workId: n
   )
 }
 
-export function ManualEditor({ initial, onClose }: { initial: ManualGame | null; onClose: () => void }) {
+export function ManualEditor({
+  initial,
+  onClose,
+  browseOnOpen = false,
+  onBrowseStarted,
+}: {
+  initial: ManualGame | null
+  onClose: () => void
+  browseOnOpen?: boolean
+  onBrowseStarted?: () => void
+}) {
   const key = `draft:manual:${initial?.ownershipId ?? 'new'}`
   const [draft, setDraft] = useViewState(key, {
     title: initial?.title ?? '',
     year: initial?.firstReleaseYear?.toString() ?? '',
     platform: initial?.platformLabel ?? '',
+    executable: initial?.executablePath ?? '',
+    install: initial?.installPath ?? '',
+    igdbId: initial?.igdbId?.toString() ?? '',
+    steamAppId: initial?.steamAppId ?? '',
     base: initial,
     current: null as ManualGame | null,
     sending: false,
     uncertain: false,
     checked: false,
     matches: [] as ManualGame[],
+    proposedTitle: null as string | null,
+    executableNote: null as string | null,
+    matchNote: null as string | null,
   })
+  const latest = useRef(draft),
+    active = useRef(true),
+    choosing = useRef(false),
+    writing = useRef(false)
+  latest.current = draft
+  const [picking, setPicking] = useState(false)
+  useEffect(() => {
+    active.current = true
+    return () => {
+      active.current = false
+    }
+  }, [])
+  useEffect(() => {
+    if (browseOnOpen && !choosing.current) {
+      onBrowseStarted?.()
+      void browse()
+    }
+  }, [browseOnOpen])
   const { title, year, platform, base, current } = draft
   const update = (value: Partial<typeof draft>) => setDraft((previous) => ({ ...previous, ...value }))
   const command = useCommand()
@@ -481,10 +576,81 @@ export function ManualEditor({ initial, onClose }: { initial: ManualGame | null;
   const [checkError, setCheckError] = useState<unknown>(null)
   const close = () => {
     clearViewState(key)
-    onClose()
+    if (active.current) onClose()
+  }
+  const [candidates, setCandidates] = useState<
+    { igdbId: number; name: string; firstReleaseYear?: number | null; platforms: string[] }[] | null
+  >(null)
+  const [searching, setSearching] = useState(false)
+  async function browse() {
+    if (choosing.current || latest.current.sending || latest.current.uncertain) return
+    choosing.current = true
+    setPicking(true)
+    setCheckError(null)
+    try {
+      let facts: ExecutableFacts | null = null
+      if (window.winnow.chooseManualExecutableFacts) facts = await window.winnow.chooseManualExecutableFacts()
+      else {
+        const path = await window.winnow.chooseManualExecutable?.()
+        if (path)
+          facts = {
+            executablePath: path,
+            installPath: path.replace(/[\\/][^\\/]+$/, '') || null,
+            title:
+              path
+                .split(/[\\/]/)
+                .at(-1)
+                ?.replace(/\.[^.]+$/, '') || null,
+            titleSource: 'file-name',
+            publisher: null,
+          }
+      }
+      if (!facts) return
+      const current = latest.current
+      const proposed =
+        facts.title && (!current.title.trim() || current.title === current.proposedTitle)
+          ? facts.title
+          : current.title
+      const publisher = facts.publisher ? ` Published by ${facts.publisher}.` : ''
+      const note =
+        facts.titleSource === 'file-description' || facts.titleSource === 'product-name'
+          ? `The file identifies itself as ${facts.title}.${publisher}`
+          : facts.title
+            ? `Guessed ${facts.title} from the path.${publisher}`
+            : 'No title found in the file. Type one above.'
+      update({
+        executable: facts.executablePath,
+        install: facts.installPath ?? '',
+        title: proposed,
+        proposedTitle: proposed === facts.title ? proposed : current.proposedTitle,
+        executableNote: note,
+        matchNote: null,
+      })
+      setCandidates(null)
+      if (proposed.trim()) await searchMatches(proposed)
+    } catch {
+      setCheckError(new Error('The executable could not be selected. Enter its path instead.'))
+    } finally {
+      choosing.current = false
+      setPicking(false)
+    }
+  }
+  async function searchMatches(query = title) {
+    if (!query.trim() || searching) return
+    setSearching(true)
+    setCandidates(null)
+    setCheckError(null)
+    try {
+      setCandidates(await request('metadata.search', { title: query }))
+    } catch (error) {
+      setCheckError(error)
+    } finally {
+      setSearching(false)
+    }
   }
   async function save() {
-    if (draft.uncertain || draft.sending) return
+    if (draft.uncertain || draft.sending || writing.current) return
+    writing.current = true
     update({ sending: true })
     try {
       await command.mutateAsync({
@@ -494,10 +660,10 @@ export function ManualEditor({ initial, onClose }: { initial: ManualGame | null;
           title,
           firstReleaseYear: year ? Number(year) : null,
           platformLabel: platform || null,
-          executablePath: base?.executablePath,
-          installPath: base?.installPath,
-          igdbId: base?.igdbId,
-          steamAppId: base?.steamAppId,
+          executablePath: draft.executable || null,
+          installPath: draft.install || null,
+          igdbId: draft.igdbId ? Number(draft.igdbId) : null,
+          steamAppId: draft.steamAppId || null,
           expectedRevision: base?.revision,
           expectedIgdbMappingRevision: base?.igdbMappingRevision,
         },
@@ -506,10 +672,16 @@ export function ManualEditor({ initial, onClose }: { initial: ManualGame | null;
     } catch (error) {
       update({ sending: false })
       if (initial && error instanceof ApiError && error.conflict) {
-        const all = await request<ManualGame[]>('manual.get')
-        update({ current: all.find((game) => game.ownershipId === initial.ownershipId) ?? null })
+        try {
+          const all = await request<ManualGame[]>('manual.get')
+          update({ current: all.find((game) => game.ownershipId === initial.ownershipId) ?? null })
+        } catch (failure) {
+          setCheckError(failure)
+        }
       } else if (!initial && (!(error instanceof ApiError) || error.uncertain))
         update({ uncertain: true, checked: false, matches: [] })
+    } finally {
+      writing.current = false
     }
   }
   async function reconcile() {
@@ -553,8 +725,8 @@ export function ManualEditor({ initial, onClose }: { initial: ManualGame | null;
             Release year
             <input
               type="number"
-              min={1950}
-              max={2100}
+              min={1900}
+              max={2200}
               disabled={draft.sending || draft.uncertain}
               value={year}
               onChange={(event) => update({ year: event.target.value })}
@@ -570,7 +742,103 @@ export function ManualEditor({ initial, onClose }: { initial: ManualGame | null;
             />
           </label>
         </div>
+        <label className="field">
+          Executable path
+          <input
+            disabled={draft.sending || draft.uncertain}
+            value={draft.executable}
+            onChange={(event) => update({ executable: event.target.value })}
+            placeholder="Path to the game executable"
+          />
+        </label>
+        {(window.winnow.chooseManualExecutableFacts || window.winnow.chooseManualExecutable) && (
+          <button
+            type="button"
+            disabled={draft.sending || draft.uncertain || searching || picking}
+            onClick={() => void browse()}
+          >
+            {picking ? 'Reading executable…' : 'Choose executable'}
+          </button>
+        )}
+        <p className="muted">Winnow uses the executable to recognize recorded play sessions.</p>
+        {draft.executableNote && <p className="muted">{draft.executableNote}</p>}
+        {draft.matchNote && <p className="muted">{draft.matchNote}</p>}
+        <label className="field">
+          Installation folder
+          <input
+            disabled={draft.sending || draft.uncertain}
+            value={draft.install}
+            onChange={(event) => update({ install: event.target.value })}
+          />
+        </label>
+        <div className="form-row">
+          <label className="field">
+            IGDB ID
+            <input
+              type="number"
+              min={1}
+              step={1}
+              disabled={draft.sending || draft.uncertain}
+              value={draft.igdbId}
+              onChange={(event) => update({ igdbId: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            Steam app ID
+            <input
+              inputMode="numeric"
+              pattern="[0-9]+"
+              disabled={draft.sending || draft.uncertain}
+              value={draft.steamAppId}
+              onChange={(event) => update({ steamAppId: event.target.value })}
+            />
+          </label>
+        </div>
+        <button
+          type="button"
+          disabled={draft.sending || draft.uncertain || searching || !title.trim()}
+          onClick={() => void searchMatches()}
+        >
+          {searching ? 'Searching IGDB…' : 'Find IGDB matches'}
+        </button>
+        {candidates?.length === 0 && (
+          <p className="muted">No matching games. You can still fill the form by hand.</p>
+        )}
+        {candidates && candidates.length > 0 && (
+          <div className="igdb-candidates">
+            {candidates.map((candidate) => (
+              <article className="metadata-row" key={candidate.igdbId}>
+                <div>
+                  <strong>{candidate.name}</strong>
+                  <p>
+                    {[candidate.firstReleaseYear, candidate.platforms.join(', ')].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={draft.sending || draft.uncertain}
+                  onClick={() => {
+                    update({
+                      title: candidate.name,
+                      year: candidate.firstReleaseYear?.toString() ?? '',
+                      igdbId: String(candidate.igdbId),
+                      proposedTitle: candidate.name,
+                      matchNote: `Using details from ${candidate.name}. Nothing is saved until you choose Save game.`,
+                    })
+                    setCandidates(null)
+                  }}
+                >
+                  Use these details
+                </button>
+              </article>
+            ))}
+            <button type="button" onClick={() => setCandidates(null)}>
+              Keep my own details
+            </button>
+          </div>
+        )}
         <Notice error={command.error} />
+        <Notice error={checkError} />
         {current && (
           <div className="conflict-panel">
             <p>The saved entry changed to “{current.title}”. Your draft is preserved.</p>
@@ -631,7 +899,13 @@ export function ManualEditor({ initial, onClose }: { initial: ManualGame | null;
         <div className="form-actions">
           <button
             className="primary-button"
-            disabled={command.isPending || draft.sending || draft.uncertain || Boolean(current)}
+            disabled={
+              command.isPending ||
+              draft.sending ||
+              draft.uncertain ||
+              Boolean(current) ||
+              (command.error instanceof ApiError && command.error.conflict)
+            }
           >
             Save game
           </button>
@@ -674,95 +948,6 @@ function HiddenGames() {
         ))
       ) : (
         <Empty>No hidden games.</Empty>
-      )}
-    </section>
-  )
-}
-
-function IdentityTools() {
-  const review = useApiQuery<IdentityReview>('identity.get')
-  const command = useCommand()
-  const [confirm, setConfirm] = useState<number | null>(null)
-  const candidates = review.data?.candidates.filter((item) => item.status === 'pending') ?? []
-  const title = (releaseId: number) => {
-    const workId = review.data?.workspace.releases.find((release) => release.id === releaseId)?.workId
-    return review.data?.workspace.works.find((work) => work.id === workId)?.title ?? `Edition ${releaseId}`
-  }
-  return (
-    <section className="feature-panel">
-      <h2>Are these the same game?</h2>
-      <p>Similar names are suggestions. You decide whether editions belong together.</p>
-      <Notice error={review.error || command.error} />
-      {!candidates.length && <Empty>No identity suggestions waiting for review.</Empty>}
-      {candidates.map((candidate) => (
-        <article className="identity-row" key={candidate.id}>
-          <div>
-            <h3>{title(candidate.leftReleaseId)}</h3>
-            <p>{title(candidate.rightReleaseId)}</p>
-          </div>
-          <div className="form-actions">
-            <button disabled={command.isPending} onClick={() => setConfirm(candidate.id)}>
-              Same game…
-            </button>
-            <button
-              disabled={command.isPending}
-              onClick={() =>
-                command.mutate({
-                  route: 'identity.dismiss',
-                  body: {
-                    expectedRevision: review.data!.revision,
-                    candidateIds: [candidate.id],
-                    refusedPairs: [],
-                  },
-                })
-              }
-            >
-              Different games
-            </button>
-          </div>
-          {confirm === candidate.id && (
-            <div className="conflict-panel">
-              <p>Group these editions under {title(candidate.leftReleaseId)}?</p>
-              <button
-                disabled={command.isPending}
-                onClick={() => {
-                  const left = review.data!.workspace.releases.find(
-                    (item) => item.id === candidate.leftReleaseId,
-                  )
-                  const right = review.data!.workspace.releases.find(
-                    (item) => item.id === candidate.rightReleaseId,
-                  )
-                  if (left && right)
-                    command.mutate({
-                      route: 'identity.link',
-                      body: {
-                        expectedRevision: review.data!.revision,
-                        parentWorkId: left.workId,
-                        childWorkIds: [right.workId],
-                        kind: 'same_game',
-                        relationLabel: null,
-                        rejectedCandidateIds: [],
-                        refusedPairs: [],
-                      },
-                    })
-                }}
-              >
-                Group editions
-              </button>
-              <button onClick={() => setConfirm(null)}>Cancel</button>
-            </div>
-          )}
-        </article>
-      ))}
-      {command.error instanceof ApiError && command.error.conflict && (
-        <button
-          onClick={() => {
-            void review.refetch()
-            command.reset()
-          }}
-        >
-          Refresh identity suggestions
-        </button>
       )}
     </section>
   )

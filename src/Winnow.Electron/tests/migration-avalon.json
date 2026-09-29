@@ -1,0 +1,1238 @@
+{
+  "FullscreenHomeLayoutTests.Inserting_and_replacing_hidden_shelves_uses_the_current_cards": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-theme.test.tsx",
+        "case": "uses current data after hidden shelves are inserted or the feed is replaced"
+      }
+    ],
+    "reason": "Inserted/replaced shelf content, a single current DOM row, and focus transferred to its replacement cover are covered. The original FirstRow/RealizedRows APIs represented this one-row behavior; Electron replaces that renderer substrate. A separate test ensures replacement does not steal focus from another control."
+  },
+  "FullscreenHomeLayoutTests.Same_content_refresh_never_arranges_a_displaced_shelf": {
+    "status": "pending",
+    "reason": "Requires rendered geometry across every refresh frame at normal/large text and reduced motion. DOM identity cannot establish these bounds."
+  },
+  "FullscreenHomeLayoutTests.Deferred_shelves_preserve_the_visible_row_and_focus": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/avalon-theme.test.tsx",
+        "case": "appending deferred shelves retains the current cover element and keyboard focus"
+      }
+    ],
+    "reason": "Deferred append preserves the exact cover DOM node and focus. Original viewport bounds at both text scales remain unmeasured."
+  },
+  "FullscreenHomeLayoutTests.Wide_home_can_show_and_navigate_all_ten_recommendations": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/avalon-theme.test.tsx",
+        "case": "navigates the complete ten-card fullscreen shelf with directional keys"
+      },
+      {
+        "file": "tests/avalon-data.test.ts",
+        "case": "fills desktop vacancies from the reserve and includes the fullscreen reserve without duplicates"
+      }
+    ],
+    "reason": "All ten primary/reserve entries render and navigation reaches the tenth. The 3440x1440, 0.8-scale setup still needs automated rendered coverage."
+  },
+  "FullscreenHomeLayoutTests.Reducing_interface_scale_reduces_rendered_home_covers": {
+    "status": "pending",
+    "reason": "Scale and safe-margin CSS hooks exist; original measured cover ratios, bottom alignment, heading spacing and indicator centering need Electron geometry tests."
+  },
+  "FullscreenHomeLayoutTests.Long_title_keeps_single_line_cover_geometry": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/avalon-theme.test.tsx",
+        "case": "shows real recommendations with reasons and retains the complete title"
+      }
+    ],
+    "reason": "The complete title is retained in accessible labels. Single-line layout, ellipsis and unchanged cover bounds across three text scales are not automated."
+  },
+  "FullscreenHomeLayoutTests.Root_backdrops_fill_canvas_outside_safe_margins": {
+    "status": "pending",
+    "reason": "Requires root-art bounds across four fullscreen screens and ultrawide modes. Home CSS alone is insufficient."
+  },
+  "FullscreenHomeLayoutTests.Description_length_preserves_home_cover_geometry": {
+    "status": "pending",
+    "reason": "Requires measured two-line reason bounds and stable cover geometry at 0.7, 1 and 1.4 text scale."
+  },
+  "FullscreenHomeLayoutTests.Long_home_hero_settles_after_returning_from_settings_at_large_text": {
+    "status": "pending",
+    "reason": "Requires render settling after theme changes and Settings return at 1280x720 and 3840x2160."
+  },
+  "LibraryMultiSelectionTests.Reload_sort_and_view_switch_preserve_selection_and_filtering_drops_hidden_games": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-theme.test.tsx",
+        "case": "preserves selection across refresh sort and view changes then prunes filtered games in grid=%s"
+      }
+    ],
+    "reason": "Both desktop starting views retain selected work IDs across a replaced server snapshot, sorting and view switch, prune hidden games, and do not reselect them on clearing search. React fixtures replace the Avalonia view-model substrate."
+  },
+  "LibraryMultiSelectionTests.Ctrl_click_toggles_selection_without_opening_details_and_context_click_preserves_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-theme.test.tsx",
+        "case": "Ctrl-click toggles games and context click preserves selection in grid=%s"
+      }
+    ],
+    "reason": "Both views toggle games without opening details, retain an existing set on context click and replace it for a new target. Electron exposes operations in an accessible selection action group."
+  },
+  "LibraryMultiSelectionTests.Context_action_updates_every_selected_game_and_leaves_unselected_game": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/avalon-theme.test.tsx",
+        "case": "applies Derelict exemptions only to the captured selected games"
+      },
+      {
+        "file": "tests/avalon-theme.test.tsx",
+        "case": "marks linked releases as read without swallowing pushes newer than the displayed tile"
+      }
+    ],
+    "reason": "Captured selected IDs and safe observed-event requests are covered. Both-action/both-view persisted bucket changes, refresh and unselected-game retention need integration coverage."
+  },
+  "LibraryHoverPreviewTests.Hover_immediately_shows_shared_preview_with_compact_ratings_and_no_actions": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-preview.test.tsx",
+        "case": "opens an immediate noninteractive preview with compact attributed ratings"
+      }
+    ],
+    "reason": "Immediate content begins metadata retrieval. Compact attributed ratings omit Steam percentage/count and nested tooltip/buttons."
+  },
+  "LibraryHoverPreviewTests.Exit_or_recycle_closes_preview_and_cancels_pending_metadata": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/avalon-preview.test.tsx",
+        "case": "ignores late metadata after preview %s"
+      }
+    ],
+    "reason": "Exit/recycle close and invalidate pending metadata so late results cannot reopen. The preload bridge does not abort the underlying request, unlike the original CancellationToken assertion."
+  },
+  "LibraryHoverPreviewTests.Opening_feed_preview_closes_library_preview_even_without_a_pointer_exit": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-preview.test.tsx",
+        "case": "opening a feed preview closes the library preview without a pointer exit"
+      }
+    ],
+    "reason": "Shared coordination permits one library/feed preview even without a delivered pointer-exit event."
+  },
+  "LibraryHoverPreviewTests.Detaching_library_tile_closes_its_preview": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-preview.test.tsx",
+        "case": "ignores late metadata after preview %s"
+      }
+    ],
+    "reason": "Unmount removes the portal/described-by association; late metadata cannot restore it."
+  },
+  "LibraryRefreshOrderingTests.Slower_manual_reload_cannot_replace_newer_settings_and_metadata_refresh": {
+    "status": "pending",
+    "reason": "Needs controlled out-of-order API/workspace refresh tests for account and visibility settings on both surfaces."
+  },
+  "LibraryRefreshOrderingTests.Winning_visibility_snapshot_closes_hidden_details_and_keeps_valid_selection": {
+    "status": "pending",
+    "reason": "Theme selection pruning is covered, but winning-snapshot detail closure needs composed App coverage."
+  },
+  "LibraryRefreshOrderingTests.Cancelled_or_disposed_load_never_publishes_even_when_the_reader_ignores_cancellation": {
+    "status": "pending",
+    "reason": "Requires cancelled-query and lifecycle publication coverage in shared API hooks."
+  },
+  "LibraryRefreshOrderingTests.Pending_details_honor_close_new_selection_and_newly_published_visibility": {
+    "status": "pending",
+    "reason": "Requires composed pending-detail navigation and latest-visible-snapshot coverage in App."
+  },
+  "LibraryPreparationResponsivenessTests.Input_runs_during_preparation_without_publishing_partial_or_stale_tiles": {
+    "status": "pending",
+    "reason": "Theme filters prepare synchronously. Large-library input responsiveness and atomic stale-result publication must be measured; virtualization alone does not establish this invariant."
+  },
+  "YearFilterParityTests.Both_surfaces_validate_the_same_range_and_invalid_edits_preserve_the_applied_filter": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-filters.test.tsx",
+        "case": "validates year edits %s to %s without replacing the applied filter on failure"
+      },
+      {
+        "file": "tests/avalon-filters.test.tsx",
+        "case": "excludes unknown release years from bounded ranges"
+      },
+      {
+        "file": "tests/avalon-filters.test.tsx",
+        "case": "preserves the applied year range when draft years are invalid"
+      }
+    ],
+    "reason": "Exact seven input pairs run on desktop immediate apply and fullscreen staged apply. Invalid edits preserve the applied rule and do not close. Bounded-year matching excludes undated works. Unchanged backend owns first-release-year provenance."
+  },
+  "MissingFilterOptionsParityTests.Xbox_import_appears_in_store_filters_and_selects_its_titles": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/avalon-theme.test.tsx",
+        "case": "adds imported Xbox stores and applies their residual-count filter after refresh"
+      },
+      {
+        "file": "tests/avalon-filters.test.tsx",
+        "case": "includes provider stores from the visible library instead of a fixed store catalogue"
+      },
+      {
+        "file": "tests/avalon-filters.test.tsx",
+        "case": "counts games once per option and removes only that option group for residual counts"
+      }
+    ],
+    "reason": "Both surfaces accept a refreshed plugin:xbox title, expose Xbox with accessible matching-title counts, select its titles, and retain residual counts. The original controller-button path and database import setup still need composed integration coverage."
+  },
+  "MissingFilterOptionsParityTests.Saved_and_current_rules_remain_restrictive_when_matching_choices_disappear": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/avalon-filters.test.tsx",
+        "case": "keeps missing saved rules restrictive and explicitly clearable with zero counts"
+      },
+      {
+        "file": "tests/avalon-filters.test.tsx",
+        "case": "exposes and clears a missing saved facet"
+      }
+    ],
+    "reason": "Missing store/facet rules remain restrictive and clearable. Account/hide/remove/facet changes, saved-live-list persistence and edited-state matrix require composed API tests."
+  },
+  "MissingFilterOptionsParityTests.Unknown_saved_facet_retains_an_explicit_clearable_zero_count_rule": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-theme.test.tsx",
+        "case": "keeps an unknown saved facet visible and removes its individual chip"
+      },
+      {
+        "file": "tests/avalon-filters.test.tsx",
+        "case": "keeps missing saved rules restrictive and explicitly clearable with zero counts"
+      },
+      {
+        "file": "tests/avalon-filters.test.tsx",
+        "case": "exposes and clears a missing saved facet"
+      }
+    ],
+    "reason": "Missing facet identity, zero count, restrictive matching and enabled clear operations are covered for both panels. The composed library removes the individual missing-facet chip while retaining another applied rule."
+  },
+  "MissingFilterOptionsParityTests.Removing_year_chip_clears_the_applied_rule_even_after_all_dated_games_disappear": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-theme.test.tsx",
+        "case": "removes the year chip after every dated game disappears"
+      }
+    ],
+    "reason": "Both library surfaces retain the year chip after all dated works disappear. Removing that specific chip reveals an undated work."
+  },
+  "FullscreenLibraryOptionsTests.Options_and_tools_return_to_the_same_game_and_viewport_deep_in_a_large_library": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-focus.test.tsx",
+        "case": "restores the same deep library game and viewport after closing management"
+      }
+    ],
+    "reason": "Both modes restore a focused game and deep scroll offset after closing management by button or Escape in a 900-game fixture. Virtual row geometry is mocked; the original native-controller options/filter/QuickMenu flows still need rendered coverage."
+  },
+  "DormancyTokenTests.Xaml_resources_procedural_art_and_disk_renderer_share_the_transform_endpoint": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/avalon-data.test.ts",
+        "case": "matches the original dormancy knot at %s months"
+      },
+      {
+        "file": "tests/avalon-data.test.ts",
+        "case": "handles unknown, invalid and future play dates without making artwork unreadable"
+      }
+    ],
+    "reason": "Electron tests cover all original dormancy knots and endpoints. Cross-backend procedural/disk renderer linkage remains under the retained .NET test."
+  },
+  "SegmentedSelectorContainmentTests.Segment_states_preserve_the_rounded_group_boundary": {
+    "status": "pending",
+    "reason": "Pixel containment of idle/hover/pressed/checked/focus states across palettes needs Electron screenshots; CSS overflow alone is insufficient."
+  },
+  "SegmentedSelectorContainmentTests.Production_segment_groups_use_an_inner_clip": {
+    "status": "framework-specific",
+    "reason": "This method only asserts Avalonia logical-tree Border counts and Border parent/child types in XAML templates. DOM/CSS replaces that hierarchy; the separately inventoried pixel-boundary behavior test remains pending."
+  },
+  "FullscreenThemeNavigationTests.Returning_home_after_each_theme_change_keeps_loaded_shelves_navigable": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/app.test.tsx",
+        "case": "returns from each original palette change with the loaded fullscreen shelf still navigable"
+      }
+    ],
+    "reason": "Composed App goes through Theme Studio for all nine original palettes and returns to the loaded Home shelf with left/right focus navigation. Original gamepad page cycling and the 3840x2160/1.4-text/2-percent-margin combination remain unverified."
+  },
+  "FullscreenContextTests.Runtime_factory_isolates_library_state_but_shares_the_persisted_theme": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/app.test.tsx",
+        "case": "imports the original palette once and shares it between desktop and fullscreen"
+      },
+      {
+        "file": "tests/avalon-migration.test.tsx",
+        "case": "imports the original %s palette through the public Theme preference"
+      }
+    ],
+    "reason": "Both modes share the imported theme; existing Electron profiles win and legacy fullscreen.theme is ignored. Original full composition invariants include independent journal/list instances, dormancy synchronization, reduced motion, ultrawide persistence and backdrop gradients, not all covered here. Electron appearance changes persist in the frontend profile instead of overwriting Avalonia settings."
+  },
+  "ThemeTypographyTests.Invalid_font_names_report_their_field": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "reports the exact invalid typography field %s for %s"
+      }
+    ],
+    "reason": "All original invalid family examples return an error naming typography and its exact role field."
+  },
+  "ThemeTypographyTests.Malformed_typography_is_rejected": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "rejects malformed authored typography %j"
+      }
+    ],
+    "reason": "Original under/over-range and fractional sizes, null family and unknown typography fields are rejected."
+  },
+  "ThemeTypographyTests.Malformed_preferences_use_authored_defaults": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-typography.test.tsx",
+        "case": "keeps bundled defaults for malformed original preferences %s"
+      }
+    ],
+    "reason": "The original malformed JSON, array and null stored preference values recover to the original bundled font roles and size during first-launch import."
+  },
+  "ThemeTypographyTests.Invalid_preference_entry_does_not_discard_other_themes": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-typography.test.tsx",
+        "case": "imports original per-palette typography while retaining valid entries beside a damaged entry"
+      }
+    ],
+    "reason": "A malformed entry does not discard another original palette's valid preferences; a partial third entry gets bundled defaults and the resulting Electron profile survives reload."
+  },
+  "ThemeTypographyTests.Preferences_follow_theme_switches_and_restart_and_reset_to_authored_defaults": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-typography.test.tsx",
+        "case": "keeps independent role fonts and size through palette switches, restart and reset"
+      },
+      {
+        "file": "tests/avalon-typography.test.tsx",
+        "case": "round trips effective role typography through profiles without changing bundled defaults"
+      },
+      {
+        "file": "tests/avalon-migration.test.tsx",
+        "case": "persists imported typography and explicit per-palette edits through a runtime restart"
+      }
+    ],
+    "reason": "Both surface control paths preserve independent bundled-palette overrides across switching and serialized profile reload; resetting only one palette retains the other. The original case uses bundled authored defaults. Arbitrary authored theme files are tracked separately."
+  },
+  "ThemeTypographyTests.Old_themes_and_partial_typography_keep_bundled_defaults": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "uses bundled role defaults for absent and partial authored typography"
+      }
+    ],
+    "reason": "Original JSON files with absent/partial typography receive the bundled three roles and size defaults."
+  },
+  "ThemeTypographyTests.Typography_round_trips_in_exported_theme": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "keeps authored opening position and effective typography through export without mutating defaults"
+      }
+    ],
+    "reason": "Schema-1 palette JSON export/reparse preserves the effective three role fonts and size."
+  },
+  "ThemeTypographyTests.Export_uses_effective_typography_without_changing_authored_theme": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json-runtime.test.tsx",
+        "case": "shows file diagnostics, opens the library themes folder and exports effective typography"
+      }
+    ],
+    "reason": "The actual Studio export action passes effective typography to the trusted file boundary; pure JSON round-trip tests confirm the authored source remains unchanged."
+  },
+  "ThemeTypographyTests.Reset_restores_authored_fonts_and_size": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json-runtime.test.tsx",
+        "case": "repaints an edited active theme by id, preserves explicit font edits, and reset follows authored fonts"
+      }
+    ],
+    "reason": "Reset removes the explicit override and restores the current authored family and90-percent size, including after a live file edit."
+  },
+  "ThemeTypographyRuntimeTests.Missing_font_falls_back_by_role_and_installed_fonts_are_available": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/avalon-typography.test.tsx",
+        "case": "falls back by role and resolves bundled family names case-insensitively"
+      },
+      {
+        "file": "tests/avalon-typography.test.tsx",
+        "case": "loads installed fonts only on request and keeps an editable family fallback"
+      }
+    ],
+    "reason": "CSS role fallback and explicit native font-catalogue request are covered. Actual absent-font rendering and the native OS catalogue need platform verification."
+  },
+  "ThemeTypographyControlsTests.Desktop_font_pickers_and_size_follow_the_selected_theme": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/avalon-typography.test.tsx",
+        "case": "keeps independent role fonts and size through palette switches, restart and reset"
+      }
+    ],
+    "reason": "Per-palette role controls and size restore are covered; original externally changed case-normalized picker selection is not yet asserted through the live control."
+  },
+  "ThemeTypographyControlsTests.Fullscreen_font_actions_and_theme_size_update_shared_appearance_and_keep_controller_focus": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/avalon-typography.test.tsx",
+        "case": "keeps independent role fonts and size through palette switches, restart and reset"
+      }
+    ],
+    "reason": "Fullscreen controls share profile appearance and reset per palette. Original directional controller adjustment, clamp and font chooser focus require controller integration coverage."
+  },
+  "ThemeTypographyControlsTests.Desktop_maximum_size_keeps_typography_controls_reachable_and_reset_restores_authored_values": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/electron/typography.spec.ts",
+        "case": "role fonts and text size scale text without enlarging icons or covers"
+      }
+    ],
+    "reason": "Real Electron at 1280x720 scrolls and focuses every typography control at 120 percent; reset restores bundled defaults. Original custom authored 105-percent default and keyboard activation remain broader."
+  },
+  "ThemeTypographyRuntimeTests.Fullscreen_shell_keeps_typography_settings_reachable_at_maximum_theme_size": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/typography.spec.ts",
+        "case": "role fonts and text size scale text without enlarging icons or covers"
+      }
+    ],
+    "reason": "Real fullscreen Electron at 1280x720 verifies all five font/size/reset controls fit within the window and retain keyboard focus at the original maximum 120-percent text size. This is a smaller viewport than the original 1920x1080 assertion."
+  },
+  "ThemeTypographyRuntimeTests.Desktop_text_and_reading_line_height_follow_live_resources_without_scaling_geometry": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/electron/typography.spec.ts",
+        "case": "role fonts and text size scale text without enlarging icons or covers"
+      },
+      {
+        "file": "tests/avalon-typography.test.tsx",
+        "case": "reapplies role fonts and text scale from stable baselines independently of interface geometry"
+      }
+    ],
+    "reason": "Real Electron measures font size at 100/120/80/100 with stable icons and covers and changed role font. Original paragraph line height, compact labels and button width across every scale need additional rendered assertions."
+  },
+  "ThemeTypographyRuntimeTests.Fullscreen_combines_theme_and_page_scale_without_accumulation_or_scaling_icons": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/electron/typography.spec.ts",
+        "case": "role fonts and text size scale text without enlarging icons or covers"
+      },
+      {
+        "file": "tests/electron/typography.spec.ts",
+        "case": "fullscreen combines page and theme text scales without scaling the chrome or icons twice"
+      }
+    ],
+    "reason": "Native Electron verifies 1.4 page scale combined with 1.2 typography scale, repeat transitions without accumulation and stable cover/icon geometry. Original clock has no separate Electron counterpart; heading/chrome role exclusions follow the original scale boundary."
+  },
+  "DawnThemeContrastTests.Light_controls_have_readable_labels_and_visible_boundaries": {
+    "reason": "Both Dawn palettes assert every original text/accent role against all five neutrals, line boundaries at 3:1, and filled Volt/Danger ink through normal/hover/press states. These state tokens are used by live Avalon CSS.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-palettes.test.ts",
+        "case": "keeps %s text accents readable without changing authored fills"
+      }
+    ]
+  },
+  "DawnThemeContrastTests.Dark_theme_accents_keep_their_authored_colors": {
+    "reason": "All seven dark bundled palettes preserve Volt/Azure/Amber/Danger and VoltHover foreground equality with their authored fills.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-palettes.test.ts",
+        "case": "keeps dark accent foregrounds equal to their authored colors"
+      }
+    ]
+  },
+  "RecommendationCompositionTests.Production_feed_renders_cold_games_and_keeps_action_impression_verdict_provenance": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/avalon-theme.test.tsx",
+        "case": "shows real recommendations with reasons and retains the complete title"
+      },
+      {
+        "file": "tests/avalon-data.test.ts",
+        "case": "puts recent play first without feedback or feed impressions"
+      }
+    ],
+    "reason": "Theme preserves release/shelf impression provenance and separate unscored history. Original database recommendation, launch and verdict assertions remain broader."
+  },
+  "FloatingLayoutTests.The_caption_is_the_ground": {
+    "reason": "Nine palettes assert opaque caption equals shell, translucent caption paints nothing against three backdrops, and no retired ChromeGround exists; endpoint matrix also verifies shell < wall < chrome.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-translucency.test.ts",
+        "case": "%s moves only shell and caption with layout and keeps the AA marker valid in either layout"
+      }
+    ]
+  },
+  "FloatingLayoutTests.The_layout_moves_only_the_ground_and_the_caption": {
+    "reason": "Every modeled Electron surface token is unchanged across layout except caption/shell at all 101 slider positions and both reach states. Original exhaustive dictionary contains additional unmodeled token roles.",
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/avalon-translucency.test.ts",
+        "case": "%s moves only shell and caption with layout and keeps the AA marker valid in either layout"
+      }
+    ]
+  },
+  "FloatingLayoutTests.The_tile_ground_is_opaque_in_both_layouts": {
+    "reason": "All nine palettes, 101 slider positions and both layouts retain the original opaque ground under covers; renderer-native coverage separately checks the visible cover background.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-translucency.test.ts",
+        "case": "%s has exact opaque endpoints and opaque tiles/popovers at every slider position"
+      }
+    ]
+  },
+  "FloatingLayoutTests.The_aa_mark_holds_in_whichever_layout_is_up": {
+    "reason": "Caption, rail and selected-row WCAG contrast is asserted through the computed ceiling against white in both layouts for nine palettes; flush caption survives further except palettes that clear all values.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-translucency.test.ts",
+        "case": "%s moves only shell and caption with layout and keeps the AA marker valid in either layout"
+      }
+    ]
+  },
+  "FloatingLayoutTests.A_pane_composites_over_the_ground_exactly_once": {
+    "reason": "All nine palettes, both layouts, three pane surfaces and every slider value verify two-coat admission bounded by shell, with the original .35×t identity and .006 tolerance after the ink ramp.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-translucency.test.ts",
+        "case": "%s moves only shell and caption with layout and keeps the AA marker valid in either layout"
+      }
+    ]
+  },
+  "FloatingLayoutTests.A_stored_layout_comes_back": {
+    "reason": "Saved flush layout and no startup writes are exercised through backend preference API; original case specifically restores floating and still needs that explicit fixture.",
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/avalon-appearance.test.tsx",
+        "case": "imports saved reach/layout/material without writing and restores solid surfaces in fullscreen"
+      }
+    ]
+  },
+  "FloatingLayoutTests.Existing_solid_flush_preferences_survive_new_defaults": {
+    "reason": "Exact original solid/flush/mica/wall-disabled values are read through the backend preference contract and remain unchanged with no writes.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-appearance.test.tsx",
+        "case": "preserves existing solid flush preferences over new Windows defaults without writing them back"
+      }
+    ]
+  },
+  "FloatingLayoutTests.Choosing_a_layout_writes_it_once": {
+    "reason": "Changing layout persists once; choosing the same layout again performs no second preference write.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-appearance.test.tsx",
+        "case": "writes each appearance choice once and exposes the original light-desktop contrast consequence"
+      }
+    ]
+  },
+  "ThemeContrastTests.The_caption_is_the_rail": {
+    "reason": "All palettes and 101 slider values assert flush caption equals chrome; opaque wall luminance remains below caption.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-translucency.test.ts",
+        "case": "%s has exact opaque endpoints and opaque tiles/popovers at every slider position"
+      }
+    ]
+  },
+  "ThemeContrastTests.Zero_is_the_opaque_palette_exactly": {
+    "reason": "Exact shell/pane/chrome/raised/field, TextDim and TextFaint endpoints and flush caption are asserted against original values for all nine palettes.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-translucency.test.ts",
+        "case": "%s has exact opaque endpoints and opaque tiles/popovers at every slider position"
+      }
+    ]
+  },
+  "ThemeContrastTests.A_selected_row_is_never_below_the_rail": {
+    "reason": "All calibrated themes and 101 values assert selected-row elevation against white, black and original back-solved #201F1E desktop.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-translucency.test.ts",
+        "case": "%s selected rows stay above the rail against white dark and black desktops"
+      }
+    ]
+  },
+  "ThemeContrastTests.The_worst_case_floor_covers_a_real_part_of_the_range": {
+    "reason": "Calibrated themes retain an AA ceiling in [20,99]; caption, rail, selected row and pane field clear 4.5 through it. Both layouts are included.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-translucency.test.ts",
+        "case": "%s moves only shell and caption with layout and keeps the AA marker valid in either layout"
+      }
+    ]
+  },
+  "ThemeContrastTests.A_pane_is_the_field": {
+    "reason": "PaneGround equals WallGround at all 101 values with reach enabled/disabled, and reach-disabled panes remain exactly the opaque original ground.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-translucency.test.ts",
+        "case": "%s has exact opaque endpoints and opaque tiles/popovers at every slider position"
+      }
+    ]
+  },
+  "ThemeContrastTests.The_old_boolean_preference_migrates": {
+    "reason": "Integer clamp, legacy true/false casing and whitespace, malformed and null are covered; complete exact original InlineData matrix will be retained until reproduced.",
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/avalon-translucency.test.ts",
+        "case": "migrates legacy transparency %s to %s"
+      }
+    ]
+  },
+  "ThemeContrastTests.An_unknown_stored_backdrop_reads_as_unset": {
+    "reason": "Mica, default Acrylic, unknown none fallback and platform defaults are covered, but original future-ID/null map assertions are not all explicit.",
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/avalon-translucency.test.ts",
+        "case": "retains stored choices over authored opening positions and has safe platform defaults"
+      }
+    ]
+  },
+  "ThemeContrastTests.The_field_opens_only_when_the_desktop_is_actually_arriving": {
+    "reason": "Renderer surfaces revert solid when native policy refuses a material. Electron lacks an actual compositor-material getter, so successful native request cannot prove visible OS effect.",
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/avalon-appearance.test.tsx",
+        "case": "rechecks material after OS accessibility changes and keeps saved preferences when it becomes unavailable"
+      }
+    ]
+  },
+  "ThemeContrastTests.Picking_a_new_material_forgets_the_old_ones_answer": {
+    "reason": "Stale answer after fullscreen is ignored and teardown disables the material. Material-to-material response race still requires an explicit fixture.",
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/avalon-appearance.test.tsx",
+        "case": "ignores a late native material answer after entering fullscreen and releases material on unmount"
+      }
+    ]
+  },
+  "ThemeContrastTests.Opaque_palette_clears_the_section_8_floor": {
+    "reason": "All original calibrated-palette TextDim, Text, Volt, Azure, Amber, Flare and filled-button ink floors are asserted.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-translucency.test.ts",
+        "case": "%s calibrated palette clears all original opaque floors and its dark desktop metadata never gets worse"
+      }
+    ]
+  },
+  "ThemeContrastTests.The_neutral_family_steps_one_way": {
+    "reason": "All four calibrated palettes assert Well < Ground < Surface < SurfaceRaised < SurfaceHigh luminance.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-translucency.test.ts",
+        "case": "%s calibrated palette clears all original opaque floors and its dark desktop metadata never gets worse"
+      }
+    ]
+  },
+  "ThemeContrastTests.On_a_real_desktop_the_metadata_ink_beats_its_opaque_self": {
+    "reason": "Every whole slider value and calibrated palette measures rail metadata against the original #201F1E desktop, retaining its opaque ratio within the original .01 tolerance.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-translucency.test.ts",
+        "case": "%s calibrated palette clears all original opaque floors and its dark desktop metadata never gets worse"
+      }
+    ]
+  },
+  "ThemeContrastTests.The_far_end_is_actually_transparent": {
+    "reason": "All calibrated palettes verify shell admission >=80%, caption/chrome composite admission >=30%, solid disabled-reach panes, shell alpha 38/255, and monotone shell/pane alpha over 101 values; separate layout matrix verifies the clear floating caption and pane/wall identity.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-translucency.test.ts",
+        "case": "%s calibrated palette clears all original opaque floors and its dark desktop metadata never gets worse"
+      }
+    ]
+  },
+  "FloatingLayoutTests.The_gaps_are_the_deepest_tone_in_the_window": {
+    "reason": "All nine opaque floating palettes assert shell is below wall and wall below chrome.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-translucency.test.ts",
+        "case": "%s has exact opaque endpoints and opaque tiles/popovers at every slider position"
+      }
+    ]
+  },
+  "FloatingLayoutTests.A_field_admits_the_walls_share_in_either_layout": {
+    "reason": "At full reach all nine palettes and both layouts have a clear field coat, leaving the original shell×pane .35 admission within .006.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-translucency.test.ts",
+        "case": "%s moves only shell and caption with layout and keeps the AA marker valid in either layout"
+      }
+    ]
+  },
+  "ListPromptModalTests.Short_list_choices_align_with_the_name_field_without_a_scrollbar": {
+    "reason": "Native desktop 800×600 and fullscreen 1280×720 measure every short-list button equal to the name field width/X without list scrolling.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/avalon-modals.spec.ts",
+        "case": "short list choices align with the name field and Tab stays inside the modal"
+      }
+    ]
+  },
+  "ListPromptModalTests.Many_long_lists_scroll_without_pushing_actions_out_of_a_short_window": {
+    "reason": "Native desktop 800×600 and fullscreen 1280×720 exercise 42 long lists, field/button alignment, positive scrolling to final choice and visible name/create/cancel controls.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/avalon-modals.spec.ts",
+        "case": "many long list choices scroll while the name and actions remain visible"
+      }
+    ]
+  },
+  "ListPromptModalTests.Escape_cancels_from_the_name_field_without_confirming": {
+    "reason": "Both native surfaces focus the name initially, preserve an unconfirmed draft without creating a list, then Escape closes and restores the exact trigger and presentation mode.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/avalon-modals.spec.ts",
+        "case": "short list choices align with the name field and Tab stays inside the modal"
+      }
+    ]
+  },
+  "ListPromptModalTests.Tab_cycles_inside_the_modal_in_both_directions": {
+    "reason": "Both native surfaces walk forward/reverse Tab while asserting focus stays inside; Ctrl+K cannot navigate behind the modal.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/avalon-modals.spec.ts",
+        "case": "short list choices align with the name field and Tab stays inside the modal"
+      }
+    ]
+  },
+  "ListPromptModalTests.Delete_without_a_name_field_starts_on_cancel": {
+    "reason": "Both native surfaces focus Keep list on opening. Enter closes, restores its trigger and leaves the backend list present.",
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/avalon-modals.spec.ts",
+        "case": "destructive list confirmation starts on cancel and Enter preserves the list"
+      }
+    ]
+  },
+  "ThemeJsonTests.Every_builtin_round_trips_through_the_format": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "round trips all 24 colors and every surface token for $id"
+      }
+    ],
+    "reason": "All nine bundled palettes export and parse with exact equality for eight seeds and sixteen derived colors plus light/dark variant."
+  },
+  "ThemeJsonTests.Every_token_matches_at_every_slider_position": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "round trips all 24 colors and every surface token for $id"
+      }
+    ],
+    "reason": "Every implemented shell/pane/field/metadata surface token round trips at all original 5-percent increments, both layouts and both pane reach values. The original token dictionary also includes renderer-specific art and control primitives outside this subset."
+  },
+  "ThemeJsonTests.Export_states_the_themes_own_structure": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "exports fitted structural proportions and only necessary residual overrides"
+      }
+    ],
+    "reason": "Export fits original HSV structure, asserts Nightshift edge 2.46 and Tungsten 1.38, and retains the eight named seeds."
+  },
+  "ThemeJsonTests.The_derivation_lands_beside_every_builtin": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "exports fitted structural proportions and only necessary residual overrides"
+      }
+    ],
+    "reason": "All sixteen derived fields for all four calibrated palettes stay within the original twelve-byte maximum channel distance."
+  },
+  "ThemeJsonTests.The_derivation_reproduces_every_builtins_structure": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "exports fitted structural proportions and only necessary residual overrides"
+      }
+    ],
+    "reason": "All calibrated fitted derivations assert five increasing neutral steps, edge ratio within .02, metadata AA and primary-button ink 7:1."
+  },
+  "ThemeJsonTests.Eight_seeds_alone_produce_a_theme_that_clears_the_floor": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "derives a legible neutral ramp from only eight seeds"
+      }
+    ],
+    "reason": "Ports the original minimal purple seed set, both metadata floors, primary and button 7:1 floors, five neutral steps and at least 20-percent transparency AA ceiling."
+  },
+  "ThemeJsonTests.A_missing_schema_version_is_refused": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "refuses unsupported schema version %s before using any colors"
+      }
+    ],
+    "reason": "Missing, below-first, future and wrong-type schema versions return one named diagnostic before trusting the rest of the document."
+  },
+  "ThemeJsonTests.A_future_schema_version_is_refused_and_says_why": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "refuses unsupported schema version %s before using any colors"
+      }
+    ],
+    "reason": "Missing, below-first, future and wrong-type schema versions return one named diagnostic before trusting the rest of the document."
+  },
+  "ThemeJsonTests.A_version_below_the_first_one_is_refused": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "refuses unsupported schema version %s before using any colors"
+      }
+    ],
+    "reason": "Missing, below-first, future and wrong-type schema versions return one named diagnostic before trusting the rest of the document."
+  },
+  "ThemeJsonTests.Nothing_malformed_throws": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "returns a file diagnostic without throwing for malformed input %s"
+      }
+    ],
+    "reason": "All original malformed document, scalar and seed shapes plus unfinished comments return file-specific diagnostics without throwing."
+  },
+  "ThemeJsonTests.An_unknown_top_level_field_is_named": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "bounds bytes and nesting, identifies unknown root fields and rejects executable data"
+      }
+    ],
+    "reason": "An unknown top-level field is refused with its name and the known schema fields; nesting, bytes and executable fields are also bounded."
+  },
+  "ThemeJsonTests.A_missing_seed_names_the_seed": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "names missing seeds and rejects alpha, named colors and seed overrides"
+      }
+    ],
+    "reason": "Ports missing danger, alpha rejection with transparency guidance, named-color refusal and seed-in-overrides correction using exact diagnostic fields."
+  },
+  "ThemeJsonTests.A_colour_with_an_alpha_is_refused_with_the_reason": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "names missing seeds and rejects alpha, named colors and seed overrides"
+      }
+    ],
+    "reason": "Ports missing danger, alpha rejection with transparency guidance, named-color refusal and seed-in-overrides correction using exact diagnostic fields."
+  },
+  "ThemeJsonTests.A_colour_name_is_refused_rather_than_guessed_at": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "names missing seeds and rejects alpha, named colors and seed overrides"
+      }
+    ],
+    "reason": "Ports missing danger, alpha rejection with transparency guidance, named-color refusal and seed-in-overrides correction using exact diagnostic fields."
+  },
+  "ThemeJsonTests.Overriding_a_seed_says_where_to_put_it_instead": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "names missing seeds and rejects alpha, named colors and seed overrides"
+      }
+    ],
+    "reason": "Ports missing danger, alpha rejection with transparency guidance, named-color refusal and seed-in-overrides correction using exact diagnostic fields."
+  },
+  "ThemeJsonTests.An_unknown_override_warns_and_the_theme_still_loads": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "warns about unknown and case-misspelled overrides while keeping a valid theme"
+      }
+    ],
+    "reason": "Unknown Sparkle and misspelled surfaceraised retain the valid theme; the warning suggests SurfaceRaised."
+  },
+  "ThemeJsonTests.A_misspelled_override_suggests_the_spelling": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "warns about unknown and case-misspelled overrides while keeping a valid theme"
+      }
+    ],
+    "reason": "Unknown Sparkle and misspelled surfaceraised retain the valid theme; the warning suggests SurfaceRaised."
+  },
+  "ThemeJsonTests.A_scalar_out_of_range_is_clamped_and_reported": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "clamps every scalar range and reads known proportions in the wrong block with a warning"
+      }
+    ],
+    "reason": "Every original scalar clamps at both bounds and reports the precise field; misplaced known proportions are read with a warning."
+  },
+  "ThemeJsonTests.A_builtin_id_is_refused_because_it_could_never_be_picked": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "refuses unsafe or calibrated id %s"
+      }
+    ],
+    "reason": "All four calibrated ids, spaces, traversal, leading hyphen and excessive length are refused."
+  },
+  "ThemeJsonTests.An_id_with_spaces_in_it_is_refused": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "refuses unsafe or calibrated id %s"
+      }
+    ],
+    "reason": "All four calibrated ids, spaces, traversal, leading hyphen and excessive length are refused."
+  },
+  "ThemeJsonTests.Comments_and_trailing_commas_are_read": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "reads comments and trailing commas without changing JSON strings or escape sequences"
+      }
+    ],
+    "reason": "The data-only parser accepts line/block comments and trailing commas while preserving URLs, escaped quotes and comment-like string content."
+  },
+  "ThemeJsonTests.Flare_spent_twice_warns_specifically_and_still_loads": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "warns about Flare reuse, danger/selection hue gaps and dormant-cover inversion without suppressing colors"
+      }
+    ],
+    "reason": "The authoring audit reports role reuse, measured hue gaps with close-button meaning and bright-field dormancy inversion. Valid authored colors still load and warnings appear in Studio."
+  },
+  "ThemeJsonTests.Flare_too_near_danger_warns_with_the_measurement": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "warns about Flare reuse, danger/selection hue gaps and dormant-cover inversion without suppressing colors"
+      }
+    ],
+    "reason": "The authoring audit reports role reuse, measured hue gaps with close-button meaning and bright-field dormancy inversion. Valid authored colors still load and warnings appear in Studio."
+  },
+  "ThemeJsonTests.A_bright_field_warns_about_the_dormancy_ramp_and_still_loads": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "warns about Flare reuse, danger/selection hue gaps and dormant-cover inversion without suppressing colors"
+      }
+    ],
+    "reason": "The authoring audit reports role reuse, measured hue gaps with close-button meaning and bright-field dormancy inversion. Valid authored colors still load and warnings appear in Studio."
+  },
+  "ThemeJsonTests.The_report_agrees_with_the_sliders_own_mark": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "uses the slider AA arithmetic in the $id report with later wall inversion"
+      }
+    ],
+    "reason": "All calibrated palette reports use the live AA-ceiling arithmetic, include the percentage headline and verify wall inversion occurs no earlier."
+  },
+  "ThemeJsonTests.A_theme_can_carry_its_own_opening_position": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "keeps authored opening position and effective typography through export without mutating defaults"
+      }
+    ],
+    "reason": "All four original opening preferences parse, map chrome reach to false and survive export/reload with effective typography."
+  },
+  "ThemeJsonTests.An_unknown_default_is_ignored_with_a_warning_rather_than_refused": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "ignores unknown default choices, clamps percentages, and calibrated palettes have no opening preferences"
+      }
+    ],
+    "reason": "Unknown backdrop/reach choices warn and are ignored; transparency400 clamps100 and the valid theme remains available."
+  },
+  "ThemeJsonTests.No_calibrated_palette_carries_defaults": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "ignores unknown default choices, clamps percentages, and calibrated palettes have no opening preferences"
+      }
+    ],
+    "reason": "The calibrated four have neither authored opening defaults nor user-file provenance."
+  },
+  "UserThemeStoreTests.First_run_leaves_a_working_theme_in_the_folder": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-theme-store.test.ts",
+        "case": "prepares a missing themes folder and leaves a working example on first run"
+      }
+    ],
+    "reason": "The native store creates the original themes directory and a valid, loadable example only on first empty-directory preparation."
+  },
+  "UserThemeStoreTests.Seeding_does_not_touch_a_folder_that_already_has_a_file": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-theme-store.test.ts",
+        "case": "does not seed or overwrite a folder containing any JSON file including a broken one"
+      }
+    ],
+    "reason": "An existing JSON file, including an invalid file, prevents seeding and is preserved byte-for-byte."
+  },
+  "UserThemeStoreTests.A_broken_file_is_reported_and_the_good_ones_still_load": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-theme-store.test.ts",
+        "case": "reports a broken or oversized file while loading the good top-level files only"
+      }
+    ],
+    "reason": "Malformed and oversized files report their names while valid siblings load; nested directories and non-JSON files are ignored."
+  },
+  "UserThemeStoreTests.Two_files_with_one_id_is_an_error_naming_the_first": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-theme-store.test.ts",
+        "case": "retains the first duplicate by case-insensitive file order and names its owner"
+      }
+    ],
+    "reason": "Stable case-insensitive file ordering retains the first id and reports the second file with the first owner's name."
+  },
+  "UserThemeStoreTests.Export_writes_a_file_that_loads_back": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-theme-store.test.ts",
+        "case": "exports a valid document and atomically preserves existing files during concurrent exports"
+      }
+    ],
+    "reason": "Export writes schema-validated JSON that reloads and uses exclusive-create numbered filenames, including concurrent exports. Filenames use the exported document id."
+  },
+  "UserThemeStoreTests.Export_never_overwrites": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-theme-store.test.ts",
+        "case": "exports a valid document and atomically preserves existing files during concurrent exports"
+      }
+    ],
+    "reason": "Export writes schema-validated JSON that reloads and uses exclusive-create numbered filenames, including concurrent exports. Filenames use the exported document id."
+  },
+  "UserThemeStoreTests.A_user_theme_is_selectable_and_survives_a_restart": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json-runtime.test.tsx",
+        "case": "imports saved custom role overrides while an existing Electron profile wins on restart"
+      }
+    ],
+    "reason": "The authored catalog loads before preferences, preserves custom selection and role overrides across runtime recreation, and gives saved Electron profiles priority."
+  },
+  "UserThemeStoreTests.A_deleted_theme_file_falls_back_to_the_default": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json-runtime.test.tsx",
+        "case": "falls back when the active custom file is deleted while keeping its saved font preference"
+      }
+    ],
+    "reason": "Removing an active custom file restores the Winnow palette without discarding that palette's saved typography."
+  },
+  "UserThemeStoreTests.Reloading_repaints_the_theme_that_is_up": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json-runtime.test.tsx",
+        "case": "repaints an edited active theme by id, preserves explicit font edits, and reset follows authored fonts"
+      }
+    ],
+    "reason": "Catalog changes repaint the active id's colors and label; explicit font edits remain until reset, which resolves current authored defaults."
+  },
+  "UserThemeStoreTests.Saving_a_theme_file_wakes_the_store_once": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-theme-store.test.ts",
+        "case": "debounces a settled theme save and stops notifications after disposal"
+      }
+    ],
+    "reason": "Real filesystem writes produce one settled notification after the 250ms debounce; native tests verify that file edits actually repaint both surfaces."
+  },
+  "UserThemeStoreTests.Picking_a_theme_applies_the_position_it_asks_for": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-appearance.test.tsx",
+        "case": "preserves stored appearance through delayed authored profile hydration with fullscreen %s, then writes all explicit defaults"
+      }
+    ],
+    "reason": "Both surfaces preserve saved window appearance through initial custom-profile hydration; explicit authored selection writes all four defaults, while selecting the calibrated palette writes none."
+  },
+  "UserThemeStoreTests.A_stored_value_beats_the_themes_own_default": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-appearance.test.tsx",
+        "case": "preserves stored appearance through delayed authored profile hydration with fullscreen %s, then writes all explicit defaults"
+      }
+    ],
+    "reason": "Both surfaces preserve saved window appearance through initial custom-profile hydration; explicit authored selection writes all four defaults, while selecting the calibrated palette writes none."
+  },
+  "UserThemeStoreTests.Selecting_a_builtin_touches_no_other_setting": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-appearance.test.tsx",
+        "case": "preserves stored appearance through delayed authored profile hydration with fullscreen %s, then writes all explicit defaults"
+      }
+    ],
+    "reason": "Both surfaces preserve saved window appearance through initial custom-profile hydration; explicit authored selection writes all four defaults, while selecting the calibrated palette writes none."
+  },
+  "UserThemeStoreTests.Every_write_a_theme_change_makes_reaches_the_store": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-appearance.test.tsx",
+        "case": "preserves stored appearance through delayed authored profile hydration with fullscreen %s, then writes all explicit defaults"
+      }
+    ],
+    "reason": "All four window preference writes and resulting values are asserted on desktop/fullscreen. The independent Electron selected-palette profile is saved by runtime tests; native reload confirms persisted selection."
+  },
+  "UserThemeStoreTests.Preparing_the_theme_folder_creates_it_when_it_is_missing": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-theme-store.test.ts",
+        "case": "prepares a missing themes folder and leaves a working example on first run"
+      }
+    ],
+    "reason": "The trusted main store prepares a missing directory without a diagnostic; the Studio button uses the resolved backend data folder."
+  },
+  "UserThemeStoreTests.Preparing_the_theme_folder_reports_nothing_when_there_is_no_folder": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/avalon-theme-store.test.ts",
+        "case": "loads an absent folder without a problem and reports unavailable backend directory discovery"
+      }
+    ],
+    "reason": "An absent disk directory loads without diagnostics. The original no-UserThemeStore dependency-injection host branch is not exercised by this native catalog test; Studio hides this section without the optional bridge."
+  },
+  "UserThemeStoreTests.A_local_copy_of_a_bundled_theme_keeps_its_edits_and_saved_selection": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json-runtime.test.tsx",
+        "case": "uses a local bundled palette replacement and preserves its saved selection through reload"
+      }
+    ],
+    "reason": "Local authored palette ids override their bundled document while reserved calibrated ids are rejected. Saved id and edited colors remain through reload."
+  }
+}

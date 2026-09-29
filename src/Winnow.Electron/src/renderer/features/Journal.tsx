@@ -1,13 +1,20 @@
-import { useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { BookOpen, X } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
-import { ApiError, dateLabel, hours, request } from '../api/client'
+import { ApiError, dateLabel, hours, request, storeLabel, openExternal } from '../api/client'
 import { useActivity, useApiQuery, useLibrary, useStatistics } from '../api/hooks'
 import type { JournalResponse, Mode, Session } from '../api/types'
 import { Empty, Notice } from './shared'
 import { clearViewState, useViewState } from '../viewState'
 import { journalPeriod } from '../api/journalPeriod'
+import { activityKey, localDate, mondayWeek, patchJournalCaches, uniqueActivity } from './activity-model'
+import { SteamReportedActivity } from './activity-steam'
+import { GameplayDashboard } from './activity-gameplay'
+import { Artwork } from '../components/Artwork'
+import './activity.css'
+
+const activeEditors = new Map<number, { close: () => void }>()
 interface JournalDraftState {
   note: string
   rating: number
@@ -15,6 +22,8 @@ interface JournalDraftState {
   current: JournalResponse | null
   uncertain: boolean
   sending: boolean
+  error?: unknown
+  needsRead?: boolean
 }
 
 export function JournalEditor({ sessionId, onClose }: { sessionId: number; onClose: () => void }) {
@@ -59,6 +68,13 @@ export function JournalEditor({ sessionId, onClose }: { sessionId: number; onClo
 
 export function JournalDraft({ initial, onClose }: { initial: JournalResponse; onClose: () => void }) {
   const client = useQueryClient()
+  useEffect(() => {
+    const editor = { close: onClose }
+    activeEditors.set(initial.sessionId, editor)
+    return () => {
+      if (activeEditors.get(initial.sessionId) === editor) activeEditors.delete(initial.sessionId)
+    }
+  }, [initial.sessionId, onClose])
   // The revision belongs to the draft, never to a later background refresh.
   const key = `draft:journal:${initial.sessionId}`
   const [draft, setDraft] = useViewState<JournalDraftState>(key, {
@@ -69,7 +85,7 @@ export function JournalDraft({ initial, onClose }: { initial: JournalResponse; o
     uncertain: false,
     sending: false,
   })
-  const { note, rating, revision, current, uncertain, sending: pending } = draft
+  const { note, rating, revision, current, uncertain, sending: pending, error, needsRead } = draft
   const setNote = (value: string) => setDraft((previous) => ({ ...previous, note: value }))
   const setRating = (value: number) => setDraft((previous) => ({ ...previous, rating: value }))
   const setRevision = (value: string) => setDraft((previous) => ({ ...previous, revision: value }))
@@ -81,28 +97,44 @@ export function JournalDraft({ initial, onClose }: { initial: JournalResponse; o
     clearViewState(key)
     onClose()
   }
-  const [error, setError] = useState<unknown>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const setError = (error: unknown) => setDraft((previous) => ({ ...previous, error }))
+  async function readCurrent() {
+    try {
+      const current = await request<JournalResponse>('journal.get', { sessionId: initial.sessionId })
+      setDraft((previous) => ({ ...previous, current, needsRead: false }))
+    } catch {
+      setDraft((previous) => ({ ...previous, needsRead: true }))
+    }
+  }
   async function save(remove = false) {
-    if (pending) return
+    if (pending || current || needsRead) return
+    if (!remove && !note.trim() && !(rating >= 1 && rating <= 5)) {
+      setError(new Error('Add a note or rating, or delete this entry.'))
+      return
+    }
     setPending(true)
     setError(null)
     try {
-      await request(
+      const saved = await request<JournalResponse>(
         remove ? 'journal.delete' : 'journal.put',
         { sessionId: initial.sessionId },
         { note: note.trim() || null, rating: rating || null, expectedRevision: revision },
       )
-      await client.invalidateQueries({ queryKey: ['api'] })
-      close()
+      patchJournalCaches(
+        client,
+        initial.sessionId,
+        remove
+          ? null
+          : { note: note.trim() || null, rating: rating || null, ...saved, sessionId: initial.sessionId },
+      )
+      clearViewState(key)
+      activeEditors.get(initial.sessionId)?.close()
     } catch (failure) {
       setError(failure)
       if (failure instanceof ApiError && (failure.conflict || failure.uncertain)) {
         setUncertain(failure.uncertain)
-        try {
-          setCurrent(await request<JournalResponse>('journal.get', { sessionId: initial.sessionId }))
-        } catch {
-          /* Keep the original failure and the local draft. */
-        }
+        await readCurrent()
       }
       setPending(false)
     }
@@ -138,6 +170,17 @@ export function JournalDraft({ initial, onClose }: { initial: JournalResponse; o
         </select>
       </label>
       <Notice error={error} />
+      {needsRead && (
+        <div className="conflict-panel">
+          <p>
+            The saved note could not be checked. Your draft is safe. Read the saved version before trying
+            again.
+          </p>
+          <button type="button" disabled={pending} onClick={() => void readCurrent()}>
+            Read saved note
+          </button>
+        </div>
+      )}
       {current && (
         <section className="conflict-panel" aria-label="Resolve journal changes">
           <h3>
@@ -175,16 +218,43 @@ export function JournalDraft({ initial, onClose }: { initial: JournalResponse; o
         </section>
       )}
       <div className="form-actions">
-        <button className="primary-button" disabled={pending || Boolean(current)} type="submit">
+        <button
+          className="primary-button"
+          disabled={pending || Boolean(current) || needsRead || confirmDelete}
+          type="submit"
+        >
           {pending ? 'Saving…' : 'Save note'}
         </button>
-        <button type="button" disabled={pending || Boolean(current)} onClick={() => void save(true)}>
+        <button
+          type="button"
+          disabled={pending || Boolean(current) || needsRead}
+          onClick={() => setConfirmDelete(true)}
+        >
           Delete note
         </button>
         <button type="button" disabled={pending} onClick={close}>
           Cancel
         </button>
       </div>
+      {confirmDelete && (
+        <section className="conflict-panel" aria-label="Delete this note?">
+          <h3>Delete this note?</h3>
+          <p>Your recorded session stays in your history.</p>
+          <div className="form-actions">
+            <button
+              className="danger-button"
+              disabled={pending || Boolean(current) || needsRead}
+              type="button"
+              onClick={() => void save(true)}
+            >
+              Yes, delete note
+            </button>
+            <button type="button" disabled={pending} onClick={() => setConfirmDelete(false)}>
+              Keep note
+            </button>
+          </div>
+        </section>
+      )}
     </form>
   )
 }
@@ -224,138 +294,364 @@ export function Journal({
   onOpenGame?: (workId: number) => void
 }) {
   const [section, setSection] = useViewState(`${mode}:journal:section`, 0)
-  const [days, setDays] = useViewState(`${mode}:journal:days`, 30)
-  const [bounds, setBounds] = useViewState(`${mode}:journal:bounds`, journalPeriod(30))
+  const [days, setDays] = useViewState(`${mode}:journal:days`, mode === 'fullscreen' ? 0 : 30)
+  const [bounds, setBounds] = useViewState(
+    `${mode}:journal:bounds`,
+    mode === 'fullscreen' ? { ...mondayWeek(), untilUtc: journalPeriod(1).untilUtc } : journalPeriod(30),
+  )
   const [editing, setEditing] = useViewState<number | null>(`${mode}:journal:editing`, null)
+  const [panel, setPanel] = useViewState(`${mode}:journal:panel`, 'history')
+  const [week, setWeek] = useViewState(`${mode}:journal:week`, 0)
+  const [workId, setWorkId] = useViewState<number | undefined>(`${mode}:journal:work`, undefined)
+  const [selected, setSelected] = useViewState<string | null>(`${mode}:journal:selected`, null)
+  const [openError, setOpenError] = useState<unknown>(null)
+  const [reading, setReading] = useState(false)
   const library = useLibrary()
-  const activity = useActivity(bounds.fromUtc, bounds.untilUtc, section)
+  const preferences = useApiQuery<{ promptAfterPlay: boolean }>('journal.preferences.get')
+  const activity = useActivity(bounds.fromUtc, bounds.untilUtc, section, workId)
   const statistics = useStatistics(bounds.fromUtc, bounds.untilUtc)
-  const rows = activity.data?.pages.flatMap((page) => page.rows) ?? []
+  const rows = uniqueActivity(activity.data?.pages.flatMap((page) => page.rows) ?? []).filter(
+    (row) =>
+      !library.data ||
+      library.data.games.some((game) => game.entries.some((entry) => entry.ownershipId === row.ownershipId)),
+  )
+  const chosen = rows.find((row) => activityKey(row) === selected) ?? rows[0]
+  const chosenGame = library.data?.games.find((game) =>
+    game.entries.some((entry) => entry.ownershipId === chosen?.ownershipId),
+  )
+  const changeWeek = (offset: number) => {
+    const next = Math.min(0, offset)
+    setWeek(next)
+    setDays(0)
+    setBounds(next === 0 ? { ...mondayWeek(), untilUtc: journalPeriod(1).untilUtc } : mondayWeek(next))
+  }
+  const readUpdate = async (url: string) => {
+    try {
+      await openExternal(url, { failure: 'inline' })
+      setOpenError(null)
+    } catch (error) {
+      setOpenError(error)
+    }
+  }
   return (
-    <section className={`feature-page journal-page mode-${mode}`}>
+    <section
+      className={`feature-page journal-page mode-${mode}`}
+      tabIndex={mode === 'fullscreen' ? 0 : undefined}
+      onKeyDown={(event) => {
+        if (
+          panel !== 'history' ||
+          event.defaultPrevented ||
+          (event.target as HTMLElement).closest('nav, input, select, textarea, [role="dialog"]')
+        )
+          return
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+          event.preventDefault()
+          if (event.key === 'ArrowLeft') changeWeek(days === 0 ? week - 1 : -1)
+          else if (days === 0 && week < 0) changeWeek(week + 1)
+        }
+        if (event.key.toLowerCase() === 'x' && (chosen?.session || chosen?.note)) {
+          event.preventDefault()
+          setEditing(chosen.session?.id ?? chosen.note!.sessionId)
+        }
+        if (event.key.toLowerCase() === 'y' && chosen?.note?.note) {
+          event.preventDefault()
+          setReading(true)
+        }
+      }}
+    >
       <header className="feature-heading">
         <div>
           <p className="eyebrow">YOUR PLAYING LIFE</p>
           <h1>A little history.</h1>
           <p>Sessions, discoveries, and the notes you leave behind.</p>
         </div>
-        <label className="field">
-          Time period
-          <select
-            value={days}
-            onChange={(event) => {
-              const value = Number(event.target.value)
-              setDays(value)
-              setBounds(journalPeriod(value))
-            }}
-          >
-            <option value={7}>Last 7 days</option>
-            <option value={30}>Last 30 days</option>
-            <option value={90}>Last 90 days</option>
-            <option value={365}>Last year</option>
-          </select>
-        </label>
+        {panel === 'history' && (
+          <label className="field">
+            Time period
+            <select
+              value={days}
+              onChange={(event) => {
+                const value = Number(event.target.value)
+                setDays(value)
+                if (value === 0) changeWeek(0)
+                else setBounds(journalPeriod(value))
+              }}
+            >
+              <option value={7}>Last 7 days</option>
+              <option value={30}>Last 30 days</option>
+              <option value={90}>Last 90 days</option>
+              <option value={365}>Last year</option>
+              <option value={0}>Monday week</option>
+            </select>
+          </label>
+        )}
       </header>
-      {statistics.data && (
-        <div className="stat-strip">
-          <div className="stat">
-            <strong>{hours(statistics.data.recordedSeconds / 60)}</strong>
-            <span>Recorded play</span>
-          </div>
-          <div className="stat">
-            <strong>{statistics.data.gamesPlayedCount}</strong>
-            <span>Games played</span>
-          </div>
-          <div className="stat">
-            <strong>{statistics.data.startedSessionCount}</strong>
-            <span>Sessions started</span>
-          </div>
-          <div className="stat">
-            <strong>
-              {statistics.data.medianSessionSeconds == null
-                ? '—'
-                : hours(statistics.data.medianSessionSeconds / 60)}
-            </strong>
-            <span>Typical session</span>
-          </div>
-        </div>
-      )}
-      <Notice error={statistics.error} />
-      <p className="muted">
-        Recorded sessions only. Store playtime counters are separate. Concurrent games contribute
-        independently.
-      </p>
-      <nav className="tabs" aria-label="Activity type">
-        {['Sessions', 'Updates', 'Journal'].map((name, index) => (
-          <button key={name} aria-pressed={section === index} onClick={() => setSection(index)}>
-            {name}
-          </button>
-        ))}
-      </nav>
-      <Notice error={activity.error} />
-      {activity.isPending ? (
-        <p role="status">Loading activity…</p>
-      ) : !rows.length ? (
-        <Empty>
-          {section === 2
-            ? 'Your notes will live here. Open a recorded session to add your first one.'
-            : 'No activity in this period.'}
-        </Empty>
-      ) : (
-        <div className="timeline">
-          {rows.map((row, index) => {
-            const game = library.data?.games.find((item) =>
-              item.entries.some((entry) => entry.ownershipId === row.ownershipId),
-            )
-            return (
-              <article
-                className="timeline-entry"
-                key={`${row.session?.id ?? row.update?.id ?? row.note?.sessionId}-${index}`}
-              >
-                <time dateTime={row.atUtc}>{dateLabel(row.atUtc)}</time>
-                <div>
-                  <button
-                    className="text-button"
-                    disabled={!game}
-                    onClick={() => game && onOpenGame?.(game.workId)}
-                  >
-                    {game?.title ?? 'Game no longer in your library'}
-                  </button>
-                  <p>
-                    {row.session
-                      ? row.session.durationSeconds == null
-                        ? 'Session in progress'
-                        : hours(row.session.durationSeconds / 60)
-                      : (row.update?.title ?? row.update?.kind ?? 'Journal entry')}
-                  </p>
-                  {row.note?.note && <blockquote>{row.note.note}</blockquote>}
-                  {row.note?.rating && <p>{row.note.rating} / 5</p>}
-                </div>
-                {(row.session || row.note) && (
-                  <button onClick={() => setEditing(row.session?.id ?? row.note!.sessionId)}>
-                    <BookOpen size={16} /> {row.note ? 'Edit note' : 'Add note'}
-                  </button>
-                )}
-                {row.update?.url && (
-                  <button
-                    onClick={() => {
-                      void window.winnow.openExternal(row.update!.url!)
-                    }}
-                  >
-                    Read update
-                  </button>
-                )}
-              </article>
-            )
-          })}
-        </div>
-      )}
-      {activity.hasNextPage && (
-        <button disabled={activity.isFetchingNextPage} onClick={() => void activity.fetchNextPage()}>
-          {activity.isFetchingNextPage ? 'Loading…' : 'Earlier activity'}
+      <nav className="tabs" aria-label="Activity pages">
+        <button aria-pressed={panel === 'history'} onClick={() => setPanel('history')}>
+          History
         </button>
+        <button aria-pressed={panel === 'summary'} onClick={() => setPanel('summary')}>
+          Library summary
+        </button>
+        {library.data?.games.some((game) => game.entries.some((entry) => entry.store === 'steam')) && (
+          <button aria-pressed={panel === 'steam'} onClick={() => setPanel('steam')}>
+            Steam-reported activity
+          </button>
+        )}
+      </nav>
+      {panel === 'summary' ? (
+        <GameplayDashboard mode={mode} onOpenGame={onOpenGame} />
+      ) : panel === 'steam' ? (
+        <SteamReportedActivity games={library.data?.games ?? []} mode={mode} onOpenGame={onOpenGame} />
+      ) : (
+        <>
+          {statistics.data && (
+            <div className="stat-strip">
+              <div className="stat">
+                <strong>{hours(statistics.data.recordedSeconds / 60)}</strong>
+                <span>Recorded play</span>
+              </div>
+              <div className="stat">
+                <strong>{statistics.data.gamesPlayedCount}</strong>
+                <span>Games played</span>
+              </div>
+              <div className="stat">
+                <strong>{statistics.data.startedSessionCount}</strong>
+                <span>Sessions started</span>
+              </div>
+              <div className="stat">
+                <strong>
+                  {statistics.data.medianSessionSeconds == null
+                    ? '—'
+                    : hours(statistics.data.medianSessionSeconds / 60)}
+                </strong>
+                <span>Typical session</span>
+              </div>
+            </div>
+          )}
+          <Notice error={statistics.error} />
+          <p className="muted">
+            Recorded sessions only. Store playtime counters are separate. Concurrent games contribute
+            independently.
+          </p>
+          <div className="activity-week-navigation">
+            <button onClick={() => changeWeek(days === 0 ? week - 1 : -1)}>Previous week</button>
+            {days === 0 && (
+              <strong>
+                {dateLabel(bounds.fromUtc)} –{' '}
+                {dateLabel(new Date(Date.parse(bounds.untilUtc) - 1).toISOString())}
+              </strong>
+            )}
+            <button disabled={days !== 0 || week >= 0} onClick={() => changeWeek(week + 1)}>
+              Next week
+            </button>
+            <button onClick={() => changeWeek(0)}>This week</button>
+            <label className="field">
+              Game
+              <select
+                value={workId ?? ''}
+                onChange={(event) => setWorkId(event.target.value ? Number(event.target.value) : undefined)}
+              >
+                <option value="">All games</option>
+                {library.data?.games.map((game) => (
+                  <option key={game.workId} value={game.workId}>
+                    {game.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <nav className="tabs" aria-label="Activity type">
+            {['Sessions', 'Updates', 'Journal'].map((name, index) => (
+              <button
+                data-controller-tab
+                key={name}
+                aria-pressed={section === index}
+                onClick={() => setSection(index)}
+              >
+                {name}
+              </button>
+            ))}
+          </nav>
+          <Notice error={openError} />
+          {activity.error && (
+            <div role="alert">
+              <p>
+                {activity.error instanceof ApiError && [404, 501, 503].includes(activity.error.status)
+                  ? 'Your activity history is unavailable.'
+                  : "Couldn't read your activity. Try again."}
+              </p>
+              <button
+                disabled={activity.isFetching}
+                onClick={() => {
+                  if (activity.isFetchNextPageError) void activity.fetchNextPage()
+                  else void activity.refetch()
+                }}
+              >
+                Try again
+              </button>
+            </div>
+          )}
+          {activity.isPending ? (
+            <p role="status">Loading activity…</p>
+          ) : !rows.length && !activity.error ? (
+            <Empty>
+              {section === 2
+                ? preferences.data?.promptAfterPlay === false
+                  ? 'Journal prompts are off. Turn them on in Display preferences after a game.'
+                  : 'Your notes will live here. Open a recorded session to add your first one.'
+                : section === 1
+                  ? 'No updates in this period. Updates from your games will appear here.'
+                  : 'No recorded sessions in this period. Sessions appear after Winnow observes you playing.'}
+            </Empty>
+          ) : (
+            !!rows.length && (
+              <div className="activity-layout">
+                <div
+                  className="activity-history"
+                  role="region"
+                  aria-label="Activity events"
+                  onKeyDown={(event) => {
+                    if ((event.target as HTMLElement).matches('input, select, textarea')) return
+                    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                      event.preventDefault()
+                      if (event.key === 'ArrowLeft') changeWeek(days === 0 ? week - 1 : -1)
+                      else if (days === 0 && week < 0) changeWeek(week + 1)
+                    }
+                    if (event.key.toLowerCase() === 'x' && (chosen?.session || chosen?.note)) {
+                      event.preventDefault()
+                      setEditing(chosen.session?.id ?? chosen.note!.sessionId)
+                    }
+                  }}
+                >
+                  {rows.map((row, index) => {
+                    const game = library.data?.games.find((item) =>
+                      item.entries.some((entry) => entry.ownershipId === row.ownershipId),
+                    )
+                    return (
+                      <Fragment key={activityKey(row)}>
+                        {(index === 0 ||
+                          localDate(new Date(rows[index - 1]!.atUtc)) !== localDate(new Date(row.atUtc))) && (
+                          <h3>{dateLabel(row.atUtc)}</h3>
+                        )}
+                        <article
+                          tabIndex={0}
+                          aria-label={`${game?.title ?? 'Game'} activity at ${dateLabel(row.atUtc)}`}
+                          aria-current={chosen === row ? 'true' : undefined}
+                          className="timeline-entry"
+                          onClick={() => setSelected(activityKey(row))}
+                          onFocus={() => setSelected(activityKey(row))}
+                        >
+                          <time dateTime={row.atUtc}>
+                            {new Date(row.atUtc).toLocaleTimeString([], {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            })}
+                          </time>
+                          <div>
+                            <button
+                              className="text-button"
+                              disabled={!game}
+                              onClick={() => game && onOpenGame?.(game.workId)}
+                            >
+                              {game?.title ?? 'Game no longer in your library'}
+                            </button>
+                            <p>
+                              {row.session
+                                ? row.session.durationSeconds == null
+                                  ? row.session.endedAt
+                                    ? 'Duration unavailable'
+                                    : 'Session in progress'
+                                  : hours(row.session.durationSeconds / 60)
+                                : (row.update?.title ?? row.update?.kind ?? 'Journal entry')}
+                            </p>
+                            {row.note?.note && <blockquote>{row.note.note}</blockquote>}
+                            {row.note?.rating && <p>{row.note.rating} / 5</p>}
+                          </div>
+                          {(row.session || row.note) && (
+                            <button onClick={() => setEditing(row.session?.id ?? row.note!.sessionId)}>
+                              <BookOpen size={16} /> {row.note ? 'Edit note' : 'Add note'}
+                            </button>
+                          )}
+                          {row.update?.url && (
+                            <button
+                              onClick={() => {
+                                void readUpdate(row.update!.url!)
+                              }}
+                            >
+                              Read update
+                            </button>
+                          )}
+                        </article>
+                      </Fragment>
+                    )
+                  })}
+                </div>
+                <aside className="feature-panel activity-preview" aria-label="Selected activity">
+                  {chosenGame && <Artwork workId={chosenGame.workId} hero />}
+                  <p className="eyebrow">{chosen && storeLabel(chosen.store)}</p>
+                  <h2>{chosenGame?.title ?? 'Your activity'}</h2>
+                  {chosen && <p>{dateLabel(chosen.atUtc)}</p>}
+                  {chosen?.session && (
+                    <p>
+                      {chosen.session.durationSeconds == null
+                        ? chosen.session.endedAt
+                          ? 'Duration unavailable'
+                          : 'Session in progress'
+                        : hours(chosen.session.durationSeconds / 60)}{' '}
+                      · {chosen.session.detectionMethod.replaceAll('_', ' ')}
+                    </p>
+                  )}
+                  {chosen?.update && <h3>{chosen.update.title ?? chosen.update.kind}</h3>}
+                  {chosen?.note?.note && <blockquote>{chosen.note.note}</blockquote>}
+                  {!!chosen?.note?.rating && <p>{chosen.note.rating} / 5</p>}
+                  <div className="form-actions">
+                    {chosenGame && onOpenGame && (
+                      <button onClick={() => onOpenGame(chosenGame.workId)}>Open game</button>
+                    )}
+                    {(chosen?.session || chosen?.note) && (
+                      <button
+                        data-controller-play
+                        onClick={() => setEditing(chosen.session?.id ?? chosen.note!.sessionId)}
+                      >
+                        {chosen.note ? 'Edit selected note' : 'Add selected note'}
+                      </button>
+                    )}
+                    {chosen?.note?.note && (
+                      <button data-controller-context onClick={() => setReading(true)}>
+                        Read note
+                      </button>
+                    )}
+                    {chosen?.update?.url && (
+                      <button onClick={() => void readUpdate(chosen.update!.url!)}>
+                        Read selected update
+                      </button>
+                    )}
+                  </div>
+                </aside>
+              </div>
+            )
+          )}
+          {activity.hasNextPage && (
+            <button disabled={activity.isFetchingNextPage} onClick={() => void activity.fetchNextPage()}>
+              {activity.isFetchingNextPage ? 'Loading…' : 'Earlier activity'}
+            </button>
+          )}
+        </>
       )}
       {editing != null && <JournalEditor sessionId={editing} onClose={() => setEditing(null)} />}
+      <Dialog.Root open={reading} onOpenChange={setReading}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="dialog-overlay" />
+          <Dialog.Content className="dialog-content journal-dialog">
+            <Dialog.Title>{chosenGame?.title ?? 'Your session note'}</Dialog.Title>
+            <Dialog.Description>{chosen && dateLabel(chosen.atUtc)}</Dialog.Description>
+            <blockquote style={{ whiteSpace: 'pre-wrap' }}>{chosen?.note?.note}</blockquote>
+            {!!chosen?.note?.rating && <p>{chosen.note.rating} / 5</p>}
+            <Dialog.Close>Close note</Dialog.Close>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </section>
   )
 }

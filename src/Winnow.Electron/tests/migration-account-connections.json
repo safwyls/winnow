@@ -1,0 +1,232 @@
+{
+  "SteamConnectionPanelTests.Nothing_connected_reads_as_no_connection": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "keeps health %s distinct in combined status and method state"
+      }
+    ],
+    "reason": "Fresh state has neutral combined status, no session action side effects and the independent methods remain available."
+  },
+  "SteamConnectionPanelTests.A_key_alone_reads_as_key_set": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "keeps both methods present with key=%s session=%s and marks the credential carrying API calls"
+      }
+    ],
+    "reason": "The four credential combinations check combined status, both method controls, the carrying credential and clear/sign-out availability."
+  },
+  "SteamConnectionPanelTests.A_sign_in_alone_reads_as_signed_in_and_as_configured": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "keeps both methods present with key=%s session=%s and marks the credential carrying API calls"
+      }
+    ],
+    "reason": "Session-only renders API on through login and the stored account; the live-health test withdraws another sign-in action."
+  },
+  "SteamConnectionPanelTests.Both_credentials_read_as_both_and_state_the_scheduler_rule": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "keeps both methods present with key=%s session=%s and marks the credential carrying API calls"
+      }
+    ],
+    "reason": "Both credentials show the combined label and explicitly state that scheduled updates use the API key."
+  },
+  "SteamConnectionPanelTests.Every_health_state_has_its_own_message": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "keeps health %s distinct in combined status and method state"
+      }
+    ],
+    "reason": "All six original health states retain separate full and terse messages; failure, expiry and unpersisted health remain outside disclosures."
+  },
+  "SteamConnectionPanelTests.The_six_health_messages_are_distinct": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "opening the panel starts no sign-in and all six health messages and terse lines stay distinct"
+      }
+    ],
+    "reason": "All six full health sentences remain distinct."
+  },
+  "SteamConnectionPanelTests.Only_a_failing_or_dead_sign_in_takes_the_attention_treatment": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "only failing or expired health=%s takes top-level attention even with an API key"
+      }
+    ],
+    "reason": "Ports the original five key-present health/live/attention rows."
+  },
+  "SteamConnectionPanelTests.A_sign_in_that_needs_renewing_says_so_and_offers_the_way_back": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "keeps health %s distinct in combined status and method state"
+      }
+    ],
+    "reason": "RenewalDue and RenewalFailing each expose Sign in again and their distinct state."
+  },
+  "SteamConnectionPanelTests.An_expired_sign_in_is_named_as_an_expiry_not_as_an_absence": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "keeps health %s distinct in combined status and method state"
+      }
+    ],
+    "reason": "Expired health keeps the stored account identity visible and offers renewal rather than presenting an absent account."
+  },
+  "SteamConnectionPanelTests.Opening_the_panel_never_starts_a_steam_sign_in": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "opening the panel starts no sign-in and all six health messages and terse lines stay distinct"
+      }
+    ],
+    "reason": "Mounting does not invoke the native account flow."
+  },
+  "SteamConnectionPanelTests.A_successful_sign_in_renders_the_reports_own_account_confirmation": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "uses the completed sign-in report account confirmation=%s without inferring identity"
+      }
+    ],
+    "reason": "Both true and false AccountConfirmed are rendered directly from the completed report, with its safe detail."
+  },
+  "SteamConnectionPanelTests.A_refused_sign_in_is_reported_as_a_problem": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "reports refused native outcome %s as an error and a closed window as a neutral fact"
+      }
+    ],
+    "reason": "All four original NoToken, IdentityMismatch, Unavailable and Failed outcomes produce a visible error."
+  },
+  "SteamConnectionPanelTests.A_closed_window_is_a_fact_not_a_fault": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "presents closed-window outcome %s as a neutral fact"
+      }
+    ],
+    "reason": "Original NotSignedIn and Cancelled outcomes are neutral notices without an alert."
+  },
+  "SteamConnectionPanelTests.A_sign_in_in_progress_shows_progress_and_holds_the_button": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "allows cancelling a running native sign-in without presenting cancellation as a failure"
+      }
+    ],
+    "reason": "A pending native request holds Continue, exposes cancellation and ends with a neutral cancellation result."
+  },
+  "SteamConnectionPanelTests.Saving_a_key_hands_it_over_empties_the_field_and_says_it_is_in_use": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "retains a refused key input and clears it only after a successful protected save"
+      }
+    ],
+    "reason": "The form preserves a refused secret for retry and empties it after a successful backend save. Carrying-credential state is tested separately; the original single-flow assertion of the refreshed card status after saving still needs an integrated equivalent."
+  },
+  "SteamConnectionPanelTests.A_host_with_no_sign_in_still_offers_the_key_and_says_the_window_cannot_open": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "keeps the independent key method available when the native sign-in host is missing"
+      }
+    ],
+    "reason": "Missing native sign-in reports that route unavailable while retaining the complete API-key form. Unlike the original late-installable WebView2 runtime, a missing preload method has no live retry command, so the original attempted-unavailable command assertion is not counted as ported."
+  },
+  "SteamConnectionPanelTests.A_signed_in_user_never_sees_the_blocked_message": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "does not display a blocked identity message after confirmation"
+      }
+    ],
+    "reason": "Confirmed identity enables the account filter and removes the blocked explanation."
+  },
+  "SteamConnectionPanelTests.A_key_only_unconfirmed_user_is_told_the_next_import_settles_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "explains unconfirmed identity with key=%s session=%s"
+      }
+    ],
+    "reason": "Credential-specific explanation identifies the next Steam import as the key-only account confirmation path."
+  },
+  "SteamConnectionPanelTests.A_user_with_neither_credential_is_told_both_routes_fix_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "explains unconfirmed identity with key=%s session=%s"
+      }
+    ],
+    "reason": "An unconfirmed user with neither credential is given both sign-in and API-key routes."
+  },
+  "SteamConnectionPanelTests.A_signed_in_user_whose_account_was_not_recorded_is_told_to_sign_in_again": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "explains unconfirmed identity with key=%s session=%s"
+      }
+    ],
+    "reason": "The stored-session branch names re-sign-in rather than pretending the account was confirmed."
+  },
+  "SteamConnectionPanelTests.A_calm_session_keeps_its_sentence_in_the_disclosure": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "keeps health %s distinct in combined status and method state"
+      }
+    ],
+    "reason": "NotSignedIn, Live and RenewalDue health remain in the sign-in disclosure while actionable states remain exposed."
+  },
+  "SteamConnectionPanelTests.Every_health_state_has_a_terse_line_too": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "opening the panel starts no sign-in and all six health messages and terse lines stay distinct"
+      }
+    ],
+    "reason": "All six terse method states are distinct and are rendered beside the method heading."
+  },
+  "SteamConnectionPanelTests.An_environment_key_says_at_the_top_level_that_it_cannot_be_cleared_here": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "keeps details folded independently and exposes environment-key restrictions before opening details"
+      }
+    ],
+    "reason": "External key ownership is explained beside the heading and no clear command is offered."
+  }
+}

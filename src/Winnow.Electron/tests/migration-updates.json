@@ -1,0 +1,332 @@
+{
+  "ApplicationUpdaterTests.Semantic_versions_sort_in_release_order": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "orders %s before %s"
+      }
+    ],
+    "reason": "Electron tests cover numeric prerelease ordering, stable promotion and patch/major order; the complete original numeric-vs-alphabetic and prefix theory matrix remains to be copied."
+  },
+  "ApplicationUpdaterTests.Malformed_release_versions_are_rejected": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "rejects malformed version %s"
+      }
+    ],
+    "reason": "Rejects incomplete versions, leading-zero core/prerelease components and path-shaped input."
+  },
+  "ApplicationUpdaterTests.Stable_ignores_drafts_and_both_forms_of_prerelease_and_downgrades": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "stable rejects prereleases and every channel rejects downgrades and CI artifacts"
+      }
+    ],
+    "reason": "The version policy is verified; native GitHub draft selection and the full original release-list fixture are not independently exercised."
+  },
+  "ApplicationUpdaterTests.Selects_the_exact_platform_asset": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-updates-native.test.ts",
+        "case": "disables automatic installation and downgrades while selecting only matching Electron artifacts"
+      }
+    ],
+    "reason": "Windows architecture selection and legacy filename rejection run against actual metadata policy. Linux AppImage and macOS manual-release fixtures remain."
+  },
+  "ApplicationUpdaterTests.Release_selection_scans_later_pages_and_rejects_foreign_downloads": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-updates-native.test.ts",
+        "case": "rejects legacy or foreign metadata before starting any download"
+      }
+    ],
+    "reason": "Foreign metadata is rejected; native provider pagination differs and the manual-release query currently reads a bounded first page."
+  },
+  "ApplicationUpdaterTests.Failed_manual_checks_are_not_reported_as_up_to_date": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "failed checks report failure rather than up to date"
+      }
+    ],
+    "reason": "A failed release check preserves a failure status and no restart action."
+  },
+  "ApplicationUpdaterTests.Background_download_stages_verified_bytes_and_restart_is_explicit": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "stages a background download but requires explicit restart after backend shutdown"
+      }
+    ],
+    "reason": "State/explicit activation/lifecycle ordering and duplicate restart exclusion are ported. Verified bytes are delegated to the native downloader and are not an end-to-end network/installer test."
+  },
+  "ApplicationUpdaterTests.FailedInstallerPreparationRestartsBackendBeforeReturning": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "recovers the backend after installer preparation failure and retains recovery guidance during checks"
+      }
+    ],
+    "reason": "Preparation failure clears the context and awaits backend recovery without handing off installation."
+  },
+  "ApplicationUpdaterTests.BackendShutdownFailureNeverPreparesInstaller": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "never prepares an installer when backend shutdown fails"
+      },
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "a refused shutdown reconnects without waiting for a process that never stopped"
+      },
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "an uncertain shutdown waits again before recovery instead of starting a competing backend"
+      }
+    ],
+    "reason": "The lifecycle service owns recovery for rejected/uncertain stops; updater cannot prepare installation until shutdown and exit are confirmed."
+  },
+  "ApplicationUpdaterTests.RemotePreferenceRefreshDiscardsPackageFromPreviousChannel": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "remote channel changes discard staged prereleases and never silently restart"
+      }
+    ],
+    "reason": "Remote channel changes revoke staging authorization. Native updater cached-file deletion is not proven."
+  },
+  "ApplicationUpdaterTests.Disabling_beta_discards_staged_prerelease_without_downgrading": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "remote channel changes discard staged prereleases and never silently restart"
+      },
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "stable rejects prereleases and every channel rejects downgrades and CI artifacts"
+      }
+    ],
+    "reason": "Channel switch revokes restart and prevents downgrades. Native cache removal and full original beta release fixture remain."
+  },
+  "ApplicationUpdaterTests.Disabled_automatic_updates_allow_manual_download_and_persist": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "disabled automatic updates persist while manual download remains available"
+      }
+    ],
+    "reason": "Preference persistence leaves explicit download available."
+  },
+  "ApplicationUpdaterTests.Unsupported_installations_offer_links_without_downloading": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "unsupported installations expose browser links and never download or install"
+      }
+    ],
+    "reason": "Unsupported builds offer the official browser action and cannot stage or install."
+  },
+  "ApplicationUpdaterTests.Missing_or_invalid_digest_never_allows_staging": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "accepts exact Electron platform metadata and rejects legacy or foreign artifacts and missing digests"
+      }
+    ],
+    "reason": "The metadata gate requires a canonical SHA-512 and refuses legacy/foreign/wrong-architecture payloads before download."
+  },
+  "ApplicationUpdaterTests.Hash_mismatch_deletes_partial_and_allows_retry": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-updates-native.test.ts",
+        "case": "keeps verified staging unavailable after native checksum failure and supports retry"
+      }
+    ],
+    "reason": "A native checksum rejection blocks installation and permits retry. Native temporary file deletion is outside the mocked adapter test."
+  },
+  "ApplicationUpdaterTests.Redirect_outside_GitHub_is_rejected_before_following_it": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-updates-native.test.ts",
+        "case": "rejects legacy or foreign metadata before starting any download"
+      }
+    ],
+    "reason": "Direct foreign metadata URLs are rejected; transport redirect behavior in electron-updater still needs a real network fixture."
+  },
+  "ApplicationUpdaterTests.Development_builds_never_check_or_stage_releases": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "development version %s never checks or stages"
+      }
+    ],
+    "reason": "dev and ci versions never invoke the release driver."
+  },
+  "ApplicationUpdaterTests.Shutdown_drains_a_manual_check_after_the_UI_dispatcher_has_stopped": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "schedules automatic checks after startup and stops all timers on disposal"
+      }
+    ],
+    "reason": "Disposal cancels future timers and downloads; a paused in-flight check during process shutdown has not been ported."
+  },
+  "ApplicationUpdaterTests.Turning_off_automatic_updates_cancels_an_inflight_check_before_it_can_download": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "turning automatic updates off prevents an in-flight check from downloading"
+      }
+    ],
+    "reason": "The paused check result cannot trigger download after automatic updates are disabled."
+  },
+  "ApplicationUpdaterTests.Cancelling_a_partial_download_removes_bytes_and_leaves_retry_available": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-updates-native.test.ts",
+        "case": "maps native progress and cancellation and rejects a late completed download"
+      }
+    ],
+    "reason": "Cancellation is passed to the native token and late completion cannot authorize restart. Cache-byte cleanup remains a native downloader fixture gap."
+  },
+  "ApplicationUpdaterTests.Failed_handoff_keeps_app_open_and_permits_redownload": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "keeps the application open and permits redownload when handoff fails"
+      }
+    ],
+    "reason": "The main controller recovers backend state after failed handoff and leaves retry available; the native spawn test confirms quit is not called on launch failure."
+  },
+  "ApplicationUpdaterTests.Archive_staging_failure_never_offers_restart_and_removes_download": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "does not restart when download verification fails and allows a retry"
+      }
+    ],
+    "reason": "Electron stages installer/AppImage artifacts rather than extracting the old archive format. Failure blocks restart; native temporary-byte deletion remains unverified."
+  },
+  "ApplicationUpdaterTests.Channel_change_discards_installer_owned_staging": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "remote channel changes discard staged prereleases and never silently restart"
+      }
+    ],
+    "reason": "Channel switching revokes access to prior staging, but cached package deletion remains unverified."
+  },
+  "ApplicationUpdaterUiTests.Caption_and_fullscreen_detect_update_and_only_explicit_click_downloads_then_restarts": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-updates-ui.test.tsx",
+        "case": "offers explicit update-and-restart and recovers focus when download becomes ready"
+      },
+      {
+        "file": "tests/parity-updates-ui.test.tsx",
+        "case": "shares preferences and staged readiness while restart requires explicit activation"
+      }
+    ],
+    "reason": "Both modes share action behavior and background readiness. Original caption geometry/progress slot dimensions and controller quick-menu placement need native rendered evidence."
+  },
+  "ApplicationUpdaterUiTests.Update_and_restart_does_not_restart_when_download_does_not_become_ready": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "does not restart when download verification fails and allows a retry"
+      }
+    ],
+    "reason": "The combined command cannot stop the backend or install after failed download."
+  },
+  "ApplicationUpdaterUiTests.Recovery_guidance_stays_visible_on_both_surfaces_during_later_checks": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-updates-ui.test.tsx",
+        "case": "keeps recovery guidance visible during later checks and exposes cancellation with progress"
+      }
+    ],
+    "reason": "Both presentation paths retain independent recovery text while status/progress changes."
+  },
+  "ApplicationUpdaterUiTests.Beta_and_automatic_preferences_stay_shared_in_both_presentations": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-updates-ui.test.tsx",
+        "case": "shares preferences and staged readiness while restart requires explicit activation"
+      }
+    ],
+    "reason": "Both modes write the same main-process preferences and receive shared status events."
+  },
+  "ApplicationUpdaterUiTests.Background_readiness_updates_both_surfaces_and_restart_requires_activation": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-updates-ui.test.tsx",
+        "case": "shares preferences and staged readiness while restart requires explicit activation"
+      }
+    ],
+    "reason": "Native readiness updates shared settings/header without triggering a restart."
+  },
+  "ApplicationUpdaterUiTests.Fullscreen_hides_unavailable_update_actions_and_reaches_available_links_vertically": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-updates-ui.test.tsx",
+        "case": "hides unavailable native actions and opens manual downloads through the shared command"
+      }
+    ],
+    "reason": "Unavailable actions are absent and manual navigation uses the named native command. Spatial controller traversal requires rendered integration."
+  },
+  "ApplicationUpdaterUiTests.Fullscreen_recovers_focus_when_download_actions_change_availability": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-updates-ui.test.tsx",
+        "case": "offers explicit update-and-restart and recovers focus when download becomes ready"
+      }
+    ],
+    "reason": "DOM focus moves from the removed download action to restart; full controller traversal and all original transitions remain."
+  },
+  "ApplicationUpdaterUiTests.Download_cancellation_retry_and_browser_links_use_shared_commands": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-updates-ui.test.tsx",
+        "case": "keeps recovery guidance visible during later checks and exposes cancellation with progress"
+      },
+      {
+        "file": "tests/parity-updates-ui.test.tsx",
+        "case": "hides unavailable native actions and opens manual downloads through the shared command"
+      }
+    ],
+    "reason": "Both modes route cancel and browser commands through main. Native retry behavior is tested separately, but the whole original UI sequence remains to be combined."
+  }
+}

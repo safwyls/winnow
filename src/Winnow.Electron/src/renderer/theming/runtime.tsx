@@ -3,6 +3,7 @@ import {
   Component,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type Dispatch,
@@ -10,12 +11,17 @@ import {
   type SetStateAction,
 } from 'react'
 import type { ThemePackage } from '../../shared/bridge'
+import { avalonPalette, avalonPalettes, avalonPaletteStyle, registerAvalonThemes } from '../themes/avalon-palettes'
+import type { AvalonThemeCatalogue } from '../../shared/avalonThemeDocument'
+import { migrateAvaloniaPalette } from '../themes/avalon-migration'
+import { fontFamilyStack } from '../../shared/typography'
 import {
   DEFAULT_PROFILE,
   THEME_API_VERSION,
   contrastRatio,
   parseThemeProfile,
   resolvedThemeColors,
+  resolvedTypography,
   selectThemeProfile,
   themeSettingValues,
   validateThemeDefinition,
@@ -86,6 +92,11 @@ export async function loadExternalTheme(
 
 export function applyThemeProfile(profile: ThemeProfile, root: HTMLElement = document.documentElement): void {
   const palette = resolvedThemeColors(profile)
+  const typography = resolvedTypography(profile)
+  const avalonStyle =
+    profile.themeId === 'avalon'
+      ? avalonPaletteStyle(String(profile.settings.avalon?.palette ?? 'profile'))
+      : undefined
   const rgb = (hex: string) =>
     [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16) / 255).join(' ')
   const variables: Record<string, string> = {
@@ -102,6 +113,8 @@ export function applyThemeProfile(profile: ThemeProfile, root: HTMLElement = doc
         ? '#000000'
         : '#ffffff',
     cool: palette.cool,
+    'accent-foreground': profile.appearance.accent,
+    'cool-foreground': palette.cool,
     'portal-rim-a': rgb(palette.accent),
     'portal-rim-b': rgb(palette.cool),
     'font-display':
@@ -121,8 +134,37 @@ export function applyThemeProfile(profile: ThemeProfile, root: HTMLElement = doc
     ),
     scrim: String(profile.appearance.scrim / 100),
     'interface-scale': String((profile.appearance.scale ?? 100) / 100),
+    'theme-text-scale': profile.themeId === 'avalon' ? String(typography.sizePercent / 100) : '1',
   }
   for (const [key, value] of Object.entries(variables)) root.style.setProperty(`--${key}`, value)
+  // Dialogs and previews render under body, outside a theme's shell.
+  for (const key of [
+    'flare',
+    'well',
+    'button-ink',
+    'amber',
+    'danger',
+    'amber-foreground',
+    'danger-foreground',
+  ])
+    root.style.removeProperty(`--avalon-${key}`)
+  if (profile.themeId === 'avalon') {
+    root.style.setProperty('--font-display', fontFamilyStack(typography.headingFont, 'headingFont'))
+    root.style.setProperty('--font-body', fontFamilyStack(typography.interfaceFont, 'interfaceFont'))
+    root.style.setProperty('--font-mono', fontFamilyStack(typography.dataFont, 'dataFont'))
+  }
+  if (avalonStyle) {
+    for (const [key, value] of Object.entries(avalonStyle))
+      if (key.startsWith('--')) root.style.setProperty(key, String(value))
+    const accent = root.style.getPropertyValue('--accent'),
+      cool = root.style.getPropertyValue('--cool')
+    root.style.setProperty(
+      '--accent-text',
+      contrastRatio('#000000', accent) >= contrastRatio('#ffffff', accent) ? '#000000' : '#ffffff',
+    )
+    root.style.setProperty('--portal-rim-a', rgb(accent))
+    root.style.setProperty('--portal-rim-b', rgb(cool))
+  }
   root.dataset.palette = profile.appearance.palette
   root.dataset.density = profile.appearance.density
   root.dataset.font = profile.appearance.font
@@ -132,9 +174,10 @@ export function applyThemeProfile(profile: ThemeProfile, root: HTMLElement = doc
   root.dataset.theme = profile.themeId
   root.classList.toggle('reduced-motion', profile.appearance.reducedMotion)
   root.style.colorScheme =
-    contrastRatio('#000000', palette.background) >= contrastRatio('#ffffff', palette.background)
+    avalonStyle?.colorScheme ??
+    (contrastRatio('#000000', palette.background) >= contrastRatio('#ffffff', palette.background)
       ? 'light'
-      : 'dark'
+      : 'dark')
 }
 
 export interface ThemeRuntime {
@@ -152,12 +195,21 @@ export interface ThemeRuntime {
   exportProfile(): Promise<void>
   resetProfile(): void
   recoverTheme(): void
+  avalonCatalogue?: AvalonThemeCatalogue
+  reloadAvalonThemes?(): Promise<void>
 }
 
 export function useThemeRuntime(
-  builtins: ThemeDefinition[],
+  registeredBuiltins: ThemeDefinition[],
   options?: { loadTheme?: typeof loadExternalTheme },
 ): ThemeRuntime {
+  const [avalonCatalogue, setAvalonCatalogue] = useState<AvalonThemeCatalogue>({ themes: [], diagnostics: [] })
+  const builtins = useMemo(() => registeredBuiltins.map((theme) => theme.id !== 'avalon' ? theme : {
+    ...theme, settings: theme.settings?.map((field) => field.id !== 'palette' || field.type !== 'select' ? field : {
+      ...field, description: 'Bundled and authored Winnow palettes. Studio colors uses your custom color choices.',
+      options: [{ value: 'profile', label: 'Studio colors' }, ...avalonPalettes().map(({ id, name }) => ({ value: id, label: name }))],
+    }),
+  }), [registeredBuiltins, avalonCatalogue])
   const fallback = builtins.find((theme) => theme.id === DEFAULT_PROFILE.themeId) ?? builtins[0]
   if (!fallback) throw new Error('Register a default theme before loading Winnow.')
   const [profile, setProfile] = useState<ThemeProfile>(() => structuredClone(DEFAULT_PROFILE))
@@ -169,6 +221,7 @@ export function useThemeRuntime(
   const writes = useRef<Promise<void>>(Promise.resolve())
   const loadTheme = options?.loadTheme ?? loadExternalTheme
   const profileRef = useRef(profile)
+  const unsavedInitialProfile = useRef<ThemeProfile | null>(null)
   profileRef.current = profile
   const pendingSelection = useRef<{ id: string; source: ThemeProfile; provisional: ThemeProfile } | null>(
     null,
@@ -177,20 +230,51 @@ export function useThemeRuntime(
   useEffect(() => {
     installThemeSDK()
     let cancelled = false
-    void Promise.allSettled([window.winnow.loadPreferences(), window.winnow.listThemes()]).then((results) => {
-      if (cancelled) return
-      if (results[1].status === 'fulfilled') setPackages(results[1].value)
-      else setNotice('Installed themes could not be read. The built-in themes are still available.')
-      if (results[0].status === 'fulfilled' && results[0].value != null) {
-        try {
-          setProfile(parseThemeProfile(results[0].value))
-        } catch (error) {
-          setNotice(`${message(error)} Default appearance restored.`)
+    void Promise.allSettled([window.winnow.loadPreferences(), window.winnow.listThemes(), window.winnow.listAvalonThemes?.()]).then(
+      async (results) => {
+        if (cancelled) return
+        const catalogue = results[2].status === 'fulfilled' && results[2].value ? results[2].value : { themes: [], diagnostics: [] }
+        registerAvalonThemes(catalogue.themes)
+        setAvalonCatalogue(catalogue)
+        if (results[1].status === 'fulfilled') setPackages(results[1].value)
+        else setNotice('Installed themes could not be read. The built-in themes are still available.')
+        if (results[0].status === 'fulfilled' && results[0].value != null) {
+          try {
+            setProfile(parseThemeProfile(results[0].value))
+          } catch (error) {
+            setNotice(`${message(error)} Default appearance restored.`)
+          }
+        } else if (results[0].status === 'rejected')
+          setNotice('Appearance settings could not be read. Default appearance restored.')
+        else if (typeof window.winnow.request === 'function') {
+          const initial = profileRef.current
+          try {
+            const previous = await window.winnow.request({ route: 'preferences.presentation.get' })
+            if (cancelled) return
+            if (!previous.ok) throw new Error('Previous appearance could not be read.')
+            if (profileRef.current !== initial) {
+              setHydrated(true)
+              return
+            }
+            const migrated = migrateAvaloniaPalette(previous.data)
+            setProfile(migrated.profile)
+            if (migrated.unavailable)
+              setNotice(
+                'The saved Avalonia theme is unavailable in Electron. Choose an Avalon palette in Theme Studio.',
+              )
+          } catch {
+            if (cancelled) return
+            // Keep first-run recovery retryable. A user's explicit profile edit or
+            // reset creates a new object and may still be saved while offline.
+            unsavedInitialProfile.current = initial
+            setNotice(
+              'Your previous palette could not be read. Choose one in Theme Studio or restart to retry.',
+            )
+          }
         }
-      } else if (results[0].status === 'rejected')
-        setNotice('Appearance settings could not be read. Default appearance restored.')
-      setHydrated(true)
-    })
+        setHydrated(true)
+      },
+    )
     return () => {
       cancelled = true
     }
@@ -198,10 +282,33 @@ export function useThemeRuntime(
 
   useEffect(() => {
     applyThemeProfile(profile)
-  }, [profile])
+  }, [profile, avalonCatalogue])
+
+  const catalogueRead = useRef(0)
+  const reloadAvalonThemes = useCallback(async () => {
+    if (!window.winnow.listAvalonThemes) return
+    const revision = ++catalogueRead.current
+    try {
+      const catalogue = await window.winnow.listAvalonThemes()
+      if (revision !== catalogueRead.current) return
+      registerAvalonThemes(catalogue.themes)
+      setAvalonCatalogue(catalogue)
+    } catch { if (revision === catalogueRead.current) setNotice('Authored themes could not be reloaded. Check the themes folder and try again.') }
+  }, [])
+  useEffect(() => {
+    const unsubscribe = window.winnow.onAvalonThemesChanged?.(() => { void reloadAvalonThemes() })
+    return () => { ++catalogueRead.current; unsubscribe?.() }
+  }, [reloadAvalonThemes])
+  useEffect(() => {
+    if (!hydrated || profile.themeId !== 'avalon') return
+    const id = String(profile.settings.avalon?.palette ?? 'profile')
+    if (id === 'profile' || avalonPalette(id)) return
+    setProfile((current) => ({ ...current, settings: { ...current.settings, avalon: { ...current.settings.avalon, palette: 'winnow' } } }))
+    setNotice('The selected palette is no longer available. The Winnow palette has been restored.')
+  }, [hydrated, avalonCatalogue, profile.themeId, profile.settings.avalon?.palette])
 
   useEffect(() => {
-    if (!hydrated) return
+    if (!hydrated || profile === unsavedInitialProfile.current) return
     // Serialize saves so rapid sliders and theme switches cannot let an older write win.
     writes.current = writes.current
       .catch(() => {})
@@ -217,9 +324,7 @@ export function useThemeRuntime(
   const recoverTheme = useCallback(() => {
     setTheme(fallback)
     setProfile((current) => selectThemeProfile(current, fallback.id, fallback))
-    setNotice(
-      'The theme could not render this screen. Afterglow has been restored. Your library is unchanged.',
-    )
+    setNotice(`The theme could not render this screen. ${fallback.name} has been restored.`)
   }, [fallback])
 
   useEffect(() => {
@@ -235,7 +340,7 @@ export function useThemeRuntime(
       setTheme(fallback)
       setProfile((current) => selectThemeProfile(current, fallback.id, fallback))
       setNotice(
-        'This profile uses a theme that is not installed. Afterglow is available until you install it.',
+        `This profile uses a theme that is not installed. ${fallback.name} is available until you install it.`,
       )
       return
     }
@@ -287,7 +392,7 @@ export function useThemeRuntime(
         setTheme(fallback)
         setProfile((current) => selectThemeProfile(current, fallback.id, fallback))
         setLoading(false)
-        setNotice(`${message(error)} Afterglow has been restored.`)
+        setNotice(`${message(error)} ${fallback.name} has been restored.`)
       })
     return () => {
       cancelled = true
@@ -354,6 +459,8 @@ export function useThemeRuntime(
       setNotice('Default appearance restored.')
     },
     recoverTheme,
+    avalonCatalogue,
+    reloadAvalonThemes,
   }
 }
 

@@ -52,7 +52,8 @@ dotnet run --project src/Winnow.App
 ```
 
 The original Avalonia interface is codenamed **Avalon**. The Electron/TypeScript frontend
-offers **Afterglow** and **Rift** as alternative designs. All belong to Winnow.
+now defaults to an Avalon composition with the original palettes and fonts; **Afterglow**,
+**Rift** and **Catalogue** remain available as alternative designs. All belong to Winnow.
 
 Avalon attaches to the independent local backend, starting it when needed. Closing the
 frontend leaves session tracking and library refresh running. Other frontends can attach
@@ -60,9 +61,10 @@ to the same library and receive its live changes. See the [frontend API guide](d
 for independent startup, authentication, events and a JavaScript client example.
 
 An alternative [Electron/TypeScript frontend](src/Winnow.Electron/README.md)
-is available from source with its own desktop/fullscreen interface, Theme Studio and
+is available from source with desktop/fullscreen interfaces, Theme Studio and
 [developer-authored layouts](docs/electron-themes.md). Its feature and validation scope
-is documented separately; the release downloads and instructions below describe Avalonia.
+is documented separately. Complete behavior and test parity is still being verified;
+the release downloads and instructions below describe Avalonia.
 
 Linux builds have limited storefront integration: Epic/GOG discovery targets Windows
 launcher locations, embedded sign-in uses Windows WebView2, and credential persistence

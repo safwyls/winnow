@@ -1,0 +1,79 @@
+{
+  "GameLinkRouterTests.Selects_supported_destinations_and_reports_fallbacks": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-link-policy.test.ts",
+        "case": "routes %s / %s / %s / %s to %s with fallback %s"
+      }
+    ],
+    "reason": "Ports the original HTTP/HTTPS, provider-view, preference and fallback matrix. The original steam://run row is deliberately rejected by the renderer URL boundary: launching remains an authenticated backend game action. This row has no equivalent URL dispatch and is not counted as ported."
+  },
+  "GameLinkRouterTests.Refused_or_throwing_store_handler_falls_back_to_browser": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-link-policy.test.ts",
+        "case": "reports browser fallback after store refusal or throw=%s"
+      }
+    ],
+    "reason": "Both original refusal and exception cases verify native Steam dispatch followed by the original HTTPS destination and a successful fallback message."
+  },
+  "GameLinkRouterTests.Unavailable_choices_are_not_offered_and_preference_survives_reload": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-link-settings.test.tsx",
+        "case": "persists the chosen store destination across remount and displays browser when that client becomes unavailable without rewriting it"
+      }
+    ],
+    "reason": "Desktop and fullscreen save store routing, remount with a fresh query client, and then remove client availability. The UI falls back to browser, omits the unavailable option and leaves the saved preference intact. Backend persistence continues through the shared presentation-preferences endpoint."
+  },
+  "GameLinkRouterTests.Browser_failure_is_not_reported_as_successful_fallback": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-link-policy.test.ts",
+        "case": "never claims a fallback succeeded when the browser refuses or throws=%s"
+      }
+    ],
+    "reason": "A refused or throwing system browser produces opened=false and never claims the fallback opened."
+  },
+  "GameLinkRouterTests.Reader_refusal_or_failure_preserves_browser_fallback": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-link-policy.test.ts",
+        "case": "retains fallback after reader refusal or throw=%s"
+      }
+    ],
+    "reason": "Both original reader outcomes dispatch the unchanged HTTPS destination to the browser and report successful fallback. Native startup cleanup and timeout tests complement this routing contract."
+  },
+  "FullscreenBrowserInputTests.Input_lock_drops_controller_input_before_waiting_for_a_browser": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-account-input.test.ts",
+        "case": "drops both key and text input while locked without ever waiting for an unready browser"
+      }
+    ],
+    "reason": "Both original locked key and text calls complete without touching the unresolved readiness promise. Additional tests discard input after lock, navigation or disposal while readiness is pending. The native fullscreen account harness verifies masked composition, insertion, discard and capture lock separately."
+  },
+  "FullscreenBrowserInputTests.Browser_navigation_keeps_reading_and_form_input_distinct": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/parity-link-policy.test.ts", "case": "maps button %s reading=%s to %s with shift=%s" }
+    ],
+    "reason": "Ports all nine original pure mapping rows with Electron key names, preserving reading arrows, form Tab/Shift-Tab, Enter, Space, Backspace and PageDown. Form integration is not established by this mapping test."
+  },
+  "FullscreenBrowserInputTests.Window_and_composer_actions_are_never_sent_to_the_provider": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-link-policy.test.ts",
+        "case": "never forwards window or composer actions to the page"
+      }
+    ],
+    "reason": "All three original window/composer inputs map to no provider key; the native reader handles Back and Menu outside the website."
+  }
+}

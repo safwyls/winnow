@@ -1,0 +1,266 @@
+{
+  "ListPromptParityTests.Existing_choices_and_new_list_action_remain_available_after_a_failed_save": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "preserves existing choices and new-list text after failure from %s"
+      }
+    ],
+    "reason": "Desktop/fullscreen library, details and feed entry points preserve the failed draft and existing choices, then retry with only the target primary release. Original database failure injection and controller routing remain to be exercised with Electron."
+  },
+  "ListPromptParityTests.Pending_prompt_disables_conflicting_actions_and_disposed_pages_do_not_navigate": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "disables conflicting prompt actions while pending and avoids navigating disposed content"
+      }
+    ],
+    "reason": "The real dialog blocks buttons and Escape during pending saves, submits once, and cannot navigate disposed content. Native controller Back and original SQLite assertions remain."
+  },
+  "ListWriteParityTests.A_failed_list_action_keeps_the_open_list_and_shows_a_retry_message": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "moves and removes handpicked games with boundary guards and keeps the list open after a failed write"
+      }
+    ],
+    "reason": "Both Electron library modes retain the open manual list and unchanged members after a failed remove, then allow a successful action. The original real SQLite failure fixture remains under the .NET test."
+  },
+  "ListWriteParityTests.Pending_membership_preserves_latest_intent_and_reports_the_committed_result": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-membership.test.tsx",
+        "case": "preserves latest intent and reports the saved result after %s"
+      },
+      {
+        "file": "tests/parity-library-membership.test.tsx",
+        "case": "retains pending intent across a mode remount and continues the compensating write"
+      }
+    ],
+    "reason": "Both modes cover held writes, latest intent, failures, intervening refresh and compensation failures with committed revisions. Renderer/cache behavior is verified; native controller input and the original held SQLite trigger are not yet ported."
+  },
+  "ListsViewModelTests.Feed_card_adds_only_its_game_to_an_existing_or_new_manual_list": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "preserves existing choices and new-list text after failure from %s"
+      }
+    ],
+    "reason": "New-list retries target only the feed card primary edition on both modes. Existing-list feed targeting and the real repository result still need an equivalent integration test."
+  },
+  "ListsViewModelTests.Details_add_to_list_targets_the_open_game_and_refreshes_membership": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "preserves existing choices and new-list text after failure from %s"
+      }
+    ],
+    "reason": "Details creates a list for only the open game and patches library membership. Existing-list targeting is shared with the tested library prompt; original same-game identity SQL remains unverified in Electron."
+  },
+  "ListsViewModelTests.Footer_creates_an_empty_static_list_without_adding_the_current_selection": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "creates an empty handpicked list from the collections footer despite the current multi-selection"
+      }
+    ],
+    "reason": "Both collection footers create an empty handpicked list while retaining multi-selection. Original real repository persistence is not repeated through a live backend."
+  },
+  "ListsViewModelTests.Adding_to_lists_keeps_the_browsing_context_collection_and_multi_selection": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "keeps multi-selection and browsing context while adding primary editions to an existing list"
+      }
+    ],
+    "reason": "Both modes keep selected game IDs and the current library while adding primary releases. New-list/open-source-list object identity and real repository assertions remain."
+  },
+  "ListsViewModelTests.Opening_a_manual_list_leaves_the_predefined_bucket_behind": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "opens manual lists in member order, leaves predefined buckets, and restores the prior/default sort on exit"
+      }
+    ],
+    "reason": "Both modes replace a predefined bucket with manual membership and member order. Backend membership is supplied by a bridge fixture."
+  },
+  "ListsViewModelTests.Leaving_a_list_puts_the_previous_order_back": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "opens manual lists in member order, leaves predefined buckets, and restores the prior/default sort on exit"
+      }
+    ],
+    "reason": "Both modes restore an explicit prior sort and preserve its ordering on exit. The original repository fixture is represented by API data."
+  },
+  "ListsViewModelTests.Default_sort_change_preserves_manual_list_and_applies_on_exit": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "opens manual lists in member order, leaves predefined buckets, and restores the prior/default sort on exit"
+      }
+    ],
+    "reason": "Both modes retain member order after the default changes, then adopt the new default when leaving an implicitly sorted library. Persistent preference storage remains outside this test."
+  },
+  "ListsViewModelTests.A_title_can_be_moved_and_removed_and_the_move_survives_a_reload": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "moves and removes handpicked games with boundary guards and keeps the list open after a failed write"
+      }
+    ],
+    "reason": "Both modes reorder/remove using captured revisions and returned saved lists. Process restart and repository reload are not covered."
+  },
+  "ListsViewModelTests.The_move_buttons_go_dead_at_the_ends_of_the_list": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "moves and removes handpicked games with boundary guards and keeps the list open after a failed write"
+      }
+    ],
+    "reason": "Both modes disable earlier/later movement at actual first/last member positions. The renderer bridge fixture replaces the original repository."
+  },
+  "ListsViewModelTests.A_live_list_is_saved_from_the_cut_and_reopens_onto_the_same_rules": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "keeps filters changed inside a manual list and saves the complete current cut as a new live list"
+      }
+    ],
+    "reason": "Both modes save the complete current search cut as a live filter. Independent opening tests cover stored rules; a live backend roundtrip from creation through reopening remains."
+  },
+  "ListsViewModelTests.Opening_a_live_list_without_a_bucket_leaves_the_predefined_bucket_behind": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "reopens saved live rules without inherited filters, includes newly matching titles, and clears rules when leaving"
+      }
+    ],
+    "reason": "Both modes drop a previous bucket when opening saved live rules without one. Live backend fixture parity remains."
+  },
+  "ListsViewModelTests.A_live_list_picks_up_a_title_the_library_gained": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "reopens saved live rules without inherited filters, includes newly matching titles, and clears rules when leaving"
+      }
+    ],
+    "reason": "A newly received matching game appears while the saved releaseIds remain unchanged. Real ingest-to-library propagation remains under the original test."
+  },
+  "ListsViewModelTests.Editing_an_open_live_list_offers_update_and_revert_by_name": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "updates and reverts named live rules using the observed revision while preserving drafts after conflicts"
+      }
+    ],
+    "reason": "Both modes name update/revert actions, restore saved rules, preserve conflicting drafts and explicitly adopt a fresh revision before retrying. The original database fixture is mocked at the bridge."
+  },
+  "ListsViewModelTests.Leaving_a_live_list_by_all_games_takes_its_rules_with_it": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "reopens saved live rules without inherited filters, includes newly matching titles, and clears rules when leaving"
+      }
+    ],
+    "reason": "Both modes clear contributed rules on close/all-games and show the entire current library. Real repository-backed rule projection remains."
+  },
+  "ListsViewModelTests.Leaving_a_live_list_by_a_bucket_leaves_only_that_bucket": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "reopens saved live rules without inherited filters, includes newly matching titles, and clears rules when leaving"
+      }
+    ],
+    "reason": "Both modes remove live-list rules before applying the newly chosen bucket. The original backend facet fixture is not used."
+  },
+  "ListsViewModelTests.Opening_a_second_live_list_does_not_inherit_the_first_ones_rules": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "reopens saved live rules without inherited filters, includes newly matching titles, and clears rules when leaving"
+      }
+    ],
+    "reason": "Both modes replace the first live filter with the second, preserving no residual search/store rules. Original facet-backed data is replaced by store/installed fixture data."
+  },
+  "ListsViewModelTests.Clicking_the_open_live_list_again_leaves_it_and_its_rules": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "clicking the current live list again leaves its rules and preserves explicit unknown saved rules"
+      }
+    ],
+    "reason": "The shared collection transition toggles the current list off and removes its explicit missing-store/facet rules. Native collection picker interaction remains."
+  },
+  "ListsViewModelTests.Inside_a_live_list_the_bar_says_which_rules_are_the_lists": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "reopens saved live rules without inherited filters, includes newly matching titles, and clears rules when leaving"
+      }
+    ],
+    "reason": "Both modes show the selected list name with its rules. Original per-chip ownership labels and controller presentation need further rendered coverage."
+  },
+  "ListsViewModelTests.Leaving_a_manual_list_keeps_the_rules_the_user_set_inside_it": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "keeps filters changed inside a manual list and saves the complete current cut as a new live list"
+      }
+    ],
+    "reason": "Both modes retain a search changed inside the manual list on exit. Other filter fields share the transition policy but the original facet scenario is not directly exercised."
+  },
+  "ListsViewModelTests.Add_to_list_offers_the_lists_that_exist_and_a_new_one": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "preserves existing choices and new-list text after failure from %s"
+      }
+    ],
+    "reason": "Every tested origin and mode offers existing handpicked lists plus new-list creation after failure. The original repository-backed choice collection remains."
+  },
+  "ListsViewModelTests.The_button_names_the_number_once_there_is_more_than_one": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "keeps multi-selection and browsing context while adding primary editions to an existing list"
+      }
+    ],
+    "reason": "Both modes expose Add 2 to list for a two-game selection and send those primary editions. Original Avalonia binding is replaced by React presentation."
+  },
+  "ListsViewModelTests.A_live_list_is_not_offered_in_the_modal": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "preserves existing choices and new-list text after failure from %s"
+      }
+    ],
+    "reason": "The add-to-list prompt excludes live lists in all tested modes/origins. The original detail membership-modal fixture remains distinct."
+  }
+}

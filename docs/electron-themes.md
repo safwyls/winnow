@@ -1,21 +1,23 @@
 # Electron themes
 
-The Electron frontend has three levels of customization. Theme Studio changes appearance
-and layout without editing code. Appearance profiles share those choices as JSON. Developer
-themes replace React screens and the application shell using theme API 1.
+Theme Studio changes appearance and layout without editing code. Appearance profiles share
+those choices as JSON. Avalon also reads original authored Winnow palette JSON files.
+Developer themes replace React screens and the application shell using theme API 1.
 
-Afterglow, Rift and Catalogue use the same `ThemeDefinition` interface as installed themes.
-Afterglow is the spacious, artwork-led default. Rift pairs floating covers with artwork
-portals, a focused Discover deck and a dense Library gallery. Catalogue uses an index and
-a reading desk. All retain the same library, recommendations, journals, and backend commands. These themes
-belong to the independent Electron frontend; they do not alter Avalonia themes or backend
-provider plugins.
+Avalon, Afterglow, Rift and Catalogue use the same `ThemeDefinition` interface as installed themes.
+Avalon is the default and retains Winnow's original palette, typography, dormancy treatment
+and separate desktop/fullscreen compositions. Afterglow uses a panoramic featured game and
+editorial typography. Rift pairs floating covers with artwork portals, a focused Discover
+deck and a dense Library gallery. Catalogue uses an index and a reading desk.
+All retain the same library, recommendations, journals, and backend commands. These themes
+belong to the independent Electron frontend. Authored Avalon palettes share the original
+themes folder; developer themes and backend provider plugins remain separate.
 
 ## Change the appearance
 
 Open **Theme Studio** from the palette button. Choose a composition, then adjust:
 
-- Afterglow, Moonstone, Paper trail, or Blue hour colors, plus a custom accent. Expand **Customize every
+- Winnow, Afterglow, Moonstone, Paper trail, or Blue hour colors, plus a custom accent. Expand **Customize every
   color** to set background, panels, raised surfaces, text, secondary text, borders, and the
   secondary accent individually, using a picker or a hex value.
 - Editorial, sans serif, or monospace typography using bundled fonts.
@@ -28,12 +30,14 @@ Open **Theme Studio** from the palette button. Choose a composition, then adjust
 - Afterglow Discover section order and visibility. At least one section remains visible.
 - Additional controls declared by the selected developer theme.
 
-Changes apply immediately and save automatically. **Reset** restores the default appearance.
+Changes apply immediately and save automatically. **Reset** restores the default Avalon appearance.
 Switching compositions saves each design's appearance and layout independently. Returning
 restores those choices; the first Rift selection starts with Moonstone and modern typography.
 Interface size and reduced motion remain shared across designs. The optional `designs`
 profile map holds at most 32 inactive appearance/layout pairs, validated like the active pair.
 Older profiles without this map remain valid.
+Saved profiles keep their selected composition, palette and layout when the default changes.
+First selection of Afterglow uses its original warm palette, editorial typography and top navigation.
 The studio checks text and accent contrast against the current custom backgrounds and warns
 when a pair has less than 4.5:1 contrast. Buttons filled with the accent use whichever of black
 or white has greater contrast. Individual color resets return to the selected preset;
@@ -46,6 +50,51 @@ Rift reuses the same card materials and exposes **Portal roundness**, **Portal e
 **Portal edge activity**, **Star field**, **Star brightness** and **Cover size** as theme
 settings. Zero activity holds the rim still; 40 is the normal pace and 100 is about four
 times faster. The star field draws only on creation or resize; brightness changes opacity.
+
+Avalon's **Avalon palette** setting selects Winnow, Nightshift, Tungsten, Box art, Bottle
+green, SilkCircuit, SilkCircuit Dawn, Rosé Pine or Rosé Pine Dawn. These are the original
+bundled palettes, including the light variants and their derived colors. **Studio colors**
+uses the shared color controls instead; an original palette takes precedence over those
+controls until Studio colors is selected. The selected palette applies to the document
+root, so portaled dialogs and native form controls follow it. Avalon keeps the original
+Bricolage Grotesque, Plus Jakarta Sans and IBM Plex Mono typography. **Dim dormant covers**
+controls its gradual desaturation; hover and focus restore the cover's color.
+
+Avalon's **Theme typography** controls choose heading, interface and data fonts separately.
+The bundled families are always listed. **Find installed fonts** queries local family names;
+it does not read font files. You can also enter an installed family name. Missing families
+fall back to the bundled font for that role. **Theme text size** ranges from 80% to 120%,
+independent of interface zoom, cover dimensions and icon sizes. Each original palette keeps
+its own fonts and size. **Reset theme typography** removes that palette's overrides and
+restores its authored fonts and size, or the bundled defaults when none are authored.
+
+**Authored palettes** reads schema-1 JSON files from the library's existing `themes` folder,
+including installs that still use the legacy data location. **Open themes folder** opens
+that directory; **Export palette as JSON** writes a new template without overwriting any
+file. The export includes the effective role typography, eight seed colors, fitted
+proportions, residual color overrides, and any authored opening preferences. Change the
+copy's ID before using it as another palette. The same files work in Avalonia.
+
+The catalog reads up to 64 top-level JSON files, each at most 256 KB. It supports comments
+and trailing commas, validates schema, IDs, colors, proportions, fonts and defaults, and
+reports file-specific errors without disabling other palettes. Contrast and color-role
+warnings are advisory. File changes reload after a short debounce; **Reload authored
+palettes** is available if file watching is unavailable. Reloading preserves selection by
+ID and explicit font overrides. Removing the selected custom palette restores Winnow.
+A local copy may replace an authored bundled palette with the same ID; the four calibrated
+house IDs are reserved. These palette files contain data only and never execute code.
+
+Avalon's **Window appearance** controls use the backend's existing transparency, backdrop,
+pane reach and floating/flush layout preferences. Desktop requests Acrylic or Mica on
+Windows 11 22H2 or later. High contrast, reduced transparency, remote sessions, unsupported
+platforms and failed native requests keep solid surfaces. Fullscreen stays solid. The
+original two-tier alpha ramp paints the shell once and each pane once; covers and popup
+surfaces stay opaque, and whole-window opacity is unchanged. The slider reports the original
+4.5:1 metadata contrast limit against a light desktop. Stored values win on load; selecting
+a palette applies any explicit opening defaults authored by that palette.
+Electron reports whether a material request was supported and issued, but exposes no getter
+for the compositor's actual material. A successful request is not proof of the visible OS
+effect. Winnow keeps its normal native window frame.
 
 Rift's Discover arrows, neighboring covers and left/right keys shuffle the deck in the
 chosen direction. This movement respects the shared reduced-motion preference. Its
@@ -64,12 +113,21 @@ foil can be disabled independently.
 theme-specific settings. **Import profile** validates its version, known fields, choices,
 and numeric limits before applying anything. Profiles contain no JavaScript, CSS, assets,
 backend credentials, or library records. Importing a profile does not install its theme.
-If the theme is unavailable, Winnow uses Afterglow and keeps the appearance choices.
+If the theme is unavailable, Winnow uses Avalon. The unavailable theme's appearance remains
+in the saved design map for a later return after installation.
 
 Profiles are stored in the Electron user-data directory under
 `libraries/<data-directory-hash>/preferences.json`. Different backend data directories have
-separate profiles and installed themes. The frontend does not overwrite Avalonia appearance
-preferences in the backend.
+separate profiles and installed themes. Palette and typography edits stay in this profile.
+Window appearance controls share the original backend preferences with Avalonia.
+When no Electron profile exists, the first launch reads the backend's `appearance.theme`
+after loading authored palettes, and selects its matching Avalon palette. The legacy `hoard`
+default maps to Winnow only when no authored palette claims that ID. Valid palette entries
+in `appearance.typography` import at the same time; one invalid entry does not discard the
+other palettes' fonts. Existing Electron profiles take precedence, and later palette
+changes stay in the Electron profile. If the preference
+cannot be read, the app keeps the initial profile unsaved so restarting can retry; an
+explicit appearance edit or reset may still be saved.
 An explicit `--data-dir` also redirects Electron's user-data and Chromium state beneath
 `<data-dir>/electron-userdata` before the window starts.
 
@@ -94,7 +152,7 @@ lifetime of the renderer. Reload the window after reinstalling changes to helper
 whose relative import URLs may remain the same.
 
 If loading or rendering fails, the built-in frontend remains available. The persistent
-recovery control and **Ctrl+Shift+T** restore Afterglow. For a theme that prevents normal
+recovery control and **Ctrl+Shift+T** restore Avalon. For a theme that prevents normal
 interaction, use **View → Recover bundled appearance** (**Ctrl+Shift+R**) or start the app
 with `--safe-theme`. That startup mode ignores the saved profile. A rendering error boundary
 cannot interrupt an infinite JavaScript loop; restarting with `--safe-theme` is the recovery
@@ -373,6 +431,10 @@ The host writes these CSS variables to the document root:
 --font-display; --font-body; --font-mono;
 --radius; --density; --scrim; --interface-scale;
 ```
+
+`appearance.palette` accepts `winnow`, `afterglow`, `paper`, `bluehour` and `rift`.
+New profiles use `winnow` with the Avalon composition. Existing version-one palette values
+and saved profiles remain valid.
 
 It also sets `data-theme`, `data-palette`, `data-font`, `data-density`, `data-navigation`,
 `data-card-style`, and `data-detail-arrangement`, plus `.reduced-motion` when selected.

@@ -8,6 +8,7 @@ export const routes: Record<string, Route> = {
   'library.get': ['GET', 'library'],
   'library.workspace': ['GET', 'library/workspace'],
   'library.visibility': ['GET', 'library/visibility-counts'],
+  'library.derelict-exemptions': ['POST', 'library/derelict-exemptions'],
   'game.get': ['GET', 'games/:workId'],
   'game.details': ['GET', 'games/:workId/details'],
   'game.refetch': ['POST', 'games/:workId/refetch'],
@@ -53,11 +54,16 @@ export const routes: Record<string, Route> = {
   'metadata.put': ['PUT', 'games/:workId/metadata'],
   'metadata.reset': ['POST', 'games/:workId/metadata/reset'],
   'metadata.search': ['GET', 'metadata/igdb/search', ['title']],
+  'metadata.candidate': ['GET', 'metadata/igdb/:igdbId'],
+  'metadata.claiming': ['GET', 'metadata/igdb/:igdbId/claiming-game'],
+  'metadata.art-upload': ['POST', 'games/:workId/metadata/art-upload'],
+  'metadata.art-download': ['POST', 'games/:workId/metadata/art-download'],
   'metadata.igdb': ['GET', 'games/:workId/igdb/state'],
   'metadata.assign': ['PUT', 'games/:workId/igdb'],
   'metadata.clear': ['DELETE', 'games/:workId/igdb'],
   'updates.acknowledge': ['POST', 'releases/:releaseId/acknowledge-updates'],
   'updates.restore': ['POST', 'releases/:releaseId/restore-updates'],
+  'updates.acknowledgement': ['GET', 'releases/:releaseId/acknowledgement'],
   'artwork.sources': ['GET', 'artwork/sources'],
   'artwork.get': ['GET', 'works/:workId/artwork/:slot'],
   'artwork.browse': ['GET', 'works/:workId/artwork/:slot/browse', ['source', 'cursor']],
@@ -80,6 +86,8 @@ export const routes: Record<string, Route> = {
   'connections.visibility.put': ['PUT', 'connections/account-visibility'],
   'plugins.get': ['GET', 'connections/plugins'],
   'plugins.settings': ['PUT', 'connections/plugins/:pluginId/settings'],
+  'plugins.removeSecret': ['DELETE', 'connections/plugins/:pluginId/secrets/:key'],
+  'plugins.directory': ['GET', 'connections/plugins/directory'],
   'plugins.enabled': ['PUT', 'connections/plugins/:pluginId/enabled'],
   'plugins.refresh': ['POST', 'connections/plugins/:pluginId/refresh'],
   'plugins.signin': ['POST', 'connections/plugins/:pluginId/sign-in'],
@@ -89,6 +97,7 @@ export const routes: Record<string, Route> = {
   'preferences.library.get': ['GET', 'preferences/library'],
   'preferences.library.put': ['PUT', 'preferences/library'],
   'preferences.presentation.get': ['GET', 'preferences/presentation'],
+  'preferences.artworkSources': ['GET', 'preferences/artwork-sources'],
   'preferences.presentation.put': ['PUT', 'preferences/presentation/:preference'],
   'setup.get': ['GET', 'setup'],
   'setup.put': ['PUT', 'setup'],
@@ -98,6 +107,10 @@ export const routes: Record<string, Route> = {
   'operations.plugin': ['POST', 'operations/plugin-install'],
   'operations.cancel': ['POST', 'operations/:id/cancel'],
   'progress.get': ['GET', 'progress'],
+  'diagnostics.get': ['GET', 'diagnostics'],
+  'acquisitions.export': ['GET', 'exports/acquisitions'],
+  'imports.steam.load': ['POST', 'imports/steam/load-files'],
+  'imports.steam.pages': ['POST', 'imports/steam/pages'],
   'actions.execute': ['POST', 'entries/:ownershipId/actions'],
 }
 const aliases: Record<string, string> = {
@@ -129,7 +142,7 @@ export function resolveRoute(request: ApiRequest): { method: string; path: strin
     if (key === 'slot' && value === 'Background') value = 'Hero'
     if (typeof value !== 'number' && typeof value !== 'string') throw new Error(`Missing ${key}`)
     const text = String(value)
-    if (['workId', 'releaseId', 'ownershipId', 'listId', 'sessionId', 'childWorkId'].includes(key)) {
+    if (['workId', 'releaseId', 'ownershipId', 'listId', 'sessionId', 'childWorkId', 'igdbId'].includes(key)) {
       if (!/^[1-9]\d{0,15}$/.test(text) || !Number.isSafeInteger(Number(text)))
         throw new Error(`Invalid ${key}`)
     } else if (key === 'slot') {
@@ -149,6 +162,9 @@ export function resolveRoute(request: ApiRequest): { method: string; path: strin
   }
   if (method === 'GET' && request.body !== undefined) throw new Error('Read requests cannot include commands')
   const body = request.body === undefined ? undefined : JSON.stringify(request.body)
-  if (body && Buffer.byteLength(body) > 2 * 1024 * 1024) throw new Error('Request is too large')
+  const limit = name === 'metadata.art-upload' ? 28 * 1024 * 1024
+    : name === 'imports.steam.load' ? 180 * 1024 * 1024
+    : name === 'imports.steam.pages' ? 140 * 1024 * 1024 : 2 * 1024 * 1024
+  if (body && Buffer.byteLength(body) > limit) throw new Error('Request is too large')
   return { method, path: `/api/v1/${path}${query.size ? `?${query}` : ''}`, body }
 }

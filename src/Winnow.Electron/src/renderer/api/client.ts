@@ -1,5 +1,4 @@
-import type { ApiRequest } from '../../shared/bridge'
-import type { GameEntry, Workspace } from './types'
+import type { ApiRequest, LinkOpenResult } from '../../shared/bridge'
 
 export class ApiError extends Error {
   constructor(
@@ -31,6 +30,24 @@ export async function request<T>(route: string, params?: ApiRequest['params'], b
 
 export const errorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : 'The request could not finish.'
+
+export const linkNoticeEvent = 'winnow-link-notice'
+/** Keep fallback feedback visible even when the initiating detail view has closed. */
+export async function openExternal(url: string, options?: { failure: 'inline' }): Promise<LinkOpenResult> {
+  let result: LinkOpenResult
+  try {
+    result = await window.winnow.openExternal(url)
+    if (!result || typeof result.opened !== 'boolean') throw new Error('Missing link result')
+  } catch {
+    result = { opened: false, message: 'Could not open this link. Try again.' }
+  }
+  if (!result.opened && options?.failure === 'inline') {
+    window.dispatchEvent(new CustomEvent<LinkOpenResult>(linkNoticeEvent, { detail: { opened: true } }))
+    throw new Error(result.message ?? 'Could not open this link. Try again.')
+  }
+  window.dispatchEvent(new CustomEvent<LinkOpenResult>(linkNoticeEvent, { detail: result }))
+  return result
+}
 /** String client/operation IDs use Guid N format; action DTOs accept a standard UUID. */
 export const createClientId = (): string => crypto.randomUUID().replaceAll('-', '')
 export const hours = (minutes: number): string =>
@@ -40,22 +57,16 @@ export const hours = (minutes: number): string =>
 export const dateLabel = (value: string): string =>
   new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 export const storeLabel = (value: string): string =>
-  ({ steam: 'Steam', epic: 'Epic Games', gog: 'GOG', manual: 'Manual' })[value] ??
-  value.replace(/^plugin:/, '')
+  ({
+    steam: 'Steam',
+    epic: 'Epic Games',
+    gog: 'GOG',
+    manual: 'Manual',
+    'plugin:xbox': 'Xbox',
+    'plugin:psn': 'PlayStation Network',
+  })[value] ?? value.replace(/^plugin:/, '')
 
-/** Availability mirrors the public action facts. The backend rechecks these before dispatch. */
-export function primaryAction(entry: GameEntry, workspace?: Workspace): 'Play' | 'Install' | null {
-  if (!workspace) return null
-  if (entry.store.startsWith('plugin:'))
-    return workspace.pluginActions[String(entry.ownershipId)]?.canPlay ? 'Play' : null
-  const ids = workspace.externalIds.filter((id) => id.releaseId === entry.releaseId)
-  const id = ids.find((item) => item.provider === entry.store)?.providerId
-  if (entry.store === 'steam' && id && /^\d{1,10}$/.test(id)) return entry.installed ? 'Play' : 'Install'
-  if (entry.store === 'gog' && id && /^\d{1,12}$/.test(id)) return entry.installed ? 'Play' : 'Install'
-  if (entry.store === 'epic' && id && workspace.epicLaunchKeys[id])
-    return entry.installed ? 'Play' : 'Install'
-  return null
-}
+export { primaryAction } from '../../shared/game-actions'
 
 export function launchMessage(result: number | string): string {
   // LaunchDispatch is a numeric enum in API v1: HandedOff, AlreadyRunning, Refused.

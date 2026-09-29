@@ -37,6 +37,7 @@ describe('installed developer themes', () => {
   it.each([
     { apiVersion: 2 },
     { id: 'afterglow' },
+    { id: 'avalon' },
     { id: 'rift' },
     { id: 'con' },
     { id: '../outside' },

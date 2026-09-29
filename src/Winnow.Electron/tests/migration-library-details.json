@@ -1,0 +1,202 @@
+{
+  "DetailsRefreshParityTests.Saving_metadata_refreshes_visible_facts_and_year_rules_without_replacing_other_drafts": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-details-refresh.test.tsx",
+        "case": "refreshes saved %s facts and year-filtered lists while preserving another field draft"
+      },
+      {
+        "file": "tests/electron/library-details.spec.ts",
+        "case": "saves a metadata year through the real API and refreshes its open live list without losing another draft"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "keeps other metadata drafts when a field saves and advances only unchanged field revisions"
+      }
+    ],
+    "reason": "The original summary/publisher/year matrix now verifies both renderer modes, retained drafts, refreshed facts and live-list membership. Both native Electron modes also save a year to a temporary backend database and verify the open live list becomes empty. Native summary/publisher saves and original controller activation/focus assertions remain."
+  },
+  "GameDetailsTabInteractionTests.Keyboard_arrows_switch_tabs_and_leave_focus_on_the_selected_tab": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "switches detail sections with arrows and keeps focus on the chosen section"
+      }
+    ],
+    "reason": "Both modes verify keyboard section activation and focus. Original rendered focus-border color/thickness and screenshot assertions need browser visual coverage."
+  },
+  "GameDetailsTabInteractionTests.Focused_editor_returns_to_the_selected_tab_and_preserves_unsaved_fields": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "returns from metadata to the selected section with its unsaved fields and focus using %s"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "keeps other metadata drafts when a field saves and advances only unchanged field revisions"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "preserves conflicting text until the user explicitly adopts the new saved revision"
+      }
+    ],
+    "reason": "Both modes preserve unsaved metadata fields through Back and Escape, restore the selected section and focus, and avoid additional metadata reads or writes. Native focused editor layout and original More-menu focus target differ from the Electron section presentation."
+  },
+  "GameDetailsTabInteractionTests.Wrong_game_menu_focuses_search_and_returns_without_losing_query_or_results": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "returns from game matching without losing the search query or candidates and restores query focus"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "looks up numeric titles by title and ID, then offers grouping when the match is held elsewhere"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "retains an in-flight game search across navigation and restores its query focus"
+      }
+    ],
+    "reason": "Search, assignment, Back/Escape, retained queries/candidates, restored section focus and query focus on reopening work in both modes without repeating the search. Original More-menu placement and overlay geometry still need browser visual coverage."
+  },
+  "GameDetailsTabInteractionTests.Long_overview_keeps_its_scroll_position_when_activity_is_opened": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "keeps separate scroll positions when moving between populated detail sections"
+      }
+    ],
+    "reason": "Both modes restore independent Overview and History offsets in the actual enclosing scroll container. DOM offsets are injected; original native long-summary geometry and disclosure behavior remain to be rendered."
+  },
+  "GameDetailsTabInteractionTests.Sparse_games_keep_all_tabs_and_do_not_claim_unread_updates": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "keeps sparse detail sections available without claiming unread updates"
+      }
+    ],
+    "reason": "Both modes retain available detail sections and suppress unread claims without backend unread evidence. Original technical-facts visibility and five-tab Avalonia geometry remain distinct."
+  },
+  "GameDetailsTabInteractionTests.Update_shortcut_opens_updates_without_replacing_the_details_model": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "opens unread updates from the header without replacing metadata drafts or counting duplicate editions"
+      }
+    ],
+    "reason": "Both modes use backend unread counts, deduplicate releases, open Updates and preserve metadata drafts. Original Avalonia object identity and automation-name equality are represented by React section/draft continuity; native visual behavior remains."
+  },
+  "ManualEntryFormTests.Saving_on_each_surface_corrects_tracked_ids_or_explains_why_the_form_stays_open": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library.test.tsx",
+        "case": "adds executable tracking and metadata identifiers to a manual game"
+      },
+      {
+        "file": "tests/parity-library.test.tsx",
+        "case": "refreshes a manual entry before editing and preserves corrected identifiers across a conflict"
+      },
+      {
+        "file": "tests/features-drafts.test.tsx",
+        "case": "retains manual text, metadata mappings and the observed revision after a remount"
+      }
+    ],
+    "reason": "Both modes expose executable and identity fields, refresh the authoritative detail before editing and preserve corrected IDs across conflicts. Original legacy identifier history, native storefront collision and real-database correction cases require further migrated tests."
+  },
+  "FullscreenDetailsTests.Ungroup_from_the_expansion_end_requires_confirmation_and_uses_child_identity": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "confirms separation from expansion details with the child identity and preserves a failed confirmation"
+      },
+      {
+        "file": "tests/parity-library.test.tsx",
+        "case": "requires a named confirmation before separating an existing relationship"
+      }
+    ],
+    "reason": "Both detail Library sections and identity tools require named confirmation and send the child work ID with its expected link ID. Cancel restores focus and failed confirmation remains available. Native controller confirmation and persisted separation still need an Electron integration test."
+  },
+  "EditionIdentityPresentationTests.Acquired_native_evidence_updates_library_queue_and_details_and_can_be_separated": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library.test.tsx",
+        "case": "reviews and confirms expansion relationships without merging their identity"
+      },
+      {
+        "file": "tests/parity-library.test.tsx",
+        "case": "requires a named confirmation before separating an existing relationship"
+      }
+    ],
+    "reason": "User-confirmed relationship writes, undo, and separation are covered in both Electron modes. Native identity evidence ingestion and simultaneous library/queue/detail projection assertions remain in the original .NET test."
+  },
+  "MergeSuggestionRefreshTests.Desktop_pointer_and_keyboard_refresh_report_busy_failure_and_recovery_within_minimum_pane": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library.test.tsx",
+        "case": "reports suggestion refresh busy, failure, retry and truncated completion without accepting a match"
+      }
+    ],
+    "reason": "Desktop component coverage verifies disabled refresh while busy, duplicate suppression, failure/retry, new pending proposals and truthful truncated completion without any relationship writes. Original native keyboard activation, icon alignment and minimum-pane geometry still require rendered coverage."
+  },
+  "MergeSuggestionRefreshTests.Fullscreen_controller_and_keyboard_refresh_report_busy_failure_and_recovery": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library.test.tsx",
+        "case": "reports suggestion refresh busy, failure, retry and truncated completion without accepting a match"
+      }
+    ],
+    "reason": "Fullscreen component coverage verifies busy status, duplicate suppression, failure/retry and refreshed pending proposals without accepting matches. Original native controller/keyboard activation and live-region geometry remain unverified."
+  },
+  "ScreenshotScrollInteractionTests.Wheel_scrolls_screenshots_sideways_without_moving_the_details_body": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "scrolls the screenshot strip sideways without consuming the wheel at its edge"
+      }
+    ],
+    "reason": "Both modes route wheel input horizontally and yield it at the edge. Tests inject DOM scroll dimensions; actual rendered geometry and the outer detail-body scroll still need browser verification."
+  },
+  "UpdateAcknowledgementCompositionTests.Production_details_marks_and_restores_only_the_displayed_group_releases": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "acknowledges each captured update set and restores stored release watermarks"
+      }
+    ],
+    "reason": "Both modes send only displayed event IDs and restore only standing release acknowledgements. Original database watermarks, tile badge counts and composition assertions need a live-backend Electron test."
+  },
+  "UpdateAcknowledgementCompositionTests.A_push_arriving_after_details_open_is_not_acknowledged_and_reopening_reads_its_watermark": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "keeps a new patch out of a pending acknowledgement batch"
+      }
+    ],
+    "reason": "A pending multi-release acknowledgement retains its captured observed event IDs after a new patch enters the UI cache. Original database watermark and reopening behavior remain unported."
+  },
+  "UpdateAcknowledgementCompositionTests.Patched_selection_reports_persistence_failure_and_keeps_unread_games": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "reports a declined update write without claiming that no flags needed changing"
+      }
+    ],
+    "reason": "The detail action reports backend NotStored outcomes in both modes. Original multiselect library entry point and persistent unread badge assertions are not yet migrated."
+  }
+}

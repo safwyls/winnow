@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Check, RefreshCw } from 'lucide-react'
-import { createClientId, dateLabel, request } from '../api/client'
+import * as Dialog from '@radix-ui/react-dialog'
+import { createClientId, dateLabel, request, openExternal } from '../api/client'
 import { useApiQuery, useCommand, useLibrary } from '../api/hooks'
 import type {
   BackendOperation,
@@ -15,6 +16,21 @@ import type {
 import { Empty, Notice } from './shared'
 import { readEpicCallback, type EpicChallenge } from '../api/auth'
 import { useViewState } from '../viewState'
+import {
+  AccountVisibility,
+  ApplicationPreferences,
+  ArtworkSourcePreferences,
+  FullscreenPreferences,
+  LibraryPresentationPreferences,
+  OfficialPluginInstall,
+} from './SettingsPreferences'
+import { useSetupBusy, useSetupPreferenceError } from './settingsState'
+import { AccountStatistics, SteamPageImport } from './Accounts'
+import { SteamCapture, SteamCaptureReview } from './SteamCapture'
+import type { SteamCaptureResult } from '../../shared/bridge'
+import { BackendRestart } from './BackendRestart'
+import { SteamConnectionPanel } from './SteamConnectionPanel'
+import { steamConnectionState } from './steamConnection'
 
 export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
   const [tab, setTab] = useViewState(`${mode}:settings:tab`, 'Connections')
@@ -24,6 +40,7 @@ export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
   const preferences = useApiQuery<LibraryPreferences>('preferences.library.get')
   const operations = useApiQuery<BackendOperation[]>('operations.get')
   const command = useCommand()
+  const steamState = stores.data ? steamConnectionState(stores.data) : null
   return (
     <section className={`feature-page settings-page mode-${mode}`}>
       <header className="feature-heading">
@@ -34,7 +51,16 @@ export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
         </div>
       </header>
       <nav className="tabs" aria-label="Settings section">
-        {['Connections', 'Providers', 'Library', 'Recommendations', 'Operations'].map((name) => (
+        {[
+          'Connections',
+          'Providers',
+          'Library',
+          'Appearance',
+          'Application',
+          'Spending',
+          'Recommendations',
+          'Operations',
+        ].map((name) => (
           <button key={name} aria-pressed={tab === name} onClick={() => setTab(name)}>
             {name}
           </button>
@@ -42,40 +68,39 @@ export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
       </nav>
       {tab === 'Connections' && (
         <div className="feature-grid">
-          <section className="feature-panel">
-            <h2>Steam</h2>
-            <p>
-              {stores.data?.steam.hasUsableCredential
-                ? 'Connected for online metadata.'
-                : stores.data?.steam.hasApiKey || stores.data?.steam.sessionUsable
-                  ? 'Credentials available.'
-                  : 'Local Steam games can be read without an account connection.'}
-            </p>
-            <Notice error={stores.error} />
-            <SteamKeyForm />
-            {stores.data?.steam.hasSession && (
-              <button
-                disabled={command.isPending}
-                onClick={() => command.mutate({ route: 'connections.steam.signOut' })}
-              >
-                Sign out of Steam
-              </button>
-            )}
-            {stores.data?.steam.apiKeyIsAppManaged && (
-              <button
-                disabled={command.isPending}
-                onClick={() => command.mutate({ route: 'connections.steam.key', body: { key: null } })}
-              >
-                Remove saved API key
-              </button>
-            )}
-          </section>
+          {stores.data && steamState ? (
+            <SteamConnectionPanel
+              snapshot={stores.data}
+              busy={command.isPending}
+              error={stores.error}
+              signIn={
+                <SteamAccount
+                  key={`steam-account:${mode}`}
+                  label={steamState.signInLabel}
+                  showAction={steamState.showSignIn}
+                />
+              }
+              keyEditor={<SteamKeyForm key={`steam-key:${mode}`} />}
+              purchase={
+                <>
+                  <SteamPageImport />
+                  <SteamCapture />
+                </>
+              }
+              onSignOut={() => command.mutate({ route: 'connections.steam.signOut' })}
+              onClearKey={() => command.mutate({ route: 'connections.steam.key', body: { key: null } })}
+            />
+          ) : (
+            <Notice error={stores.error} message="Loading Steam connection…" />
+          )}
           <section className="feature-panel">
             <h2>Epic Games</h2>
             <p>
               {stores.data?.epic?.isLive
-                ? `Connected${stores.data.epic.displayName ? ` as ${stores.data.epic.displayName}` : ''}.`
-                : 'Installed games are available through the local Epic library.'}
+                ? `Connected${stores.data.epic.displayName ? ` as ${stores.data.epic.displayName}` : '. Epic did not provide a display name'}.`
+                : stores.data?.epic
+                  ? `Epic sign-in expired${stores.data.epic.displayName ? ` for ${stores.data.epic.displayName}` : ''}. Sign in again to reconnect.`
+                  : 'Installed games are available through the local Epic library.'}
             </p>
             {stores.data?.epic ? (
               <button
@@ -84,8 +109,12 @@ export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
               >
                 Sign out of Epic
               </button>
-            ) : (
-              <EpicAccount />
+            ) : null}
+            {!stores.data?.epic?.isLive && (
+              <EpicAccount
+                key={mode}
+                label={stores.data?.epic ? 'Sign in to Epic again' : 'Connect Epic Games'}
+              />
             )}
             <p className="muted">Existing account connections are shared with other Winnow frontends.</p>
           </section>
@@ -93,7 +122,7 @@ export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
             <h2>IGDB</h2>
             <p>Descriptions, game identity, and artwork from IGDB.</p>
             <Notice error={igdb.error} />
-            {igdb.data && <IgdbForm snapshot={igdb.data} />}
+            {igdb.data && <IgdbForm snapshot={igdb.data} key={mode} />}
           </section>
           <Notice error={command.error} />
         </div>
@@ -107,20 +136,34 @@ export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
           <Notice error={plugins.error} />
           <div className="feature-grid">
             {plugins.data?.map((plugin) => (
-              <PluginCard key={plugin.id} plugin={plugin} />
+              <PluginCard key={`${mode}:${plugin.id}`} plugin={plugin} />
             ))}
           </div>
           {plugins.data?.length === 0 && <Empty>No provider plugins are installed.</Empty>}
+          <OfficialPluginInstall />
+          <BackendRestart />
         </>
       )}
       {tab === 'Library' && (
-        <section className="feature-panel">
-          <h2>Library visibility</h2>
-          <Notice error={preferences.error} />
-          {preferences.data && (
-            <LibraryPreferenceForm initial={preferences.data} key={JSON.stringify(preferences.data)} />
-          )}
-        </section>
+        <>
+          <section className="feature-panel">
+            <h2>Library visibility</h2>
+            <Notice error={preferences.error} />
+            {preferences.data && (
+              <LibraryPreferenceForm initial={preferences.data} key={JSON.stringify(preferences.data)} />
+            )}
+            <AccountVisibility />
+          </section>
+          <LibraryPresentationPreferences />
+        </>
+      )}
+      {tab === 'Application' && <ApplicationPreferences />}
+      {tab === 'Spending' && <AccountStatistics />}
+      {tab === 'Appearance' && (
+        <>
+          <FullscreenPreferences mode={mode} />
+          <ArtworkSourcePreferences />
+        </>
       )}
       {tab === 'Recommendations' && <FeedbackHistory />}
       {tab === 'Operations' && (
@@ -246,13 +289,14 @@ export function FeedbackHistory() {
   )
 }
 
-function SteamKeyForm() {
+export function SteamKeyForm() {
   const [key, setKey] = useState('')
   const [message, setMessage] = useState('')
   const command = useCommand<number>()
+  useSetupBusy(command.isPending)
   async function save() {
     const result = await command.mutateAsync({ route: 'connections.steam.key', body: { key } })
-    setKey('')
+    if (result === 0) setKey('')
     setMessage(
       result === 0 ? 'API key saved securely.' : 'This computer could not protect the key. It was not saved.',
     )
@@ -280,7 +324,7 @@ function SteamKeyForm() {
         <button
           type="button"
           onClick={() => {
-            void window.winnow.openExternal('https://steamcommunity.com/dev/apikey')
+            void openExternal('https://steamcommunity.com/dev/apikey')
           }}
         >
           Get a key
@@ -291,11 +335,157 @@ function SteamKeyForm() {
   )
 }
 
-function IgdbForm({ snapshot }: { snapshot: IgdbConnection }) {
+export function SteamAccount({
+  label = 'Sign in to Steam',
+  showAction = true,
+}: { label?: string; showAction?: boolean } = {}) {
+  const [consent, setConsent] = useState(false)
+  const [staySignedIn, setStaySignedIn] = useState(true)
+  const [capturePurchaseHistory, setCapturePurchaseHistory] = useState(false)
+  const [capture, setCapture] = useState<SteamCaptureResult | null>(null)
+  const [pending, setPending] = useState(false)
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState<unknown>(null)
+  const client = useQueryClient()
+  useSetupBusy(pending || consent)
+  async function signIn() {
+    if (!window.winnow.steamSignIn || pending) return
+    setPending(true)
+    setError(null)
+    setMessage('')
+    setCapture(null)
+    try {
+      const result = await window.winnow.steamSignIn({
+        consentGranted: true,
+        staySignedIn,
+        ...(capturePurchaseHistory ? { capturePurchaseHistory: true } : {}),
+      })
+      setCapture(result.captureDetail || result.pages ? result : null)
+      if (!result.signedIn && [1, 3, 5, 6].includes(result.outcome ?? -1))
+        throw Error(result.detail || 'Steam sign-in did not succeed. Try again; an API key is unaffected.')
+      setMessage(
+        result.signedIn
+          ? `Steam connected.${result.detail ? ' ' + result.detail : ''}${!result.persisted ? ' This session was not saved to disk; sign in again after a restart.' : ''}${!result.refreshTokenCaptured ? ' Steam did not provide a renewable session. It lasts about a day; tick Remember me on Steam’s own login form to allow renewal.' : ''}${result.accountConfirmed === true ? ' Account confirmed. The account filter is available.' : result.accountConfirmed === false ? ' The account filter is still unavailable. Signing in again should resolve this.' : ''}`
+          : result.detail || 'The window closed without signing in. Nothing was stored.',
+      )
+      setConsent(false)
+      // An initial status read may still contain the account state from before this sign-in.
+      await client.cancelQueries({
+        predicate: (query) =>
+          query.queryKey[0] === 'api' &&
+          ['connections.get', 'connections.visibility.get'].includes(String(query.queryKey[1])),
+      })
+      await client.invalidateQueries({ queryKey: ['api'] })
+    } catch (failure) {
+      setError(failure)
+    } finally {
+      setPending(false)
+    }
+  }
+  if (!window.winnow.steamSignIn)
+    return <p>The sign-in window cannot open in this frontend. A Web API key works without it.</p>
+  return (
+    <div className="steam-account">
+      <Dialog.Root
+        open={consent}
+        onOpenChange={(open) => {
+          if (!pending) {
+            setConsent(open)
+            if (open) setCapturePurchaseHistory(false)
+          }
+        }}
+      >
+        {showAction && (
+          <Dialog.Trigger asChild>
+            <button>{label}</button>
+          </Dialog.Trigger>
+        )}
+        <Dialog.Portal>
+          <Dialog.Overlay className="setup-overlay consent-overlay" />
+          <Dialog.Content
+            className="setup-dialog consent-dialog"
+            onEscapeKeyDown={(event) => {
+              event.stopPropagation()
+              if (pending) event.preventDefault()
+            }}
+          >
+            <div className="setup-body">
+              <Dialog.Title>Before you sign in</Dialog.Title>
+              <Dialog.Description>Connect your account through Steam’s own sign-in page.</Dialog.Description>
+              <p>
+                Sign in on Steam’s own page in a private window. Winnow reads the account identity and session
+                credentials Steam provides after you sign in. Winnow does not read or save your password.
+              </p>
+              <p>Your session is kept on this computer. Purchase history is a separate, optional import.</p>
+              <p className="muted">
+                Steam sessions last about a day. Winnow can try to renew them when Steam supplies a refresh
+                token. An API key does not expire.
+              </p>
+              <label className="check-field">
+                <input
+                  type="checkbox"
+                  checked={staySignedIn}
+                  disabled={pending}
+                  onChange={(event) => setStaySignedIn(event.target.checked)}
+                />
+                Stay signed in on this computer
+              </label>
+              <label className="check-field">
+                <input
+                  type="checkbox"
+                  checked={capturePurchaseHistory}
+                  disabled={pending}
+                  onChange={(event) => setCapturePurchaseHistory(event.target.checked)}
+                />
+                Also capture purchase history and licences
+              </label>
+              <p className="muted">
+                Off by default. This reads what you bought, what you paid and how licences arrived. You review
+                the captured pages before importing.
+              </p>
+              <div className="form-actions">
+                <button disabled={pending} onClick={() => void signIn()}>
+                  Continue to Steam
+                </button>
+                <button
+                  disabled={pending && !window.winnow.cancelSteamWindow}
+                  onClick={() => {
+                    if (pending) void window.winnow.cancelSteamWindow?.().catch(setError)
+                    else setConsent(false)
+                  }}
+                >
+                  Cancel sign-in
+                </button>
+              </div>
+              {pending && (
+                <p role="status">
+                  Sign in in the window that opened; its title reports capture progress. Close that window to
+                  stop.
+                </p>
+              )}
+              <Notice error={error} />
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+      {!consent && <Notice error={error} message={message} />}
+      {capture && (
+        <SteamCaptureReview
+          key={capture.pages?.capturedAt ?? capture.captureDetail}
+          capture={capture}
+          discard={() => setCapture(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+export function IgdbForm({ snapshot }: { snapshot: IgdbConnection }) {
   const [clientId, setClientId] = useState(snapshot.clientId)
   const [secret, setSecret] = useState('')
   const [message, setMessage] = useState('')
   const command = useCommand<number | boolean>()
+  useSetupBusy(command.isPending)
   async function save() {
     const result = await command.mutateAsync({
       route: 'connections.igdb.put',
@@ -350,7 +540,7 @@ function IgdbForm({ snapshot }: { snapshot: IgdbConnection }) {
         <button
           type="button"
           onClick={() => {
-            void window.winnow.openExternal('https://dev.twitch.tv/console/apps')
+            void openExternal('https://dev.twitch.tv/console/apps')
           }}
         >
           Twitch developer console
@@ -373,17 +563,29 @@ function IgdbForm({ snapshot }: { snapshot: IgdbConnection }) {
   )
 }
 
-function LibraryPreferenceForm({ initial }: { initial: LibraryPreferences }) {
+export function LibraryPreferenceForm({ initial }: { initial: LibraryPreferences }) {
   const command = useCommand()
+  const [reading, setReading] = useState(false)
+  const writing = useRef(false)
+  useSetupBusy(command.isPending || reading)
   async function change(field: keyof LibraryPreferences, value: boolean | string) {
     // This endpoint replaces the whole object: read the latest fields before changing one.
     const latest = await request<LibraryPreferences>('preferences.library.get')
     await command.mutateAsync({ route: 'preferences.library.put', body: { ...latest, [field]: value } })
   }
   const [readError, setReadError] = useState<unknown>(null)
+  useSetupPreferenceError(readError || command.error)
   function apply(field: keyof LibraryPreferences, value: boolean | string) {
+    if (writing.current) return
+    writing.current = true
+    setReading(true)
     setReadError(null)
-    void change(field, value).catch(setReadError)
+    void change(field, value)
+      .catch(setReadError)
+      .finally(() => {
+        writing.current = false
+        setReading(false)
+      })
   }
   return (
     <div className="editor-form">
@@ -391,7 +593,7 @@ function LibraryPreferenceForm({ initial }: { initial: LibraryPreferences }) {
         <input
           type="checkbox"
           checked={initial.showNonGameEntries}
-          disabled={command.isPending}
+          disabled={command.isPending || reading}
           onChange={(event) => apply('showNonGameEntries', event.target.checked)}
         />
         Show tools, demos, and other non-game entries
@@ -400,29 +602,53 @@ function LibraryPreferenceForm({ initial }: { initial: LibraryPreferences }) {
         <input
           type="checkbox"
           checked={initial.showExplicitContent}
-          disabled={command.isPending}
+          disabled={command.isPending || reading}
           onChange={(event) => apply('showExplicitContent', event.target.checked)}
         />
         Show explicit content
       </label>
+      <label className="field">
+        Maturity cap
+        <select
+          value={initial.maturityCap}
+          disabled={command.isPending || reading}
+          onChange={(event) => apply('maturityCap', event.target.value)}
+        >
+          <option value="everyone">Everyone</option>
+          <option value="preteen">Preteen</option>
+          <option value="teen">Teen</option>
+          <option value="mature">Mature</option>
+          <option value="restricted18">18 and over</option>
+          <option value="adults_only">No rating cap</option>
+        </select>
+      </label>
       <p className="muted">
-        Maturity cap: {initial.maturityCap}. These preferences apply to every frontend attached to this
-        library.
+        Unrated games remain visible. These preferences apply to every frontend attached to this library.
       </p>
       <Notice error={readError || command.error} />
     </div>
   )
 }
 
-function PluginCard({ plugin }: { plugin: PluginSnapshot }) {
+export function PluginCard({ plugin }: { plugin: PluginSnapshot }) {
   const [values, setValues] = useState<Record<string, string>>({})
   const [message, setMessage] = useState('')
+  const [advanced, setAdvanced] = useState(false)
   const command = useCommand()
   async function save() {
     await command.mutateAsync({
       route: 'plugins.settings',
       params: { pluginId: plugin.id },
-      body: { values },
+      body: {
+        values: {
+          ...Object.fromEntries(
+            plugin.settings
+              .filter((setting) => !setting.isSecret)
+              .map((setting) => [setting.key, setting.value ?? '']),
+          ),
+          ...values,
+        },
+      },
     })
     setValues({})
     setMessage('Provider settings saved.')
@@ -440,7 +666,7 @@ function PluginCard({ plugin }: { plugin: PluginSnapshot }) {
           <input
             type="checkbox"
             checked={plugin.enabled}
-            disabled={command.isPending}
+            disabled={command.isPending || !plugin.canConfigure}
             onChange={(event) =>
               command.mutate({
                 route: 'plugins.enabled',
@@ -463,14 +689,25 @@ function PluginCard({ plugin }: { plugin: PluginSnapshot }) {
           void save().catch(() => {})
         }}
       >
+        {plugin.settings.some((setting) => setting.isAdvanced) && (
+          <button
+            type="button"
+            aria-expanded={advanced}
+            aria-label={`${advanced ? 'Hide' : 'Show'} advanced settings: ${plugin.name}`}
+            onClick={() => setAdvanced(!advanced)}
+          >
+            {advanced ? 'Hide' : 'Show'} advanced settings
+          </button>
+        )}
         {plugin.settings
-          .filter((setting) => !setting.isAdvanced)
+          .filter((setting) => advanced || !setting.isAdvanced)
           .map((setting) => (
             <label className={setting.isBoolean ? 'check-field' : 'field'} key={setting.key}>
               {setting.isBoolean ? (
                 <>
                   <input
                     type="checkbox"
+                    disabled={!plugin.canConfigure || command.isPending}
                     checked={(values[setting.key] ?? setting.value) === 'true'}
                     onChange={(event) =>
                       setValues({ ...values, [setting.key]: String(event.target.checked) })
@@ -483,9 +720,11 @@ function PluginCard({ plugin }: { plugin: PluginSnapshot }) {
                   {setting.label}
                   <input
                     type={setting.isSecret ? 'password' : 'text'}
+                    disabled={!plugin.canConfigure || command.isPending}
                     autoComplete="off"
                     value={values[setting.key] ?? (setting.isSecret ? '' : (setting.value ?? ''))}
                     placeholder={setting.hasStoredSecret ? 'Saved secret — leave blank to keep' : undefined}
+                    required={setting.isRequired && !setting.hasStoredSecret}
                     onChange={(event) => {
                       const next = { ...values, [setting.key]: event.target.value }
                       if (setting.isSecret && !event.target.value) delete next[setting.key]
@@ -495,17 +734,39 @@ function PluginCard({ plugin }: { plugin: PluginSnapshot }) {
                 </>
               )}
               {setting.description && <small>{setting.description}</small>}
+              {setting.setupUrl?.startsWith('https://') && (
+                <button type="button" onClick={() => void openExternal(setting.setupUrl!)}>
+                  Get {setting.label}
+                </button>
+              )}
+              {setting.isSecret && setting.hasStoredSecret && (
+                <button
+                  type="button"
+                  disabled={command.isPending || !plugin.canConfigure}
+                  onClick={() => {
+                    const next = { ...values }
+                    delete next[setting.key]
+                    setValues(next)
+                    command.mutate({
+                      route: 'plugins.removeSecret',
+                      params: { pluginId: plugin.id, key: setting.key },
+                    })
+                  }}
+                >
+                  Remove saved {setting.label}
+                </button>
+              )}
             </label>
           ))}
         <div className="form-actions">
           {plugin.canConfigure && plugin.settings.length > 0 && (
-            <button disabled={command.isPending || !Object.keys(values).length}>
+            <button disabled={command.isPending} aria-label={`Save ${plugin.name} settings`}>
               Save provider settings
             </button>
           )}
           <button
             type="button"
-            disabled={command.isPending || !plugin.enabled}
+            disabled={command.isPending || !plugin.enabled || !plugin.isLoaded}
             onClick={() => command.mutate({ route: 'plugins.refresh', params: { pluginId: plugin.id } })}
           >
             Refresh provider
@@ -525,13 +786,14 @@ interface Challenge {
   expiresAt: string
   pollIntervalSeconds: number
 }
-function EpicAccount() {
+export function EpicAccount({ label = 'Connect Epic Games' }: { label?: string } = {}) {
   const [challenge, setChallenge] = useState<EpicChallenge | null>(null)
   const [accepted, setAccepted] = useState(false)
   const [callback, setCallback] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState<unknown>(null)
   const [pending, setPending] = useState(false)
+  useSetupBusy(pending || !!challenge)
   const clientId = useRef(createClientId()).current
   const client = useQueryClient()
   useEffect(() => {
@@ -583,7 +845,19 @@ function EpicAccount() {
     }
   }
   return (
-    <div className="epic-account">
+    <div
+      className="epic-account"
+      onKeyDownCapture={(event) => {
+        if (event.key === 'Escape' && challenge) {
+          event.preventDefault()
+          event.stopPropagation()
+          if (!pending) {
+            setCallback('')
+            setChallenge(null)
+          }
+        }
+      }}
+    >
       {challenge ? (
         <div className="editor-form">
           <p>{challenge.request.consentNotice}</p>
@@ -598,7 +872,7 @@ function EpicAccount() {
           <button
             disabled={!accepted}
             onClick={() => {
-              void window.winnow.openExternal(challenge.request.startUrl)
+              void openExternal(challenge.request.startUrl)
             }}
           >
             Continue in browser
@@ -633,7 +907,7 @@ function EpicAccount() {
         </div>
       ) : (
         <button disabled={pending} onClick={() => void begin()}>
-          Connect Epic Games
+          {label}
         </button>
       )}
       <Notice error={error} message={message} />
@@ -740,7 +1014,7 @@ function PluginAccount({ plugin }: { plugin: PluginSnapshot }) {
           <div className="form-actions">
             <button
               onClick={() => {
-                void window.winnow.openExternal(challenge.verificationUrl)
+                void openExternal(challenge.verificationUrl)
               }}
             >
               Open sign-in page

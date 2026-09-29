@@ -47,23 +47,41 @@ export const librarySchema = z
     ),
   })
   .passthrough()
-export const feedSchema = z.object({
+const feedItemSchema = z.object({
+  ownershipId: z.number(),
+  releaseId: z.number(),
+  title: z.string(),
+  reason: z.string(),
+})
+export const feedSupplementSchema = z.object({
   shelves: z.array(
     z.object({
       id: z.string(),
       title: z.string(),
       blurb: z.string(),
-      items: z.array(
-        z.object({ ownershipId: z.number(), releaseId: z.number(), title: z.string(), reason: z.string() }),
-      ),
-      reserve: z.array(z.unknown()).default([]),
+      items: z.array(feedItemSchema),
+      reserve: z.array(feedItemSchema).default([]),
       supportsFeedback: z.boolean().default(true),
     }),
   ),
   candidateCount: z.number(),
+})
+export const feedSchema = feedSupplementSchema.extend({
   confidence: z.number(),
   failed: z.boolean(),
 })
+export const workspaceSchema = z
+  .object({
+    works: z.array(
+      z.object({ id: z.number(), name: z.string(), igdbId: z.number().nullable().optional() }).passthrough(),
+    ),
+    externalIds: z.array(
+      z.object({ releaseId: z.number(), provider: z.string(), providerId: z.string() }).passthrough(),
+    ),
+    epicLaunchKeys: z.record(z.string(), z.unknown()),
+    pluginActions: z.record(z.string(), z.unknown()),
+  })
+  .passthrough()
 
 export function useApiQuery<T>(route: string, params?: Record<string, string | number>, enabled = true) {
   return useQuery({
@@ -83,15 +101,46 @@ export function useLibrary() {
   })
 }
 export function useFeed() {
-  return useQuery({
+  const primary = useQuery({
     queryKey: ['api', 'feed.get'],
     queryFn: async () => feedSchema.parse(await request('feed.get')) as FeedSnapshot,
     retry: false,
     staleTime: 60_000,
   })
+  // An optional shelf belongs to the completed primary pass that requested it.
+  // A slow previous pass must not append stale cards after feedback or a reload.
+  const supplement = useQuery({
+    queryKey: ['api', 'feed.supplement', primary.dataUpdatedAt],
+    queryFn: async () => feedSupplementSchema.parse(await request('feed.supplement')),
+    enabled: !!primary.data && !primary.isFetching && !primary.data.failed,
+    retry: false,
+    staleTime: 60_000,
+  })
+  const additional = !primary.isFetching ? (supplement.data?.shelves ?? []) : []
+  return {
+    ...primary,
+    data: primary.data
+      ? {
+          ...primary.data,
+          shelves: [
+            ...primary.data.shelves,
+            ...additional.filter(
+              (shelf) => !primary.data.shelves.some((existing) => existing.id === shelf.id),
+            ),
+          ],
+          candidateCount:
+            primary.data.candidateCount + (!primary.isFetching ? (supplement.data?.candidateCount ?? 0) : 0),
+        }
+      : undefined,
+  }
 }
 export function useWorkspace() {
-  return useApiQuery<Workspace>('library.workspace')
+  return useQuery({
+    queryKey: ['api', 'library.workspace', undefined],
+    queryFn: async () => workspaceSchema.parse(await request('library.workspace')) as unknown as Workspace,
+    retry: false,
+    staleTime: 30_000,
+  })
 }
 export function useDetails(workId: number) {
   return useApiQuery<GameDetails>('game.details', { workId })
@@ -124,7 +173,7 @@ export function useActivity(fromUtc: string, untilUtc: string, section: number, 
         untilUtc,
         section,
         workId,
-        pageSize: 40,
+        pageSize: 50,
         after: pageParam,
       }),
     getNextPageParam: (last) => last.next ?? undefined,

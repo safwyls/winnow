@@ -1,0 +1,1283 @@
+{
+  "AccountStatsTests.Every_parsed_row_is_recorded_even_though_nothing_is_owned": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.An_unrecognised_document_records_no_facts": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.An_empty_database_answers_with_zeroes_rather_than_nulls": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.Gross_spend_counts_every_product_transaction_and_refunds_come_off_it": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.Wallet_credit_is_reported_beside_spend_and_never_added_into_it": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.Spend_per_year_sums_to_the_net_figure": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.Each_transaction_kind_is_its_own_slice": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.A_bundle_total_is_a_fact_and_its_per_item_split_is_not_offered": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.The_biggest_single_purchase_is_a_transaction_not_a_game_price": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.Discount_rows_report_what_was_paid_and_what_was_listed_separately": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.The_span_the_capture_covers_is_reported_alongside_the_totals": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.Currency_is_reported_as_observed_and_never_converted": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.A_second_currency_makes_the_totals_declare_themselves_unmixed": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.Dollar_credit_shares_dollars_without_changing_stored_facts": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.Every_monetary_breakdown_and_biggest_purchase_is_scoped_to_its_currency": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.Unknown_currency_keeps_its_counts_without_polluting_known_currency_totals": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.Currency_groups_retain_global_account_overlap_evidence": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.Unknown_product_total_does_not_use_partial_wallet_payment_as_the_price": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.Currency_read_enlists_without_committing_or_disposing_the_callers_transaction": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.Licence_acquisition_is_broken_down_by_the_page_s_own_vocabulary": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.A_licences_only_capture_still_answers_the_licence_half": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.A_second_import_of_the_same_pages_changes_no_stat": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.A_third_import_still_changes_no_stat": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.A_capture_taken_on_a_later_day_re_reports_the_same_facts_and_adds_none": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.A_transaction_that_differs_in_one_reported_value_is_a_different_fact": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.A_licence_that_differs_in_one_reported_value_is_a_different_fact": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.A_gift_row_records_that_a_recipient_existed_and_nothing_about_who": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "AccountStatsTests.A_card_row_records_the_payment_kind_and_no_fragment_of_the_card": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ]
+  },
+  "DataMigrationSafetyTests.An_empty_new_directory_loses_to_a_populated_legacy_one": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "DataMigrationSafetyTests.A_new_directory_holding_an_empty_database_loses_to_a_populated_legacy_one": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "DataMigrationSafetyTests.A_new_directory_holding_a_truncated_database_loses_to_a_populated_legacy_one": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "DataMigrationSafetyTests.A_new_directory_that_really_does_hold_a_library_still_wins": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "DataMigrationSafetyTests.A_directory_holding_both_database_names_renames_nothing": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "DataMigrationSafetyTests.Legacy_sidecars_are_not_moved_when_the_destination_database_exists": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "DataMigrationSafetyTests.A_stray_destination_sidecar_blocks_the_whole_rename_rather_than_half_of_it": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "DataMigrationSafetyTests.A_whole_legacy_set_still_moves_together_when_nothing_is_in_the_way": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "DataMigrationSafetyTests.An_abandoned_staging_directory_is_swept_and_the_migration_restarts": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "DataMigrationSafetyTests.An_abandoned_staging_directory_never_becomes_the_library_it_was_a_copy_of": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "DataMigrationSafetyTests.A_copy_that_cannot_be_promoted_leaves_nothing_at_the_destination": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "DataMigrationSafetyTests.A_copy_fallback_stages_checks_and_promotes_the_whole_tree": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_configured_igdb_that_throws_falls_through_to_steam": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.An_unconfigured_igdb_is_not_an_error_and_steam_still_names_the_work": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.Both_sources_failing_leaves_the_name_provisional_and_does_not_throw": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.Igdb_wins_and_steam_is_only_asked_about_the_remainder": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_second_run_has_nothing_to_do": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_run_with_no_provisional_names_asks_nothing": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_real_title_is_never_reverted_to_a_placeholder": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_blank_name_from_a_source_is_not_a_promotion": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.Promotion_moves_the_work_and_its_release_together": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.Igdb_metadata_is_stored_alongside_the_promoted_name": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.The_publisher_comes_from_the_second_games_call": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.Multiple_publishers_reduce_to_the_same_name_whatever_order_igdb_lists_them_in": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_null_from_igdb_never_overwrites_a_stored_value": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_blank_summary_is_not_stored_as_a_value": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.An_already_named_work_with_no_metadata_is_backfilled": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_fully_enriched_work_is_never_asked_about_again": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_second_run_over_an_enriched_library_writes_nothing": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.The_steam_fallback_is_not_asked_about_a_work_that_only_needs_metadata": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_second_appid_for_one_igdb_game_keeps_its_metadata_without_stealing_the_id": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.Steamcmd_names_an_app_igdb_and_the_store_both_missed": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.Steamcmd_is_last_and_only_sees_what_igdb_and_the_store_missed": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.Steamcmd_is_not_asked_about_a_work_that_only_needs_metadata": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_type_already_in_the_cache_is_read_at_no_cost": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_variant_titled_work_is_asked_about_so_its_type_can_be_stored": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_second_run_asks_steamcmd_nothing": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.An_unreadable_appid_leaves_the_name_provisional_and_the_type_null": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_throwing_steamcmd_does_not_fail_the_run": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.Steamcmd_never_overwrites_a_real_title": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_blank_name_from_steamcmd_is_not_a_promotion": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_gog_release_is_asked_about_at_all": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_gog_release_gets_its_metadata_from_source_5": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.An_epic_release_is_bridged_to_a_steam_appid_and_enriched": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_malformed_id_in_the_graph_is_skipped_for_the_well_formed_one": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.An_epic_exclusive_with_no_twin_is_left_untouched": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.No_alias_source_leaves_epic_rows_exactly_as_they_were": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.An_unreachable_identity_graph_writes_nothing": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.An_alias_source_that_throws_does_not_break_the_pass": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.Steam_only_endpoints_are_never_asked_about_a_gog_id": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_gog_work_never_inherits_a_steam_app_type": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.An_epic_catalog_item_id_is_never_sent_to_igdb_directly": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_duplicate_that_cannot_claim_the_igdb_id_still_gets_its_metadata": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_run_cut_short_still_reaches_the_provider_holding_the_highest_ids": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_work_with_nothing_is_served_before_one_missing_a_single_field": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.Work_completed_before_the_cancellation_is_already_committed": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.Slicing_does_not_change_the_result_of_a_run_that_finishes": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.An_Epic_work_with_no_local_title_is_named_from_the_catalog_service": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.The_categories_are_stored_so_the_non_game_filter_can_read_them": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_real_local_title_is_never_replaced_by_the_catalog_service": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_catalog_that_cannot_answer_leaves_the_row_exactly_as_it_was": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.An_already_classified_work_is_never_asked_again": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_Steam_work_is_never_asked_about_and_never_takes_an_Epic_classification": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.An_entry_the_catalog_classified_but_could_not_name_keeps_its_placeholder": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.An_entry_with_no_categories_is_named_and_left_unclassified": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_catalog_client_that_throws_does_not_abort_the_pass": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_host_with_no_Epic_module_enriches_exactly_as_before": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.The_pass_stores_the_storefront_relation_facts": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.The_steamcmd_parent_appid_is_stored_rather_than_dropped": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.The_igdb_game_type_and_parent_land_on_the_work": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_pinned_work_survives_an_enrichment_pass": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.Clearing_the_pin_returns_the_work_to_automatic_enrichment": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_pass_reports_its_backlog_first_and_zero_last": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "EnrichmentSyncServiceTests.A_library_with_nothing_outstanding_reports_nothing_at_all": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs"
+    ]
+  },
+  "GameRefetchServiceTests.A_pinned_work_refetches_against_its_pinned_id_and_never_re_resolves": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GameRefetchService.cs"
+    ]
+  },
+  "GameRefetchServiceTests.The_pin_survives_a_refetch": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GameRefetchService.cs"
+    ]
+  },
+  "GameRefetchServiceTests.An_unpinned_work_refetches_against_the_id_it_already_resolved_to": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GameRefetchService.cs"
+    ]
+  },
+  "GameRefetchServiceTests.The_refetch_asks_past_the_cache_rather_than_reading_it": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GameRefetchService.cs"
+    ]
+  },
+  "GameRefetchServiceTests.A_new_mapping_can_refetch_immediately_and_fill_its_pinned_metadata": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GameRefetchService.cs"
+    ]
+  },
+  "GameRefetchServiceTests.A_second_refetch_inside_the_cooldown_is_refused_without_a_request": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GameRefetchService.cs"
+    ]
+  },
+  "GameRefetchServiceTests.The_cooldown_lets_go_once_it_has_elapsed": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GameRefetchService.cs"
+    ]
+  },
+  "GameRefetchServiceTests.The_cooldown_is_per_work_not_per_library": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GameRefetchService.cs"
+    ]
+  },
+  "GameRefetchServiceTests.A_refetch_that_changes_nothing_says_so": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GameRefetchService.cs"
+    ]
+  },
+  "GameRefetchServiceTests.A_source_that_cannot_be_reached_is_reported_rather_than_thrown": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GameRefetchService.cs"
+    ]
+  },
+  "GameRefetchServiceTests.An_unconfigured_igdb_is_reported_as_its_own_outcome": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GameRefetchService.cs"
+    ]
+  },
+  "GameRefetchServiceTests.A_work_no_source_can_be_asked_about_is_reported_without_a_request": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GameRefetchService.cs"
+    ]
+  },
+  "GameRefetchServiceTests.A_work_that_is_not_there_is_reported_rather_than_thrown": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GameRefetchService.cs"
+    ]
+  },
+  "GameRefetchServiceTests.Steam_review_figures_land_on_the_work_the_appid_belongs_to": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GameRefetchService.cs"
+    ]
+  },
+  "GameRefetchServiceTests.A_missing_metadata_column_is_filled_and_a_present_one_is_left_alone": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GameRefetchService.cs"
+    ]
+  },
+  "GamesDbIdentitySyncTests.Store_id_reassigned_during_graph_lookup_cannot_link_stale_releases": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs"
+    ]
+  },
+  "GamesDbIdentitySyncTests.Game_level_references_without_matching_acquired_editions_keep_pair_reviewable": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs"
+    ]
+  },
+  "GamesDbIdentitySyncTests.Legacy_version_columns_without_native_source_evidence_cannot_link": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs"
+    ]
+  },
+  "GamesDbIdentitySyncTests.Uncorrelated_graph_answer_cannot_link_even_matching_release_versions": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs"
+    ]
+  },
+  "GamesDbIdentitySyncTests.Repository_refuses_snapshot_when_user_moves_evidence_work_to_another_parent": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs"
+    ]
+  },
+  "GamesDbIdentitySyncTests.Repository_rechecks_user_decisions_after_a_background_snapshot": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs"
+    ]
+  },
+  "GamesDbIdentitySyncTests.Automatic_link_unifies_library_identity_and_preserves_each_ownership_row": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs"
+    ]
+  },
+  "GamesDbIdentitySyncTests.Only_counterparts_with_matching_versions_form_one_identity_without_duplicate_links_on_repeat": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs"
+    ]
+  },
+  "GamesDbIdentitySyncTests.Cancellation_from_identity_graph_propagates_without_writing_links": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs"
+    ]
+  },
+  "GamesDbIdentitySyncTests.Corroborated_ids_clear_queue_entries_and_preserve_both_releases_and_external_ids": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs"
+    ]
+  },
+  "GamesDbIdentitySyncTests.Late_store_import_is_linked_even_when_epic_metadata_is_already_complete": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs"
+    ]
+  },
+  "GamesDbIdentitySyncTests.Malformed_graph_ids_do_not_create_identity": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs"
+    ]
+  },
+  "GamesDbIdentitySyncTests.Missing_or_failed_evidence_keeps_pending_pair": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs"
+    ]
+  },
+  "GamesDbIdentitySyncTests.Rejected_pair_is_not_automatically_linked": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs"
+    ]
+  },
+  "GamesDbIdentitySyncTests.Separating_an_automatic_link_survives_the_next_sync": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs"
+    ]
+  },
+  "GamesDbIdentitySyncTests.User_pin_on_either_work_prevents_automatic_identity": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs"
+    ]
+  },
+  "GamesDbIdentitySyncTests.Existing_non_identity_membership_is_preserved": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs"
+    ]
+  },
+  "PluginFeedServiceTests.Loaded_feed_sees_only_eligible_games_and_collapsed_game_facts": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginFeedService.cs"
+    ]
+  },
+  "PluginFeedServiceTests.Feedback_on_a_linked_child_suppresses_the_whole_game_until_unlinked": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginFeedService.cs"
+    ]
+  },
+  "PluginFeedServiceTests.Account_visibility_applies_before_any_library_data_reaches_the_plugin": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginFeedService.cs"
+    ]
+  },
+  "PluginFeedServiceTests.Hidden_child_verdict_uses_complete_identity_before_plugin_disclosure": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginFeedService.cs"
+    ]
+  },
+  "PluginFeedServiceTests.Host_rejects_unknown_handles_invalid_scores_and_unusable_reasons_and_bounds_shelves": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginFeedService.cs"
+    ]
+  },
+  "PluginFeedServiceTests.Plugins_cannot_reintroduce_a_dismissed_handle_in_their_returned_rankings": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginFeedService.cs"
+    ]
+  },
+  "PluginFeedServiceTests.Feed_service_appends_plugin_shelves_and_keeps_builtin_results_when_plugin_throws": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginFeedService.cs"
+    ]
+  },
+  "PluginFeedServiceTests.Plugin_feed_does_not_record_impressions_until_the_shared_feedback_command_runs": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginFeedService.cs"
+    ]
+  },
+  "PluginFeedServiceTests.Builtin_feed_is_available_before_optional_provider_and_host_wait_is_bounded": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginFeedService.cs"
+    ]
+  },
+  "PluginFeedServiceTests.Fast_provider_survives_another_provider_exhausting_the_aggregate_budget": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginFeedService.cs"
+    ]
+  },
+  "PluginFeedServiceTests.Aggregate_budget_includes_waiting_behind_an_existing_provider_invocation": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginFeedService.cs"
+    ]
+  },
+  "PluginFeedServiceTests.Shared_read_expiry_is_an_empty_supplement_but_caller_cancellation_propagates": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginFeedService.cs"
+    ]
+  },
+  "PluginHostStorageTests.Plugin_secret_writes_require_declared_keys_and_store_only_protected_values": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginSettingsBackend.cs"
+    ]
+  },
+  "PluginHostStorageTests.Managed_secret_reads_ignore_configuration_before_and_after_removing_a_saved_token": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginSettingsBackend.cs"
+    ]
+  },
+  "PluginHostStorageTests.Managed_tokens_are_not_editable_and_boolean_settings_are_prevalidated": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginSettingsBackend.cs"
+    ]
+  },
+  "PluginHostStorageTests.Contexts_isolate_settings_cache_and_secret_fields_in_the_same_database": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginSettingsBackend.cs"
+    ]
+  },
+  "PluginHostStorageTests.Dotted_plugin_ids_and_setting_keys_cannot_alias_another_plugins_namespace": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginSettingsBackend.cs"
+    ]
+  },
+  "PluginHostStorageTests.Corrupt_cache_envelopes_are_misses": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginSettingsBackend.cs"
+    ]
+  },
+  "PluginHostStorageTests.Saved_credentials_are_protected_scoped_and_never_reloaded_into_settings_snapshots": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginSettingsBackend.cs"
+    ]
+  },
+  "PluginHostStorageTests.Removing_saved_credentials_preserves_an_explicit_configuration_fallback": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginSettingsBackend.cs"
+    ]
+  },
+  "PluginHostStorageTests.Backend_prevalidates_all_fields_and_exposes_invalid_packages_without_executing_them": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginSettingsBackend.cs"
+    ]
+  },
+  "PluginHostStorageTests.Legacy_migration_preserves_artwork_bytes_metadata_age_and_igdb_observations_without_network": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginSettingsBackend.cs"
+    ]
+  },
+  "PluginHostStorageTests.Legacy_secret_is_reprotected_and_configuration_alias_remains_available": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginSettingsBackend.cs"
+    ]
+  },
+  "PluginHostStorageTests.Legacy_secret_survives_unreadable_protection_and_does_not_replace_a_valid_new_key": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginSettingsBackend.cs"
+    ]
+  },
+  "PluginHostStorageTests.Corrupt_new_secret_does_not_destroy_a_usable_legacy_key": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginSettingsBackend.cs"
+    ]
+  },
+  "PluginHostStorageTests.Source_preferences_translate_legacy_steamgriddb_position_and_include_new_provider_groups": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginSettingsBackend.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.An_exact_title_match_fills_acquisition_date_and_licence_type": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.A_normalised_title_match_applies": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.A_title_with_no_owned_release_is_counted_and_nothing_is_written": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.Two_owned_releases_that_normalise_alike_are_ambiguous_and_neither_is_touched": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.A_provisional_name_is_never_matched_against": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.An_ownership_on_another_store_is_never_matched_against": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.A_bundle_rows_price_is_never_attributed_to_any_of_its_items": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.A_refunded_purchase_price_is_never_applied": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.A_gift_purchase_price_is_never_applied_to_this_accounts_ownership": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.An_in_game_purchase_price_is_never_applied_to_the_game": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.A_wallet_top_up_is_not_a_product_and_matches_nothing": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.A_known_zero_purchase_is_retained_and_fills_only_unknown_price": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.An_existing_acquired_at_is_never_overwritten": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.An_existing_price_and_its_source_are_never_overwritten": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.An_existing_licence_type_is_never_overwritten": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.An_unmapped_acquisition_method_leaves_licence_type_null_but_still_dates_the_row": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.A_second_run_over_the_same_pages_writes_nothing": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.A_third_run_still_writes_nothing_and_the_values_are_unchanged": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.Licences_alone_still_fills_dates_and_types_but_no_price": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.History_alone_dates_the_ownership_from_the_purchase": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.An_unrecognised_document_is_reported_as_such_and_writes_nothing": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.An_empty_capture_is_a_no_op": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  },
+  "SteamAccountPageImportTests.Truncation_is_reported_so_the_caller_knows_it_saw_part_of_the_account": {
+    "status": "retained-backend",
+    "reason": "Reviewed source exercises the unchanged shared .NET backend, repository or plugin service against isolated data. Its Winnow.App namespace is historical; this implementation belongs to the independent backend and remains covered by the required .NET suite.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs"
+    ]
+  }
+}
