@@ -77,7 +77,7 @@ body[data-caption=quiet] .index-game small{display:none}
 .deck-track:after{content:'';position:absolute;inset:15px -25px;border:1px solid #b5dfea0b;border-radius:50%;transform:rotate(25deg)}
 .deck{position:relative;width:100%;height:calc(var(--card-width)*1.5 + 60px);flex-shrink:0;display:block;perspective:1400px}
 .game-card{display:block;padding:0;border-radius:10px}
-.deck .game-card{position:absolute;width:var(--card-width);left:50%;top:26px;transform:translateX(-50%);z-index:3;transition:filter .3s ease,opacity .3s ease}
+.deck .game-card{position:absolute;width:var(--card-width);left:50%;top:26px;transform:translateX(-50%);z-index:3;transition:none}
 .deck .game-card[data-slot=previous]{transform:translateX(-84%) translateY(22px) rotate(-12deg) scale(.82);z-index:1;filter:brightness(.48);opacity:.75}
 .deck .game-card[data-slot=next]{transform:translateX(-12%) translateY(22px) rotate(12deg) scale(.82);z-index:2;filter:brightness(.55);opacity:.85}
 .deck .game-card[data-slot=previous]:hover,.deck .game-card[data-slot=next]:hover{filter:brightness(.8)}

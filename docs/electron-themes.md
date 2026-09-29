@@ -46,6 +46,10 @@ Rift reuses the same card materials and exposes **Portal roundness**, **Portal e
 **Portal edge activity**, **Star field**, **Star brightness** and **Cover size** as theme
 settings. Zero activity holds the rim still; 40 is the normal pace and 100 is about four
 times faster. The star field draws only on creation or resize; brightness changes opacity.
+
+Rift's Discover arrows, neighboring covers and left/right keys shuffle the deck in the
+chosen direction. This movement respects the shared reduced-motion preference. Its
+outer-card animation stays separate from the inner artwork's pointer tilt and materials.
 Keyboard focus, reduced motion, and disabling **Follow the pointer** use a steady light
 and level card.
 **Movement and depth** explains when the profile or system preference pauses motion and

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   ArrowRight,
@@ -15,6 +15,7 @@ import type { ThemeContext } from '../../../shared/theme'
 import type { FeedItem, FeedShelf } from '../../api/types'
 import { Artwork } from '../../components/Artwork'
 import { PortalSurface } from '../../components/portal-effects'
+import { DeckShuffle, type DeckPoses } from '../../components/deck-shuffle'
 import { bucketLabel, Empty, hours, Impression } from '../../components/primitives'
 import { libraryScroll, useViewState } from '../../viewState'
 import { RiftCover } from './Cover'
@@ -32,6 +33,11 @@ export function RiftDiscover(context: ThemeContext) {
   const [receipt, setReceipt] = useState<{ releaseId: number; kind: number; title: string } | null>(null)
   const portalRef = useRef<HTMLDivElement>(null)
   const browserRef = useRef<HTMLElement>(null)
+  const deckRef = useRef<HTMLDivElement>(null)
+  const shuffle = useRef(new DeckShuffle())
+  const shuffleRequest = useRef<{ poses: DeckPoses; direction: number; workId: number; mode: string } | null>(
+    null,
+  )
   const scrollKey = `rift:discover:${context.mode}`
   useLayoutEffect(() => {
     if (browserRef.current) browserRef.current.scrollTop = libraryScroll.get(scrollKey) ?? 0
@@ -63,13 +69,39 @@ export function RiftDiscover(context: ThemeContext) {
     games.findIndex((game) => game.workId === selected),
   )
   const game = games[index]
+  useLayoutEffect(() => {
+    const request = shuffleRequest.current
+    shuffleRequest.current = null
+    if (deckRef.current && request?.workId === game?.workId && request?.mode === context.mode)
+      shuffle.current.play(deckRef.current, request.poses, request.direction, journey.reducedMotion)
+    else shuffle.current.stop()
+  }, [game?.workId, context.mode, journey.reducedMotion])
+  useEffect(() => {
+    const controller = shuffle.current
+    const stop = () => controller.stop()
+    document.addEventListener('visibilitychange', stop)
+    window.addEventListener('resize', stop)
+    return () => {
+      controller.stop()
+      document.removeEventListener('visibilitychange', stop)
+      window.removeEventListener('resize', stop)
+    }
+  }, [])
   const picked = shelf?.items.find((item) =>
     game?.entries.some((entry) => entry.releaseId === item.releaseId),
   )
   const choose = (step: number) => {
-    if (games.length) {
+    if (games.length > 1) {
+      const next = games[(index + step + games.length) % games.length]
+      if (deckRef.current)
+        shuffleRequest.current = {
+          poses: shuffle.current.capture(deckRef.current),
+          direction: step,
+          workId: next.workId,
+          mode: context.mode,
+        }
       const refocus = document.activeElement?.classList.contains('rift-deck-selected')
-      setSelected(games[(index + step + games.length) % games.length].workId)
+      setSelected(next.workId)
       if (refocus)
         requestAnimationFrame(() =>
           document.querySelector<HTMLButtonElement>('.rift-deck-selected')?.focus({ preventScroll: true }),
@@ -248,6 +280,7 @@ export function RiftDiscover(context: ThemeContext) {
             <div className="rift-deck-zone">
               <div className="rift-deck-orbit" aria-hidden="true" />
               <div
+                ref={deckRef}
                 className="rift-deck"
                 onKeyDown={(event) => {
                   if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
@@ -256,30 +289,28 @@ export function RiftDiscover(context: ThemeContext) {
                   }
                 }}
               >
-                {games.length > 1 && (
+                {[
+                  ...(games.length > 2
+                    ? [{ game: games[(index - 1 + games.length) % games.length], slot: 'previous', step: -1 }]
+                    : []),
+                  ...(games.length > 1
+                    ? [{ game: games[(index + 1) % games.length], slot: 'next', step: 1 }]
+                    : []),
+                  { game, slot: 'selected', step: 0 },
+                ].map(({ game: cardGame, slot, step }) => (
                   <RiftCover
-                    game={games[(index - 1 + games.length) % games.length]}
-                    className="rift-deck-previous"
-                    aria-label="Previous recommendation"
-                    tabIndex={-1}
-                    onClick={() => choose(-1)}
+                    key={cardGame.workId}
+                    game={cardGame}
+                    data-deck-key={cardGame.workId}
+                    data-deck-slot={slot}
+                    className={`rift-deck-${slot}`}
+                    aria-label={
+                      step ? `${step < 0 ? 'Previous' : 'Next'} recommendation` : `View ${cardGame.title}`
+                    }
+                    tabIndex={step ? -1 : 0}
+                    onClick={() => (step ? choose(step) : journey.open(cardGame.workId, portalRef.current))}
                   />
-                )}
-                {games.length > 2 && (
-                  <RiftCover
-                    game={games[(index + 1) % games.length]}
-                    className="rift-deck-next"
-                    aria-label="Next recommendation"
-                    tabIndex={-1}
-                    onClick={() => choose(1)}
-                  />
-                )}
-                <RiftCover
-                  key={game.workId}
-                  game={game}
-                  className="rift-deck-selected"
-                  onClick={() => journey.open(game.workId, portalRef.current)}
-                />
+                ))}
               </div>
               <div className="rift-deck-caption">
                 <strong>{game.title}</strong>

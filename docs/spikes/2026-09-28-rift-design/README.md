@@ -27,7 +27,9 @@ files are used.
 
 Discover's searchable index leads into a sample recommendation sequence. The selected
 cover and its two neighbors form a small deck; clicking a neighbor or using the arrow
-controls advances through the current selection. The selected cover and **View game**
+controls shuffles through the current selection in 520 ms. Left/right keys use the same
+directional motion, repeated input continues from the current poses, and Still mode or
+system reduced motion switches immediately. The selected cover and **View game**
 open the full details page.
 
 Library presents alphabetically ordered covers across the available browsing width,
@@ -77,6 +79,15 @@ missing/loading artwork keeps the reading layout and metadata available.
 `options.css` holds the options dialog; `journey.css` styles previews and the details page.
 `effects/starfield.js` renders one decorative canvas at startup and after resizing;
 brightness only changes its opacity. It has no card or portal dependency.
+
+`effects/deck-shuffle.js` is generated from the production renderer's reusable
+`components/deck-shuffle.ts`. It animates outer cover transforms and opacity independently
+of materials, without changing selection or delaying activation. Regenerate it from
+`src/Winnow.Electron` with:
+
+```powershell
+npm exec -- esbuild src/renderer/components/deck-shuffle.ts --bundle --format=iife --global-name=WinnowDeckShuffle --outfile=../../docs/spikes/2026-09-28-rift-design/effects/deck-shuffle.js
+```
 
 `effects/portal-surface.js` owns the reusable material and fixed-plane reveal, including
 an optional source rectangle for the full-view expansion. `effects/aperture.js` connects
@@ -132,6 +143,13 @@ Prior compositions: [Library inspector](06-rift-library-gallery.png),
 [Discover star field](05-rift-starfield-discover.png), [Portal activity control](07-rift-portal-activity.png),
 [Desktop workspace](03-rift-workspace.png), [Focused fullscreen](04-rift-fullscreen.png),
 [First Discover](01-rift-discover.png), [First Library portal](02-rift-library.png).
+
+The TASK-374 shuffle follow-up was checked in desktop and fullscreen in the mock and
+production renderer. Directional controls produced intermediate card transforms and
+settled on the selected game. Production checks also covered rapid keyboard reversals,
+focus retention, details activation during the shuffle and immediate reduced-motion
+selection. The shared controller's focused tests and the Electron build passed; see
+the [integration evidence](../2026-09-28-rift-integration/README.md#discover-shuffle--task-374).
 
 ## Assets
 

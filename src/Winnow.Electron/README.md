@@ -31,6 +31,12 @@ retains material effects and descriptive side previews. Themes can reuse `Artwor
 its already-decoded image; static artwork remains available when WebGL is unavailable.
 System and profile reduced-motion settings keep focus effects stationary.
 
+Rift's Discover deck shuffles when you use its arrows, neighboring covers or left/right
+keys. The outgoing card swings aside as the next card rises into place over 520 ms.
+Repeated input continues from the current positions; selection and details activation
+update immediately. Reduced motion switches cards without the shuffle. The reusable
+`DeckShuffle` controller animates outer cards independently of their artwork materials.
+
 Rift's Library opens a fixed-size artwork portal beside a hovered or focused cover. It flips
 left or docks inside narrow windows. The preview is informational: it has no buttons or
 pointer interaction, and follows only the cover's hover or keyboard focus. Click the cover

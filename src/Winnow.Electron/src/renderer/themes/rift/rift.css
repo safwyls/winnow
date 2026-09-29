@@ -484,6 +484,7 @@
   transform: none;
 }
 .rift-deck > .rift-cover {
+  transition: none;
   position: absolute;
   width: var(--rift-card);
   left: 50%;

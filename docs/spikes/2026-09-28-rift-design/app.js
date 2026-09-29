@@ -43,6 +43,14 @@ const hydrateIcons = () => window.lucide.createIcons({attrs:{'aria-hidden':'true
 const say = message => { $('#live-message').textContent = message; };
 const discoveryOrder = ['outer','hades','hollow','celeste','enshrouded','disco','sable','borderlands2','borderlands3','bounty','tentacles','jackpot'];
 const state = {page:'library',filter:'all',query:'',selected:'outer',input:'keyboard'};
+const deckShuffle = new WinnowDeckShuffle.DeckShuffle();
+const stopShuffle = () => deckShuffle.stop();
+riftMotion.addEventListener('change', stopShuffle);
+document.addEventListener('visibilitychange', stopShuffle);
+document.addEventListener('rift:navigate', stopShuffle);
+document.addEventListener('rift:open-game', stopShuffle);
+window.addEventListener('resize', stopShuffle);
+window.addEventListener('pagehide', stopShuffle);
 const lensTitles = {all:'Every game, an opening.',unplayed:'Begin somewhere new.',returning:'There is more to your story.',installed:'Your next world is ready.'};
 
 function cover(game) {
@@ -75,10 +83,12 @@ function renderIndex() {
 
 function deckCard(game, slot) {
   const selected=slot==='selected';
-  return `<button class="game-card" data-slot="${slot}" data-game="${game.id}" ${selected?'data-view':'data-select'}="${game.id}" aria-label="${selected?'View':'Select'} ${escapeHtml(game.title)}"><span class="card-surface">${cover(game)}</span></button>`;
+  return `<button class="game-card" data-slot="${slot}" data-deck-slot="${slot}" data-deck-key="${game.id}" data-game="${game.id}" ${selected?'data-view':'data-select'}="${game.id}" aria-label="${selected?'View':'Select'} ${escapeHtml(game.title)}"><span class="card-surface">${cover(game)}</span></button>`;
 }
 
-function renderSelection(input='keyboard') {
+function renderSelection(input='keyboard',direction=0) {
+  const poses=state.page==='discover'&&direction?deckShuffle.capture($('#deck')):null;
+  deckShuffle.stop();
   const visible=visibleGames(),game=byId.get(state.selected);
   state.input=input;
   $('#world-stage').hidden=!game;
@@ -90,6 +100,7 @@ function renderSelection(input='keyboard') {
   const index=visible.findIndex(item=>item.id===game.id);
   const previous=visible[(index-1+visible.length)%visible.length],next=visible[(index+1)%visible.length];
   $('#deck').innerHTML=(visible.length>2?deckCard(previous,'previous'):'')+(visible.length>1?deckCard(next,'next'):'')+deckCard(game,'selected');
+  if(poses)deckShuffle.play($('#deck'),poses,direction,riftMotion.matches);
   $('#deck-title').textContent=game.title;
   $('#position').textContent=`${String(index+1).padStart(2,'0')} / ${String(visible.length).padStart(2,'0')}`;
   $('#sequence-dots').innerHTML=visible.map((item,i)=>`<span class="${i===index?'active':''}" aria-hidden="true"></span>`).join('');
@@ -103,8 +114,8 @@ function renderSelection(input='keyboard') {
   say(`${game.title}. ${game.reason}`);
 }
 
-function selectGame(id,input='keyboard',fromIndex=false) {
-  if(id!==state.selected){state.selected=id;renderSelection(input);}
+function selectGame(id,input='keyboard',fromIndex=false,direction=0) {
+  if(id!==state.selected){state.selected=id;renderSelection(input,direction);}
   if(fromIndex&&(document.body.dataset.mode==='fullscreen'||innerWidth<=800)) {
     setIndex(false);
     if(input==='keyboard')focusSelectedCard();
@@ -114,7 +125,7 @@ function selectGame(id,input='keyboard',fromIndex=false) {
 function moveSelection(step,input='keyboard') {
   const visible=visibleGames(); if(!visible.length)return;
   const index=visible.findIndex(game=>game.id===state.selected);
-  selectGame(visible[(index+step+visible.length)%visible.length].id,input);
+  selectGame(visible[(index+step+visible.length)%visible.length].id,input,false,Math.sign(step));
 }
 
 function setIndex(open) {
@@ -156,7 +167,7 @@ document.addEventListener('click',event=>{
   if(button.dataset.page)navigate(button.dataset.page);
   if(button.dataset.select){
     const fromDeck=button.closest('#deck');
-    selectGame(button.dataset.select,input,button.classList.contains('index-game'));
+    selectGame(button.dataset.select,input,button.classList.contains('index-game'),fromDeck?(button.dataset.slot==='previous'?-1:1):0);
     if(fromDeck&&input==='keyboard')focusSelectedCard();
     if(button.classList.contains('gallery-card'))openGame(button.dataset.select,button,input);
   }

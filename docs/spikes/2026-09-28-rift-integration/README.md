@@ -74,3 +74,27 @@ cover. Fullscreen Tab moved directly to the next cover and Enter opened that gam
 The shared mock was checked in both modes with the same heights and keyboard behavior.
 
 ![Compact informational preview](compact-preview.png)
+
+## Discover shuffle — TASK-374
+
+Rift's Discover deck now moves its outgoing card aside and brings the next card forward
+over 520 ms. The Web Animations controller captures interrupted poses before cancelling
+prior motion; selection, focus and details activation do not wait for completion. The
+same controller is bundled into the static mock. Artwork materials remain on the inner
+surface, independent of the deck's outer transforms.
+
+The deck, app and Rift data suites passed all 12 focused tests. Type checking, the
+production Electron build and the mock's Node syntax check passed. Rollup reported the
+existing Zod comment-annotation notices; they did not fail the build.
+
+Browser checks in desktop and fullscreen confirmed directional motion from navigation
+controls and neighboring covers, rapid keyboard reversals settling on the newest game,
+retained keyboard focus, and Enter opening that game's details during the shuffle.
+With Reduce motion enabled, selection updated immediately without active deck animation.
+The static mock was also checked in both modes; its scripts are versioned to invalidate
+the old cached selection code. The screenshot below captures its cards mid-shuffle.
+
+These checks used fixture records and the production React renderer, not a repackaged
+native executable. No GPU frame-time benchmark or physical controller test was performed.
+
+![Discover cards mid-shuffle in the shared mock](discover-shuffle.png)
