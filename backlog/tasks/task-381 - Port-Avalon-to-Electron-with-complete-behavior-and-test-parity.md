@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-29 16:32'
+updated_date: '2026-09-29 16:52'
 labels: []
 dependencies: []
 priority: high
@@ -108,4 +108,6 @@ Fifth checkpoint: all2371 Electron component/live-backend cases pass in123files,
 Sixth package restores independent metadata desktop/fullscreen navigation. Native five desktop sizes plus fullscreen controller A/Y/B pass; 19 metadata/Details/Library native cases passed, then metadata6 exited cleanly after child-exit cleanup. Electron integrated2385/124 all pass after cancellation-aware account assertion repair; subsequent expanded pending-Details matrix passes App24. Library/workspace/Details read cancellation rejects late publication and composed App tests close excluded Details. Source audit781ported540retained13framework,936pending165partial. Two library ordering contracts remain partial for combined settings/editor and independent selection evidence; no acceptance criteria checked.
 
 Checkpoint seven: restored Spending refresh-on-open, captured counts without blended currency totals, largest-transaction currency/date, bundle totals, absent-date handling, UTC page dates and readable licence methods. Desktop/fullscreen source fixtures add 26 component cases and two actual App navigation cases. Full Electron integration: 2419/2419 cases in 125 files, no skips. Build/typecheck pass; two native Spending layout/focus cases pass and screenshots inspected. Audited all 13 FilterPanelViewModel methods against production policy/rendered panel coverage. Inventory: 807 ported, 540 retained backend, 13 framework-specific, 911 pending, 164 partial. Gate still fails; no acceptance criteria checked. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-seven.md. Continuing Library and account dashboard parity.
+
+Checkpoint eight: fixed empty Library list headers, quoted empty searches, returning from desktop identity review through a collection, and consistent stored dimming parsing. Full Electron integration passed 2438/2438 cases across 125 files with no skips. Eight native Library lifecycle cases passed together, including keyboard/pointer Details activation, retained selection, decoded fixture covers, computed dimming filters, stable cover elements, reduced motion, persisted Settings writes, grouping, list cuts and chrome. Build/typecheck pass and both cover screenshots inspected. Inventory: 836 ported, 540 retained backend, 13 framework-specific, 881 pending, 165 partial. The original combined Steam/37-hour Details assertion remains partial; remaining Library grouping/lifecycle and no-settings-store coverage stays visible. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-eight.md. No acceptance criteria checked; continuing parity work.
 <!-- SECTION:NOTES:END -->

@@ -160,6 +160,85 @@ function mountAfterglow() {
 }
 describe('integrated frontend', () => {
   it.each(['desktop', 'fullscreen'])(
+    'Home and Library have one active destination, retain bucket context, and Settings returns to its section on %s',
+    async (mode) => {
+      for (const key of ['bucket', 'query', 'store', 'list', 'rules'])
+        clearViewState(`avalon:library:${mode}:${key}`)
+      clearViewState(`${mode}:settings:tab`)
+      const client = mount()
+      await screen.findByRole('navigation', { name: 'Main navigation' })
+      act(() => fullscreen(mode === 'fullscreen'))
+      const navigation = () => within(screen.getByRole('navigation', { name: 'Main navigation' }))
+      expect(navigation().getByRole('button', { name: 'For you' }).getAttribute('aria-current')).toBe('page')
+      if (mode === 'desktop') {
+        expect(screen.getByRole('button', { name: 'All games1' }).getAttribute('aria-pressed')).toBe('false')
+        fireEvent.click(screen.getByRole('button', { name: 'All games1' }))
+      } else fireEvent.click(navigation().getByRole('button', { name: 'Library' }))
+      await screen.findByRole('button', { name: `View ${game.title}` })
+      expect(navigation().getByRole('button', { name: 'For you' }).getAttribute('aria-current')).toBeNull()
+      expect(screen.getByRole('button', { name: 'All games1' }).getAttribute('aria-pressed')).toBe('true')
+      fireEvent.click(screen.getByRole('button', { name: 'Never played1' }))
+      for (let click = 0; click < 2; click++) {
+        fireEvent.click(navigation().getByRole('button', { name: 'For you' }))
+        expect(navigation().getByRole('button', { name: 'For you' }).getAttribute('aria-current')).toBe(
+          'page',
+        )
+        expect(document.querySelector('.avalon-library')).toBeNull()
+        if (mode === 'desktop')
+          for (const label of ['All games1', 'Never played1'])
+            expect(screen.getByRole('button', { name: label }).getAttribute('aria-pressed')).toBe('false')
+      }
+      fireEvent.click(navigation().getByRole('button', { name: 'Library' }))
+      expect(screen.getByRole('button', { name: 'Never played1' }).getAttribute('aria-pressed')).toBe('true')
+      fireEvent.click(navigation().getByRole('button', { name: 'Settings' }))
+      const sections = () => within(screen.getByRole('navigation', { name: 'Settings section' }))
+      expect(sections().getByRole('button', { name: 'Platforms' }).getAttribute('aria-pressed')).toBe('true')
+      for (let click = 0; click < 2; click++)
+        fireEvent.click(sections().getByRole('button', { name: 'Appearance' }))
+      expect(sections().getByRole('button', { name: 'Appearance' }).getAttribute('aria-pressed')).toBe('true')
+      expect(sections().getByRole('button', { name: 'Platforms' }).getAttribute('aria-pressed')).toBe('false')
+      if (mode === 'desktop') fireEvent.click(screen.getByRole('button', { name: 'All games1' }))
+      else fireEvent.click(navigation().getByRole('button', { name: 'Library' }))
+      expect(screen.queryByRole('navigation', { name: 'Settings section' })).toBeNull()
+      fireEvent.click(navigation().getByRole('button', { name: 'Settings' }))
+      expect(sections().getByRole('button', { name: 'Appearance' }).getAttribute('aria-pressed')).toBe('true')
+      client.clear()
+      clearViewState(`${mode}:settings:tab`)
+      for (const key of ['bucket', 'query', 'store', 'list', 'rules'])
+        clearViewState(`avalon:library:${mode}:${key}`)
+    },
+  )
+  it.each([
+    [undefined, 'true'],
+    ['yes please', 'true'],
+    ['false', 'false'],
+    [' False ', 'false'],
+    ['TRUE', 'true'],
+  ])('reads stored cover dimming %s consistently without writing the preference', async (value, expected) => {
+    const original = window.winnow.request
+    window.winnow.request = vi.fn(async (input) =>
+      input.route === 'preferences.presentation.get'
+        ? {
+            ok: true,
+            status: 200,
+            data: value === undefined ? [] : [{ preference: 'DimDormantCovers', value }],
+          }
+        : original(input),
+    ) as WinnowBridge['request']
+    const client = mount()
+    await screen.findByRole('navigation', { name: 'Main navigation' })
+    await waitFor(() => expect(document.documentElement.dataset.dimDormant).toBe(expected))
+    act(() => fullscreen(true))
+    await waitFor(() => expect(document.documentElement.dataset.mode).toBe('fullscreen'))
+    expect(document.documentElement.dataset.dimDormant).toBe(expected)
+    expect(
+      vi
+        .mocked(window.winnow.request)
+        .mock.calls.some(([input]) => input.route === 'preferences.presentation.put'),
+    ).toBe(false)
+    client.clear()
+  })
+  it.each(['desktop', 'fullscreen'])(
     'opening Spending from navigation refreshes its capture and another navigation row leaves it on %s',
     async (mode) => {
       clearViewState(`${mode}:stats:section`)

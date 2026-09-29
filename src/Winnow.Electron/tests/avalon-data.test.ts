@@ -66,6 +66,11 @@ describe('Avalon presentation facts', () => {
     expect(dormancy('invalid')).toEqual(dormancy(null))
     expect(dormancy('2100-01-01')).toEqual({ saturation: 1, brightness: 1, hue: -0 })
   })
+  it('keeps recent play nearly vivid and four-year-old games at the original dormancy floor', () => {
+    const now = Date.parse('2026-09-29T00:00:00Z')
+    expect(dormancy('2026-09-26T00:00:00Z', now).saturation).toBeGreaterThan(0.9)
+    expect(dormancy('2022-09-29T00:00:00Z', now).saturation).toBe(0.22)
+  })
 
   it('fills desktop vacancies from the reserve and includes the fullscreen reserve without duplicates', () => {
     const games = Array.from({ length: 10 }, (_, index) => game(index + 1))
@@ -94,6 +99,12 @@ describe('Avalon presentation facts', () => {
     expect(avalonShelves(games, feed, true)[0].rows.map((row) => row.game.workId)).toEqual([
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
     ])
+    for (const fullscreen of [false, true]) {
+      const shelf = avalonShelves(games, feed, fullscreen)[0]
+      for (const row of [...shelf.rows, ...(shelf.reserve ?? [])])
+        expect(row.game).toBe(games.find((game) => game.workId === row.game.workId))
+      expect(avalonShelves([], feed, fullscreen)).toEqual([])
+    }
   })
   it('puts recent play first without feedback or feed impressions', () => {
     const games = [

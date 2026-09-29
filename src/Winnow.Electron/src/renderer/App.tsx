@@ -114,7 +114,7 @@ export function App() {
       `${mode === 'fullscreen' ? clamp(preferences.FullscreenSafeMargin, 5, 0, 10) : 0}%`,
     )
     root.dataset.fitUltrawide = String(preferences.FullscreenFitUltrawide === 'true')
-    root.dataset.dimDormant = String(preferences.DimDormantCovers !== 'false')
+    root.dataset.dimDormant = String(preferences.DimDormantCovers?.trim().toLowerCase() !== 'false')
     root.classList.toggle('reduced-motion', reducedMotion)
   }, [
     mode,

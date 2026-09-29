@@ -116,6 +116,7 @@ afterEach(() => {
     for (const key of ['tab', 'editing']) clearViewState(`${mode}:details:1:${key}`)
     for (const key of ['shelf', 'column']) clearViewState(`avalon:home:${mode}:${key}`)
     clearViewState(`draft:list:filters:${mode}`)
+    clearViewState(`${mode}:library-tools:tab`)
   }
   for (const origin of ['library', 'details', 'feed', 'test'])
     for (const ids of ['100', '100,200', '300']) clearViewState(`draft:add-list:${origin}:${ids}`)
@@ -258,6 +259,40 @@ async function genre(mode: Mode, name: string) {
 }
 
 describe('Library column and density controls', () => {
+  it('keeps exactly one view and one primary selection through the grid and list toggle', () => {
+    setup('desktop')
+    expect(document.querySelector('.avalon-grid-row')).not.toBeNull()
+    expect(document.querySelector('.avalon-record')).toBeNull()
+    act(() => screen.getByRole('button', { name: 'View Alpha' }).focus())
+    expect(selectedCards()).toEqual([1])
+    fireEvent.click(screen.getByRole('button', { name: 'List view' }))
+    expect(document.querySelector('.avalon-grid-row')).toBeNull()
+    expect(document.querySelector('.avalon-record')).not.toBeNull()
+    expect(selectedCards()).toEqual([1])
+    act(() => screen.getByRole('button', { name: 'View Bravo' }).focus())
+    expect(selectedCards()).toEqual([2])
+    fireEvent.click(screen.getByRole('button', { name: 'Grid view' }))
+    expect(document.querySelector('.avalon-record')).toBeNull()
+    expect(selectedCards()).toEqual([2])
+  })
+  it.each(['grid', 'list'])(
+    'an empty search replaces the %s and its headers until the search is cleared',
+    (view) => {
+      setup('desktop')
+      if (view === 'list') fireEvent.click(screen.getByRole('button', { name: 'List view' }))
+      fireEvent.change(screen.getByRole('textbox', { name: 'Search games' }), {
+        target: { value: 'nothing matches this' },
+      })
+      expect(cards()).toEqual([])
+      expect(document.querySelector('.avalon-record-header')).toBeNull()
+      expect(document.querySelector('.avalon-record-row')).toBeNull()
+      expect(document.querySelector('.avalon-grid-row')).toBeNull()
+      expect(screen.getByText('No titles match “nothing matches this”.')).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Clear search' }))
+      expect(cards()).toHaveLength(3)
+      expect(!!document.querySelector('.avalon-record-header')).toBe(view === 'list')
+    },
+  )
   it('toggles all three column headers through the shared menu state with one active direction', () => {
     chromeLibrary()
     setup('desktop')
@@ -489,6 +524,105 @@ it.each(['grid', 'list'] as const)(
 )
 
 describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) => {
+  it('returns from identity review to the collection grid through the collection or Close tools action', async () => {
+    handler = (input) =>
+      input.route === 'identity.get'
+        ? ok({
+            revision: 'review-1',
+            hasCompletedSweep: true,
+            candidates: [],
+            history: [],
+            expansions: [],
+            workspace: {
+              works: [],
+              releases: [],
+              ownerships: [],
+              externalIds: [],
+              buckets: [],
+              identityLinks: [],
+            },
+          })
+        : undefined
+    setup(mode)
+    fireEvent.click(screen.getByRole('button', { name: 'Manage library' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Identity review' }))
+    await screen.findByRole('heading', { name: 'Are these the same game?' })
+    expect(cards()).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: mode === 'desktop' ? 'All games3' : 'Close tools' }))
+    expect(screen.queryByRole('heading', { name: 'Are these the same game?' })).toBeNull()
+    expect(cards()).toEqual([1, 2, 3])
+    expect(screen.getByRole('button', { name: 'All games3' }).getAttribute('aria-pressed')).toBe('true')
+  })
+  it('defaults to longest dormancy with never-opened first and reverses for recent play', () => {
+    delete preferences.values.DefaultSort
+    current.games = current.games.map((game, index) => ({
+      ...game,
+      title: ['Recent', 'Ancient', 'Untouched'][index]!,
+      lastPlayedAt: ['2026-09-26T00:00:00Z', '2022-09-29T00:00:00Z', null][index],
+      playtimeMinutes: index === 2 ? 0 : 600,
+    }))
+    setup(mode)
+    expect((screen.getByLabelText('Sort') as HTMLSelectElement).value).toBe('dormant')
+    expect(cards()).toEqual([3, 2, 1])
+    fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'recent' } })
+    expect(cards()).toEqual([1, 2, 3])
+  })
+  it('sorts unequal playtimes both ways and names with mixed case independently', () => {
+    current.games = current.games.map((game, index) => ({
+      ...game,
+      title: ['banjo', 'Anvil', 'cobalt'][index]!,
+      playtimeMinutes: [600, 30000, 12][index]!,
+    }))
+    setup(mode)
+    for (const [sort, order] of [
+      ['time', [2, 1, 3]],
+      ['time-low', [3, 1, 2]],
+      ['title', [2, 1, 3]],
+      ['title-desc', [3, 1, 2]],
+    ] as const) {
+      fireEvent.change(screen.getByLabelText('Sort'), { target: { value: sort } })
+      expect(cards()).toEqual(order)
+    }
+  })
+  it('All games clears only the bucket while keeping the search and sort and remains selected twice', () => {
+    current.games = [
+      ...current.games,
+      {
+        ...current.games[0]!,
+        workId: 4,
+        entries: [{ ...current.games[0]!.entries[0]!, workId: 4, releaseId: 400, ownershipId: 40 }],
+      },
+    ].map((game, index) => ({
+      ...game,
+      title: ['Zero Alpha', 'Zero Beta', 'Zero Gamma', 'Played Zero Delta'][index]!,
+      bucket: index === 3 ? 'active' : 'never_played',
+      playtimeMinutes: index === 3 ? 5000 : 0,
+    }))
+    setup(mode)
+    const all = screen.getByRole('button', { name: 'All games4' })
+    const rail = screen.getByRole('group', { name: 'Library collections' })
+    const selected = () =>
+      within(rail)
+        .getAllByRole('button')
+        .filter((button) => button.getAttribute('aria-pressed') === 'true')
+    expect(selected()).toEqual([all])
+    expect(cards()).toHaveLength(4)
+    const never = screen.getByRole('button', { name: 'Never played3' })
+    fireEvent.click(never)
+    expect(selected()).toEqual([never])
+    fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'title-desc' } })
+    fireEvent.change(screen.getByLabelText('Search games'), { target: { value: 'alpha' } })
+    expect(cards()).toEqual([1])
+    fireEvent.change(screen.getByLabelText('Search games'), { target: { value: 'zero' } })
+    expect(cards()).toEqual([3, 2, 1])
+    for (let click = 0; click < 2; click++) {
+      fireEvent.click(all)
+      expect(selected()).toEqual([all])
+      expect(cards()).toEqual([3, 2, 1, 4])
+      expect((screen.getByLabelText('Search games') as HTMLInputElement).value).toBe('zero')
+      expect((screen.getByLabelText('Sort') as HTMLSelectElement).value).toBe('title-desc')
+    }
+  })
   it('counts grouped games once in the rail and per store and keeps a multi-store game in either store cut', () => {
     current.games = current.games.map((game, index) => ({
       ...game,

@@ -88,7 +88,10 @@ export function MergeQueue({
   const preferred = platformOptions.some((option) => option.value === storedPlatform) ? storedPlatform : ''
   const dimCovers =
     !Array.isArray(preferences.data) ||
-    preferences.data.find((item) => item.preference === 'DimDormantCovers')?.value !== 'false'
+    preferences.data
+      .find((item) => item.preference === 'DimDormantCovers')
+      ?.value?.trim()
+      .toLowerCase() !== 'false'
   const [section, setSection] = useViewState<MergeSection | 'all'>('identity:queue-section', 'all')
   const [sort, setSort] = useViewState<MergeSort>('identity:queue-sort', 'strength')
   const [choices, setChoices] = useViewState<Record<string, Choice>>('identity:queue-choices', {})

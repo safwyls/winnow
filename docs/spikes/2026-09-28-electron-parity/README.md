@@ -51,6 +51,7 @@ Chromium profiles stay in those directories and are excluded from committed evid
 
 | Check | Observed result |
 |---|---|
+| Library navigation checkpoint | All 2,438 Electron cases across 125 files and all eight native Library lifecycle cases passed. See [checkpoint eight](checkpoint-eight.md) for the source audit and validation limits. |
 | Account and filter checkpoint | All 2,419 Electron cases across 125 files passed without skips, plus both native Spending checks. See [checkpoint seven](checkpoint-seven.md) for the exact audit scope and remaining gaps. |
 | Full .NET Release solution | 6,772 passed; two Linux-only skips on Windows, across 13 assemblies. |
 | Original Avalonia UI assembly | All 896 tests passed within the full Release run. |

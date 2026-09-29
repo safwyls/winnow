@@ -163,6 +163,9 @@ does not govern the Stores panel's 720px, which is a card width holding controls
 ## 4. Layout
 
 **Grid is the default view. List is a toggle**, remembered per-session.
+An empty result replaces either view and the list's column headers. A search with no
+matches names the query; an empty filter cut explains how to widen it. Choosing a desktop
+collection returns to its games from Library management, including identity review.
 
 A slim browse spine appears immediately left of the native scrollbar in both views. Under `Name A–Z`
 or `Name Z–A` it is a `# · A–Z` jump spine in Data S, keeping all 27 stops fixed and dimming

@@ -235,7 +235,7 @@ export function LibraryPresentationPreferences() {
       <label className="check-field">
         <input
           type="checkbox"
-          checked={preferences.values.DimDormantCovers?.toLowerCase() !== 'false'}
+          checked={preferences.values.DimDormantCovers?.trim().toLowerCase() !== 'false'}
           disabled={!preferences.loaded || preferences.pending}
           onChange={(event) => preferences.set('DimDormantCovers', String(event.target.checked))}
         />

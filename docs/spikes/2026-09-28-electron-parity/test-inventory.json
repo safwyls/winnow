@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 911,
-    "partial": 164,
-    "ported": 807,
+    "pending": 881,
+    "partial": 165,
+    "ported": 836,
     "retained-backend": 540,
     "framework-specific": 13
   },
@@ -8499,22 +8499,50 @@
     {
       "id": "LibraryViewModelTests.Default_order_is_dormant_longest_and_never_opened_leads_it",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "defaults to longest dormancy with never-opened first and reverses for recent play"
+        }
+      ],
+      "reason": "Both real Library components use the original recent/ancient/untouched fixture; the default is Dormant longest and switching to Recently played reverses the result."
     },
     {
       "id": "LibraryViewModelTests.Recently_played_is_the_default_order_reversed",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "defaults to longest dormancy with never-opened first and reverses for recent play"
+        }
+      ],
+      "reason": "Both real Library components use the original recent/ancient/untouched fixture; the default is Dormant longest and switching to Recently played reverses the result."
     },
     {
       "id": "LibraryViewModelTests.Playtime_sorts_both_ways",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "sorts unequal playtimes both ways and names with mixed case independently"
+        }
+      ],
+      "reason": "Both surfaces verify high/low ordering for 12, 600 and 30000 minutes and both alphabetical directions for Anvil, banjo and cobalt."
     },
     {
       "id": "LibraryViewModelTests.Name_sorts_both_ways_and_ignores_case",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "sorts unequal playtimes both ways and names with mixed case independently"
+        }
+      ],
+      "reason": "Both surfaces verify high/low ordering for 12, 600 and 30000 minutes and both alphabetical directions for Anvil, banjo and cobalt."
     },
     {
       "id": "LibraryViewModelTests.Column_headers_toggle_the_shared_sort_state",
@@ -8551,22 +8579,50 @@
     {
       "id": "LibraryViewModelTests.Sort_applies_within_a_bucket_filter_and_a_search",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "All games clears only the bucket while keeping the search and sort and remains selected twice"
+        }
+      ],
+      "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture, compose bucket/search/descending title order, and preserve search and order across repeated All games clicks."
     },
     {
       "id": "LibraryViewModelTests.The_view_mode_toggles_and_shows_exactly_one_view",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "keeps exactly one view and one primary selection through the grid and list toggle"
+        }
+      ],
+      "reason": "The desktop grid/list control keeps one selected game, changes selection on focus and renders only the chosen view. Fullscreen intentionally uses its separate two-row grid."
     },
     {
       "id": "LibraryViewModelTests.An_empty_result_replaces_the_list_view_too",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "an empty search replaces the %s and its headers until the search is cleared"
+        }
+      ],
+      "reason": "Both desktop views disappear with their column headers on an empty search, display the original quoted search, and restore the selected view when cleared."
     },
     {
       "id": "LibraryViewModelTests.Selection_survives_the_view_toggle_and_only_one_item_holds_it",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "keeps exactly one view and one primary selection through the grid and list toggle"
+        }
+      ],
+      "reason": "The desktop grid/list control keeps one selected game, changes selection on focus and renders only the chosen view. Fullscreen intentionally uses its separate two-row grid."
     },
     {
       "id": "LibraryViewModelTests.Filtering_away_the_selection_clears_it",
@@ -8587,22 +8643,50 @@
     {
       "id": "LibraryViewModelTests.Nothing_is_open_until_the_detail_command_runs",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-lifecycle.spec.ts",
+          "case": "opens keyboard-selected Details only on activation and preserves the selection on close"
+        }
+      ],
+      "reason": "Both native surfaces keep Details closed until a game is activated. Enter on navigation opens no game; focusing a game alone does not open it; Enter on that game opens its correct title and closing preserves the selected game."
     },
     {
       "id": "LibraryViewModelTests.Opening_details_selects_the_game_and_closing_leaves_it_selected",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "partial",
+      "tests": [
+        {
+          "file": "tests/electron/library-lifecycle.spec.ts",
+          "case": "opens keyboard-selected Details only on activation and preserves the selection on close"
+        }
+      ],
+      "reason": "Both native surfaces verify keyboard and pointer opening, the correct title, exactly one retained game selection and both Escape/button close paths. The original combined 37-hour Steam fixture and its gap assertion still need equivalent composed checks."
     },
     {
       "id": "LibraryViewModelTests.Opening_details_with_no_argument_uses_the_current_selection",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-lifecycle.spec.ts",
+          "case": "opens keyboard-selected Details only on activation and preserves the selection on close"
+        }
+      ],
+      "reason": "Both native surfaces keep Details closed until a game is activated. Enter on navigation opens no game; focusing a game alone does not open it; Enter on that game opens its correct title and closing preserves the selected game."
     },
     {
       "id": "LibraryViewModelTests.Opening_details_with_nothing_selected_opens_nothing",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-lifecycle.spec.ts",
+          "case": "opens keyboard-selected Details only on activation and preserves the selection on close"
+        }
+      ],
+      "reason": "Both native surfaces keep Details closed until a game is activated. Enter on navigation opens no game; focusing a game alone does not open it; Enter on that game opens its correct title and closing preserves the selected game."
     },
     {
       "id": "LibraryViewModelTests.Update_events_are_listed_newest_first_and_only_announcements_link_out",
@@ -8719,67 +8803,162 @@
     {
       "id": "LibraryViewModelTests.All_games_is_selected_on_launch_and_counts_the_whole_library",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "All games clears only the bucket while keeping the search and sort and remains selected twice"
+        }
+      ],
+      "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture, compose bucket/search/descending title order, and preserve search and order across repeated All games clicks."
     },
     {
       "id": "LibraryViewModelTests.Selecting_a_bucket_moves_the_rail_selection_off_all_games_and_back",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "All games clears only the bucket while keeping the search and sort and remains selected twice"
+        }
+      ],
+      "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture, compose bucket/search/descending title order, and preserve search and order across repeated All games clicks."
     },
     {
       "id": "LibraryViewModelTests.All_games_clears_the_bucket_and_leaves_the_search_and_the_sort_alone",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "All games clears only the bucket while keeping the search and sort and remains selected twice"
+        }
+      ],
+      "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture, compose bucket/search/descending title order, and preserve search and order across repeated All games clicks."
     },
     {
       "id": "LibraryViewModelTests.All_games_clicked_twice_stays_selected",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "All games clears only the bucket while keeping the search and sort and remains selected twice"
+        }
+      ],
+      "reason": "Both Library components keep exactly one collection selected, count the complete four-game fixture, compose bucket/search/descending title order, and preserve search and order across repeated All games clicks."
     },
     {
       "id": "LibraryViewModelTests.All_games_returns_from_the_merge_queue",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "returns from identity review to the collection grid through the collection or Close tools action"
+        }
+      ],
+      "reason": "The composed desktop All games collection now closes identity review and shows its grid with All games selected. Fullscreen uses its existing Close tools action because collections are outside the management path."
     },
     {
       "id": "LibraryViewModelTests.The_app_opens_on_the_feed_and_all_games_is_one_click_away",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/app.test.tsx",
+          "case": "Home and Library have one active destination, retain bucket context, and Settings returns to its section on %s"
+        }
+      ],
+      "reason": "The actual App starts on Home, reaches Library in one action, has one active navigation destination, preserves the bucket across Home, and reopens Settings on its saved section on desktop/fullscreen. Desktop uses All games directly; fullscreen uses its Library navigation destination."
     },
     {
       "id": "LibraryViewModelTests.The_feed_and_all_games_are_never_both_selected",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/app.test.tsx",
+          "case": "Home and Library have one active destination, retain bucket context, and Settings returns to its section on %s"
+        }
+      ],
+      "reason": "The actual App starts on Home, reaches Library in one action, has one active navigation destination, preserves the bucket across Home, and reopens Settings on its saved section on desktop/fullscreen. Desktop uses All games directly; fullscreen uses its Library navigation destination."
     },
     {
       "id": "LibraryViewModelTests.The_gear_opens_the_settings_surface_and_its_sections_switch",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/app.test.tsx",
+          "case": "Home and Library have one active destination, retain bucket context, and Settings returns to its section on %s"
+        }
+      ],
+      "reason": "The actual App starts on Home, reaches Library in one action, has one active navigation destination, preserves the bucket across Home, and reopens Settings on its saved section on desktop/fullscreen. Desktop uses All games directly; fullscreen uses its Library navigation destination."
     },
     {
       "id": "LibraryViewModelTests.The_tile_source_hands_back_the_walls_own_tile",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-data.test.ts",
+          "case": "fills desktop vacancies from the reserve and includes the fullscreen reserve without duplicates"
+        }
+      ],
+      "reason": "Both shelf projections reuse the exact LibraryGame object from the shared library snapshot, exclude missing releases and return no cards before a library snapshot exists."
     },
     {
       "id": "LibraryViewModelTests.Covers_dim_with_idle_time_by_default",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-data.test.ts",
+          "case": "keeps recent play nearly vivid and four-year-old games at the original dormancy floor"
+        },
+        {
+          "file": "tests/electron/library-lifecycle.spec.ts",
+          "case": "saves dormancy independently of reduced motion without replacing cover elements"
+        }
+      ],
+      "reason": "The original three-day/four-year fixture uses the original saturation ramp; native evidence verifies the effective dimmed artwork and its toggle on each surface."
     },
     {
       "id": "LibraryViewModelTests.Dimming_off_renders_every_cover_vivid_and_makes_the_hover_restore_a_no_op",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-lifecycle.spec.ts",
+          "case": "saves dormancy independently of reduced motion without replacing cover elements"
+        }
+      ],
+      "reason": "Both native surfaces use decoded test cover pixels through the production artwork IPC. Shared preference events switch computed filters without replacing cover elements or image sources; hover remains vivid when disabled, reduced motion stays active, the original ramp returns, and a Settings save survives a fresh renderer reading the real backend."
     },
     {
       "id": "LibraryViewModelTests.Dimming_back_on_restores_the_ramp_without_rebuilding_a_tile",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-lifecycle.spec.ts",
+          "case": "saves dormancy independently of reduced motion without replacing cover elements"
+        }
+      ],
+      "reason": "Both native surfaces use decoded test cover pixels through the production artwork IPC. Shared preference events switch computed filters without replacing cover elements or image sources; hover remains vivid when disabled, reduced motion stays active, the original ramp returns, and a Settings save survives a fresh renderer reading the real backend."
     },
     {
       "id": "LibraryViewModelTests.Toggling_dimming_raises_the_tile_properties_the_view_binds",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-lifecycle.spec.ts",
+          "case": "saves dormancy independently of reduced motion without replacing cover elements"
+        }
+      ],
+      "reason": "Both native surfaces use decoded test cover pixels through the production artwork IPC. Shared preference events switch computed filters without replacing cover elements or image sources; hover remains vivid when disabled, reduced motion stays active, the original ramp returns, and a Settings save survives a fresh renderer reading the real backend."
     },
     {
       "id": "LibraryViewModelTests.Turning_expansion_grouping_on_writes_the_preference_and_reloads",
@@ -8794,17 +8973,38 @@
     {
       "id": "LibraryViewModelTests.Turning_dimming_off_writes_the_preference",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-lifecycle.spec.ts",
+          "case": "saves dormancy independently of reduced motion without replacing cover elements"
+        }
+      ],
+      "reason": "Both native surfaces use decoded test cover pixels through the production artwork IPC. Shared preference events switch computed filters without replacing cover elements or image sources; hover remains vivid when disabled, reduced motion stays active, the original ramp returns, and a Settings save survives a fresh renderer reading the real backend."
     },
     {
       "id": "LibraryViewModelTests.The_stored_preference_is_applied_on_load_and_not_written_back",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/app.test.tsx",
+          "case": "reads stored cover dimming %s consistently without writing the preference"
+        }
+      ],
+      "reason": "The actual App reads missing, malformed, false, whitespace/case-varied false and true values without preference writes, and preserves the setting across desktop/fullscreen."
     },
     {
       "id": "LibraryViewModelTests.An_unset_or_unreadable_preference_leaves_the_ramp_on",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/app.test.tsx",
+          "case": "reads stored cover dimming %s consistently without writing the preference"
+        }
+      ],
+      "reason": "The actual App reads missing, malformed, false, whitespace/case-varied false and true values without preference writes, and preserves the setting across desktop/fullscreen."
     },
     {
       "id": "LibraryViewModelTests.The_toggle_works_without_a_settings_store",
@@ -8814,12 +9014,26 @@
     {
       "id": "LibraryViewModelTests.The_preference_survives_a_restart",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-lifecycle.spec.ts",
+          "case": "saves dormancy independently of reduced motion without replacing cover elements"
+        }
+      ],
+      "reason": "Both native surfaces use decoded test cover pixels through the production artwork IPC. Shared preference events switch computed filters without replacing cover elements or image sources; hover remains vivid when disabled, reduced motion stays active, the original ramp returns, and a Settings save survives a fresh renderer reading the real backend."
     },
     {
       "id": "LibraryViewModelTests.Reduced_motion_and_dimming_do_not_fight",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-lifecycle.spec.ts",
+          "case": "saves dormancy independently of reduced motion without replacing cover elements"
+        }
+      ],
+      "reason": "Both native surfaces use decoded test cover pixels through the production artwork IPC. Shared preference events switch computed filters without replacing cover elements or image sources; hover remains vivid when disabled, reduced motion stays active, the original ramp returns, and a Settings save survives a fresh renderer reading the real backend."
     },
     {
       "id": "LifecycleSyncServiceTests.Batch_cap_and_persisted_attempts_prevent_failed_titles_starving_others",
