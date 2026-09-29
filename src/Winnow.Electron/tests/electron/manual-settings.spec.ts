@@ -152,6 +152,9 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
         await expect(page.getByRole('button', { name: `Original ${scenario}`, exact: true })).toBeVisible()
         const database = new DatabaseSync(join(directory, 'winnow.db'))
         try {
+          // The backend may still be publishing the preceding manual.create.
+          // Give this fixture-only writer the same chance to wait as normal SQLite clients.
+          database.exec('PRAGMA busy_timeout=5000')
           database
             .prepare(
               'UPDATE works SET igdb_id=?, name=?, igdb_mapping_revision=igdb_mapping_revision+1 WHERE id=?',
@@ -229,7 +232,13 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       let timer: ReturnType<typeof setTimeout> | undefined
       try {
         await Promise.race([
-          application.close(),
+          (async () => {
+            const child = application.process()
+            await application.close()
+            if (child.exitCode === null && child.signalCode === null)
+              await new Promise<void>((done) => child.once('exit', () => done()))
+            expect(child.exitCode).toBe(0)
+          })(),
           new Promise<void>((done) => {
             timer = setTimeout(() => {
               application.process().kill()

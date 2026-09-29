@@ -45,6 +45,10 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [Library and metadata checkpoint](checkpoint-ten.md) records the latest full .NET
+pass, 2,458 passing Electron component/API cases, and the unresolved intermittent
+fullscreen merge-header failure from the native run.
+
 All runtime checks use disposable directories beneath the repository's ignored `.tmp`
 folder. No production library or launcher files are modified. Backend credentials and
 Chromium profiles stay in those directories and are excluded from committed evidence.

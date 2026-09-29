@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { ArrowLeft } from 'lucide-react'
 import type { Mode } from '../api/types'
@@ -20,6 +20,7 @@ export function MetadataDialog({
 }) {
   const busy = useRef(false),
     navigation = useRef<MetadataEditorNavigation>(null)
+  const [isBusy, setIsBusy] = useState(false)
   const origin = useRef(document.activeElement instanceof HTMLElement ? document.activeElement : null)
   function back() {
     if (busy.current) return
@@ -53,7 +54,7 @@ export function MetadataDialog({
           }}
         >
           <header className="metadata-dialog-header">
-            <button onClick={back}>
+            <button onClick={back} disabled={isBusy}>
               <ArrowLeft size={18} aria-hidden="true" /> Back
             </button>
             <Dialog.Title>Edit metadata · {title}</Dialog.Title>
@@ -66,6 +67,7 @@ export function MetadataDialog({
               navigationRef={navigation}
               onBusyChange={(value) => {
                 busy.current = value
+                setIsBusy(value)
               }}
               editText={editText}
             />

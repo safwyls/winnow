@@ -28,6 +28,7 @@ function mount(
     pendingRead?: Promise<unknown>
     pendingWrite?: Promise<void>
     fullscreen?: boolean
+    dialog?: boolean
   } = {},
 ) {
   let saved: Metadata = {
@@ -74,11 +75,11 @@ function mount(
     editText = vi.fn()
   const view = render(
     <QueryClientProvider client={client}>
-      {options.fullscreen ? (
+      {options.fullscreen || options.dialog ? (
         <MetadataDialog
           workId={42}
           title="Original title"
-          mode="fullscreen"
+          mode={options.fullscreen ? 'fullscreen' : 'desktop'}
           onClose={close}
           editText={editText}
         />
@@ -97,6 +98,30 @@ async function loaded() {
 }
 
 describe('fullscreen metadata field navigation', () => {
+  it.each([false, true])(
+    'disables Back throughout a pending save and restores it after publication, fullscreen=%s',
+    async (fullscreen) => {
+      let resolveWrite!: () => void
+      const pendingWrite = new Promise<void>((resolve) => {
+        resolveWrite = resolve
+      })
+      const { close } = mount({ dialog: true, fullscreen, pendingWrite })
+      if (fullscreen) fireEvent.click(await screen.findByRole('button', { name: 'Name · IGDB' }))
+      else await loaded()
+      fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Saved name' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save name' }))
+      const back = screen.getByRole('button', { name: 'Back' }) as HTMLButtonElement
+      await waitFor(() => expect(back.disabled).toBe(true))
+      fireEvent.click(back)
+      fireEvent.keyDown(screen.getByLabelText('Name'), { key: 'Escape' })
+      expect(close).not.toHaveBeenCalled()
+      await act(async () => resolveWrite())
+      await waitFor(() => expect(back.disabled).toBe(false))
+      expect(screen.getByRole('status').textContent).toBe('Saved.')
+      fireEvent.click(back)
+      expect(close).toHaveBeenCalledTimes(1)
+    },
+  )
   it('orders attributed menu fields and restores the original draft on Back after a validation refusal', async () => {
     const { request, close } = mount({ fullscreen: true })
     const year = await screen.findByRole('button', { name: 'Release year · IGDB' })
@@ -167,9 +192,7 @@ describe('fullscreen metadata field navigation', () => {
     fireEvent.keyDown(screen.getByLabelText('Name'), { key: 'Escape' })
     expect(close).not.toHaveBeenCalled()
     expect(screen.getByRole('textbox', { name: 'Name' })).toBeTruthy()
-    expect((screen.getByRole('button', { name: 'Cancel' }) as HTMLButtonElement).disabled).toBe(
-      true,
-    )
+    expect((screen.getByRole('button', { name: 'Cancel' }) as HTMLButtonElement).disabled).toBe(true)
     await act(async () => finish())
     await screen.findByRole('button', { name: 'Name · YOU' })
     expect(request.mock.calls.filter(([input]) => input.route === 'metadata.put')).toHaveLength(1)

@@ -143,6 +143,70 @@ describe.each(['desktop', 'fullscreen'] as const)('%s settings parity', (mode) =
     )
   })
 
+  it.each([
+    [undefined, false],
+    ['true', true],
+    [' True ', true],
+    ['yes please', false],
+  ] as const)('loads expansion grouping %s without writing it back', async (stored, expected) => {
+    const { request, wrapper, client } = fixture((input) =>
+      input.route === 'preferences.presentation.get'
+        ? stored === undefined
+          ? []
+          : [{ preference: 'GroupExpansions', value: stored }]
+        : null,
+    )
+    render(
+      <div data-mode={mode}>
+        <LibraryPresentationPreferences />
+      </div>,
+      { wrapper },
+    )
+    const control = screen.getByRole('checkbox', {
+      name: 'Group expansions with their base game',
+    }) as HTMLInputElement
+    await waitFor(() => expect(control.disabled).toBe(false))
+    expect(control.checked).toBe(expected)
+    expect(
+      request.mock.calls.filter(([input]) => input.route === 'preferences.presentation.put'),
+    ).toHaveLength(0)
+    client.clear()
+  })
+  it('persists each grouping toggle once and refreshes the authoritative preference', async () => {
+    let stored = 'false'
+    const { request, wrapper, client } = fixture((input) => {
+      if (input.route === 'preferences.presentation.get')
+        return [{ preference: 'GroupExpansions', value: stored }]
+      if (input.route === 'preferences.presentation.put') stored = (input.body as { value: string }).value
+      return null
+    })
+    render(
+      <div data-mode={mode}>
+        <LibraryPresentationPreferences />
+      </div>,
+      { wrapper },
+    )
+    const control = screen.getByRole('checkbox', {
+      name: 'Group expansions with their base game',
+    }) as HTMLInputElement
+    await waitFor(() => expect(control.disabled).toBe(false))
+    for (const expected of ['true', 'false']) {
+      fireEvent.click(control)
+      await waitFor(() => expect(control.checked).toBe(expected === 'true'))
+      await waitFor(() => expect(control.disabled).toBe(false))
+      expect(stored).toBe(expected)
+    }
+    expect(
+      request.mock.calls
+        .filter(([input]) => input.route === 'preferences.presentation.put')
+        .map(([input]) => input.body),
+    ).toEqual([{ value: 'true' }, { value: 'false' }])
+    expect(
+      request.mock.calls.filter(([input]) => input.route === 'preferences.presentation.get'),
+    ).toHaveLength(3)
+    client.clear()
+  })
+
   it('requests only a named official package and keeps its install operation visible', async () => {
     const { request, wrapper } = fixture((input) =>
       input.route === 'operations.detail' ? { state: 'Succeeded', message: 'SteamGridDB installed.' } : null,

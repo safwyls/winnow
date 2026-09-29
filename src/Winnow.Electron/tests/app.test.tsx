@@ -159,6 +159,119 @@ function mountAfterglow() {
   return mount()
 }
 describe('integrated frontend', () => {
+  it.each(['desktop', 'fullscreen'] as const)(
+    'opens the original Steam 37-hour Details fixture with its gap and retains the same Library selection on %s',
+    async (mode) => {
+      for (const key of ['bucket', 'query', 'store', 'list', 'rules', 'tools'])
+        clearViewState(`avalon:library:${mode}:${key}`)
+      const original = window.winnow.request
+      const recorded = {
+        ...game,
+        title: 'Empyrion',
+        playtimeMinutes: 2220,
+        lastPlayedAt: '2017-01-02T08:00:00Z',
+        bucket: 'retired',
+        entries: [
+          {
+            ...game.entries[0],
+            title: 'Empyrion',
+            store: 'steam',
+            playtimeMinutes: 2220,
+            lastPlayedAt: '2017-01-02T08:00:00Z',
+          },
+        ],
+      }
+      window.winnow.request = vi.fn(async (input) =>
+        input.route === 'library.get'
+          ? { ok: true, status: 200, data: { games: [recorded], lists: [] } }
+          : original(input),
+      ) as WinnowBridge['request']
+      const client = mount()
+      await screen.findByRole('navigation', { name: 'Main navigation' })
+      act(() => fullscreen(mode === 'fullscreen'))
+      fireEvent.click(
+        within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', {
+          name: 'Library',
+        }),
+      )
+      const card = await screen.findByRole('button', { name: 'View Empyrion' })
+      fireEvent.click(card)
+      const heading = await screen.findByRole('heading', { name: 'Empyrion' })
+      const details = within(heading.closest('.avalon-details') as HTMLElement)
+      expect(details.getByText('37h', { exact: true })).toBeTruthy()
+      expect(details.getByText('since last played')).toBeTruthy()
+      expect(details.getByText('Steam · Not installed')).toBeTruthy()
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: mode === 'desktop' ? 'Close game details' : 'B · Back to Library',
+        }),
+      )
+      await waitFor(() => expect(document.querySelector('.avalon-details')).toBeNull())
+      expect(screen.getByRole('button', { name: 'View Empyrion' }).getAttribute('data-selected')).toBe('true')
+      client.clear()
+    },
+  )
+  it.each(['desktop', 'fullscreen'] as const)(
+    'filters the Derelict collection and carries its original Offline IGDB evidence into Details on %s',
+    async (mode) => {
+      for (const key of ['bucket', 'query', 'store', 'list', 'rules', 'tools'])
+        clearViewState(`avalon:library:${mode}:${key}`)
+      const original = window.winnow.request
+      const closed = { ...game, title: 'Closed world', bucket: 'derelict' }
+      const waiting = {
+        ...game,
+        workId: 2,
+        title: 'Still waiting',
+        entries: [{ ...game.entries[0], workId: 2, ownershipId: 2, releaseId: 2 }],
+      }
+      window.winnow.request = vi.fn(async (input) =>
+        input.route === 'library.get'
+          ? { ok: true, status: 200, data: { games: [closed, waiting], lists: [] } }
+          : input.route === 'library.workspace'
+            ? {
+                ok: true,
+                status: 200,
+                data: {
+                  works: [
+                    { id: 1, name: closed.title },
+                    { id: 2, name: waiting.title },
+                  ],
+                  externalIds: [],
+                  pluginActions: {},
+                  epicLaunchKeys: {},
+                  buckets: [
+                    {
+                      ownershipId: 1,
+                      resolvedWorkId: 1,
+                      game: {
+                        lifecycle: {
+                          status: 5,
+                          confidence: 0.9,
+                          reason: 'IGDB reports the game is offline.',
+                        },
+                      },
+                    },
+                  ],
+                },
+              }
+            : original(input),
+      ) as WinnowBridge['request']
+      const client = mount()
+      await screen.findByRole('navigation', { name: 'Main navigation' })
+      act(() => fullscreen(mode === 'fullscreen'))
+      fireEvent.click(
+        within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', {
+          name: 'Library',
+        }),
+      )
+      fireEvent.click(await screen.findByRole('button', { name: 'Derelict1' }))
+      expect(screen.queryByRole('button', { name: 'View Still waiting' })).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'View Closed world' }))
+      await screen.findByRole('heading', { name: 'Closed world' })
+      expect(screen.getByText('Offline · 90% confidence. IGDB reports the game is offline.')).toBeTruthy()
+      client.clear()
+    },
+  )
   it.each(['desktop', 'fullscreen'])(
     'Home and Library have one active destination, retain bucket context, and Settings returns to its section on %s',
     async (mode) => {

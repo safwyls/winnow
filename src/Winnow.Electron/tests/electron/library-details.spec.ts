@@ -34,7 +34,13 @@ test.afterAll(async () => {
     let timer: ReturnType<typeof setTimeout> | undefined
     try {
       await Promise.race([
-        application.close(),
+        (async () => {
+          const child = application.process()
+          await application.close()
+          if (child.exitCode === null && child.signalCode === null)
+            await new Promise<void>((done) => child.once('exit', () => done()))
+          expect(child.exitCode).toBe(0)
+        })(),
         new Promise<void>((done) => {
           timer = setTimeout(() => {
             application.process().kill()
@@ -164,7 +170,9 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       route: 'list.live',
       body: { name: `2006 parity ${mode}`, filter: { yearFrom: 2006, yearTo: 2006, search: game.title } },
     })
-    await surface(mode)
+    // Desktop can hold multiple unfinished fields. Fullscreen edits one field at a
+    // time, so carry a real desktop draft into that surface before saving the year.
+    await surface('desktop')
     // The API emits the same library invalidation used by the production renderer.
     await expect(page.getByLabel('My lists').locator(`option[value="${list.id}"]`)).toHaveCount(1)
     await page.getByLabel('My lists').selectOption(String(list.id))
@@ -172,16 +180,42 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await page.getByRole('button', { name: 'More', exact: true }).click()
     await page.getByRole('button', { name: 'Edit metadata…', exact: true }).click()
     await page.getByLabel('Name', { exact: true }).fill('An unfinished title')
+    if (mode === 'fullscreen') {
+      await page.locator('.metadata-dialog').getByRole('button', { name: 'Back', exact: true }).click()
+      await page.getByRole('button', { name: 'Close game details', exact: true }).click()
+      await surface(mode)
+      await page.getByLabel('My lists').selectOption(String(list.id))
+      await page.getByRole('button', { name: `View ${game.title}`, exact: true }).click()
+      await page.getByRole('button', { name: 'More', exact: true }).click()
+      await page.getByRole('button', { name: 'Edit metadata…', exact: true }).click()
+      await page
+        .locator('.metadata-field-menu')
+        .getByRole('button', { name: /^Release year ·/ })
+        .click()
+    }
     await page.getByLabel('Release year', { exact: true }).fill('2017')
     await page.getByRole('button', { name: 'Save release year', exact: true }).click()
-    await expect(page.getByText('Saved.', { exact: true })).toBeVisible()
+    await expect(page.getByRole('status').filter({ hasText: /^Saved\.$/ })).toBeVisible()
+    await expect(
+      page.locator('.metadata-dialog').getByRole('button', { name: 'Back', exact: true }),
+    ).toBeEnabled()
+    if (mode === 'fullscreen')
+      await page
+        .locator('.metadata-field-menu')
+        .getByRole('button', { name: /^Name ·/ })
+        .click()
     await expect(page.getByLabel('Name', { exact: true })).toHaveValue('An unfinished title')
+    if (mode === 'fullscreen')
+      await page.locator('.metadata-dialog').getByRole('button', { name: 'Back', exact: true }).click()
+    await page.locator('.metadata-dialog').getByRole('button', { name: 'Back', exact: true }).click()
+    await expect(page.locator('.metadata-dialog')).toHaveCount(0)
     await page
       .getByRole('button', {
         name: mode === 'desktop' ? 'Close game details' : 'B · Back to Library',
         exact: true,
       })
       .click()
+    await expect(page.locator('.avalon-details')).toHaveCount(0)
     await expect(page.getByText('No games match these filters.', { exact: true })).toBeVisible()
     await expect(page.getByLabel('My lists')).toHaveValue(String(list.id))
     const saved = await api<LibraryResponse>({ route: 'library.get' })

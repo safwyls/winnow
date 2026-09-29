@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 881,
-    "partial": 163,
-    "ported": 838,
+    "pending": 878,
+    "partial": 162,
+    "ported": 842,
     "retained-backend": 540,
     "framework-specific": 13
   },
@@ -8494,7 +8494,14 @@
     {
       "id": "LibraryViewModelTests.Derelict_rail_filters_games_and_details_explain_the_evidence",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/app.test.tsx",
+          "case": "filters the Derelict collection and carries its original Offline IGDB evidence into Details on %s"
+        }
+      ],
+      "reason": "The actual App on both surfaces shows Derelict count one, excludes Still waiting when that collection is selected, opens Closed world and renders the captured Offline/IGDB evidence in Details. The shared workspace supplies the lifecycle fact throughout."
     },
     {
       "id": "LibraryViewModelTests.Default_order_is_dormant_longest_and_never_opened_leads_it",
@@ -8655,14 +8662,18 @@
     {
       "id": "LibraryViewModelTests.Opening_details_selects_the_game_and_closing_leaves_it_selected",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/electron/library-lifecycle.spec.ts",
           "case": "opens keyboard-selected Details only on activation and preserves the selection on close"
+        },
+        {
+          "file": "tests/app.test.tsx",
+          "case": "opens the original Steam 37-hour Details fixture with its gap and retains the same Library selection on %s"
         }
       ],
-      "reason": "Both native surfaces verify keyboard and pointer opening, the correct title, exactly one retained game selection and both Escape/button close paths. The original combined 37-hour Steam fixture and its gap assertion still need equivalent composed checks."
+      "reason": "Both native surfaces verify keyboard/pointer activation, the correct title, exactly one retained selection and Escape/button close. The composed App also uses the original Empyrion Steam fixture, 2220 minutes and 2017 date on both surfaces, verifies 37h and the since-last-played gap, and retains that game's selection after closing."
     },
     {
       "id": "LibraryViewModelTests.Opening_details_with_no_argument_uses_the_current_selection",
@@ -8963,12 +8974,34 @@
     {
       "id": "LibraryViewModelTests.Turning_expansion_grouping_on_writes_the_preference_and_reloads",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-settings.test.tsx",
+          "case": "persists each grouping toggle once and refreshes the authoritative preference"
+        },
+        {
+          "file": "tests/electron/library-lifecycle.spec.ts",
+          "case": "folds real expansion links and applies a changed default while preserving raw game facts"
+        }
+      ],
+      "reason": "Each toggle writes its true/false value exactly once and rereads the saved preference on both surfaces. Native production-API coverage verifies Settings toggles fold two real linked games into one visible tile, then restore two, while raw game facts and ownership buckets remain unchanged."
     },
     {
       "id": "LibraryViewModelTests.The_stored_grouping_preference_is_applied_on_load_and_not_written_back",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-settings.test.tsx",
+          "case": "loads expansion grouping %s without writing it back"
+        },
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "folds expansions with %s minutes before rail list and search cuts and restores their own tiles when grouping is disabled"
+        }
+      ],
+      "reason": "Both surfaces load missing/true/trimmed-true/malformed preferences with the expected checkbox state and zero writes. The Library separately consumes the same stored parsing policy to fold games before all visible cuts."
     },
     {
       "id": "LibraryViewModelTests.Turning_dimming_off_writes_the_preference",
