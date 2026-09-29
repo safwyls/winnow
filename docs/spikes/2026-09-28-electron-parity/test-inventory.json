@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 878,
-    "partial": 162,
-    "ported": 842,
+    "pending": 863,
+    "partial": 163,
+    "ported": 856,
     "retained-backend": 540,
     "framework-specific": 13
   },
@@ -7972,32 +7972,98 @@
     {
       "id": "LibraryGrainTests.An_unlinked_library_is_tile_for_tile_the_library_it_was",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/LibraryGrainParityTests.cs",
+          "case": "Unlinked_source_entries_keep_their_identity_figures_and_bucket_over_HTTP"
+        },
+        {
+          "file": "tests/avalon-theme.test.tsx",
+          "case": "renders each unlinked source entry separately with its own title total and store"
+        }
+      ],
+      "reason": "The original four Prey/Prey/Dishonored/Hades entries retain their ownership, release and work IDs, minutes, dates and buckets across the production API. Both Electron Library presentations render all four separately with their own headline and single-store chip, without a grouped-store mark."
     },
     {
       "id": "LibraryGrainTests.A_linked_pair_is_one_tile_whose_chips_are_exactly_its_stores",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/LibraryGrainParityTests.cs",
+          "case": "Linked_pairs_keep_primary_order_and_every_original_member_identifier"
+        },
+        {
+          "file": "tests/avalon-theme.test.tsx",
+          "case": "keeps linked copies in one tile with exactly their distinct store words and resting initials"
+        }
+      ],
+      "reason": "A real same-game link preserves the primary Prey name and both Steam/Epic member identities. Both renderers show one Prey plus one Dishonored tile, exactly STEAM/EPIC chips and S/E initials for the grouped tile, and no resting mark on Dishonored. Desktop list rows preserve the same two-store vocabulary and two-game count."
     },
     {
       "id": "LibraryGrainTests.Chips_list_every_store_and_never_one_store_twice",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/LibraryGrainParityTests.cs",
+          "case": "Repeated_store_licences_remain_distinct_entries_in_one_game"
+        },
+        {
+          "file": "tests/avalon-theme.test.tsx",
+          "case": "deduplicates repeated licences case insensitively without dropping any entries"
+        }
+      ],
+      "reason": "The source Steam/Steam/GOG group retains three entries through HTTP. Both Electron modes emit exactly two chips and two initials, preserve first-entry order, and also verify mixed-case store identifiers deduplicate without losing ownership IDs."
     },
     {
       "id": "LibraryGrainTests.The_headline_sums_and_carries_the_groups_own_date",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/LibraryGrainParityTests.cs",
+          "case": "Group_totals_sum_minutes_and_choose_the_latest_date_without_crossing_entry_facts"
+        },
+        {
+          "file": "tests/avalon-theme.test.tsx",
+          "case": "carries the grouped 340-minute headline and summed bucket through Library cuts"
+        }
+      ],
+      "reason": "The production grouping boundary checks the original 300-minute/400-day Steam and 40-minute/10-day Epic fixture: 340 minutes and the 10-day group date while each entry retains its own pair. Both surfaces render the aggregate headline; dormancy separately verifies the renderer consumes the group date."
     },
     {
       "id": "LibraryGrainTests.The_bucket_of_a_cross_store_game_is_the_rule_applied_to_the_sum",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/LibraryGrainParityTests.cs",
+          "case": "Group_bucket_is_classified_from_the_sum_even_when_each_copy_is_below_the_refund_line"
+        },
+        {
+          "file": "tests/avalon-theme.test.tsx",
+          "case": "carries the grouped 340-minute headline and summed bucket through Library cuts"
+        }
+      ],
+      "reason": "The exact two 70-minute source entries are Active separately but their 140-minute HTTP group is Bounced, equal to LibraryBucketRules.Classify over the group facts. The renderer consumes that supplied bucket; both modes keep a Bounced group in Started and exclude it from Never played."
     },
     {
       "id": "LibraryGrainTests.Dormancy_follows_the_groups_last_played_and_not_the_primarys",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/LibraryGrainParityTests.cs",
+          "case": "Recent_play_on_a_secondary_store_becomes_the_group_date"
+        },
+        {
+          "file": "tests/avalon-theme.test.tsx",
+          "case": "uses the grouped total and latest date for headline and dormancy while leaving copy facts intact"
+        }
+      ],
+      "reason": "The original four-year-old Steam/2-day-old Epic pair yields the recent group date and 310 minutes over HTTP. Both cover components use that date for a measurably brighter dormancy style than the Steam-only cover while preserving each copy's own facts."
     },
     {
       "id": "LibraryGrainTests.An_expansion_link_does_not_collapse_a_tile",
@@ -8134,27 +8200,78 @@
     {
       "id": "LibraryGrainTests.Selection_keyboard_and_the_modal_all_work_from_a_collapsed_tile",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/app.test.tsx",
+          "case": "keeps grouped Prey selection totals secondary updates and the installed Epic action together on %s"
+        },
+        {
+          "file": "tests/electron/library-lifecycle.spec.ts",
+          "case": "opens keyboard-selected Details only on activation and preserves the selection on close"
+        }
+      ],
+      "reason": "Both composed surfaces select Dishonored, move right to the grouped Prey, clamp at the last game, and keep that selection after closing Details. Tile and Details use the same original compact 6h total for 390 minutes. Details names both stores and its Library panel exposes both owned copies. Native keyboard activation and close-time selection preservation are checked independently with real buttons."
     },
     {
       "id": "LibraryGrainTests.A_collapsed_tile_answers_to_every_ownership_and_release_it_folded",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "partial",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/LibraryGrainParityTests.cs",
+          "case": "Linked_pairs_keep_primary_order_and_every_original_member_identifier"
+        }
+      ],
+      "reason": "The production API preserves all member ownership/release identities and lookups over its grouped result find the same game. The original frontend lookup consumers still need an explicit all-members navigation regression before this contract is complete."
     },
     {
       "id": "LibraryGrainTests.The_modal_lists_updates_from_every_entry_of_the_game",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/LibraryGrainParityTests.cs",
+          "case": "Details_reads_major_updates_from_a_secondary_release_and_preserves_its_ownership"
+        },
+        {
+          "file": "tests/app.test.tsx",
+          "case": "keeps grouped Prey selection totals secondary updates and the installed Epic action together on %s"
+        }
+      ],
+      "reason": "Production HTTP checks the original secondary-Epic build/announcement fixture, group StaleButPatched bucket, both member identities and both update events. The composed App regression selects the grouped tile, asserts its unread badge, opens Details and verifies the secondary release's build and announcement in Updates on both surfaces."
     },
     {
       "id": "LibraryGrainTests.Play_acts_on_the_copy_that_is_actually_installed",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/app.test.tsx",
+          "case": "keeps grouped Prey selection totals secondary updates and the installed Epic action together on %s"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/LibraryGrainParityTests.cs",
+          "case": "Details_reads_major_updates_from_a_secondary_release_and_preserves_its_ownership"
+        }
+      ],
+      "reason": "The API preserves the installed secondary ownership in a Steam-primary/Epic-secondary group. On desktop and fullscreen, activating the composed Details Play button sends actions.execute for installed Epic ownership 2 and never Steam ownership 1. Both per-copy controls remain available in Library."
     },
     {
       "id": "LibraryGrainTests.The_automation_name_distinguishes_a_collapsed_tile_and_names_its_stores",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-theme.test.tsx",
+          "case": "keeps linked copies in one tile with exactly their distinct store words and resting initials"
+        },
+        {
+          "file": "tests/electron/avalon-layout.spec.ts",
+          "case": "grouped store marks fit the cover and preserve store names with reduced motion"
+        }
+      ],
+      "reason": "Both surfaces expose Steam and Epic in the grouped cover's accessible name; desktop list does too. The existing View action prefix remains for all Electron tiles, while the Owned on sentence distinguishes multi-store games. Initials are redundant and aria-hidden. Native checks measure initial-mark containment, fallback-title separation, desktop hover/focus replacement and fullscreen persistence, with and without reduced motion."
     },
     {
       "id": "LibraryGrainTests.A_row_of_the_wall_fills_the_width_it_was_given",
@@ -22186,22 +22303,58 @@
     {
       "id": "ListBrowsingPositionTests.Adding_to_a_list_keeps_the_scrolled_library_position",
       "source": "tests/Winnow.Ui.Tests/ListBrowsingPositionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/browse-spine.spec.ts",
+          "case": "retains scroll after adding to a list and restores it after Details changes the underlying offset"
+        }
+      ],
+      "reason": "Grid and list native tests scroll the source eight-title fixture to 200, select its last alphabetical title without scrolling, add it to an existing list, compare the exact offset and verify the saved release membership through the production API."
     },
     {
       "id": "ListBrowsingPositionTests.Closing_details_restores_the_scrolled_library_position",
       "source": "tests/Winnow.Ui.Tests/ListBrowsingPositionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/browse-spine.spec.ts",
+          "case": "retains scroll after adding to a list and restores it after Details changes the underlying offset"
+        }
+      ],
+      "reason": "Both native desktop views open Details at offset 200, deliberately change the retained Library to zero underneath it, close Details and assert restoration to the exact original offset. Fullscreen retains its independent paged presentation, with a separate assertion that it does not acquire the desktop spine."
     },
     {
       "id": "ListBrowsingPositionTests.Alphabet_spine_switches_to_name_order_and_jumps_the_active_view",
       "source": "tests/Winnow.Ui.Tests/ListBrowsingPositionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/browse-spine.spec.ts",
+          "case": "spine preserves ordering and selection with source pointer, scrub, halo and keyboard behavior"
+        },
+        {
+          "file": "tests/avalon-browse-spine.test.tsx",
+          "case": "scrubs an unavailable M to P and resolves an equal distance toward the earlier stop"
+        },
+        {
+          "file": "tests/avalon-browse-spine.test.tsx",
+          "case": "interpolates the viewport halo in the displayed order and returns the wave to rest"
+        }
+      ],
+      "reason": "Both native desktop views use the source eight titles and a constrained scroll viewport. Assertions cover 27 notches, half-way proportional drag, transparent rail, fixed 27 letters, unavailable stops, 24px targets, 11px ink, right-edge alignment beside the separate scrollbar, reserved artwork space, hover without scrolling, fractional four-row wave with no reduced-motion transition, pointer halo on unavailable M with the same scroll as keyboard P, unchanged selection/order, descending C activation, viewport halo and wave reset on leave. The obsolete method name mentions switching sort; its source assertions actually preserve each active name-sort direction, as these tests do."
     },
     {
       "id": "ListBrowsingPositionTests.Alphabet_sections_fold_diacritics_and_group_non_letters",
       "source": "tests/Winnow.Ui.Tests/ListBrowsingPositionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-browse-spine.test.tsx",
+          "case": "folds source diacritics and groups leading nonletters: %s"
+        }
+      ],
+      "reason": "The original Elan with acute accent, leading-space Zelda, 123 Robots and trademark fixtures are exact cases, with decomposed accents, non-Latin letters, empty titles and multi-character uppercase expansion covered too."
     },
     {
       "id": "ListPromptModalTests.Short_list_choices_align_with_the_name_field_without_a_scrollbar",

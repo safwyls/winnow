@@ -138,7 +138,11 @@ it('a required refresh starts immediately and retires an unfinished first read',
   await waitFor(() => expect(reads).toBe(1))
   await act(async () => refreshSnapshots(client))
   expect(reads).toBe(2)
-  expect(screen.getByLabelText('Games').textContent).toBe('1:Fresh')
+  expect(
+    client.getQueryData<{ games: { summary: string }[] }>(['api', 'library.get'])?.games[0].summary,
+  ).toBe('Fresh')
+  // React Query batches observer notifications after the completed cache publication.
+  await waitFor(() => expect(screen.getByLabelText('Games').textContent).toBe('1:Fresh'))
   await act(async () => {
     old.resolve({ games: [game(2)], lists: [] })
     await old.promise

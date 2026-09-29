@@ -160,6 +160,174 @@ afterEach(() => {
 })
 
 describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
+  it('renders each unlinked source entry separately with its own title total and store', () => {
+    const ctx = context(mode)
+    ctx.games = [
+      game(1, { title: 'Prey', playtimeMinutes: 300, bucket: 'bounced' }),
+      game(2, { title: 'Prey', playtimeMinutes: 90, bucket: 'active' }),
+      game(3, { title: 'Dishonored' }),
+      game(4, { title: 'Hades', playtimeMinutes: 8000, bucket: 'active' }),
+    ]
+    ctx.games.forEach((item, index) => {
+      item.entries[0] = {
+        ...item.entries[0],
+        title: item.title,
+        playtimeMinutes: item.playtimeMinutes,
+        store: ['steam', 'epic', 'steam', 'gog'][index],
+      }
+    })
+    mount(ctx, AvalonLibrary)
+    expect(document.querySelectorAll('[data-avalon-game]')).toHaveLength(4)
+    for (const [index, text, store] of [
+      [1, '5h played', 'STEAM'],
+      [2, '1h played', 'EPIC'],
+      [3, '— played', 'STEAM'],
+      [4, '133h played', 'GOG'],
+    ] as const) {
+      const tile = document.querySelector(`[data-avalon-game="${index}"]`)!
+      expect(tile.textContent).toContain(text)
+      expect(tile.querySelector('.avalon-store-chips')?.textContent).toBe(store)
+      expect(tile.querySelector('.avalon-store-initials')).toBeNull()
+    }
+  })
+  it('carries the grouped 340-minute headline and summed bucket through Library cuts', () => {
+    const ctx = context(mode)
+    const date = new Date(Date.now() - 10 * 86400000).toISOString()
+    const prey = game(1, { title: 'Prey', playtimeMinutes: 340, lastPlayedAt: date, bucket: 'bounced' })
+    prey.entries = [
+      {
+        ...prey.entries[0],
+        store: 'steam',
+        playtimeMinutes: 300,
+        lastPlayedAt: new Date(Date.now() - 400 * 86400000).toISOString(),
+      },
+      {
+        ...prey.entries[0],
+        store: 'epic',
+        workId: 2,
+        releaseId: 2,
+        ownershipId: 2,
+        playtimeMinutes: 40,
+        lastPlayedAt: date,
+      },
+    ]
+    ctx.games = [prey]
+    ctx.page = 'library'
+    mount(ctx, (value) => (
+      <AvalonShell {...value}>
+        <AvalonLibrary {...value} />
+      </AvalonShell>
+    ))
+    expect(screen.getByRole('button', { name: 'View Prey. Owned on Steam, Epic' }).textContent).toContain(
+      '5h played',
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Started1' }))
+    expect(document.querySelectorAll('[data-avalon-game]')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Never played0' }))
+    expect(document.querySelectorAll('[data-avalon-game]')).toHaveLength(0)
+  })
+  it('keeps linked copies in one tile with exactly their distinct store words and resting initials', () => {
+    const ctx = context(mode)
+    const prey = game(1, { title: 'Prey', playtimeMinutes: 390, bucket: 'bounced' })
+    prey.entries = [
+      { ...prey.entries[0], store: 'steam', title: 'Prey', playtimeMinutes: 300 },
+      {
+        ...prey.entries[0],
+        workId: 2,
+        releaseId: 2,
+        ownershipId: 2,
+        store: 'epic',
+        title: 'Prey Deluxe',
+        playtimeMinutes: 90,
+      },
+    ]
+    ctx.games = [prey, game(3, { title: 'Dishonored' })]
+    mount(ctx, AvalonLibrary)
+    expect(document.querySelectorAll('[data-avalon-game]')).toHaveLength(2)
+    const grouped = screen.getByRole('button', { name: 'View Prey. Owned on Steam, Epic' })
+    expect(
+      [...grouped.querySelectorAll('.avalon-store-chips > span')].map((mark) => mark.textContent),
+    ).toEqual(['STEAM', 'EPIC'])
+    expect(
+      [...grouped.querySelectorAll('.avalon-store-initials > span')].map((mark) => mark.textContent),
+    ).toEqual(['S', 'E'])
+    expect(grouped.querySelector('.avalon-store-initials')?.getAttribute('aria-hidden')).toBe('true')
+    expect(grouped.textContent).toContain('6h played')
+    const single = screen.getByRole('button', { name: 'View Dishonored' })
+    expect(single.querySelector('.avalon-store-initials')).toBeNull()
+    expect(single.querySelector('.avalon-store-chips')?.textContent).toBe('STEAM')
+    if (mode === 'desktop') {
+      fireEvent.click(screen.getByRole('button', { name: 'List view' }))
+      const row = screen.getByRole('button', { name: 'View Prey. Owned on Steam, Epic' })
+      expect(row.className).toBe('avalon-record')
+      expect(row.textContent).toContain('Steam / Epic')
+      expect(document.querySelectorAll('.avalon-record')).toHaveLength(2)
+    }
+  })
+  it('deduplicates repeated licences case insensitively without dropping any entries', () => {
+    const ctx = context(mode),
+      prey = game(1, { title: 'Prey' })
+    prey.entries = ['Steam', 'STEAM', 'gog'].map((store, index) => ({
+      ...prey.entries[0],
+      store,
+      ownershipId: index + 1,
+      releaseId: index + 1,
+    }))
+    render(<AvalonCover context={ctx} game={prey} />)
+    const cover = screen.getByRole('button', { name: 'View Prey. Owned on Steam, GOG' })
+    expect([...cover.querySelectorAll('.avalon-store-chips > span')].map((mark) => mark.textContent)).toEqual(
+      ['STEAM', 'GOG'],
+    )
+    expect(
+      [...cover.querySelectorAll('.avalon-store-initials > span')].map((mark) => mark.textContent),
+    ).toEqual(['S', 'G'])
+    expect(prey.entries.map((entry) => entry.ownershipId)).toEqual([1, 2, 3])
+  })
+  it('uses the grouped total and latest date for headline and dormancy while leaving copy facts intact', () => {
+    const ctx = context(mode)
+    const now = Date.now(),
+      day = 86400000
+    const primary = game(1, {
+      title: 'Prey',
+      playtimeMinutes: 300,
+      lastPlayedAt: new Date(now - 1460 * day).toISOString(),
+    })
+    primary.entries[0] = { ...primary.entries[0], playtimeMinutes: 300, lastPlayedAt: primary.lastPlayedAt }
+    const grouped = {
+      ...primary,
+      workId: 2,
+      playtimeMinutes: 310,
+      lastPlayedAt: new Date(now - 2 * day).toISOString(),
+      entries: [
+        primary.entries[0],
+        {
+          ...primary.entries[0],
+          workId: 2,
+          ownershipId: 2,
+          releaseId: 2,
+          store: 'epic',
+          playtimeMinutes: 10,
+          lastPlayedAt: new Date(now - 2 * day).toISOString(),
+        },
+      ],
+    }
+    render(
+      <>
+        <AvalonCover context={ctx} game={primary} />
+        <AvalonCover context={ctx} game={grouped} />
+      </>,
+    )
+    const old = screen.getByRole('button', { name: 'View Prey' })
+    const recent = screen.getByRole('button', { name: 'View Prey. Owned on Steam, Epic' })
+    const brightness = (element: HTMLElement) =>
+      Number(/brightness\(([\d.]+)\)/.exec(element.style.getPropertyValue('--avalon-dormancy'))![1])
+    expect(brightness(recent)).toBeGreaterThan(brightness(old))
+    expect(recent.textContent).toContain('5h played')
+    expect(grouped.entries.map((entry) => [entry.playtimeMinutes, entry.lastPlayedAt])).toEqual([
+      [300, primary.lastPlayedAt],
+      [10, grouped.lastPlayedAt],
+    ])
+  })
   it('retains navigation, library operations and full screen controls', () => {
     const ctx = context(mode)
     mount(ctx, AvalonShell)

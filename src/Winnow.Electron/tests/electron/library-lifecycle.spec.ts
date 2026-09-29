@@ -28,26 +28,6 @@ test.beforeAll(async () => {
     await page.getByRole('button', { name: 'Skip setup', exact: true }).click()
 })
 test.afterAll(async () => {
-  let timer: ReturnType<typeof setTimeout> | undefined
-  if (app)
-    try {
-      const child = app.process()
-      await Promise.race([
-        (async () => {
-          await app.close()
-          if (child.exitCode === null && child.signalCode === null)
-            await new Promise<void>((done) => child.once('exit', () => done()))
-        })(),
-        new Promise<void>((done) => {
-          timer = setTimeout(() => {
-            child.kill('SIGKILL')
-            done()
-          }, 5000)
-        }),
-      ])
-    } finally {
-      clearTimeout(timer)
-    }
   if (directory)
     try {
       const endpoint = JSON.parse(await readFile(join(directory, 'backend/endpoint.json'), 'utf8'))
@@ -60,6 +40,27 @@ test.afterAll(async () => {
       })
     } catch {
       /* Keep the isolated fixture for diagnostics. */
+    }
+  let timer: ReturnType<typeof setTimeout> | undefined
+  if (app)
+    try {
+      const child = app.process()
+      await Promise.race([
+        (async () => {
+          await app.close()
+          if (child.exitCode === null && child.signalCode === null)
+            await new Promise<void>((done) => child.once('exit', () => done()))
+          expect(child.exitCode).toBe(0)
+        })(),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            child.kill('SIGKILL')
+            reject(Error('Electron did not close within five seconds'))
+          }, 5000)
+        }),
+      ])
+    } finally {
+      clearTimeout(timer)
     }
 })
 async function api<T>(input: ApiRequest): Promise<T> {

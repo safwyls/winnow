@@ -801,6 +801,44 @@ for (const mode of ['desktop', 'fullscreen'] as const)
         expect((within(card).getAllByRole('radio')[0] as HTMLInputElement).checked).toBe(true)
       else expect(within(card).getByRole('button', { name: 'Bastion (Steam) · Header' })).toBeTruthy()
     })
+    it('keeps a header chosen before the initial saved platform read completes', async () => {
+      let finish!: (value: unknown) => void
+      const pending = new Promise((done) => {
+        finish = done
+      })
+      const { client } = setup(
+        mode,
+        (input) => (input.route === 'preferences.presentation.get' ? pending : undefined),
+        crossStoreTriple,
+      )
+      let card = await open('Bastion')
+      if (mode === 'desktop')
+        fireEvent.click(within(card).getByRole('radio', { name: 'Make Bastion (Epic Games) the main game' }))
+      else {
+        fireEvent.click(within(card).getByRole('button', { name: 'Bastion (Epic Games) · Included' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Make header' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Back to proposals' }))
+      }
+      await act(async () => {
+        finish({ ok: true, status: 200, data: [{ preference: 'PreferredMergePlatform', value: 'gog' }] })
+        await pending
+      })
+      await waitFor(() =>
+        expect(client.getQueryData(['api', 'preferences.presentation.get', undefined])).toEqual([
+          { preference: 'PreferredMergePlatform', value: 'gog' },
+        ]),
+      )
+      card = await open('Bastion')
+      if (mode === 'desktop')
+        expect(
+          (
+            within(card).getByRole('radio', {
+              name: 'Make Bastion (Epic Games) the main game',
+            }) as HTMLInputElement
+          ).checked,
+        ).toBe(true)
+      else expect(within(card).getByRole('button', { name: 'Bastion (Epic Games) · Header' })).toBeTruthy()
+    })
     it('advances focus to the row taking an answered card’s place and keeps focus when a write fails', async () => {
       let fail = true
       setup(mode, (input) =>

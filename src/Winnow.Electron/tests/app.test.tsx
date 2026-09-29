@@ -160,6 +160,171 @@ function mountAfterglow() {
 }
 describe('integrated frontend', () => {
   it.each(['desktop', 'fullscreen'] as const)(
+    'keeps grouped Prey selection totals secondary updates and the installed Epic action together on %s',
+    async (mode) => {
+      for (const key of [
+        'bucket',
+        'query',
+        'store',
+        'list',
+        'rules',
+        'tools',
+        'sort',
+        'selection',
+        'selected',
+      ])
+        clearViewState(`avalon:library:${mode}:${key}`)
+      const original = window.winnow.request
+      const entries = [
+        {
+          ...game.entries[0],
+          title: 'Prey',
+          store: 'steam',
+          installed: false,
+          playtimeMinutes: 300,
+          lastPlayedAt: '2023-09-01T12:00:00Z',
+        },
+        {
+          ...game.entries[0],
+          ownershipId: 2,
+          workId: 2,
+          releaseId: 2,
+          title: 'Prey Deluxe',
+          store: 'epic',
+          installed: true,
+          playtimeMinutes: 90,
+          lastPlayedAt: '2023-09-01T12:00:00Z',
+        },
+      ]
+      const prey = {
+        ...game,
+        title: 'Prey',
+        playtimeMinutes: 390,
+        lastPlayedAt: entries[0].lastPlayedAt,
+        bucket: 'stale_but_patched',
+        entries,
+      }
+      const dishonored = {
+        ...game,
+        workId: 3,
+        title: 'Dishonored',
+        entries: [{ ...game.entries[0], workId: 3, releaseId: 3, ownershipId: 3 }],
+      }
+      window.winnow.request = vi.fn(async (input) => {
+        const data =
+          input.route === 'library.get'
+            ? { games: [prey, dishonored], lists: [] }
+            : input.route === 'library.workspace'
+              ? {
+                  works: [
+                    { id: 1, name: 'Prey' },
+                    { id: 2, name: 'Prey Deluxe' },
+                    { id: 3, name: 'Dishonored' },
+                  ],
+                  externalIds: [
+                    { releaseId: 1, provider: 'steam', providerId: '480' },
+                    { releaseId: 2, provider: 'epic', providerId: 'Prey' },
+                  ],
+                  pluginActions: {},
+                  epicLaunchKeys: { Prey: { namespace: 'prey', catalogItemId: 'prey', artifactId: 'Prey' } },
+                  buckets: [{ workId: 1, ownershipId: 1, resolvedWorkId: 1, game: { unreadUpdateCount: 1 } }],
+                }
+              : input.route === 'game.details'
+                ? {
+                    workId: 1,
+                    ownerships: entries,
+                    sessions: {},
+                    ratings: [],
+                    journalEntries: [],
+                    achievements: [],
+                    events: [
+                      {
+                        id: 1,
+                        releaseId: 2,
+                        kind: 'build_push',
+                        occurredAt: '2026-07-01T12:00:00Z',
+                        buildId: 'epic-update',
+                      },
+                      {
+                        id: 2,
+                        releaseId: 2,
+                        kind: 'announcement',
+                        occurredAt: '2026-07-02T12:00:00Z',
+                        title: 'Epic update notes',
+                        url: 'https://example.com/patch',
+                      },
+                    ],
+                  }
+                : input.route === 'preferences.presentation.get'
+                  ? [{ preference: 'DefaultSort', value: 'NameAscending' }]
+                  : input.route === 'actions.execute'
+                    ? 0
+                    : undefined
+        return data === undefined ? original(input) : { ok: true, status: 200, data }
+      }) as WinnowBridge['request']
+      const client = mount()
+      await screen.findByRole('navigation', { name: 'Main navigation' })
+      act(() => fullscreen(mode === 'fullscreen'))
+      fireEvent.click(
+        within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', {
+          name: 'Library',
+        }),
+      )
+      const first = await screen.findByRole('button', { name: 'View Dishonored' })
+      act(() => first.focus())
+      expect(first.getAttribute('data-selected')).toBe('true')
+      fireEvent.keyDown(first, { key: 'ArrowRight' })
+      const grouped = await screen.findByRole('button', {
+        name: 'View Prey, patched since you played. Owned on Steam, Epic',
+      })
+      await waitFor(() => expect(grouped.getAttribute('data-selected')).toBe('true'))
+      fireEvent.keyDown(grouped, { key: 'ArrowRight' })
+      expect(grouped.getAttribute('data-selected')).toBe('true')
+      expect(grouped.querySelector('.avalon-unread')).not.toBeNull()
+      expect(grouped.textContent).toContain('6h played')
+      fireEvent.click(grouped)
+      const heading = await screen.findByRole('heading', { name: 'Prey', level: 1 })
+      const details = within(heading.closest('.avalon-details') as HTMLElement)
+      expect(details.getByText('6h', { exact: true })).toBeTruthy()
+      expect(details.getByText('Steam · Epic Games · Installed')).toBeTruthy()
+      fireEvent.click(details.getByRole('button', { name: 'Play' }))
+      await waitFor(() =>
+        expect(
+          vi
+            .mocked(window.winnow.request)
+            .mock.calls.some(
+              ([input]) => input.route === 'actions.execute' && input.params?.ownershipId === 2,
+            ),
+        ).toBe(true),
+      )
+      expect(
+        vi
+          .mocked(window.winnow.request)
+          .mock.calls.some(([input]) => input.route === 'actions.execute' && input.params?.ownershipId === 1),
+      ).toBe(false)
+      fireEvent.click(details.getByRole('tab', { name: /Updates/ }))
+      expect(await details.findByRole('heading', { name: 'Epic update notes' })).toBeTruthy()
+      expect(details.getByRole('heading', { name: 'Build epic-update' })).toBeTruthy()
+      fireEvent.click(details.getByRole('tab', { name: 'Library' }))
+      const copies = document.querySelectorAll(
+        '.avalon-details .entry-actions:not(:has([data-controller-play]))',
+      )
+      expect(copies).toHaveLength(2)
+      expect([...copies].map((copy) => copy.querySelector('strong')?.textContent)).toEqual([
+        'Steam',
+        'Epic Games',
+      ])
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: mode === 'desktop' ? 'Close game details' : 'B · Back to Library',
+        }),
+      )
+      await waitFor(() => expect(document.querySelector('.avalon-details')).toBeNull())
+      expect(grouped.getAttribute('data-selected')).toBe('true')
+      client.clear()
+    },
+  )
+  it.each(['desktop', 'fullscreen'] as const)(
     'opens the original Steam 37-hour Details fixture with its gap and retains the same Library selection on %s',
     async (mode) => {
       for (const key of ['bucket', 'query', 'store', 'list', 'rules', 'tools'])

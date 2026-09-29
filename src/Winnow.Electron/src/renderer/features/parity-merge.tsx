@@ -125,7 +125,10 @@ export function MergeQueue({
   const mutation = useMutation({ mutationFn: (operation: () => Promise<void>) => operation() })
   snapshot.current = review
   const projection = useMemo(() => buildMergeCards(review), [review])
-  const [appliedPreferred, setAppliedPreferred] = useViewState('identity:queue-applied-platform', '')
+  const [appliedPreferred, setAppliedPreferred] = useViewState<string | null>(
+    'identity:queue-applied-platform',
+    null,
+  )
   const cards = projection.map((source) => {
     const card =
       source.actId && answeredKeys[source.actId] ? { ...source, key: answeredKeys[source.actId]! } : source
@@ -255,8 +258,10 @@ export function MergeQueue({
   }, [refusalUntil])
   useEffect(() => {
     if (!Array.isArray(preferences.data)) return
-    const changed = preferred !== appliedPreferred
-    if (changed) setAppliedPreferred(preferred)
+    // Initial hydration supplies defaults only. A header already chosen while
+    // that read was pending belongs to the user, even if it differs from the default.
+    const changed = appliedPreferred !== null && preferred !== appliedPreferred
+    if (preferred !== appliedPreferred) setAppliedPreferred(preferred)
     if (!preferred) return
     setChoices((current) => {
       const next = { ...current }
@@ -422,7 +427,12 @@ export function MergeQueue({
     setBusy(true)
     setProblem(undefined)
     try {
+      await client.cancelQueries({
+        queryKey: ['api', 'preferences.presentation.get', undefined],
+        exact: true,
+      })
       await request('preferences.presentation.put', { preference: 'PreferredMergePlatform' }, { value })
+      setAppliedPreferred(preferred)
       client.setQueryData(
         ['api', 'preferences.presentation.get', undefined],
         (old: { preference: string; value: string | null }[] | undefined) => [

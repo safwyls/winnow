@@ -163,6 +163,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       .click()
     const database = new DatabaseSync(join(directory, 'winnow.db'))
     try {
+      database.exec('PRAGMA busy_timeout=5000')
       await page.reload()
       await expect(page.getByRole('dialog', { name: 'Exposure fixture cover' })).toBeVisible()
       await application.evaluate(({ BrowserWindow }, mode) => {
@@ -210,12 +211,18 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       const firstId = Number(await first.getAttribute('data-feed-release-id'))
       await expect.poll(() => seen()).toContain(firstId)
       if (mode === 'fullscreen') {
-        const visible = new Set(await impressions.evaluateAll(elements => elements.map(element => Number(element.getAttribute('data-feed-release-id')))))
+        const visible = new Set(
+          await impressions.evaluateAll((elements) =>
+            elements.map((element) => Number(element.getAttribute('data-feed-release-id'))),
+          ),
+        )
         const source = [...selectedShelf!.items, ...selectedShelf!.reserve]
-        const next = source.find(item => !visible.has(item.releaseId))!
+        const next = source.find((item) => !visible.has(item.releaseId))!
         expect(next).toBeTruthy()
         expect(seen()).not.toContain(next.releaseId)
-        const arriving = page.locator(`.avalon-retained-row[data-row-active="true"] .impression[data-feed-release-id="${next.releaseId}"]`)
+        const arriving = page.locator(
+          `.avalon-retained-row[data-row-active="true"] .impression[data-feed-release-id="${next.releaseId}"]`,
+        )
         expect(await arriving.count()).toBe(0)
         await first.getByRole('button').focus()
         for (let step = 0; step < source.length && !(await arriving.count()); step++)

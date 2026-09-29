@@ -176,6 +176,7 @@ test('both details modes open the installed copy folder through the named owners
   await mkdir(folder)
   const database = new DatabaseSync(join(directory, 'winnow.db'))
   try {
+    database.exec('PRAGMA busy_timeout=5000')
     database.prepare('UPDATE ownerships SET installed = 1, install_path = ?').run(folder)
   } finally {
     database.close()

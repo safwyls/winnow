@@ -89,6 +89,18 @@ for (const mode of ['desktop', 'fullscreen'] as const)
     ).toBe('Cambria')
     await page.getByRole('slider', { name: 'Transparency', exact: true }).fill('14')
     await expect(page.getByRole('slider', { name: 'Transparency', exact: true })).toHaveValue('14')
+    // A range input changes its DOM value before the asynchronous save finishes.
+    await expect
+      .poll(() =>
+        page.evaluate(async () => {
+          const response = await window.winnow.request({ route: 'preferences.presentation.get' })
+          if (!response.ok) throw Error(`Could not read saved preferences: ${response.status}`)
+          return (response.data as { preference: string; value: string }[]).find(
+            (row) => row.preference === 'Transparency',
+          )?.value
+        }),
+      )
+      .toBe('14')
     await page.reload()
     await expect(page.locator('.avalon-shell')).toHaveClass(new RegExp(mode))
     await page.getByRole('button', { name: 'Theme Studio', exact: true }).click()

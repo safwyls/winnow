@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-29 17:12'
+updated_date: '2026-09-29 18:39'
 labels: []
 dependencies: []
 priority: high
@@ -68,6 +68,12 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 22. Continue exact remaining Library/filter and account-statistics source audits; close implementation or test gaps before classification. Retain original frontend tests and release entry points until the complete parity gate passes.
 
 22. Restore shared chart/detail currency selection with independent desktop/fullscreen state, explicit Spending refresh, signed zero-baseline year bars, theme-ink composition donut, desktop disclosure and fullscreen reading access. Verify original account summary/currency/large-text matrices, refresh and controller focus against source tests; update exact migration evidence after checks pass.
+
+23. Restore the desktop Library browse spine for grid and list: fixed alphabet and disabled stops, reversed order, nearest-letter scrubbing, proportional notches, pointer wave, viewport halo and keyboard access. Verify geometry, reduced motion, preserved selection and scroll restoration against ListBrowsingPositionTests. Fullscreen retains its separate controller-paged Library; verify no desktop spine appears there.
+
+24. Audit the remaining LibraryGrain contracts against actual production HTTP grouping and renderer consumers: raw ownership identity, cross-store totals/dates/buckets, chips and accessible names, lookup by all member IDs, update aggregation, installed-copy actions and manual-list ordering. Add source-exact API and desktop/fullscreen evidence before classifying each method; keep original tests until the full gate passes.
+
+25. Finish the remaining grouped-library member lookup, secondary-release manual-list ordering and exact desktop wall geometry/extent contracts. Continue isolating native teardown timing with captured lifecycle evidence, then retain complete build/test and visual evidence before the next milestone.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -114,4 +120,10 @@ Checkpoint seven: restored Spending refresh-on-open, captured counts without ble
 Checkpoint eight: fixed empty Library list headers, quoted empty searches, returning from desktop identity review through a collection, and consistent stored dimming parsing. Full Electron integration passed 2438/2438 cases across 125 files with no skips. Eight native Library lifecycle cases passed together, including keyboard/pointer Details activation, retained selection, decoded fixture covers, computed dimming filters, stable cover elements, reduced motion, persisted Settings writes, grouping, list cuts and chrome. Build/typecheck pass and both cover screenshots inspected. Inventory: 836 ported, 540 retained backend, 13 framework-specific, 881 pending, 165 partial. The original combined Steam/37-hour Details assertion remains partial; remaining Library grouping/lifecycle and no-settings-store coverage stays visible. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-eight.md. No acceptance criteria checked; continuing parity work.
 
 Checkpoint nine restores shared chart/detail currency selection, independent surface state, explicit refresh retention, signed year bars, composition donut, desktop disclosure and fullscreen reading access. Full Electron suite: 2442/2442 in 126 files, no skips. Native Spending/core parity: 24/24; source single/mixed fixtures and 1200/600 desktop plus 1920/1280 fullscreen matrices pass, including 140% text, controller Right/Accept/Back, focus, exact amounts and geometry. Screenshot review exposed and corrected undersized fullscreen copy, with explicit native font assertions. Build/typecheck pass. Inventory: 838 ported, 540 retained backend, 13 framework-specific, 881 pending, 163 partial. Evidence: checkpoint-nine.md. No acceptance criteria checked; continuing remaining Library/source parity.
+
+Checkpoint ten: metadata Back now visibly locks during save/publication on both modes; exact Empyrion 37h, Derelict rail, stored grouping defaults and once-per-toggle writes mapped. All2458 component/live cases pass in126files. Full Windows Release .NET repeat passes6839 with2Linux-only skips, including896Avalonia UI cases; first run had one temp-database disposal IOException, no C# changes. Full128native run has127pass/1fullscreen merge header override failure; unchanged focused6merge rerun passes, intermittent failure remains unresolved. Metadata/manual fixtures now await clean Electron child exit and prior libuv assertion did not recur. Inventory842ported540retained13framework,878pending162partial. No AC checked; desktop browse spine implementation and source tests now in progress.
+
+Checkpoints eleven/twelve restore the desktop alphabet/notch spine and close-time Library scroll, fix a deterministic late-preference merge-header race, add case-insensitive store chips/initials and accessible store names, and align cover/Details compact totals. Ten more original grouped-library methods now have backend plus composed-renderer evidence; seven new production HTTP tests pass. Native full137 yielded136pass with a reduced-motion fixture leak; corrected layout20 and Details9/Library8 pass. Spine teardown remains intermittently slow: strict cleanup failed in the combined rerun, but five diagnostic repetitions (25 cases) exited successfully. Capturing quit events and child status rather than masking the timeout. Latest full component2490 had one observer-notification timing assertion; fixture now separately checks immediate fresh cache and waits for the batched React publication. All acceptance criteria remain unchecked.
+
+Final checkpoint-eleven/twelve component and live-backend repeat: all2490 cases in127files pass with no skips (43.12s). Composed App39 passes, including original grouped Prey totals, selection/clamping, both owned copies, secondary updates and installed-Epic action. Seven production grouping HTTP tests pass. Native layout20/Details9/Library8 and repeated spine25 pass; the intermittent strict teardown timeout remains recorded and instrumented. Evidence is in docs/spikes/2026-09-28-electron-parity/checkpoint-eleven-twelve.md. Inventory856ported540retained13framework with863pending163partial; migration is not complete.
 <!-- SECTION:NOTES:END -->

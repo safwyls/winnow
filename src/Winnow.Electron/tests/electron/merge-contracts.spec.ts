@@ -305,6 +305,9 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
         .getByRole('button', { name: `${originalLabel} · Included`, exact: true })
         .click()
       await page.getByRole('button', { name: 'Make header', exact: true }).click()
+      await expect(
+        page.getByRole('dialog').getByRole('button', { name: `${originalLabel} · Header`, exact: true }),
+      ).toBeVisible()
       await page.getByRole('button', { name: 'Back to proposals', exact: true }).click()
     }
     await checkHeader(overrideRow.workId)

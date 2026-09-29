@@ -108,6 +108,7 @@ async function replace(data: Fixture) {
   await expect(page.getByRole('button', { name: 'Show Layout shelf 1', exact: true })).toBeAttached()
 }
 async function surface(mode: 'desktop' | 'fullscreen', width: number, height: number) {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
   await application.evaluate(
     ({ BrowserWindow }, value) => {
       const window = BrowserWindow.getAllWindows()[0]!
@@ -161,6 +162,68 @@ async function measured() {
 async function settled() {
   await expect(page.locator('.avalon-row-viewport[data-animating]')).toHaveCount(0)
 }
+
+for (const mode of ['desktop', 'fullscreen'] as const)
+  for (const reduced of [false, true])
+    test(`${mode} grouped store marks fit the cover and preserve store names with reduced motion ${reduced}`, async ({}, info) => {
+      await surface(mode, 1200, 820)
+      const data = fixture([8])
+      const prey = data.library.games[1]
+      prey.title = 'Prey'
+      prey.entries = ['steam', 'STEAM', 'epic', 'gog'].map((store, index) => ({
+        ...prey.entries[0],
+        store,
+        ownershipId: 100 + index,
+        releaseId: 100 + index,
+      }))
+      await application.evaluate((_, data) => {
+        ;(globalThis as unknown as { __winnowLayoutFixture: Fixture }).__winnowLayoutFixture = data
+      }, data)
+      await page.reload()
+      await surface(mode, 1200, 820)
+      await page
+        .getByRole('navigation', { name: 'Main navigation' })
+        .getByRole('button', { name: 'Library', exact: true })
+        .click()
+      if (mode === 'desktop') {
+        await page.getByRole('button', { name: 'Grid view', exact: true }).click()
+        await page.getByRole('slider', { name: 'Density', exact: true }).fill('200')
+      }
+      await page.getByLabel('Sort', { exact: true }).selectOption('title')
+      await page.getByLabel('Sort', { exact: true }).focus()
+      await page.emulateMedia({ reducedMotion: reduced ? 'reduce' : 'no-preference' })
+      await page.mouse.move(2, 2)
+      const cover = page.locator('.avalon-library .avalon-cover[data-work-id="2"]')
+      const initials = cover.locator('.avalon-store-initials')
+      await expect(cover).toHaveAccessibleName('View Prey. Owned on Steam, Epic, GOG')
+      await expect(initials).toHaveCSS('opacity', '1')
+      await expect(initials.locator('span')).toHaveText(['S', 'E', 'G'])
+      await expect(cover.locator('.avalon-store-chips > span')).toHaveText(['STEAM', 'EPIC', 'GOG'])
+      await expect(initials).toHaveCSS('transition-duration', reduced ? '0s' : '0.14s')
+      const bounds = await cover.boundingBox(),
+        marks = await initials.boundingBox()
+      expect(marks!.x).toBeGreaterThan(bounds!.x)
+      expect(marks!.x + marks!.width).toBeLessThan(bounds!.x + bounds!.width)
+      expect(marks!.y + marks!.height).toBeLessThan(bounds!.y + bounds!.height)
+      const title = await cover.locator('.avalon-cover-fallback').boundingBox()
+      expect(title!.y + title!.height).toBeLessThan(marks!.y - 3)
+      if (mode === 'desktop') expect(bounds!.width).toBeLessThan(140)
+      await page.screenshot({ path: info.outputPath(`${mode}-store-initials-${reduced}.png`) })
+      await cover.hover()
+      await expect(initials).toHaveCSS('opacity', mode === 'desktop' ? '0' : '1')
+      if (mode === 'desktop') {
+        await expect(cover.locator('.avalon-cover-caption')).toBeVisible()
+        await expect(cover.locator('.avalon-cover-caption')).toHaveCSS('opacity', '1')
+      } else await expect(cover.locator('.avalon-cover-caption')).toBeHidden()
+      await cover.focus()
+      await page.mouse.move(2, 2)
+      await expect(initials).toHaveCSS('opacity', mode === 'desktop' ? '0' : '1')
+      if (mode === 'desktop') {
+        await expect(cover.locator('.avalon-cover-caption')).toBeVisible()
+        await expect(cover.locator('.avalon-cover-caption')).toHaveCSS('opacity', '1')
+      }
+      expect(errors).toEqual([])
+    })
 
 test('fullscreen Home retains each overflow page and carries the visible column across shelves', async () => {
   await surface('fullscreen', 1920, 1080)

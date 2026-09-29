@@ -188,6 +188,9 @@ arrow. When it leaves, the wave returns to rest and the halo again marks the cur
 The spine reverses to
 `Z–A` with the sort so downward motion always moves down the library. Each stop remains a named
 button with the standard visible focus treatment.
+In Electron the spine spans the area below the toolbar, beside the filter and selection
+controls as well as the results. Reserving that strip keeps all 27 labels readable when
+a short window has list controls open; those controls and the artwork end before the wave.
 
 ```
 ┌──────────────┬────────────────────────────────────────────────────────┐
@@ -330,6 +333,12 @@ the four-fact cap is not breached. The resting mark uses initials because the de
 floor is 108px and a row of word-chips is wider than the tile there; the words are reachable on
 hover, in the modal and in the automation name, which satisfies §8's
 decorative-redundant rule.
+
+In Electron, store initials sit above the lower cover inset without overlapping a fallback
+title. Desktop fades them as the chip overlay appears. Fullscreen retains the initials on
+focus because that presentation keeps cover captions hidden; both surfaces name every
+distinct store in the tile's accessible label. Repeated licences for the same store share
+one mark, matched without regard to case.
 
 **A tile that folded an expansion carries a second resting mark**, bottom-right, in the same pip
 as the store mark and with the same fade: a plus and a count. It is drawn only while the library
