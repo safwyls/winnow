@@ -1,0 +1,29 @@
+.platform-settings {
+  min-width: 0;
+}
+.platform-tabs {
+  margin-bottom: 1.25rem;
+}
+.platform-attention {
+  margin-left: 0.5rem;
+  color: var(--warning, #e7b974);
+}
+.platform-title-count,
+.steam-accounts-summary {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.platform-title-count {
+  color: var(--muted);
+}
+.steam-information-dialog {
+  max-width: min(48rem, 94vw);
+}
+.steam-information-dialog > .steam-page-import,
+.steam-information-dialog > .steam-account-capture {
+  margin-block: 1.5rem;
+}
+.manual-editor .field-error {
+  color: var(--warning, #e7b974);
+  font-size: 0.875em;
+}

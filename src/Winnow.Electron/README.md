@@ -13,6 +13,12 @@ header. Fullscreen Details uses the original cinematic layout, two screenshot pr
 separate About and Play history reading pages. More contains the shared metadata, matching,
 artwork and browsing actions. Closing restores the originating game and library position.
 
+Settings groups Steam, Epic and GOG under **Platforms**, with one card at a time, attention
+markers and title counts from the whole library. Steam keeps credential guidance, account
+scope, purchase import and sign-in consent in separate dialogs. IGDB and artwork source
+preferences live under **Metadata & artwork**. Manual games in **Manage library** report
+validation and identifier conflicts beside their fields and ask before removing a named entry.
+
 Avalon reads existing authored Winnow JSON palettes from the library's `themes` folder,
 including their fonts and opening preferences. Theme Studio provides reload, diagnostics,
 folder access and safe export; saved file edits update the active palette automatically.
@@ -145,6 +151,9 @@ folder. An unavailable logger or native alert does not replace the original exit
   them; response history also retains expired and reversed choices.
 - Searchable, virtualized Library with faceted filters, grid and list views, selection and bulk
   actions, fixed and live list editing, manual games, hidden-game restoration and identity review.
+  Optional expansion grouping changes the Library tile set and its counts before browsing cuts;
+  the base keeps its own playtime and stores, and the count mark identifies unplayed packs.
+  Saved default-sort changes apply immediately, or when an open manual list closes.
 - Game details with store actions, update history, sessions, journal entries, ratings,
   achievement summaries, per-field metadata editing, IGDB assignment, edition/expansion management
   and provider, URL or local-file artwork selection.
@@ -167,7 +176,10 @@ folder. An unavailable logger or native alert does not replace the original exit
 
 Desktop and fullscreen have separate destinations and library filters. Editing drafts and
 their original revisions survive navigation and mode changes for this frontend session;
-they are not persisted across application restarts. F11 changes mode, Ctrl+K searches,
+they are not persisted across application restarts. F11 changes mode. Ctrl+K searches the
+desktop Library inline; Avalon fullscreen opens a dedicated Search page, also available
+through controller View. Search retains its query and result through Details, uses Y for
+the keyboard and LT/RT for two-row paging, and returns to its originating page on Back.
 Escape returns from details, and Tab moves through controls. Fullscreen has larger targets
 and a recommendation filmstrip. Gamepad API navigation supports directional movement,
 page and tab switching, actions, a quick menu and an on-screen keyboard. Physical-controller

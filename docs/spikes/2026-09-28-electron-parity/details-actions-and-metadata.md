@@ -59,3 +59,38 @@ desktop 1200×640/2560×1440 and fullscreen 1280×720/2560×1440 layouts, 140% t
 120% interface scaling, and actual artwork IPC with a test-owned image. The coordinator
 inspected both 1920×1080 Overview captures. Fullscreen previews retain the source
 aspect ratio after capping their height; the desktop strip remains horizontal.
+
+## Game matching
+
+The shared IGDB editor now marks and deduplicates numeric ID matches, preserves
+candidate details and drafts, and distinguishes every assignment refusal from a
+successful write. A collision offer names the existing game and shows its cover and
+year. Declining restores the refusal without writing; accepting links under the
+existing holder and never pins the child. A failed clear retains the pin and its
+control. Revision conflicts require an explicit refresh before retrying.
+
+The original 28 `IgdbMatchViewModelTests` methods have replacement evidence in
+`migration-igdb-match.json`. The focused run passed 105 cases across the IGDB editor,
+Details and App suites. Both Avalon modes verify returning from assignment, clearing
+and linking to refreshed Details with the named confirmation and More-button focus.
+These are component checks through the named API boundary; they do not contact IGDB
+or establish behavior of a live external account. Existing native Details geometry
+checks remain separate evidence for the presentation.
+
+## Remaining Details source assertions
+
+The identity line omits missing year/publisher fields, provisional names carry their
+explicit workspace flag, and Overview distinguishes zero play from a missing session
+date. More keeps its label and tooltip, starts with outbound destinations, and includes
+validated launcher management, folder, refresh, correction and Hide controls. A malformed
+Steam ID exposes neither a launch nor an uninstall action. New component matrices cover
+both modes; native revalidation is recorded with the next integration checkpoint.
+
+Five older `GameDetailsViewModelTests` methods assert `RailMarks` and `GapCaption`,
+including normalized gap positions and a 14-mark cap. Source inspection found no binding
+to either property in the current desktop or fullscreen views. The active activity
+timeline and visual specification instead group colliding update marks without a cap.
+Those five tests are recorded as retired view-model contracts with replacement timeline
+evidence, not claimed as literal ports. The original nullable popup Hide-command test
+also checks Avalonia construction rather than the always-available authenticated HTTP
+capability. The source reduced-motion assertion still awaits explicit panel evidence.

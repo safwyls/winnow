@@ -209,7 +209,11 @@ for (const mode of ['desktop', 'fullscreen'] as const)
     }
     async function answer(title: string, action: string, saved = false) {
       const card = await open(title, saved)
-      fireEvent.click(within(card).getByRole('button', { name: action }))
+      const button = within(card).getByRole('button', { name: action }) as HTMLButtonElement
+      // Publishing a saved card can precede the mutation's final busy-state reset.
+      // Do not send the next synthetic click while the preceding answer still disables actions.
+      await waitFor(() => expect(button.disabled).toBe(false))
+      fireEvent.click(button)
       if (mode === 'fullscreen' && action === 'Same game')
         fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
     }

@@ -69,10 +69,12 @@ export function AvalonDetailsLayout({
     details = useDetails(workId)
   const preferences = useApiQuery<{ promptAfterPlay: boolean }>('journal.preferences.get')
   const game = detailsGame(workId, library.data?.games ?? [], workspace.data)
+  const provisionalTitle = workspace.data?.works.find((work) => work.id === game?.workId)?.nameIsProvisional
   const [section, setSection] = useState<string>('Overview')
   const [reading, setReading] = useState<Reading | null>(null),
     [tool, setTool] = useState<Tool | null>(null)
   const [expanded, setExpanded] = useState(false)
+  const [matchNote, setMatchNote] = useState('')
   const [moreOpen, setMoreOpen] = useState(false)
   const [editing, setEditing] = useViewState<number | null>(`${mode}:details:${workId}:editing`, null)
   const body = useRef<HTMLDivElement>(null),
@@ -286,20 +288,21 @@ export function AvalonDetailsLayout({
           <strong>{game ? hours(game.playtimeMinutes) : '—'}</strong>
           <span>played</span>
         </div>
-        <div>
-          <strong>
-            {game?.lastPlayedAt
-              ? relativePlayed(game.lastPlayedAt)
-              : game?.playtimeMinutes
-                ? 'Unknown'
-                : 'Never'}
-          </strong>
-          <span>
-            {game?.lastPlayedAt ? 'since last played' : game?.playtimeMinutes ? 'last-played date' : 'opened'}
-          </span>
-        </div>
+        {game?.lastPlayedAt && (
+          <div>
+            <strong>{relativePlayed(game.lastPlayedAt)}</strong>
+            <span>since last played</span>
+          </div>
+        )}
       </div>
       {game?.lastPlayedAt && <p className="detail-support">{dateLabel(game.lastPlayedAt)}</p>}
+      {game && !game.lastPlayedAt && (
+        <p className="detail-history-absence">
+          {game.playtimeMinutes <= 0
+            ? "You've never opened this."
+            : `${storeLine || 'Your library'} has no date for your last session.`}
+        </p>
+      )}
       <LifecycleEvidence workId={workId} workspace={workspace.data} />
       {unread > 0 && (
         <button className="detail-text-link" onClick={() => change('Updates')}>
@@ -333,7 +336,18 @@ export function AvalonDetailsLayout({
   )
   let panel: ReactNode
   if (tool === 'Metadata') panel = <MetadataEditor workId={workId} />
-  else if (tool === 'Game match') panel = <IgdbMatch workId={workId} title={game?.title ?? ''} />
+  else if (tool === 'Game match')
+    panel = (
+      <IgdbMatch
+        workId={workId}
+        title={game?.title ?? ''}
+        onChanged={(note) => {
+          setMatchNote(note)
+          setTool(null)
+          returnFocus.current = more.current
+        }}
+      />
+    )
   else if (tool === 'Artwork') panel = <ArtworkEditor workId={workId} />
   else if (reading === 'History' || section === 'Activity') panel = history
   else if (reading === 'About')
@@ -410,9 +424,14 @@ export function AvalonDetailsLayout({
               <h1 title={game?.title}>{game?.title ?? 'Game details'}</h1>
             </Dialog.Title>
           )}
-          <p className="detail-support">
-            {[game?.firstReleaseYear, game?.publisher].filter(Boolean).join(' · ')}
-          </p>
+          {(game?.firstReleaseYear || game?.publisher) && (
+            <p className="detail-support" data-details-identity-line>
+              {[game?.firstReleaseYear, game?.publisher].filter(Boolean).join(' · ')}
+            </p>
+          )}
+          {provisionalTitle && (
+            <p className="detail-support">Name not yet available. Showing the app id until metadata loads.</p>
+          )}
           {!fullscreen && <ReceptionLine ratings={details.data?.ratings} compact />}
           <p className="detail-support">
             {storeLine}
@@ -445,6 +464,10 @@ export function AvalonDetailsLayout({
               onChoose={(next) => setTool(next)}
               workId={workId}
               links={links}
+              management={
+                primary && <EntryActions entry={primary} workspace={workspace.data} managementOnly />
+              }
+              hide={<HideGame workId={workId} onHidden={onClose} compact />}
               folder={
                 primary && (
                   <InstallFolderButton
@@ -463,7 +486,7 @@ export function AvalonDetailsLayout({
           </button>
         )}
       </header>
-      <Notice error={details.error || library.error || workspace.error} />
+      <Notice error={details.error || library.error || workspace.error} message={matchNote} />
       {tool || reading ? (
         <div className="avalon-details-back-row">
           <button onClick={closeLayer}>
@@ -580,6 +603,8 @@ function MoreActions({
   workId,
   links,
   folder,
+  management,
+  hide,
 }: {
   open: boolean
   setOpen(open: boolean): void
@@ -588,6 +613,8 @@ function MoreActions({
   workId: number
   links: GameLink[]
   folder: ReactNode
+  management: ReactNode
+  hide: ReactNode
 }) {
   const menu = useRef<HTMLDivElement>(null),
     root = useRef<HTMLDivElement>(null)
@@ -628,25 +655,34 @@ function MoreActions({
         }
       }}
     >
-      <button ref={buttonRef} aria-expanded={open} data-controller-context onClick={() => setOpen(!open)}>
+      <button
+        ref={buttonRef}
+        aria-expanded={open}
+        title="Store and news links, installation, folder, metadata, corrections and hide"
+        data-controller-context
+        onClick={() => setOpen(!open)}
+      >
         More <ChevronDown size={16} />
       </button>
       {open && (
         <div className="avalon-details-menu" ref={menu} aria-label="More game actions">
+          <GameLinks links={links} />
+          {management}
+          {folder}
+          <MetadataRefresh workId={workId} />
           {tools.map((tool) => (
             <button
               key={tool}
+              title={tool === 'Game match' ? 'Search IGDB for the right entry' : undefined}
               onClick={() => {
                 setOpen(false)
                 onChoose(tool)
               }}
             >
-              {tool === 'Game match' ? 'Wrong game…' : tool === 'Metadata' ? 'Edit metadata…' : 'Artwork…'}
+              {tool === 'Game match' ? 'Wrong game?' : tool === 'Metadata' ? 'Edit metadata…' : 'Artwork…'}
             </button>
           ))}
-          <MetadataRefresh workId={workId} />
-          {folder}
-          <GameLinks links={links} />
+          {hide}
         </div>
       )}
     </div>

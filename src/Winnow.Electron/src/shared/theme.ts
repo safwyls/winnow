@@ -7,7 +7,7 @@ export type { ArtworkEffectOptions } from './artworkEffects'
 
 /** Increment for breaking changes to the data, commands, or component props a theme receives. */
 export const THEME_API_VERSION = 1 as const
-export type ThemePage = 'discover' | 'library' | 'details' | 'journal' | 'settings' | 'studio'
+export type ThemePage = 'discover' | 'library' | 'search' | 'details' | 'journal' | 'settings' | 'studio'
 export type ThemeMode = 'desktop' | 'fullscreen'
 export type ThemeSettingValue = string | number | boolean
 export type ThemeColorKey = 'background' | 'surface' | 'raised' | 'text' | 'muted' | 'line' | 'cool'
@@ -81,6 +81,9 @@ export interface ThemeContext {
   setPage(page: ThemePage): void
   openGame(workId: number): void
   closeGame?(): void
+  closeSearch?(): void
+  openSearch?(): void
+  editText?(input: HTMLInputElement | HTMLTextAreaElement): void
   previousPage?: ThemePage
   toggleFullscreen(): void
   games: LibraryGame[]
@@ -124,6 +127,8 @@ export interface ThemeDefinition {
   Shell?: ComponentType<ThemeContext>
   Discover?: ComponentType<ThemeContext>
   Library?: ComponentType<ThemeContext>
+  /** Optional dedicated fullscreen search. Hosts retain Library search when omitted. */
+  Search?: ComponentType<ThemeContext>
   Details?: ComponentType<ThemeContext>
   Journal?: ComponentType<ThemeContext>
   Settings?: ComponentType<ThemeContext>
@@ -441,7 +446,7 @@ export function validateThemeDefinition(value: unknown, expectedId?: string): Th
       layout: { ...DEFAULT_PROFILE.layout, ...((value.defaults.layout as object) ?? {}) },
     })
   }
-  const screens = ['Shell', 'Discover', 'Library', 'Details', 'Journal', 'Settings']
+  const screens = ['Shell', 'Discover', 'Library', 'Search', 'Details', 'Journal', 'Settings']
   for (const screen of screens)
     if (value[screen] !== undefined && typeof value[screen] !== 'function')
       throw new Error(`${screen} must be a React component function.`)

@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-29 09:24'
+updated_date: '2026-09-29 10:06'
 labels: []
 dependencies: []
 priority: high
@@ -52,6 +52,14 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 14. Complete Library default-sort lifecycle and source-exact selection behavior on both modes, preserving manual list order, selections through sort/reload/view changes, and pruning filtered selections. Audit filter and list contracts against exact source assertions; keep refresh-publication/cancellation work separately scoped because it crosses App and Details.
 
 15. Extract manual game editing into owned frontend files while keeping exports. Restore field-specific accessible title/year/IGDB/Steam validation, typed conflict handling and Cancel-first removal. Verify create/edit/delete with production HTTP tests and desktop/fullscreen form flows; preserve uncertain-write and revision safeguards.
+
+16. Restore expansion grouping in a shared presentation projection over library games and workspace identity links. Fold after backend visibility/same-game grouping and before list/search/filter; retain orphan expansions and preserve each base title own playtime, stores, dates and bucket. Keep raw backend/feed data intact. Both-mode Library tiles/rows and Library/filter/list/Settings store counts consume the same projected set, with source-equivalent folding/count tests and native preference-toggle verification.
+
+17. Restore artwork browsing as an explicit preview-and-commit workflow. Root owns ArtworkEditor extraction, per-slot source/selection/scroll state, independent source errors and paging, late-result cancellation, revision-safe commit/reset/import, source attribution, local file IPC and fixed preview/actions layouts. Preserve metadata drafts and focus when opening artwork from a field. Verify both modes against all ArtworkBrowserTests source assertions, with native geometry at original sizes and scaled fullscreen/controller coverage. Root also completes the remaining Details contracts from LibraryViewModelTests, including source headlines, playtime record composition and absent metadata.
+
+18. After the current checkpoint, complete Library list header sorting, reversed cover density, saved/live-list filter provenance and clearable cut-bar counts; then handle publication/cancellation races across library/workspace queries with explicit ownership coordination. Complete non-Home backdrop and theme contrast matrices, and the audited Steam account URL/page policy gaps with exact source-equivalent cases.
+
+19. Non-Home backdrop parity uses an additive read-only candidate endpoint backed by the existing Winnow.Presentation selection policy, keeping source order and grouped-game selection in the backend. The Avalon visual package owns cancellable image reads, stale-result disposal, queued latest crossfade and crop/veil geometry; coordinate named bridge/transport edits with the independent artwork import work. Retain source ordering and visual tests for each surface, and verify the new backend boundary independently.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -84,4 +92,8 @@ Reviewed the three old MergeQueue repository-call assertions against the externa
 Third checkpoint verification: all 1936 Electron component and live-backend cases passed in 105 files with no skips. Native Details9, gallery4 (including both install-folder handoffs), setup2 and merge6 passed in the combined native run. Coordinator inspected desktop/fullscreen Overview captures with actual artwork IPC. Two native fullscreen layout cases exposed synchronization gaps (fixture readiness and intermediate animation sampling); correction and focused rerun remain in progress. New production backend replacements passed game actions18, merge decisions9 and setup5 plus retained setup2. No acceptance criteria checked.
 
 Third checkpoint native run finished 83/85 passing; both failures were test synchronization gaps. The corrected full16-case Avalon layout rerun passed in24.8s on the unchanged production build, retaining opacity/inertness/focus/node-reuse assertions. Feature snapshot has 1936/105 passing integrated cases; all85 native cases now have passing coverage across the combined run and corrected layout run. Source inventory2435:600ported,535retained-backend,6framework-specific;1128pending,166partial. Next packages remain in progress; no criteria checked.
+
+Committed third milestone02989cb (78files). Next root package restores all28 IGDB view-model contracts through33 focused editor cases and both-mode Details return tests: ID badge/deduplication, distinct refusals, holder cover/year, revision checks, pin/clear/link outcomes and carried confirmations. Details now restores provisional-name notice, missing-date copy, conditional identity fields and original More ordering/management/Hide access; malformed Steam IDs expose no uninstall. Latest combined Details/IGDB/facts/action component run210 passed (4files). Five RailMarks/GapCaption methods were audited as obsolete unbound model contracts: active Avalonia views and design-system10.2 use an uncapped clustered activity timeline. Their old geometry/caption/cap assertions plus optional popup Hide-command injection are explicitly framework-specific, with replacement component evidence; reduced-motion panel coverage remains pending. Native revalidation is running with Search work.
+
+Fourth checkpoint: integrated Electron component/live-backend run passed all 2130 cases across111 files with no skips. Original seven failures were corrected fixture assumptions: six Steam dialog/count fixtures and one merge click racing a still-disabled action. The final Search native pass exposed and fixed a real initial-focus race; its new controlled-frame regression plus Search/App30 passed, followed by Search4 native. Targeted native coverage for this checkpoint is53 distinct cases across passing Search4, layout16, core parity14, Details9, gallery4, manual/Platforms2, Steam import2 and Library2; successful reruns fixed fixture synchronization and child-exit cleanup without relaxing assertions. Manual production HTTP6 passed; source mappings now689ported535retained12framework-specific with1040pending159partial out of2435. New Details/artwork/backdrop/auth implementation remains unstaged for the next package. All acceptance criteria remain unchecked.
 <!-- SECTION:NOTES:END -->

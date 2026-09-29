@@ -97,6 +97,9 @@ function fixture(
       }
     }
     if (input.route === 'plugins.get' || input.route === 'operations.get') data = []
+    if (input.route === 'preferences.presentation.get') data = []
+    if (input.route === 'library.get') data = { games: [], lists: [] }
+    if (input.route === 'library.workspace') data = { works: [], externalIds: [], epicLaunchKeys: {}, pluginActions: {}, identityLinks: [] }
     return { ok: true, status: 200, data }
   })
   const openExternal = vi.fn(async () => ({ opened: true }))
@@ -243,19 +246,23 @@ describe.each(['desktop', 'fullscreen'] as const)('%s Steam connection transitio
   })
   it('an active sign-in holds key changes and the purchase-file route', async () => {
     const gate = deferred<SteamSignInResult>()
-    fixture(mode, { key: true, gate: gate.promise })
+    const { request } = fixture(mode, { key: true, gate: gate.promise })
     await begin()
     expect(
       (screen.getByRole('button', { name: 'Remove saved API key', hidden: true }) as HTMLButtonElement)
         .disabled,
     ).toBe(true)
-    expect((screen.getByLabelText('Saved Steam pages') as HTMLInputElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Import purchase history', hidden: true }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.queryByLabelText('Saved Steam pages')).toBeNull()
+    expect(request.mock.calls.some(([input]) => input.route.startsWith('imports.steam'))).toBe(false)
     await act(async () => gate.resolve({ signedIn: false, outcome: 4 }))
     await waitFor(() =>
       expect(
         (screen.getByRole('button', { name: 'Remove saved API key' }) as HTMLButtonElement).disabled,
       ).toBe(false),
     )
+    fireEvent.click(screen.getByRole('button', { name: 'Import purchase history' }))
+    expect((screen.getByLabelText('Saved Steam pages') as HTMLInputElement).disabled).toBe(false)
   })
   it('The_key_page_is_opened_through_the_shared_dispatcher and failures retain its address', async () => {
     const { openExternal } = fixture(mode)

@@ -36,7 +36,9 @@ import { CreateListButton, LibraryTools } from '../features/LibraryTools'
 import { AddToListButton } from '../features/parity-list-prompt'
 import { LiveListActions } from '../features/parity-live-actions'
 import { ListOrderActions } from '../features/parity-list-actions'
-import { useAvalonLists } from './avalon-list-state'
+import { libraryDefaultSort, useAvalonLists } from './avalon-list-state'
+import { useLibraryProjection, type ExpansionMark } from '../features/parity-library-projection'
+import '../features/parity-library-projection.css'
 import { usePresentationPreferences } from '../features/SettingsPreferences'
 import { clearViewState, libraryScroll, useViewState } from '../viewState'
 import dragon from '../assets/dragon.svg'
@@ -67,6 +69,7 @@ import { homePageStart, homeShelfPosition } from './avalon-navigation'
 import { AvalonFullscreenGrid } from './avalon-fullscreen-grid'
 import { useSystemReducedMotion } from '../useSystemReducedMotion'
 import { Details } from '../features/Details'
+import { AvalonSearch } from './avalon-search'
 
 const destinations = [
   { id: 'discover', label: 'For you', Icon: Compass },
@@ -152,6 +155,7 @@ function Collections({ context }: { context: ThemeContext }) {
 
 export function AvalonShell(context: ThemeContext) {
   const fullscreen = context.mode === 'fullscreen'
+  const projected = useLibraryProjection(context.games)
   const detailsModal = !fullscreen && context.page === 'details'
   const background = useRef<ReactNode>(null)
   if (!detailsModal) background.current = context.children
@@ -176,7 +180,10 @@ export function AvalonShell(context: ThemeContext) {
       <header className="avalon-header">
         {fullscreen && context.page === 'details' ? (
           <button className="avalon-details-return" onClick={context.closeGame}>
-            B · Back to {destinations.find((item) => item.id === context.previousPage)?.label ?? 'Library'}
+            B · Back to{' '}
+            {context.previousPage === 'search'
+              ? 'Search'
+              : (destinations.find((item) => item.id === context.previousPage)?.label ?? 'Library')}
           </button>
         ) : (
           <button
@@ -206,8 +213,16 @@ export function AvalonShell(context: ThemeContext) {
             aria-label="Search library"
             title="Search library (Ctrl+K)"
             onClick={() => {
-              context.setPage('library')
-              setTimeout(() => document.querySelector<HTMLInputElement>('[data-library-search]')?.focus(), 0)
+              if (context.openSearch) {
+                context.openSearch()
+                return
+              }
+              context.setPage(fullscreen ? 'search' : 'library')
+              if (!fullscreen)
+                setTimeout(
+                  () => document.querySelector<HTMLInputElement>('[data-library-search]')?.focus(),
+                  0,
+                )
             }}
           >
             <Search size={18} />
@@ -227,7 +242,7 @@ export function AvalonShell(context: ThemeContext) {
       {!fullscreen && (
         <aside className="avalon-rail">
           <div className="avalon-library-total">
-            <strong>{context.games.length.toLocaleString()}</strong>
+            <strong>{projected.games.length.toLocaleString()}</strong>
             <span>games in your library</span>
           </div>
           <nav className="avalon-navigation" aria-label="Main navigation">
@@ -242,7 +257,7 @@ export function AvalonShell(context: ThemeContext) {
               </button>
             ))}
           </nav>
-          <Collections context={{ ...context, page: shellPage }} />
+          <Collections context={{ ...context, page: shellPage, games: projected.games }} />
           <p className="avalon-rail-note">Your library has unread mail.</p>
         </aside>
       )}
@@ -256,6 +271,7 @@ export function AvalonShell(context: ThemeContext) {
           requestAnimationFrame(() => {
             if (document.activeElement === content)
               (
+                content.querySelector<HTMLElement>('[data-initial-focus]') ??
                 content.querySelector<HTMLElement>('.avalon-cover[data-selected="true"]') ??
                 content.querySelector<HTMLElement>('[data-avalon-game], button, input')
               )?.focus({ preventScroll: true })
@@ -286,6 +302,7 @@ export function AvalonCover({
   onKeyDown,
   onClick,
   onContextMenu,
+  expansion,
 }: {
   context: ThemeContext
   game: LibraryGame
@@ -295,6 +312,7 @@ export function AvalonCover({
   onKeyDown?: (event: KeyboardEvent<HTMLButtonElement>) => void
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void
   onContextMenu?: (event: MouseEvent<HTMLButtonElement>) => void
+  expansion?: ExpansionMark
 }) {
   const facts = useContext(FactsContext).get(game.workId)
   const hover = useAvalonPreview(context, game, reason)
@@ -318,7 +336,7 @@ export function AvalonCover({
         data-work-id={game.workId}
         data-selected={selected || undefined}
         style={style}
-        aria-label={`View ${game.title}${patched ? ', patched since you played' : ''}`}
+        aria-label={`View ${game.title}${patched ? ', patched since you played' : ''}${expansion ? `. ${expansion.text}` : ''}`}
         aria-description={reason}
         onMouseEnter={(event) => hover.open(event.currentTarget)}
         onMouseLeave={hover.close}
@@ -337,6 +355,11 @@ export function AvalonCover({
           {game.title}
         </span>
         {patched && <span className="avalon-unread" title="Patched since you played" />}
+        {expansion && (
+          <span className="avalon-expansion-mark" aria-hidden="true" title={expansion.text}>
+            +{expansion.count}
+          </span>
+        )}
         <span className="avalon-cover-caption" aria-hidden="true">
           <strong>{game.title}</strong>
           <span>{reason ? <FeedReason reason={reason} /> : `${hours(game.playtimeMinutes)} played`}</span>
@@ -681,25 +704,25 @@ export function AvalonLibrary(context: ThemeContext) {
     fullscreen = context.mode === 'fullscreen',
     prefix = stateKey(context)
   const preferences = usePresentationPreferences()
+  const projected = useLibraryProjection(context.games)
+  const libraryGames = projected.games
   const systemReducedMotion = useSystemReducedMotion()
   const workspace = useWorkspace(),
     client = useQueryClient()
   const facts = useMemo(
-    () => avalonFacts(context.games, workspace.data as AvalonWorkspace | undefined),
-    [context.games, workspace.data],
+    () => avalonFacts(libraryGames, workspace.data as AvalonWorkspace | undefined),
+    [libraryGames, workspace.data],
   )
-  const listState = useAvalonLists(context.mode, library.data?.lists ?? [], Boolean(library.data))
+  const defaultSort = libraryDefaultSort(preferences.values.DefaultSort)
+  const listState = useAvalonLists(
+    context.mode,
+    library.data?.lists ?? [],
+    Boolean(library.data),
+    preferences.loaded || preferences.values.DefaultSort !== undefined ? defaultSort : undefined,
+  )
   const { query, setQuery, bucket, store, setStore, listId, savedSort, setSort, rules, setRules } = listState
   const [view, setView] = useViewState(`${prefix}:view`, 'grid')
-  const defaultSort: Record<string, string> = {
-    DormantLongest: 'dormant',
-    RecentlyPlayed: 'recent',
-    PlaytimeHighToLow: 'time',
-    PlaytimeLowToHigh: 'time-low',
-    NameAscending: 'title',
-    NameDescending: 'title-desc',
-  }
-  const sort = savedSort ?? defaultSort[preferences.values.DefaultSort ?? 'DormantLongest'] ?? 'dormant'
+  const sort = savedSort ?? defaultSort
   const [density, setDensity] = useViewState(`${prefix}:density`, 148),
     [tools, setTools] = useViewState(`${prefix}:tools`, false)
   const [selected, setSelected] = useViewState<number | null>(`${prefix}:selected`, null)
@@ -715,20 +738,22 @@ export function AvalonLibrary(context: ThemeContext) {
     [size, setSize] = useViewState(`${prefix}:viewport`, { width: 950, height: 660 })
   const games = useMemo(
     () =>
-      avalonFilter(context.games, library.data?.lists ?? [], {
+      avalonFilter(libraryGames, library.data?.lists ?? [], {
         query,
         bucket,
         store,
         listId: listState.list?.isLive ? 'all' : listId,
         sort,
       }).filter((game) => matchesAvalonRules(game, rules, facts.get(game.workId))),
-    [context.games, library.data?.lists, query, bucket, store, listId, sort, rules, facts],
+    [libraryGames, library.data?.lists, query, bucket, store, listId, sort, rules, facts],
   )
   useEffect(() => {
     const visible = new Set(games.map((game) => game.workId))
     const retained = selection.filter((id) => visible.has(id))
     if (retained.length !== selection.length) setSelection(retained)
-  }, [games, selection])
+    if (!fullscreen && selected !== null && !visible.has(selected)) setSelected(retained[0] ?? null)
+    if (anchor.current !== null && !visible.has(anchor.current)) anchor.current = null
+  }, [games, selection, selected, fullscreen])
   useEffect(() => {
     if (fullscreen && !games.length) {
       setSelected(null)
@@ -793,11 +818,11 @@ export function AvalonLibrary(context: ThemeContext) {
   function selectGame(event: MouseEvent<HTMLButtonElement>, game: LibraryGame, index: number) {
     if (event.ctrlKey || event.metaKey) {
       event.preventDefault()
-      setSelection((previous) =>
-        previous.includes(game.workId)
-          ? previous.filter((id) => id !== game.workId)
-          : [...previous, game.workId],
-      )
+      const next = selection.includes(game.workId)
+        ? selection.filter((id) => id !== game.workId)
+        : [...selection, game.workId]
+      setSelection(next)
+      setSelected(next.includes(game.workId) ? game.workId : (next.at(-1) ?? null))
     } else if (event.shiftKey && anchor.current !== null) {
       event.preventDefault()
       const first = games.findIndex((game) => game.workId === anchor.current)
@@ -808,13 +833,17 @@ export function AvalonLibrary(context: ThemeContext) {
       )
     } else {
       setSelection([])
+      setSelected(game.workId)
       context.openGame(game.workId)
     }
     anchor.current = game.workId
   }
   function contextGame(event: MouseEvent<HTMLButtonElement>, game: LibraryGame) {
     event.preventDefault()
-    if (!selection.includes(game.workId)) setSelection([game.workId])
+    if (!selection.includes(game.workId)) {
+      setSelection([game.workId])
+      setSelected(game.workId)
+    }
     requestAnimationFrame(() =>
       document.querySelector<HTMLElement>('.avalon-selection-actions button')?.focus(),
     )
@@ -880,11 +909,10 @@ export function AvalonLibrary(context: ThemeContext) {
     }
     if ((event.ctrlKey || event.metaKey) && event.key === ' ') {
       event.preventDefault()
-      setSelection((previous) =>
-        previous.includes(games[index].workId)
-          ? previous.filter((id) => id !== games[index].workId)
-          : [...previous, games[index].workId],
-      )
+      const id = games[index].workId
+      const next = selection.includes(id) ? selection.filter((value) => value !== id) : [...selection, id]
+      setSelection(next)
+      setSelected(next.includes(id) ? id : (next.at(-1) ?? null))
       return
     }
     let next = index
@@ -951,7 +979,7 @@ export function AvalonLibrary(context: ThemeContext) {
           </div>
         ) : (
           <>
-            {fullscreen && <Collections context={context} />}
+            {fullscreen && <Collections context={{ ...context, games: libraryGames }} />}
             <div className="avalon-toolbar">
               <button
                 data-controller-context
@@ -979,13 +1007,13 @@ export function AvalonLibrary(context: ThemeContext) {
                 Store
                 <select aria-label="Store" value={store} onChange={(event) => setStore(event.target.value)}>
                   <option value="all">All stores</option>
-                  {[
-                    ...new Set(context.games.flatMap((game) => game.entries.map((entry) => entry.store))),
-                  ].map((value) => (
-                    <option key={value} value={value}>
-                      {storeLabel(value)}
-                    </option>
-                  ))}
+                  {[...new Set(libraryGames.flatMap((game) => game.entries.map((entry) => entry.store)))].map(
+                    (value) => (
+                      <option key={value} value={value}>
+                        {storeLabel(value)}
+                      </option>
+                    ),
+                  )}
                 </select>
               </label>
               <label>
@@ -1030,7 +1058,7 @@ export function AvalonLibrary(context: ThemeContext) {
               <ListOrderActions
                 key={listState.list.id}
                 list={listState.list}
-                games={context.games}
+                games={libraryGames}
                 selected={
                   selection.length
                     ? games.filter((game) => selection.includes(game.workId))
@@ -1047,7 +1075,7 @@ export function AvalonLibrary(context: ThemeContext) {
                   const selectedValues = (rules[key] ?? []) as (string | number)[]
                   if (!selectedValues.length) return []
                   const options = avalonRuleOptions(
-                    context.games,
+                    libraryGames,
                     facts,
                     workspace.data as AvalonWorkspace | undefined,
                     rules,
@@ -1127,7 +1155,16 @@ export function AvalonLibrary(context: ThemeContext) {
                     Remove from Derelict
                   </button>
                 )}
-                {selection.length > 0 && <button onClick={() => setSelection([])}>Clear selection</button>}
+                {selection.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setSelection([])
+                      if (!fullscreen) setSelected(null)
+                    }}
+                  >
+                    Clear selection
+                  </button>
+                )}
               </div>
             }
             {selectionError && (
@@ -1143,6 +1180,22 @@ export function AvalonLibrary(context: ThemeContext) {
               <div
                 ref={scroll}
                 className="avalon-library-scroll"
+                onKeyDownCapture={(event) => {
+                  if (
+                    (event.target as HTMLElement).closest('[data-avalon-game]') &&
+                    [
+                      'ArrowLeft',
+                      'ArrowRight',
+                      'ArrowUp',
+                      'ArrowDown',
+                      'Home',
+                      'End',
+                      'PageUp',
+                      'PageDown',
+                    ].includes(event.key)
+                  )
+                    setSelection([])
+                }}
                 onScroll={() => {
                   if (scroll.current) libraryScroll.set(prefix, scroll.current.scrollTop)
                 }}
@@ -1152,16 +1205,16 @@ export function AvalonLibrary(context: ThemeContext) {
                 ) : !games.length ? (
                   <div className="avalon-empty">
                     <h2>
-                      {context.games.length ? 'No games match these filters.' : 'Your library starts here.'}
+                      {libraryGames.length ? 'No games match these filters.' : 'Your library starts here.'}
                     </h2>
                     <p>
-                      {context.games.length
+                      {libraryGames.length
                         ? 'Try another search or clear your filters.'
                         : 'Connect a store in Settings, or add a game with Manage library.'}
                     </p>
                     <button
                       onClick={() => {
-                        if (!context.games.length) context.setPage('settings')
+                        if (!libraryGames.length) context.setPage('settings')
                         else {
                           setQuery('')
                           listState.selectBucket('all')
@@ -1170,7 +1223,7 @@ export function AvalonLibrary(context: ThemeContext) {
                         }
                       }}
                     >
-                      {context.games.length ? 'Clear filters' : 'Open settings'}
+                      {libraryGames.length ? 'Clear filters' : 'Open settings'}
                     </button>
                   </div>
                 ) : fullscreen ? (
@@ -1189,7 +1242,10 @@ export function AvalonLibrary(context: ThemeContext) {
                         key={game.workId}
                         context={context}
                         game={game}
-                        selected={selected === game.workId || selection.includes(game.workId)}
+                        expansion={projected.marks.get(game.workId)}
+                        selected={
+                          selection.length ? selection.includes(game.workId) : selected === game.workId
+                        }
                         onClick={(event) => selectGame(event, game, index)}
                         onContextMenu={(event) => contextGame(event, game)}
                         onFocus={handlers.onFocus}
@@ -1221,15 +1277,24 @@ export function AvalonLibrary(context: ThemeContext) {
                               key={game.workId}
                               data-avalon-game={game.workId}
                               data-work-id={game.workId}
-                              aria-label={`View ${game.title}`}
-                              aria-pressed={selection.includes(game.workId)}
+                              aria-label={`View ${game.title}${projected.marks.has(game.workId) ? `. ${projected.marks.get(game.workId)!.text}` : ''}`}
+                              aria-pressed={
+                                selection.length ? selection.includes(game.workId) : selected === game.workId
+                              }
                               onClick={(event) => selectGame(event, game, row.index * columns + index)}
                               onContextMenu={(event) => contextGame(event, game)}
                               onFocus={() => setSelected(game.workId)}
                               onKeyDown={(event) => key(event, row.index * columns + index)}
                             >
                               <Artwork workId={game.workId} />
-                              <strong>{game.title}</strong>
+                              <strong className="avalon-record-title">
+                                {game.title}
+                                {projected.marks.has(game.workId) && (
+                                  <small title={projected.marks.get(game.workId)!.text}>
+                                    +{projected.marks.get(game.workId)!.count}
+                                  </small>
+                                )}
+                              </strong>
                               <span>
                                 {[...new Set(game.entries.map((entry) => storeLabel(entry.store)))].join(
                                   ' / ',
@@ -1243,7 +1308,10 @@ export function AvalonLibrary(context: ThemeContext) {
                               key={game.workId}
                               context={context}
                               game={game}
-                              selected={selected === game.workId || selection.includes(game.workId)}
+                              expansion={projected.marks.get(game.workId)}
+                              selected={
+                                selection.length ? selection.includes(game.workId) : selected === game.workId
+                              }
                               onClick={(event) => selectGame(event, game, row.index * columns + index)}
                               onContextMenu={(event) => contextGame(event, game)}
                               onFocus={() => setSelected(game.workId)}
@@ -1260,11 +1328,11 @@ export function AvalonLibrary(context: ThemeContext) {
             {filtersOpen && (
               <AvalonFilterPanel
                 filter={rules}
-                games={avalonFilter(context.games, library.data?.lists ?? [], {
+                games={avalonFilter(libraryGames, library.data?.lists ?? [], {
                   query,
                   bucket,
                   store,
-                  listId,
+                  listId: listState.list?.isLive ? 'all' : listId,
                   sort,
                 })}
                 facts={facts}
@@ -1288,6 +1356,7 @@ export const avalon: ThemeDefinition = {
   Shell: AvalonShell,
   Discover: AvalonDiscover,
   Library: AvalonLibrary,
+  Search: AvalonSearch,
   Details: (context) =>
     context.selectedWorkId != null ? (
       <Details

@@ -1,4 +1,13 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, type KeyboardEvent, type ReactNode } from 'react'
+import {
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  type KeyboardEvent,
+  type ReactNode,
+  type Ref,
+} from 'react'
 import type { LibraryGame } from '../api/types'
 import { useViewState } from '../viewState'
 import { AvalonRowViewport } from './avalon-row-viewport'
@@ -10,6 +19,12 @@ import {
   type AvalonGridPosition,
 } from './avalon-navigation'
 
+export interface AvalonGridHandle {
+  focusFirst(): void
+  focusSelected(): void
+  moveRows(delta: number): void
+}
+
 export function AvalonFullscreenGrid({
   games,
   columns,
@@ -19,6 +34,8 @@ export function AvalonFullscreenGrid({
   onSelected,
   reducedMotion,
   onKeyDown,
+  onTopBoundary,
+  controls,
   children,
 }: {
   games: LibraryGame[]
@@ -29,6 +46,8 @@ export function AvalonFullscreenGrid({
   onSelected(id: number | null): void
   reducedMotion: boolean
   onKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number): void
+  onTopBoundary?(): void
+  controls?: Ref<AvalonGridHandle>
   children(
     game: LibraryGame,
     index: number,
@@ -66,6 +85,22 @@ export function AvalonFullscreenGrid({
     save(next)
     onSelected(next.selectedId)
   }
+  useImperativeHandle(controls, () => ({
+    focusFirst() {
+      apply(selectGrid(position, position.firstRow * columns, ids))
+      // A selected first card does not produce a state change on repeated activation.
+      viewport.current
+        ?.querySelector<HTMLButtonElement>('[data-row-active="true"] [data-avalon-game]')
+        ?.focus({ preventScroll: true })
+    },
+    focusSelected() {
+      pendingFocus.current = true
+      focusSelection()
+    },
+    moveRows(delta) {
+      apply(moveGridRows(position, delta, ids))
+    },
+  }))
   useLayoutEffect(() => {
     if (JSON.stringify(saved) !== JSON.stringify(position)) save(position)
     if (position.selectedId !== selected) onSelected(position.selectedId)
@@ -100,6 +135,13 @@ export function AvalonFullscreenGrid({
       return
     }
     const base = selectGrid(position, index, ids)
+    if (event.key === 'ArrowUp' && index < columns && onTopBoundary) {
+      event.preventDefault()
+      event.stopPropagation()
+      apply(base, false)
+      onTopBoundary()
+      return
+    }
     let next: AvalonGridPosition
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown')
       next = moveGridRows(base, event.key === 'ArrowUp' ? -1 : 1, ids)

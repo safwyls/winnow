@@ -78,6 +78,56 @@ function mount(
 }
 
 describe.each(['desktop', 'fullscreen'] as const)('original game actions in %s details', (mode) => {
+  it('withholds every store action and link for a malformed Steam identity', async () => {
+    const facts = {
+      ...workspace,
+      works: [{ id: 1, name: 'Fez' }],
+      externalIds: [{ releaseId: 10, provider: 'steam', providerId: '80/../../evil' }],
+    }
+    mount(<Details presentation="avalon" workId={1} mode={mode} />, [entry], facts)
+    await screen.findByText('Winnow does not yet hold the identifier this store needs to reach this game.')
+    expect(screen.queryByRole('button', { name: 'Play' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Install' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'More' }))
+    expect(screen.queryByRole('button', { name: 'Store page' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'All patch notes' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'SteamGridDB' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Uninstall in Steam' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'More' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Library' }))
+    expect(screen.queryByRole('button', { name: 'Uninstall in Steam' })).toBeNull()
+  })
+  it('orders More destinations before management and tools and makes hiding reachable', async () => {
+    const { request } = mount(<Details presentation="avalon" workId={1} mode={mode} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'More' }))
+    const buttons = [...document.querySelectorAll('.avalon-details-menu button')].map(
+      (button) => button.textContent,
+    )
+    expect(buttons.indexOf('Store page')).toBeLessThan(buttons.indexOf('Uninstall in Steam'))
+    expect(buttons.indexOf('Uninstall in Steam')).toBeLessThan(buttons.indexOf('Wrong game?'))
+    expect(buttons.indexOf('Wrong game?')).toBeLessThan(buttons.indexOf('Hide game…'))
+    fireEvent.click(screen.getByRole('button', { name: 'Uninstall in Steam' }))
+    await waitFor(() =>
+      expect(request.mock.calls.find(([input]) => input.route === 'actions.execute')?.[0].body).toMatchObject(
+        { action: 'Uninstall' },
+      ),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Hide game…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Keep visible' }))
+    expect(request.mock.calls.some(([input]) => input.route === 'hidden.put')).toBe(false)
+  })
+  it('keeps More label and explanatory tooltip unchanged while its menu opens and closes', async () => {
+    mount(<Details presentation="avalon" workId={1} mode={mode} />)
+    const more = await screen.findByRole('button', { name: 'More' })
+    const tooltip = 'Store and news links, installation, folder, metadata, corrections and hide'
+    expect(more.title).toBe(tooltip)
+    fireEvent.click(more)
+    expect(screen.getByRole('button', { name: 'More' })).toBe(more)
+    expect(more.title).toBe(tooltip)
+    fireEvent.click(more)
+    expect(more.title).toBe(tooltip)
+    expect(more.getAttribute('aria-expanded')).toBe('false')
+  })
   it.each(['steam', 'gog', 'epic'])(
     'dispatches the %s play or install command using its ownership and a unique operation',
     async (store) => {

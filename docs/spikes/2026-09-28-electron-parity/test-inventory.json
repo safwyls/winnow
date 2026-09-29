@@ -1,11 +1,11 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 1128,
-    "partial": 166,
-    "ported": 600,
+    "pending": 1040,
+    "partial": 159,
+    "ported": 689,
     "retained-backend": 535,
-    "framework-specific": 6
+    "framework-specific": 12
   },
   "tests": [
     {
@@ -5676,7 +5676,14 @@
     {
       "id": "GameDetailsViewModelTests.A_malformed_appid_never_reaches_a_url",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-action-controls.test.tsx",
+          "case": "withholds every store action and link for a malformed Steam identity"
+        }
+      ],
+      "reason": "Both Avalon presentation paths exercise the original source condition through the production Details component and its API facts; absent values remain absent and controls stay actionable."
     },
     {
       "id": "GameDetailsViewModelTests.A_hostile_patch_notes_url_lists_the_update_and_offers_no_button",
@@ -5693,12 +5700,26 @@
     {
       "id": "GameDetailsViewModelTests.An_update_with_no_page_behind_it_says_so",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-details-facts.test.tsx",
+          "case": "retains an update with a hostile URL while offering no open button"
+        }
+      ],
+      "reason": "Both Avalon presentation paths exercise the original source condition through the production Details component and its API facts; absent values remain absent and controls stay actionable."
     },
     {
       "id": "GameDetailsViewModelTests.An_update_with_a_page_behind_it_says_nothing",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-details-facts.test.tsx",
+          "case": "offers a valid update page without adding an unavailable-page message"
+        }
+      ],
+      "reason": "Both Avalon presentation paths exercise the original source condition through the production Details component and its API facts; absent values remain absent and controls stay actionable."
     },
     {
       "id": "GameDetailsViewModelTests.An_installed_game_offers_a_real_steam_launch",
@@ -5771,37 +5792,106 @@
     {
       "id": "GameDetailsViewModelTests.Rail_marks_sit_where_the_update_landed_in_the_gap",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "This method asserts the obsolete GameDetailsViewModel RailMarks/GapCaption model. Neither the baseline desktop GameDetailsView.axaml nor fullscreen Details/History pages bind those properties. Current design-system section10.2 and both active views use the activity timeline: calendar/tracked geometry and clustered update marks without a14-mark cap. Electron tests derive unread state from last play plus release watermarks and keep every clustered update selectable. The old normalized gap positions, caption strings and14-mark truncation are not active behavior to reproduce.",
+      "tests": [
+        {
+          "file": "tests/parity-activity-timeline.test.tsx",
+          "case": "derives unread marks from correlated pushes and their own release watermarks"
+        },
+        {
+          "file": "tests/parity-activity-timeline.test.tsx",
+          "case": "clusters unlimited update marks and requests tracked history on activation"
+        }
+      ]
     },
     {
       "id": "GameDetailsViewModelTests.Updates_from_before_the_last_session_are_history_not_marks",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "This method asserts the obsolete GameDetailsViewModel RailMarks/GapCaption model. Neither the baseline desktop GameDetailsView.axaml nor fullscreen Details/History pages bind those properties. Current design-system section10.2 and both active views use the activity timeline: calendar/tracked geometry and clustered update marks without a14-mark cap. Electron tests derive unread state from last play plus release watermarks and keep every clustered update selectable. The old normalized gap positions, caption strings and14-mark truncation are not active behavior to reproduce.",
+      "tests": [
+        {
+          "file": "tests/parity-activity-timeline.test.tsx",
+          "case": "derives unread marks from correlated pushes and their own release watermarks"
+        },
+        {
+          "file": "tests/parity-activity-timeline.test.tsx",
+          "case": "clusters unlimited update marks and requests tracked history on activation"
+        }
+      ]
     },
     {
       "id": "GameDetailsViewModelTests.A_missed_update_marks_its_row_and_leaves_the_heading_alone",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "This method asserts the obsolete GameDetailsViewModel RailMarks/GapCaption model. Neither the baseline desktop GameDetailsView.axaml nor fullscreen Details/History pages bind those properties. Current design-system section10.2 and both active views use the activity timeline: calendar/tracked geometry and clustered update marks without a14-mark cap. Electron tests derive unread state from last play plus release watermarks and keep every clustered update selectable. The old normalized gap positions, caption strings and14-mark truncation are not active behavior to reproduce.",
+      "tests": [
+        {
+          "file": "tests/parity-activity-timeline.test.tsx",
+          "case": "derives unread marks from correlated pushes and their own release watermarks"
+        },
+        {
+          "file": "tests/parity-activity-timeline.test.tsx",
+          "case": "clusters unlimited update marks and requests tracked history on activation"
+        }
+      ]
     },
     {
       "id": "GameDetailsViewModelTests.Several_missed_updates_are_counted_in_the_plural",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "This method asserts the obsolete GameDetailsViewModel RailMarks/GapCaption model. Neither the baseline desktop GameDetailsView.axaml nor fullscreen Details/History pages bind those properties. Current design-system section10.2 and both active views use the activity timeline: calendar/tracked geometry and clustered update marks without a14-mark cap. Electron tests derive unread state from last play plus release watermarks and keep every clustered update selectable. The old normalized gap positions, caption strings and14-mark truncation are not active behavior to reproduce.",
+      "tests": [
+        {
+          "file": "tests/parity-activity-timeline.test.tsx",
+          "case": "derives unread marks from correlated pushes and their own release watermarks"
+        },
+        {
+          "file": "tests/parity-activity-timeline.test.tsx",
+          "case": "clusters unlimited update marks and requests tracked history on activation"
+        }
+      ]
     },
     {
       "id": "GameDetailsViewModelTests.A_game_that_was_never_opened_gets_a_sentence_instead_of_a_rail",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "distinguishes no play from missing last-session dates for %s minutes"
+        }
+      ],
+      "reason": "Both Avalon presentation paths exercise the original source condition through the production Details component and its API facts; absent values remain absent and controls stay actionable."
     },
     {
       "id": "GameDetailsViewModelTests.Playtime_without_a_date_says_so_rather_than_saying_never",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "distinguishes no play from missing last-session dates for %s minutes"
+        }
+      ],
+      "reason": "Both Avalon presentation paths exercise the original source condition through the production Details component and its API facts; absent values remain absent and controls stay actionable."
     },
     {
       "id": "GameDetailsViewModelTests.The_rail_caps_its_marks_and_the_list_does_not",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "This method asserts the obsolete GameDetailsViewModel RailMarks/GapCaption model. Neither the baseline desktop GameDetailsView.axaml nor fullscreen Details/History pages bind those properties. Current design-system section10.2 and both active views use the activity timeline: calendar/tracked geometry and clustered update marks without a14-mark cap. Electron tests derive unread state from last play plus release watermarks and keep every clustered update selectable. The old normalized gap positions, caption strings and14-mark truncation are not active behavior to reproduce.",
+      "tests": [
+        {
+          "file": "tests/parity-activity-timeline.test.tsx",
+          "case": "derives unread marks from correlated pushes and their own release watermarks"
+        },
+        {
+          "file": "tests/parity-activity-timeline.test.tsx",
+          "case": "clusters unlimited update marks and requests tracked history on activation"
+        }
+      ]
     },
     {
       "id": "GameDetailsViewModelTests.With_no_readings_the_record_line_is_absent_rather_than_empty_prose",
@@ -5878,17 +5968,38 @@
     {
       "id": "GameDetailsViewModelTests.Year_and_publisher_share_one_line_and_neither_invents_the_other",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "draws year %s and publisher %s without inventing an identity field"
+        }
+      ],
+      "reason": "Both Avalon presentation paths exercise the original source condition through the production Details component and its API facts; absent values remain absent and controls stay actionable."
     },
     {
       "id": "GameDetailsViewModelTests.A_provisional_title_is_named_as_one",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "names the provisional title only when the workspace declares it provisional %s"
+        }
+      ],
+      "reason": "Both Avalon presentation paths exercise the original source condition through the production Details component and its API facts; absent values remain absent and controls stay actionable."
     },
     {
       "id": "GameDetailsViewModelTests.The_sparse_case_still_says_something_in_every_band",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "keeps a metadata-poor provisional game readable and installable without inventing a session or folder"
+        }
+      ],
+      "reason": "Both Avalon presentation paths exercise the original source condition through the production Details component and its API facts; absent values remain absent and controls stay actionable."
     },
     {
       "id": "GameDetailsViewModelTests.Reduced_motion_reaches_the_panel",
@@ -5898,17 +6009,38 @@
     {
       "id": "GameDetailsViewModelTests.The_action_band_trigger_keeps_one_face",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-action-controls.test.tsx",
+          "case": "keeps More label and explanatory tooltip unchanged while its menu opens and closes"
+        }
+      ],
+      "reason": "Both Avalon presentation paths exercise the original source condition through the production Details component and its API facts; absent values remain absent and controls stay actionable."
     },
     {
       "id": "GameDetailsViewModelTests.Hide_is_drawn_only_when_the_library_handed_over_its_command",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "The source verifies nullable Avalonia RelayCommand injection into a popup view model (including object reference identity), so the popup can work without a Window ancestor. The independent Electron client always has the authenticated hidden.put API and needs no injected command. Its More-menu Hide/Cancel behavior is covered on both surfaces; the original optional service-registration branch has no Electron counterpart.",
+      "tests": [
+        {
+          "file": "tests/parity-action-controls.test.tsx",
+          "case": "orders More destinations before management and tools and makes hiding reachable"
+        }
+      ]
     },
     {
       "id": "GameDetailsViewModelTests.Update_shortcut_selects_the_updates_tab_and_names_its_unread_state",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "keeps refresh in place and routes the unread shortcut to the named Updates tab"
+        }
+      ],
+      "reason": "Both Avalon presentation paths exercise the original source condition through the production Details component and its API facts; absent values remain absent and controls stay actionable."
     },
     {
       "id": "GameJournalViewModelTests.Journal_edits_and_deletes_the_saved_entry",
@@ -7086,142 +7218,354 @@
     {
       "id": "IgdbMatchViewModelTests.A_search_lists_candidates_with_cover_year_and_platform",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "shows cover year and platforms with a tooltip and no empty detail line for sparse rows"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.A_candidate_with_no_year_and_no_platform_draws_no_detail_line",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "shows cover year and platforms with a tooltip and no empty detail line for sparse rows"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.A_search_that_matched_nothing_says_so_and_is_not_a_problem",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "announces a pending search in words and removes its status when an empty result arrives"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.A_blank_title_is_not_searchable",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "starts with the library title and refuses blank searches without sending a request"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.The_status_field_is_cleared_when_the_search_returns",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "announces a pending search in words and removes its status when an empty result arrives"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.Choosing_a_candidate_pins_it_and_reopens_the_modal",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "pins a chosen entry with the searched revision and carries its title through a library and artwork refresh"
+        },
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "returns from %s to refreshed Details with a carried confirmation"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.A_refusal_is_stated_and_nothing_is_pinned",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "keeps %s as its own refusal without pinning or refreshing the library"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.Each_refusal_has_its_own_sentence",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "keeps %s as its own refusal without pinning or refreshing the library"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.A_claimed_entry_offers_to_link_and_names_the_holder",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "offers a named holder with cover and year and clears the collision alert"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.Accepting_the_offer_links_under_the_holder_and_pins_nothing",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "links under the holder using the review revision without pinning the child"
+        },
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "returns from %s to refreshed Details with a carried confirmation"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.Declining_the_offer_writes_nothing_and_restores_the_refusal",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "declines without a write and restores the refusal while keeping candidates"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.A_collision_with_nothing_to_offer_stays_a_plain_refusal",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "keeps the collision refusal when the backend has no identity review capability"
+        },
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "keeps %s as its own refusal without pinning or refreshing the library"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.A_holder_that_is_this_same_work_offers_nothing",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "refuses a holder that is the same work without offering an invalid link"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.A_link_that_did_not_land_keeps_the_offer",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "keeps a refused link offer for retry and reports the failure with no success callback"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.The_offer_has_copy_of_its_own",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "gives the claim its own accessible copy and announces linking until the write settles"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.A_work_on_automatic_resolution_offers_nothing_to_clear",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "offers no clear control for automatic matching"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.A_pinned_work_can_be_returned_to_automatic_resolution",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "returns a pin to automatic matching and refreshes its artwork with a carried confirmation"
+        },
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "returns from %s to refreshed Details with a carried confirmation"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.A_clear_that_did_not_land_keeps_the_control",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "keeps a refused clear pinned and available with an alert and no refresh"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.The_search_is_folded_away_until_it_is_asked_for",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "keeps the game match menu face and query while its own Back control folds the editor"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.The_menu_row_keeps_one_face",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "keeps the game match menu face and query while its own Back control folds the editor"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.The_section_closes_itself",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "keeps the game match menu face and query while its own Back control folds the editor"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.Choosing_an_open_row_again_keeps_the_section_and_what_stands_in_it",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "preserves the query candidates and claim when the existing editor is entered again"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.The_field_opens_on_the_title_the_library_shows",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "starts with the library title and refuses blank searches without sending a request"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.An_id_match_leads_the_list_and_is_marked_as_one",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "prepends one marked ID hit for %s while retaining title results and their details"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.An_id_match_draws_the_same_detail_line_as_a_title_result",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "prepends one marked ID hit for %s while retaining title results and their details"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.An_id_match_is_not_repeated_by_the_title_search",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "prepends one marked ID hit for %s while retaining title results and their details"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.A_title_that_starts_with_digits_never_reaches_the_id_lookup",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "uses only title lookup for %s"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbMatchViewModelTests.An_id_that_matches_nothing_says_so_beside_the_title_results",
       "source": "tests/Winnow.Tests/IgdbMatchViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-match.test.tsx",
+          "case": "reports an ID miss beside the surviving title results without presenting a failure"
+        }
+      ],
+      "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
     },
     {
       "id": "IgdbObservationIsolationTests.An_old_response_cannot_write_after_reassignment_even_when_the_same_id_returns",
@@ -7431,47 +7775,134 @@
     {
       "id": "LibraryGrainTests.An_expansion_link_does_not_collapse_a_tile",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-grain.test.ts",
+          "case": "keeps an unlinked library and disabled expansion links tile for tile with the original row identities"
+        }
+      ],
+      "reason": "With grouping disabled the exact raw game array and entry objects remain, including the expansion's own zero playtime and Never played bucket. Identity relationships do not collapse expansion tiles by default."
     },
     {
       "id": "LibraryGrainTests.The_stored_grouping_preference_defaults_to_off",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-grain.test.ts",
+          "case": "defaults stored %s to grouping=%s and round trips its formatted value"
+        }
+      ],
+      "reason": "The exact null, empty, whitespace, invalid, false, true and trimmed mixed-case source matrix is covered, including formatting the parsed Boolean and parsing it again."
     },
     {
       "id": "LibraryGrainTests.Grouping_folds_the_pack_into_its_base_and_the_counts_follow",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-grain.test.ts",
+          "case": "folds a pack with %s minutes and carries its count without adding its stores dates bucket or playtime to the base"
+        },
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "folds expansions with %s minutes before rail list and search cuts and restores their own tiles when grouping is disabled"
+        }
+      ],
+      "reason": "Both surfaces fold three raw games into two tiles and matching All games/Never played rail counts; desktop also checks the total and list row. Base entries, 12000 minutes, date and bucket remain unchanged. Pack-only lists and title cuts operate after folding, and disabling grouping restores the separate pack."
     },
     {
       "id": "LibraryGrainTests.A_folded_pack_that_was_never_played_says_so_on_its_base",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-grain.test.ts",
+          "case": "folds a pack with %s minutes and carries its count without adding its stores dates bucket or playtime to the base"
+        },
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "folds expansions with %s minutes before rail list and search cuts and restores their own tiles when grouping is disabled"
+        }
+      ],
+      "reason": "The zero-minute case records count one and unplayed true; desktop grid/list and fullscreen expose +1 plus the original Includes 1 expansion, one of them never played wording in the accessible game name."
     },
     {
       "id": "LibraryGrainTests.A_folded_pack_that_was_played_marks_the_count_and_claims_nothing_more",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-grain.test.ts",
+          "case": "folds a pack with %s minutes and carries its count without adding its stores dates bucket or playtime to the base"
+        },
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "folds expansions with %s minutes before rail list and search cuts and restores their own tiles when grouping is disabled"
+        }
+      ],
+      "reason": "The played-pack case records count one and unplayed false; both surfaces and desktop list include the count without claiming never played. Base playtime remains 12000 minutes."
     },
     {
       "id": "LibraryGrainTests.A_pack_whose_base_is_not_in_the_library_keeps_its_own_tile",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-grain.test.ts",
+          "case": "keeps a pack whose base is absent and ignores variants and retracted relationships"
+        }
+      ],
+      "reason": "A link to an absent base leaves the exact pack row in the visible array with no expansion marker. The same pure projection drives both surfaces and their counts."
     },
     {
       "id": "LibraryGrainTests.Grouping_changes_no_row_the_recommender_reads",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-grain.test.ts",
+          "case": "folds a pack with %s minutes and carries its count without adding its stores dates bucket or playtime to the base"
+        },
+        {
+          "file": "tests/electron/library-lifecycle.spec.ts",
+          "case": "folds real expansion links and applies a changed default while preserving raw game facts"
+        }
+      ],
+      "reason": "Both native surfaces create a real expansion link through the production API, verify that the unplayed pack has its own ownership bucket, enable grouping in Settings, and compare every raw library game and workspace bucket before and after the visible grid folds. The backend facts read by recommendation consumers stay identical. A pack-only manual list becomes empty under the projection, and switching grouping off restores its tile."
     },
     {
       "id": "LibraryGrainTests.Every_count_on_screen_agrees_with_its_own_definition",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "counts grouped games once in the rail and per store and keeps a multi-store game in either store cut"
+        },
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "counts each grouped title once per store before screen filtering"
+        },
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "shows formatted whole-library totals and account summary with tabular figure styling"
+        }
+      ],
+      "reason": "The source three-game overlap matrix checks All games and each bucket against the displayed games, Steam=2/Epic=1/GOG=1 residual filter counts, and stable total after a store cut on both surfaces. Platforms independently checks the same per-game/per-store rule and displayed formatted totals across both modes."
     },
     {
       "id": "LibraryGrainTests.A_store_cut_keeps_a_game_owned_on_either_store",
       "source": "tests/Winnow.Tests/LibraryGrainTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "counts grouped games once in the rail and per store and keeps a multi-store game in either store cut"
+        }
+      ],
+      "reason": "Both Library surfaces report the source Epic count of one and selecting Epic keeps the game whose grouped entries include Steam and Epic. Filtering checks all grouped entries rather than only the primary ownership."
     },
     {
       "id": "LibraryGrainTests.Selection_keyboard_and_the_modal_all_work_from_a_collapsed_tile",
@@ -7620,7 +8051,18 @@
     {
       "id": "LibrarySettingsViewModelTests.Default_sort_round_trips_without_overwriting_temporary_sort",
       "source": "tests/Winnow.Tests/LibrarySettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-default-sort.test.tsx",
+          "case": "round trips %s through Settings and keeps a later temporary order out of the saved preference"
+        },
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "applies changed default %s over a temporary sort without persisting browsing choices"
+        }
+      ],
+      "reason": "All six original default orders are saved by the actual Settings component through the named API, observed by Library, and restored into a fresh preference cache after a later temporary browsing sort. The temporary sort causes no preference write. Both desktop and fullscreen exercise the lifecycle and visible game order. API-backed preference storage replaces the original Settings repository fixture."
     },
     {
       "id": "LibrarySettingsViewModelTests.Invalid_default_sort_uses_dormancy",
@@ -7662,37 +8104,94 @@
     {
       "id": "LibrarySettingsViewModelTests.A_hand_added_game_appears_in_the_library",
       "source": "tests/Winnow.Tests/LibrarySettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/ManualGameParityTests.cs",
+          "case": "Create_edit_and_delete_update_the_library_and_persist_across_restart"
+        }
+      ],
+      "reason": "Real production HTTP creates a manual entry with executable-derived installation state, updates the visible library and verifies both changes after backend restart."
     },
     {
       "id": "LibrarySettingsViewModelTests.A_hand_added_game_can_be_edited",
       "source": "tests/Winnow.Tests/LibrarySettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/ManualGameParityTests.cs",
+          "case": "Create_edit_and_delete_update_the_library_and_persist_across_restart"
+        }
+      ],
+      "reason": "Real production HTTP creates a manual entry with executable-derived installation state, updates the visible library and verifies both changes after backend restart."
     },
     {
       "id": "LibrarySettingsViewModelTests.A_hand_added_game_is_deleted_only_after_a_confirmation",
       "source": "tests/Winnow.Tests/LibrarySettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-manual-form.test.tsx",
+          "case": "names the game in a cancel-first removal prompt and only removes after confirmation"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/ManualGameParityTests.cs",
+          "case": "Create_edit_and_delete_update_the_library_and_persist_across_restart"
+        }
+      ],
+      "reason": "Both modes name the entry, begin on Keep game, preserve it after cancellation and remove only after confirmation. Production HTTP also proves removal from manual entries and library across restart."
     },
     {
       "id": "LibrarySettingsViewModelTests.A_conflicting_steam_appid_is_reported_against_its_own_field",
       "source": "tests/Winnow.Tests/LibrarySettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-manual-form.test.tsx",
+          "case": "places an already claimed %s conflict only on the identifier and allows correction"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/ManualGameParityTests.cs",
+          "case": "A_claimed_Steam_identifier_names_its_field_and_creates_no_manual_entry"
+        }
+      ],
+      "reason": "Both modes preserve draft text, place the claimed-ID conflict only on its own field and allow a corrected retry; production HTTP confirms collision with a real Steam entry creates no manual data."
     },
     {
       "id": "LibrarySettingsViewModelTests.A_blank_title_is_reported_against_the_title_field",
       "source": "tests/Winnow.Tests/LibrarySettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-manual-form.test.tsx",
+          "case": "reports invalid %s=%s beside that field without writing"
+        }
+      ],
+      "reason": "Both modes cover the original whitespace title, nonnumeric ID, 1899/2201 years, nonpositive IGDB and zero/uint-overflow Steam IDs. Each retains the draft with one accessible field error and no backend write."
     },
     {
       "id": "LibrarySettingsViewModelTests.A_non_numeric_id_is_reported_against_its_own_field",
       "source": "tests/Winnow.Tests/LibrarySettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-manual-form.test.tsx",
+          "case": "reports invalid %s=%s beside that field without writing"
+        }
+      ],
+      "reason": "Both modes cover the original whitespace title, nonnumeric ID, 1899/2201 years, nonpositive IGDB and zero/uint-overflow Steam IDs. Each retains the draft with one accessible field error and no backend write."
     },
     {
       "id": "LibrarySettingsViewModelTests.Manual_form_uses_the_same_year_and_identifier_bounds_as_the_repository",
       "source": "tests/Winnow.Tests/LibrarySettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-manual-form.test.tsx",
+          "case": "reports invalid %s=%s beside that field without writing"
+        }
+      ],
+      "reason": "Both modes cover the original whitespace title, nonnumeric ID, 1899/2201 years, nonpositive IGDB and zero/uint-overflow Steam IDs. Each retains the draft with one accessible field error and no backend write."
     },
     {
       "id": "LibrarySyncSchedulingTests.The_snapshot_scheduler_ticks_the_local_job_and_never_the_remote_one",
@@ -7823,7 +8322,18 @@
     {
       "id": "LibraryViewModelTests.Filtering_away_the_selection_clears_it",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "clears filtered and explicitly cleared primary selection in the desktop %s"
+        },
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "prunes hidden multi-selection without bringing it back when the filter is cleared"
+        }
+      ],
+      "reason": "Desktop grid and list remove the hidden primary selection and its actions, and clearing the query does not resurrect it. Both surfaces also prune hidden bulk selections. Fullscreen retains its separately specified navigation cursor on a remaining visible game."
     },
     {
       "id": "LibraryViewModelTests.Nothing_is_open_until_the_detail_command_runs",
@@ -8105,14 +8615,18 @@
     {
       "id": "ListsViewModelTests.Default_sort_change_preserves_manual_list_and_applies_on_exit",
       "source": "tests/Winnow.Tests/ListsViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-library-workflows.test.tsx",
           "case": "opens manual lists in member order, leaves predefined buckets, and restores the prior/default sort on exit"
+        },
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "applies a saved default on return while retaining a manual list until it closes"
         }
       ],
-      "reason": "Both modes retain member order after the default changes, then adopt the new default when leaving an implicitly sorted library. Persistent preference storage remains outside this test."
+      "reason": "Both surfaces retain ListOrder after a default change, including an existing explicit temporary order and a Settings-style unmount/remount, then apply the changed default on exit. The source method exercises ApplyDefaultSort and list exit, not preference persistence."
     },
     {
       "id": "ListsViewModelTests.Adding_the_same_title_twice_does_not_move_it",
@@ -14919,97 +15433,234 @@
     {
       "id": "StoresViewModelTests.Steam_states_what_connecting_nothing_costs",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "states which library coverage a saved API key=%s adds"
+        }
+      ],
+      "reason": "Both presentation modes show connection status, liveness, API state and the concrete coverage added by a key."
     },
     {
       "id": "StoresViewModelTests.Steam_with_a_key_says_what_the_key_added",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "states which library coverage a saved API key=%s adds"
+        }
+      ],
+      "reason": "Both presentation modes show connection status, liveness, API state and the concrete coverage added by a key."
     },
     {
       "id": "StoresViewModelTests.A_saved_key_clears_the_field_and_says_it_is_in_use",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-connections.test.tsx",
+          "case": "retains a refused key input and clears it only after a successful protected save"
+        }
+      ],
+      "reason": "Both modes retain refused input with refusal copy, then clear it and show the saved notice only after secure storage succeeds."
     },
     {
       "id": "StoresViewModelTests.A_refused_save_says_so_and_keeps_the_input",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-connections.test.tsx",
+          "case": "retains a refused key input and clears it only after a successful protected save"
+        }
+      ],
+      "reason": "Both modes retain refused input with refusal copy, then clear it and show the saved notice only after secure storage succeeds."
     },
     {
       "id": "StoresViewModelTests.The_settings_segment_reads_platforms",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "opens on Steam and shows exactly one platform card while switching in either direction"
+        }
+      ],
+      "reason": "The actual Settings route is Platforms, opens on Steam, switches each direction with one visible card, and GOG offers no account action."
     },
     {
       "id": "StoresViewModelTests.The_purchase_import_is_a_section_of_this_panel",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "shows both purchase import explanations before choosing a route, with no saved credential required"
+        }
+      ],
+      "reason": "The Steam purchase section opens one dialog containing both route explanations at the same disclosure level and both available actions without credentials."
     },
     {
       "id": "StoresViewModelTests.The_three_modals_start_closed_and_are_mutually_exclusive",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "starts all Steam layers closed and replaces help, purchase, consent and account layers without stacking"
+        }
+      ],
+      "reason": "Both modes start closed, switch among all four Steam layers with exactly one dialog, retain the account-attribution caveat and leave optional capture unticked without starting sign-in."
     },
     {
       "id": "StoresViewModelTests.The_card_button_opens_consent_and_does_not_sign_in",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "starts all Steam layers closed and replaces help, purchase, consent and account layers without stacking"
+        }
+      ],
+      "reason": "Both modes start closed, switch among all four Steam layers with exactly one dialog, retain the account-attribution caveat and leave optional capture unticked without starting sign-in."
     },
     {
       "id": "StoresViewModelTests.Opening_consent_leaves_the_purchase_permission_unticked",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "starts all Steam layers closed and replaces help, purchase, consent and account layers without stacking"
+        }
+      ],
+      "reason": "Both modes start closed, switch among all four Steam layers with exactly one dialog, retain the account-attribution caveat and leave optional capture unticked without starting sign-in."
     },
     {
       "id": "StoresViewModelTests.The_two_state_words_say_what_is_on_and_which_credential_carries_it",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-connections.test.tsx",
+          "case": "keeps both methods present with key=%s session=%s and marks the credential carrying API calls"
+        }
+      ],
+      "reason": "All four key/session combinations render local-file state and the API credential marker; a stored key takes precedence when both are usable."
     },
     {
       "id": "StoresViewModelTests.The_in_use_marker_names_the_same_credential_the_state_word_does",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-connections.test.tsx",
+          "case": "keeps both methods present with key=%s session=%s and marks the credential carrying API calls"
+        }
+      ],
+      "reason": "All four key/session combinations render local-file state and the API credential marker; a stored key takes precedence when both are usable."
     },
     {
       "id": "StoresViewModelTests.The_accounts_caveat_is_reachable_from_the_summary_line",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "starts all Steam layers closed and replaces help, purchase, consent and account layers without stacking"
+        }
+      ],
+      "reason": "Both modes start closed, switch among all four Steam layers with exactly one dialog, retain the account-attribution caveat and leave optional capture unticked without starting sign-in."
     },
     {
       "id": "StoresViewModelTests.The_accounts_section_states_the_total_and_the_account_count",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "omits empty counts and uses singular account nouns"
+        },
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "shows formatted whole-library totals and account summary with tabular figure styling"
+        }
+      ],
+      "reason": "Tests cover omitted zero counts and singular nouns, plus the separate 1,247 games across 2 accounts fixture."
     },
     {
       "id": "StoresViewModelTests.An_unconfirmed_account_marks_the_section_as_pending",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "composes with an unavailable count source and marks account confirmation pending until confirmed"
+        }
+      ],
+      "reason": "A missing count source draws no figures; unconfirmed identity displays pending state and disables the scope control until the confirmed snapshot arrives."
     },
     {
       "id": "StoresViewModelTests.The_platform_tabs_open_on_steam",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "opens on Steam and shows exactly one platform card while switching in either direction"
+        }
+      ],
+      "reason": "The actual Settings route is Platforms, opens on Steam, switches each direction with one visible card, and GOG offers no account action."
     },
     {
       "id": "StoresViewModelTests.Exactly_one_platform_card_is_visible_at_a_time",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "opens on Steam and shows exactly one platform card while switching in either direction"
+        }
+      ],
+      "reason": "The actual Settings route is Platforms, opens on Steam, switches each direction with one visible card, and GOG offers no account action."
     },
     {
       "id": "StoresViewModelTests.A_platform_needing_attention_marks_its_tab_from_another_tab",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "keeps lapsed Epic and failing Steam attention visible on other tabs without starting a connection"
+        }
+      ],
+      "reason": "Hidden Epic expiry and failing Steam renewal remain visible on platform tabs; GOG has no attention marker and reading state starts no account operation."
     },
     {
       "id": "StoresViewModelTests.The_purchase_import_arrives_closed_behind_one_button",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "starts all Steam layers closed and replaces help, purchase, consent and account layers without stacking"
+        }
+      ],
+      "reason": "Both modes start closed, switch among all four Steam layers with exactly one dialog, retain the account-attribution caveat and leave optional capture unticked without starting sign-in."
     },
     {
       "id": "StoresViewModelTests.Neither_import_route_has_its_explanation_hidden_behind_the_other",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "shows both purchase import explanations before choosing a route, with no saved credential required"
+        }
+      ],
+      "reason": "The Steam purchase section opens one dialog containing both route explanations at the same disclosure level and both available actions without credentials."
     },
     {
       "id": "StoresViewModelTests.A_panel_composed_without_the_import_draws_no_purchase_section",
@@ -15026,32 +15677,82 @@
     {
       "id": "StoresViewModelTests.Refreshing_the_panel_refreshes_the_folded_import",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "refreshes folded capture availability and keeps saved files reachable without sign-in or a browser"
+        }
+      ],
+      "reason": "Refreshing and opening the folded section evaluates native capture availability without opening a browser; saved HTML stays enabled without a key, session or capture capability."
     },
     {
       "id": "StoresViewModelTests.The_saved_file_import_is_reachable_with_no_sign_in_and_no_key",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "refreshes folded capture availability and keeps saved files reachable without sign-in or a browser"
+        }
+      ],
+      "reason": "Refreshing and opening the folded section evaluates native capture availability without opening a browser; saved HTML stays enabled without a key, session or capture capability."
     },
     {
       "id": "StoresViewModelTests.Gog_states_that_there_is_nothing_to_sign_into",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "opens on Steam and shows exactly one platform card while switching in either direction"
+        }
+      ],
+      "reason": "The actual Settings route is Platforms, opens on Steam, switches each direction with one visible card, and GOG offers no account action."
     },
     {
       "id": "StoresViewModelTests.Counts_come_from_the_whole_library_and_render_tabular",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "shows formatted whole-library totals and account summary with tabular figure styling"
+        },
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "counts each grouped title once per store before screen filtering"
+        },
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "uses the shared expansion projection without adding a folded pack store to its base"
+        }
+      ],
+      "reason": "Both modes show the original 1,247/67/14 figures from the full library. Shared projection and per-store distinctness tests guard folding and repeated editions."
     },
     {
       "id": "StoresViewModelTests.A_store_with_no_titles_shows_no_count_rather_than_a_zero",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "omits empty counts and uses singular account nouns"
+        }
+      ],
+      "reason": "Empty platform figures are absent rather than rendered as zero."
     },
     {
       "id": "StoresViewModelTests.The_panel_composes_without_a_count_source",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-platforms.test.tsx",
+          "case": "composes with an unavailable count source and marks account confirmation pending until confirmed"
+        }
+      ],
+      "reason": "A missing count source draws no figures; unconfirmed identity displays pending state and disables the scope control until the confirmed snapshot arrives."
     },
     {
       "id": "TaskbarJumpListControllerTests.Recent_games_are_launchable_ordered_and_limited_to_ten",
@@ -18867,7 +19568,7 @@
     {
       "id": "FullscreenRowNavigationTests.Fullscreen_shell_keeps_outgoing_cards_opaque_across_all_row_transitions",
       "source": "tests/Winnow.Ui.Tests/FullscreenRowNavigationTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/electron/avalon-layout.spec.ts",
@@ -18876,9 +19577,13 @@
         {
           "file": "tests/electron/avalon-layout.spec.ts",
           "case": "fullscreen retains row nodes, carries and clamps columns on revisits, and reverses without fading"
+        },
+        {
+          "file": "tests/electron/avalon-search.spec.ts",
+          "case": "fullscreen Search returns to the same column, pages from its header, and releases narrowed rows"
         }
       ],
-      "reason": "Native Home, Library and inline-filtered Library verify outgoing rows remain opaque and inert during retained-row movement. The original separate Search presentation has not been migrated."
+      "reason": "Native Home, Library and dedicated Search sample computed opacity and inactive outgoing rows in the shipped fullscreen shell. Search installs its frame observer before input and verifies rows, cover controls and artwork remain opacity1 during actual movement; neighboring rows remain inert."
     },
     {
       "id": "FullscreenRowNavigationTests.Immediate_navigation_after_content_expands_uses_current_rows_before_queued_rebuild",
@@ -18903,9 +19608,18 @@
     {
       "id": "FullscreenRowNavigationTests.Search_returns_from_go_to_results_to_the_first_row_in_the_same_column",
       "source": "tests/Winnow.Ui.Tests/FullscreenRowNavigationTests.cs",
-      "status": "pending",
-      "tests": [],
-      "reason": "Electron currently presents inline Library search. The original dedicated Search page with its Go to results focus stop, return to the same first-row column and LT/RT two-row paging remains unported."
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-search.test.tsx",
+          "case": "returns from Go to results to the first row in the same column"
+        },
+        {
+          "file": "tests/electron/avalon-search.spec.ts",
+          "case": "fullscreen Search returns to the same column, pages from its header, and releases narrowed rows"
+        }
+      ],
+      "reason": "The third Search result moves Up to Go to results and Down to the identical first-row column without scrolling or animating. Verified through the real Search component and native Electron keyboard handling."
     },
     {
       "id": "FullscreenRowNavigationTests.Home_moves_retained_shelves_and_reverses_without_replacing_their_cards",
@@ -18930,7 +19644,7 @@
     {
       "id": "FullscreenRowNavigationTests.Grid_navigation_slides_one_row_preserves_overlap_and_bounds_realization",
       "source": "tests/Winnow.Ui.Tests/FullscreenRowNavigationTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/avalon-fullscreen-grid.test.tsx",
@@ -18939,14 +19653,22 @@
         {
           "file": "tests/electron/avalon-layout.spec.ts",
           "case": "fullscreen ${searching ? 'filtered results' : 'Library'} retain two rows, slide opaque neighbors and release rows when narrowed"
+        },
+        {
+          "file": "tests/avalon-search.test.tsx",
+          "case": "retains overlapping Search rows through controlled travel and evicts rows after repeated navigation"
+        },
+        {
+          "file": "tests/electron/avalon-search.spec.ts",
+          "case": "fullscreen Search returns to the same column, pages from its header, and releases narrowed rows"
         }
       ],
-      "reason": "The Library path preserves actual overlapping DOM rows, immediately focuses the destination, bounds realized rows after repeated navigation and makes outgoing rows inert. Native Library and inline-filtered results verify the rendered row window and opacity. The original dedicated Search presentation and its separate results-entry focus/trigger contracts remain unported; inline Library search uses the verified grid."
+      "reason": "Both Library and the dedicated Search page use the retained two-row viewport. Controlled frames preserve the overlap and pre-realized incoming node, assign immediate destination focus, bound realization after repeated navigation and disable outgoing rows. Native Search and Library verify the rendered row window; Search samples row/card opacity and inertness while animation is active."
     },
     {
       "id": "FullscreenRowNavigationTests.Mouse_wheel_moves_grid_rows_through_the_same_viewport",
       "source": "tests/Winnow.Ui.Tests/FullscreenRowNavigationTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/avalon-fullscreen-grid.test.tsx",
@@ -18955,14 +19677,22 @@
         {
           "file": "tests/electron/avalon-layout.spec.ts",
           "case": "fullscreen ${searching ? 'filtered results' : 'Library'} retain two rows, slide opaque neighbors and release rows when narrowed"
+        },
+        {
+          "file": "tests/avalon-search.test.tsx",
+          "case": "wheel movement shares the same selection policy and reduced motion snaps"
+        },
+        {
+          "file": "tests/electron/avalon-search.spec.ts",
+          "case": "fullscreen Search returns to the same column, pages from its header, and releases narrowed rows"
         }
       ],
-      "reason": "Library wheel input and keyboard input share the two-row selection policy and retained viewport. Controlled frames verify animation lifecycle; native wheel input changes the same row window. The original dedicated Search presentation and its separate results-entry focus/trigger contracts remain unported; inline Library search uses the verified grid."
+      "reason": "Library and dedicated Search route wheel input through the same tested row-selection and retained-animation policy. Controlled grid frames verify animation lifecycle; real Electron wheel events advance the Search row window while retaining opaque, inactive outgoing rows."
     },
     {
       "id": "FullscreenRowNavigationTests.Reduced_motion_and_returning_to_grid_restore_the_selected_game_without_travel",
       "source": "tests/Winnow.Ui.Tests/FullscreenRowNavigationTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/avalon-fullscreen-grid.test.tsx",
@@ -18971,14 +19701,26 @@
         {
           "file": "tests/electron/avalon-layout.spec.ts",
           "case": "fullscreen ${searching ? 'filtered results' : 'Library'} retain two rows, slide opaque neighbors and release rows when narrowed"
+        },
+        {
+          "file": "tests/avalon-search.test.tsx",
+          "case": "wheel movement shares the same selection policy and reduced motion snaps"
+        },
+        {
+          "file": "tests/avalon-search.test.tsx",
+          "case": "retains query, selected game and row window when returning from Details without a slide"
+        },
+        {
+          "file": "tests/electron/avalon-search.spec.ts",
+          "case": "fullscreen Search fits two rows at ${width}x${height} and retains its query through Details"
         }
       ],
-      "reason": "Component tests disable travel for reduced motion and restore selection on remount; the rendered Library return keeps the exact first row using cached measured viewport dimensions. The original dedicated Search presentation and its separate results-entry focus/trigger contracts remain unported; inline Library search uses the verified grid."
+      "reason": "Both original theory surfaces are exercised: Library and Search disable travel for reduced motion, release views on unmount and restore the selected identity and row on return without starting a transition. Real Search Details returns at both1280x720 and1920x1080 preserve query and focused result."
     },
     {
       "id": "FullscreenRowNavigationTests.Narrowing_results_during_travel_releases_old_rows_and_selects_a_valid_game",
       "source": "tests/Winnow.Ui.Tests/FullscreenRowNavigationTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/avalon-fullscreen-grid.test.tsx",
@@ -18987,9 +19729,21 @@
         {
           "file": "tests/electron/avalon-layout.spec.ts",
           "case": "fullscreen ${searching ? 'filtered results' : 'Library'} retain two rows, slide opaque neighbors and release rows when narrowed"
+        },
+        {
+          "file": "tests/avalon-search.test.tsx",
+          "case": "a programmatic query change during travel focuses the remaining result when results own focus"
+        },
+        {
+          "file": "tests/avalon-search.test.tsx",
+          "case": "narrows during travel without stealing query focus and releases old rows"
+        },
+        {
+          "file": "tests/electron/avalon-search.spec.ts",
+          "case": "fullscreen Search returns to the same column, pages from its header, and releases narrowed rows"
         }
       ],
-      "reason": "Narrowing an in-flight Library result releases obsolete DOM rows, cancels travel and selects a valid remaining identity. The keyboard-focused card is replaced with the remaining card; editing the search field keeps its focus. Native filtering and expansion verify the current dataset. The original dedicated Search presentation and its separate results-entry focus/trigger contracts remain unported; inline Library search uses the verified grid."
+      "reason": "Library and Search release obsolete rows and cancel an active transition when the dataset narrows. A programmatic Search query change keeps results focus on the surviving game at first row0; user text entry keeps query focus. Native Search confirms old DOM nodes detach and no stale animation remains."
     },
     {
       "id": "FullscreenRowViewportTests.Scheduled_frames_ignore_superseded_transitions_and_detached_rows",
@@ -20092,22 +20846,26 @@
     {
       "id": "ManualEntryFormTests.Saving_on_each_surface_corrects_tracked_ids_or_explains_why_the_form_stays_open",
       "source": "tests/Winnow.Ui.Tests/ManualEntryFormTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/parity-library.test.tsx",
-          "case": "adds executable tracking and metadata identifiers to a manual game"
+          "file": "tests/electron/manual-settings.spec.ts",
+          "case": "Platforms and manual forms preserve counts, modal focus, validation, tracked corrections and confirmed removal"
         },
         {
-          "file": "tests/parity-library.test.tsx",
-          "case": "refreshes a manual entry before editing and preserves corrected identifiers across a conflict"
+          "file": "../../tests/Winnow.Backend.Tests/ManualGameParityTests.cs",
+          "case": "Fresh_form_identifiers_correct_safely_or_leave_stored_identifiers_unchanged"
         },
         {
-          "file": "tests/features-drafts.test.tsx",
-          "case": "retains manual text, metadata mappings and the observed revision after a remount"
+          "file": "tests/parity-manual-form.test.tsx",
+          "case": "retains corrected draft and explains %s on Steam field"
+        },
+        {
+          "file": "tests/parity-manual-form.test.tsx",
+          "case": "requires cancel and reopen when a concurrent IGDB mapping changed"
         }
       ],
-      "reason": "Both modes expose executable and identity fields, refresh the authoritative detail before editing and preserve corrected IDs across conflicts. Original legacy identifier history, native storefront collision and real-database correction cases require further migrated tests."
+      "reason": "Real Electron desktop Enter and fullscreen controller Accept execute the original correction, legacy, store and mapping scenario matrix against isolated production HTTP/database composition. Opening refreshes stale identity/title; successful correction closes and persists all fields; each refusal keeps draft values and visible field-specific guidance without altering stored IDs. Production backend tests independently stage real IGDB pins and verify all four outcomes. Controller input is simulated through navigator.getGamepads, not physical hardware."
     },
     {
       "id": "ManualMetadataSyncTests.Desktop_enter_starts_one_shared_operation_and_fullscreen_reports_progress_and_completion",

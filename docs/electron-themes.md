@@ -72,8 +72,13 @@ visible column and clamps shorter pages. Only the current page's covers are real
 Fullscreen Library keeps two visible rows, retaining overlapping covers during each vertical
 slide. Arrows, Page Up/Down and the wheel share its selection state; filtering follows the
 selected game when it remains in the results. Returning from another section restores the
-selected game and row window. The inline search uses this same grid; the original separate
-Search page's results-entry focus and LT/RT paging are not yet reproduced.
+selected game and row window. Desktop keeps inline Library search. Fullscreen Ctrl+K,
+the search button and controller View open a dedicated Search page over the complete
+visible library. Its query is independent of Library filters. Enter search opens the
+keyboard; Go to results enters the visible grid. Up from the first row reaches that
+control, and Down returns to the same column. LT/RT and Page Up/Down move two rows;
+the footer shows the visible row range. Details returns to the retained query and result,
+and Back restores the page that opened Search.
 
 Avalon opens desktop game Details as a modal over the retained library, with an 82×123
 cover and five sections: Overview, Activity, Updates, Journal and Library. The bounded
@@ -293,9 +298,11 @@ Each optional screen is a React component receiving the same `ThemeContext`:
 | `games` | Current `LibraryGame[]` from the public backend. IDs are numbers. |
 | `feed`, `loading` | Recommendation snapshot, if available, and library loading state. |
 | `profile` | Validated appearance, layout, and theme-specific settings. |
-| `setPage(page)` | Navigate to Discover, Library, Journal, Settings, Studio, or Details. |
+| `setPage(page)` | Navigate to Discover, Library, Search, Journal, Settings, Studio, or Details. |
 | `openGame(workId)` | Select a game and navigate to its details. |
 | `closeGame?()`, `previousPage?` | Return from details and inspect the preceding destination; optional additions for older API-1 hosts. |
+| `openSearch?()`, `closeSearch?()` | Open the theme's fullscreen Search or the host's inline Library search, and return to the exact originating page. |
+| `editText?(input)` | Open the host's controller keyboard for a mounted text field. |
 | `toggleFullscreen()` | Change the window mode. |
 | `children` | The active screen, supplied to the shell. |
 | `renderScreen(page?)` | Render a host screen, bypassing theme overrides to avoid recursion. |
@@ -307,7 +314,8 @@ Each optional screen is a React component receiving the same `ThemeContext`:
 | `components.GamePreview` | Game information flyout around a theme-owned trigger; takes `game`, `children`, optional `reason`, `disabled`, and `className`. |
 | `components.PortalSurface?` | Reusable fixed-plane reveal with optional cached artwork, shape/activity options, cursor origin and full-view expansion. Older API-1 hosts may omit it. |
 
-A definition can replace `Shell`, `Discover`, `Library`, `Details`, `Journal`, and `Settings`.
+A definition can replace `Shell`, `Discover`, `Library`, `Search`, `Details`, `Journal`, and `Settings`.
+`Search` is optional within API 1. Themes that omit it keep the existing Library search route.
 Optional `defaults` supplies partial `appearance` and `layout` maps for the first explicit
 selection. They pass the same validation as profiles. Saved design choices, startup hydration,
 profile imports and changes made while an external theme is loading take precedence.

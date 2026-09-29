@@ -160,8 +160,13 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
   test(`${mode} searches, opens details, and returns to the same query`, async () => {
     await surface(mode, 1280, 720)
     await page.keyboard.press('Control+k')
-    const search = page.locator('[data-library-search]')
-    await expect(search).toBeFocused()
+    const search =
+      mode === 'fullscreen'
+        ? page.getByRole('searchbox', { name: 'Search games' })
+        : page.locator('[data-library-search]')
+    if (mode === 'fullscreen')
+      await expect(page.getByRole('button', { name: 'Enter search', exact: true })).toBeFocused()
+    else await expect(search).toBeFocused()
     await search.fill('Hades')
     const card = page.locator('.avalon-cover').filter({ hasText: 'Hades' }).first()
     await expect(card).toBeVisible()
@@ -278,8 +283,9 @@ test('a second process delivers fullscreen and reviewed plugin activation to the
 test('controller input opens the keyboard and quick menu and restores focus without duplicate overlays', async () => {
   await surface('fullscreen', 1280, 720)
   await page.keyboard.press('Control+k')
-  const search = page.locator('[data-library-search]')
-  await expect(search).toBeFocused()
+  // The modal keyboard intentionally hides the underlying page from the accessibility tree.
+  const search = page.locator('.avalon-search-inputs input')
+  await expect(page.getByRole('button', { name: 'Enter search', exact: true })).toBeFocused()
   await page.evaluate(() => {
     const state = { pressed: [] as number[] }
     ;(window as unknown as { testController: typeof state }).testController = state

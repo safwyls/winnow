@@ -122,22 +122,26 @@
     "reason": "Both Avalon surfaces activate the existing named Updates tab from the authoritative unread shortcut and preserve its selection across an API refresh. Accessible names state the unread count; React component and query continuity replace the original view-model reference assertion. Shared tests additionally retain edits and avoid double-counting linked editions."
   },
   "ManualEntryFormTests.Saving_on_each_surface_corrects_tracked_ids_or_explains_why_the_form_stays_open": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-library.test.tsx",
-        "case": "adds executable tracking and metadata identifiers to a manual game"
+        "file": "tests/electron/manual-settings.spec.ts",
+        "case": "Platforms and manual forms preserve counts, modal focus, validation, tracked corrections and confirmed removal"
       },
       {
-        "file": "tests/parity-library.test.tsx",
-        "case": "refreshes a manual entry before editing and preserves corrected identifiers across a conflict"
+        "file": "../../tests/Winnow.Backend.Tests/ManualGameParityTests.cs",
+        "case": "Fresh_form_identifiers_correct_safely_or_leave_stored_identifiers_unchanged"
       },
       {
-        "file": "tests/features-drafts.test.tsx",
-        "case": "retains manual text, metadata mappings and the observed revision after a remount"
+        "file": "tests/parity-manual-form.test.tsx",
+        "case": "retains corrected draft and explains %s on Steam field"
+      },
+      {
+        "file": "tests/parity-manual-form.test.tsx",
+        "case": "requires cancel and reopen when a concurrent IGDB mapping changed"
       }
     ],
-    "reason": "Both modes expose executable and identity fields, refresh the authoritative detail before editing and preserve corrected IDs across conflicts. Original legacy identifier history, native storefront collision and real-database correction cases require further migrated tests."
+    "reason": "Real Electron desktop Enter and fullscreen controller Accept execute the original correction, legacy, store and mapping scenario matrix against isolated production HTTP/database composition. Opening refreshes stale identity/title; successful correction closes and persists all fields; each refusal keeps draft values and visible field-specific guidance without altering stored IDs. Production backend tests independently stage real IGDB pins and verify all four outcomes. Controller input is simulated through navigator.getGamepads, not physical hardware."
   },
   "FullscreenDetailsTests.Ungroup_from_the_expansion_end_requires_confirmation_and_uses_child_identity": {
     "status": "partial",

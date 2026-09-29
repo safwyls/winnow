@@ -33,9 +33,12 @@ import { SteamConnectionPanel } from './SteamConnectionPanel'
 import { steamConnectionState } from './steamConnection'
 import { NativeEpicAccount } from './EpicAccount'
 import { SteamAccountOperation, useSteamAccountBusy } from './SteamAccountOperation'
+import { Platforms } from './Platforms'
+import { useSteamModal } from './SteamModals'
 
 export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
-  const [tab, setTab] = useViewState(`${mode}:settings:tab`, 'Connections')
+  const [savedTab, setTab] = useViewState(`${mode}:settings:tab`, 'Platforms')
+  const tab = savedTab === 'Connections' ? 'Platforms' : savedTab
   const stores = useApiQuery<StoreConnections>('connections.get')
   const igdb = useApiQuery<IgdbConnection>('connections.igdb.get')
   const plugins = useApiQuery<PluginSnapshot[]>('plugins.get')
@@ -53,7 +56,8 @@ export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
       </header>
       <nav className="tabs" aria-label="Settings section">
         {[
-          'Connections',
+          'Platforms',
+          'Metadata & artwork',
           'Providers',
           'Library',
           'Appearance',
@@ -67,24 +71,37 @@ export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
           </button>
         ))}
       </nav>
-      {tab === 'Connections' && (
+      {tab === 'Platforms' && (
         <div className="feature-grid">
           {stores.data ? (
-            <>
-              <SteamConnectionCard snapshot={stores.data} mode={mode} error={stores.error} />
-              <EpicConnectionCard snapshot={stores.data} mode={mode} />
-            </>
+            <Platforms
+              snapshot={stores.data}
+              steam={(titleCount) => (
+                <SteamConnectionCard
+                  snapshot={stores.data}
+                  mode={mode}
+                  error={stores.error}
+                  titleCount={titleCount}
+                />
+              )}
+              epic={<EpicConnectionCard snapshot={stores.data} mode={mode} />}
+            />
           ) : (
             <Notice error={stores.error} message="Loading platform connections…" />
           )}
+          <Notice error={command.error} />
+        </div>
+      )}
+      {tab === 'Metadata & artwork' && (
+        <>
           <section className="feature-panel">
             <h2>IGDB</h2>
             <p>Descriptions, game identity, and artwork from IGDB.</p>
             <Notice error={igdb.error} />
             {igdb.data && <IgdbForm snapshot={igdb.data} key={mode} />}
           </section>
-          <Notice error={command.error} />
-        </div>
+          <ArtworkSourcePreferences />
+        </>
       )}
       {tab === 'Providers' && (
         <>
@@ -121,7 +138,6 @@ export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
       {tab === 'Appearance' && (
         <>
           <FullscreenPreferences mode={mode} />
-          <ArtworkSourcePreferences />
         </>
       )}
       {tab === 'Recommendations' && <FeedbackHistory />}
@@ -253,11 +269,13 @@ export function SteamConnectionCard({
   mode = 'desktop',
   purchase = true,
   error,
+  titleCount,
 }: {
   snapshot: StoreConnections
   mode?: Mode
   purchase?: boolean
   error?: unknown
+  titleCount?: number
 }) {
   const command = useCommand()
   const state = steamConnectionState(snapshot)
@@ -268,6 +286,7 @@ export function SteamConnectionCard({
         snapshot={snapshot}
         busy={command.isPending}
         error={error || command.error}
+        titleCount={titleCount}
         signIn={
           <SteamAccount
             key={mode}
@@ -407,7 +426,7 @@ export function SteamAccount({
   showAction = true,
   sessionPresent,
 }: { label?: string; showAction?: boolean; sessionPresent?: boolean } = {}) {
-  const [consent, setConsent] = useState(false)
+  const [consent, setConsent] = useSteamModal('consent')
   const [staySignedIn, setStaySignedIn] = useState(true)
   const [capturePurchaseHistory, setCapturePurchaseHistory] = useState(false)
   const [capture, setCapture] = useState<SteamCaptureResult | null>(null)

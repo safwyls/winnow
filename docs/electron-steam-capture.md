@@ -27,7 +27,7 @@ Capture locks provider mouse and keyboard events after recognizing an account ta
 B or Escape can still cancel.
 
 Purchase and licence capture is a separate consent, off by default when opening sign-in.
-Connections also offers a separate capture window that does not save sign-in credentials.
+Settings › Platforms › Steam also offers a separate capture window that does not save sign-in credentials.
 Both routes read only `/account/licenses/` and `/account/history/` on Steam's store origin.
 The window title reports progress; closing the window stops further reads. In the dedicated
 purchase-import route, agreeing to capture also authorizes import of the available pages,

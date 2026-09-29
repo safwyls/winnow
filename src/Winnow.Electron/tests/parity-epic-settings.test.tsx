@@ -51,7 +51,7 @@ async function consent() {
   fireEvent.click(screen.getByLabelText('I agree to connect this account'))
 }
 describe.each(['desktop', 'fullscreen'])('%s Epic connection workflow', (mode) => {
-  function settings(epic: { isLive: boolean; displayName: string | null } | null = null) {
+  async function settings(epic: { isLive: boolean; displayName: string | null } | null = null) {
     const h = fixture(mode),
       state = { epic }
     h.request.mockImplementation(async (input) => {
@@ -85,10 +85,11 @@ describe.each(['desktop', 'fullscreen'])('%s Epic connection workflow', (mode) =
         <Settings mode={mode as 'desktop' | 'fullscreen'} />
       </QueryClientProvider>,
     )
+    fireEvent.click(await screen.findByRole('button', { name: /^EPIC/ }))
     return { ...h, state }
   }
   it('opening and refreshing settings only reads account state without starting sign-in', async () => {
-    const h = settings()
+    const h = await settings()
     await screen.findByText('Installed games are available through the local Epic library.')
     await h.client.invalidateQueries({ queryKey: ['api'] })
     expect(h.prepareEpicSignIn).not.toHaveBeenCalled()
@@ -100,7 +101,7 @@ describe.each(['desktop', 'fullscreen'])('%s Epic connection workflow', (mode) =
   it.each([null, 'Account A'])(
     'a live connection renders account name %s or explains its absence without offering another sign-in',
     async (displayName) => {
-      const h = settings({ isLive: true, displayName })
+      const h = await settings({ isLive: true, displayName })
       await screen.findByText(
         displayName ? 'Connected as Account A.' : 'Connected. Epic did not provide a display name.',
       )
@@ -111,7 +112,7 @@ describe.each(['desktop', 'fullscreen'])('%s Epic connection workflow', (mode) =
     },
   )
   it('successful sign-in keeps its run-only warning after query refresh, then sign-out forgets that account', async () => {
-    const h = settings()
+    const h = await settings()
     h.epicSignIn.mockImplementation(async () => {
       h.state.epic = { isLive: true, displayName: 'Account B' }
       return { succeeded: true, failure: 0, persisted: false, displayName: 'Account B' }
@@ -127,7 +128,7 @@ describe.each(['desktop', 'fullscreen'])('%s Epic connection workflow', (mode) =
     expect(h.request).toHaveBeenCalledWith(expect.objectContaining({ route: 'connections.epic.signOut' }))
   })
   it('a failed renewal preserves the expired account identity and refreshing does not disturb its pending attempt', async () => {
-    const h = settings({ isLive: false, displayName: 'Account A' }),
+    const h = await settings({ isLive: false, displayName: 'Account A' }),
       pending = deferred<EpicSignInResult>()
     h.epicSignIn.mockReturnValue(pending.promise as any)
     fireEvent.click(await screen.findByRole('button', { name: 'Sign in to Epic again' }))

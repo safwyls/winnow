@@ -32,14 +32,10 @@ import { ArtworkEffects, ArtworkEffectsProvider } from './components/artwork-eff
 import { PortalSurface } from './components/portal-effects'
 import { normalizeArtworkEffects } from '../shared/artworkEffects'
 import { RefreshQueue, refreshJournalSnapshot, refreshSnapshots, shouldRefreshArtwork } from './refresh'
+import { navigatePosition, returnFromSearch, type NavigationPosition } from './search-navigation'
 
 installThemeSDK()
 const builtins = [avalon, afterglow, rift, catalogue]
-interface Position {
-  page: ThemePage
-  workId: number | null
-  previous: ThemePage
-}
 export function App() {
   const library = useLibrary(),
     feed = useFeed(),
@@ -51,7 +47,7 @@ export function App() {
     message: 'Connecting to your library…',
   })
   const [mode, setMode] = useState<'desktop' | 'fullscreen'>('desktop')
-  const [positions, setPositions] = useState<Record<'desktop' | 'fullscreen', Position>>({
+  const [positions, setPositions] = useState<Record<'desktop' | 'fullscreen', NavigationPosition>>({
     desktop: { page: 'discover', workId: null, previous: 'discover' },
     fullscreen: { page: 'discover', workId: null, previous: 'discover' },
   })
@@ -132,8 +128,7 @@ export function App() {
   const launchAttempts = useRef(new Map<number, { operationId: string; action: string }>())
   const position = positions[mode]
   const navigate = useCallback(
-    (page: ThemePage) =>
-      setPositions((all) => ({ ...all, [mode]: { ...all[mode], previous: all[mode].page, page } })),
+    (page: ThemePage) => setPositions((all) => ({ ...all, [mode]: navigatePosition(all[mode], page) })),
     [mode],
   )
   const openGame = useCallback(
@@ -150,6 +145,20 @@ export function App() {
     [mode],
   )
   const closeGame = useCallback(() => navigate(position.previous), [navigate, position.previous])
+  const closeSearch = useCallback(
+    () => setPositions((all) => ({ ...all, [mode]: returnFromSearch(all[mode]) })),
+    [mode],
+  )
+  const openSearch = useCallback(() => {
+    if (mode === 'fullscreen' && runtime.theme.Search) navigate('search')
+    else {
+      navigate('library')
+      setTimeout(() => document.querySelector<HTMLInputElement>('[data-library-search]')?.focus(), 50)
+    }
+  }, [mode, runtime.theme.Search, navigate])
+  useEffect(() => {
+    if (position.page === 'search' && !runtime.loading && !runtime.theme.Search) navigate('library')
+  }, [position.page, runtime.loading, runtime.theme.Search, navigate])
   const toggleFullscreen = useCallback(() => {
     const next = mode === 'desktop' ? 'fullscreen' : 'desktop'
     void window.winnow
@@ -210,8 +219,7 @@ export function App() {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         if (controllerScope() !== document) return
         event.preventDefault()
-        navigate('library')
-        setTimeout(() => document.querySelector<HTMLInputElement>('[data-library-search]')?.focus(), 50)
+        openSearch()
       }
       if (event.key === 'F11') {
         event.preventDefault()
@@ -224,12 +232,13 @@ export function App() {
       }
       if (event.key === 'Escape' && controllerScope() === document) {
         if (position.page === 'details') navigate(position.previous)
+        else if (position.page === 'search') closeSearch()
         else if (mode === 'fullscreen') toggleFullscreen()
       }
     }
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
-  }, [mode, position, navigate, toggleFullscreen, runtime.resetProfile, setupOpen])
+  }, [mode, position, navigate, openSearch, closeSearch, toggleFullscreen, runtime.resetProfile, setupOpen])
   useEffect(() => {
     document.title = `Winnow · ${runtime.theme.name}`
   }, [runtime.theme.name])
@@ -242,8 +251,10 @@ export function App() {
       previous.mode === mode &&
       (previous.page === 'details' || position.page === 'details')
     const retainedDetails =
-      runtime.theme.id === 'avalon' && previous?.themeId === 'avalon' &&
-      mode === 'desktop' && previous.mode === mode &&
+      runtime.theme.id === 'avalon' &&
+      previous?.themeId === 'avalon' &&
+      mode === 'desktop' &&
+      previous.mode === mode &&
       (previous.page === 'details' || position.page === 'details')
     if (previous && !portalJourney && !retainedDetails) {
       document.getElementById('main-content')?.focus({ preventScroll: true })
@@ -271,8 +282,7 @@ export function App() {
     },
     search: () => {
       if (setupOpen) return
-      navigate('library')
-      setTimeout(() => document.querySelector<HTMLInputElement>('[data-library-search]')?.focus(), 50)
+      openSearch()
     },
     switchPage: (delta) => {
       if (setupOpen) return
@@ -300,7 +310,7 @@ export function App() {
   const renderScreen = (page: ThemePage = position.page) => {
     if (page === 'studio') return <ThemeStudio runtime={runtime} />
     if (page === 'discover') return <AvalonDiscover {...context} />
-    if (page === 'library') return <AvalonLibrary {...context} />
+    if (page === 'library' || page === 'search') return <AvalonLibrary {...context} />
     if (page === 'journal') return <Journal mode={mode} onOpenGame={openGame} />
     if (page === 'settings') return <Settings mode={mode} />
     return position.workId !== null ? (
@@ -316,6 +326,9 @@ export function App() {
     setPage: navigate,
     openGame,
     closeGame,
+    closeSearch,
+    openSearch,
+    editText: setKeyboardInput,
     previousPage: position.previous,
     toggleFullscreen,
     games: library.data?.games ?? [],
@@ -396,6 +409,7 @@ export function App() {
   const screenNames = {
     discover: 'Discover',
     library: 'Library',
+    search: 'Search',
     details: 'Details',
     journal: 'Journal',
     settings: 'Settings',

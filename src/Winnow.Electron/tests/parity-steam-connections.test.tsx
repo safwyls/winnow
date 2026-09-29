@@ -122,6 +122,9 @@ describe.each(['desktop', 'fullscreen'])('%s Steam connection presentation', (mo
       ).toBeTruthy()
       expect(screen.getByRole('region', { name: 'Steam sign-in method' })).toBeTruthy()
       expect(screen.getByRole('region', { name: 'Steam API key method' })).toBeTruthy()
+      expect(within(screen.getByRole('region', { name: 'Steam sign-in method' })).getByRole('heading').textContent?.includes('In use')).toBe(session && !key)
+      expect(within(screen.getByRole('region', { name: 'Steam API key method' })).getByRole('heading').textContent?.includes('In use')).toBe(key)
+      expect(screen.getByRole('heading', { name: 'Local files On' })).toBeTruthy()
       expect(screen.getByText(key ? 'On - API' : session ? 'On - Login' : 'Off')).toBeTruthy()
       if (key) {
         fireEvent.click(screen.getByRole('button', { name: 'Remove saved API key' }))
@@ -141,14 +144,7 @@ describe.each(['desktop', 'fullscreen'])('%s Steam connection presentation', (mo
     panel(snapshot(true, true, 5, false))
     expect(screen.getByRole('heading', { name: /Set outside Winnow, can't be cleared here/ })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Remove saved API key' })).toBeNull()
-    const summaries = [
-      'What local files cover',
-      'Which one should I use?',
-      'About signing in',
-      'About API keys',
-      'What the account filter covers',
-      'Import purchase history',
-    ]
+    const summaries = ['What local files cover', 'About signing in', 'About API keys']
     for (const summary of summaries)
       expect((screen.getByText(summary).closest('details') as HTMLDetailsElement).open).toBe(false)
     fireEvent.click(screen.getByText('About signing in'))
@@ -270,6 +266,7 @@ describe.each(['desktop', 'fullscreen'])('%s Steam connection presentation', (mo
               : null,
       )
       render(<Settings mode={mode as 'desktop' | 'fullscreen'} />, { wrapper: harness.wrapper })
+      fireEvent.click(await screen.findByRole('button', { name: /^EPIC/ }))
       await screen.findByText(
         live
           ? 'Connected as Fixture account.'

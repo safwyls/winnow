@@ -1,0 +1,41 @@
+@layer themes {
+  .avalon-expansion-mark {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    z-index: 3;
+    padding: 3px 5px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: calc(10px * var(--theme-text-scale, 1));
+    line-height: 1;
+    pointer-events: none;
+    transition: opacity 140ms;
+  }
+
+  .avalon-shell.desktop
+    .avalon-cover:is(:hover, :focus-visible, [data-selected='true'])
+    .avalon-expansion-mark {
+    opacity: 0;
+  }
+
+  .avalon-record-title {
+    min-width: 0;
+  }
+  .avalon-record-title small {
+    margin-inline-start: 6px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+  .avalon-shell[data-reduced-motion='true'] .avalon-expansion-mark {
+    transition: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .avalon-expansion-mark {
+      transition: none;
+    }
+  }
+}

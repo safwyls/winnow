@@ -66,16 +66,18 @@ export function EntryActions({
   entry,
   workspace,
   primaryOnly = false,
+  managementOnly = false,
 }: {
   entry: GameEntry
   workspace?: Workspace
   primaryOnly?: boolean
+  managementOnly?: boolean
 }) {
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState<unknown>(null)
   const [attempt, setAttempt] = useState<{ operationId: string; action: string } | null>(null)
-  const action = primaryAction(entry, workspace)
+  const action = managementOnly ? null : primaryAction(entry, workspace)
   const unavailable =
     entry.store === 'manual'
       ? 'Manual entries can be tracked here. Launch this game from its shortcut.'
@@ -102,7 +104,7 @@ export function EntryActions({
   }
   return (
     <div className="entry-actions">
-      {!primaryOnly && (
+      {!primaryOnly && !managementOnly && (
         <div>
           <strong>{storeLabel(entry.store)}</strong>
           <span>
@@ -122,13 +124,19 @@ export function EntryActions({
           {pending ? 'Sending…' : action}
         </button>
       ) : (
-        unavailable && <p className="muted">{unavailable}</p>
+        !managementOnly && unavailable && <p className="muted">{unavailable}</p>
       )}
-      {!primaryOnly && entry.store === 'steam' && entry.installed && (
-        <button disabled={pending || Boolean(attempt)} onClick={() => void dispatch('Uninstall')}>
-          Uninstall in Steam
-        </button>
-      )}
+      {!primaryOnly &&
+        entry.store === 'steam' &&
+        entry.installed &&
+        workspace?.externalIds.some(
+          (id) =>
+            id.releaseId === entry.releaseId && id.provider === 'steam' && /^\d{1,10}$/.test(id.providerId),
+        ) && (
+          <button disabled={pending || Boolean(attempt)} onClick={() => void dispatch('Uninstall')}>
+            Uninstall in Steam
+          </button>
+        )}
       {!primaryOnly &&
         (entry.store === 'epic' ||
           (entry.store === 'gog' &&
@@ -215,6 +223,7 @@ function SharedDetails({
         )
       : 0
   const [tab, setTab] = useViewState(`${mode}:details:${workId}:tab`, 'Overview')
+  const [matchNote, setMatchNote] = useState('')
   const [previousSection, setPreviousSection] = useViewState(
     `${mode}:details:${workId}:previous-section`,
     'Overview',
@@ -303,7 +312,10 @@ function SharedDetails({
           <RefreshCw size={16} /> Refresh metadata
         </button>
       </header>
-      <Notice error={details.error || library.error || workspace.error || command.error} />
+      <Notice
+        error={details.error || library.error || workspace.error || command.error}
+        message={matchNote}
+      />
       <nav
         ref={tabs}
         className="tabs"
@@ -433,7 +445,17 @@ function SharedDetails({
             </section>
           )}
           {tab === 'Metadata' && <MetadataEditor key={workId} workId={workId} />}
-          {tab === 'Game match' && <IgdbMatch key={workId} workId={workId} title={game?.title ?? ''} />}
+          {tab === 'Game match' && (
+            <IgdbMatch
+              key={workId}
+              workId={workId}
+              title={game?.title ?? ''}
+              onChanged={(note) => {
+                setMatchNote(note)
+                backToSection()
+              }}
+            />
+          )}
           {tab === 'Library' && (
             <>
               <LibraryFacts game={game} details={details.data} />
@@ -464,7 +486,15 @@ function SharedDetails({
   )
 }
 
-export function HideGame({ workId, onHidden }: { workId: number; onHidden?: () => void }) {
+export function HideGame({
+  workId,
+  onHidden,
+  compact = false,
+}: {
+  workId: number
+  onHidden?: () => void
+  compact?: boolean
+}) {
   const [confirming, setConfirming] = useState(false)
   const command = useCommand()
   async function hide() {
@@ -477,8 +507,8 @@ export function HideGame({ workId, onHidden }: { workId: number; onHidden?: () =
     }
   }
   return (
-    <section className="feature-panel">
-      <h2>Keep your library yours</h2>
+    <section className={compact ? 'details-hide-action' : 'feature-panel'}>
+      {!compact && <h2>Keep your library yours</h2>}
       {confirming ? (
         <div className="conflict-panel">
           <p>

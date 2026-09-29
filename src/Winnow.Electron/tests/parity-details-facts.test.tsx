@@ -223,6 +223,28 @@ describe('original details fact contracts', () => {
 })
 
 describe.each(['desktop', 'fullscreen'])('%s details fact rendering', (mode) => {
+  it('offers a valid update page without adding an unavailable-page message', () => {
+    mount(
+      <div className={`mode-${mode}`}>
+        <UpdateSignals
+          details={facts({
+            events: [
+              {
+                id: 1,
+                releaseId: 1,
+                occurredAt: '2026-09-01T00:00:00Z',
+                kind: 'announcement',
+                title: 'Readable patch',
+                url: 'https://example.test/patch',
+              },
+            ],
+          })}
+        />
+      </div>,
+    )
+    expect(screen.getByRole('button', { name: 'Read' })).toBeTruthy()
+    expect(screen.queryByText('No patch notes page was recorded for this update.')).toBeNull()
+  })
   it('retains an update with a hostile URL while offering no open button', () => {
     mount(
       <div className={`mode-${mode}`}>

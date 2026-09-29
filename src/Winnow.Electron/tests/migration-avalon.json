@@ -1560,7 +1560,7 @@
     "reason": "The original input sequence and expected identity, selected index, first visible row and partial-row bounds are reproduced against the policy used by the fullscreen Electron Library grid."
   },
   "FullscreenRowNavigationTests.Grid_navigation_slides_one_row_preserves_overlap_and_bounds_realization": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/avalon-fullscreen-grid.test.tsx",
@@ -1569,12 +1569,20 @@
       {
         "file": "tests/electron/avalon-layout.spec.ts",
         "case": "fullscreen ${searching ? 'filtered results' : 'Library'} retain two rows, slide opaque neighbors and release rows when narrowed"
+      },
+      {
+        "file": "tests/avalon-search.test.tsx",
+        "case": "retains overlapping Search rows through controlled travel and evicts rows after repeated navigation"
+      },
+      {
+        "file": "tests/electron/avalon-search.spec.ts",
+        "case": "fullscreen Search returns to the same column, pages from its header, and releases narrowed rows"
       }
     ],
-    "reason": "The Library path preserves actual overlapping DOM rows, immediately focuses the destination, bounds realized rows after repeated navigation and makes outgoing rows inert. Native Library and inline-filtered results verify the rendered row window and opacity. The original dedicated Search presentation and its separate results-entry focus/trigger contracts remain unported; inline Library search uses the verified grid."
+    "reason": "Both Library and the dedicated Search page use the retained two-row viewport. Controlled frames preserve the overlap and pre-realized incoming node, assign immediate destination focus, bound realization after repeated navigation and disable outgoing rows. Native Search and Library verify the rendered row window; Search samples row/card opacity and inertness while animation is active."
   },
   "FullscreenRowNavigationTests.Mouse_wheel_moves_grid_rows_through_the_same_viewport": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/avalon-fullscreen-grid.test.tsx",
@@ -1583,12 +1591,20 @@
       {
         "file": "tests/electron/avalon-layout.spec.ts",
         "case": "fullscreen ${searching ? 'filtered results' : 'Library'} retain two rows, slide opaque neighbors and release rows when narrowed"
+      },
+      {
+        "file": "tests/avalon-search.test.tsx",
+        "case": "wheel movement shares the same selection policy and reduced motion snaps"
+      },
+      {
+        "file": "tests/electron/avalon-search.spec.ts",
+        "case": "fullscreen Search returns to the same column, pages from its header, and releases narrowed rows"
       }
     ],
-    "reason": "Library wheel input and keyboard input share the two-row selection policy and retained viewport. Controlled frames verify animation lifecycle; native wheel input changes the same row window. The original dedicated Search presentation and its separate results-entry focus/trigger contracts remain unported; inline Library search uses the verified grid."
+    "reason": "Library and dedicated Search route wheel input through the same tested row-selection and retained-animation policy. Controlled grid frames verify animation lifecycle; real Electron wheel events advance the Search row window while retaining opaque, inactive outgoing rows."
   },
   "FullscreenRowNavigationTests.Reduced_motion_and_returning_to_grid_restore_the_selected_game_without_travel": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/avalon-fullscreen-grid.test.tsx",
@@ -1597,12 +1613,24 @@
       {
         "file": "tests/electron/avalon-layout.spec.ts",
         "case": "fullscreen ${searching ? 'filtered results' : 'Library'} retain two rows, slide opaque neighbors and release rows when narrowed"
+      },
+      {
+        "file": "tests/avalon-search.test.tsx",
+        "case": "wheel movement shares the same selection policy and reduced motion snaps"
+      },
+      {
+        "file": "tests/avalon-search.test.tsx",
+        "case": "retains query, selected game and row window when returning from Details without a slide"
+      },
+      {
+        "file": "tests/electron/avalon-search.spec.ts",
+        "case": "fullscreen Search fits two rows at ${width}x${height} and retains its query through Details"
       }
     ],
-    "reason": "Component tests disable travel for reduced motion and restore selection on remount; the rendered Library return keeps the exact first row using cached measured viewport dimensions. The original dedicated Search presentation and its separate results-entry focus/trigger contracts remain unported; inline Library search uses the verified grid."
+    "reason": "Both original theory surfaces are exercised: Library and Search disable travel for reduced motion, release views on unmount and restore the selected identity and row on return without starting a transition. Real Search Details returns at both1280x720 and1920x1080 preserve query and focused result."
   },
   "FullscreenRowNavigationTests.Narrowing_results_during_travel_releases_old_rows_and_selects_a_valid_game": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/avalon-fullscreen-grid.test.tsx",
@@ -1611,9 +1639,21 @@
       {
         "file": "tests/electron/avalon-layout.spec.ts",
         "case": "fullscreen ${searching ? 'filtered results' : 'Library'} retain two rows, slide opaque neighbors and release rows when narrowed"
+      },
+      {
+        "file": "tests/avalon-search.test.tsx",
+        "case": "a programmatic query change during travel focuses the remaining result when results own focus"
+      },
+      {
+        "file": "tests/avalon-search.test.tsx",
+        "case": "narrows during travel without stealing query focus and releases old rows"
+      },
+      {
+        "file": "tests/electron/avalon-search.spec.ts",
+        "case": "fullscreen Search returns to the same column, pages from its header, and releases narrowed rows"
       }
     ],
-    "reason": "Narrowing an in-flight Library result releases obsolete DOM rows, cancels travel and selects a valid remaining identity. The keyboard-focused card is replaced with the remaining card; editing the search field keeps its focus. Native filtering and expansion verify the current dataset. The original dedicated Search presentation and its separate results-entry focus/trigger contracts remain unported; inline Library search uses the verified grid."
+    "reason": "Library and Search release obsolete rows and cancel an active transition when the dataset narrows. A programmatic Search query change keeps results focus on the surviving game at first row0; user text entry keeps query focus. Native Search confirms old DOM nodes detach and no stale animation remains."
   },
   "FullscreenRowNavigationTests.Immediate_navigation_after_content_expands_uses_current_rows_before_queued_rebuild": {
     "status": "ported",
@@ -1634,7 +1674,7 @@
     "reason": "Home appends two shelves then immediately moves twice to the third shelf against current cards. Library expands a one-game result and immediately moves two rows before a deferred rebuild. Controlled component tests verify immediate focus and native filtered results verify current-dataset navigation."
   },
   "FullscreenRowNavigationTests.Fullscreen_shell_keeps_outgoing_cards_opaque_across_all_row_transitions": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/electron/avalon-layout.spec.ts",
@@ -1643,14 +1683,27 @@
       {
         "file": "tests/electron/avalon-layout.spec.ts",
         "case": "fullscreen retains row nodes, carries and clamps columns on revisits, and reverses without fading"
+      },
+      {
+        "file": "tests/electron/avalon-search.spec.ts",
+        "case": "fullscreen Search returns to the same column, pages from its header, and releases narrowed rows"
       }
     ],
-    "reason": "Native Home, Library and inline-filtered Library verify outgoing rows remain opaque and inert during retained-row movement. The original separate Search presentation has not been migrated."
+    "reason": "Native Home, Library and dedicated Search sample computed opacity and inactive outgoing rows in the shipped fullscreen shell. Search installs its frame observer before input and verifies rows, cover controls and artwork remain opacity1 during actual movement; neighboring rows remain inert."
   },
   "FullscreenRowNavigationTests.Search_returns_from_go_to_results_to_the_first_row_in_the_same_column": {
-    "status": "pending",
-    "tests": [],
-    "reason": "Electron currently presents inline Library search. The original dedicated Search page with its Go to results focus stop, return to the same first-row column and LT/RT two-row paging remains unported."
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-search.test.tsx",
+        "case": "returns from Go to results to the first row in the same column"
+      },
+      {
+        "file": "tests/electron/avalon-search.spec.ts",
+        "case": "fullscreen Search returns to the same column, pages from its header, and releases narrowed rows"
+      }
+    ],
+    "reason": "The third Search result moves Up to Go to results and Down to the identical first-row column without scrolling or animating. Verified through the real Search component and native Electron keyboard handling."
   },
   "GameDetailsTabInteractionTests.Populated_tabs_keep_the_header_pinned_and_all_content_reachable": {
     "status": "partial",

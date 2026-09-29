@@ -202,6 +202,17 @@ export function useController(actions: Actions) {
                 continue
               }
               const scope = controllerScope()
+              const pager = scope.querySelector<HTMLElement>('[data-controller-page]')
+              if (pager) {
+                pager.dispatchEvent(
+                  new KeyboardEvent('keydown', {
+                    key: delta < 0 ? 'PageUp' : 'PageDown',
+                    bubbles: true,
+                    cancelable: true,
+                  }),
+                )
+                continue
+              }
               const explicit = scope.querySelectorAll<HTMLButtonElement>('[data-controller-tab]')
               const tabs = [
                 ...(explicit.length ? explicit : scope.querySelectorAll<HTMLButtonElement>('.tabs button')),

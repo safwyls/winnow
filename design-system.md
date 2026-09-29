@@ -70,7 +70,7 @@ selection brightens the same colour family while cover art supplies the variety.
 ### Discipline
 
 `Flare` is the rarest colour in the interface and appears **only** on unread-update markers,
-the bucket that counts them, and the gap rail's marks in the detail view (§10.2), which are
+the bucket that counts them, and the activity timeline's unread marks (§10.2), which are
 the same fact plotted in time. The instant it becomes a generic accent, the badge stops
 meaning anything and the product loses its point.
 
@@ -1618,7 +1618,7 @@ the game when no overlay is open.
 it, so the header reads as chrome rather than as the section's own content. The set is IGDB
 MATCH, EDIT DETAILS, JOURNAL, UPDATES, ABOUT, YOUR COPIES, EXTENDS and LISTS.
 Disclosure headers, including EXPANSIONS and Technical facts, use 13px body type in `Text`.
-A label that names a value — PLAYED and SINCE YOU PLAYED on the gap rail, STEAM APPID, ON
+A label that names a value — PLAYED and SINCE LAST PLAYED in Overview, STEAM APPID, ON
 DISK, the coverage total's label, and the per-field labels in the editor — is a different thing
 and is not in that set. The ink is stated at the heading by the class `label section`, declared
 once in `tokens.axaml`, rather than left to `label`'s own default, so a section heading and the
@@ -1639,12 +1639,11 @@ not where it sits. A paragraph the user reads, a sentence standing in a prose sl
 sitting under a heading is prose. A value label, a status line, a landed-act confirmation, or
 metadata beside a value is not.
 
-The reading text takes `Text`: the gap rail's caption and its longitudinal record line, and the same
-record line in the no-rail branch — §10.2 says everything the rail draws is restated in words
-underneath, and §8's decorative-redundant rule makes those words the carrier of the fact; the
-carrier of a fact is primary text. The no-rail sentence itself ("You've never opened this." /
-"Steam has no date for your last session."), which is the whole of what Activity says about history when there
-is no rail. The EXTENDS blurb ("A separate game, grouped for display.") and the EXPANSIONS
+The reading text takes `Text`: the activity timeline's selected-detail sentence and dated
+record — §10.2 keeps every mark available in words, and §8's decorative-redundant rule makes
+those words a carrier of the fact. Overview's missing-date sentence also takes `Text`
+("You've never opened this." / "Steam has no date for your last session."); recorded minutes
+without a date must not read as no play. The EXTENDS blurb ("A separate game, grouped for display.") and the EXPANSIONS
 blurb ("Counted separately. Not added above."), both directly under a section heading — the
 pair that prompted the change. The LISTS empty state ("Choose Add to list above to create a
 list for this game."), a direction the user acts on (§7). The ABOUT summary — the
@@ -1738,8 +1737,7 @@ dead one, and never a URL the data did not supply.
 
 | Context | Write | Don't write |
 |---|---|---|
-| Rail, updates missed | `2 updates landed while you were away.` | `2 new updates!` |
-| Rail, none recorded | `No updates recorded in that stretch.` | `Nothing has shipped` |
+| Updates, none recorded | `No update signals recorded.` | `Nothing has shipped` |
 | Longitudinal record | `Checked 12 times since 23 Aug 2026 — up 1h 7m.` | `12 snapshots` |
 | Record, one reading | `Checked once, on 23 Aug 2026.` | `Insufficient data` |
 | No last-played date | `Steam has no date for your last session.` | `Unknown` |
@@ -1749,8 +1747,8 @@ dead one, and never a URL the data did not supply.
 | No way in, unknown state | `Winnow has not read this copy's install state yet.` | `Install state unknown` |
 | No way in, no id | `Winnow does not yet hold the identifier this store needs to reach this game.` | `Missing store id` |
 
-Two of those are load-bearing. **"No updates recorded in that stretch"** and not "nothing has
-shipped": update polling is staggered across days, so an empty rail can mean a quiet decade or
+Two of those are load-bearing. **"No update signals recorded"** and not "nothing has
+shipped": update polling is staggered across days, so an empty record can mean a quiet decade or
 a turn that has not come round yet, and the interface may only claim the one it can support.
 **"Checked"** and not "sampled" or "snapshotted": name the thing by what the person recognises,
 not by the table it lives in.

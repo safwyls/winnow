@@ -142,6 +142,11 @@ export function SteamCapture() {
     )
   return (
     <section className="steam-account-capture">
+      <h3>Read account pages in Winnow</h3>
+      <p>
+        Sign in to Steam in a private window to capture and import purchase history and licences. No API key
+        or saved session is needed.
+      </p>
       <Dialog.Root
         open={consent}
         onOpenChange={(open) => {
@@ -209,7 +214,9 @@ export function SteamCapture() {
           {pending && <p role="status">Importing captured pages…</p>}
           {report && <SteamImportReport report={report} capture={result} />}
           {!pending && !report && result.pages && error != null && (
-            <button disabled={busy} onClick={() => void retry()}>Retry import</button>
+            <button disabled={busy} onClick={() => void retry()}>
+              Retry import
+            </button>
           )}
         </section>
       )}

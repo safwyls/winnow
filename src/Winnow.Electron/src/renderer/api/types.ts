@@ -81,7 +81,7 @@ export interface Workspace {
   externalIds: { releaseId: number; provider: string; providerId: string }[]
   epicLaunchKeys: Record<string, { namespace: string; catalogItemId: string; artifactId: string }>
   pluginActions: Record<string, { sourceLabel?: string | null; canPlay: boolean; canOpenStore: boolean }>
-  works: { id: number; name: string; igdbId?: number | null }[]
+  works: { id: number; name: string; igdbId?: number | null; nameIsProvisional?: boolean }[]
   storefronts?: Record<string, { storeUrl?: string | null; patchNotes?: string | null }>
   [key: string]: unknown
 }

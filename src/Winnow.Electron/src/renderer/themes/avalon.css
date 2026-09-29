@@ -375,6 +375,9 @@
     height: 100%;
     object-fit: contain;
   }
+  .avalon-cover .art-placeholder span {
+    visibility: hidden;
+  }
   .avalon-cover-fallback {
     position: absolute;
     inset: 16px;

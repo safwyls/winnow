@@ -13,14 +13,28 @@ export function filterFingerprint(filter: LibraryFilter) {
   )
 }
 
+const defaultSorts: Record<string, string> = {
+  DormantLongest: 'dormant',
+  RecentlyPlayed: 'recent',
+  PlaytimeHighToLow: 'time',
+  PlaytimeLowToHigh: 'time-low',
+  NameAscending: 'title',
+  NameDescending: 'title-desc',
+}
+
+export function libraryDefaultSort(value: string | null | undefined) {
+  return defaultSorts[value ?? 'DormantLongest'] ?? 'dormant'
+}
+
 /** Collections and the library share one transition policy, including navigation from another page. */
-export function useAvalonLists(mode: Mode, lists: GameList[], ready = true) {
+export function useAvalonLists(mode: Mode, lists: GameList[], ready = true, defaultSort?: string) {
   const prefix = `avalon:library:${mode}`
   const [query, setQuery] = useViewState(`${prefix}:query`, '')
   const [bucket, setBucket] = useViewState(`${prefix}:bucket`, 'all')
   const [store, setStore] = useViewState(`${prefix}:store`, 'all')
   const [listId, setListId] = useViewState(`${prefix}:list`, 'all')
   const [savedSort, setSort] = useViewState<string | null>(`${prefix}:sort`, null)
+  const [observedDefault, setObservedDefault] = useViewState<string | null>(`${prefix}:default-sort`, null)
   const [previousSort, setPreviousSort] = useViewState<{ value: string | null } | null>(
     `${prefix}:sort-before-list`,
     null,
@@ -28,6 +42,16 @@ export function useAvalonLists(mode: Mode, lists: GameList[], ready = true) {
   const [rules, setRules] = useViewState<LibraryFilter>(`${prefix}:rules`, {})
   const [base, setBase] = useViewState<GameList | null>(`${prefix}:list-base`, null)
   const list = lists.find((item) => String(item.id) === listId)
+  useEffect(() => {
+    if (defaultSort === undefined || defaultSort === observedDefault) return
+    // A saved default changes the current order even after a temporary choice. A
+    // manual list keeps its own order and receives the new default when it closes.
+    if (observedDefault !== null) {
+      if (previousSort) setPreviousSort({ value: defaultSort })
+      else setSort(defaultSort)
+    }
+    setObservedDefault(defaultSort)
+  }, [defaultSort, observedDefault, previousSort, setPreviousSort, setSort, setObservedDefault])
   const filter: LibraryFilter = {
     ...rules,
     search: query || null,

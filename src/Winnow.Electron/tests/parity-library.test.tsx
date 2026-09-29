@@ -251,7 +251,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s library parity', (mode) => {
             {
               ...entry,
               revision: conflicted ? 'manual-3' : entry.revision,
-              igdbMappingRevision: conflicted ? 3 : 1,
+              igdbMappingRevision: conflicted ? 2 : 1,
             },
           ],
         }
@@ -263,7 +263,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s library parity', (mode) => {
         }
       if (input.route === 'manual.update') {
         conflicted = true
-        return { ok: false, status: 409, message: 'The IGDB match changed while you were editing.' }
+        return { ok: false, status: 409, message: 'The saved title changed while you were editing.' }
       }
     })
     fireEvent.click(screen.getByRole('button', { name: 'Manual games' }))
@@ -276,7 +276,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s library parity', (mode) => {
     fireEvent.change(screen.getByLabelText('IGDB ID'), { target: { value: '66' } })
     fireEvent.change(screen.getByLabelText('Steam app ID'), { target: { value: '456' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save game' }))
-    await screen.findByText('The IGDB match changed while you were editing.')
+    await screen.findByText('The saved title changed while you were editing.')
     expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Corrected title')
     expect((screen.getByLabelText('IGDB ID') as HTMLInputElement).value).toBe('66')
     expect(request.mock.calls.find(([input]) => input.route === 'manual.update')?.[0].body).toMatchObject({
@@ -293,7 +293,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s library parity', (mode) => {
         request.mock.calls.filter(([input]) => input.route === 'manual.update').at(-1)?.[0].body,
       ).toMatchObject({
         expectedRevision: 'manual-3',
-        expectedIgdbMappingRevision: 3,
+        expectedIgdbMappingRevision: 2,
         igdbId: 66,
         steamAppId: '456',
       }),

@@ -101,6 +101,7 @@ afterEach(() => {
       'store',
       'list',
       'sort',
+      'default-sort',
       'view',
       'density',
       'tools',

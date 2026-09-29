@@ -5,8 +5,18 @@ import { AccountVisibility } from './SettingsPreferences'
 import { Notice } from './shared'
 import './steam-connections.css'
 import { useSteamAccountBusy } from './SteamAccountOperation'
+import { SteamInformationDialog, SteamModals } from './SteamModals'
+import { useApiQuery } from '../api/hooks'
 
-export function SteamConnectionPanel({
+export function SteamConnectionPanel(props: React.ComponentProps<typeof SteamConnectionContent>) {
+  return (
+    <SteamModals>
+      <SteamConnectionContent {...props} />
+    </SteamModals>
+  )
+}
+
+function SteamConnectionContent({
   snapshot,
   signIn,
   keyEditor,
@@ -15,6 +25,7 @@ export function SteamConnectionPanel({
   onSignOut,
   onClearKey,
   error,
+  titleCount,
 }: {
   snapshot: StoreConnections
   signIn: ReactNode
@@ -24,10 +35,13 @@ export function SteamConnectionPanel({
   onSignOut(): void
   onClearKey(): void
   error?: unknown
+  titleCount?: number
 }) {
   const state = steamConnectionState(snapshot),
     steam = snapshot.steam
   const accountBusy = useSteamAccountBusy(busy)
+  const visibility = useApiQuery<{ accountCount?: number }>('connections.visibility.get')
+  const accountCount = visibility.data?.accountCount ?? 0
   return (
     <section className="feature-panel steam-connections" aria-label="Steam connection">
       <header>
@@ -54,8 +68,12 @@ export function SteamConnectionPanel({
       {steam.hasApiKey && steam.hasSession && (
         <p>Scheduled updates use the API key because keys do not expire.</p>
       )}
-      <details>
-        <summary>Which one should I use?</summary>
+      <SteamInformationDialog
+        name="methods"
+        label="Which one should I use?"
+        title="Ways to connect Steam"
+        description="Choose the credential that fits how you use Winnow."
+      >
         <p>
           Sign-in identifies your account and can read your purchase history. It lasts about a day; automatic
           renewal depends on Steam supplying a refresh token.
@@ -64,7 +82,7 @@ export function SteamConnectionPanel({
           An API key never expires, so scheduled updates keep working. It confirms your account during a Steam
           import and cannot read purchase history.
         </p>
-      </details>
+      </SteamInformationDialog>
       <section aria-label="Steam sign-in method">
         <h3>
           {steam.hasSession && state.health !== 4 ? 'Signed in' : 'Sign in to Steam'}{' '}
@@ -141,19 +159,37 @@ export function SteamConnectionPanel({
         </details>
       </section>
       <h3>Steam accounts</h3>
-      <AccountVisibility credentials={steam} />
-      <details>
-        <summary>What the account filter covers</summary>
-        <p>
-          The filter uses the Steam account Winnow has confirmed as yours. It can hide games from other local
-          accounts; it does not remove ownership or delete games.
+      {!!titleCount && accountCount > 0 && (
+        <p className="steam-accounts-summary">
+          {titleCount.toLocaleString('en-US')} {titleCount === 1 ? 'game' : 'games'} across{' '}
+          {accountCount.toLocaleString('en-US')} {accountCount === 1 ? 'account' : 'accounts'}
         </p>
-      </details>
+      )}
+      <AccountVisibility credentials={steam} />
+      <SteamInformationDialog
+        name="accounts"
+        label="What the account filter covers"
+        title="Steam account scope"
+        description="Local playtime belongs to the computer where it was recorded."
+      >
+        <p>
+          Winnow cannot attribute local playtime to an individual account. The filter uses the Steam account
+          Winnow has confirmed as yours. It can hide games from other local accounts; it does not remove
+          ownership or delete games.
+        </p>
+      </SteamInformationDialog>
       {purchase && (
-        <details>
-          <summary>Import purchase history</summary>
-          {purchase}
-        </details>
+        <section aria-label="Steam purchase history">
+          <h3>Purchase history</h3>
+          <SteamInformationDialog
+            name="purchase"
+            label="Import purchase history"
+            title="Import Steam purchase history"
+            description="Read account pages in Winnow, or import files saved from your browser. Both routes work without a saved session or API key."
+          >
+            {purchase}
+          </SteamInformationDialog>
+        </section>
       )}
       <Notice error={error} />
     </section>

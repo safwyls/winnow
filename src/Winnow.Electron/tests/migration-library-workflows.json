@@ -104,14 +104,18 @@
     "reason": "Both modes restore an explicit prior sort and preserve its ordering on exit. The original repository fixture is represented by API data."
   },
   "ListsViewModelTests.Default_sort_change_preserves_manual_list_and_applies_on_exit": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-library-workflows.test.tsx",
         "case": "opens manual lists in member order, leaves predefined buckets, and restores the prior/default sort on exit"
+      },
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "applies a saved default on return while retaining a manual list until it closes"
       }
     ],
-    "reason": "Both modes retain member order after the default changes, then adopt the new default when leaving an implicitly sorted library. Persistent preference storage remains outside this test."
+    "reason": "Both surfaces retain ListOrder after a default change, including an existing explicit temporary order and a Settings-style unmount/remount, then apply the changed default on exit. The source method exercises ApplyDefaultSort and list exit, not preference persistence."
   },
   "ListsViewModelTests.A_title_can_be_moved_and_removed_and_the_move_survives_a_reload": {
     "status": "partial",

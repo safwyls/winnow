@@ -184,6 +184,57 @@ and refresh was 80.54 ms. Evidence is in
 run; they are not a CI latency guarantee. The framework-specific mappings explicitly
 retain the architectural difference and name the replacement behavior tests.
 
+The complete 100-case merge renderer suite passed again after synchronizing the synthetic
+answer helper with the enabled action control. A saved card can publish before the prior
+mutation releases its busy state; clicking that still-disabled control had dropped the
+next test action. The test still asserts every card identity, all 20 answers and the same
+one-read-per-answer boundary. No production behavior or assertion was relaxed.
+
 Library/list and Details contracts outside this package remain tracked by their exact
 source IDs in the overall migration inventory. Completing the merge class does not close
 those groups or establish full application parity.
+
+### Library default order and selection, 29 September 2026
+
+Both Library surfaces now observe changes to the saved default order even after a
+temporary browsing choice. A manual list retains its order and adopts the new default
+when it closes; this also works after visiting Settings while that list is open. Live-list
+rules and revisions are unaffected by a sort change. Twelve cases exercise all six defaults
+through the actual Settings component and named preference API, including a fresh cache
+after remount. The Library workflow matrix independently checks the resulting game order.
+
+Desktop grid and list clear a primary selection hidden by a filter and do not restore it
+when the filter is cleared. A bulk selection paints only its members, survives refreshed
+objects and sorting, and yields to one game on directional navigation on both surfaces.
+Fullscreen continues to retain a navigation cursor on a remaining visible game. The
+focused Library workflow, retained-focus and Avalon tests passed 88 cases; the preference
+round-trip matrix passed 12. TypeScript compilation passed. Both native lifecycle cases
+then verified that changing the default in Settings replaces a temporary browsing order
+when returning to the Library.
+
+### Expansion tile projection, 29 September 2026
+
+The shared Library projection applies the saved expansion-grouping preference after backend
+visibility and identity grouping, before search, panel filters and list membership. A pack
+folds only when its base is present. The base keeps its own entries, stores, playtime, date
+and bucket; a neutral +count mark names the folded packs and whether one remains unplayed.
+Desktop list rows expose the same count and wording. Switching grouping off restores the
+separate tiles. Library, rail counts, fullscreen Search and Settings use the same projection.
+Raw API games and workspace facts remain available to Details and recommendation consumers.
+
+The focused projection, lifecycle, filter and navigation regression set passed 156 cases
+across seven files, followed by a passing 54-case workflow rerun including two additional
+store-count assertions. Both native lifecycle cases passed in 14.8 seconds against the
+frozen production frontend and `.tmp/parity-full-tests/Debug/net10.0/Winnow.Backend.exe`.
+They create real expansion links, change preferences through Settings, verify pack-only
+list exclusion, compare every raw game and ownership-bucket row, and restore the separate
+tiles when grouping is turned off. The tests use accessible combobox names and wait for
+the authoritative saved preference state. Cleanup waits for the launched Electron child
+to exit before clearing its bounded fallback.
+
+Desktop and fullscreen count marks were measured inside their covers and captured in
+`.tmp/electron-library-lifecycle-passing/library-lifecycle-*`. The captures were inspected.
+The fullscreen fixture uses the retained grid at 1440×900; its smaller cover size
+is separate from the expansion mark behavior and remains part of layout review.
+Refresh publication/cancellation and the remaining exact Library/filter/list assertions
+stay in the migration inventory until their own replacement evidence is complete.

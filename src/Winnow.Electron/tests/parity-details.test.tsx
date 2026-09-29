@@ -126,6 +126,9 @@ afterEach(() => {
     'igdb:1:holder',
     'igdb:1:offer-revision',
     'igdb:1:sending',
+    'igdb:1:message',
+    'igdb:1:error',
+    'igdb:1:operation',
     'draft:metadata-fields:1',
     'metadata-fields:1:sending',
   ])
@@ -133,6 +136,224 @@ afterEach(() => {
 })
 
 describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details composition', (mode) => {
+  it('keeps a metadata-poor provisional game readable and installable without inventing a session or folder', async () => {
+    setup(
+      mode,
+      (input) => {
+        if (input.route === 'library.get')
+          return {
+            ok: true,
+            status: 200,
+            data: {
+              games: [
+                {
+                  ...game,
+                  title: 'App 8510',
+                  playtimeMinutes: 667,
+                  entries: [{ ...game.entries[0], installed: false }],
+                },
+              ],
+              lists: [],
+            },
+          }
+        if (input.route === 'library.workspace')
+          return {
+            ok: true,
+            status: 200,
+            data: {
+              ...workspace,
+              works: [{ id: 1, name: 'App 8510', nameIsProvisional: true }],
+              externalIds: [{ releaseId: 100, provider: 'steam', providerId: '8510' }],
+            },
+          }
+        if (input.route === 'game.details')
+          return {
+            ok: true,
+            status: 200,
+            data: { ...facts, events: [], history: {}, images: [], ownerships: [] },
+          }
+      },
+      'avalon',
+    )
+    await screen.findByRole('heading', { name: 'App 8510', level: 1 })
+    expect(screen.getByText('Name not yet available. Showing the app id until metadata loads.')).toBeTruthy()
+    expect(screen.getByText('No description yet. Metadata fills in automatically.')).toBeTruthy()
+    expect(screen.getByText('Steam has no date for your last session.')).toBeTruthy()
+    expect(screen.getByText('Steam · Not installed')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Install' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'More' }))
+    expect(screen.queryByRole('button', { name: 'Open install folder' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'More' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Updates' }))
+    expect(screen.getByText('No update signals recorded.')).toBeTruthy()
+  })
+  it.each([
+    [2004, 'Sierra Entertainment', '2004 · Sierra Entertainment'],
+    [2004, null, '2004'],
+    [null, 'Sierra Entertainment', 'Sierra Entertainment'],
+    [null, null, null],
+  ])(
+    'draws year %s and publisher %s without inventing an identity field',
+    async (firstReleaseYear, publisher, expected) => {
+      setup(
+        mode,
+        (input) =>
+          input.route === 'library.get'
+            ? {
+                ok: true,
+                status: 200,
+                data: { games: [{ ...game, firstReleaseYear, publisher }], lists: [] },
+              }
+            : undefined,
+        'avalon',
+      )
+      await screen.findByRole('heading', { name: 'Original game', level: 1 })
+      expect(document.querySelector('[data-details-identity-line]')?.textContent ?? null).toBe(expected)
+    },
+  )
+  it.each([false, true])(
+    'names the provisional title only when the workspace declares it provisional %s',
+    async (nameIsProvisional) => {
+      setup(
+        mode,
+        (input) =>
+          input.route === 'library.workspace'
+            ? {
+                ok: true,
+                status: 200,
+                data: { ...workspace, works: [{ id: 1, name: 'App 8510', nameIsProvisional }] },
+              }
+            : undefined,
+        'avalon',
+      )
+      await screen.findByRole('button', { name: 'Play' })
+      expect(
+        Boolean(screen.queryByText('Name not yet available. Showing the app id until metadata loads.')),
+      ).toBe(nameIsProvisional)
+    },
+  )
+  it.each([0, 28])(
+    'distinguishes no play from missing last-session dates for %s minutes',
+    async (playtimeMinutes) => {
+      setup(
+        mode,
+        (input) =>
+          input.route === 'library.get'
+            ? {
+                ok: true,
+                status: 200,
+                data: { games: [{ ...game, playtimeMinutes, lastPlayedAt: null }], lists: [] },
+              }
+            : undefined,
+        'avalon',
+      )
+      const expected = playtimeMinutes
+        ? 'Steam has no date for your last session.'
+        : "You've never opened this."
+      expect(await screen.findByText(expected)).toBeTruthy()
+      expect(
+        screen.queryByText(
+          playtimeMinutes ? "You've never opened this." : 'Steam has no date for your last session.',
+        ),
+      ).toBeNull()
+      expect(screen.queryByText('Unknown', { exact: true })).toBeNull()
+    },
+  )
+  it('keeps the game match menu face and query while its own Back control folds the editor', async () => {
+    setup(mode, undefined, 'avalon')
+    await screen.findByRole('button', { name: 'More' })
+    expect(screen.queryByLabelText('Game title or IGDB ID')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'More' }))
+    expect(screen.getByRole('button', { name: 'Wrong game?' }).title).toBe('Search IGDB for the right entry')
+    fireEvent.click(screen.getByRole('button', { name: 'Wrong game?' }))
+    const query = await screen.findByLabelText('Game title or IGDB ID')
+    fireEvent.change(query, { target: { value: 'Another game' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Overview' }))
+    expect(screen.queryByLabelText('Game title or IGDB ID')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'More' }))
+    expect(screen.getByRole('button', { name: 'Wrong game?' }).title).toBe('Search IGDB for the right entry')
+    fireEvent.click(screen.getByRole('button', { name: 'Wrong game?' }))
+    expect((screen.getByLabelText('Game title or IGDB ID') as HTMLInputElement).value).toBe('Another game')
+  })
+  it.each(['assign', 'clear', 'link'])(
+    'returns from %s to refreshed Details with a carried confirmation',
+    async (action) => {
+      let changed = false
+      const { request } = setup(
+        mode,
+        (input) => {
+          if (input.route === 'library.get')
+            return {
+              ok: true,
+              status: 200,
+              data: {
+                games: [{ ...game, title: changed && action !== 'clear' ? 'Corrected game' : game.title }],
+                lists: [],
+              },
+            }
+          if (input.route === 'metadata.igdb')
+            return {
+              ok: true,
+              status: 200,
+              data: {
+                revision: changed ? 'igdb-2' : 'igdb-1',
+                pin:
+                  (action === 'clear' && !changed) || (action === 'assign' && changed)
+                    ? { igdbId: 404 }
+                    : null,
+              },
+            }
+          if (input.route === 'metadata.search')
+            return { ok: true, status: 200, data: [{ igdbId: 404, name: 'Corrected game', platforms: [] }] }
+          if (input.route === 'metadata.claiming')
+            return { ok: true, status: 200, data: { workId: 2, title: 'Holder game' } }
+          if (input.route === 'metadata.assign') {
+            if (action === 'link')
+              return { ok: true, status: 200, data: { outcome: 'IgdbIdClaimedByAnotherWork' } }
+            changed = true
+            return { ok: true, status: 200, data: { outcome: 'Assigned' } }
+          }
+          if (input.route === 'metadata.clear' || input.route === 'identity.link') {
+            changed = true
+            return {
+              ok: true,
+              status: 200,
+              data: input.route === 'metadata.clear' ? true : { revision: 'review-2', actId: 5 },
+            }
+          }
+        },
+        'avalon',
+      )
+      await screen.findByRole('button', { name: 'More' })
+      fireEvent.click(screen.getByRole('button', { name: 'More' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Wrong game?' }))
+      if (action === 'clear')
+        fireEvent.click(await screen.findByRole('button', { name: 'Return to automatic matching' }))
+      else {
+        await waitFor(() =>
+          expect((screen.getByRole('button', { name: 'Search IGDB' }) as HTMLButtonElement).disabled).toBe(
+            false,
+          ),
+        )
+        fireEvent.click(screen.getByRole('button', { name: 'Search IGDB' }))
+        fireEvent.click(await screen.findByRole('button', { name: 'Use this match' }))
+        if (action === 'link')
+          fireEvent.click(await screen.findByRole('button', { name: 'Yes, group these editions' }))
+      }
+      const note =
+        action === 'assign'
+          ? 'Now using Corrected game.'
+          : action === 'link'
+            ? 'Linked with Holder game.'
+            : 'Returned to automatic metadata matching.'
+      expect(await screen.findByText(note)).toBeTruthy()
+      expect(screen.queryByLabelText('Game title or IGDB ID')).toBeNull()
+      expect(screen.getByRole('tab', { name: 'Overview' }).getAttribute('aria-selected')).toBe('true')
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'More' }))
+      expect(request.mock.calls.filter(([input]) => input.route === 'library.get').length).toBeGreaterThan(1)
+      if (action !== 'clear') expect(screen.getByRole('heading', { name: 'Corrected game' })).toBeTruthy()
+    },
+  )
   it('opens a merged member through its grouped facts while edits retain the requested identity', async () => {
     const { request } = setup(
       mode,
@@ -211,7 +432,8 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details compo
     expect(screen.getByRole('tabpanel').scrollTop).toBe(320)
     fireEvent.click(screen.getByRole('tab', { name: 'Library' }))
     fireEvent.click(screen.getByRole('button', { name: 'More' }))
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Wrong game…' }))
+    expect(document.activeElement).toBe(document.querySelector('.avalon-details-menu button'))
+    expect(document.activeElement?.textContent).toBe('View in Steam')
     fireEvent.click(screen.getByRole('button', { name: 'Edit metadata…' }))
     const input = await screen.findByRole('textbox', { name: 'Name' })
     await waitFor(() => expect(document.activeElement).toBe(input))

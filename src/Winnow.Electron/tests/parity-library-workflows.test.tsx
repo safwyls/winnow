@@ -11,7 +11,7 @@ import type { ApiRequest } from '../src/shared/bridge'
 import type { GameList, LibraryFilter, LibraryGame, LibraryResponse, Mode } from '../src/renderer/api/types'
 import { clearViewState } from '../src/renderer/viewState'
 
-const preferences = vi.hoisted(() => ({ values: { DefaultSort: 'NameAscending' } }))
+const preferences = vi.hoisted(() => ({ values: { DefaultSort: 'NameAscending' } as Record<string, string> }))
 vi.mock('../src/renderer/features/SettingsPreferences', () => ({
   usePresentationPreferences: () => preferences,
 }))
@@ -80,6 +80,7 @@ beforeEach(() => {
   current = structuredClone({ games, lists })
   handler = () => undefined
   preferences.values.DefaultSort = 'NameAscending'
+  delete preferences.values.GroupExpansions
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -98,6 +99,7 @@ afterEach(() => {
       'store',
       'list',
       'sort',
+      'default-sort',
       'sort-before-list',
       'list-base',
       'view',
@@ -206,8 +208,211 @@ const cards = () =>
   )
 const openList = (id: number | 'all') =>
   fireEvent.change(screen.getByLabelText('My lists'), { target: { value: String(id) } })
+const selectedCards = () =>
+  [...document.querySelectorAll<HTMLButtonElement>('.avalon-library [data-avalon-game]')]
+    .filter(
+      (card) => card.getAttribute('data-selected') === 'true' || card.getAttribute('aria-pressed') === 'true',
+    )
+    .map((card) => Number(card.dataset.avalonGame))
+
+describe.each(['desktop', 'fullscreen'] as const)('library selection in %s', (mode) => {
+  it('retains selected identities after reload and sort while keyboard navigation leaves one selected game', async () => {
+    const view = setup(mode)
+    const card = (id: number) => document.querySelector<HTMLButtonElement>(`[data-avalon-game="${id}"]`)!
+    fireEvent.click(card(1), { ctrlKey: true })
+    fireEvent.click(card(2), { ctrlKey: true })
+    act(() => card(3).focus())
+    expect(selectedCards()).toEqual([1, 2])
+    act(() =>
+      view.client.setQueryData(['api', 'library.get'], {
+        ...current,
+        games: current.games.map((game) => ({ ...game, summary: 'Fresh summary' })),
+      }),
+    )
+    fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'title-desc' } })
+    expect(selectedCards()).toEqual([2, 1])
+    act(() => card(3).focus())
+    fireEvent.keyDown(card(3), { key: 'ArrowRight' })
+    await waitFor(() => expect(selectedCards()).toEqual([2]))
+    expect(screen.getByRole('group', { name: 'Selected games' }).textContent).toContain('1 selected')
+  })
+  it('prunes hidden multi-selection without bringing it back when the filter is cleared', () => {
+    setup(mode)
+    fireEvent.click(document.querySelector('[data-avalon-game="1"]')!, { ctrlKey: true })
+    fireEvent.click(document.querySelector('[data-avalon-game="2"]')!, { ctrlKey: true })
+    fireEvent.change(screen.getByLabelText('Search games'), { target: { value: 'Bravo' } })
+    expect(selectedCards()).toEqual([2])
+    fireEvent.click(screen.getByRole('button', { name: 'Clear search' }))
+    expect(selectedCards()).toEqual([2])
+  })
+})
+
+it.each(['grid', 'list'] as const)(
+  'clears filtered and explicitly cleared primary selection in the desktop %s',
+  (kind) => {
+    setup('desktop')
+    if (kind === 'list') fireEvent.click(screen.getByRole('button', { name: 'List view' }))
+    act(() => document.querySelector<HTMLButtonElement>('[data-avalon-game="2"]')!.focus())
+    expect(selectedCards()).toEqual([2])
+    fireEvent.change(screen.getByLabelText('Search games'), { target: { value: 'Alpha' } })
+    expect(selectedCards()).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'Clear search' }))
+    expect(selectedCards()).toEqual([])
+    fireEvent.click(document.querySelector('[data-avalon-game="1"]')!, { ctrlKey: true })
+    expect(selectedCards()).toEqual([1])
+    fireEvent.click(document.querySelector('[data-avalon-game="1"]')!, { ctrlKey: true })
+    expect(selectedCards()).toEqual([])
+    expect(document.querySelector<HTMLElement>('.avalon-selection-actions')!.style.visibility).toBe('hidden')
+    fireEvent.click(document.querySelector('[data-avalon-game="2"]')!, { ctrlKey: true })
+    fireEvent.click(screen.getByRole('button', { name: 'Clear selection' }))
+    expect(selectedCards()).toEqual([])
+  },
+)
 
 describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) => {
+  it('counts grouped games once in the rail and per store and keeps a multi-store game in either store cut', () => {
+    current.games = current.games.map((game, index) => ({
+      ...game,
+      bucket: ['bounced', 'active', 'never_played'][index]!,
+      entries: index === 0
+        ? [{ ...game.entries[0]!, store: 'steam' }, { ...game.entries[1]!, store: 'epic' }]
+        : [{ ...game.entries[0]!, store: index === 1 ? 'steam' : 'gog' }],
+    }))
+    setup(mode)
+    expect(cards()).toHaveLength(3)
+    for (const label of ['All games3', 'Bounced1', 'In rotation1', 'Never played1'])
+      expect(screen.getByRole('button', { name: label })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+    const panel = screen.getByRole(mode === 'fullscreen' ? 'dialog' : 'region', { name: 'Library filters' })
+    fireEvent.click(within(panel).getByText('Stores', { exact: true }))
+    expect(within(panel).getByRole('checkbox', { name: 'Steam, 2 matching titles' })).toBeTruthy()
+    expect(within(panel).getByRole('checkbox', { name: 'GOG, 1 matching title' })).toBeTruthy()
+    fireEvent.click(within(panel).getByRole('checkbox', { name: 'Epic Games, 1 matching title' }))
+    if (mode === 'fullscreen') fireEvent.click(within(panel).getByRole('button', { name: 'Apply filters' }))
+    else fireEvent.click(within(panel).getByRole('button', { name: 'Close filters' }))
+    expect(cards()).toEqual([1])
+    expect(screen.getByRole('button', { name: 'All games3' })).toBeTruthy()
+  })
+  it.each([0, 45])(
+    'folds expansions with %s minutes before rail list and search cuts and restores their own tiles when grouping is disabled',
+    async (minutes) => {
+      preferences.values.GroupExpansions = ' True '
+      current.games[0] = { ...current.games[0]!, playtimeMinutes: 12000, bucket: 'active' }
+      current.games[1] = {
+        ...current.games[1]!,
+        playtimeMinutes: minutes,
+        bucket: minutes ? 'active' : 'never_played',
+      }
+      current.lists[0] = { ...current.lists[0]!, releaseIds: [200] }
+      handler = (input) =>
+        input.route === 'library.workspace'
+          ? ok({
+              works: [],
+              externalIds: [],
+              epicLaunchKeys: {},
+              pluginActions: {},
+              identityLinks: [{ parentWorkId: 1, childWorkId: 2, kind: 'expansion_of' }],
+            })
+          : undefined
+      const view = setup(mode)
+      await waitFor(() => expect(cards()).toEqual([1, 3]))
+      const name = `View Alpha. Includes 1 expansion${minutes ? '' : ', one of them never played'}.`
+      expect(screen.getByRole('button', { name })).toBeTruthy()
+      expect(document.querySelector('[data-avalon-game="1"] .avalon-expansion-mark')?.textContent).toBe('+1')
+      expect(screen.getByRole('button', { name: 'All games2' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Never played1' })).toBeTruthy()
+      if (mode === 'desktop') {
+        expect(document.querySelector('.avalon-library-total strong')?.textContent).toBe('2')
+        fireEvent.click(screen.getByRole('button', { name: 'List view' }))
+        expect(screen.getByRole('button', { name }).textContent).toContain('+1')
+      }
+      openList(10)
+      expect(cards()).toEqual([])
+      openList('all')
+      fireEvent.change(screen.getByLabelText('Search games'), { target: { value: 'Bravo' } })
+      expect(cards()).toEqual([])
+      preferences.values.GroupExpansions = 'false'
+      view.rerender(
+        <QueryClientProvider client={view.client}>
+          <Fixture mode={mode} />
+        </QueryClientProvider>,
+      )
+      expect(cards()).toEqual([2])
+      fireEvent.click(screen.getByRole('button', { name: 'Clear search' }))
+      expect(cards()).toEqual([1, 2, 3])
+      expect(document.querySelector('.avalon-expansion-mark')).toBeNull()
+      expect(current.games[0]!.playtimeMinutes).toBe(12000)
+      expect(current.games[1]!.playtimeMinutes).toBe(minutes)
+    },
+  )
+  it.each([
+    ['DormantLongest', 'dormant', [1, 3, 2]],
+    ['RecentlyPlayed', 'recent', [2, 3, 1]],
+    ['PlaytimeHighToLow', 'time', [2, 3, 1]],
+    ['PlaytimeLowToHigh', 'time-low', [1, 3, 2]],
+    ['NameAscending', 'title', [1, 2, 3]],
+    ['NameDescending', 'title-desc', [3, 2, 1]],
+  ] as const)(
+    'applies changed default %s over a temporary sort without persisting browsing choices',
+    (saved, sort, order) => {
+      preferences.values.DefaultSort = saved === 'NameAscending' ? 'NameDescending' : 'NameAscending'
+      current.games = current.games.map((game, index) => ({
+        ...game,
+        playtimeMinutes: [0, 120, 60][index]!,
+        lastPlayedAt: [null, '2026-09-01T00:00:00Z', '2025-09-01T00:00:00Z'][index],
+      }))
+      const view = setup(mode)
+      fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'title-desc' } })
+      preferences.values.DefaultSort = saved
+      view.rerender(
+        <QueryClientProvider client={view.client}>
+          <Fixture mode={mode} />
+        </QueryClientProvider>,
+      )
+      expect((screen.getByLabelText('Sort') as HTMLSelectElement).value).toBe(sort)
+      expect(cards()).toEqual(order)
+      fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'title-desc' } })
+      expect(preferences.values.DefaultSort).toBe(saved)
+      expect(view.request.mock.calls.some(([input]) => input.route === 'preferences.presentation.put')).toBe(
+        false,
+      )
+      view.unmount()
+      setup(mode)
+      expect((screen.getByLabelText('Sort') as HTMLSelectElement).value).toBe('title-desc')
+      expect(preferences.values.DefaultSort).toBe(saved)
+    },
+  )
+  it('applies a saved default on return while retaining a manual list until it closes', () => {
+    const view = setup(mode)
+    fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'title-desc' } })
+    openList(10)
+    expect(cards()).toEqual([3, 1, 2])
+    view.unmount()
+    preferences.values.DefaultSort = 'PlaytimeHighToLow'
+    current.games[1]!.playtimeMinutes = 120
+    current.games[2]!.playtimeMinutes = 60
+    setup(mode)
+    expect(cards()).toEqual([3, 1, 2])
+    expect((screen.getByLabelText('Sort') as HTMLSelectElement).value).toBe('list-order')
+    openList('all')
+    expect((screen.getByLabelText('Sort') as HTMLSelectElement).value).toBe('time')
+    expect(cards()).toEqual([2, 3, 1])
+  })
+  it('updates the order of a live list without changing its rules or writing its revision', () => {
+    const view = setup(mode)
+    openList(11)
+    fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'time-low' } })
+    preferences.values.DefaultSort = 'NameDescending'
+    view.rerender(
+      <QueryClientProvider client={view.client}>
+        <Fixture mode={mode} />
+      </QueryClientProvider>,
+    )
+    expect(cards()).toEqual([2, 1])
+    expect((screen.getByLabelText('My lists') as HTMLSelectElement).value).toBe('11')
+    expect(screen.queryByRole('button', { name: 'Update Steam evenings' })).toBeNull()
+    expect(view.request.mock.calls.some(([input]) => input.route === 'list.filter')).toBe(false)
+  })
   it('clears a deleted live list without hiding its former games', async () => {
     const view = setup(mode)
     openList(11)

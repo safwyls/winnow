@@ -6,6 +6,7 @@ import type { Mode, StoreConnections } from '../api/types'
 import { Notice } from './shared'
 import { ApplicationUpdates } from './Updates'
 import { useSetupBusy, useSetupPreferenceError } from './settingsState'
+import { parseExpansionGrouping } from './parity-library-grain'
 
 export interface PresentationPreferenceValue {
   preference: string
@@ -225,7 +226,7 @@ export function LibraryPresentationPreferences() {
       <label className="check-field">
         <input
           type="checkbox"
-          checked={preferences.values.GroupExpansions?.toLowerCase() === 'true'}
+          checked={parseExpansionGrouping(preferences.values.GroupExpansions)}
           disabled={!preferences.loaded || preferences.pending}
           onChange={(event) => preferences.set('GroupExpansions', String(event.target.checked))}
         />
@@ -374,6 +375,11 @@ export function AccountVisibility({ credentials }: { credentials?: StoreConnecti
         <input
           type="checkbox"
           checked={state.data?.ownAccountOnly ?? false}
+          title={
+            state.data?.accountConfirmed
+              ? 'Hide games from other Steam accounts on this computer.'
+              : 'The account filter becomes available after Steam confirms which account is yours.'
+          }
           disabled={!state.data?.accountConfirmed || command.isPending}
           onChange={(event) =>
             command.mutate({
@@ -384,6 +390,7 @@ export function AccountVisibility({ credentials }: { credentials?: StoreConnecti
         />
         Only show games from my Steam account
       </label>
+      {!state.data?.accountConfirmed && <p className="muted">Account confirmation pending</p>}
       <p className="muted">
         {state.data?.accountConfirmed
           ? `${state.data.hiddenCount} games from other accounts are affected.`
