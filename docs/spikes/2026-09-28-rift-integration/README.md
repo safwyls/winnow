@@ -188,3 +188,43 @@ physical AW3423DWF comparison remains for the user, initially using the same
 `--disable-direct-composition` flag to isolate this rendering change.
 
 ![Full-view details after the shared-mask reveal](details-shared-mask.png)
+
+## Windows presentation diagnosis — TASK-378
+
+The user reports that the TASK-377 package still animates poorly with DirectComposition
+disabled and still flickers with it enabled. The rendering changes therefore do not
+establish a fix. Disabling DirectComposition is not an acceptable ongoing workaround
+for this machine.
+
+A windowless Electron GPU probe, isolated under a temporary profile, reports Electron
+44.4.5 / Chromium 152.0.7977.130, RX 9070 XT, AMD driver 32.0.31041.1004 and ANGLE D3D11.
+GPU compositing, rasterization and WebGL are enabled, and `overlayInfo.directComposition`
+is true. These are capability results from the probe, not a trace of the running app.
+The separate `direct_rendering_display_compositor` status is not the DirectComposition
+status.
+
+Source inspection used the exact Chromium tag. Its
+[video overlay processor](https://github.com/chromium/chromium/blob/152.0.7977.130/components/viz/service/display/dc_layer_overlay.cc)
+accepts video and low-latency canvas quads; Rift's Pixi contexts do not request low latency.
+`BufferQueue` is experimental and gated on DCompDynamicTexture support in
+[output_surface.cc](https://github.com/chromium/chromium/blob/152.0.7977.130/components/viz/service/display/output_surface.cc),
+which the probe does not establish. Neither is a justified replacement switch at this
+point. No display, driver, registry or production GPU defaults were changed.
+
+The next useful evidence is a native app trace while the user reproduces the flicker.
+The following startup tracing switches are present in the matching Chromium source;
+a sandboxed probe produced a valid JSON trace with 117 events. This smoke check verifies
+trace output, not fullscreen rendering or physical flicker. Close the current Electron
+window, then run from the repository:
+
+```powershell
+$riftTrace = Join-Path $env:TEMP ("winnow-rift-" + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.json')
+& '.\src\Winnow.Electron\release\rift-portal\win-unpacked\Winnow Afterglow.exe' --data-dir "$env:LOCALAPPDATA\Winnow" '--trace-startup=cc,viz,gpu,benchmark,devtools.timeline' --trace-startup-duration=45 --trace-startup-format=json "--trace-startup-file=$riftTrace"
+$riftTrace
+```
+
+During those 45 seconds, use Rift fullscreen: leave the cursor still briefly, hover a
+foil cover, cycle the Discover deck and open details. Keep the window open until the
+capture ends. The trace stays local in the printed temporary path. No screenshot capture,
+network logging or debugger port is enabled. The trace can distinguish rendering and
+presentation timing problems; it cannot itself prove what the physical panel displayed.
