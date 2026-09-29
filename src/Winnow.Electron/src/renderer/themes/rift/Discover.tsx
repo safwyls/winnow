@@ -344,7 +344,6 @@ export function RiftDiscover(context: ThemeContext) {
               </span>
               <div ref={portalRef} className="rift-world-portal">
                 <PortalSurface
-                  key={game.workId}
                   options={journey.options}
                   reducedMotion={journey.reducedMotion}
                   artwork={<Artwork workId={game.workId} hero eager />}

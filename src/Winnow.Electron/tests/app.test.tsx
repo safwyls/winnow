@@ -134,6 +134,42 @@ function mount() {
   return client
 }
 describe('integrated frontend', () => {
+  it('keeps the Discover portal mounted while cycling recommendations on both surfaces', async () => {
+    const client = mount()
+    await screen.findByRole('heading', { name: 'A real API title' })
+    act(() =>
+      client.setQueryData(['api', 'library.get'], {
+        games: [
+          game,
+          {
+            ...game,
+            workId: 2,
+            title: 'Another world',
+            entries: [{ ...game.entries[0], workId: 2, releaseId: 2, ownershipId: 2 }],
+          },
+        ],
+        lists: [],
+      }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Theme Studio' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Rift.*Floating covers/i }))
+    for (const fullscreenMode of [false, true]) {
+      act(() => fullscreen(fullscreenMode))
+      fireEvent.click(screen.getByRole('button', { name: 'Discover' }))
+      await waitFor(() =>
+        expect(document.querySelector('.rift-world-portal .winnow-portal-surface')).not.toBeNull(),
+      )
+      const portal = document.querySelector('.rift-world-portal .winnow-portal-surface')
+      fireEvent.click(screen.getAllByRole('button', { name: 'Next recommendation' }).at(-1)!)
+      expect(screen.getByRole('heading', { name: 'Another world' })).toBeDefined()
+      expect(document.querySelector('.rift-world-portal .winnow-portal-surface')).toBe(portal)
+      expect(screen.getByRole('button', { name: 'View Another world' })).toBeDefined()
+      fireEvent.click(screen.getByRole('button', { name: 'View game' }))
+      await screen.findByRole('button', { name: 'History', hidden: true })
+      fireEvent.click(screen.getByRole('button', { name: 'Back to your library' }))
+    }
+  })
+
   it('offers Rift beside quiet Afterglow and retains full game details on both surfaces', async () => {
     mount()
     await screen.findByRole('heading', { name: 'A real API title' })

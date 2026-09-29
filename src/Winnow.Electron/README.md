@@ -36,6 +36,9 @@ keys. The outgoing card swings aside as the next card rises into place over 520 
 Repeated input continues from the current positions; selection and details activation
 update immediately. Reduced motion switches cards without the shuffle. The reusable
 `DeckShuffle` controller animates outer cards independently of their artwork materials.
+Stacking order stays fixed during the motion and is restored when it finishes. Discover
+keeps its portal renderer alive while changing the selected game's artwork and text;
+cycling the deck does not restart the portal entrance or create a new graphics context.
 
 Rift's Library opens a fixed-size artwork portal beside a hovered or focused cover. It flips
 left or docks inside narrow windows. The preview is informational: it has no buttons or

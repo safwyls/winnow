@@ -44,12 +44,22 @@ describe('card deck shuffling', () => {
       controller.play(root, before, direction)
       expect(root.dataset.shuffling).toBe('true')
       expect(draws).toHaveLength(3)
+      expect(
+        draws.every(({ frames }) =>
+          frames.every((frame) =>
+            Object.keys(frame).every((key) => ['transform', 'opacity', 'offset'].includes(key)),
+          ),
+        ),
+      ).toBe(true)
       expect(draws[0].frames[1].transform).toContain(direction > 0 ? '-115%' : '15%')
       draws[0].animation.onfinish?.call(draws[0].animation, {} as AnimationPlaybackEvent)
       expect(root.dataset.shuffling).toBe('true')
       for (const { animation } of draws.slice(1))
         animation.onfinish?.call(animation, {} as AnimationPlaybackEvent)
       expect(root.hasAttribute('data-shuffling')).toBe(false)
+      expect([...root.children].map((card) => (card as HTMLElement).style.zIndex)).toEqual(
+        direction > 0 ? ['1', '3', '1'] : ['1', '1', '3'],
+      )
     },
   )
 
@@ -67,6 +77,7 @@ describe('card deck shuffling', () => {
     expect(root.querySelector('[data-deck-slot="selected"]')?.getAttribute('data-deck-key')).toBe('3')
     controller.stop()
     expect(root.hasAttribute('data-shuffling')).toBe(false)
+    expect([...root.children].map((card) => (card as HTMLElement).style.zIndex)).toEqual(['1', '1', '3'])
     expect(draws.slice(3).every(({ animation }) => vi.mocked(animation.cancel).mock.calls.length === 1)).toBe(
       true,
     )
@@ -80,6 +91,7 @@ describe('card deck shuffling', () => {
     expect(draws).toHaveLength(3)
     expect(draws.every(({ animation }) => vi.mocked(animation.cancel).mock.calls.length === 1)).toBe(true)
     expect(root.hasAttribute('data-shuffling')).toBe(false)
+    expect([...root.children].map((card) => (card as HTMLElement).style.zIndex)).toEqual(['1', '3', '1'])
   })
 
   it('does not animate a single-card deck', () => {

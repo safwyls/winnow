@@ -25,6 +25,7 @@ var WinnowDeckShuffle = (() => {
   });
   var DeckShuffle = class {
     animations = /* @__PURE__ */ new Set();
+    layers = /* @__PURE__ */ new Map();
     root = null;
     capture(root) {
       return new Map(
@@ -35,7 +36,6 @@ var WinnowDeckShuffle = (() => {
             {
               transform: style.transform,
               opacity: style.opacity,
-              zIndex: style.zIndex,
               slot: card.dataset.deckSlot
             }
           ];
@@ -51,15 +51,19 @@ var WinnowDeckShuffle = (() => {
       for (const card of root.querySelectorAll("[data-deck-key]")) {
         const previous = before.get(card.dataset.deckKey);
         const style = getComputedStyle(card);
-        const end = { transform: style.transform, opacity: style.opacity, zIndex: style.zIndex };
+        const end = { transform: style.transform, opacity: style.opacity };
+        this.layers.set(card, {
+          value: card.style.getPropertyValue("z-index"),
+          priority: card.style.getPropertyPriority("z-index")
+        });
+        card.style.zIndex = previous?.slot === "selected" ? "4" : card.dataset.deckSlot === "selected" ? "5" : "0";
         let frames;
         if (previous?.slot === "selected") {
           frames = [
-            { transform: previous.transform, opacity: previous.opacity, zIndex: 4, offset: 0 },
+            { transform: previous.transform, opacity: previous.opacity, offset: 0 },
             {
               transform: `translateX(${sign > 0 ? "-115%" : "15%"}) translateY(-14px) rotate(${-sign * 19}deg) scale(.94)`,
               opacity: 0.92,
-              zIndex: 4,
               offset: 0.4
             },
             { ...end, offset: 1 }
@@ -69,13 +73,11 @@ var WinnowDeckShuffle = (() => {
             {
               transform: previous?.transform ?? `translateX(${sign > 0 ? "-12%" : "-84%"}) translateY(22px) rotate(${sign * 12}deg) scale(.82)`,
               opacity: previous?.opacity ?? 0.6,
-              zIndex: 5,
               offset: 0
             },
             {
               transform: `translateX(${sign > 0 ? "-42%" : "-58%"}) translateY(-10px) rotate(${sign * 3}deg) scale(1.015)`,
               opacity: 1,
-              zIndex: 5,
               offset: 0.62
             },
             { ...end, offset: 1 }
@@ -84,8 +86,7 @@ var WinnowDeckShuffle = (() => {
           frames = [
             {
               transform: previous?.transform ?? "translateX(-50%) translateY(30px) scale(.74)",
-              opacity: previous?.opacity ?? 0,
-              zIndex: 0
+              opacity: previous?.opacity ?? 0
             },
             end
           ];
@@ -94,6 +95,7 @@ var WinnowDeckShuffle = (() => {
         this.animations.add(animation);
         animation.onfinish = () => {
           this.animations.delete(animation);
+          this.restoreLayer(card);
           if (!this.animations.size) {
             delete root.dataset.shuffling;
             this.root = null;
@@ -101,12 +103,20 @@ var WinnowDeckShuffle = (() => {
         };
       }
     }
+    restoreLayer(card) {
+      const layer = this.layers.get(card);
+      if (!layer) return;
+      if (layer.value) card.style.setProperty("z-index", layer.value, layer.priority);
+      else card.style.removeProperty("z-index");
+      this.layers.delete(card);
+    }
     stop() {
       for (const animation of this.animations) {
         animation.onfinish = null;
         animation.cancel();
       }
       this.animations.clear();
+      for (const card of this.layers.keys()) this.restoreLayer(card);
       if (this.root) delete this.root.dataset.shuffling;
       this.root = null;
     }

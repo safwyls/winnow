@@ -114,3 +114,40 @@ cycling retained its material. Node syntax validation and all 20 production artw
 tests passed. No Electron production code changed or native executable was repackaged.
 
 ![Library foil restored in the mock](library-foil.png)
+
+## Shuffle rendering work — TASK-376
+
+The user reports physical monitor flicker on an AW3423DWF with an RX 9070 XT, HDR and
+VRR disabled. It occurs in Rift fullscreen but not Afterglow or Avalonia and does not
+appear in a ShareX recording. Setting portal activity to zero stops the ongoing flicker;
+card animation start/stop still produces brief flicker. Launching with
+`--disable-direct-composition` stops the flicker but sometimes makes the shuffle jerky.
+These are user observations, not measurements made by the browser fixture.
+
+An integration regression reproduced Discover replacing its portal on each selection.
+The production screen now keeps the portal mounted, changing artwork and reading content
+without destroying and recreating its GPU renderer or replaying the aperture entrance.
+Deck stacking is assigned once per animation and restored afterward; keyframes contain
+only transform and opacity. The mock uses the regenerated shared deck controller.
+
+All 20 focused app, deck and portal tests passed. The new lifecycle check failed before
+the change and passed afterward on both presentation modes. A portal test separately
+confirmed a single renderer creation with no destruction when artwork and text changed.
+Completion, interruption and reduced-motion tests verify stacking restoration. The
+production build passed with the existing Zod comment-annotation notices.
+
+Browser checks confirmed desktop and fullscreen selection changes leave the WebGL portal
+open, rapid right/right/left input retains the latest game's title and keyboard focus,
+and Enter opens that game's details. The mock shuffled in both modes and removed its
+temporary stacking styles at rest. These checks establish lifecycle behavior, not native
+frame pacing or a fix for the display flicker. GPU startup defaults remain unchanged.
+
+A separate unpacked Windows build is available at
+`src/Winnow.Electron/release/rift-smooth/win-unpacked/Winnow Afterglow.exe`. Packaging
+reused the existing staged backend and notices; no backend code changed. All 52 files in
+the frontend output matched the packaged archive byte-for-byte. This package has not
+been interactively tested on the affected physical monitor. Repeat the same fullscreen
+comparison with `--disable-direct-composition` to assess hitching independently of the
+known flicker workaround. The existing `release/win-unpacked` build was not overwritten.
+
+![Discover with its portal retained while changing games](discover-persistent-portal.png)

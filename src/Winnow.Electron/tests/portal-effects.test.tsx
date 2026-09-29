@@ -64,6 +64,23 @@ afterEach(() => {
 })
 
 describe('reusable portals', () => {
+  it('updates artwork and reading content without recreating the GPU renderer', async () => {
+    const view = render(<PortalSurface artwork={<img src="first-cover" alt="" />}>First game</PortalSurface>)
+    await settle()
+    act(() => vi.advanceTimersByTime(500))
+    const canvas = view.container.querySelector('canvas')
+    view.rerender(<PortalSurface artwork={<img src="second-cover" alt="" />}>Second game</PortalSurface>)
+    await settle()
+    expect(factory).toHaveBeenCalledTimes(1)
+    expect(renderer.destroy).not.toHaveBeenCalled()
+    expect(view.container.querySelector('canvas')).toBe(canvas)
+    expect(view.container.querySelector('img')?.getAttribute('src')).toBe('second-cover')
+    expect(view.container.querySelector('.winnow-portal-content')?.textContent).toBe('Second game')
+    expect(view.container.querySelector<HTMLElement>('.winnow-portal-surface')?.dataset.portalOpening).toBe(
+      'false',
+    )
+  })
+
   it('reveals fixed content, clears every expansion mask and releases GPU work exactly once', async () => {
     const expanded = vi.fn()
     const view = render(

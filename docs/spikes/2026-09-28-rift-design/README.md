@@ -89,6 +89,10 @@ of materials, without changing selection or delaying activation. Regenerate it f
 npm exec -- esbuild src/renderer/components/deck-shuffle.ts --bundle --format=iife --global-name=WinnowDeckShuffle --outfile=../../docs/spikes/2026-09-28-rift-design/effects/deck-shuffle.js
 ```
 
+Its keyframes contain only transform and opacity; temporary stacking order is applied
+once per shuffle and restored on completion or cancellation. The TASK-376 generated
+bundle was checked in desktop and fullscreen, including cleanup of temporary styles.
+
 `effects/portal-surface.js` owns the reusable material and fixed-plane reveal, including
 an optional source rectangle for the full-view expansion. `effects/aperture.js` connects
 Discover selection and appearance controls to that renderer. `effects/library-preview.js`
