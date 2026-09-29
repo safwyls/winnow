@@ -2,38 +2,78 @@
   "AccountStatsSummaryTests.Both_surfaces_show_shared_count_percentages_and_preserve_currency_boundaries": {
     "status": "partial",
     "tests": [
-      { "file": "tests/parity-accounts.test.tsx", "case": "keeps currencies and wallet funding separate on %s" },
-      { "file": "tests/electron/parity.spec.ts", "case": "spending preserves currency boundaries and chart focus at large text sizes" }
+      {
+        "file": "tests/parity-accounts.test.tsx",
+        "case": "keeps currencies and wallet funding separate on %s"
+      },
+      {
+        "file": "tests/electron/parity.spec.ts",
+        "case": "spending preserves currency boundaries and chart focus at large text sizes"
+      }
     ],
     "reason": "Both real rendered surfaces display the original 33.3% and 50% proportions, keep dollar/euro amounts separate and enforce original statistic font minima. The original single-currency native fixture and full summary-copy assertions remain."
   },
   "AccountStatsSummaryTests.Missing_prices_zero_denominators_and_ambiguous_accounts_do_not_invent_figures": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
-      { "file": "tests/parity-accounts.test.tsx", "case": "does not invent percentages or currency totals for unknown prices" },
-      { "file": "tests/parity-accounts.test.tsx", "case": "does not represent missing product prices as zero spend" }
+      {
+        "file": "tests/parity-accounts.test.tsx",
+        "case": "does not invent percentages or currency totals for unknown prices"
+      },
+      {
+        "file": "tests/parity-accounts.test.tsx",
+        "case": "does not represent missing product prices as zero spend"
+      },
+      {
+        "file": "tests/parity-account-capture.test.tsx",
+        "case": "With_no_facts_the_screen_is_an_empty_state_and_not_a_table_of_zeroes"
+      },
+      {
+        "file": "tests/parity-account-capture.test.tsx",
+        "case": "Licences_alone_are_enough_to_leave_the_empty_state"
+      },
+      {
+        "file": "tests/parity-accounts.test.tsx",
+        "case": "Statistics_render_known_and_unknown_account_scope_without_ambiguous_money_totals on %s"
+      },
+      {
+        "file": "tests/parity-account-capture.test.tsx",
+        "case": "all refunded transactions retain a real 100 percent refund share without inventing a bundle denominator"
+      }
     ],
-    "reason": "Unknown prices, zero product counts, empty captures and ambiguous identity are covered. The original complete matrix, including all-refunded product transactions, still needs equivalent assertions."
+    "reason": "Empty captures, licence-only captures, unknown prices, zero product denominators and overlapping account identities never display invented money or percentages. Both surfaces additionally verify all-refunded purchases have a real 100% refund share, zero net spend, no bundle denominator and no kept-transaction average."
   },
   "AccountStatsSummaryTests.Currency_charts_switch_keep_focus_and_render_without_horizontal_overflow": {
     "status": "partial",
     "tests": [
-      { "file": "tests/parity-accounts.test.tsx", "case": "switches chart currencies without blending amounts or losing focus on %s" },
-      { "file": "tests/electron/parity.spec.ts", "case": "spending preserves currency boundaries and chart focus at large text sizes" }
+      {
+        "file": "tests/parity-accounts.test.tsx",
+        "case": "switches chart currencies without blending amounts or losing focus on %s"
+      },
+      {
+        "file": "tests/electron/parity.spec.ts",
+        "case": "spending preserves currency boundaries and chart focus at large text sizes"
+      }
     ],
     "reason": "Both native surfaces retain the currency control's focus and constrain narrow charts at larger theme text size. Original 1920/1280 fullscreen and 1200/600 desktop matrices, controller currency changes and refresh retention remain."
   },
   "AccountStatsSummaryTests.Overlapping_accounts_with_currency_groups_suppress_money_charts_but_keep_licence_counts": {
     "status": "ported",
     "tests": [
-      { "file": "tests/parity-accounts.test.tsx", "case": "Overlapping_accounts_with_currency_groups_suppress_money_charts_but_keep_licence_counts" }
+      {
+        "file": "tests/parity-accounts.test.tsx",
+        "case": "Overlapping_accounts_with_currency_groups_suppress_money_charts_but_keep_licence_counts"
+      }
     ],
     "reason": "The same known/unknown-account overlap suppresses monetary charts and values while retaining the five recorded retail licences. The shared screen presents an explicit overlap explanation."
   },
   "AccountStatsSummaryTests.Negative_amounts_stay_signed_and_zero_years_remain_recorded_facts": {
     "status": "ported",
     "tests": [
-      { "file": "tests/parity-accounts.test.tsx", "case": "Negative_amounts_stay_signed_and_zero_years_remain_recorded_facts" }
+      {
+        "file": "tests/parity-accounts.test.tsx",
+        "case": "Negative_amounts_stay_signed_and_zero_years_remain_recorded_facts"
+      }
     ],
     "reason": "Signed negative year amounts remain visible, invalid negative composition charts are withheld with an explanation, and a zero recorded year remains in the chart and peak-year insight."
   }

@@ -79,9 +79,11 @@ describe('Library source filter matrices', () => {
     ])
     expect(counts({}).get('RPG')).toBe(2)
     expect(counts({ gameModes: ['single'] }).get('RPG')).toBe(1)
+    expect(counts({ gameModes: ['single'] }).get('Shooter')).toBe(1)
     const selected = { gameModes: ['single'], genreIds: [1] }
     expect(titles(selected)).toEqual(['Solo RPG'])
     expect(counts(selected).get('Shooter')).toBe(1)
+    expect(counts(selected).get('RPG')).toBe(1)
     expect(titles({ ...selected, genreIds: [1, 2] })).toEqual(['Solo RPG', 'Solo shooter'])
   })
   it('excludes undated games only while a release-year bound is active', () => {

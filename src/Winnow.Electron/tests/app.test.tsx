@@ -159,6 +159,36 @@ function mountAfterglow() {
   return mount()
 }
 describe('integrated frontend', () => {
+  it.each(['desktop', 'fullscreen'])(
+    'opening Spending from navigation refreshes its capture and another navigation row leaves it on %s',
+    async (mode) => {
+      clearViewState(`${mode}:stats:section`)
+      const original = window.winnow.request
+      const reads = vi.fn(() => ({ hasAnything: false }))
+      window.winnow.request = vi.fn(async (input) =>
+        input.route === 'statistics.account' ? { ok: true, status: 200, data: reads() } : original(input),
+      ) as WinnowBridge['request']
+      const client = mount()
+      await screen.findByRole('navigation', { name: 'Main navigation' })
+      act(() => fullscreen(mode === 'fullscreen'))
+      const navigation = () => within(screen.getByRole('navigation', { name: 'Main navigation' }))
+      expect(reads).not.toHaveBeenCalled()
+      fireEvent.click(navigation().getByRole('button', { name: 'Activity' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Library summary' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Spending' }))
+      await screen.findByText(/No Steam spending has been captured/)
+      expect(reads).toHaveBeenCalledTimes(1)
+      fireEvent.click(navigation().getByRole('button', { name: 'Library' }))
+      expect(screen.queryByRole('region', { name: 'Account spending' })).toBeNull()
+      expect(await screen.findByRole('button', { name: `View ${game.title}` })).toBeTruthy()
+      expect(reads).toHaveBeenCalledTimes(1)
+      fireEvent.click(navigation().getByRole('button', { name: 'Activity' }))
+      await screen.findByRole('region', { name: 'Account spending' })
+      await waitFor(() => expect(reads).toHaveBeenCalledTimes(2))
+      client.clear()
+      clearViewState(`${mode}:stats:section`)
+    },
+  )
   it.each([false, true])(
     'a winning visibility snapshot closes excluded details while keeping the remaining game, fullscreen %s',
     async (fullscreenMode) => {

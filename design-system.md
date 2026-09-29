@@ -471,6 +471,10 @@ can overlap across games; Never played means no recorded play evidence, and Reti
 not mean completed. Changing the period does not change this current composition.
 
 Spending identifies Steam as its supported source. Other stores have no spending importer.
+Opening Spending refreshes the capture, including when returning within the same session.
+Capture dates remain the calendar dates on the source page. Missing dates omit their rows;
+undated transactions retain their own count and spending row. Licence acquisition methods
+use readable names such as Steam Store and Retail key.
 Each currency has its own net, gross and refunded
 amounts. Currency selection changes the money charts and detailed breakdowns together;
 amounts in different currencies are never combined or ranked against one another.

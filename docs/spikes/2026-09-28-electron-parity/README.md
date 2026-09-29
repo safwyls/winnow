@@ -51,6 +51,7 @@ Chromium profiles stay in those directories and are excluded from committed evid
 
 | Check | Observed result |
 |---|---|
+| Account and filter checkpoint | All 2,419 Electron cases across 125 files passed without skips, plus both native Spending checks. See [checkpoint seven](checkpoint-seven.md) for the exact audit scope and remaining gaps. |
 | Full .NET Release solution | 6,772 passed; two Linux-only skips on Windows, across 13 assemblies. |
 | Original Avalonia UI assembly | All 896 tests passed within the full Release run. |
 | Electron unit/component and live API suite | All 1,705 tests passed across 99 files, without skips, against the isolated Debug backend. This run includes the account, feed, merge, navigation and shared details fact packages. |
@@ -96,7 +97,7 @@ uses Chromium's actual permission checks and the named font-catalogue bridge.
 ## Verification limits
 
 The current passing suites cover substantially more behavior than the original Electron
-implementation, but most source contracts remain pending or partial. Original suites
+implementation, but many source contracts remain pending or partial. Original suites
 covering detailed focus, input, modal geometry, performance, source provenance and native
 application lifecycle still require equivalent Electron evidence. The inventory records
 that work explicitly instead of treating an aggregate green test run as migration completion.

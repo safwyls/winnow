@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 936,
-    "partial": 165,
-    "ported": 781,
+    "pending": 911,
+    "partial": 164,
+    "ported": 807,
     "retained-backend": 540,
     "framework-specific": 13
   },
@@ -454,62 +454,150 @@
     {
       "id": "AccountStatsViewModelTests.With_no_facts_the_screen_is_an_empty_state_and_not_a_table_of_zeroes",
       "source": "tests/Winnow.Tests/AccountStatsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-account-capture.test.tsx",
+          "case": "With_no_facts_the_screen_is_an_empty_state_and_not_a_table_of_zeroes"
+        }
+      ],
+      "reason": "Both rendered modes use an empty state with the current import location and no spending, year, licence, currency or largest-transaction figures. The unused Avalonia view-model zero is not a visible frontend contract."
     },
     {
       "id": "AccountStatsViewModelTests.Licences_alone_are_enough_to_leave_the_empty_state",
       "source": "tests/Winnow.Tests/AccountStatsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-account-capture.test.tsx",
+          "case": "Licences_alone_are_enough_to_leave_the_empty_state"
+        }
+      ],
+      "reason": "Both modes leave the empty state for four licences alone and show the friendly Steam Store label with its count."
     },
     {
       "id": "AccountStatsViewModelTests.A_mixed_currency_capture_renders_no_money_at_all_and_keeps_its_counts",
       "source": "tests/Winnow.Tests/AccountStatsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-account-capture.test.tsx",
+          "case": "A_mixed_currency_capture_renders_no_money_at_all_and_keeps_its_counts"
+        }
+      ],
+      "reason": "The original mixed-currency fixture retains gross, year, purchase, wallet and currency counts without any blended monetary total; its largest individual transaction uses its own pound symbol."
     },
     {
       "id": "AccountStatsViewModelTests.One_symbol_plus_a_symbol_less_row_is_still_mixed",
       "source": "tests/Winnow.Tests/AccountStatsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-account-capture.test.tsx",
+          "case": "One_symbol_plus_a_symbol_less_row_is_still_mixed"
+        }
+      ],
+      "reason": "One known symbol plus an unknown-symbol transaction retains both counts and refuses a combined amount on both surfaces."
     },
     {
       "id": "AccountStatsViewModelTests.A_single_currency_capture_renders_its_totals_with_the_symbol_as_stored",
       "source": "tests/Winnow.Tests/AccountStatsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-account-capture.test.tsx",
+          "case": "A_single_currency_capture_renders_its_totals_with_the_symbol_as_stored"
+        }
+      ],
+      "reason": "Both surfaces render the original euro gross, refunded and net values and eleven kept transactions, without a redundant single-symbol currency breakdown."
     },
     {
       "id": "AccountStatsViewModelTests.Wallet_credit_is_its_own_fact_and_never_joins_the_spend_figures",
       "source": "tests/Winnow.Tests/AccountStatsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-account-capture.test.tsx",
+          "case": "Wallet_credit_is_its_own_fact_and_never_joins_the_spend_figures"
+        }
+      ],
+      "reason": "The original product, top-up and redeemed-credit fixture renders each wallet fact separately and never adds either to product spending."
     },
     {
       "id": "AccountStatsViewModelTests.The_year_table_lists_the_undated_slice_as_its_own_line",
       "source": "tests/Winnow.Tests/AccountStatsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-account-capture.test.tsx",
+          "case": "The_year_table_lists_the_undated_slice_as_its_own_line"
+        }
+      ],
+      "reason": "Both modes render the original dated years in order and the separate undated count/amount row without moving it into a year."
     },
     {
       "id": "AccountStatsViewModelTests.With_every_row_dated_the_year_table_has_no_extra_line",
       "source": "tests/Winnow.Tests/AccountStatsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-account-capture.test.tsx",
+          "case": "With_every_row_dated_the_year_table_has_no_extra_line"
+        }
+      ],
+      "reason": "Both modes render only the supplied dated year when the undated count is zero."
     },
     {
       "id": "AccountStatsViewModelTests.A_bundle_shows_its_total_and_flags_itself_rather_than_being_split",
       "source": "tests/Winnow.Tests/AccountStatsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-account-capture.test.tsx",
+          "case": "A_bundle_shows_its_total_and_flags_itself_rather_than_being_split"
+        }
+      ],
+      "reason": "The original three-game bundle keeps its whole $120 transaction, captured UTC page date and explicit bundle label without an inferred per-game price."
     },
     {
       "id": "AccountStatsViewModelTests.An_absent_date_is_an_absent_row",
       "source": "tests/Winnow.Tests/AccountStatsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-account-capture.test.tsx",
+          "case": "An_absent_date_is_an_absent_row"
+        }
+      ],
+      "reason": "Both modes omit absent first/last date facts and preserve the count of two undated transactions."
     },
     {
       "id": "AccountStatsViewModelTests.Opening_the_screen_from_the_rail_recomputes_the_figures",
       "source": "tests/Winnow.Tests/AccountStatsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/app.test.tsx",
+          "case": "opening Spending from navigation refreshes its capture and another navigation row leaves it on %s"
+        },
+        {
+          "file": "tests/parity-account-capture.test.tsx",
+          "case": "reopening Spending recomputes captured figures without waiting for the query cache to expire"
+        }
+      ],
+      "reason": "Actual desktop/fullscreen app navigation issues one account read per open, none on close; the composed Gameplay/Spending screen shows a changed three-licence capture immediately on reopen within the cache lifetime."
     },
     {
       "id": "AccountStatsViewModelTests.Another_rail_row_leaves_the_stats_screen",
       "source": "tests/Winnow.Tests/AccountStatsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/app.test.tsx",
+          "case": "opening Spending from navigation refreshes its capture and another navigation row leaves it on %s"
+        }
+      ],
+      "reason": "The actual main navigation removes Spending, restores Library tiles, and preserves the previous Spending location when Activity is reopened on each surface."
     },
     {
       "id": "AcquisitionExportTests.Export_preserves_acquisition_facts_and_quotes_titles",
@@ -5239,67 +5327,162 @@
     {
       "id": "FilterPanelViewModelTests.Two_options_in_one_group_widen_the_result",
       "source": "tests/Winnow.Tests/FilterPanelViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-filter-contracts.test.ts",
+          "case": "widens one selected genre to the union of two genres"
+        }
+      ],
+      "reason": "The production filter policy returns the union of selected genres and excludes the third genre."
     },
     {
       "id": "FilterPanelViewModelTests.Two_groups_narrow_the_result",
       "source": "tests/Winnow.Tests/FilterPanelViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-filter-contracts.test.ts",
+          "case": "narrows independent genre and player-mode groups and includes the rail as another AND term"
+        }
+      ],
+      "reason": "Independent genre and player-mode selections intersect instead of widening the result."
     },
     {
       "id": "FilterPanelViewModelTests.The_rail_bucket_is_one_more_and_term",
       "source": "tests/Winnow.Tests/FilterPanelViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-filter-contracts.test.ts",
+          "case": "narrows independent genre and player-mode groups and includes the rail as another AND term"
+        }
+      ],
+      "reason": "A bucket narrows two genre matches to the one game in that bucket."
     },
     {
       "id": "FilterPanelViewModelTests.The_year_range_excludes_a_release_whose_year_is_unknown",
       "source": "tests/Winnow.Tests/FilterPanelViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-filter-contracts.test.ts",
+          "case": "excludes undated games only while a release-year bound is active"
+        }
+      ],
+      "reason": "The original dated/undated fixture excludes only the unknown year under an active range and restores it when bounds are removed."
     },
     {
       "id": "FilterPanelViewModelTests.A_count_is_what_the_option_would_leave_you_with",
       "source": "tests/Winnow.Tests/FilterPanelViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-filter-contracts.test.ts",
+          "case": "counts the result each option would leave while lifting only its own selected group"
+        }
+      ],
+      "reason": "The original cooperative/solo matrix changes RPG counts from two to one and keeps the single-player shooter count at one."
     },
     {
       "id": "FilterPanelViewModelTests.A_groups_own_selection_does_not_zero_its_siblings",
       "source": "tests/Winnow.Tests/FilterPanelViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-filter-contracts.test.ts",
+          "case": "counts the result each option would leave while lifting only its own selected group"
+        }
+      ],
+      "reason": "Selected and sibling genre counts remain one while a different group stays active; selecting both widens the actual result."
     },
     {
       "id": "FilterPanelViewModelTests.An_option_that_would_empty_the_grid_says_so_and_stops_being_a_target",
       "source": "tests/Winnow.Tests/FilterPanelViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-filters.test.tsx",
+          "case": "keeps a checked zero-count option enabled so a restored empty cut can be widened"
+        },
+        {
+          "file": "tests/avalon-filters.test.tsx",
+          "case": "freezes common-first ordering while residual zero options disable"
+        }
+      ],
+      "reason": "Both real filter panels retain an enabled checked zero-count option, and removing it restores matching games. The companion test disables unchecked zero-count choices."
     },
     {
       "id": "FilterPanelViewModelTests.A_dimension_with_no_data_draws_no_group",
       "source": "tests/Winnow.Tests/FilterPanelViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-filters.test.tsx",
+          "case": "hides empty metadata and a universal store then exposes the arriving %s provider"
+        }
+      ],
+      "reason": "Both panels hide empty descriptor/year groups and a universal store, while retaining the installation filter."
     },
     {
       "id": "FilterPanelViewModelTests.A_store_group_appears_as_soon_as_a_second_store_does",
       "source": "tests/Winnow.Tests/FilterPanelViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-filters.test.tsx",
+          "case": "hides empty metadata and a universal store then exposes the arriving %s provider"
+        }
+      ],
+      "reason": "Both panels rerender when GOG or plugin:xbox arrives, preserve friendly names and residual Steam count, and emit the original provider ID to select only its game."
     },
     {
       "id": "FilterPanelViewModelTests.The_cut_bar_states_the_library_and_what_is_left_of_it",
       "source": "tests/Winnow.Tests/FilterPanelViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "states total and remaining games and removes every bucket and genre rule independently"
+        }
+      ],
+      "reason": "Both actual Library surfaces change from an absent cut bar to 3 → 1 and show the original ordered bucket and genre chips."
     },
     {
       "id": "FilterPanelViewModelTests.Every_rule_is_a_chip_and_every_chip_takes_itself_off",
       "source": "tests/Winnow.Tests/FilterPanelViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "states total and remaining games and removes every bucket and genre rule independently"
+        }
+      ],
+      "reason": "Started/BUCKET precedes RPG/GENRE, removing RPG restores two games, and removing Started restores all three and removes the cut bar on both surfaces."
     },
     {
       "id": "FilterPanelViewModelTests.Clearing_the_panel_leaves_the_rail_where_it_was",
       "source": "tests/Winnow.Tests/FilterPanelViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "toggles the current bucket off outside a live list and clears only panel rules from the panel"
+        }
+      ],
+      "reason": "Both composed panels clear the genre while preserving the Started bucket and its two matching games."
     },
     {
       "id": "FilterPanelViewModelTests.An_empty_result_from_a_filter_is_a_direction",
       "source": "tests/Winnow.Tests/FilterPanelViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "explains an empty saved facet cut and restores matching games by dropping one rule"
+        }
+      ],
+      "reason": "Both Library surfaces render the original empty-result instruction for an empty restored cut and restore a matching game when its conflicting rule is removed."
     },
     {
       "id": "FirstRunSetupTests.Only_new_normal_install_opens_automatically",
@@ -18346,7 +18529,7 @@
     {
       "id": "AccountStatsSummaryTests.Missing_prices_zero_denominators_and_ambiguous_accounts_do_not_invent_figures",
       "source": "tests/Winnow.Ui.Tests/AccountStatsSummaryTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-accounts.test.tsx",
@@ -18355,9 +18538,25 @@
         {
           "file": "tests/parity-accounts.test.tsx",
           "case": "does not represent missing product prices as zero spend"
+        },
+        {
+          "file": "tests/parity-account-capture.test.tsx",
+          "case": "With_no_facts_the_screen_is_an_empty_state_and_not_a_table_of_zeroes"
+        },
+        {
+          "file": "tests/parity-account-capture.test.tsx",
+          "case": "Licences_alone_are_enough_to_leave_the_empty_state"
+        },
+        {
+          "file": "tests/parity-accounts.test.tsx",
+          "case": "Statistics_render_known_and_unknown_account_scope_without_ambiguous_money_totals on %s"
+        },
+        {
+          "file": "tests/parity-account-capture.test.tsx",
+          "case": "all refunded transactions retain a real 100 percent refund share without inventing a bundle denominator"
         }
       ],
-      "reason": "Unknown prices, zero product counts, empty captures and ambiguous identity are covered. The original complete matrix, including all-refunded product transactions, still needs equivalent assertions."
+      "reason": "Empty captures, licence-only captures, unknown prices, zero product denominators and overlapping account identities never display invented money or percentages. Both surfaces additionally verify all-refunded purchases have a real 100% refund share, zero net spend, no bundle denominator and no kept-transaction average."
     },
     {
       "id": "AccountStatsSummaryTests.Currency_charts_switch_keep_focus_and_render_without_horizontal_overflow",

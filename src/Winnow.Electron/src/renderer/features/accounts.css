@@ -52,3 +52,24 @@
   table-layout: fixed;
   overflow-wrap: anywhere;
 }
+.account-statistics .facts-grid .transaction-count {
+  font: 400 0.875rem var(--font-body);
+  color: var(--muted);
+}
+.capture-facts {
+  display: grid;
+  gap: 0.75rem 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}
+.capture-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.capture-facts dd {
+  margin: 0;
+  font-family: var(--font-mono);
+}
+.capture-facts dt {
+  overflow-wrap: anywhere;
+}

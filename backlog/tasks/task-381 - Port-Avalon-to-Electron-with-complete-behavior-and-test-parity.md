@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-29 16:15'
+updated_date: '2026-09-29 16:32'
 labels: []
 dependencies: []
 priority: high
@@ -106,4 +106,6 @@ Fourth checkpoint: integrated Electron component/live-backend run passed all 213
 Fifth checkpoint: all2371 Electron component/live-backend cases pass in123files, no skips. Native artwork6,Details9,Library4,backdrops4,Steam policy2,and session-appearance1 all pass across recorded runs. Short artwork icon collapse and fullscreen1280x720 high-scale reading-space failures were fixed without relaxing geometry assertions. Full Windows Release13-assembly .NET run:6837pass,2repository-check failures,2Linux-only skips; corrected identity-reader inventory and legacy-name documentation, then13targeted enforcement checks pass.45migration hashes verified. Agent quota stopped parallel work; coordinator repaired unfinishedLibrary fixtures and SteamKey test compilation and verified session overrides. Source inventory now746ported540retained13framework-specific,972pending164partial. Details/artwork mappings and checkpoint-five.md record limits; no acceptance criteria checked.
 
 Sixth package restores independent metadata desktop/fullscreen navigation. Native five desktop sizes plus fullscreen controller A/Y/B pass; 19 metadata/Details/Library native cases passed, then metadata6 exited cleanly after child-exit cleanup. Electron integrated2385/124 all pass after cancellation-aware account assertion repair; subsequent expanded pending-Details matrix passes App24. Library/workspace/Details read cancellation rejects late publication and composed App tests close excluded Details. Source audit781ported540retained13framework,936pending165partial. Two library ordering contracts remain partial for combined settings/editor and independent selection evidence; no acceptance criteria checked.
+
+Checkpoint seven: restored Spending refresh-on-open, captured counts without blended currency totals, largest-transaction currency/date, bundle totals, absent-date handling, UTC page dates and readable licence methods. Desktop/fullscreen source fixtures add 26 component cases and two actual App navigation cases. Full Electron integration: 2419/2419 cases in 125 files, no skips. Build/typecheck pass; two native Spending layout/focus cases pass and screenshots inspected. Audited all 13 FilterPanelViewModel methods against production policy/rendered panel coverage. Inventory: 807 ported, 540 retained backend, 13 framework-specific, 911 pending, 164 partial. Gate still fails; no acceptance criteria checked. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-seven.md. Continuing Library and account dashboard parity.
 <!-- SECTION:NOTES:END -->
