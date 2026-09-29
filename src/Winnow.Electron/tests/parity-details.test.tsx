@@ -68,7 +68,12 @@ const workspace = {
   pluginActions: {},
   epicLaunchKeys: {},
 }
-function setup(mode: Mode, handler?: (input: ApiRequest) => unknown) {
+function setup(
+  mode: Mode,
+  handler?: (input: ApiRequest) => unknown,
+  presentation: 'shared' | 'avalon' = 'shared',
+) {
+  const close = vi.fn()
   const request = vi.fn(async (input: ApiRequest) => {
     const override = await handler?.(input)
     if (override !== undefined) return override
@@ -99,11 +104,16 @@ function setup(mode: Mode, handler?: (input: ApiRequest) => unknown) {
   const view = render(
     <QueryClientProvider client={client}>
       <div data-testid="detail-scroll" style={{ overflowY: 'auto', height: 640 }}>
-        <Details workId={1} mode={mode} />
+        <Details
+          workId={1}
+          mode={mode}
+          presentation={presentation}
+          onClose={presentation === 'avalon' ? close : undefined}
+        />
       </div>
     </QueryClientProvider>,
   )
-  return { request, artwork, client, view }
+  return { request, artwork, client, view, close }
 }
 afterEach(() => {
   cleanup()
@@ -120,6 +130,220 @@ afterEach(() => {
     'metadata-fields:1:sending',
   ])
     clearViewState(key)
+})
+
+describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details composition', (mode) => {
+  it('opens a merged member through its grouped facts while edits retain the requested identity', async () => {
+    const { request } = setup(
+      mode,
+      (input) =>
+        input.route === 'library.get'
+          ? {
+              ok: true,
+              status: 200,
+              data: { games: [{ ...game, workId: 2, title: 'Grouped game' }], lists: [] },
+            }
+          : input.route === 'library.workspace'
+            ? {
+                ok: true,
+                status: 200,
+                data: {
+                  ...workspace,
+                  buckets: [{ workId: 1, resolvedWorkId: 2, game: { unreadUpdateCount: 0 } }],
+                },
+              }
+            : undefined,
+      'avalon',
+    )
+    await screen.findByRole('heading', { name: 'Grouped game', level: 1 })
+    expect(screen.queryByRole('heading', { name: 'Game details' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'More' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit metadata…' }))
+    await screen.findByRole('textbox', { name: 'Name' })
+    expect(
+      request.mock.calls.some(([input]) => input.route === 'metadata.get' && input.params?.workId === 1),
+    ).toBe(true)
+  })
+  it('keeps the original sparse section set and uses tab selection semantics', async () => {
+    setup(
+      mode,
+      (input) =>
+        input.route === 'game.details'
+          ? { ok: true, status: 200, data: { ...facts, ownerships: [], history: {}, events: [], images: [] } }
+          : undefined,
+      'avalon',
+    )
+    await screen.findByRole('heading', { name: 'Original game', level: 1 })
+    const names =
+      mode === 'desktop'
+        ? ['Overview', 'Activity', 'Updates', 'Journal', 'Library']
+        : ['Overview', 'Updates', 'Journal', 'Library']
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(names)
+    expect(screen.queryByRole('button', { name: 'Metadata' })).toBeNull()
+    for (const name of names) {
+      fireEvent.click(screen.getByRole('tab', { name }))
+      expect(screen.getByRole('tab', { name }).getAttribute('aria-selected')).toBe('true')
+      expect(screen.getAllByRole('tabpanel')).toHaveLength(1)
+      expect((screen.getByRole('tab', { name }) as HTMLButtonElement).disabled).toBe(false)
+      expect(screen.queryByText('Installation & identifiers')).toBeNull()
+    }
+    const first = screen.getByRole('tab', { name: 'Overview' })
+    first.focus()
+    fireEvent.keyDown(first, { key: 'ArrowRight' })
+    expect(document.activeElement).toBe(screen.getByRole('tab', { name: names[1] }))
+    fireEvent.keyDown(document.activeElement!, { key: 'End' })
+    expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Library' }))
+    fireEvent.keyDown(document.activeElement!, { key: 'Home' })
+    expect(document.activeElement).toBe(first)
+    expect(screen.getByText('No description yet. Metadata fills in automatically.')).toBeDefined()
+    expect(screen.queryByText(/unread updates/)).toBeNull()
+    expect(screen.queryByText('Related games & expansions')).toBeNull()
+  })
+  it('retains each reading offset and restores its selected tab after a focused metadata draft', async () => {
+    const { request, close } = setup(mode, undefined, 'avalon')
+    await screen.findByRole('heading', { name: 'Original game', level: 1 })
+    const overview = screen.getByRole('tabpanel')
+    overview.scrollTop = 320
+    fireEvent.scroll(overview)
+    fireEvent.click(screen.getByRole('tab', { name: 'Library' }))
+    expect(screen.getByRole('tabpanel').scrollTop).toBe(0)
+    fireEvent.click(screen.getByRole('tab', { name: 'Overview' }))
+    expect(screen.getByRole('tabpanel').scrollTop).toBe(320)
+    fireEvent.click(screen.getByRole('tab', { name: 'Library' }))
+    fireEvent.click(screen.getByRole('button', { name: 'More' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Wrong game…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit metadata…' }))
+    const input = await screen.findByRole('textbox', { name: 'Name' })
+    await waitFor(() => expect(document.activeElement).toBe(input))
+    fireEvent.change(input, { target: { value: 'Unfinished title' } })
+    expect(screen.queryAllByRole('tab')).toHaveLength(0)
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Library' }))
+    expect(screen.getByRole('tab', { name: 'Library' }).getAttribute('aria-selected')).toBe('true')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'More' }))
+    fireEvent.click(screen.getByRole('button', { name: 'More' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit metadata…' }))
+    expect(((await screen.findByRole('textbox', { name: 'Name' })) as HTMLInputElement).value).toBe(
+      'Unfinished title',
+    )
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryAllByRole('tab')).toHaveLength(mode === 'desktop' ? 5 : 4))
+    expect(close).not.toHaveBeenCalled()
+    expect(request.mock.calls.some(([input]) => input.route === 'metadata.edit')).toBe(false)
+    expect(request.mock.calls.filter(([input]) => input.route === 'metadata.get')).toHaveLength(1)
+  })
+  it('keeps refresh in place and routes the unread shortcut to the named Updates tab', async () => {
+    const { client } = setup(
+      mode,
+      (input) =>
+        input.route === 'library.workspace'
+          ? {
+              ok: true,
+              status: 200,
+              data: { ...workspace, buckets: [{ resolvedWorkId: 1, game: { unreadUpdateCount: 2 } }] },
+            }
+          : undefined,
+      'avalon',
+    )
+    fireEvent.click(await screen.findByRole('button', { name: '2 unread updates →' }))
+    const updates = screen.getByRole('tab', { name: 'Updates, 2 unread updates' })
+    expect(updates.getAttribute('aria-selected')).toBe('true')
+    await client.invalidateQueries({ queryKey: ['api', 'game.details'] })
+    expect(updates.getAttribute('aria-selected')).toBe('true')
+  })
+})
+
+it.each([false, true])(
+  'fullscreen Overview omits missing screenshots, reception and unsaved note copy with saved notes %s',
+  async (hasNotes) => {
+    setup(
+      'fullscreen',
+      (input) =>
+        input.route === 'game.details'
+          ? {
+              ok: true,
+              status: 200,
+              data: {
+                ...facts,
+                images: [],
+                ratings: [],
+                journalEntries: hasNotes
+                  ? [
+                      { sessionId: 1, sessionAt: '2026-09-27T00:00:00Z', note: 'An older saved note.' },
+                      {
+                        sessionId: 2,
+                        sessionAt: '2026-09-28T00:00:00Z',
+                        note: 'Return to the mountain camp.',
+                      },
+                    ]
+                  : [],
+              },
+            }
+          : undefined,
+      'avalon',
+    )
+    await screen.findByRole('heading', { name: hasNotes ? 'Latest note' : 'Journal', level: 2 })
+    expect(Boolean(screen.queryByText('Return to the mountain camp.'))).toBe(hasNotes)
+    expect(screen.queryByText('An older saved note.')).toBeNull()
+    expect(screen.queryByText(/No notes yet/)).toBeNull()
+    expect(screen.queryAllByRole('button', { name: /^Open screenshot/ })).toHaveLength(0)
+    expect(screen.queryByLabelText('Reception')).toBeNull()
+    expect(screen.getByText('No description yet. Metadata fills in automatically.')).toBeDefined()
+    fireEvent.click(screen.getByRole('button', { name: 'Open journal →' }))
+    expect(screen.getByRole('tab', { name: 'Journal' }).getAttribute('aria-selected')).toBe('true')
+  },
+)
+
+it('desktop original Details bounds description previews and starts a new opening at Overview', async () => {
+  const summary = 'An expedition through forgotten places with a friend. '.repeat(15)
+  const handler = (input: ApiRequest) =>
+    input.route === 'library.get'
+      ? { ok: true, status: 200, data: { games: [{ ...game, summary }], lists: [] } }
+      : undefined
+  const first = setup('desktop', handler, 'avalon')
+  await screen.findByRole('heading', { name: 'Original game', level: 1 })
+  const paragraph = document.querySelector('.game-summary')!
+  expect(paragraph.textContent!.length).toBeLessThanOrEqual(361)
+  fireEvent.click(screen.getByRole('button', { name: 'Read more' }))
+  expect(paragraph.textContent).toBe(summary.trim())
+  fireEvent.click(screen.getByRole('button', { name: 'Show less' }))
+  expect(paragraph.textContent!.length).toBeLessThanOrEqual(361)
+  fireEvent.click(screen.getByRole('tab', { name: 'Library' }))
+  first.view.unmount()
+  setup('desktop', handler, 'avalon')
+  await screen.findByRole('heading', { name: 'Original game', level: 1 })
+  expect(screen.getByRole('tab', { name: 'Overview' }).getAttribute('aria-selected')).toBe('true')
+})
+
+it('fullscreen original Overview shows only the latest saved note and uses separate reading pages', async () => {
+  setup(
+    'fullscreen',
+    (input) =>
+      input.route === 'game.details'
+        ? {
+            ok: true,
+            status: 200,
+            data: {
+              ...facts,
+              journalEntries: [
+                { sessionId: 2, sessionAt: '2026-09-28T00:00:00Z', note: 'Return to the camp.', rating: 4 },
+                { sessionId: 1, sessionAt: '2026-09-27T00:00:00Z', note: 'Older note.', rating: 2 },
+              ],
+            },
+          }
+        : undefined,
+    'avalon',
+  )
+  await screen.findByText('Return to the camp.')
+  expect(screen.queryByText('Older note.')).toBeNull()
+  const open = screen.getByRole('button', { name: 'Read more →' })
+  fireEvent.click(open)
+  expect(screen.queryAllByRole('tab')).toHaveLength(0)
+  expect(screen.getByRole('region', { name: 'About' })).toBeDefined()
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Back to Overview' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Back to Overview' }))
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Read more →' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Open journal →' }))
+  expect(screen.getByText('Older note.')).toBeDefined()
 })
 
 describe.each<Mode>(['desktop', 'fullscreen'])('%s details parity', (mode) => {

@@ -201,7 +201,8 @@ describe('integrated frontend', () => {
       expect(document.activeElement).toBe(first)
     }
   }, 15000)
-  it('keeps a cold-start activation behind setup until the saved progress has loaded and completed', async () => {
+  it.each(['desktop', 'fullscreen'] as const)('%s waits for saved setup progress, suspends it for an install handoff and resumes the same step', async (mode) => {
+    vi.mocked(window.winnow.isFullscreen).mockResolvedValue(mode === 'fullscreen')
     const original = window.winnow.request
     let complete!: (value: unknown) => void
     const pending = new Promise((resolve) => {
@@ -213,21 +214,24 @@ describe('integrated frontend', () => {
     window.winnow.takeActivations = vi.fn(async (): Promise<ApplicationActivation[]> => [
       { kind: 'plugin', pluginId: 'xbox', releaseTag: 'v1.2.3' },
     ])
-    const client = mount()
+    mount()
     await screen.findByRole('button', { name: 'Winnow home' })
     expect(screen.queryByRole('dialog', { name: 'Review provider installation' })).toBeNull()
     await act(async () => {
-      complete({ step: 0 })
+      complete({ step: 4 })
     })
-    await screen.findByRole('dialog', { name: 'Welcome to Winnow' })
-    expect(screen.queryByRole('dialog', { name: 'Review provider installation' })).toBeNull()
-    act(() => client.setQueryData(['api', 'setup.get', undefined], { step: null }))
-    await screen.findByRole('dialog', { name: 'Review provider installation' })
+    const installer = await screen.findByRole('dialog', { name: 'Review provider installation' })
+    expect(screen.queryByRole('heading', { name: 'Your GOG library' })).toBeNull()
     expect(
       vi
         .mocked(window.winnow.request)
         .mock.calls.some(([value]) => value.route === 'plugins.official.install'),
     ).toBe(false)
+    expect(vi.mocked(window.winnow.request).mock.calls.some(([value]) => value.route === 'setup.put')).toBe(false)
+    fireEvent.click(within(installer).getByRole('button', { name: /^Close$/ }))
+    await screen.findByRole('heading', { name: 'Your GOG library' })
+    expect(document.querySelector(`.setup-dialog.mode-${mode}`)).not.toBeNull()
+    expect(vi.mocked(window.winnow.request).mock.calls.some(([value]) => value.route === 'setup.put')).toBe(false)
   })
   it('delivers startup activations before a newer event received during the pending handshake', async () => {
     let complete!: (value: ApplicationActivation[]) => void
@@ -251,6 +255,22 @@ describe('integrated frontend', () => {
     expect(window.winnow.setFullscreen).not.toHaveBeenCalled()
     fireEvent.click(within(installer).getByRole('button', { name: /^Close$/ }))
     await waitFor(() => expect(window.winnow.setFullscreen).toHaveBeenCalledWith(true))
+  })
+  it.each(['desktop', 'fullscreen'] as const)('%s Plugin_handoff_shows_installation_over_a_fresh_optional_setup', async (mode) => {
+    vi.mocked(window.winnow.isFullscreen).mockResolvedValue(mode === 'fullscreen')
+    const original = window.winnow.request
+    window.winnow.request = vi.fn(async (value) => value.route === 'setup.get'
+      ? { ok: true, status: 200, data: { step: 0 } } : original(value)) as WinnowBridge['request']
+    let receive!: (value: ApplicationActivation) => void
+    window.winnow.onActivation = callback => { receive = callback; return () => {} }
+    mount()
+    await screen.findByRole('heading', { name: 'Welcome to Winnow' })
+    act(() => receive({ kind: 'plugin', pluginId: 'xbox', releaseTag: 'v1.2.3' }))
+    const installer = await screen.findByRole('dialog', { name: 'Review provider installation' })
+    expect(screen.queryByRole('heading', { name: 'Welcome to Winnow' })).toBeNull()
+    fireEvent.click(within(installer).getByRole('button', { name: /^Close$/ }))
+    await screen.findByRole('heading', { name: 'Welcome to Winnow' })
+    expect(vi.mocked(window.winnow.request).mock.calls.some(([value]) => value.route === 'setup.put' || value.route === 'plugins.official.install')).toBe(false)
   })
   it('imports the original palette once and shares it between desktop and fullscreen', async () => {
     const originalRequest = vi.mocked(window.winnow.request).getMockImplementation()!
@@ -307,10 +327,16 @@ describe('integrated frontend', () => {
       fireEvent.click(screen.getByRole('button', { name: 'For you' }))
       fireEvent.click(await screen.findByRole('button', { name: 'View A real API title' }))
       await screen.findByRole('heading', { name: 'A real API title' })
-      expect(screen.getByRole('button', { name: 'History', hidden: true })).toBeDefined()
-      expect(screen.getByRole('button', { name: 'Artwork', hidden: true })).toBeDefined()
-      expect(screen.getByRole('button', { name: 'Metadata', hidden: true })).toBeDefined()
-      fireEvent.click(screen.getByRole('button', { name: 'Back to your library' }))
+      await screen.findByRole('tab', { name: 'Overview' })
+      expect(screen.getAllByRole('tab')).toHaveLength(fullscreenMode ? 4 : 5)
+      fireEvent.click(screen.getByRole('button', { name: 'More' }))
+      expect(screen.getByRole('button', { name: 'Artwork…' })).toBeDefined()
+      expect(screen.getByRole('button', { name: 'Edit metadata…' })).toBeDefined()
+      fireEvent.keyDown(screen.getByRole('button', { name: 'Wrong game…' }), { key: 'Escape' })
+      fireEvent.click(
+        screen.getByRole('button', { name: fullscreenMode ? 'B · Back to For you' : 'Close game details' }),
+      )
+      await waitFor(() => expect(document.querySelector('.avalon-details')).toBeNull())
     }
   })
   it('keeps the Discover portal mounted while cycling recommendations on both surfaces', async () => {

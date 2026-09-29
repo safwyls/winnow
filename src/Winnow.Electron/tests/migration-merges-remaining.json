@@ -54,17 +54,25 @@
     "reason": "Undo after an explicit refresh restores the current proposal and that proposal can be answered again."
   },
   "MergeQueueViewModelTests.Merge_refresh_then_undo_removes_the_current_resolved_strip": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-merge.test.tsx",
         "case": "refreshes after dismissing and merging without losing either previous answer or the current Undo revision"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "refresh then Undo removes the current saved strip when the sweep retires its candidate=%s"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+        "case": "Refresh_then_undo_retracts_current_strip_whether_the_sweep_retires_the_candidate"
       }
     ],
-    "reason": "The refreshed act is undone using the new revision and its pending proposal returns. The source variant where the sweep retires the confirmed candidate is not yet reproduced."
+    "reason": "Both sweep-retired and retained candidate variants remove the live act and saved strip after refresh/Undo. The retained candidate returns to the queue; a sweep-retired candidate does not. Covered through both renderer modes and the real resolver/HTTP composition."
   },
   "MergeQueueViewModelTests.Cancellation_recovers_the_command_and_truncated_pass_reports_more_work": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-merge-refresh.test.tsx",
@@ -73,29 +81,37 @@
       {
         "file": "tests/parity-merge-refresh.test.tsx",
         "case": "preserves the current review on failure and offers the same control for a bounded retry"
+      },
+      {
+        "file": "tests/parity-merge-refresh.test.tsx",
+        "case": "cancels a running refresh in place and the same mounted control accepts a truncated retry"
       }
     ],
-    "reason": "Exit cancellation prevents late publication and retry can report a truncated sweep. The original explicit cancellation followed by retry on the same mounted command is not yet covered."
+    "reason": "The mounted refresh can cancel its named operation, preserve the prior snapshot, announce cancellation, re-enable its control and successfully retry with the source truncated-pass copy and incomplete-sweep state on both surfaces."
   },
   "MergeQueueViewModelTests.Merge_covers_follow_the_saved_display_preference_and_live_changes": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-merge.test.tsx",
         "case": "desktop covers react to the display toggle without reloading review or cover state"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "desktop covers start with saved dimming off and preserve live changes through an authoritative reload"
       }
     ],
-    "reason": "Live display changes update existing cover filters without new identity or artwork reads. Initial saved-off and page reload cases remain to be asserted."
+    "reason": "Saved-off dormancy applies on initial load; live on/off changes update the same row cover elements and survive authoritative refresh. Existing native desktop coverage checks computed filters; fullscreen intentionally presents text-only proposal/member sheets as in its source path."
   },
   "MergeQueueViewModelTests.Preferred_platform_updates_hidden_cards_and_accept_uses_the_chosen_parent": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-merge.test.tsx",
         "case": "applies platform changes to hidden cards, preserves unavailable headers, and accepts the chosen parent"
       }
     ],
-    "reason": "A hidden pending cross-store card adopts the requested platform, an unavailable platform preserves its header, and acceptance writes the chosen parent. The source triple with two resulting children is not reproduced in this preference-specific test."
+    "reason": "Both modes hide the three-member cross-store card, apply GOG to its header, retain the unavailable-platform card, then write both children under the selected GOG parent through the public API."
   },
   "MergeQueueViewModelTests.Preferred_platform_reincludes_matching_row_and_syncs_when_another_surface_reopens": {
     "status": "ported",
@@ -136,14 +152,18 @@
     "reason": "Unavailable supported platforms preserve the default header; unknown persisted platform IDs resolve to None."
   },
   "MergeQueueViewModelTests.A_hidden_pane_answers_a_library_change_with_a_count_and_builds_nothing": {
-    "status": "partial",
+    "status": "framework-specific",
     "tests": [
       {
         "file": "tests/parity-merge-query.test.tsx",
         "case": "defers hidden invalidation until entry and reuses an unchanged snapshot on subsequent entry"
+      },
+      {
+        "file": "tests/parity-merge-query.test.tsx",
+        "case": "reopens another surface on the shared refreshed snapshot without rebuilding or rereading it"
       }
     ],
-    "reason": "Hidden pages defer identity GET and card construction. The HTTP API has no count-only endpoint, so the original hidden COUNT query and immediate count update are not replicated."
+    "reason": "The literal one-repository-COUNT/zero-snapshot assertion belongs to the retired in-process coordinator. The independent HTTP frontend has no count-only identity route: hidden observers invalidate the shared TanStack key and defer the named GET/card projection until entry. Replacement tests cover hidden deferral and cached cross-surface entry; no literal COUNT parity is claimed."
   },
   "MergeQueueViewModelTests.Showing_the_pane_after_a_change_builds_the_screen_once": {
     "status": "ported",
@@ -166,14 +186,18 @@
     "reason": "Active desktop and fullscreen review observers publish a changed library immediately after query invalidation."
   },
   "MergeQueueViewModelTests.An_unmoved_queue_that_has_been_swept_is_not_rebuilt": {
-    "status": "partial",
+    "status": "framework-specific",
     "tests": [
       {
         "file": "tests/parity-merge-query.test.tsx",
         "case": "defers hidden invalidation until entry and reuses an unchanged snapshot on subsequent entry"
+      },
+      {
+        "file": "tests/parity-merge-query.test.tsx",
+        "case": "reopens another surface on the shared refreshed snapshot without rebuilding or rereading it"
       }
     ],
-    "reason": "Unchanged reentry reuses the authoritative snapshot. External invalidation still performs a complete revision-checked GET rather than the original count-only repository check."
+    "reason": "The source event checks an in-process COUNT before deciding whether to rebuild. Electron uses its authoritative TanStack snapshot and invalidation lifecycle: unchanged entry performs no GET/projection refresh, while a real external change fetches a revision-checked snapshot. These replacement tests preserve cache reuse without claiming the retired COUNT call shape."
   },
   "MergeQueueViewModelTests.The_pending_count_query_agrees_with_the_pending_read": {
     "status": "retained-backend",
@@ -527,5 +551,81 @@
       }
     ],
     "reason": "The real backend composition returns user art before Steam, pinned IGDB before Steam, and Steam for the same unpinned IGDB URL; the other entry remains Steam. Renderer queue rows use those returned keys unchanged."
+  },
+  "MergeQueueViewModelTests.Before_load_every_section_is_empty_and_nothing_is_loaded": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "shows five ordered empty sections before the first review arrives without inventing loaded proposals"
+      }
+    ],
+    "reason": "Both surfaces render five ordered empty sections while the first authoritative request is pending, with no invented proposal or enabled answer; the loaded review replaces that state."
+  },
+  "MergeQueueViewModelTests.Preferred_platform_preserves_expansion_bases_and_completed_links": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "keeps expansion bases and previously saved directions fixed when a preferred platform changes"
+      }
+    ],
+    "reason": "An Epic preference leaves the fixed Steam expansion base and an existing Steam-parent/Epic-child act unchanged, with no identity mutation, on both surfaces."
+  },
+  "MergeQueueViewModelTests.A_stale_card_refusal_is_nonfatal_and_removes_the_card": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "consumes a structurally stale refusal without another write or Undo and removes the invalid proposal"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+        "case": "Stale_structural_answer_conflicts_without_changing_the_pending_candidate_or_external_act"
+      }
+    ],
+    "reason": "A structurally stale answer receives a revision conflict, reloads the authoritative review once, removes the invalid pending card and shows the original no-change notice without Undo or retrying the write. HTTP coverage proves the external act and pending candidate remain unchanged."
+  },
+  "MergeQueueViewModelTests.Different_games_rejects_every_proposal_on_the_card_and_removes_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "rejects all three triangle edges together and leaves the unrelated card intact through reload and Undo"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+        "case": "Dismissed_triangle_stays_rejected_after_real_resolver_pass_and_undo_restores_every_edge"
+      }
+    ],
+    "reason": "Both modes reject all three edges of one triangle, leave an unrelated card intact, display the source dismissal dock and restore the exact edges with Undo. Real HTTP/SQLite and resolver tests prove persisted rejection."
+  },
+  "MergeQueueViewModelTests.Separate_again_on_a_strip_from_history_retracts_the_act_and_brings_the_proposal_back": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "separates a strip loaded from history by its recorded act and restores its original pending proposal"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+        "case": "Refresh_then_undo_retracts_current_strip_whether_the_sweep_retires_the_candidate"
+      }
+    ],
+    "reason": "A strip present in the initial snapshot is separated using its recorded act, restoring the original still-pending candidate. Both renderer surfaces and actual API refresh/Undo preserve this behavior."
+  },
+  "MergeQueueViewModelTests.A_rejected_proposal_stays_rejected_when_the_resolver_runs_again": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "rejects all three triangle edges together and leaves the unrelated card intact through reload and Undo"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+        "case": "Dismissed_triangle_stays_rejected_after_real_resolver_pass_and_undo_restores_every_edge"
+      }
+    ],
+    "reason": "Dismissal persists across an actual production resolver pass and fresh API review; all three rejected rows remain rejected until explicitly undone. Both renderer modes reload without reviving the card."
   }
 }

@@ -123,17 +123,26 @@ Avalonia API adapter; Electron has a separate TypeScript result. Neither class w
 reclassified by this audit. Retaining backend evidence does not establish browser or
 renderer parity for these excluded behaviors.
 
-## Remaining differences in this package
+## Merge contract completion and remaining inventory
 
-The September 29 merge continuation passed 174 focused tests across nine Electron files,
-plus all three cases of `MergeArtworkParityTests` against the real backend composition.
-Four new native cases in `tests/electron/merge-contracts.spec.ts` passed in 18.4 seconds:
-both modes preserve answered card slots through separation, retain work/release/ownership
-rows, and change a saved group's header storefront without changing its identity act.
-Fullscreen sort sheets also return keyboard focus to their trigger. These runs use the
-isolated `.tmp/merge-art-parity/Debug/net10.0/Winnow.Backend.exe` build. Captured screenshots
-were inspected, although the initial screenshots show toolbar context rather than every
-saved strip; they do not establish the complete resolved-strip geometry matrix.
+The September 29 merge continuation passed nine real backend decision cases in
+`MergeDecisionParityTests`, alongside the earlier three-case artwork precedence matrix.
+The coordinator's integrated Electron run passed 1,925 cases across 105 files without skips;
+the final added multi-pack projection assertion then passed with all 21 model tests.
+`tests/electron/merge-contracts.spec.ts` passed all six native cases in 28.3 seconds against
+`.tmp/merge-decision-parity/Debug/net10.0/Winnow.Backend.exe`. Both modes preserve answered
+card slots through separation, keep work/release/ownership records, and change a saved
+group's header storefront without changing its identity act. The preference matrix uses
+a real manual ownership and resolver pass, then verifies saved preference, explicit
+override and clearing across tools reentry and full renderer reloads. The native fixture
+waits for loaded cards before capturing order; the initial empty sections are intentional.
+
+Both native header-store cards were scrolled into view, measured inside the viewport with
+no horizontal overflow, and captured in `.tmp/electron-merge-final-results/merge-contracts-*`.
+Those screenshots were inspected. Fullscreen sort sheets return keyboard focus to their
+trigger. The separate native long-member matrix also passed desktop retained-modal and
+fullscreen Details-return focus after desktop began focusing the intended row before
+notifying navigation.
 
 The identity coordinator uses the existing TanStack cache key across surfaces. Named GET
 requests consume cancellation signals, and a completed explicit refresh cancels older
@@ -145,27 +154,36 @@ come from the backend. Explicit sorting moves resolved strips behind pending car
 Saved-group header-store controls, fullscreen sort/kind/preference sheets, empty-section
 copy and total-to-shown counts are implemented on their respective surfaces.
 
-The original 89-method `MergeQueueViewModelTests` class currently has 58 ported methods,
-one retained backend method, 24 partial methods and six pending methods. The backend
-artwork matrix proves user art precedes Steam, a live IGDB pin precedes Steam, and the same
-unpinned IGDB URL keeps Steam; renderer tests verify the returned keys are used unchanged.
-The pending methods cover a preference change with both an expansion and an existing act,
-the pre-load empty model, stale structural refusal, rejecting every candidate edge in one
-card, separation of a strip loaded from history, and rejected-candidate persistence through
-the actual resolver. These are not classified as framework-only work.
+The 89 original `MergeQueueViewModelTests` methods now map to 85 ported methods, one
+retained backend method and three framework-specific counter assertions. There are no
+pending or partial methods in that class. New behavioral matrices cover the five empty
+pre-load sections, nonfatal stale structural refusal, triangle-edge rejection, initial
+history separation, fixed expansion/saved-act preference, four Undo cycles, two exact plus
+two ineligible groups, two selected groups with one untouched group, and six/eight-second
+dock boundaries. Source title/note distinctions are asserted for individual, selected,
+exact, excluded and dismissed answers. Refresh can be cancelled in place and retried;
+exiting still cancels its named request. Real HTTP and SQLite cases verify rejection after
+the actual resolver, sweep-retired candidate behavior, directional pack refusal, demo
+relation labels and unchanged game/ownership records. The artwork matrix proves user art
+precedes Steam, a live IGDB pin precedes Steam, and the same unpinned IGDB URL keeps Steam;
+renderer tests consume those returned keys unchanged.
 
-Partial methods include source dock wording and boundary timing, the complete exact-match
-bulk matrix, refresh with a sweep-retired candidate, native failure recovery, initial
-saved-off dormancy, multiple-store/resolved geometry, and several persisted exclusion and
-history matrices. The snapshot refresh after each answer also differs from the original
-zero-read performance contract. Backend compare-and-swap revision calculation deliberately
-retains its repository reads. The API offers no count-only identity endpoint, so hidden
-pages defer loading instead of executing the source's lightweight count query. The final
-desktop cursor initialization and viewport-follow correction passed the focused suite;
-the four native cases above ran immediately before that narrow keyboard correction.
+Three literal repository-call assertions belong to the retired in-process coordinator.
+The API offers no count-only identity endpoint, so hidden pages defer loading and unchanged
+entry reuses the shared cache instead of issuing the source COUNT query. Answering retains
+backend compare-and-swap checks and performs one authoritative GET after each action;
+it does not meet the old literal zero-read assertion. Its replacement uses the same
+60-card/20-answer matrix on both renderer surfaces: all 60 DOM card instances and positions
+remain, 40 proposals stay pending, 20 acts are written, and no candidate dismissals occur.
+The real HTTP fixture preserves all candidate statuses and all work/release/ownership rows.
 
-Library collection sections are not yet independently collapsible. Original deep
-controller options and Quick-menu focus restoration still need native evidence.
-Details' original More-menu arrangement, pinned-header geometry and background refresh
-matrix across updates, artwork, reception and journal drafts remain only partly covered.
-These limitations stay explicit in the migration inventory.
+On this Windows host's Debug build, the 20 sequential actions measured POST mean 10.60 ms
+and maximum 14.81 ms; GET mean 58.09 ms and maximum 69.67 ms; the largest combined action
+and refresh was 80.54 ms. Evidence is in
+`.tmp/merge-decision-results/merge-decision-parity.trx`. These measurements describe that
+run; they are not a CI latency guarantee. The framework-specific mappings explicitly
+retain the architectural difference and name the replacement behavior tests.
+
+Library/list and Details contracts outside this package remain tracked by their exact
+source IDs in the overall migration inventory. Completing the merge class does not close
+those groups or establish full application parity.

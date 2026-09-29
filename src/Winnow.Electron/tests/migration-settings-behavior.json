@@ -1,0 +1,216 @@
+{
+  "FirstRunSetupTests.Only_new_normal_install_opens_automatically": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SetupParityTests.cs",
+        "case": "Only_new_normal_install_opens_automatically"
+      },
+      {
+        "file": "tests/parity-setup.test.tsx",
+        "case": "resumes every step, persists navigation, and completes only at Ready"
+      },
+      {
+        "file": "tests/parity-setup.test.tsx",
+        "case": "does not interrupt an existing or completed library"
+      }
+    ],
+    "reason": "Real backend HTTP initialization covers new, existing and sample startup. Both renderer modes display a numeric saved cursor; completed progress leaves the library open."
+  },
+  "FirstRunSetupTests.External_install_suspends_setup_without_completing_or_losing_its_cursor": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/app.test.tsx",
+        "case": "waits for saved setup progress, suspends it for an install handoff and resumes the same step"
+      }
+    ],
+    "reason": "Both App compositions defer the handoff until progress loads, suspend cursor4 without a progress write or automatic install, and resume that same step when review closes."
+  },
+  "FirstRunSetupTests.Sample_run_does_not_show_or_destroy_an_existing_unfinished_cursor": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Application/Services/FirstRunSetupService.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "These exact original tests call only FirstRunSetupService and SettingsRepository. BackendApplication initializes this unchanged production service before sample seeding. Both original methods passed on 2026-09-29."
+  },
+  "FirstRunSetupTests.Corrupt_cursor_restarts_setup_without_touching_other_settings": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Application/Services/FirstRunSetupService.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "These exact original tests call only FirstRunSetupService and SettingsRepository. BackendApplication initializes this unchanged production service before sample seeding. Both original methods passed on 2026-09-29."
+  },
+  "FirstRunSetupTests.Existing_database_on_second_launch_resumes_cursor_and_does_not_reset_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-setup-recovery.test.tsx",
+        "case": "Existing_database_on_second_launch_resumes_cursor_and_does_not_reset_it"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SetupParityTests.cs",
+        "case": "Existing_database_on_second_launch_resumes_cursor_and_does_not_reset_it"
+      }
+    ],
+    "reason": "Both renderer modes preserve the source navigation and preference contract; real backend HTTP tests verify saved progress and preferences across shutdown and restart."
+  },
+  "FirstRunSetupTests.Skip_all_preserves_saved_preferences_and_application_entry_reopens": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-setup-recovery.test.tsx",
+        "case": "Skip_all_preserves_saved_preferences_and_application_entry_reopens"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SetupParityTests.cs",
+        "case": "Completion_and_replay_persist_across_restart_without_resetting_saved_preferences"
+      }
+    ],
+    "reason": "Both renderer modes preserve the source navigation and preference contract; real backend HTTP tests verify saved progress and preferences across shutdown and restart."
+  },
+  "FirstRunSetupTests.Every_optional_step_can_be_skipped_without_credentials_and_completion_persists": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-setup-recovery.test.tsx",
+        "case": "Every_optional_step_can_be_skipped_without_credentials_and_completion_persists"
+      },
+      {
+        "file": "tests/parity-setup.test.tsx",
+        "case": "discards an unsaved masked secret on skip and on presentation change"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SetupParityTests.cs",
+        "case": "Completion_and_replay_persist_across_restart_without_resetting_saved_preferences"
+      }
+    ],
+    "reason": "Both modes skip all seven optional steps without writing credentials and finish only on explicit completion. Discarded masked drafts stay empty on return; the backend persists completion across restart."
+  },
+  "FirstRunSetupTests.Progress_failure_keeps_wizard_open_and_retry_can_complete": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-setup.test.tsx",
+        "case": "keeps the current step open after a failed progress write and retries"
+      }
+    ],
+    "reason": "Both modes retain the current step and show the failure until an explicit successful retry completes setup."
+  },
+  "FirstRunSetupTests.Failed_preference_does_not_trap_skip_or_back_navigation": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-setup.test.tsx",
+        "case": "allows skipping a failed preference save without claiming it saved"
+      }
+    ],
+    "reason": "Both modes block Continue after a failed preference, then allow Skip, Back and Skip setup without claiming the preference saved."
+  },
+  "FirstRunSetupTests.Reopen_write_failure_still_displays_recovery_and_retains_previous_completion": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-setup-recovery.test.tsx",
+        "case": "Reopen_write_failure_still_displays_recovery_and_retains_previous_completion"
+      }
+    ],
+    "reason": "Both modes show replay recovery after the progress write fails, preserve stored completion even through snapshot refresh, and clear local recovery only after a successful progress write."
+  },
+  "LibrarySettingsViewModelTests.Invalid_default_sort_uses_dormancy": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-setup-recovery.test.tsx",
+        "case": "Invalid_default_sort_uses_dormancy: %s"
+      }
+    ],
+    "reason": "All three original invalid values display Dormant longest on both settings surfaces without overwriting the stored value."
+  },
+  "ApplicationSettingsViewModelTests.Startup_toggle_updates_the_operating_system_registration": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-setup-recovery.test.tsx",
+        "case": "Startup_toggle_updates_the_operating_system_registration"
+      }
+    ],
+    "reason": "Both presentation paths read and update the named native startup-registration boundary. Rejected registration updates restore the saved checkbox state and display the failure; no actual OS startup registration is changed by these tests."
+  },
+  "ApplicationSettingsViewModelTests.Startup_load_reflects_the_operating_system_registration": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-setup-recovery.test.tsx",
+        "case": "Startup_toggle_updates_the_operating_system_registration and load reflects it"
+      }
+    ],
+    "reason": "Both presentation paths read and update the named native startup-registration boundary. Rejected registration updates restore the saved checkbox state and display the failure; no actual OS startup registration is changed by these tests."
+  },
+  "ApplicationSettingsViewModelTests.Failed_startup_change_reverts_the_toggle_and_reports_the_problem": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-setup-recovery.test.tsx",
+        "case": "Failed_startup_change_reverts_the_toggle_and_reports_the_problem"
+      }
+    ],
+    "reason": "Both presentation paths read and update the named native startup-registration boundary. Rejected registration updates restore the saved checkbox state and display the failure; no actual OS startup registration is changed by these tests."
+  },
+  "ApplicationSettingsViewModelTests.Tray_preferences_are_off_when_absent_and_round_trip": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-setup-recovery.test.tsx",
+        "case": "Tray_preferences_are_off_when_absent_and_round_trip"
+      }
+    ],
+    "reason": "Both presentation paths cover absent defaults and persisted round trips. The original derived TrayIconWanted assertion still needs equivalent native tray lifecycle evidence."
+  },
+  "ApplicationSettingsViewModelTests.Fullscreen_startup_defaults_off_and_round_trips_both_values": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-setup-recovery.test.tsx",
+        "case": "Fullscreen_startup_defaults_off_and_round_trips_both_values"
+      }
+    ],
+    "reason": "Both presentation paths cover absent defaults and persisted round trips. The original derived TrayIconWanted assertion still needs equivalent native tray lifecycle evidence."
+  },
+  "FirstRunSetupShellTests.Plugin_handoff_shows_installation_over_a_fresh_optional_setup": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/app.test.tsx",
+        "case": "Plugin_handoff_shows_installation_over_a_fresh_optional_setup"
+      },
+      {
+        "file": "tests/electron/setup-parity.spec.ts",
+        "case": "setup keeps navigation visible, traps consent, resumes provider handoff and restores replay focus"
+      }
+    ],
+    "reason": "Both App presentations begin with Welcome visible, suspend it for a provider handoff without saving completion or installing, and resume Welcome on close. Native checks additionally preserve a later saved cursor through the same handoff."
+  },
+  "StoresViewModelTests.A_panel_composed_without_the_import_draws_no_purchase_section": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-setup-recovery.test.tsx",
+        "case": "setup shares Steam key removal and omits purchase import without a composed importer"
+      }
+    ],
+    "reason": "The shared Steam card receives no importer in Setup and omits the purchase section on both surfaces while its key and session actions remain available."
+  },
+  "FirstRunSetupShellTests.Setup_keyboard_is_above_enabled_overlay_and_types_into_masked_field": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/electron/setup-parity.spec.ts",
+        "case": "setup keeps navigation visible, traps consent, resumes provider handoff and restores replay focus"
+      }
+    ],
+    "reason": "The real fullscreen OSK opens above setup, accepts a character into a masked IGDB field and restores the field after controller Back. The original desktop gamepad keyboard activation is not yet provided by the fullscreen-only controller sampler."
+  }
+}

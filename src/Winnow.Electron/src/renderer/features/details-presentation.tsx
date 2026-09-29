@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { RefreshCw } from 'lucide-react'
-import type { GameDetails } from '../api/types'
+import type { GameDetails, Workspace } from '../api/types'
 import { request } from '../api/client'
 import { receptionFigures, refetchStatus, type RefetchResult } from './details-facts'
 import { useViewState } from '../viewState'
+import { lifecycleForWork, lifecycleText } from '../../shared/lifecycle'
+
+export function LifecycleEvidence({ workId, workspace }: { workId: number; workspace?: Workspace }) {
+  const text = lifecycleText(lifecycleForWork(workId, workspace))
+  return text ? <p className="lifecycle-evidence">{text}</p> : null
+}
 
 export function ReceptionLine({
   ratings,

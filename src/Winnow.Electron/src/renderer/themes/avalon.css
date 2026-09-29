@@ -812,6 +812,18 @@
     position: static;
     overflow: auto;
   }
+  .avalon-shell.fullscreen .screen-details {
+    position: static;
+    height: 100%;
+    min-height: 0;
+  }
+  .avalon-details-return {
+    justify-self: start;
+    grid-column: 1 / 3;
+    border: 0;
+    background: transparent;
+    padding: 8px 0;
+  }
   .avalon-shell.fullscreen .avalon-footer {
     z-index: 2;
     border: 0;

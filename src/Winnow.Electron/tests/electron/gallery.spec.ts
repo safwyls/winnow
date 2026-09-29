@@ -1,7 +1,8 @@
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
-import { mkdtemp, readFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
+import { DatabaseSync } from 'node:sqlite'
 
 let application: ElectronApplication, page: Page, directory: string
 const errors: string[] = []
@@ -69,30 +70,41 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await expect(origin).toBeVisible()
     await origin.scrollIntoViewIfNeeded()
     const strip = page.locator('.screenshot-strip')
-    await strip.evaluate((node) => {
-      node.scrollLeft = 0
-    })
-    await strip.hover()
-    const before = await strip.evaluate((node) => {
-      let parent = node.parentElement
-      while (parent && !/auto|scroll/.test(getComputedStyle(parent).overflowY)) parent = parent.parentElement
-      return parent?.scrollTop ?? 0
-    })
-    await page.mouse.wheel(0, 180)
-    await expect.poll(() => strip.evaluate((node) => node.scrollLeft)).toBeGreaterThan(0)
-    const bodyScroll = () =>
-      strip.evaluate((node) => {
+    if (mode === 'desktop') {
+      await strip.evaluate((node) => {
+        node.scrollLeft = 0
+      })
+      await strip.hover()
+      const before = await strip.evaluate((node) => {
         let parent = node.parentElement
         while (parent && !/auto|scroll/.test(getComputedStyle(parent).overflowY))
           parent = parent.parentElement
         return parent?.scrollTop ?? 0
       })
-    expect(await bodyScroll()).toBe(before)
-    await strip.evaluate((node) => {
-      node.scrollLeft = node.scrollWidth
-    })
-    await page.mouse.wheel(0, 180)
-    expect(await bodyScroll()).toBe(before)
+      await page.mouse.wheel(0, 180)
+      await expect.poll(() => strip.evaluate((node) => node.scrollLeft)).toBeGreaterThan(0)
+      const bodyScroll = () =>
+        strip.evaluate((node) => {
+          let parent = node.parentElement
+          while (parent && !/auto|scroll/.test(getComputedStyle(parent).overflowY))
+            parent = parent.parentElement
+          return parent?.scrollTop ?? 0
+        })
+      expect(await bodyScroll()).toBe(before)
+      await strip.evaluate((node) => {
+        node.scrollLeft = node.scrollWidth
+      })
+      await page.mouse.wheel(0, 180)
+      expect(await bodyScroll()).toBe(before)
+    } else {
+      await expect(strip.locator('button')).toHaveCount(2)
+      for (const preview of await strip.locator('img').all()) {
+        await expect(preview).toBeVisible()
+        const bounds = await preview.boundingBox()
+        expect(bounds!.width / bounds!.height).toBeCloseTo(1280 / 720, 1)
+        expect(await preview.evaluate((node) => getComputedStyle(node).objectFit)).toBe('contain')
+      }
+    }
     await origin.click()
     const dialog = page.getByRole('dialog', { name: 'Screenshot 2 of 10', exact: true })
     await expect(dialog).toBeVisible()
@@ -143,13 +155,60 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await page.keyboard.press('Escape')
     await expect(page.locator('.screenshot-dialog')).toHaveCount(0)
     await expect(origin).toBeFocused()
-    await expect(page.getByRole('button', { name: 'Open screenshot 3 of 10', exact: true })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
-    await expect(page.locator('.details-page')).toBeVisible()
+    if (mode === 'desktop') {
+      await expect(
+        page.getByRole('button', { name: 'Open screenshot 3 of 10', exact: true }),
+      ).toHaveAttribute('aria-pressed', 'true')
+    } else {
+      const gallery = page.getByRole('button', { name: 'View gallery →', exact: true })
+      await gallery.click()
+      await expect(page.getByRole('dialog', { name: 'Screenshot 3 of 10', exact: true })).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(gallery).toBeFocused()
+    }
+    await expect(page.locator('.avalon-details')).toBeVisible()
     await page.keyboard.press('Escape')
-    await expect(page.locator('.details-page')).toHaveCount(0)
+    await expect(page.locator('.avalon-details')).toHaveCount(0)
   })
 }
+test('both details modes open the installed copy folder through the named ownership bridge', async () => {
+  const folder = join(directory, 'fixture-installed-game')
+  await mkdir(folder)
+  const database = new DatabaseSync(join(directory, 'winnow.db'))
+  try {
+    database.prepare('UPDATE ownerships SET installed = 1, install_path = ?').run(folder)
+  } finally {
+    database.close()
+  }
+  await page.reload()
+  await expect(page.locator('.avalon-cover').first()).toBeVisible()
+  for (const mode of ['desktop', 'fullscreen'] as const) {
+    await application.evaluate(
+      ({ BrowserWindow }, mode) =>
+        BrowserWindow.getAllWindows()[0].webContents.send('winnow:fullscreen:changed', mode === 'fullscreen'),
+      mode,
+    )
+    await page.getByRole('button', { name: 'Winnow home', exact: true }).click()
+    await page.locator('.avalon-cover').first().click()
+    await page.getByRole('button', { name: 'More', exact: true }).click()
+    await page.getByRole('button', { name: 'Open install folder', exact: true }).click()
+    await expect
+      .poll(() =>
+        application.evaluate(
+          () =>
+            (globalThis as unknown as { __openedInstallationFolders: string[] }).__openedInstallationFolders
+              .length,
+        ),
+      )
+      .toBe(mode === 'desktop' ? 1 : 2)
+    await page.keyboard.press('Escape')
+    await page.keyboard.press('Escape')
+    await expect(page.locator('.avalon-details')).toHaveCount(0)
+  }
+  expect(
+    await application.evaluate(
+      () => (globalThis as unknown as { __openedInstallationFolders: string[] }).__openedInstallationFolders,
+    ),
+  ).toEqual([folder, folder])
+})
 test('gallery emits no uncaught renderer errors', () => expect(errors).toEqual([]))

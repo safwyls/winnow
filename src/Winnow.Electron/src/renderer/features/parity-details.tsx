@@ -11,6 +11,7 @@ import { Empty, Notice } from './shared'
 import './parity-details.css'
 import { acquisitionFacts, playtimeRecordLine, updatePageUrl } from './details-facts'
 import { timelineUpdates } from './activity-timeline-model'
+import { InstallFolderButton } from './install-folder'
 
 interface IgdbCandidate {
   igdbId: number
@@ -376,7 +377,11 @@ export function Screenshots({ details, previewCount }: { details?: GameDetails; 
   return (
     <section className="feature-panel">
       <h2>Screenshots</h2>
-      <div className={`screenshot-strip${previewCount ? ' screenshot-previews' : ''}`} aria-label="Screenshots" ref={strip}>
+      <div
+        className={`screenshot-strip${previewCount ? ' screenshot-previews' : ''}`}
+        aria-label="Screenshots"
+        ref={strip}
+      >
         {(previewCount ? shots.slice(0, previewCount) : shots).map((shot, index) => (
           <button
             key={`${shot.provider}:${shot.id}`}
@@ -399,11 +404,18 @@ export function Screenshots({ details, previewCount }: { details?: GameDetails; 
           ...new Set(shots.map((shot) => (shot.provider === 'igdb-shot' ? 'IGDB' : shot.provider.slice(7)))),
         ].join(', ')}
       </p>
-      {previewCount && <button className="screenshot-gallery-link" onClick={(event) => {
-        origin.current = event.currentTarget
-        if (!selected || !current) setSelected(`${shots[0].provider}:${shots[0].id}`)
-        setOpen(true)
-      }}>View gallery →</button>}
+      {previewCount && (
+        <button
+          className="screenshot-gallery-link"
+          onClick={(event) => {
+            origin.current = event.currentTarget
+            if (!selected || !current) setSelected(`${shots[0].provider}:${shots[0].id}`)
+            setOpen(true)
+          }}
+        >
+          View gallery →
+        </button>
+      )}
       <Dialog.Root open={open && Boolean(current)} onOpenChange={setOpen}>
         <Dialog.Portal>
           <Dialog.Overlay className="dialog-overlay" />
@@ -657,6 +669,11 @@ export function LibraryFacts({ game, details }: { game?: LibraryGame; details?: 
               <details>
                 <summary>Installation & identifiers</summary>
                 <p>{entry.installPath ?? 'Installation path not recorded'}</p>
+                <InstallFolderButton
+                  ownershipId={entry.id}
+                  installed={game?.entries.find((copy) => copy.ownershipId === entry.id)?.installed}
+                  installPath={entry.installPath}
+                />
                 {workspace.data?.externalIds
                   .filter((id) => id.releaseId === entry.releaseId)
                   .map((id) => (
@@ -742,7 +759,6 @@ export function MetadataEditor({ workId }: { workId: number }) {
   const [sending, setSending] = useViewState<string | null>(`metadata-fields:${workId}:sending`, null)
   const [messages, setMessages] = useState<Record<string, string>>({})
   const [errors, setErrors] = useState<Record<string, unknown>>({})
-  const command = useCommand<{ outcome: string }>()
   const client = useQueryClient()
   const draft = (field: Metadata['fields'][number]) =>
     drafts[field.field] ?? { value: field.value ?? '', revision: metadata.data!.revision }
@@ -750,6 +766,10 @@ export function MetadataEditor({ workId }: { workId: number }) {
     if (sending || !metadata.data) return
     const current = draft(field)
     const art = ['cover_url', 'background_url'].includes(field.field)
+    if (action === 'save' && art && !current.value.trim()) {
+      setErrors((previous) => ({ ...previous, [field.field]: new Error(metadataMessages.BadUrl) }))
+      return
+    }
     if (action === 'save' && field.field === 'name' && !current.value.trim()) {
       setErrors((previous) => ({ ...previous, [field.field]: new Error('Enter a name for this game.') }))
       return
@@ -788,10 +808,10 @@ export function MetadataEditor({ workId }: { workId: number }) {
             : art && current.value
               ? 'metadata.art-download'
               : 'metadata.put'
-      const result = await command.mutateAsync({
+      const result = await request<{ outcome: string }>(
         route,
-        params: { workId },
-        body: {
+        { workId },
+        {
           field: field.field,
           expectedRevision: current.revision,
           ...(action === 'reset'
@@ -802,10 +822,20 @@ export function MetadataEditor({ workId }: { workId: number }) {
                 ? { url: current.value }
                 : { value: current.value || null }),
         },
-      })
+      )
+      if (result.outcome !== 'Applied') {
+        setErrors((previous) => ({
+          ...previous,
+          [field.field]: new Error(metadataMessages[result.outcome] ?? metadataMessages.Failed),
+        }))
+        return
+      }
       setMessages((previous) => ({
         ...previous,
-        [field.field]: metadataMessages[result.outcome] ?? 'The change could not be saved.',
+        [field.field]:
+          action === 'reset'
+            ? `${fieldLabels[field.field] ?? field.field} returned to automatic.`
+            : metadataMessages.Applied,
       }))
       if (result.outcome === 'Applied') {
         const before = metadata.data
@@ -828,10 +858,19 @@ export function MetadataEditor({ workId }: { workId: number }) {
           }
           return next
         })
-        if (art) await client.invalidateQueries({ queryKey: ['artwork'] })
+        await client.invalidateQueries({
+          predicate: (query) => query.queryKey[0] === 'api' && query.queryKey[1] !== 'metadata.get',
+        })
+        if (art)
+          await client.invalidateQueries({
+            predicate: (query) => ['artwork', 'artwork-image'].includes(String(query.queryKey[0])),
+          })
       }
     } catch (failure) {
       setErrors((previous) => ({ ...previous, [field.field]: failure }))
+      if (failure instanceof ApiError && failure.uncertain)
+        void client.invalidateQueries({ queryKey: ['api'] })
+      else if (failure instanceof ApiError && failure.conflict) void metadata.refetch()
     } finally {
       setSending(null)
     }
@@ -843,6 +882,7 @@ export function MetadataEditor({ workId }: { workId: number }) {
         Save each field separately. Fields you edit stay yours until you return them to automatic updates.
       </p>
       <Notice error={metadata.error} />
+      {metadata.isPending && <p role="status">Loading fields…</p>}
       {metadata.data?.fields.map((field) => {
         const current = draft(field),
           label = fieldLabels[field.field] ?? field.field

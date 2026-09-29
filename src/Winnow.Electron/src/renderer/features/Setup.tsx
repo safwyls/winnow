@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as Dialog from '@radix-ui/react-dialog'
 import { request } from '../api/client'
-import { useApiQuery, useCommand } from '../api/hooks'
+import { useApiQuery } from '../api/hooks'
 import type { IgdbConnection, LibraryPreferences, Mode, StoreConnections } from '../api/types'
-import { EpicAccount, IgdbForm, LibraryPreferenceForm, SteamKeyForm, SteamAccount } from './Settings'
+import { EpicConnectionCard, IgdbForm, LibraryPreferenceForm, SteamConnectionCard } from './Settings'
 import { ApplicationPreferences, LibraryPresentationPreferences } from './SettingsPreferences'
-import { SetupBusyContext, SetupErrorContext, useSetupBusy } from './settingsState'
+import { SetupBusyContext, SetupErrorContext } from './settingsState'
 import { Notice } from './shared'
 import './setup.css'
 
@@ -58,13 +58,22 @@ export function Setup({
   onComplete,
   appearance,
   onOpenChange,
+  suspended = false,
 }: {
   mode: Mode
   onComplete?: () => void
   appearance?: ReactNode
   onOpenChange?: (open: boolean) => void
+  suspended?: boolean
 }) {
   const progress = useApiQuery<SetupProgress>('setup.get')
+  // A failed replay write must still offer recovery without marking stored setup unfinished.
+  const recovery = useQuery<SetupProgress | null>({
+    queryKey: ['setup-recovery'],
+    queryFn: async () => null,
+    enabled: false,
+    initialData: null,
+  })
   const client = useQueryClient()
   const [failure, setFailure] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -72,9 +81,20 @@ export function Setup({
   const [failedPreferences, setFailedPreferences] = useState<Set<string>>(() => new Set())
   const savingRef = useRef(false)
   const nextButton = useRef<HTMLButtonElement>(null)
-  const step = progress.error ? 0 : progress.data?.step
-  const open = typeof step === 'number'
-  const safeStep = typeof step === 'number' && step >= 0 && step < steps.length ? step : 0
+  const invokingControl = useRef<HTMLElement | null>(null)
+  const rememberInvoker = useCallback(() => {
+    const active = document.activeElement
+    if (
+      active instanceof HTMLElement &&
+      active !== document.body &&
+      !active.closest('[role="dialog"], [role="alertdialog"]')
+    )
+      invokingControl.current = active
+  }, [])
+  const step = recovery.data?.step ?? (progress.error ? 0 : progress.data?.step)
+  const open = !suspended && typeof step === 'number'
+  const safeStep =
+    typeof step === 'number' && Number.isInteger(step) && step >= 0 && step < steps.length ? step : 0
   const busy = saving || busyEditors.size > 0
   const reportBusy = useCallback(
     (id: string, value: boolean) =>
@@ -102,8 +122,18 @@ export function Setup({
     onOpenChange?.(open)
   }, [open, onOpenChange])
   useEffect(() => {
-    if (open) nextButton.current?.focus()
-  }, [safeStep, mode, open])
+    if (open || suspended) return
+    rememberInvoker()
+    // A pending replay disables its button before the progress write opens setup.
+    document.addEventListener('focusin', rememberInvoker)
+    return () => document.removeEventListener('focusin', rememberInvoker)
+  }, [open, suspended, rememberInvoker])
+  useEffect(() => {
+    if (open) {
+      rememberInvoker()
+      nextButton.current?.focus()
+    }
+  }, [safeStep, mode, open, rememberInvoker])
   async function move(cursor: number | null, continueStep = false) {
     if (savingRef.current || busyEditors.size) return
     if (continueStep && failedPreferences.size) {
@@ -118,6 +148,7 @@ export function Setup({
     try {
       await request('setup.put', undefined, { step: cursor })
       client.setQueryData(['api', 'setup.get', undefined], { step: cursor, problem: null })
+      client.setQueryData(['setup-recovery'], null)
       if (cursor === null) onComplete?.()
     } catch {
       setFailure(
@@ -145,7 +176,12 @@ export function Setup({
           onInteractOutside={(event) => event.preventDefault()}
           onOpenAutoFocus={(event) => {
             event.preventDefault()
+            rememberInvoker()
             nextButton.current?.focus()
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault()
+            if (!suspended && invokingControl.current?.isConnected) invokingControl.current.focus()
           }}
         >
           <header className="setup-header">
@@ -162,8 +198,8 @@ export function Setup({
                   <p className="setup-welcome">Your games. One library. Something worth coming back to.</p>
                 )}
                 {safeStep === 1 && <SetupIgdb />}
-                {safeStep === 2 && <SetupSteam />}
-                {safeStep === 3 && <SetupEpic />}
+                {safeStep === 2 && <SetupSteam mode={mode} />}
+                {safeStep === 3 && <SetupEpic mode={mode} />}
                 {safeStep === 4 && (
                   <p>Galaxy discovery runs in the background. Continue whenever you are ready.</p>
                 )}
@@ -179,6 +215,7 @@ export function Setup({
             <Notice
               message={
                 failure ||
+                recovery.data?.problem ||
                 progress.data?.problem ||
                 (progress.error
                   ? 'Could not read setup progress. Continue to try again, or skip setup.'
@@ -230,49 +267,21 @@ function SetupIgdb() {
     </>
   )
 }
-function SetupSteam() {
+function SetupSteam({ mode }: { mode: Mode }) {
   const stores = useApiQuery<StoreConnections>('connections.get')
-  const command = useCommand()
-  useSetupBusy(command.isPending)
   return (
     <>
-      <SteamAccount />
-      <SteamKeyForm />
-      <Notice error={stores.error || command.error} />
-      {stores.data?.steam.hasSession && (
-        <button
-          disabled={command.isPending}
-          onClick={() => command.mutate({ route: 'connections.steam.signout' })}
-        >
-          Sign out of Steam
-        </button>
-      )}
+      <Notice error={stores.error} />
+      {stores.data && <SteamConnectionCard snapshot={stores.data} mode={mode} purchase={false} />}
     </>
   )
 }
-function SetupEpic() {
+function SetupEpic({ mode }: { mode: Mode }) {
   const stores = useApiQuery<StoreConnections>('connections.get')
-  const command = useCommand()
-  useSetupBusy(command.isPending)
   return (
     <>
-      <Notice error={stores.error || command.error} />
-      {stores.data?.epic ? (
-        <>
-          <p>
-            Epic Games is connected{stores.data.epic.displayName ? ` as ${stores.data.epic.displayName}` : ''}
-            .
-          </p>
-          <button
-            disabled={command.isPending}
-            onClick={() => command.mutate({ route: 'connections.epic.signout' })}
-          >
-            Sign out of Epic
-          </button>
-        </>
-      ) : (
-        <EpicAccount />
-      )}
+      <Notice error={stores.error} />
+      {stores.data && <EpicConnectionCard snapshot={stores.data} mode={mode} />}
     </>
   )
 }

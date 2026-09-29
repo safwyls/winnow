@@ -108,6 +108,34 @@ export interface MergeUndo {
   revision: string
   expiresAt: number
   count: number
+  action?: 'single' | 'selected' | 'exact'
+  headerTitle?: string
+  nested?: number
+  leftOut?: number
+}
+
+export function mergeDock(undo: MergeUndo): { title: string; note: string } {
+  if (undo.kind === 'dismiss')
+    return {
+      title: undo.count === 1 ? 'Left 1 group alone.' : `Left ${undo.count} groups alone.`,
+      note: 'They stay separate in your library. Winnow will not ask again.',
+    }
+  if (undo.action === 'single')
+    return {
+      title: `Rolled up under ${undo.headerTitle}.`,
+      note: undo.leftOut
+        ? `${undo.nested} nested · ${undo.leftOut} left out · nothing was deleted.`
+        : `${undo.nested} ${undo.nested === 1 ? 'entry' : 'entries'} nested · nothing was deleted.`,
+    }
+  return undo.action === 'exact'
+    ? {
+        title: `Rolled up ${undo.count} exact ${undo.count === 1 ? 'match' : 'matches'}.`,
+        note: 'Cross-store duplicates only · nothing was deleted.',
+      }
+    : {
+        title: `Rolled up ${undo.count} ${undo.count === 1 ? 'group' : 'groups'}.`,
+        note: 'Each kept the header you picked · nothing was deleted.',
+      }
 }
 
 export function mergePayload(

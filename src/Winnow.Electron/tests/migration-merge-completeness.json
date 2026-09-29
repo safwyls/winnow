@@ -100,7 +100,7 @@
     "reason": "The authoritative patched bucket marks only its row unread, adds the original detail suffix and reports exactly one patched entry in the card rollup. The bucket calculation remains in the shared backend."
   },
   "MergeQueueViewModelTests.Each_row_wears_the_stores_it_is_owned_on": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-merge-facts.test.ts",
@@ -109,12 +109,16 @@
       {
         "file": "tests/parity-merge.test.tsx",
         "case": "retains current group choices across detail navigation, and arrows walk visible rows without wrapping"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "desktop rows show every owned-store chip in source order with distinct member labels"
       }
     ],
-    "reason": "Ownership rows retain all store names and duplicated game titles get distinct member labels. Original rendered uppercase chip combinations still need their own native fixture."
+    "reason": "Rendered desktop members preserve all owned-store chips in source order with STEAM/GOG versus EPIC copy, and duplicate titles receive distinct store-qualified labels. Fullscreen member sheets use the same distinct labels rather than desktop chips."
   },
   "MergeQueueViewModelTests.Answering_reads_nothing_however_long_the_queue_is": {
-    "status": "partial",
+    "status": "framework-specific",
     "tests": [
       {
         "file": "tests/parity-merge.test.tsx",
@@ -123,8 +127,16 @@
       {
         "file": "tests/parity-merge.test.tsx",
         "case": "retains only completed bulk acts for Undo when a later group conflicts"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "answers twenty of sixty cards with one authoritative read per answer and preserves all sixty DOM slots"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+        "case": "Twenty_answers_in_sixty_cards_use_bounded_http_reads_and_preserve_pending_candidates"
       }
     ],
-    "reason": "Bulk answers chain revisions without a queue read between writes and preserve completed acts on partial failure. The renderer reloads once after the action, and the retained backend calculates its compare-and-swap revision from repository facts. The original zero-read performance guarantee is not met."
+    "reason": "The literal zero-repository-read counter is specific to retired in-process answering. The mandatory HTTP architecture preserves CAS and uses exactly one authoritative GET after each answer. Both surfaces retain all 60 DOM card instances/positions after 20 answers, leave 40 pending, write 20 acts and no candidate dismissals. The real 60/20 HTTP test preserves all entities/statuses. Dated local Debug measurement: POST mean10.60/max14.81ms, GET mean58.09/max69.67ms, combined max80.54ms; .tmp/merge-decision-results/merge-decision-parity.trx. These are observations, not a CI latency guarantee or a claim of zero-read parity."
   }
 }

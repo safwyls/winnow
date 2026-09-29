@@ -213,6 +213,41 @@ describe('original grouped review projection', () => {
     ])
     expect(exactMergeCards(cards, 'all')).toEqual([])
   })
+  it('groups both scanned packs under one fixed base with pack marks, likely evidence and two refusal directions', () => {
+    const review = mergeFixture()
+    review.candidates = []
+    review.expansions = [
+      {
+        base: { workId: 1, title: 'Bastion' },
+        members: [2, 3].map((id) => ({
+          work: { workId: id, title: `Bastion pack ${id}` },
+          kind: 'expansion_of',
+          relationLabel: 'expansion',
+          fromMetadata: false,
+        })),
+      },
+    ]
+    const cards = buildMergeCards(review)
+    expect(cards).toHaveLength(1)
+    expect(cards[0]).toMatchObject({
+      parent: 1,
+      section: 'expansions',
+      kind: 'expansion_of',
+      confidence: 'Likely',
+      edges: [],
+      included: [1, 2, 3],
+    })
+    expect(cards[0]!.rows.map((row) => [row.workId, row.pack])).toEqual([
+      [1, false],
+      [2, true],
+      [3, true],
+    ])
+    expect(cards[0]!.reason).toContain('Bastion')
+    expect(cards[0]!.pairs).toEqual([
+      { baseWorkId: 1, childWorkId: 2 },
+      { baseWorkId: 1, childWorkId: 3 },
+    ])
+  })
   it('rolls up entry hours and ownership evidence from the same included rows', () => {
     const cards = buildMergeCards(mergeFixture())
     expect(mergeMinutes(cards[0]!)).toBe(180)

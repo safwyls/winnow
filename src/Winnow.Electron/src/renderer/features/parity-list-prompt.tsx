@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useQueryClient } from '@tanstack/react-query'
 import { ApiError, request } from '../api/client'
@@ -28,17 +28,20 @@ export function AddToListButton({
   mode = 'desktop',
   origin = 'library',
   label,
+  icon,
 }: {
   games: LibraryGame[]
   mode?: Mode
   origin?: string
   label?: string
+  icon?: ReactNode
 }) {
   const [open, setOpen] = useState(false)
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
         <button disabled={!games.length} onClick={(event) => event.stopPropagation()}>
+          {icon}
           {label ?? (games.length > 1 ? `Add ${games.length} to list…` : 'Add to list…')}
         </button>
       </Dialog.Trigger>
@@ -143,7 +146,10 @@ function ListPrompt({
       <Dialog.Overlay className="dialog-overlay" />
       <Dialog.Content
         className={`dialog-content feature-panel list-prompt-dialog mode-${mode}`}
-        onOpenAutoFocus={(event) => { event.preventDefault(); input.current?.focus() }}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault()
+          input.current?.focus()
+        }}
         onEscapeKeyDown={(event) => {
           if (draft.busy) event.preventDefault()
         }}

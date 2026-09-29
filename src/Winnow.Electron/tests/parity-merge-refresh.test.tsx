@@ -92,6 +92,31 @@ for (const mode of ['desktop', 'fullscreen'])
       expect(busy.mock.calls.map(([value]) => value)).toEqual([true])
       expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Another page' }))
     })
+    it('cancels a running refresh in place and the same mounted control accepts a truncated retry', async () => {
+      const { response, calls, cancel, old, client, busy } = setup(mode)
+      fireEvent.click(screen.getByRole('button', { name: 'Refresh suggestions' }))
+      await waitFor(() => expect(calls).toHaveBeenCalledTimes(1))
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel refresh' }))
+      expect(cancel).toHaveBeenCalledExactlyOnceWith(calls.mock.calls[0]![0].requestId)
+      response.resolve({ ok: false, status: 499, message: 'Cancelled' })
+      await screen.findByText('Refresh stopped. Choose Refresh suggestions to try again.')
+      expect(client.getQueryData(['api', 'identity.get', undefined])).toEqual(old)
+      expect(calls).toHaveBeenCalledTimes(1)
+      expect(screen.queryByRole('button', { name: 'Cancel refresh' })).toBeNull()
+      calls.mockImplementation(async (input) =>
+        input.route === 'identity.refresh'
+          ? { ok: true, status: 200, data: { truncated: true } }
+          : { ok: true, status: 200, data: { ...old, hasCompletedSweep: false } },
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Refresh suggestions' }))
+      await screen.findByText(
+        'Suggestions refreshed. Choose Refresh suggestions again to check more matches.',
+      )
+      expect(client.getQueryData(['api', 'identity.get', undefined])).toMatchObject({
+        hasCompletedSweep: false,
+      })
+      expect(busy.mock.calls.map(([value]) => value)).toEqual([true, false, true, false])
+    })
   })
 it('an abort during dispatch is forwarded once and cannot return late data to the caller', async () => {
   const controller = new AbortController(),

@@ -24,6 +24,8 @@ import { ActivityTimeline } from './activity-timeline'
 import { ListMembershipChoice } from './parity-list-membership'
 import { AddToListButton } from './parity-list-prompt'
 import { DetailsRelationships } from './parity-details-identity'
+import { AvalonDetailsLayout } from './details-layout'
+import { noActionSentence } from '../../shared/game-actions'
 
 const detailScrollPositions = new WeakMap<QueryClient, Map<string, number>>()
 const editorSections = new Set(['Metadata', 'Game match', 'Artwork'])
@@ -60,12 +62,24 @@ export function GameLinks({ links }: { links: GameLink[] }) {
   )
 }
 
-export function EntryActions({ entry, workspace }: { entry: GameEntry; workspace?: Workspace }) {
+export function EntryActions({
+  entry,
+  workspace,
+  primaryOnly = false,
+}: {
+  entry: GameEntry
+  workspace?: Workspace
+  primaryOnly?: boolean
+}) {
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState<unknown>(null)
   const [attempt, setAttempt] = useState<{ operationId: string; action: string } | null>(null)
   const action = primaryAction(entry, workspace)
+  const unavailable =
+    entry.store === 'manual'
+      ? 'Manual entries can be tracked here. Launch this game from its shortcut.'
+      : noActionSentence(entry, workspace)
   async function dispatch(kind: string, reuse = false) {
     const operation = reuse && attempt ? attempt : { operationId: crypto.randomUUID(), action: kind }
     setAttempt(operation)
@@ -88,15 +102,19 @@ export function EntryActions({ entry, workspace }: { entry: GameEntry; workspace
   }
   return (
     <div className="entry-actions">
-      <div>
-        <strong>{storeLabel(entry.store)}</strong>
-        <span>
-          {entry.installed ? 'Installed' : 'Not installed'} · {hours(entry.playtimeMinutes)}
-        </span>
-      </div>
+      {!primaryOnly && (
+        <div>
+          <strong>{storeLabel(entry.store)}</strong>
+          <span>
+            {typeof entry.installed === 'boolean' && `${entry.installed ? 'Installed' : 'Not installed'} · `}
+            {hours(entry.playtimeMinutes)}
+          </span>
+        </div>
+      )}
       {action ? (
         <button
           className="primary-button"
+          data-controller-play={primaryOnly || undefined}
           disabled={pending || Boolean(attempt)}
           onClick={() => void dispatch(action)}
         >
@@ -104,23 +122,26 @@ export function EntryActions({ entry, workspace }: { entry: GameEntry; workspace
           {pending ? 'Sending…' : action}
         </button>
       ) : (
-        <p className="muted">
-          {entry.store === 'manual'
-            ? 'Manual entries can be tracked here. Launch this game from its shortcut.'
-            : 'No supported launch action is available for this entry.'}
-        </p>
+        unavailable && <p className="muted">{unavailable}</p>
       )}
-      {entry.store === 'steam' && entry.installed && (
+      {!primaryOnly && entry.store === 'steam' && entry.installed && (
         <button disabled={pending || Boolean(attempt)} onClick={() => void dispatch('Uninstall')}>
           Uninstall in Steam
         </button>
       )}
-      {(entry.store === 'gog' || entry.store === 'epic') && (
-        <button disabled={pending || Boolean(attempt)} onClick={() => void dispatch('Manage')}>
-          Manage in launcher
-        </button>
-      )}
-      {entry.store.startsWith('plugin:') &&
+      {!primaryOnly &&
+        (entry.store === 'epic' ||
+          (entry.store === 'gog' &&
+            workspace?.externalIds.some(
+              (id) =>
+                id.releaseId === entry.releaseId && id.provider === 'gog' && /^\d{1,12}$/.test(id.providerId),
+            ))) && (
+          <button disabled={pending || Boolean(attempt)} onClick={() => void dispatch('Manage')}>
+            Manage in launcher
+          </button>
+        )}
+      {!primaryOnly &&
+        entry.store.startsWith('plugin:') &&
         workspace?.pluginActions[String(entry.ownershipId)]?.canOpenStore && (
           <button disabled={pending || Boolean(attempt)} onClick={() => void dispatch('OpenStore')}>
             Open store
@@ -145,7 +166,20 @@ export function EntryActions({ entry, workspace }: { entry: GameEntry; workspace
   )
 }
 
-export function Details({
+export function Details(props: {
+  workId: number
+  mode?: Mode
+  onClose?: () => void
+  presentation?: 'shared' | 'avalon'
+}) {
+  return props.presentation === 'avalon' ? (
+    <AvalonDetailsLayout key={props.workId} {...props} />
+  ) : (
+    <SharedDetails {...props} />
+  )
+}
+
+function SharedDetails({
   workId,
   mode = 'desktop',
   onClose,
@@ -467,7 +501,7 @@ export function HideGame({ workId, onHidden }: { workId: number; onHidden?: () =
   )
 }
 
-function ListMembership({ workId, mode }: { workId: number; mode: Mode }) {
+export function ListMembership({ workId, mode }: { workId: number; mode: Mode }) {
   const library = useLibrary()
   const game = library.data?.games.find((item) => item.workId === workId)
   return (
@@ -486,7 +520,7 @@ function ListMembership({ workId, mode }: { workId: number; mode: Mode }) {
   )
 }
 
-function ArtworkEditor({ workId }: { workId: number }) {
+export function ArtworkEditor({ workId }: { workId: number }) {
   const [slot, setSlot] = useViewState(`artwork:${workId}:slot`, 'Hero')
   const [source, setSource] = useViewState(`artwork:${workId}:source`, '')
   const [url, setUrl] = useViewState(`draft:artwork:${workId}:url`, '')

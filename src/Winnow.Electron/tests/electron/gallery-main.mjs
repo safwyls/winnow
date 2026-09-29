@@ -1,4 +1,4 @@
-import { nativeImage } from 'electron'
+import { nativeImage, shell } from 'electron'
 
 // Deterministic, test-owned images travel through the production artwork IPC and renderer.
 const pixels = Buffer.alloc(1280 * 720 * 4)
@@ -13,6 +13,12 @@ for (let y = 0; y < 720; y++)
 const png = nativeImage.createFromBitmap(pixels, { width: 1280, height: 720 }).toPNG()
 const originalFetch = globalThis.fetch
 globalThis.__galleryCount = 10
+globalThis.__openedInstallationFolders = []
+// Record the final OS handoff without opening Explorer on the test runner.
+shell.openPath = async (path) => {
+  globalThis.__openedInstallationFolders.push(path)
+  return ''
+}
 globalThis.fetch = async (input, init) => {
   const url = new URL(input instanceof Request ? input.url : input)
   if (url.hostname === '127.0.0.1' && (!init?.method || init.method === 'GET')) {

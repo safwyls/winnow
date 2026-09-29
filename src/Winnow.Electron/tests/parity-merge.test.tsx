@@ -2,12 +2,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MergeQueue } from '../src/renderer/features/parity-merge'
+import { MergeQueue, MergeQueueLoading } from '../src/renderer/features/parity-merge'
 import { useApiQuery } from '../src/renderer/api/hooks'
 import type { MergeReview } from '../src/renderer/features/parity-merge-model'
 import type { ApiRequest } from '../src/shared/bridge'
 import { clearViewState, useViewState } from '../src/renderer/viewState'
-import { mergeFixture, sourceSortFixture } from './parity-merge-fixtures'
+import { crossStoreTriple, mergeFixture, sourceSortFixture } from './parity-merge-fixtures'
 import { MergeRefresh } from '../src/renderer/features/parity-merge-refresh'
 import { useIdentityReview } from '../src/renderer/features/parity-merge-query'
 
@@ -121,6 +121,7 @@ function setup(
     return (
       <div className={`mode-${mode}`}>
         <MergeRefresh disabled={false} onBusy={() => {}} />
+        {!query.data && query.isPending && <MergeQueueLoading />}
         {query.data && (
           <MergeQueue mode={mode} review={query.data} onReview={onReview} onOpenGame={onOpenGame} />
         )}
@@ -148,7 +149,12 @@ for (const mode of ['desktop', 'fullscreen'] as const)
         })
       else {
         fireEvent.click(screen.getByRole('button', { name: /^Preferred platform ·/ }))
-        fireEvent.click(screen.getByRole('button', { name: value === 'gog' ? 'GOG' : 'None' }))
+        fireEvent.click(
+          screen.getByRole('button', {
+            name:
+              ({ gog: 'GOG', epic: 'Epic Games', steam: 'Steam' } as Record<string, string>)[value] ?? 'None',
+          }),
+        )
       }
       await waitFor(() =>
         expect(
@@ -207,6 +213,359 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       if (mode === 'fullscreen' && action === 'Same game')
         fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
     }
+    it('shows five ordered empty sections before the first review arrives without inventing loaded proposals', async () => {
+      let release!: (value: unknown) => void
+      setup(mode, (input, review) =>
+        input.route === 'identity.get'
+          ? new Promise((resolve) => {
+              release = () => resolve({ ok: true, status: 200, data: review })
+            })
+          : undefined,
+      )
+      expect(screen.getByRole('group', { name: 'Possible matches' }).getAttribute('aria-busy')).toBe('true')
+      expect(screen.getAllByRole('region').map((section) => section.getAttribute('aria-label'))).toEqual([
+        'Across stores',
+        'Editions',
+        'Expansions',
+        'Parts',
+        'Test builds',
+      ])
+      expect(screen.queryAllByRole('article')).toHaveLength(0)
+      expect(screen.queryByRole('button', { name: /Accept .*exact/ })).toBeNull()
+      await act(async () => release(undefined))
+      await screen.findByRole('article', { name: 'Bastion proposal' })
+      expect(screen.queryByText('Loading possible matches…')).toBeNull()
+    })
+    it('consumes a structurally stale refusal without another write or Undo and removes the invalid proposal', async () => {
+      const { request, review } = setup(mode, (input, review) => {
+        if (input.route !== 'identity.link') return
+        review.history.push({ id: 800, actId: 80, parentWorkId: 3, childWorkId: 1, kind: 'expansion_of' })
+        review.revision = 'external-change'
+        return { ok: false, status: 409, message: 'The proposed main game is now an expansion.' }
+      })
+      await answer('Bastion', 'Same game')
+      await screen.findByText("Couldn't link those.")
+      expect(screen.getByText('That proposal was out of date · nothing changed.')).toBeTruthy()
+      expect(screen.queryByRole('article', { name: 'Bastion proposal' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Undo review decisions' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Check saved review' })).toBeNull()
+      expect(review.history).toHaveLength(1)
+      expect(review.candidates.some((candidate) => candidate.id === 10)).toBe(true)
+      expect(request.mock.calls.filter(([input]) => input.route === 'identity.link')).toHaveLength(1)
+      fireEvent.click(screen.getByRole('button', { name: 'Dismiss review notice' }))
+      expect(screen.queryByRole('status', { name: 'Review notice' })).toBeNull()
+    })
+    it('rejects all three triangle edges together and leaves the unrelated card intact through reload and Undo', async () => {
+      const { request, review } = setup(mode, undefined, crossStoreTriple)
+      await answer('Bastion', 'Different games')
+      await screen.findByText('Left 1 group alone.')
+      expect(screen.getByText('They stay separate in your library. Winnow will not ask again.')).toBeTruthy()
+      await waitFor(() => expect(screen.queryByRole('article', { name: 'Bastion proposal' })).toBeNull())
+      expect(screen.getByRole('article', { name: 'Prey 2006 proposal' })).toBeTruthy()
+      expect(
+        request.mock.calls.find(([input]) => input.route === 'identity.dismiss')?.[0].body,
+      ).toMatchObject({ candidateIds: [10, 12, 13], refusedPairs: [] })
+      expect(review.candidates.map((candidate) => candidate.id)).toEqual([11])
+      expect(review.history).toHaveLength(0)
+      fireEvent.click(screen.getByRole('button', { name: 'Refresh suggestions' }))
+      await screen.findByText('Suggestions refreshed. Your previous answers are kept.')
+      expect(screen.queryByRole('article', { name: 'Bastion proposal' })).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Undo review decisions' }))
+      await screen.findByRole('article', { name: 'Bastion proposal' })
+      expect(review.candidates.map((candidate) => candidate.id).sort()).toEqual([10, 11, 12, 13])
+    })
+    it('separates a strip loaded from history by its recorded act and restores its original pending proposal', async () => {
+      const { request, review } = setup(mode, undefined, (review) => {
+        review.history = [{ id: 401, actId: 40, parentWorkId: 1, childWorkId: 2, kind: 'same_game' }]
+      })
+      await screen.findByRole('article', { name: 'Bastion saved group' })
+      expect(screen.queryByRole('button', { name: 'Undo review decisions' })).toBeNull()
+      await answer('Bastion', 'Separate again', true)
+      await screen.findByRole('article', { name: 'Bastion proposal' })
+      expect(review.history).toHaveLength(0)
+      expect(review.candidates.map((candidate) => candidate.id)).toEqual([10, 11])
+      expect(request.mock.calls.find(([input]) => input.route === 'identity.undo')?.[0].body).toEqual({
+        expectedRevision: 'r1',
+        actIds: [40],
+        candidateIds: [],
+        refusedPairs: [],
+      })
+      expect(screen.getByRole('button', { name: 'Accept 1 exact match' })).toBeTruthy()
+    })
+    it('keeps expansion bases and previously saved directions fixed when a preferred platform changes', async () => {
+      const { request, review } = setup(mode, undefined, (review) => {
+        review.candidates = []
+        ;(review.workspace.ownerships as { store: string }[])[3]!.store = 'epic'
+        ;(review.workspace.ownerships as { store: string }[])[1]!.store = 'epic'
+        review.history = [{ id: 401, actId: 40, parentWorkId: 3, childWorkId: 4, kind: 'same_game' }]
+        review.expansions = [
+          {
+            base: { workId: 1, title: 'Bastion' },
+            members: [
+              {
+                work: { workId: 2, title: 'Bastion' },
+                kind: 'expansion_of',
+                relationLabel: 'expansion',
+                fromMetadata: false,
+              },
+            ],
+          },
+        ]
+      })
+      await screen.findByRole('article', { name: 'Bastion proposal' })
+      const before = structuredClone(review.history)
+      await platform('epic')
+      const card = await open('Bastion')
+      if (mode === 'desktop')
+        expect(
+          within(card).getByRole('button', { name: 'Choose Bastion (Steam)' }).closest('.main-row'),
+        ).toBeTruthy()
+      else {
+        expect(within(card).getByRole('button', { name: 'Bastion (Steam) · Header' })).toBeTruthy()
+        fireEvent.click(screen.getByRole('button', { name: 'Back to proposals' }))
+      }
+      expect(screen.getByRole('article', { name: 'Prey 2006 saved group' })).toBeTruthy()
+      expect(review.history).toEqual(before)
+      expect(
+        request.mock.calls.some(([input]) => ['identity.link', 'identity.undo'].includes(input.route)),
+      ).toBe(false)
+    })
+    it('writes a promoted three-member card as one act with two children and restores the same slot for four Undo cycles', async () => {
+      const { request, review } = setup(mode, undefined, crossStoreTriple)
+      const original = await screen.findByRole('article', { name: 'Bastion proposal' })
+      const initial = await open('Bastion')
+      if (mode === 'desktop') {
+        expect(
+          within(initial)
+            .getAllByRole('radio')
+            .map((radio) => (radio as HTMLInputElement).checked),
+        ).toEqual([true, false, false])
+        expect([...initial.querySelectorAll('.merge-row-mark')].map((mark) => mark.textContent)).toEqual([
+          'Header',
+          'Nests under',
+          'Nests under',
+        ])
+      } else {
+        expect(within(initial).getByRole('button', { name: 'Bastion (Steam) · Header' })).toBeTruthy()
+        expect(within(initial).getAllByRole('button', { name: / · Included$/ })).toHaveLength(2)
+        fireEvent.click(screen.getByRole('button', { name: 'Back to proposals' }))
+      }
+      await promoteSecond('Bastion')
+      for (let cycle = 0; cycle < 4; cycle++) {
+        await answer('Bastion', 'Same game')
+        expect(await screen.findByRole('article', { name: 'Bastion saved group' })).toBe(original)
+        expect(screen.getByText('Rolled up under Bastion.')).toBeTruthy()
+        expect(screen.getByText('2 entries nested · nothing was deleted.')).toBeTruthy()
+        expect(review.history).toHaveLength(2)
+        expect(new Set(review.history.map((link) => link.actId)).size).toBe(1)
+        expect(review.history.map((link) => [link.parentWorkId, link.childWorkId])).toEqual([
+          [2, 1],
+          [2, 5],
+        ])
+        expect(screen.getByRole('article', { name: 'Prey 2006 proposal' })).toBeTruthy()
+        fireEvent.click(screen.getByRole('button', { name: 'Undo review decisions' }))
+        expect(await screen.findByRole('article', { name: 'Bastion proposal' })).toBe(original)
+        expect(review.history).toHaveLength(0)
+        expect(screen.queryByRole('button', { name: 'Undo review decisions' })).toBeNull()
+      }
+      await answer('Bastion', 'Same game')
+      await screen.findByRole('article', { name: 'Bastion saved group' })
+      expect(request.mock.calls.filter(([input]) => input.route === 'identity.link')).toHaveLength(5)
+      expect(review.history.map((link) => [link.parentWorkId, link.childWorkId])).toEqual([
+        [2, 1],
+        [2, 5],
+      ])
+    })
+    it('merges the first and third of three selected cards in place, keeps the middle pending, and undoes both acts', async () => {
+      const { request, review } = setup(mode, undefined, sourceSortFixture)
+      await screen.findByRole('article', { name: 'Prey proposal' })
+      const slots = screen.getAllByRole('article')
+      await select('The Stanley Parable')
+      await promoteSecond('Prey')
+      await select('Prey')
+      await bulk('Merge 2 selected')
+      await screen.findByRole('article', { name: 'Prey saved group' })
+      expect(screen.getAllByRole('article')).toEqual(slots)
+      expect(screen.getByRole('article', { name: 'The Witcher 3: Wild Hunt proposal' })).toBe(slots[1])
+      expect(screen.getByText('Rolled up 2 groups.')).toBeTruthy()
+      expect(screen.getByText('Each kept the header you picked · nothing was deleted.')).toBeTruthy()
+      expect(
+        request.mock.calls.filter(([input]) => input.route === 'identity.link').map(([input]) => input.body),
+      ).toEqual([
+        expect.objectContaining({ parentWorkId: 5, childWorkIds: [6] }),
+        expect.objectContaining({ parentWorkId: 4, childWorkIds: [3] }),
+      ])
+      expect(screen.getByRole('button', { name: 'Merge selected' }).getAttribute('disabled')).not.toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Undo review decisions' }))
+      await screen.findByRole('article', { name: 'Prey proposal' })
+      expect(screen.getAllByRole('article')).toEqual(slots)
+      expect(review.history).toHaveLength(0)
+    })
+    it('accepts two exact cross-store cards but leaves same-store and likely cards pending and disables repeat acceptance', async () => {
+      const { request, review } = setup(mode, undefined, (review) => {
+        const names = [
+          'Prey',
+          'Prey',
+          'The Stanley Parable',
+          'The Stanley Parable',
+          'Stanley duplicate',
+          'Stanley duplicate',
+          'The Witcher 3',
+          'The Witcher 3 GOTY',
+        ]
+        review.workspace.works = names.map((name, index) => ({ id: index + 1, name }))
+        review.workspace.releases = names.map((_, index) => ({ id: index + 101, workId: index + 1 }))
+        review.workspace.ownerships = names.map((_, index) => ({
+          id: index + 1,
+          releaseId: index + 101,
+          store: index === 1 ? 'epic' : [3, 7].includes(index) ? 'gog' : 'steam',
+        }))
+        review.workspace.buckets = []
+        review.candidates = [0, 2, 4, 6].map((index) => ({
+          id: index + 10,
+          leftReleaseId: index + 101,
+          rightReleaseId: index + 102,
+          status: 'pending',
+          score: 0.98,
+          signalsJson: JSON.stringify({ band: 'Priority', title_similarity: 1 }),
+        }))
+      })
+      await bulk('Accept 2 exact matches')
+      await screen.findByRole('article', { name: 'The Stanley Parable saved group' })
+      expect(screen.getByRole('article', { name: 'Prey saved group' })).toBeTruthy()
+      expect(screen.getByRole('article', { name: 'Stanley duplicate proposal' })).toBeTruthy()
+      expect(screen.getByRole('article', { name: 'The Witcher 3 proposal' })).toBeTruthy()
+      expect(screen.getByText('Rolled up 2 exact matches.')).toBeTruthy()
+      expect(screen.getByText('Cross-store duplicates only · nothing was deleted.')).toBeTruthy()
+      expect(screen.getByText('2 proposals · non-destructive')).toBeTruthy()
+      const noExact = screen.getByRole('button', { name: 'No exact matches left' })
+      expect((noExact as HTMLButtonElement).disabled).toBe(true)
+      fireEvent.click(noExact)
+      expect(request.mock.calls.filter(([input]) => input.route === 'identity.link')).toHaveLength(2)
+      expect(new Set(review.history.map((link) => link.actId)).size).toBe(2)
+    })
+    it.each([false, true])(
+      'the undo dock keeps its six-second boundary and never retracts saved links after closing (dismiss=%s)',
+      async (dismiss) => {
+        const { request, review, client, view } = setup(mode)
+        await answer('Bastion', 'Same game')
+        await screen.findByRole('article', { name: 'Bastion saved group' })
+        const saved = structuredClone(review.history)
+        vi.useFakeTimers()
+        view.unmount()
+        render(
+          <QueryClientProvider client={client}>
+            <MergeQueue mode={mode} review={structuredClone(review)} onReview={vi.fn()} />
+          </QueryClientProvider>,
+        )
+        if (dismiss) fireEvent.click(screen.getByRole('button', { name: 'Dismiss review undo' }))
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(6000)
+        })
+        expect(Boolean(screen.queryByRole('button', { name: 'Undo review decisions' }))).toBe(!dismiss)
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(2000)
+        })
+        expect(screen.queryByRole('button', { name: 'Undo review decisions' })).toBeNull()
+        expect(review.history).toEqual(saved)
+        expect(request.mock.calls.some(([input]) => input.route === 'identity.undo')).toBe(false)
+      },
+    )
+    it.each([false, true])(
+      'refresh then Undo removes the current saved strip when the sweep retires its candidate=%s',
+      async (retire) => {
+        const { review } = setup(mode, (input, review) => {
+          if (retire && input.route === 'identity.refresh')
+            review.candidates = review.candidates.filter((candidate) => candidate.id !== 10)
+        })
+        await answer('Bastion', 'Same game')
+        await screen.findByRole('article', { name: 'Bastion saved group' })
+        fireEvent.click(screen.getByRole('button', { name: 'Refresh suggestions' }))
+        await screen.findByText('Suggestions refreshed. Your previous answers are kept.')
+        expect(screen.getByRole('article', { name: 'Bastion saved group' })).toBeTruthy()
+        fireEvent.click(screen.getByRole('button', { name: 'Undo review decisions' }))
+        await waitFor(() => expect(screen.queryByRole('article', { name: 'Bastion saved group' })).toBeNull())
+        expect(Boolean(screen.queryByRole('article', { name: 'Bastion proposal' }))).toBe(!retire)
+        expect(review.history).toHaveLength(0)
+      },
+    )
+    it('leaves one triangle member out, records both crossing rejections and restores the same excluded choice on Undo', async () => {
+      const { request, review } = setup(mode, undefined, crossStoreTriple)
+      let card = await open('Bastion')
+      if (mode === 'desktop')
+        fireEvent.click(within(card).getByRole('checkbox', { name: 'Include Bastion (Epic Games)' }))
+      else {
+        fireEvent.click(within(card).getByRole('button', { name: 'Bastion (Epic Games) · Included' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Leave out' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Back to proposals' }))
+      }
+      await answer('Bastion', 'Same game')
+      await screen.findByRole('article', { name: 'Bastion saved group' })
+      expect(screen.getByText('1 nested · 1 left out · nothing was deleted.')).toBeTruthy()
+      expect(request.mock.calls.find(([input]) => input.route === 'identity.link')?.[0].body).toMatchObject({
+        parentWorkId: 1,
+        childWorkIds: [2],
+        rejectedCandidateIds: [12, 13],
+      })
+      expect(review.candidates.map((candidate) => candidate.id)).toEqual([10, 11])
+      expect(review.history.map((link) => link.childWorkId)).toEqual([2])
+      fireEvent.click(screen.getByRole('button', { name: 'Undo review decisions' }))
+      card = await open('Bastion')
+      if (mode === 'desktop')
+        expect(
+          (within(card).getByRole('checkbox', { name: 'Include Bastion (Epic Games)' }) as HTMLInputElement)
+            .checked,
+        ).toBe(false)
+      else expect(within(card).getByRole('button', { name: 'Bastion (Epic Games) · Left out' })).toBeTruthy()
+      expect(review.history).toHaveLength(0)
+      expect(review.candidates.map((candidate) => candidate.id).sort()).toEqual([10, 11, 12, 13])
+    })
+    it.each([
+      ['expansion_of', 'expansion', 'Expansions', 2],
+      ['variant_of', 'demo', 'Test builds', 1],
+    ] as const)(
+      'presents %s members under a fixed base in %s and persists the relation label',
+      async (kindValue, label, section, count) => {
+        const { request, review } = setup(mode, undefined, (review) => {
+          review.candidates = []
+          review.expansions = [
+            {
+              base: { workId: 1, title: 'Bastion' },
+              members: [2, 3].slice(0, count).map((id) => ({
+                work: { workId: id, title: review.workspace.works[id - 1]!.name },
+                kind: kindValue,
+                relationLabel: label,
+                fromMetadata: false,
+              })),
+            },
+          ]
+        })
+        const card = await screen.findByRole('article', { name: 'Bastion proposal' })
+        expect(card.closest('section')?.getAttribute('aria-label')).toBe(section)
+        expect(screen.getByText('1 proposal · non-destructive')).toBeTruthy()
+        const dialog = await open('Bastion')
+        if (mode === 'desktop') {
+          expect(dialog.querySelectorAll('.merge-row')).toHaveLength(count + 1)
+          expect(within(dialog).queryAllByRole('radio')).toHaveLength(0)
+          expect(
+            within(dialog).getByRole('button', { name: 'Choose Bastion (Steam)' }).closest('.main-row'),
+          ).toBeTruthy()
+        } else fireEvent.click(screen.getByRole('button', { name: 'Back to proposals' }))
+        await answer('Bastion', 'Same game')
+        await screen.findByRole('article', { name: 'Bastion saved group' })
+        expect(request.mock.calls.find(([input]) => input.route === 'identity.link')?.[0].body).toMatchObject(
+          {
+            parentWorkId: 1,
+            childWorkIds: [2, 3].slice(0, count),
+            kind: kindValue,
+            relationLabel: label,
+          },
+        )
+        expect(review.history).toHaveLength(count)
+        expect(new Set(review.history.map((link) => link.actId)).size).toBe(1)
+        expect(review.history.every((link) => link.parentWorkId === 1 && link.kind === kindValue)).toBe(true)
+      },
+    )
     it('accepts only exact cross-store groups and one Undo retracts precisely that saved act', async () => {
       const { request } = setup(mode)
       await bulk('Accept 1 exact match')
@@ -235,6 +594,50 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       })
       expect(screen.queryByRole('complementary', { name: 'Review undo' })).toBeNull()
     })
+    it('answers twenty of sixty cards with one authoritative read per answer and preserves all sixty DOM slots', async () => {
+      const { request, review } = setup(mode, undefined, (review) => {
+        review.workspace.works = Array.from({ length: 120 }, (_, index) => ({
+          id: index + 1,
+          name: `Bastion ${Math.floor(index / 2)
+            .toString()
+            .padStart(2, '0')}`,
+        }))
+        review.workspace.releases = review.workspace.works.map((work) => ({
+          id: work.id + 100,
+          workId: work.id,
+        }))
+        review.workspace.ownerships = review.workspace.works.map((work) => ({
+          id: work.id,
+          releaseId: work.id + 100,
+          store: 'steam',
+        }))
+        review.workspace.buckets = []
+        review.candidates = Array.from({ length: 60 }, (_, index) => ({
+          id: index + 1,
+          leftReleaseId: index * 2 + 101,
+          rightReleaseId: index * 2 + 102,
+          score: 0.98,
+          status: 'pending',
+          signalsJson: JSON.stringify({ band: 'Priority', title_similarity: 1 }),
+        }))
+      })
+      await screen.findByRole('article', { name: 'Bastion 00 proposal' })
+      const slots = screen.getAllByRole('article')
+      expect(slots).toHaveLength(60)
+      const titles = slots.map((card) => card.getAttribute('aria-label')!.replace(' proposal', ''))
+      for (let index = 0; index < 20; index++) {
+        const title = titles[index]!
+        await answer(title, 'Same game')
+        expect(await screen.findByRole('article', { name: `${title} saved group` })).toBe(slots[index])
+        expect(request.mock.calls.filter(([input]) => input.route === 'identity.get')).toHaveLength(index + 2)
+      }
+      expect(screen.getAllByRole('article')).toEqual(slots)
+      expect(screen.getByText('40 proposals · non-destructive')).toBeTruthy()
+      expect(request.mock.calls.filter(([input]) => input.route === 'identity.link')).toHaveLength(20)
+      expect(request.mock.calls.filter(([input]) => input.route === 'identity.dismiss')).toHaveLength(0)
+      expect(review.history).toHaveLength(20)
+      expect(review.candidates).toHaveLength(60)
+    }, 30000)
     it('merges all selected groups under their chosen parents with sequential revisions and one bulk Undo', async () => {
       const { request } = setup(mode)
       await promoteSecond('Bastion')
@@ -296,7 +699,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       await answer('Bastion', 'Different games')
       await waitFor(() => expect(screen.queryByRole('article', { name: 'Bastion proposal' })).toBeNull())
       await answer('Prey 2006', 'Different games')
-      await screen.findByText('2 left separate · Nothing deleted')
+      await screen.findByText('Left 2 groups alone.')
       fireEvent.click(screen.getByRole('button', { name: 'Undo review decisions' }))
       await screen.findByRole('article', { name: 'Bastion proposal' })
       expect(screen.getByRole('article', { name: 'Prey 2006 proposal' })).toBeTruthy()
@@ -559,7 +962,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       expect(screen.getByText('2 proposals · non-destructive')).toBeTruthy()
     })
     it('applies platform changes to hidden cards, preserves unavailable headers, and accepts the chosen parent', async () => {
-      const { request } = setup(mode)
+      const { request } = setup(mode, undefined, crossStoreTriple)
       await screen.findByRole('article', { name: 'Bastion proposal' })
       kind('Editions')
       await platform('gog')
@@ -576,7 +979,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       await screen.findByRole('article', { name: 'Bastion saved group' })
       expect(request.mock.calls.find(([input]) => input.route === 'identity.link')?.[0].body).toMatchObject({
         parentWorkId: 2,
-        childWorkIds: [1],
+        childWorkIds: [1, 5],
       })
     })
     it('orders all three source confidence bands, summed playtime and titles and identifies the selected sort', async () => {
@@ -740,6 +1143,50 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       await screen.findByRole('article', { name: 'Bastion proposal' })
       expect(review.history).toHaveLength(0)
     })
+    it('leaving one of two packs out preserves only its directional refusal through refresh and reverses it with the saved act', async () => {
+      const { request, review } = setup(mode, undefined, (review) => {
+        review.candidates = []
+        review.expansions = [
+          {
+            base: { workId: 1, title: 'Bastion' },
+            members: [2, 3].map((id) => ({
+              work: { workId: id, title: review.workspace.works[id - 1]!.name },
+              kind: 'expansion_of',
+              relationLabel: 'expansion',
+              fromMetadata: false,
+            })),
+          },
+        ]
+      })
+      const card = await open('Bastion')
+      if (mode === 'desktop')
+        fireEvent.click(within(card).getByRole('checkbox', { name: 'Include Prey 2006 (Steam)' }))
+      else {
+        fireEvent.click(within(card).getByRole('button', { name: 'Prey 2006 (Steam) · Included' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Leave out' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Back to proposals' }))
+      }
+      await answer('Bastion', 'Same game')
+      await screen.findByRole('article', { name: 'Bastion saved group' })
+      expect(request.mock.calls.find(([input]) => input.route === 'identity.link')?.[0].body).toMatchObject({
+        parentWorkId: 1,
+        childWorkIds: [2],
+        kind: 'expansion_of',
+        rejectedCandidateIds: [],
+        refusedPairs: [{ baseWorkId: 1, childWorkId: 3 }],
+      })
+      expect(screen.getByText('1 nested · 1 left out · nothing was deleted.')).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Refresh suggestions' }))
+      await screen.findByText('Suggestions refreshed. Your previous answers are kept.')
+      expect(screen.queryByRole('article', { name: 'Bastion proposal' })).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Undo review decisions' }))
+      await screen.findByRole('article', { name: 'Bastion proposal' })
+      expect(request.mock.calls.find(([input]) => input.route === 'identity.undo')?.[0].body).toMatchObject({
+        actIds: [102],
+        refusedPairs: [{ baseWorkId: 1, childWorkId: 3 }],
+      })
+      expect(review.history).toHaveLength(0)
+    })
     it('retains only completed bulk acts for Undo when a later group conflicts', async () => {
       const { request } = setup(mode, (input) =>
         input.route === 'identity.link' && (input.body as { parentWorkId: number }).parentWorkId === 3
@@ -750,7 +1197,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       await select('Prey 2006')
       await bulk('Merge 2 selected')
       await screen.findByRole('button', { name: 'Check saved review' })
-      expect(screen.getByText('1 rolled up · Nothing deleted')).toBeTruthy()
+      expect(screen.getByText('Rolled up 1 group.')).toBeTruthy()
       fireEvent.click(screen.getByRole('button', { name: 'Check saved review' }))
       await screen.findByRole('article', { name: 'Bastion saved group' })
       fireEvent.click(screen.getByRole('button', { name: 'Undo review decisions' }))
@@ -867,6 +1314,58 @@ it('desktop covers react to the display toggle without reloading review or cover
   expect(request.mock.calls.filter(([input]) => input.route === 'artworkState')).toHaveLength(4)
 })
 
+it('desktop covers start with saved dimming off and preserve live changes through an authoritative reload', async () => {
+  let preference = 'false'
+  const { client, request } = setup('desktop', (input) =>
+    input.route === 'preferences.presentation.get'
+      ? { ok: true, status: 200, data: [{ preference: 'DimDormantCovers', value: preference }] }
+      : undefined,
+  )
+  await screen.findByRole('article', { name: 'Bastion proposal' })
+  const covers = () => [...document.querySelectorAll<HTMLElement>('.merge-cover')]
+  await waitFor(() =>
+    expect(covers().map((cover) => cover.style.getPropertyValue('--merge-dormancy'))).toEqual([
+      'none',
+      'none',
+      'none',
+      'none',
+    ]),
+  )
+  const elements = covers()
+  preference = 'true'
+  await act(async () => {
+    await client.refetchQueries({ queryKey: ['api', 'preferences.presentation.get'] })
+  })
+  expect(covers()).toEqual(elements)
+  await waitFor(() =>
+    expect(covers().every((cover) => cover.style.getPropertyValue('--merge-dormancy') !== 'none')).toBe(true),
+  )
+  preference = 'false'
+  await act(async () => {
+    await client.refetchQueries({ queryKey: ['api', 'preferences.presentation.get'] })
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh suggestions' }))
+  await screen.findByText('Suggestions refreshed. Your previous answers are kept.')
+  expect(covers().every((cover) => cover.style.getPropertyValue('--merge-dormancy') === 'none')).toBe(true)
+  expect(request.mock.calls.filter(([input]) => input.route === 'identity.get')).toHaveLength(2)
+})
+
+it('desktop rows show every owned-store chip in source order with distinct member labels', async () => {
+  setup('desktop', undefined, (review) => {
+    ;(review.workspace.ownerships as unknown[]).push({ id: 20, releaseId: 101, store: 'gog' })
+    ;(review.workspace.ownerships as { store: string }[])[1]!.store = 'epic'
+  })
+  const card = await screen.findByRole('article', { name: 'Bastion proposal' })
+  const rows = [...card.querySelectorAll('.merge-row')]
+  expect([...rows[0]!.querySelectorAll('.merge-store')].map((chip) => chip.textContent)).toEqual([
+    'STEAM',
+    'GOG',
+  ])
+  expect([...rows[1]!.querySelectorAll('.merge-store')].map((chip) => chip.textContent)).toEqual(['EPIC'])
+  expect(within(card).getByRole('button', { name: 'Choose Bastion (Steam, GOG)' })).toBeTruthy()
+  expect(within(card).getByRole('button', { name: 'Choose Bastion (Epic Games)' })).toBeTruthy()
+})
+
 it.each(['user', 'igdb', 'steam'])(
   'desktop queue rows use the authoritative %s artwork key without substituting a store capsule',
   async (provider) => {
@@ -975,6 +1474,45 @@ it('desktop starts its keyboard cursor on the first pending row and an empty que
   ).toHaveLength(0)
 })
 
+it('desktop answers successive focused cards, falls back from the final card, and clears the cursor when none remain', async () => {
+  const { request } = setup('desktop', undefined, sourceSortFixture)
+  await screen.findByRole('article', { name: 'Prey proposal' })
+  const queue = screen.getByRole('group', { name: 'Possible matches' })
+  const rows = screen.getAllByRole('button', { name: /^Choose / })
+  queue.focus()
+  fireEvent.keyDown(queue, { key: 's' })
+  await screen.findByRole('article', { name: 'The Stanley Parable saved group' })
+  await waitFor(() => expect(document.activeElement).toBe(rows[2]))
+  fireEvent.keyDown(document.activeElement!, { key: 'End' })
+  expect(document.activeElement).toBe(rows.at(-1))
+  fireEvent.keyDown(document.activeElement!, { key: 'd' })
+  await waitFor(() => expect(screen.queryByRole('article', { name: 'Prey proposal' })).toBeNull())
+  await waitFor(() => expect(document.activeElement).toBe(rows[3]))
+  fireEvent.keyDown(document.activeElement!, { key: 'd' })
+  await waitFor(() => expect(screen.queryAllByRole('button', { name: /^Choose / })).toHaveLength(0))
+  queue.focus()
+  const count = request.mock.calls.length
+  for (const key of ['ArrowDown', 'ArrowUp', 's', 'd', ' ']) fireEvent.keyDown(queue, { key })
+  expect(document.activeElement).toBe(queue)
+  expect(request.mock.calls.length).toBe(count)
+})
+
+it('desktop Details establishes the member cursor before notifying navigation without changing its header', async () => {
+  const { onOpenGame, request } = setup('desktop')
+  const card = await screen.findByRole('article', { name: 'Bastion proposal' })
+  const queue = screen.getByRole('group', { name: 'Possible matches' })
+  onOpenGame.mockImplementation(() => {
+    expect(document.activeElement).toBe(within(card).getByRole('button', { name: 'Choose Bastion (GOG)' }))
+    queue.focus()
+    fireEvent.keyDown(queue, { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Choose Prey 2006' }))
+  })
+  fireEvent.click(within(card).getByRole('button', { name: 'Details for Bastion (GOG)' }))
+  expect(onOpenGame).toHaveBeenCalledExactlyOnceWith(2)
+  expect((within(card).getAllByRole('radio')[0] as HTMLInputElement).checked).toBe(true)
+  expect(request.mock.calls.some(([input]) => input.route === 'identity.link')).toBe(false)
+})
+
 it('fullscreen Escape traverses member and confirmation layers before returning focus to the proposal', async () => {
   const { request } = setup('fullscreen')
   const card = await screen.findByRole('article', { name: 'Bastion proposal' })
@@ -1008,7 +1546,7 @@ it('expires the undo dock after seven seconds and lets Dismiss close it early wi
       name: 'Different games',
     }),
   )
-  await screen.findByText('1 left separate · Nothing deleted')
+  await screen.findByText('Left 1 group alone.')
   vi.useFakeTimers()
   // Remount starts the remaining duration from the stored wall-clock deadline.
   cleanup()

@@ -119,6 +119,10 @@ async function surface(mode: 'desktop' | 'fullscreen', width: number, height: nu
     { mode, width, height },
   )
   await expect(page.locator('.avalon-shell')).toHaveClass(new RegExp(mode))
+  await page.waitForFunction(({ width, height }) => innerWidth === width && innerHeight === height, {
+    width,
+    height,
+  })
   await page
     .getByRole('navigation', { name: 'Main navigation' })
     .getByRole('button', { name: 'For you', exact: true })
@@ -129,8 +133,31 @@ async function surface(mode: 'desktop' | 'fullscreen', width: number, height: nu
     document.documentElement.style.setProperty('--fullscreen-safe-margin', '5%')
     document.documentElement.dataset.fitUltrawide = 'true'
   })
+  await measured()
 }
 const activeCovers = () => page.locator('[data-row-active="true"] .avalon-cover')
+async function measured() {
+  await page.evaluate(
+    () =>
+      new Promise<void>((done) => {
+        let previous = '',
+          equalFrames = 0
+        const sample = () => {
+          const current = JSON.stringify(
+            Array.from(document.querySelectorAll('.avalon-row-viewport, .avalon-cover')).map((element) => {
+              const bounds = element.getBoundingClientRect()
+              return [bounds.width, bounds.height]
+            }),
+          )
+          equalFrames = current === previous ? equalFrames + 1 : 0
+          previous = current
+          if (equalFrames >= 3) done()
+          else requestAnimationFrame(sample)
+        }
+        requestAnimationFrame(sample)
+      }),
+  )
+}
 async function settled() {
   await expect(page.locator('.avalon-row-viewport[data-animating]')).toHaveCount(0)
 }
@@ -242,13 +269,20 @@ for (const searching of [false, true])
     const grid = page.locator('.avalon-fullscreen-grid'),
       viewport = grid.locator('.avalon-row-viewport')
     await expect(grid).toBeVisible()
+    // The old Home shelf can remain visible while the invalidated library is still being read.
+    await expect(page.locator('.avalon-results-count')).toHaveText(/^90 games(?: matching “Library game”)?$/)
+    await expect(activeCovers().first()).toHaveAccessibleName(/^View Library game \d{3}$/)
+    await measured()
     await activeCovers().first().focus()
     await page.keyboard.press('Control+Home')
+    await expect(grid).toHaveAttribute('data-selected-id', '1')
+    await expect(grid.locator('[data-avalon-game="1"]')).toBeFocused()
     await settled()
     const columns = await grid.locator('[data-row-active="true"]').first().locator('.avalon-cover').count()
     expect(columns).toBeGreaterThan(2)
     await page.keyboard.press('ArrowDown')
     await expect(viewport).toHaveAttribute('data-first-row', '0')
+    await expect(grid).toHaveAttribute('data-selected-id', String(columns + 1))
     const overlap = await page.evaluate(() => {
       const rows = document.querySelectorAll('.avalon-fullscreen-grid [data-row-active="true"]')
       ;(window as unknown as { overlap: Element }).overlap = rows[1]
@@ -363,22 +397,47 @@ test('fullscreen retains row nodes, carries and clamps columns on revisits, and 
   await surface('fullscreen', 1920, 1080)
   await page.getByRole('button', { name: 'Show Layout shelf 1', exact: true }).click()
   await settled()
+  await measured()
   await activeCovers().nth(3).focus()
+  await expect(activeCovers().nth(3)).toBeFocused()
   await page.evaluate(() => {
     const rows = Array.from(document.querySelectorAll('.avalon-retained-row'))
     ;(window as unknown as { retained: Element[] }).retained = rows
+    const state = { sampled: false, translation: 0, height: 0, opacity: '', inert: false, focused: '' }
+    ;(window as unknown as { reversal: typeof state }).reversal = state
+    const sample = () => {
+      const row = document.querySelector<HTMLElement>('[data-row-active="true"]')!
+      const translation = new DOMMatrixReadOnly(getComputedStyle(row).transform).m42
+      if (row.dataset.rowId === 'layout-1' && translation > 0 && translation < row.clientHeight) {
+        const old = document.querySelector<HTMLElement>('[data-row-id="layout-0"]')!
+        Object.assign(state, {
+          sampled: true,
+          translation,
+          height: row.clientHeight,
+          opacity: getComputedStyle(old).opacity,
+          inert: old.inert,
+          focused: document.activeElement?.getAttribute('data-avalon-game'),
+        })
+        // Reverse in the measured frame; an automation roundtrip can exceed the whole transition.
+        document.activeElement?.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: 'ArrowUp',
+            bubbles: true,
+            cancelable: true,
+          }),
+        )
+      } else requestAnimationFrame(sample)
+    }
+    requestAnimationFrame(sample)
   })
   await page.keyboard.press('ArrowDown')
-  await expect(activeCovers().nth(3)).toBeFocused()
-  await page.waitForFunction(() => {
-    const row = document.querySelector<HTMLElement>('[data-row-active="true"]')!
-    const translation = new DOMMatrixReadOnly(getComputedStyle(row).transform).m42
-    return translation > 0 && translation < row.clientHeight
+  await page.waitForFunction(() => (window as unknown as { reversal: { sampled: boolean } }).reversal.sampled)
+  expect(await page.evaluate(() => (window as unknown as { reversal: object }).reversal)).toMatchObject({
+    sampled: true,
+    opacity: '1',
+    inert: true,
+    focused: '14',
   })
-  expect(
-    await page.locator('[data-row-id="layout-0"]').evaluate((row) => getComputedStyle(row).opacity),
-  ).toBe('1')
-  await page.keyboard.press('ArrowUp')
   await settled()
   await expect(activeCovers().nth(3)).toBeFocused()
   expect(

@@ -4,6 +4,7 @@ import type { SteamCaptureResult, SteamSignInOptions, SteamSignInResult } from '
 import type { BackendTransport } from './transport'
 import { captureSteamAccountPages } from './steam-capture'
 import { createAccountBrowser, type AccountBrowser } from './account-browser'
+import { steamSignInDiagnostic } from './steam-diagnostics'
 import {
   readSteamIdentity,
   steamMintAllowed,
@@ -24,6 +25,21 @@ export async function signInToSteam(
   parent: BrowserWindow,
   transport: BackendTransport,
   options: SteamSignInOptions,
+  log?: (message: string) => void,
+): Promise<SteamSignInResult> {
+  const result = await runSteamSignIn(parent, transport, options)
+  try {
+    log?.(steamSignInDiagnostic(result))
+  } catch {
+    /* Logging must not change the outcome. */
+  }
+  return result
+}
+
+async function runSteamSignIn(
+  parent: BrowserWindow,
+  transport: BackendTransport,
+  options: SteamSignInOptions,
 ): Promise<SteamSignInResult> {
   if (options?.consentGranted === false)
     return {
@@ -38,9 +54,12 @@ export async function signInToSteam(
     (options.capturePurchaseHistory !== undefined && typeof options.capturePurchaseHistory !== 'boolean')
   )
     throw new Error('Agree to connect your Steam account before signing in.')
-  if ([options.maxLoadMoreClicks, options.maxLicensesPages].some(
-    (value) => value !== undefined && (!Number.isSafeInteger(value) || value < 0 || value > 2147483647),
-  )) throw new Error('Steam capture limits must be nonnegative whole numbers.')
+  if (
+    [options.maxLoadMoreClicks, options.maxLicensesPages].some(
+      (value) => value !== undefined && (!Number.isSafeInteger(value) || value < 0 || value > 2147483647),
+    )
+  )
+    throw new Error('Steam capture limits must be nonnegative whole numbers.')
   if (active) throw new Error('A Steam sign-in is already open.')
   active = true
   const clientId = randomUUID().replaceAll('-', '')
@@ -75,7 +94,9 @@ export async function signInToSteam(
           staySignedIn: options.staySignedIn,
           capturePurchaseHistory: options.capturePurchaseHistory === true,
           timeout: '00:15:00',
-          ...(options.maxLoadMoreClicks === undefined ? {} : { maxLoadMoreClicks: options.maxLoadMoreClicks }),
+          ...(options.maxLoadMoreClicks === undefined
+            ? {}
+            : { maxLoadMoreClicks: options.maxLoadMoreClicks }),
           ...(options.maxLicensesPages === undefined ? {} : { maxLicensesPages: options.maxLicensesPages }),
         },
       },
@@ -213,7 +234,8 @@ export async function signInToSteam(
           const capture =
             options.capturePurchaseHistory === true
               ? await captureSteamAccountPages(authWindow, {
-                  expectedSteamId: identity.steamId, deadline,
+                  expectedSteamId: identity.steamId,
+                  deadline,
                   maxLoadMoreClicks: options.maxLoadMoreClicks,
                   maxLicensesPages: options.maxLicensesPages,
                 })

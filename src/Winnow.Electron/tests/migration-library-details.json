@@ -23,12 +23,16 @@
       {
         "file": "tests/parity-details.test.tsx",
         "case": "switches detail sections with arrows and keeps focus on the chosen section"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "keeps the original sparse section set and uses tab selection semantics"
       }
     ],
-    "reason": "Both modes verify keyboard section activation and focus. Original rendered focus-border color/thickness and screenshot assertions need browser visual coverage."
+    "reason": "The actual Avalon desktop five-tab and fullscreen four-tab compositions now verify native tab roles, selected state, ArrowRight, End and Home with focus remaining on the activated header. Original rendered focus-border thickness and palette color still need equivalent browser assertions."
   },
   "GameDetailsTabInteractionTests.Focused_editor_returns_to_the_selected_tab_and_preserves_unsaved_fields": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-details.test.tsx",
@@ -41,9 +45,17 @@
       {
         "file": "tests/parity-details.test.tsx",
         "case": "preserves conflicting text until the user explicitly adopts the new saved revision"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "retains each reading offset and restores its selected tab after a focused metadata draft"
+      },
+      {
+        "file": "tests/electron/details-layout.spec.ts",
+        "case": "desktop Details at ${width}×${height} retains the header, bounded reading and modal origin"
       }
     ],
-    "reason": "Both modes preserve unsaved metadata fields through Back and Escape, restore the selected section and focus, and avoid additional metadata reads or writes. Native focused editor layout and original More-menu focus target differ from the Electron section presentation."
+    "reason": "Both Avalon surfaces open metadata from More, focus its input, hide tabs, retain an unfinished name through Back and Escape, restore Library and More focus, and avoid writes or repeat reads. Native desktop checks at1200×640 and2560×1440 also verify the bounded editor, one-layer Escape, focus and modal origin return. The initial API read replaces construction from an already supplied Avalonia snapshot."
   },
   "GameDetailsTabInteractionTests.Wrong_game_menu_focuses_search_and_returns_without_losing_query_or_results": {
     "status": "partial",
@@ -61,7 +73,7 @@
         "case": "retains an in-flight game search across navigation and restores its query focus"
       }
     ],
-    "reason": "Search, assignment, Back/Escape, retained queries/candidates, restored section focus and query focus on reopening work in both modes without repeating the search. Original More-menu placement and overlay geometry still need browser visual coverage."
+    "reason": "Shared matching leaves preserve query, candidates, pending search, section focus and query focus through Back/Escape on both modes. Avalon now exposes matching from More in the bounded body, but the complete original More→matching→results→Back→reopen contract has not been rerun against that composition."
   },
   "GameDetailsTabInteractionTests.Long_overview_keeps_its_scroll_position_when_activity_is_opened": {
     "status": "partial",
@@ -69,29 +81,45 @@
       {
         "file": "tests/parity-details.test.tsx",
         "case": "keeps separate scroll positions when moving between populated detail sections"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "retains each reading offset and restores its selected tab after a focused metadata draft"
+      },
+      {
+        "file": "tests/electron/details-layout.spec.ts",
+        "case": "desktop Details at ${width}×${height} retains the header, bounded reading and modal origin"
       }
     ],
-    "reason": "Both modes restore independent Overview and History offsets in the actual enclosing scroll container. DOM offsets are injected; original native long-summary geometry and disclosure behavior remain to be rendered."
+    "reason": "Original long-summary disclosure and real scroll extent now render in Electron; native desktop returns exactly to offset200 after Library at1200×640 and2560×1440. Shared leaf tests also switch to History, but the original long-summary transition specifically to the new Avalon Activity tab is not yet asserted in the native fixture."
   },
   "GameDetailsTabInteractionTests.Sparse_games_keep_all_tabs_and_do_not_claim_unread_updates": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-details.test.tsx",
         "case": "keeps sparse detail sections available without claiming unread updates"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "keeps the original sparse section set and uses tab selection semantics"
       }
     ],
-    "reason": "Both modes retain available detail sections and suppress unread claims without backend unread evidence. Original technical-facts visibility and five-tab Avalonia geometry remain distinct."
+    "reason": "Avalon desktop retains all five enabled sections with exact names; fullscreen retains its four source sections. Sparse snapshots have no images, updates, ownership technical facts or history, suppress unread claims and installation disclosures, and keep one interactive selected tabpanel."
   },
   "GameDetailsTabInteractionTests.Update_shortcut_opens_updates_without_replacing_the_details_model": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-details.test.tsx",
         "case": "opens unread updates from the header without replacing metadata drafts or counting duplicate editions"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "keeps refresh in place and routes the unread shortcut to the named Updates tab"
       }
     ],
-    "reason": "Both modes use backend unread counts, deduplicate releases, open Updates and preserve metadata drafts. Original Avalonia object identity and automation-name equality are represented by React section/draft continuity; native visual behavior remains."
+    "reason": "Both Avalon surfaces activate the existing named Updates tab from the authoritative unread shortcut and preserve its selection across an API refresh. Accessible names state the unread count; React component and query continuity replace the original view-model reference assertion. Shared tests additionally retain edits and avoid double-counting linked editions."
   },
   "ManualEntryFormTests.Saving_on_each_surface_corrects_tracked_ids_or_explains_why_the_form_stays_open": {
     "status": "partial",

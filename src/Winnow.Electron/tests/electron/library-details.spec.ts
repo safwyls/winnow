@@ -169,13 +169,19 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await expect(page.getByLabel('My lists').locator(`option[value="${list.id}"]`)).toHaveCount(1)
     await page.getByLabel('My lists').selectOption(String(list.id))
     await page.getByRole('button', { name: `View ${game.title}`, exact: true }).click()
-    await page.getByRole('button', { name: 'Metadata', exact: true }).click()
+    await page.getByRole('button', { name: 'More', exact: true }).click()
+    await page.getByRole('button', { name: 'Edit metadata…', exact: true }).click()
     await page.getByLabel('Name', { exact: true }).fill('An unfinished title')
     await page.getByLabel('Release year', { exact: true }).fill('2017')
     await page.getByRole('button', { name: 'Save release year', exact: true }).click()
     await expect(page.getByText('Saved.', { exact: true })).toBeVisible()
     await expect(page.getByLabel('Name', { exact: true })).toHaveValue('An unfinished title')
-    await page.getByRole('button', { name: 'Back to your library', exact: true }).click()
+    await page
+      .getByRole('button', {
+        name: mode === 'desktop' ? 'Close game details' : 'B · Back to Library',
+        exact: true,
+      })
+      .click()
     await expect(page.getByText('No games match these filters.', { exact: true })).toBeVisible()
     await expect(page.getByLabel('My lists')).toHaveValue(String(list.id))
     const saved = await api<LibraryResponse>({ route: 'library.get' })
@@ -211,7 +217,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await queue.getByRole('button', { name: 'Merge 2 selected', exact: true }).click()
     if (mode === 'fullscreen') await page.getByRole('button', { name: 'Continue', exact: true }).click()
     await expect(queue.getByRole('button', { name: 'Undo review decisions', exact: true })).toBeEnabled()
-    await expect(queue.getByText('2 rolled up · Nothing deleted', { exact: true })).toBeVisible()
+    await expect(queue.getByText('Rolled up 2 groups.', { exact: true })).toBeVisible()
     const linked = await api<MergeReview>({ route: 'identity.get' })
     const newActs = [
       ...new Set(
@@ -334,8 +340,13 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
         .nth(1)
         .getByRole('button', { name: /^Details for / })
         .click()
-      await expect(page.locator('.screen-details')).toBeVisible()
-      await page.getByRole('button', { name: 'Back to your library', exact: true }).click()
+      await expect(page.locator('.avalon-details')).toBeVisible()
+      await page
+        .getByRole('button', {
+          name: mode === 'desktop' ? 'Close game details' : 'B · Back to Library',
+          exact: true,
+        })
+        .click()
       await expect(page.locator('.merge-queue')).toBeVisible()
       await expect(card.locator('[data-merge-row]').nth(1)).toBeFocused()
     } else {
@@ -381,8 +392,13 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await card.getByRole('button').click()
       await page.getByRole('button', { name: / · Header$/ }).click()
       await page.getByRole('button', { name: 'Open game', exact: true }).click()
-      await expect(page.locator('.screen-details')).toBeVisible()
-      await page.getByRole('button', { name: 'Back to your library', exact: true }).click()
+      await expect(page.locator('.avalon-details')).toBeVisible()
+      await page
+        .getByRole('button', {
+          name: 'B · Back to Library',
+          exact: true,
+        })
+        .click()
       await expect(card.getByRole('button')).toBeFocused()
     }
     await page.getByRole('button', { name: 'Close tools' }).click()

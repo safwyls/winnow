@@ -75,6 +75,18 @@ selected game when it remains in the results. Returning from another section res
 selected game and row window. The inline search uses this same grid; the original separate
 Search page's results-entry focus and LT/RT paging are not yet reproduced.
 
+Avalon opens desktop game Details as a modal over the retained library, with an 82×123
+cover and five sections: Overview, Activity, Updates, Journal and Library. The bounded
+reading area retains each section's scroll position while its header stays fixed. Closing
+returns focus and scroll to the originating game or identity-review member. Fullscreen
+uses a separate cinematic composition with four sections, BodyFont throughout, a 28/72
+Overview split and two complete-aspect screenshot previews. About and Play history open
+reading pages; Escape returns one level and restores the action that opened them.
+Both surfaces keep matching, metadata and artwork tools under More, together with refresh,
+game links and install-folder access when available. Edits and library operations use the
+same shared controls as other compositions. Afterglow, Rift and Catalogue retain the shared
+Details screen and its existing section arrangement.
+
 Avalon's **Theme typography** controls choose heading, interface and data fonts separately.
 The bundled families are always listed. **Find installed fonts** queries local family names;
 it does not read font files. You can also enter an installed family name. Missing families

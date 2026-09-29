@@ -1,11 +1,11 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 1216,
-    "partial": 198,
-    "ported": 495,
-    "retained-backend": 524,
-    "framework-specific": 2
+    "pending": 1128,
+    "partial": 166,
+    "ported": 600,
+    "retained-backend": 535,
+    "framework-specific": 6
   },
   "tests": [
     {
@@ -716,27 +716,62 @@
     {
       "id": "ApplicationSettingsViewModelTests.Tray_preferences_are_off_when_absent_and_round_trip",
       "source": "tests/Winnow.Tests/ApplicationSettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "partial",
+      "tests": [
+        {
+          "file": "tests/parity-setup-recovery.test.tsx",
+          "case": "Tray_preferences_are_off_when_absent_and_round_trip"
+        }
+      ],
+      "reason": "Both presentation paths cover absent defaults and persisted round trips. The original derived TrayIconWanted assertion still needs equivalent native tray lifecycle evidence."
     },
     {
       "id": "ApplicationSettingsViewModelTests.Fullscreen_startup_defaults_off_and_round_trips_both_values",
       "source": "tests/Winnow.Tests/ApplicationSettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "partial",
+      "tests": [
+        {
+          "file": "tests/parity-setup-recovery.test.tsx",
+          "case": "Fullscreen_startup_defaults_off_and_round_trips_both_values"
+        }
+      ],
+      "reason": "Both presentation paths cover absent defaults and persisted round trips. The original derived TrayIconWanted assertion still needs equivalent native tray lifecycle evidence."
     },
     {
       "id": "ApplicationSettingsViewModelTests.Startup_toggle_updates_the_operating_system_registration",
       "source": "tests/Winnow.Tests/ApplicationSettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-setup-recovery.test.tsx",
+          "case": "Startup_toggle_updates_the_operating_system_registration"
+        }
+      ],
+      "reason": "Both presentation paths read and update the named native startup-registration boundary. Rejected registration updates restore the saved checkbox state and display the failure; no actual OS startup registration is changed by these tests."
     },
     {
       "id": "ApplicationSettingsViewModelTests.Startup_load_reflects_the_operating_system_registration",
       "source": "tests/Winnow.Tests/ApplicationSettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-setup-recovery.test.tsx",
+          "case": "Startup_toggle_updates_the_operating_system_registration and load reflects it"
+        }
+      ],
+      "reason": "Both presentation paths read and update the named native startup-registration boundary. Rejected registration updates restore the saved checkbox state and display the failure; no actual OS startup registration is changed by these tests."
     },
     {
       "id": "ApplicationSettingsViewModelTests.Failed_startup_change_reverts_the_toggle_and_reports_the_problem",
       "source": "tests/Winnow.Tests/ApplicationSettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-setup-recovery.test.tsx",
+          "case": "Failed_startup_change_reverts_the_toggle_and_reports_the_problem"
+        }
+      ],
+      "reason": "Both presentation paths read and update the named native startup-registration boundary. Rejected registration updates restore the saved checkbox state and display the failure; no actual OS startup registration is changed by these tests."
     },
     {
       "id": "ApplicationSettingsViewModelTests.Windows_registration_quotes_the_executable_and_starts_in_background",
@@ -1655,74 +1690,98 @@
     {
       "id": "GameReceptionViewModelTests.No_rows_means_no_line",
       "source": "tests/Winnow.Tests/DetailsModalAdditionsTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-details-facts.test.tsx",
           "case": "omits reception when rows are absent, have no figure, or have zero respondents"
+        },
+        {
+          "case": "renders attributed reception and lifecycle evidence in the original reading surfaces",
+          "file": "tests/parity-action-controls.test.tsx"
         }
       ],
-      "reason": "The source-equivalent helper and compact/full reception components are tested. Integration into the new Avalon details composition is in progress and must be verified before marking this ported."
+      "reason": "The original population/formatting contracts and their integration into Avalon desktop Overview and fullscreen About are verified, including attributed accessible names."
     },
     {
       "id": "GameReceptionViewModelTests.A_source_with_no_figure_contributes_nothing",
       "source": "tests/Winnow.Tests/DetailsModalAdditionsTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-details-facts.test.tsx",
           "case": "omits reception when rows are absent, have no figure, or have zero respondents"
+        },
+        {
+          "case": "renders attributed reception and lifecycle evidence in the original reading surfaces",
+          "file": "tests/parity-action-controls.test.tsx"
         }
       ],
-      "reason": "The source-equivalent helper and compact/full reception components are tested. Integration into the new Avalon details composition is in progress and must be verified before marking this ported."
+      "reason": "The original population/formatting contracts and their integration into Avalon desktop Overview and fullscreen About are verified, including attributed accessible names."
     },
     {
       "id": "GameReceptionViewModelTests.Every_figure_is_attributed_and_carries_its_count",
       "source": "tests/Winnow.Tests/DetailsModalAdditionsTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-details-facts.test.tsx",
           "case": "orders three attributed populations without blending their figures"
+        },
+        {
+          "case": "renders attributed reception and lifecycle evidence in the original reading surfaces",
+          "file": "tests/parity-action-controls.test.tsx"
         }
       ],
-      "reason": "The source-equivalent helper and compact/full reception components are tested. Integration into the new Avalon details composition is in progress and must be verified before marking this ported."
+      "reason": "The original population/formatting contracts and their integration into Avalon desktop Overview and fullscreen About are verified, including attributed accessible names."
     },
     {
       "id": "GameReceptionViewModelTests.Steams_own_label_is_on_hover_and_not_on_the_line",
       "source": "tests/Winnow.Tests/DetailsModalAdditionsTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-details-facts.test.tsx",
           "case": "orders three attributed populations without blending their figures"
+        },
+        {
+          "case": "renders attributed reception and lifecycle evidence in the original reading surfaces",
+          "file": "tests/parity-action-controls.test.tsx"
         }
       ],
-      "reason": "The source-equivalent helper and compact/full reception components are tested. Integration into the new Avalon details composition is in progress and must be verified before marking this ported."
+      "reason": "The original population/formatting contracts and their integration into Avalon desktop Overview and fullscreen About are verified, including attributed accessible names."
     },
     {
       "id": "GameReceptionViewModelTests.A_count_of_zero_is_no_figure_rather_than_a_score_from_nobody",
       "source": "tests/Winnow.Tests/DetailsModalAdditionsTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-details-facts.test.tsx",
           "case": "omits reception when rows are absent, have no figure, or have zero respondents"
+        },
+        {
+          "case": "renders attributed reception and lifecycle evidence in the original reading surfaces",
+          "file": "tests/parity-action-controls.test.tsx"
         }
       ],
-      "reason": "The source-equivalent helper and compact/full reception components are tested. Integration into the new Avalon details composition is in progress and must be verified before marking this ported."
+      "reason": "The original population/formatting contracts and their integration into Avalon desktop Overview and fullscreen About are verified, including attributed accessible names."
     },
     {
       "id": "GameReceptionViewModelTests.The_three_figures_are_never_blended",
       "source": "tests/Winnow.Tests/DetailsModalAdditionsTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-details-facts.test.tsx",
           "case": "orders three attributed populations without blending their figures"
+        },
+        {
+          "case": "renders attributed reception and lifecycle evidence in the original reading surfaces",
+          "file": "tests/parity-action-controls.test.tsx"
         }
       ],
-      "reason": "The source-equivalent helper and compact/full reception components are tested. Integration into the new Avalon details composition is in progress and must be verified before marking this ported."
+      "reason": "The original population/formatting contracts and their integration into Avalon desktop Overview and fullscreen About are verified, including attributed accessible names."
     },
     {
       "id": "GameScreenshotsViewModelTests.No_screenshots_draws_nothing_rather_than_an_empty_frame",
@@ -1775,50 +1834,66 @@
     {
       "id": "GameRefetchViewModelTests.Nothing_is_said_until_something_is_asked",
       "source": "tests/Winnow.Tests/DetailsModalAdditionsTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-details-facts.test.tsx",
           "case": "stays quiet initially and refreshes snapshots only after a write"
+        },
+        {
+          "case": "keeps refetch outcome %s in the More menu across close and reopen",
+          "file": "tests/parity-action-controls.test.tsx"
         }
       ],
-      "reason": "The new refresh control has source-equivalent outcome, write/refresh and carried-confirmation tests, including numeric API enums. Avalon details integration is in progress."
+      "reason": "Source-equivalent outcome helpers and the actual More control are tested in both Avalon modes. Only the Updated outcome refreshes visible facts, and its confirmation survives menu reconstruction."
     },
     {
       "id": "GameRefetchViewModelTests.Every_outcome_is_a_word",
       "source": "tests/Winnow.Tests/DetailsModalAdditionsTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-details-facts.test.tsx",
           "case": "with no invented percentage and supports the wire enum"
+        },
+        {
+          "case": "keeps refetch outcome %s in the More menu across close and reopen",
+          "file": "tests/parity-action-controls.test.tsx"
         }
       ],
-      "reason": "The new refresh control has source-equivalent outcome, write/refresh and carried-confirmation tests, including numeric API enums. Avalon details integration is in progress."
+      "reason": "Source-equivalent outcome helpers and the actual More control are tested in both Avalon modes. Only the Updated outcome refreshes visible facts, and its confirmation survives menu reconstruction."
     },
     {
       "id": "GameRefetchViewModelTests.Only_a_write_reopens_the_modal_and_carries_its_confirmation",
       "source": "tests/Winnow.Tests/DetailsModalAdditionsTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-details-facts.test.tsx",
           "case": "stays quiet initially and refreshes snapshots only after a write"
+        },
+        {
+          "case": "keeps refetch outcome %s in the More menu across close and reopen",
+          "file": "tests/parity-action-controls.test.tsx"
         }
       ],
-      "reason": "The new refresh control has source-equivalent outcome, write/refresh and carried-confirmation tests, including numeric API enums. Avalon details integration is in progress."
+      "reason": "Source-equivalent outcome helpers and the actual More control are tested in both Avalon modes. Only the Updated outcome refreshes visible facts, and its confirmation survives menu reconstruction."
     },
     {
       "id": "GameRefetchViewModelTests.A_carried_confirmation_is_shown_on_the_reopened_modal",
       "source": "tests/Winnow.Tests/DetailsModalAdditionsTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-details-facts.test.tsx",
           "case": "keeps a carried success visible when refreshed details reconstruct the control"
+        },
+        {
+          "case": "keeps refetch outcome %s in the More menu across close and reopen",
+          "file": "tests/parity-action-controls.test.tsx"
         }
       ],
-      "reason": "The new refresh control has source-equivalent outcome, write/refresh and carried-confirmation tests, including numeric API enums. Avalon details integration is in progress."
+      "reason": "Source-equivalent outcome helpers and the actual More control are tested in both Avalon modes. Only the Updated outcome refreshes visible facts, and its confirmation survives menu reconstruction."
     },
     {
       "id": "GameAcquisitionViewModelTests.Neither_fact_means_no_block",
@@ -5229,52 +5304,142 @@
     {
       "id": "FirstRunSetupTests.Only_new_normal_install_opens_automatically",
       "source": "tests/Winnow.Tests/FirstRunSetupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/SetupParityTests.cs",
+          "case": "Only_new_normal_install_opens_automatically"
+        },
+        {
+          "file": "tests/parity-setup.test.tsx",
+          "case": "resumes every step, persists navigation, and completes only at Ready"
+        },
+        {
+          "file": "tests/parity-setup.test.tsx",
+          "case": "does not interrupt an existing or completed library"
+        }
+      ],
+      "reason": "Real backend HTTP initialization covers new, existing and sample startup. Both renderer modes display a numeric saved cursor; completed progress leaves the library open."
     },
     {
       "id": "FirstRunSetupTests.External_install_suspends_setup_without_completing_or_losing_its_cursor",
       "source": "tests/Winnow.Tests/FirstRunSetupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/app.test.tsx",
+          "case": "waits for saved setup progress, suspends it for an install handoff and resumes the same step"
+        }
+      ],
+      "reason": "Both App compositions defer the handoff until progress loads, suspend cursor4 without a progress write or automatic install, and resume that same step when review closes."
     },
     {
       "id": "FirstRunSetupTests.Sample_run_does_not_show_or_destroy_an_existing_unfinished_cursor",
       "source": "tests/Winnow.Tests/FirstRunSetupTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/FirstRunSetupService.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ],
+      "reason": "These exact original tests call only FirstRunSetupService and SettingsRepository. BackendApplication initializes this unchanged production service before sample seeding. Both original methods passed on 2026-09-29."
     },
     {
       "id": "FirstRunSetupTests.Existing_database_on_second_launch_resumes_cursor_and_does_not_reset_it",
       "source": "tests/Winnow.Tests/FirstRunSetupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-setup-recovery.test.tsx",
+          "case": "Existing_database_on_second_launch_resumes_cursor_and_does_not_reset_it"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/SetupParityTests.cs",
+          "case": "Existing_database_on_second_launch_resumes_cursor_and_does_not_reset_it"
+        }
+      ],
+      "reason": "Both renderer modes preserve the source navigation and preference contract; real backend HTTP tests verify saved progress and preferences across shutdown and restart."
     },
     {
       "id": "FirstRunSetupTests.Every_optional_step_can_be_skipped_without_credentials_and_completion_persists",
       "source": "tests/Winnow.Tests/FirstRunSetupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-setup-recovery.test.tsx",
+          "case": "Every_optional_step_can_be_skipped_without_credentials_and_completion_persists"
+        },
+        {
+          "file": "tests/parity-setup.test.tsx",
+          "case": "discards an unsaved masked secret on skip and on presentation change"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/SetupParityTests.cs",
+          "case": "Completion_and_replay_persist_across_restart_without_resetting_saved_preferences"
+        }
+      ],
+      "reason": "Both modes skip all seven optional steps without writing credentials and finish only on explicit completion. Discarded masked drafts stay empty on return; the backend persists completion across restart."
     },
     {
       "id": "FirstRunSetupTests.Skip_all_preserves_saved_preferences_and_application_entry_reopens",
       "source": "tests/Winnow.Tests/FirstRunSetupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-setup-recovery.test.tsx",
+          "case": "Skip_all_preserves_saved_preferences_and_application_entry_reopens"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/SetupParityTests.cs",
+          "case": "Completion_and_replay_persist_across_restart_without_resetting_saved_preferences"
+        }
+      ],
+      "reason": "Both renderer modes preserve the source navigation and preference contract; real backend HTTP tests verify saved progress and preferences across shutdown and restart."
     },
     {
       "id": "FirstRunSetupTests.Progress_failure_keeps_wizard_open_and_retry_can_complete",
       "source": "tests/Winnow.Tests/FirstRunSetupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-setup.test.tsx",
+          "case": "keeps the current step open after a failed progress write and retries"
+        }
+      ],
+      "reason": "Both modes retain the current step and show the failure until an explicit successful retry completes setup."
     },
     {
       "id": "FirstRunSetupTests.Failed_preference_does_not_trap_skip_or_back_navigation",
       "source": "tests/Winnow.Tests/FirstRunSetupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-setup.test.tsx",
+          "case": "allows skipping a failed preference save without claiming it saved"
+        }
+      ],
+      "reason": "Both modes block Continue after a failed preference, then allow Skip, Back and Skip setup without claiming the preference saved."
     },
     {
       "id": "FirstRunSetupTests.Reopen_write_failure_still_displays_recovery_and_retains_previous_completion",
       "source": "tests/Winnow.Tests/FirstRunSetupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-setup-recovery.test.tsx",
+          "case": "Reopen_write_failure_still_displays_recovery_and_retains_previous_completion"
+        }
+      ],
+      "reason": "Both modes show replay recovery after the progress write fails, preserve stored completion even through snapshot refresh, and clear local recovery only after a successful progress write."
     },
     {
       "id": "FirstRunSetupTests.Corrupt_cursor_restarts_setup_without_touching_other_settings",
       "source": "tests/Winnow.Tests/FirstRunSetupTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/FirstRunSetupService.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ],
+      "reason": "These exact original tests call only FirstRunSetupService and SettingsRepository. BackendApplication initializes this unchanged production service before sample seeding. Both original methods passed on 2026-09-29."
     },
     {
       "id": "FloatingLayoutTests.The_caption_is_the_ground",
@@ -5414,47 +5579,99 @@
     {
       "id": "GameDetailsViewModelTests.Igdb_reference_uses_numeric_identity_not_title_slug",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/game-links.test.tsx",
+          "case": "uses IGDB identity %s as a numeric short reference"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "GameDetailsViewModelTests.Missing_or_invalid_id_does_not_offer_igdb_reference",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/game-links.test.tsx",
+          "case": "omits an invalid IGDB identity: %s"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "GameDetailsViewModelTests.Steam_reference_links_use_grouped_identity_when_playable_copy_is_gog",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/game-links.test.tsx",
+          "case": "retains deduplicated Steam references when the installed copy is from GOG"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "GameDetailsViewModelTests.Default_action_prefers_viable_copy_to_installed_offline_copy",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-action-controls.test.tsx",
+          "case": "offers the viable copy instead of the installed offline copy"
+        },
+        {
+          "file": "tests/parity-store-actions.test.ts",
+          "case": "prefers a viable uninstalled copy to an installed offline copy and preserves manual launch"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "GameDetailsViewModelTests.Http_and_steam_targets_are_openable",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Api.Contracts/Actions/GameLink.cs"
+      ],
+      "reason": "The original test directly exercises the unchanged public action policy, which the production GameActionApplication still uses before launcher dispatch. No Avalonia view model is constructed by this test."
     },
     {
       "id": "GameDetailsViewModelTests.Everything_else_is_refused_outright",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Api.Contracts/Actions/GameLink.cs"
+      ],
+      "reason": "The original test directly exercises the unchanged public action policy, which the production GameActionApplication still uses before launcher dispatch. No Avalonia view model is constructed by this test."
     },
     {
       "id": "GameDetailsViewModelTests.A_target_carrying_control_characters_is_refused",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Api.Contracts/Actions/GameLink.cs"
+      ],
+      "reason": "The original test directly exercises the unchanged public action policy, which the production GameActionApplication still uses before launcher dispatch. No Avalonia view model is constructed by this test."
     },
     {
       "id": "GameDetailsViewModelTests.A_link_with_no_label_is_not_a_link",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Api.Contracts/Actions/GameLink.cs"
+      ],
+      "reason": "The original test directly exercises the unchanged public action policy, which the production GameActionApplication still uses before launcher dispatch. No Avalonia view model is constructed by this test."
     },
     {
       "id": "GameDetailsViewModelTests.Only_a_plain_number_is_treated_as_an_appid",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Api.Contracts/Actions/GameLink.cs"
+      ],
+      "reason": "The original test directly exercises the unchanged public action policy, which the production GameActionApplication still uses before launcher dispatch. No Avalonia view model is constructed by this test."
     },
     {
       "id": "GameDetailsViewModelTests.A_malformed_appid_never_reaches_a_url",
@@ -5486,22 +5703,70 @@
     {
       "id": "GameDetailsViewModelTests.An_installed_game_offers_a_real_steam_launch",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-action-controls.test.tsx",
+          "case": "dispatches the %s play or install command using its ownership and a unique operation"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+          "case": "Store_actions_keep_the_measured_launcher_URI_and_action_kind"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "GameDetailsViewModelTests.An_uninstalled_game_offers_the_download_instead",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-action-controls.test.tsx",
+          "case": "dispatches the %s play or install command using its ownership and a unique operation"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+          "case": "Store_actions_keep_the_measured_launcher_URI_and_action_kind"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "GameDetailsViewModelTests.The_store_page_and_the_patch_notes_hub_are_both_offered",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/game-links.test.tsx",
+          "case": "uses the selected game identities and deduplicates copies"
+        },
+        {
+          "file": "tests/game-links.test.tsx",
+          "case": "routes all six details links without dispatching a game action in %s"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "GameDetailsViewModelTests.The_install_folder_is_offered_only_when_the_game_is_on_disk",
       "source": "tests/Winnow.Tests/GameDetailsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-install-folder.test.tsx",
+          "case": "offers no folder when installed is %s and path is %s"
+        },
+        {
+          "file": "tests/parity-install-folder.test.tsx",
+          "case": "resolves the owned installed copy afresh and opens only its directory"
+        },
+        {
+          "file": "tests/electron/gallery.spec.ts",
+          "case": "both details modes open the installed copy folder through the named ownership bridge"
+        }
+      ],
+      "reason": "The source visibility contract, authoritative ownership/directory validation and native desktop/fullscreen More-menu integration pass. The native test crosses the production preload/main boundary and replaces only shell.openPath, so Explorer is not launched."
     },
     {
       "id": "GameDetailsViewModelTests.Rail_marks_sit_where_the_update_landed_in_the_gap",
@@ -5815,87 +6080,200 @@
     {
       "id": "GameMetadataEditorViewModelTests.Saving_one_field_leaves_every_other_fields_source_alone",
       "source": "tests/Winnow.Tests/GameMetadataEditorViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-metadata-editor.test.tsx",
+          "case": "saves only one field, adopts its stored value and preserves other sources and drafts"
+        }
+      ],
+      "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
     },
     {
       "id": "GameMetadataEditorViewModelTests.Saving_one_field_leaves_every_other_rows_draft_alone",
       "source": "tests/Winnow.Tests/GameMetadataEditorViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-metadata-editor.test.tsx",
+          "case": "saves only one field, adopts its stored value and preserves other sources and drafts"
+        }
+      ],
+      "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
     },
     {
       "id": "GameMetadataEditorViewModelTests.A_field_no_writer_has_claimed_is_on_automatic_rather_than_blank",
       "source": "tests/Winnow.Tests/GameMetadataEditorViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-metadata-editor.test.tsx",
+          "case": "describes an unclaimed field as automatic with a nonempty explanation"
+        }
+      ],
+      "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
     },
     {
       "id": "GameMetadataEditorViewModelTests.A_fetch_that_rewrote_every_field_leaves_one_source_on_every_row",
       "source": "tests/Winnow.Tests/GameMetadataEditorViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-metadata-editor.test.tsx",
+          "case": "loads all six fields with attributed sources and draws only two art pickers"
+        }
+      ],
+      "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
     },
     {
       "id": "GameMetadataEditorViewModelTests.Only_a_field_the_user_owns_can_be_handed_back_to_automatic",
       "source": "tests/Winnow.Tests/GameMetadataEditorViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-metadata-editor.test.tsx",
+          "case": "returns only the chosen user field to automatic and removes its reset control"
+        }
+      ],
+      "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
     },
     {
       "id": "GameMetadataEditorViewModelTests.Handing_a_field_back_to_automatic_drops_its_source_and_disarms_the_control",
       "source": "tests/Winnow.Tests/GameMetadataEditorViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-metadata-editor.test.tsx",
+          "case": "returns only the chosen user field to automatic and removes its reset control"
+        }
+      ],
+      "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
     },
     {
       "id": "GameMetadataEditorViewModelTests.A_refused_reset_says_so_and_leaves_the_source_in_place",
       "source": "tests/Winnow.Tests/GameMetadataEditorViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-metadata-editor.test.tsx",
+          "case": "keeps a refused reset user-owned and announces the refusal without a library refresh"
+        }
+      ],
+      "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
     },
     {
       "id": "GameMetadataEditorViewModelTests.A_release_year_that_is_not_a_year_is_refused_before_anything_is_written",
       "source": "tests/Winnow.Tests/GameMetadataEditorViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-metadata-editor.test.tsx",
+          "case": "refuses invalid release year %s before writing and keeps its draft"
+        }
+      ],
+      "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
     },
     {
       "id": "GameMetadataEditorViewModelTests.A_four_digit_release_year_is_written",
       "source": "tests/Winnow.Tests/GameMetadataEditorViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-metadata-editor.test.tsx",
+          "case": "saves a four-digit release year as a user field"
+        }
+      ],
+      "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
     },
     {
       "id": "GameMetadataEditorViewModelTests.The_art_rows_are_cover_and_background_and_nothing_else",
       "source": "tests/Winnow.Tests/GameMetadataEditorViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-metadata-editor.test.tsx",
+          "case": "loads all six fields with attributed sources and draws only two art pickers"
+        }
+      ],
+      "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
     },
     {
       "id": "GameMetadataEditorViewModelTests.An_art_row_takes_a_local_file_through_the_picker",
       "source": "tests/Winnow.Tests/GameMetadataEditorViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-metadata-editor.test.tsx",
+          "case": "uploads the chosen local image content and adopts its user source"
+        }
+      ],
+      "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
     },
     {
       "id": "GameMetadataEditorViewModelTests.A_dismissed_file_dialog_writes_nothing",
       "source": "tests/Winnow.Tests/GameMetadataEditorViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-metadata-editor.test.tsx",
+          "case": "writes nothing when a file picker is dismissed"
+        }
+      ],
+      "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
     },
     {
       "id": "GameMetadataEditorViewModelTests.With_no_picker_registered_the_file_route_is_not_drawn",
       "source": "tests/Winnow.Tests/GameMetadataEditorViewModelTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "The old test checks optional Avalonia IImageFilePicker dependency registration. Electron always provides Chromium's native file input. The production upload path and dismissed-picker no-write behavior are tested in parity-metadata-editor.test.tsx; there is no optional picker service to resolve or omit."
     },
     {
       "id": "GameMetadataEditorViewModelTests.An_art_row_takes_a_url",
       "source": "tests/Winnow.Tests/GameMetadataEditorViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-metadata-editor.test.tsx",
+          "case": "downloads an art URL through the backend and refreshes artwork only after it is applied"
+        }
+      ],
+      "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
     },
     {
       "id": "GameMetadataEditorViewModelTests.Every_art_refusal_renders_its_own_message",
       "source": "tests/Winnow.Tests/GameMetadataEditorViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-metadata-editor.test.tsx",
+          "case": "announces art refusal %s distinctly, retains the draft and does not report a save"
+        }
+      ],
+      "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
     },
     {
       "id": "GameMetadataEditorViewModelTests.An_empty_url_box_is_refused_rather_than_written",
       "source": "tests/Winnow.Tests/GameMetadataEditorViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-metadata-editor.test.tsx",
+          "case": "does not save or download an empty art URL"
+        }
+      ],
+      "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
     },
     {
       "id": "GameMetadataEditorViewModelTests.Opening_the_editor_reads_the_work_and_the_status_field_is_words",
       "source": "tests/Winnow.Tests/GameMetadataEditorViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-metadata-editor.test.tsx",
+          "case": "shows words while reading fields, then clears the loading state"
+        }
+      ],
+      "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
     },
     {
       "id": "GameMetadataEditorViewModelTests.The_menu_row_keeps_one_face",
@@ -5915,17 +6293,38 @@
     {
       "id": "GameMetadataEditorViewModelTests.A_work_that_cannot_be_read_says_so_and_draws_no_rows",
       "source": "tests/Winnow.Tests/GameMetadataEditorViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-metadata-editor.test.tsx",
+          "case": "draws no field rows when the work cannot be read"
+        }
+      ],
+      "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
     },
     {
       "id": "GameMetadataEditorViewModelTests.A_saved_text_field_hands_the_library_the_field_and_its_stored_value",
       "source": "tests/Winnow.Tests/GameMetadataEditorViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-metadata-editor.test.tsx",
+          "case": "saves only one field, adopts its stored value and preserves other sources and drafts"
+        }
+      ],
+      "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
     },
     {
       "id": "GameMetadataEditorViewModelTests.A_refused_text_save_hands_the_library_nothing",
       "source": "tests/Winnow.Tests/GameMetadataEditorViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-metadata-editor.test.tsx",
+          "case": "does not refresh library state or adopt a text draft after a refused write"
+        }
+      ],
+      "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
     },
     {
       "id": "GameRefetchServiceTests.A_pinned_work_refetches_against_its_pinned_id_and_never_re_resolves",
@@ -7226,7 +7625,14 @@
     {
       "id": "LibrarySettingsViewModelTests.Invalid_default_sort_uses_dormancy",
       "source": "tests/Winnow.Tests/LibrarySettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-setup-recovery.test.tsx",
+          "case": "Invalid_default_sort_uses_dormancy: %s"
+        }
+      ],
+      "reason": "All three original invalid values display Dormant longest on both settings surfaces without overwriting the stored value."
     },
     {
       "id": "LibrarySettingsViewModelTests.Hiding_a_game_removes_its_tile_and_its_bucket_count",
@@ -8332,19 +8738,27 @@
     {
       "id": "MergeQueueViewModelTests.Merge_refresh_then_undo_removes_the_current_resolved_strip",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-merge.test.tsx",
           "case": "refreshes after dismissing and merging without losing either previous answer or the current Undo revision"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "refresh then Undo removes the current saved strip when the sweep retires its candidate=%s"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+          "case": "Refresh_then_undo_retracts_current_strip_whether_the_sweep_retires_the_candidate"
         }
       ],
-      "reason": "The refreshed act is undone using the new revision and its pending proposal returns. The source variant where the sweep retires the confirmed candidate is not yet reproduced."
+      "reason": "Both sweep-retired and retained candidate variants remove the live act and saved strip after refresh/Undo. The retained candidate returns to the queue; a sweep-retired candidate does not. Covered through both renderer modes and the real resolver/HTTP composition."
     },
     {
       "id": "MergeQueueViewModelTests.Cancellation_recovers_the_command_and_truncated_pass_reports_more_work",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-merge-refresh.test.tsx",
@@ -8353,50 +8767,69 @@
         {
           "file": "tests/parity-merge-refresh.test.tsx",
           "case": "preserves the current review on failure and offers the same control for a bounded retry"
+        },
+        {
+          "file": "tests/parity-merge-refresh.test.tsx",
+          "case": "cancels a running refresh in place and the same mounted control accepts a truncated retry"
         }
       ],
-      "reason": "Exit cancellation prevents late publication and retry can report a truncated sweep. The original explicit cancellation followed by retry on the same mounted command is not yet covered."
+      "reason": "The mounted refresh can cancel its named operation, preserve the prior snapshot, announce cancellation, re-enable its control and successfully retry with the source truncated-pass copy and incomplete-sweep state on both surfaces."
     },
     {
       "id": "MergeQueueViewModelTests.Merge_covers_follow_the_saved_display_preference_and_live_changes",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-merge.test.tsx",
           "case": "desktop covers react to the display toggle without reloading review or cover state"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "desktop covers start with saved dimming off and preserve live changes through an authoritative reload"
         }
       ],
-      "reason": "Live display changes update existing cover filters without new identity or artwork reads. Initial saved-off and page reload cases remain to be asserted."
+      "reason": "Saved-off dormancy applies on initial load; live on/off changes update the same row cover elements and survive authoritative refresh. Existing native desktop coverage checks computed filters; fullscreen intentionally presents text-only proposal/member sheets as in its source path."
     },
     {
       "id": "MergeQueueViewModelTests.Preferred_platform_updates_hidden_cards_and_accept_uses_the_chosen_parent",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-merge.test.tsx",
           "case": "applies platform changes to hidden cards, preserves unavailable headers, and accepts the chosen parent"
         }
       ],
-      "reason": "A hidden pending cross-store card adopts the requested platform, an unavailable platform preserves its header, and acceptance writes the chosen parent. The source triple with two resulting children is not reproduced in this preference-specific test."
+      "reason": "Both modes hide the three-member cross-store card, apply GOG to its header, retain the unavailable-platform card, then write both children under the selected GOG parent through the public API."
     },
     {
       "id": "MergeQueueViewModelTests.Preferred_platform_survives_reload_allows_override_and_can_be_cleared",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-merge.test.tsx",
           "case": "applies a saved preferred platform to pending groups and saves None without changing the current header"
+        },
+        {
+          "file": "tests/electron/merge-contracts.spec.ts",
+          "case": "persists a preferred platform through reload while keeping an override until the preference is cleared"
         }
       ],
-      "reason": "Both modes persist PreferredMergePlatform through its public preference endpoint and clearing it retains the chosen header. Native database reload and user override after a new snapshot still need further evidence."
+      "reason": "Both native surfaces create a real cross-store proposal through manual ownership plus the production resolver, persist the platform preference through a full renderer reload, override the header, retain that choice through tools reentry, clear the preference without changing the override, then verify the cleared setting after another full reload. No identity act is written by choosing a preference."
     },
     {
       "id": "MergeQueueViewModelTests.Preferred_platform_preserves_expansion_bases_and_completed_links",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "keeps expansion bases and previously saved directions fixed when a preferred platform changes"
+        }
+      ],
+      "reason": "An Epic preference leaves the fixed Steam expansion base and an existing Steam-parent/Epic-child act unchanged, with no identity mutation, on both surfaces."
     },
     {
       "id": "MergeQueueViewModelTests.Preferred_platform_reincludes_matching_row_and_syncs_when_another_surface_reopens",
@@ -8445,14 +8878,18 @@
     {
       "id": "MergeQueueViewModelTests.A_hidden_pane_answers_a_library_change_with_a_count_and_builds_nothing",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "framework-specific",
       "tests": [
         {
           "file": "tests/parity-merge-query.test.tsx",
           "case": "defers hidden invalidation until entry and reuses an unchanged snapshot on subsequent entry"
+        },
+        {
+          "file": "tests/parity-merge-query.test.tsx",
+          "case": "reopens another surface on the shared refreshed snapshot without rebuilding or rereading it"
         }
       ],
-      "reason": "Hidden pages defer identity GET and card construction. The HTTP API has no count-only endpoint, so the original hidden COUNT query and immediate count update are not replicated."
+      "reason": "The literal one-repository-COUNT/zero-snapshot assertion belongs to the retired in-process coordinator. The independent HTTP frontend has no count-only identity route: hidden observers invalidate the shared TanStack key and defer the named GET/card projection until entry. Replacement tests cover hidden deferral and cached cross-surface entry; no literal COUNT parity is claimed."
     },
     {
       "id": "MergeQueueViewModelTests.Showing_the_pane_after_a_change_builds_the_screen_once",
@@ -8481,14 +8918,18 @@
     {
       "id": "MergeQueueViewModelTests.An_unmoved_queue_that_has_been_swept_is_not_rebuilt",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "framework-specific",
       "tests": [
         {
           "file": "tests/parity-merge-query.test.tsx",
           "case": "defers hidden invalidation until entry and reuses an unchanged snapshot on subsequent entry"
+        },
+        {
+          "file": "tests/parity-merge-query.test.tsx",
+          "case": "reopens another surface on the shared refreshed snapshot without rebuilding or rereading it"
         }
       ],
-      "reason": "Unchanged reentry reuses the authoritative snapshot. External invalidation still performs a complete revision-checked GET rather than the original count-only repository check."
+      "reason": "The source event checks an in-process COUNT before deciding whether to rebuild. Electron uses its authoritative TanStack snapshot and invalidation lifecycle: unchanged entry performs no GET/projection refresh, while a real external change fetches a revision-checked snapshot. These replacement tests preserve cache reuse without claiming the retired COUNT call shape."
     },
     {
       "id": "MergeQueueViewModelTests.The_pending_count_query_agrees_with_the_pending_read",
@@ -8502,7 +8943,14 @@
     {
       "id": "MergeQueueViewModelTests.Before_load_every_section_is_empty_and_nothing_is_loaded",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "shows five ordered empty sections before the first review arrives without inventing loaded proposals"
+        }
+      ],
+      "reason": "Both surfaces render five ordered empty sections while the first authoritative request is pending, with no invented proposal or enabled answer; the loaded review replaces that state."
     },
     {
       "id": "MergeQueueViewModelTests.An_empty_load_before_any_sweep_says_the_library_is_still_being_scanned",
@@ -8627,26 +9075,42 @@
     {
       "id": "MergeQueueViewModelTests.The_header_defaults_to_the_ladders_primary",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-merge-model.test.ts",
           "case": "uses IGDB, named title, release count and added-first ladder for the default header"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "writes a promoted three-member card as one act with two children and restores the same slot for four Undo cycles"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+          "case": "Four_link_undo_cycles_preserve_two_child_direction_and_one_act_then_link_again"
         }
       ],
-      "reason": "The renderer uses the original survivor ladder over actual workspace fields. Original view-model header-copy and repository fixture assertions remain."
+      "reason": "The original IGDB/named-title/release-count/added-first ladder is covered directly. The three-member renderer case asserts the initial header, both nested row marks, title, and all child IDs before promotion; HTTP coverage verifies actual two-child direction."
     },
     {
       "id": "MergeQueueViewModelTests.Promoting_a_row_moves_the_header_and_the_direction_of_the_link",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-merge.test.tsx",
           "case": "merges all selected groups under their chosen parents with sequential revisions and one bulk Undo"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "writes a promoted three-member card as one act with two children and restores the same slot for four Undo cycles"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+          "case": "Four_link_undo_cycles_preserve_two_child_direction_and_one_act_then_link_again"
         }
       ],
-      "reason": "Both modes choose another parent and verify the reversed parent/child API write. Original chosen-header explanation and repository history assertions remain."
+      "reason": "The selected member becomes the displayed header on both surfaces and the recorded act uses that work as parent with the displaced header among its children. Repeated HTTP cycles preserve that direction without deleting entities."
     },
     {
       "id": "MergeQueueViewModelTests.Promoting_a_row_from_another_card_is_refused",
@@ -8691,19 +9155,38 @@
     {
       "id": "MergeQueueViewModelTests.A_stale_card_refusal_is_nonfatal_and_removes_the_card",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "consumes a structurally stale refusal without another write or Undo and removes the invalid proposal"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+          "case": "Stale_structural_answer_conflicts_without_changing_the_pending_candidate_or_external_act"
+        }
+      ],
+      "reason": "A structurally stale answer receives a revision conflict, reloads the authoritative review once, removes the invalid pending card and shows the original no-change notice without Undo or retrying the write. HTTP coverage proves the external act and pending candidate remain unchanged."
     },
     {
       "id": "MergeQueueViewModelTests.Same_game_writes_one_act_under_the_header_and_leaves_a_strip_in_place",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-merge.test.tsx",
           "case": "accepts only exact cross-store groups and one Undo retracts precisely that saved act"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "writes a promoted three-member card as one act with two children and restores the same slot for four Undo cycles"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+          "case": "Four_link_undo_cycles_preserve_two_child_direction_and_one_act_then_link_again"
         }
       ],
-      "reason": "Both modes write the selected parent and children, show the saved group and retain its exact act for Undo. The original pending card's object identity, resolved-strip copy and native cover lifetime assertions are not reproduced."
+      "reason": "Both modes retain the exact article DOM instance and position while a three-member card becomes one two-child act. The source individual dock wording is asserted; an unrelated pending card remains. Real HTTP proves the act and unchanged work/release/ownership records."
     },
     {
       "id": "MergeQueueViewModelTests.Answering_twice_writes_only_the_first_answer",
@@ -8732,7 +9215,18 @@
     {
       "id": "MergeQueueViewModelTests.Different_games_rejects_every_proposal_on_the_card_and_removes_it",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "rejects all three triangle edges together and leaves the unrelated card intact through reload and Undo"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+          "case": "Dismissed_triangle_stays_rejected_after_real_resolver_pass_and_undo_restores_every_edge"
+        }
+      ],
+      "reason": "Both modes reject all three edges of one triangle, leave an unrelated card intact, display the source dismissal dock and restore the exact edges with Undo. Real HTTP/SQLite and resolver tests prove persisted rejection."
     },
     {
       "id": "MergeQueueViewModelTests.Consecutive_dismissals_share_one_dock_and_one_undo_restores_them_in_place",
@@ -8765,7 +9259,7 @@
     {
       "id": "MergeQueueViewModelTests.Undo_after_same_game_retracts_the_act_and_closes_the_dock",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-merge.test.tsx",
@@ -8774,26 +9268,42 @@
         {
           "file": "tests/electron/library-details.spec.ts",
           "case": "reviews grouped proposals, merges selected groups and retracts their exact acts through one Undo"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "writes a promoted three-member card as one act with two children and restores the same slot for four Undo cycles"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+          "case": "Four_link_undo_cycles_preserve_two_child_direction_and_one_act_then_link_again"
         }
       ],
-      "reason": "Both renderer modes restore pending proposals and close Undo; native Electron also confirms the actual saved acts are retracted in the temporary backend. Original view-model card-instance equality is not preserved by the snapshot renderer."
+      "reason": "Both modes retract the exact saved act, close the dock and restore the same card DOM instance and chosen direction. The original CLR object-identity assertion is represented by retained rendered identity, while the actual HTTP test proves link retraction."
     },
     {
       "id": "MergeQueueViewModelTests.Link_undo_and_link_again_ends_where_linking_once_ends",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-merge.test.tsx",
           "case": "retracts a standing group from its act and can link the restored proposal again"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "writes a promoted three-member card as one act with two children and restores the same slot for four Undo cycles"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+          "case": "Four_link_undo_cycles_preserve_two_child_direction_and_one_act_then_link_again"
         }
       ],
-      "reason": "Both modes link, separate by exact act, and relink the restored group through revision-checked requests. The original four-cycle database-history matrix remains."
+      "reason": "Four full link/Undo cycles followed by a fifth link preserve the same two-child direction, one act per answer, all source records and all DOM slots; both renderer modes and real SQLite/HTTP exercise the matrix."
     },
     {
       "id": "MergeQueueViewModelTests.The_dock_closes_by_itself_after_seven_seconds_and_undo_is_then_gone",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-merge.test.tsx",
@@ -8802,21 +9312,29 @@
         {
           "file": "tests/parity-merge-model.test.ts",
           "case": "accumulates consecutive dismissals in a seven-second undo run but starts fresh for merges or expired runs"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "the undo dock keeps its six-second boundary and never retracts saved links after closing (dismiss=%s)"
         }
       ],
-      "reason": "A stored seven-second wall-clock deadline survives remount and expires Undo without an API call. The exact original controlled-time pre-deadline boundary and fullscreen rendered dock remain to be checked."
+      "reason": "Controlled-clock tests on both surfaces assert the dock remains at six seconds and is gone at eight, with no Undo request and the saved links unchanged. Its deadline also survives remount."
     },
     {
       "id": "MergeQueueViewModelTests.Dismissing_the_dock_closes_it_early_and_forgets_the_undo",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-merge.test.tsx",
           "case": "expires the undo dock after seven seconds and lets Dismiss close it early without another write"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "the undo dock keeps its six-second boundary and never retracts saved links after closing (dismiss=%s)"
         }
       ],
-      "reason": "Dismiss immediately removes the retained Undo action and makes no identity mutation. The original post-dismiss timer advance plus retained database link assertion remain to be ported."
+      "reason": "Both surfaces dismiss the dock before its deadline, advance through the expiry and verify no Undo request or changed saved links."
     },
     {
       "id": "MergeQueueViewModelTests.Separate_again_on_a_card_answered_this_session_returns_it_to_pending_in_place",
@@ -8885,7 +9403,18 @@
     {
       "id": "MergeQueueViewModelTests.Separate_again_on_a_strip_from_history_retracts_the_act_and_brings_the_proposal_back",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "separates a strip loaded from history by its recorded act and restores its original pending proposal"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+          "case": "Refresh_then_undo_retracts_current_strip_whether_the_sweep_retires_the_candidate"
+        }
+      ],
+      "reason": "A strip present in the initial snapshot is separated using its recorded act, restoring the original still-pending candidate. Both renderer surfaces and actual API refresh/Undo preserve this behavior."
     },
     {
       "id": "MergeQueueViewModelTests.Separate_again_on_an_expansion_strip_brings_the_scan_proposal_back",
@@ -8902,7 +9431,7 @@
     {
       "id": "MergeQueueViewModelTests.Merge_selected_links_every_checked_card_under_its_own_header_and_one_undo_retracts_them_all",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-merge.test.tsx",
@@ -8915,14 +9444,18 @@
         {
           "file": "tests/electron/library-details.spec.ts",
           "case": "reviews grouped proposals, merges selected groups and retracts their exact acts through one Undo"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "merges the first and third of three selected cards in place, keeps the middle pending, and undoes both acts"
         }
       ],
-      "reason": "Both modes retain hidden selections, preserve chosen parents, chain returned revisions and Undo the complete successful batch. Native Electron verifies two actual saved acts and their retraction. Original exact dock wording and in-memory card identity differ."
+      "reason": "The first and third of three cards are linked in visual order under their chosen headers; the middle stays pending. Both modes preserve all three DOM instances, clear selection, assert source dock title/note and retract both acts together. Existing native bulk coverage verifies actual saved acts."
     },
     {
       "id": "MergeQueueViewModelTests.Accept_exact_links_only_exact_cross_store_cards_and_its_label_counts_live",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-merge.test.tsx",
@@ -8935,9 +9468,13 @@
         {
           "file": "tests/parity-merge-model.test.ts",
           "case": "splits expansions, episodes and demos with fixed base parents and directional refusals"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "accepts two exact cross-store cards but leaves same-store and likely cards pending and disables repeat acceptance"
         }
       ],
-      "reason": "Exact acceptance is restricted to pending exact cross-store groups; same-store, likely, expansion and hidden section cards are excluded. The original two-exact-plus-two-ineligible database matrix and repeated post-completion activation need additional native evidence."
+      "reason": "Both surfaces exercise the original two exact cross-store, one exact same-store and one likely cross-store matrix. Only two acts are submitted; the label disables after acceptance, repeat activation writes nothing, and the source exact-match dock is shown."
     },
     {
       "id": "MergeQueueViewModelTests.The_accept_exact_label_is_singular_at_one",
@@ -9106,7 +9643,7 @@
     {
       "id": "MergeQueueViewModelTests.Each_row_wears_the_stores_it_is_owned_on",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-merge-facts.test.ts",
@@ -9115,9 +9652,13 @@
         {
           "file": "tests/parity-merge.test.tsx",
           "case": "retains current group choices across detail navigation, and arrows walk visible rows without wrapping"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "desktop rows show every owned-store chip in source order with distinct member labels"
         }
       ],
-      "reason": "Ownership rows retain all store names and duplicated game titles get distinct member labels. Original rendered uppercase chip combinations still need their own native fixture."
+      "reason": "Rendered desktop members preserve all owned-store chips in source order with STEAM/GOG versus EPIC copy, and duplicate titles receive distinct store-qualified labels. Fullscreen member sheets use the same distinct labels rather than desktop chips."
     },
     {
       "id": "MergeQueueViewModelTests.Focus_starts_on_the_first_row_of_the_first_pending_card",
@@ -9178,14 +9719,18 @@
     {
       "id": "MergeQueueViewModelTests.Answering_the_focused_card_moves_the_cursor_to_the_card_that_took_its_place",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-merge.test.tsx",
           "case": "advances focus to the row taking an answered card’s place and keeps focus when a write fails"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "desktop answers successive focused cards, falls back from the final card, and clears the cursor when none remain"
         }
       ],
-      "reason": "Both modes preserve focus after failure and focus the following proposal after successful dismissal. Original last-card previous-row fallback and native viewport-follow checks remain."
+      "reason": "Successful answers follow the next pending row, fall back to the preceding final row, and leave no action cursor when only saved strips remain. Existing fullscreen success/failure and native return tests cover its separate proposal focus path."
     },
     {
       "id": "MergeQueueViewModelTests.A_keyboard_move_asks_the_view_to_follow",
@@ -9206,14 +9751,26 @@
     {
       "id": "MergeQueueViewModelTests.A_base_game_and_its_packs_are_one_card",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-merge-model.test.ts",
           "case": "splits expansions, episodes and demos with fixed base parents and directional refusals"
+        },
+        {
+          "file": "tests/parity-merge-model.test.ts",
+          "case": "groups both scanned packs under one fixed base with pack marks, likely evidence and two refusal directions"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "presents %s members under a fixed base in %s and persists the relation label"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+          "case": "Leaving_one_pack_out_refuses_only_that_direction_and_undo_restores_the_scanned_group"
         }
       ],
-      "reason": "Expansion proposals group by base and section while keeping directional parent identity. The original several-packs-in-one-section database fixture still needs an equivalent case."
+      "reason": "The real scan emits a base with two packs. Projection asserts a single fixed-parent, likely expansion card with pack marks, evidence and two refusal directions; both surfaces show and save both children in one act."
     },
     {
       "id": "MergeQueueViewModelTests.Same_game_on_an_expansion_card_writes_one_act_of_expansion_links",
@@ -9242,19 +9799,27 @@
     {
       "id": "MergeQueueViewModelTests.A_demo_lands_in_TEST_BUILDS_as_a_variant",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-merge-model.test.ts",
           "case": "splits expansions, episodes and demos with fixed base parents and directional refusals"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "presents %s members under a fixed base in %s and persists the relation label"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+          "case": "Demo_scan_and_answer_preserve_variant_kind_and_demo_relation_label"
         }
       ],
-      "reason": "A variant_of proposal is projected into Test builds with a fixed base and variant link kind. The original persisted variant link and demo relation-label assertions still need a renderer write-path test."
+      "reason": "Both surfaces display the demo proposal in Test builds with fixed base and submit variant_of plus the demo label. The production scan and HTTP answer persist that exact kind/label pair."
     },
     {
       "id": "MergeQueueViewModelTests.Answering_reads_nothing_however_long_the_queue_is",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "framework-specific",
       "tests": [
         {
           "file": "tests/parity-merge.test.tsx",
@@ -9263,14 +9828,33 @@
         {
           "file": "tests/parity-merge.test.tsx",
           "case": "retains only completed bulk acts for Undo when a later group conflicts"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "answers twenty of sixty cards with one authoritative read per answer and preserves all sixty DOM slots"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+          "case": "Twenty_answers_in_sixty_cards_use_bounded_http_reads_and_preserve_pending_candidates"
         }
       ],
-      "reason": "Bulk answers chain revisions without a queue read between writes and preserve completed acts on partial failure. The renderer reloads once after the action, and the retained backend calculates its compare-and-swap revision from repository facts. The original zero-read performance guarantee is not met."
+      "reason": "The literal zero-repository-read counter is specific to retired in-process answering. The mandatory HTTP architecture preserves CAS and uses exactly one authoritative GET after each answer. Both surfaces retain all 60 DOM card instances/positions after 20 answers, leave 40 pending, write 20 acts and no candidate dismissals. The real 60/20 HTTP test preserves all entities/statuses. Dated local Debug measurement: POST mean10.60/max14.81ms, GET mean58.09/max69.67ms, combined max80.54ms; .tmp/merge-decision-results/merge-decision-parity.trx. These are observations, not a CI latency guarantee or a claim of zero-read parity."
     },
     {
       "id": "MergeQueueViewModelTests.A_rejected_proposal_stays_rejected_when_the_resolver_runs_again",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "rejects all three triangle edges together and leaves the unrelated card intact through reload and Undo"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+          "case": "Dismissed_triangle_stays_rejected_after_real_resolver_pass_and_undo_restores_every_edge"
+        }
+      ],
+      "reason": "Dismissal persists across an actual production resolver pass and fresh API review; all three rejected rows remain rejected until explicitly undone. Both renderer modes reload without reviving the card."
     },
     {
       "id": "MergeQueueViewModelTests.Setting_a_rows_radio_moves_the_header",
@@ -9287,14 +9871,22 @@
     {
       "id": "MergeQueueViewModelTests.A_row_left_out_is_not_linked_and_its_proposals_are_recorded",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-merge-model.test.ts",
           "case": "rejects only edges crossing into excluded rows and leaves outside-to-outside proposals unanswered"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "leaves one triangle member out, records both crossing rejections and restores the same excluded choice on Undo"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+          "case": "Excluding_one_triangle_member_records_only_crossing_rejections_and_undo_restores_them"
         }
       ],
-      "reason": "The submitted answer excludes left-out members and rejects only crossing candidate edges. Native persistence and reversing those exclusions through Undo remain to be checked."
+      "reason": "Both modes exclude one triangle member, submit one child and exactly its two crossing rejections, display the original exclusion dock note and Undo the act/rejections while retaining the excluded choice. Actual HTTP/SQLite verifies all candidate statuses and restored records."
     },
     {
       "id": "MergeQueueViewModelTests.Same_game_is_refused_while_every_other_row_is_left_out",
@@ -9323,26 +9915,42 @@
     {
       "id": "MergeQueueViewModelTests.Leaving_a_pack_out_refuses_only_that_pair",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-merge-model.test.ts",
           "case": "splits expansions, episodes and demos with fixed base parents and directional refusals"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "leaving one of two packs out preserves only its directional refusal through refresh and reverses it with the saved act"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+          "case": "Leaving_one_pack_out_refuses_only_that_direction_and_undo_restores_the_scanned_group"
         }
       ],
-      "reason": "An excluded expansion emits the base-to-child refusal pair. The original multiple-pack persisted refusal and subsequent sweep assertions remain."
+      "reason": "Both modes leave one of two packs out and write only that directional refusal beside the included expansion act. Refresh keeps both answered paths hidden; Undo restores both packs. The real scan/HTTP test verifies the exact refusal and subsequent scan."
     },
     {
       "id": "MergeQueueViewModelTests.A_click_on_a_row_asks_for_its_details_and_takes_the_cursor",
       "source": "tests/Winnow.Tests/MergeQueueViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-merge.test.tsx",
           "case": "retains current group choices across detail navigation, and arrows walk visible rows without wrapping"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "desktop Details establishes the member cursor before notifying navigation without changing its header"
+        },
+        {
+          "file": "tests/electron/library-details.spec.ts",
+          "case": "keeps long merge members and independent actions inside the pane with correct focus hierarchy"
         }
       ],
-      "reason": "The row's dedicated details action targets the correct work while preserving chosen group state. Native details-return focus and original event-order assertions remain."
+      "reason": "Desktop establishes the exact member cursor and actual focus before invoking navigation, without changing its header. The native long-member matrix verifies desktop retained-modal return and fullscreen remount return to the original row/proposal."
     },
     {
       "id": "MergeQueueViewModelTests.User_set_art_outranks_the_store_capsule_on_a_queue_row",
@@ -13651,22 +14259,50 @@
     {
       "id": "SteamSignInResultRedactionTests.Neither_token_is_rendered_into_a_string",
       "source": "tests/Winnow.Tests/SteamWeb/SteamSignInSessionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-native-auth-integration.test.ts",
+          "case": "Neither_token_is_rendered_into_a_string"
+        }
+      ],
+      "reason": "Exercises the actual Electron signInToSteam completion logging callback. Only fixed outcome, ISO expiry, token-presence flags and UTF-8 page byte counts survive; every JWT segment, refresh token, account identity, provider detail and page contents remain absent. Sink failures do not alter sign-in outcome."
     },
     {
       "id": "SteamSignInResultRedactionTests.The_facts_a_log_line_exists_for_survive",
       "source": "tests/Winnow.Tests/SteamWeb/SteamSignInSessionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-native-auth-integration.test.ts",
+          "case": "The_facts_a_log_line_exists_for_survive"
+        }
+      ],
+      "reason": "Exercises the actual Electron signInToSteam completion logging callback. Only fixed outcome, ISO expiry, token-presence flags and UTF-8 page byte counts survive; every JWT segment, refresh token, account identity, provider detail and page contents remain absent. Sink failures do not alter sign-in outcome."
     },
     {
       "id": "SteamSignInResultRedactionTests.A_captured_page_set_is_reported_by_size_and_never_by_content",
       "source": "tests/Winnow.Tests/SteamWeb/SteamSignInSessionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-native-auth-integration.test.ts",
+          "case": "A_captured_page_set_is_reported_by_size_and_never_by_content"
+        }
+      ],
+      "reason": "Exercises the actual Electron signInToSteam completion logging callback. Only fixed outcome, ISO expiry, token-presence flags and UTF-8 page byte counts survive; every JWT segment, refresh token, account identity, provider detail and page contents remain absent. Sink failures do not alter sign-in outcome."
     },
     {
       "id": "SteamSignInResultRedactionTests.A_sign_in_with_no_refresh_token_says_so_rather_than_implying_one",
       "source": "tests/Winnow.Tests/SteamWeb/SteamSignInSessionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-native-auth-integration.test.ts",
+          "case": "A_sign_in_with_no_refresh_token_says_so_rather_than_implying_one"
+        }
+      ],
+      "reason": "Exercises the actual Electron signInToSteam completion logging callback. Only fixed outcome, ISO expiry, token-presence flags and UTF-8 page byte counts survive; every JWT segment, refresh token, account identity, provider detail and page contents remain absent. Sink failures do not alter sign-in outcome."
     },
     {
       "id": "SteamSignInResultRedactionTests.A_whitespace_refresh_token_is_no_refresh_token",
@@ -14378,7 +15014,14 @@
     {
       "id": "StoresViewModelTests.A_panel_composed_without_the_import_draws_no_purchase_section",
       "source": "tests/Winnow.Tests/StoresViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-setup-recovery.test.tsx",
+          "case": "setup shares Steam key removal and omits purchase import without a composed importer"
+        }
+      ],
+      "reason": "The shared Steam card receives no importer in Setup and omits the purchase section on both surfaces while its key and session actions remain available."
     },
     {
       "id": "StoresViewModelTests.Refreshing_the_panel_refreshes_the_folded_import",
@@ -15128,52 +15771,146 @@
     {
       "id": "TileActionsTests.Steam_on_disk_plays_and_off_disk_installs",
       "source": "tests/Winnow.Tests/TileActionsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-action-controls.test.tsx",
+          "case": "dispatches the %s play or install command using its ownership and a unique operation"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+          "case": "Store_actions_keep_the_measured_launcher_URI_and_action_kind"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "TileActionsTests.Gog_on_disk_plays_through_galaxy",
       "source": "tests/Winnow.Tests/TileActionsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-action-controls.test.tsx",
+          "case": "dispatches the %s play or install command using its ownership and a unique operation"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+          "case": "Store_actions_keep_the_measured_launcher_URI_and_action_kind"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "TileActionsTests.Gog_off_disk_opens_its_install_screen",
       "source": "tests/Winnow.Tests/TileActionsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-action-controls.test.tsx",
+          "case": "dispatches the %s play or install command using its ownership and a unique operation"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+          "case": "Store_actions_keep_the_measured_launcher_URI_and_action_kind"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "TileActionsTests.Epic_on_disk_plays_through_the_launchers_composite_key",
       "source": "tests/Winnow.Tests/TileActionsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-action-controls.test.tsx",
+          "case": "dispatches the %s play or install command using its ownership and a unique operation"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+          "case": "Store_actions_keep_the_measured_launcher_URI_and_action_kind"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "TileActionsTests.Epic_off_disk_installs_through_the_launchers_composite_key",
       "source": "tests/Winnow.Tests/TileActionsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-action-controls.test.tsx",
+          "case": "dispatches the %s play or install command using its ownership and a unique operation"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+          "case": "Store_actions_keep_the_measured_launcher_URI_and_action_kind"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "TileActionsTests.Epic_off_disk_without_all_three_ids_draws_no_install_button",
       "source": "tests/Winnow.Tests/TileActionsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-action-controls.test.tsx",
+          "case": "explains a missing Epic key when installed is %s without inventing an action"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "TileActionsTests.Epic_off_disk_with_no_launch_key_names_the_id_it_lacks",
       "source": "tests/Winnow.Tests/TileActionsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-action-controls.test.tsx",
+          "case": "explains a missing Epic key when installed is %s without inventing an action"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "TileActionsTests.A_store_that_can_be_reached_says_nothing_about_why_it_cannot",
       "source": "tests/Winnow.Tests/TileActionsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-store-actions.test.ts",
+          "case": "stays quiet when %s already has a way in"
+        },
+        {
+          "file": "tests/parity-store-actions.test.ts",
+          "case": "preserves browsing as a way in even when Steam or GOG install state is unknown"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "TileActionsTests.An_epic_copy_whose_install_state_nobody_read_is_named_as_that",
       "source": "tests/Winnow.Tests/TileActionsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-store-actions.test.ts",
+          "case": "names missing Epic identity without pretending its install state is known"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "TileActionsTests.An_epic_copy_on_disk_with_no_launch_key_names_the_id_it_lacks",
       "source": "tests/Winnow.Tests/TileActionsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-action-controls.test.tsx",
+          "case": "explains a missing Epic key when installed is %s without inventing an action"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "TileActionsTests.No_sentence_is_ever_a_placeholder",
@@ -15183,52 +15920,114 @@
     {
       "id": "TileActionsTests.An_unknown_install_state_is_named_neither_way",
       "source": "tests/Winnow.Tests/TileActionsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-store-actions.test.ts",
+          "case": "%s plays on disk, installs off disk and never labels an unknown state either way"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "TileActionsTests.An_unknown_install_state_renders_no_chip_in_the_detail_panel",
       "source": "tests/Winnow.Tests/TileActionsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-action-controls.test.tsx",
+          "case": "keeps the unknown installation state out of both the action and chip"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "TileActionsTests.A_malformed_gog_product_id_never_reaches_a_url",
       "source": "tests/Winnow.Tests/TileActionsTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Api.Contracts/Actions/StoreActions.cs"
+      ],
+      "reason": "The original test directly exercises the unchanged public action policy, which the production GameActionApplication still uses before launcher dispatch. No Avalonia view model is constructed by this test."
     },
     {
       "id": "TileActionsTests.A_malformed_epic_key_is_no_key",
       "source": "tests/Winnow.Tests/TileActionsTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Api.Contracts/Actions/EpicLaunchKey.cs"
+      ],
+      "reason": "The original test directly exercises the unchanged public action policy, which the production GameActionApplication still uses before launcher dispatch. No Avalonia view model is constructed by this test."
     },
     {
       "id": "TileActionsTests.An_epic_tile_with_no_launch_key_offers_no_action_even_when_installed",
       "source": "tests/Winnow.Tests/TileActionsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-action-controls.test.tsx",
+          "case": "explains a missing Epic key when installed is %s without inventing an action"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "TileActionsTests.The_two_launcher_schemes_are_openable",
       "source": "tests/Winnow.Tests/TileActionsTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Api.Contracts/Actions/GameLink.cs"
+      ],
+      "reason": "The original test directly exercises the unchanged public action policy, which the production GameActionApplication still uses before launcher dispatch. No Avalonia view model is constructed by this test."
     },
     {
       "id": "TileActionsTests.Everything_adjacent_to_them_is_still_refused",
       "source": "tests/Winnow.Tests/TileActionsTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Api.Contracts/Actions/GameLink.cs"
+      ],
+      "reason": "The original test directly exercises the unchanged public action policy, which the production GameActionApplication still uses before launcher dispatch. No Avalonia view model is constructed by this test."
     },
     {
       "id": "TileActionsTests.Gog_gets_the_one_route_that_was_watched_working",
       "source": "tests/Winnow.Tests/TileActionsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/game-links.test.tsx",
+          "case": "offers GOG browse navigation and omits invented Epic destinations"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "TileActionsTests.Epic_gets_no_links",
       "source": "tests/Winnow.Tests/TileActionsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/game-links.test.tsx",
+          "case": "offers GOG browse navigation and omits invented Epic destinations"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "TileActionsTests.Steam_keeps_its_store_page_and_patch_notes",
       "source": "tests/Winnow.Tests/TileActionsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/game-links.test.tsx",
+          "case": "uses the selected game identities and deduplicates copies"
+        },
+        {
+          "file": "tests/game-links.test.tsx",
+          "case": "routes all six details links without dispatching a game action in %s"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "TileActionsTests.The_detail_panel_offers_exactly_the_tiles_action",
@@ -15248,7 +16047,18 @@
     {
       "id": "TileActionsTests.The_kind_of_action_is_carried_by_the_link_not_by_its_label",
       "source": "tests/Winnow.Tests/TileActionsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+          "case": "Store_actions_keep_the_measured_launcher_URI_and_action_kind"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+          "case": "Management_goes_to_the_launcher_without_declaring_a_game_start"
+        }
+      ],
+      "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
     },
     {
       "id": "TileActionsTests.The_grid_actions_carry_the_librarys_own_commands",
@@ -17098,23 +17908,27 @@
       "status": "partial",
       "tests": [
         {
-          "file": "tests/parity-setup.test.tsx",
-          "case": "resumes every step, persists navigation, and completes only at Ready"
+          "file": "tests/electron/setup-parity.spec.ts",
+          "case": "setup keeps navigation visible, traps consent, resumes provider handoff and restores replay focus"
         }
       ],
-      "reason": "All nine steps and saved navigation are exercised. CSS bounds the scroller and fixes the footer, but browser geometry at the minimum window height has not been asserted."
+      "reason": "Native Chromium checks headings, Back, Skip setup and Continue bounds and Next focus through all 9 steps at 1000×640 desktop and 1280×720 fullscreen. The original additional requirement that IGDB Save/Remove actions sit outside the body scroller remains unported."
     },
     {
       "id": "FirstRunSetupDesktopTests.Tab_cycles_inside_setup_and_skip_all_restores_the_invoking_control",
       "source": "tests/Winnow.Ui.Tests/FirstRunSetupDesktopTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/parity-setup.test.tsx",
-          "case": "closes Steam consent before navigating the wizard and traps the active layer"
+          "file": "tests/electron/setup-parity.spec.ts",
+          "case": "setup keeps navigation visible, traps consent, resumes provider handoff and restores replay focus"
+        },
+        {
+          "file": "tests/parity-setup-recovery.test.tsx",
+          "case": "restores the replay control even when its pending write removed focus before setup opened"
         }
       ],
-      "reason": "Radix modal focus scopes contain the wizard and consent. The exact root Tab loop and invoking-control restoration are not yet covered by a migrated test."
+      "reason": "Both native presentations cycle Tab and Shift+Tab inside Welcome, whose two buttons are verified by the component test, then Skip setup restores the real replay button. Regression covers native disabling/blur before the replay progress write resolves."
     },
     {
       "id": "FirstRunSetupDesktopTests.Skipping_IGDB_clears_the_masked_draft_without_saving_it",
@@ -17167,19 +17981,30 @@
     {
       "id": "FirstRunSetupFullscreenTests.Application_settings_replay_opens_setup_instead_of_leaving_settings_stack_active",
       "source": "tests/Winnow.Ui.Tests/FirstRunSetupFullscreenTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/parity-settings.test.tsx",
-          "case": "reopens setup from Application without resetting preferences"
+          "file": "tests/electron/setup-parity.spec.ts",
+          "case": "setup keeps navigation visible, traps consent, resumes provider handoff and restores replay focus"
         }
       ],
-      "reason": "Settings replay updates the shared cursor and the application mounts a modal wizard. The controller stack behavior is not separately exercised in this component test."
+      "reason": "The production fullscreen Settings Application replay opens Welcome as a modal; Tab stays in setup and completing it restores its invoking settings control. Native rendering uses the saved backend cursor."
     },
     {
       "id": "FirstRunSetupShellTests.Plugin_handoff_shows_installation_over_a_fresh_optional_setup",
       "source": "tests/Winnow.Ui.Tests/FirstRunSetupShellTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/app.test.tsx",
+          "case": "Plugin_handoff_shows_installation_over_a_fresh_optional_setup"
+        },
+        {
+          "file": "tests/electron/setup-parity.spec.ts",
+          "case": "setup keeps navigation visible, traps consent, resumes provider handoff and restores replay focus"
+        }
+      ],
+      "reason": "Both App presentations begin with Welcome visible, suspend it for a provider handoff without saving completion or installing, and resume Welcome on close. Native checks additionally preserve a later saved cursor through the same handoff."
     },
     {
       "id": "FirstRunSetupShellTests.New_install_opens_setup_after_startup_in_the_selected_presentation",
@@ -17196,7 +18021,14 @@
     {
       "id": "FirstRunSetupShellTests.Setup_keyboard_is_above_enabled_overlay_and_types_into_masked_field",
       "source": "tests/Winnow.Ui.Tests/FirstRunSetupShellTests.cs",
-      "status": "pending"
+      "status": "partial",
+      "tests": [
+        {
+          "file": "tests/electron/setup-parity.spec.ts",
+          "case": "setup keeps navigation visible, traps consent, resumes provider handoff and restores replay focus"
+        }
+      ],
+      "reason": "The real fullscreen OSK opens above setup, accepts a character into a masked IGDB field and restores the field after controller Back. The original desktop gamepad keyboard activation is not yet provided by the fullscreen-only controller sampler."
     },
     {
       "id": "FirstRunSetupShellTests.Controller_stays_in_steam_consent_and_back_closes_only_that_layer",
@@ -17204,11 +18036,15 @@
       "status": "partial",
       "tests": [
         {
+          "file": "tests/electron/setup-parity.spec.ts",
+          "case": "setup keeps navigation visible, traps consent, resumes provider handoff and restores replay focus"
+        },
+        {
           "file": "tests/parity-setup.test.tsx",
           "case": "closes Steam consent before navigating the wizard and traps the active layer"
         }
       ],
-      "reason": "The nested focus scope and Escape behavior are tested in both modes. The physical controller Back mapping is not covered by this test."
+      "reason": "Native fullscreen Chromium consumes simulated gamepad Menu without opening a root menu and Back dismisses only Steam consent, retaining the Steam setup cursor. The original method invokes desktop gamepad directions and Back; the desktop sampler currently leaves those inactive. Directional containment therefore remains incomplete despite passing keyboard Tab containment in both modes."
     },
     {
       "id": "FullscreenAccessibilityTests.Rendered_settings_and_filter_controls_expose_names_and_controller_routes",
@@ -17528,12 +18364,30 @@
     {
       "id": "FullscreenDetailsTests.Detail_sections_wrap_content_and_keep_controller_actions_reachable",
       "source": "tests/Winnow.Ui.Tests/FullscreenDetailsTests.cs",
-      "status": "pending"
+      "status": "partial",
+      "tests": [
+        {
+          "file": "tests/electron/details-layout.spec.ts",
+          "case": "fullscreen Details at ${width}×${height} and text ${scale}, interface ${uiScale} keeps cinematic identity and reading reachable"
+        }
+      ],
+      "reason": "Production fullscreen has original four sections, BodyFont,28/72 Overview, two screenshots and reading height over100px at1280×720 including140%text/120%interface and at2560×1440. About navigation and focus return pass. The original rich/empty Updates/Journal/Library action graph and every directional-controller target are not fully covered."
     },
     {
       "id": "FullscreenDetailsTests.Overview_previews_only_the_latest_saved_note_and_omits_missing_content",
       "source": "tests/Winnow.Ui.Tests/FullscreenDetailsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "fullscreen Overview omits missing screenshots, reception and unsaved note copy with saved notes %s"
+        },
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "fullscreen original Overview shows only the latest saved note and uses separate reading pages"
+        }
+      ],
+      "reason": "Both original notes-present and notes-absent snapshots verify latest-only note preview, no older/empty-journal/reception/screenshot placeholders, the exact missing-description copy, Journal/Latest note headings and the Open journal action selecting Journal. The separate original reading page test also proves complete older notes remain available there."
     },
     {
       "id": "FullscreenDetailsTests.Overview_controller_moves_between_actions_and_the_screenshot_row",
@@ -17543,7 +18397,14 @@
     {
       "id": "FullscreenDetailsTests.Cinematic_details_lease_saved_landscape_across_the_canvas_and_release_on_close",
       "source": "tests/Winnow.Ui.Tests/FullscreenDetailsTests.cs",
-      "status": "pending"
+      "status": "partial",
+      "tests": [
+        {
+          "file": "tests/electron/details-layout.spec.ts",
+          "case": "fullscreen Details at ${width}×${height} and text ${scale}, interface ${uiScale} keeps cinematic identity and reading reachable"
+        }
+      ],
+      "reason": "Native rendering verifies bounded two-line BodyFont titles, separate fullscreen composition and successful return atsmall/large sizes including combined text/interface scale. Saved versus automatic hero image selection, full-canvas pixel veils and every original image lease/release matrix remain unverified for this new Details composition."
     },
     {
       "id": "FullscreenDetailsTests.Single_copy_achievements_remain_visible_without_an_identity_link",
@@ -18431,7 +19292,14 @@
     {
       "id": "GameDetailsTabInteractionTests.Populated_tabs_keep_the_header_pinned_and_all_content_reachable",
       "source": "tests/Winnow.Ui.Tests/GameDetailsTabInteractionTests.cs",
-      "status": "pending"
+      "status": "partial",
+      "tests": [
+        {
+          "file": "tests/electron/details-layout.spec.ts",
+          "case": "desktop Details at ${width}×${height} retains the header, bounded reading and modal origin"
+        }
+      ],
+      "reason": "Real desktop modal geometry at1200×640 and2560×1440 verifies the original width cap,82×123 cover, pinned header, five sections, bounded long-summary scrolling, retained offsets and tool/modal focus return. The original rich all-five-tab bottom-content traversal at1280×820, including expanded relationships, is not yet reproduced."
     },
     {
       "id": "GameDetailsTabInteractionTests.Keyboard_arrows_switch_tabs_and_leave_focus_on_the_selected_tab",
@@ -18441,33 +19309,45 @@
         {
           "file": "tests/parity-details.test.tsx",
           "case": "switches detail sections with arrows and keeps focus on the chosen section"
+        },
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "keeps the original sparse section set and uses tab selection semantics"
         }
       ],
-      "reason": "Both modes verify keyboard section activation and focus. Original rendered focus-border color/thickness and screenshot assertions need browser visual coverage."
+      "reason": "The actual Avalon desktop five-tab and fullscreen four-tab compositions now verify native tab roles, selected state, ArrowRight, End and Home with focus remaining on the activated header. Original rendered focus-border thickness and palette color still need equivalent browser assertions."
     },
     {
       "id": "GameDetailsTabInteractionTests.Sparse_games_keep_all_tabs_and_do_not_claim_unread_updates",
       "source": "tests/Winnow.Ui.Tests/GameDetailsTabInteractionTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-details.test.tsx",
           "case": "keeps sparse detail sections available without claiming unread updates"
+        },
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "keeps the original sparse section set and uses tab selection semantics"
         }
       ],
-      "reason": "Both modes retain available detail sections and suppress unread claims without backend unread evidence. Original technical-facts visibility and five-tab Avalonia geometry remain distinct."
+      "reason": "Avalon desktop retains all five enabled sections with exact names; fullscreen retains its four source sections. Sparse snapshots have no images, updates, ownership technical facts or history, suppress unread claims and installation disclosures, and keep one interactive selected tabpanel."
     },
     {
       "id": "GameDetailsTabInteractionTests.Update_shortcut_opens_updates_without_replacing_the_details_model",
       "source": "tests/Winnow.Ui.Tests/GameDetailsTabInteractionTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-details.test.tsx",
           "case": "opens unread updates from the header without replacing metadata drafts or counting duplicate editions"
+        },
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "keeps refresh in place and routes the unread shortcut to the named Updates tab"
         }
       ],
-      "reason": "Both modes use backend unread counts, deduplicate releases, open Updates and preserve metadata drafts. Original Avalonia object identity and automation-name equality are represented by React section/draft continuity; native visual behavior remains."
+      "reason": "Both Avalon surfaces activate the existing named Updates tab from the authoritative unread shortcut and preserve its selection across an API refresh. Accessible names state the unread count; React component and query continuity replace the original view-model reference assertion. Shared tests additionally retain edits and avoid double-counting linked editions."
     },
     {
       "id": "GameDetailsTabInteractionTests.Long_overview_keeps_its_scroll_position_when_activity_is_opened",
@@ -18477,14 +19357,22 @@
         {
           "file": "tests/parity-details.test.tsx",
           "case": "keeps separate scroll positions when moving between populated detail sections"
+        },
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "retains each reading offset and restores its selected tab after a focused metadata draft"
+        },
+        {
+          "file": "tests/electron/details-layout.spec.ts",
+          "case": "desktop Details at ${width}×${height} retains the header, bounded reading and modal origin"
         }
       ],
-      "reason": "Both modes restore independent Overview and History offsets in the actual enclosing scroll container. DOM offsets are injected; original native long-summary geometry and disclosure behavior remain to be rendered."
+      "reason": "Original long-summary disclosure and real scroll extent now render in Electron; native desktop returns exactly to offset200 after Library at1200×640 and2560×1440. Shared leaf tests also switch to History, but the original long-summary transition specifically to the new Avalon Activity tab is not yet asserted in the native fixture."
     },
     {
       "id": "GameDetailsTabInteractionTests.Focused_editor_returns_to_the_selected_tab_and_preserves_unsaved_fields",
       "source": "tests/Winnow.Ui.Tests/GameDetailsTabInteractionTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-details.test.tsx",
@@ -18497,9 +19385,17 @@
         {
           "file": "tests/parity-details.test.tsx",
           "case": "preserves conflicting text until the user explicitly adopts the new saved revision"
+        },
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "retains each reading offset and restores its selected tab after a focused metadata draft"
+        },
+        {
+          "file": "tests/electron/details-layout.spec.ts",
+          "case": "desktop Details at ${width}×${height} retains the header, bounded reading and modal origin"
         }
       ],
-      "reason": "Both modes preserve unsaved metadata fields through Back and Escape, restore the selected section and focus, and avoid additional metadata reads or writes. Native focused editor layout and original More-menu focus target differ from the Electron section presentation."
+      "reason": "Both Avalon surfaces open metadata from More, focus its input, hide tabs, retain an unfinished name through Back and Escape, restore Library and More focus, and avoid writes or repeat reads. Native desktop checks at1200×640 and2560×1440 also verify the bounded editor, one-layer Escape, focus and modal origin return. The initial API read replaces construction from an already supplied Avalonia snapshot."
     },
     {
       "id": "GameDetailsTabInteractionTests.Wrong_game_menu_focuses_search_and_returns_without_losing_query_or_results",
@@ -18519,12 +19415,19 @@
           "case": "retains an in-flight game search across navigation and restores its query focus"
         }
       ],
-      "reason": "Search, assignment, Back/Escape, retained queries/candidates, restored section focus and query focus on reopening work in both modes without repeating the search. Original More-menu placement and overlay geometry still need browser visual coverage."
+      "reason": "Shared matching leaves preserve query, candidates, pending search, section focus and query focus through Back/Escape on both modes. Avalon now exposes matching from More in the bounded body, but the complete original More→matching→results→Back→reopen contract has not been rerun against that composition."
     },
     {
       "id": "GameDetailsTabInteractionTests.Long_title_publisher_and_three_store_header_keep_actions_inside_the_card",
       "source": "tests/Winnow.Ui.Tests/GameDetailsTabInteractionTests.cs",
-      "status": "pending"
+      "status": "partial",
+      "tests": [
+        {
+          "file": "tests/electron/details-layout.spec.ts",
+          "case": "desktop Details at ${width}×${height} retains the header, bounded reading and modal origin"
+        }
+      ],
+      "reason": "Long title and publisher fit the bounded desktop modal and leave readable content at1200×640. Three-store facts, an enabled primary launch action and exact icon containment still need the original populated fixture matrix."
     },
     {
       "id": "GamepadKeyboardTests.Typing_replaces_selection_and_preserves_two_way_binding_and_length_limit",

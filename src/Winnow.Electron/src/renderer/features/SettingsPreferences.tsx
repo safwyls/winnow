@@ -24,7 +24,7 @@ export function usePresentationPreferences() {
       .then(() =>
         client.setQueryData<PresentationPreferenceValue[]>(
           ['api', 'preferences.presentation.get', undefined],
-          (rows) => rows?.map((row) => (row.preference === preference ? { ...row, value } : row)),
+          (rows) => [...(rows ?? []).filter((row) => row.preference !== preference), { preference, value }],
         ),
       )
       .catch(setError)
@@ -133,6 +133,12 @@ export function ApplicationPreferences({ setup = false }: { setup?: boolean }) {
                 {
                   onSuccess: () =>
                     client.setQueryData(['api', 'setup.get', undefined], { step: 0, problem: null }),
+                  onError: () =>
+                    client.setQueryData(['setup-recovery'], {
+                      step: 0,
+                      problem:
+                        'Could not save setup progress. Continue or Skip setup to try again. Your saved preferences are unchanged.',
+                    }),
                 },
               )
             }
@@ -163,7 +169,18 @@ export function LibraryPresentationPreferences() {
       <label className="field">
         Default library sort
         <select
-          value={preferences.values.DefaultSort ?? 'DormantLongest'}
+          value={
+            [
+              'DormantLongest',
+              'RecentlyPlayed',
+              'PlaytimeHighToLow',
+              'PlaytimeLowToHigh',
+              'NameAscending',
+              'NameDescending',
+            ].includes(preferences.values.DefaultSort ?? '')
+              ? preferences.values.DefaultSort!
+              : 'DormantLongest'
+          }
           disabled={!preferences.loaded || preferences.pending}
           onChange={(event) => preferences.set('DefaultSort', event.target.value)}
         >

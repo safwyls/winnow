@@ -16,6 +16,7 @@ import {
   extendMergeUndo,
   includeMergeRow,
   mergeAnswer,
+  mergeDock,
   mergeMinutes,
   mergeMemberLabels,
   mergeSections,
@@ -50,6 +51,19 @@ const platformOptions = [
   { value: 'epic', label: 'Epic Games' },
   { value: 'gog', label: 'GOG' },
 ]
+
+export function MergeQueueLoading() {
+  return (
+    <div className="merge-queue" role="group" aria-label="Possible matches" aria-busy="true">
+      <p role="status">Loading possible matches…</p>
+      {mergeSections.map((kind) => (
+        <section className="merge-section" aria-label={sectionNames[kind]} key={kind}>
+          <h3>{sectionNames[kind]}</h3>
+        </section>
+      ))}
+    </div>
+  )
+}
 
 export function MergeQueue({
   review,
@@ -95,7 +109,10 @@ export function MergeQueue({
   const restoreDetail = useRef(detailReturn)
   const [hovered, setHovered] = useState<{ card: string; work: number } | null>(null)
   const [openCard, setOpenCard] = useState<string | null>(null)
-  const [confirmBatch, setConfirmBatch] = useState<MergeCard[] | null>(null)
+  const [confirmBatch, setConfirmBatch] = useState<{ cards: MergeCard[]; kind: 'exact' | 'selected' } | null>(
+    null,
+  )
+  const [refusalUntil, setRefusalUntil] = useState<number | null>(null)
   const [optionSheet, setOptionSheet] = useState<'sort' | 'kind' | 'platform' | null>(null)
   const writing = useRef(false),
     mounted = useRef(true)
@@ -121,12 +138,12 @@ export function MergeQueue({
       selected: choice.selected,
     }
   })
-  const selected = cards.filter(
+  const ordered = stableMergeCards(cards, positions.sort === sort ? positions.keys : [], sort)
+  const selected = ordered.filter(
     (card) => card.selected && !card.actId && mergeAnswer(card).childWorkIds.length,
   )
-  const exact = exactMergeCards(cards, section)
+  const exact = exactMergeCards(ordered, section)
   const shown = cards.filter((card) => section === 'all' || card.section === section)
-  const ordered = stableMergeCards(cards, positions.sort === sort ? positions.keys : [], sort)
   const orderKeys = ordered.map((card) => card.key)
   useEffect(() => {
     const keys = positions.sort === sort ? [...new Set([...positions.keys, ...orderKeys])] : orderKeys
@@ -176,7 +193,14 @@ export function MergeQueue({
     }))
   }
   function openGame(card: MergeCard, workId: number) {
-    setDetailReturn(mode === 'fullscreen' ? card.key : `${card.key}:${workId}`)
+    focusedRow.current = mode === 'fullscreen' ? card.key : `${card.key}:${workId}`
+    setDetailReturn(focusedRow.current)
+    if (mode === 'desktop') {
+      const row = [...(root.current?.querySelectorAll<HTMLButtonElement>('[data-merge-row]') ?? [])].find(
+        (element) => element.dataset.mergeRow === focusedRow.current,
+      )
+      row?.focus({ preventScroll: true })
+    }
     onOpenGame?.(workId)
   }
   useEffect(() => {
@@ -222,6 +246,11 @@ export function MergeQueue({
     return () => clearTimeout(timeout)
   }, [undo, setUndo])
   useEffect(() => {
+    if (refusalUntil === null) return
+    const timeout = setTimeout(() => setRefusalUntil(null), Math.max(0, refusalUntil - Date.now()))
+    return () => clearTimeout(timeout)
+  }, [refusalUntil])
+  useEffect(() => {
     if (!Array.isArray(preferences.data)) return
     const changed = preferred !== appliedPreferred
     if (changed) setAppliedPreferred(preferred)
@@ -261,22 +290,40 @@ export function MergeQueue({
       throw new ApiError(0, 'The saved decision could not be confirmed.')
     return result
   }
-  async function action(operation: (revision: string) => Promise<void>) {
+  async function action(operation: (revision: string) => Promise<void>, refusedCard?: MergeCard) {
     if (writing.current || blocked) return false
     writing.current = true
     setBusy(true)
     setProblem(undefined)
     setNotice('')
+    setRefusalUntil(null)
+    let wrote = false
     await client.cancelQueries({ queryKey: ['api', 'identity.get'] })
     try {
       await mutation.mutateAsync(async () => {
         await operation(snapshot.current.revision)
+        wrote = true
         await refresh()
       })
       void client.invalidateQueries({ queryKey: ['api', 'library.get'] })
       void client.invalidateQueries({ queryKey: ['api', 'library.workspace'] })
       return true
     } catch (error) {
+      // A stale structural proposal can disappear after another client's edit. Show that
+      // authoritative state without retrying the rejected write or inventing an Undo act.
+      if (!wrote && refusedCard && error instanceof ApiError && error.conflict) {
+        try {
+          const fresh = await refresh()
+          if (!buildMergeCards(fresh).some((card) => !card.actId && card.key === refusedCard.key)) {
+            setUndo(null)
+            setMustRefresh(false)
+            setRefusalUntil(Date.now() + 7000)
+            return false
+          }
+        } catch {
+          /* The existing explicit refresh recovery remains available. */
+        }
+      }
       setProblem(error)
       setMustRefresh(true)
       return false
@@ -288,30 +335,42 @@ export function MergeQueue({
   function remember(next: Omit<MergeUndo, 'expiresAt'>) {
     setUndo((previous) => extendMergeUndo(previous, next))
   }
-  async function link(batch: MergeCard[]) {
+  async function link(batch: MergeCard[], kind: 'single' | 'selected' | 'exact' = 'single') {
     const captured = batch.filter((card) => !card.actId && mergeAnswer(card).childWorkIds.length > 0)
     if (!captured.length) return
     const restoreFocus = focusAfterAnswer(captured)
-    const succeeded = await action(async (revision) => {
-      const answers = {
-        actIds: [] as number[],
-        candidateIds: [] as number[],
-        refusedPairs: [] as MergeUndo['refusedPairs'],
-      }
-      for (const card of captured) {
-        const answer = mergeAnswer(card),
-          result = await execute('identity.link', answer, revision)
-        revision = result.revision
-        answers.actIds.push(result.actId!)
-        setAnsweredKeys((current) => ({ ...current, [result.actId!]: card.key }))
-        answers.candidateIds.push(...answer.rejectedCandidateIds)
-        answers.refusedPairs.push(...answer.refusedPairs)
-        remember({ kind: 'merge', ...answers, count: answers.actIds.length, revision })
-        choose({ ...card, selected: false })
-      }
-      if (mounted.current)
-        setNotice(`${answers.actIds.length === 1 ? 'Group' : 'Groups'} rolled up. Nothing was deleted.`)
-    })
+    const succeeded = await action(
+      async (revision) => {
+        const answers = {
+          actIds: [] as number[],
+          candidateIds: [] as number[],
+          refusedPairs: [] as MergeUndo['refusedPairs'],
+        }
+        for (const card of captured) {
+          const answer = mergeAnswer(card),
+            result = await execute('identity.link', answer, revision)
+          revision = result.revision
+          answers.actIds.push(result.actId!)
+          setAnsweredKeys((current) => ({ ...current, [result.actId!]: card.key }))
+          answers.candidateIds.push(...answer.rejectedCandidateIds)
+          answers.refusedPairs.push(...answer.refusedPairs)
+          remember({
+            kind: 'merge',
+            ...answers,
+            count: answers.actIds.length,
+            revision,
+            action: kind,
+            headerTitle: mergeTitle(card),
+            nested: answer.childWorkIds.length,
+            leftOut: card.rows.length - card.included.length,
+          })
+          choose({ ...card, selected: false })
+        }
+        if (mounted.current)
+          setNotice(`${answers.actIds.length === 1 ? 'Group' : 'Groups'} rolled up. Nothing was deleted.`)
+      },
+      captured.length === 1 ? captured[0] : undefined,
+    )
     if (succeeded) restoreFocus()
   }
   async function dismiss(card: MergeCard) {
@@ -480,7 +539,11 @@ export function MergeQueue({
         )}
         <button
           disabled={blocked || !exact.length}
-          onClick={() => (mode === 'fullscreen' ? setConfirmBatch(exact) : void link(exact))}
+          onClick={() =>
+            mode === 'fullscreen'
+              ? setConfirmBatch({ cards: exact, kind: 'exact' })
+              : void link(exact, 'exact')
+          }
         >
           {exact.length
             ? `Accept ${exact.length} exact ${exact.length === 1 ? 'match' : 'matches'}`
@@ -489,7 +552,11 @@ export function MergeQueue({
         <button
           className="primary"
           disabled={blocked || !selected.length}
-          onClick={() => (mode === 'fullscreen' ? setConfirmBatch(selected) : void link(selected))}
+          onClick={() =>
+            mode === 'fullscreen'
+              ? setConfirmBatch({ cards: selected, kind: 'selected' })
+              : void link(selected, 'selected')
+          }
         >
           {selected.length ? `Merge ${selected.length} selected` : 'Merge selected'}
         </button>
@@ -691,7 +758,7 @@ export function MergeQueue({
                               <span className="merge-row-stores">
                                 {row.stores.map((store) => (
                                   <span className="merge-store" key={store}>
-                                    {storeLabel(store)}
+                                    {store === 'epic' ? 'EPIC' : storeLabel(store).toLocaleUpperCase()}
                                   </span>
                                 ))}
                               </span>
@@ -798,9 +865,9 @@ export function MergeQueue({
         })()}
       {confirmBatch && (
         <MergeBatchConfirmation
-          count={confirmBatch.length}
+          count={confirmBatch.cards.length}
           onClose={() => setConfirmBatch(null)}
-          onConfirm={() => void link(confirmBatch)}
+          onConfirm={() => void link(confirmBatch.cards, confirmBatch.kind)}
         />
       )}
       {optionSheet && (
@@ -836,12 +903,24 @@ export function MergeQueue({
       {undo && undo.expiresAt > Date.now() && (
         <aside className="merge-undo" aria-label="Review undo" role="status">
           <span>
-            {undo.count} {undo.kind === 'dismiss' ? 'left separate' : 'rolled up'} · Nothing deleted
+            <strong>{mergeDock(undo).title}</strong>
+            <span className="merge-dock-note">{mergeDock(undo).note}</span>
           </span>
           <button disabled={blocked} onClick={() => void reverse()}>
             Undo review decisions
           </button>
           <button aria-label="Dismiss review undo" disabled={busy} onClick={() => setUndo(null)}>
+            Dismiss
+          </button>
+        </aside>
+      )}
+      {refusalUntil !== null && (
+        <aside className="merge-undo" role="status" aria-label="Review notice">
+          <span>
+            <strong>Couldn't link those.</strong>
+            <span className="merge-dock-note">That proposal was out of date · nothing changed.</span>
+          </span>
+          <button aria-label="Dismiss review notice" onClick={() => setRefusalUntil(null)}>
             Dismiss
           </button>
         </aside>

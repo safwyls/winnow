@@ -73,6 +73,7 @@ export function MergeRefresh({ disabled, onBusy }: { disabled: boolean; onBusy(v
         <RefreshCw aria-hidden="true" size={18} />
         <span>Refresh suggestions</span>
       </button>
+      {busy && <button onClick={() => current.current?.abort()}>Cancel refresh</button>}
       {status && (
         <p role="status" aria-live="polite">
           {status}

@@ -40,12 +40,14 @@ import type { ApiRequest, ApplicationActivation, BackendEvent, ConnectionState }
 import { quoteArgument, readActivation, validateActivationArguments, validatedActivation } from './activation'
 import { BackendTransport } from './transport'
 import { cancelSteamWindow, captureSteamPages, signInToSteam } from './steam-auth'
+import { writeSteamDiagnostic } from './steam-diagnostics'
 import { EpicSignInController } from './epic-auth'
 import type { EpicSignInOptions } from '../shared/epic'
 import { RequestLifetimes } from './request-lifetimes'
 import { dataDirectoryRefusalCode, reportStartupFailure } from './startup-failure'
 import { openLinkBrowser } from './link-browser'
 import { routeLink } from './link-routing'
+import { openInstallFolder, type InstallationWorkspace } from './install-folder'
 import { deliverNotification } from './notifications'
 import type { SteamSignInOptions } from '../shared/bridge'
 import {
@@ -535,6 +537,15 @@ async function initialize(): Promise<void> {
     const problem = await shell.openPath(path)
     if (problem) throw new Error('The folder could not be opened.')
   })
+  handle('winnow:install-folder', (ownershipId: unknown) => openInstallFolder(ownershipId, {
+    workspace: async () => {
+      const result = await transport!.request<InstallationWorkspace>({route:'library.workspace'})
+      if (!result.ok || !result.data) throw new Error('Connect to your library before opening this folder.')
+      return result.data
+    },
+    isDirectory: async path => (await stat(path)).isDirectory(),
+    openPath: path => shell.openPath(path),
+  }))
   const chooseManualExecutable = async () => {
     const result = await dialog.showOpenDialog(window!, {
       title: 'Choose game executable',
@@ -562,7 +573,12 @@ async function initialize(): Promise<void> {
     await writeFile(choice.filePath, result.data.content, 'utf8')
     return true
   })
-  handle('winnow:steam:signin', (options: SteamSignInOptions) => signInToSteam(window!, transport!, options))
+  handle('winnow:steam:signin', (options: SteamSignInOptions) => signInToSteam(window!, transport!, options, (message) => {
+    // Resolve the active backend location so legacy-directory fallback installs share their logs.
+    void transport!.request<{ directory: string }>({ route: 'plugins.directory' }).then((result) => {
+      if (result.ok && result.data?.directory) writeSteamDiagnostic(dirname(result.data.directory), message)
+    }).catch(() => {})
+  }))
   const epicSignIn = new EpicSignInController(transport!, join(app.getPath('userData'), 'account-profiles'), join(here, '../preload/epic.cjs'))
   app.once('will-quit', () => epicSignIn.dispose())
   handle('winnow:epic:prepare', () => epicSignIn.prepare(window!))

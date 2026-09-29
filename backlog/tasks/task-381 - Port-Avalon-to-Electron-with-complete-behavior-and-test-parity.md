@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-29 08:32'
+updated_date: '2026-09-29 09:24'
 labels: []
 dependencies: []
 priority: high
@@ -40,6 +40,18 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 8. Complete remaining merge-review contracts by auditing source assertions, coordinating refresh/race handling, preserving answered-card positions/history, finishing preferred-platform and keyboard/controller behavior, and verifying expansion refusal and artwork precedence. Keep backend revision checks intact. Root also audits native startup/data-directory/activation contracts and ports missing boundary behavior before release transition.
 
 9. Restore details facts and presentation against GameDetailsViewModel, DetailsModalAdditions and TileActions source contracts: root owns shared facts, safe update links, acquisition, screenshots and exact tests; visual agent follows its current layout checkpoint with desktop five-tab modal and fullscreen cinematic details composition. Preserve metadata/artwork/edit operations behind source-equivalent actions and verify both surfaces.
+
+10. Close remaining merge decision/history/refusal/timer/focus contracts with renderer and production HTTP tests while preserving revision checks; measure refresh behavior rather than adding protocol routes to mimic retired repository call counts. Complete settings diagnostics, setup reconnection/replay failure recovery, preference validation and remaining Stores/LibrarySettings audits. Root continues exact details facts, lifecycle evidence and action availability; visual agent implements original Avalon details composition.
+
+11. Restore Stores platform selection and count/status contracts: exactly one Steam/Epic/GOG card at a time, attention badges on hidden tabs, whole-library per-store title totals and account summary, local-only GOG behavior, and mutually exclusive Steam account/credential/purchase/consent layers. Reuse shared setup cards and test both presentation modes. Continue source-equivalent manual create/edit/remove and validation after coordinating Library ownership.
+
+12. Complete per-field metadata and IGDB matching source contracts in the shared Details leaves: preserve independent sources/drafts and accepted stored values, distinguish loading/refusal/success, refuse blank art URLs before writes, preserve conflict revisions, and verify all matching/refusal/claim/pin transitions through renderer and actual backend boundaries. Keep obsolete view-model-only call-count assertions explicit when the production architecture requires revision-checked HTTP snapshots.
+
+13. Restore dedicated Avalon fullscreen Search through an additive theme Search surface, with Library fallback for other themes. Route fullscreen Ctrl+K/controller View to Search, preserve inline desktop search, and verify Enter/Go to results, title-only scope, paging/range footer, focus, empty states and Details return. Follow with source-equivalent non-Home backdrop lifecycle and contrast matrices after the Search package.
+
+14. Complete Library default-sort lifecycle and source-exact selection behavior on both modes, preserving manual list order, selections through sort/reload/view changes, and pruning filtered selections. Audit filter and list contracts against exact source assertions; keep refresh-publication/cancellation work separately scoped because it crosses App and Details.
+
+15. Extract manual game editing into owned frontend files while keeping exports. Restore field-specific accessible title/year/IGDB/Steam validation, typed conflict handling and Cancel-first removal. Verify create/edit/delete with production HTTP tests and desktop/fullscreen form flows; preserve uncertain-write and revision safeguards.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -62,4 +74,14 @@ Integrated Electron unit/component/live API rerun passed all 1395 tests in 91 fi
 Startup checkpoint: Electron now uses a redacting failure boundary in main initialization and argument refusal, with exit codes 3 and 2, clean cancellation, and bounded logs only inside an existing selected directory. All 46 focused startup/shell/activation checks passed. Mapped 13 ported startup/argument contracts and nine retained data-location contracts; original legacy composition assertion remains partial. Full native58 previously yielded55pass/3fail; followup11 yielded9pass with appearance2 andfeed4 now passing. Fullscreen text scaling still changes cover geometry; visual agent correcting it.
 
 Integration checkpoint: all1705 Electron unit/component/live cases passed across99 files without skips. Native Home/Library layout16 plus typography5 passed together after saved viewport and text-size cover fixes. Immediate Steam saved import2 passed through real backend; merge additions4 passed; gallery3 passed with native-size image cap, wheel containment, trapped focus and original-thumbnail return. Shared details fact tests now61pass; source evidence for unintegrated reception/refetch remains partial. New production backend regression files passed Steam session8 and merge artwork3. Avalon desktop/fullscreen Details composition is in progress. No acceptance criteria checked.
+
+Second milestone committed as1611b6b (134files): source inventory2435 methods across299files, with495ported/524retained-backend/2framework-specific;1216pending and198partial remain. In-progress Details composition was deliberately left unstaged. Work continues under the same full migration task; no completion criteria checked.
+
+Added actual production HTTP action-dispatch replacements: all 18 cases pass for measured Steam/GOG/Epic launch, install and management URIs and invalid identity refusals. Renderer controls/links cover both Avalon modes, unknown installation states, grouped Steam references, IGDB base-36 identities and viable-copy selection. Restored missing SteamGridDB/GOG Galaxy destinations and lifecycle evidence. Added ownership-only install-folder IPC with authoritative workspace re-read and directory check; focused folder/action checks 35 pass and TypeScript check passes. Migration audit after 33 reviewed source mappings: 1183 pending, 198 partial, 519 ported, 533 retained backend, 2 framework-specific; no completion criteria checked. Details native composition remains under active corrective verification.
+
+Reviewed the three old MergeQueue repository-call assertions against the external API architecture. Hidden and unchanged queue paths now use deferred/cached HTTP reads; answers retain all card slots but require one authoritative GET after a revision-checked POST. Replacement 60-card/20-answer renderer and real-backend tests cover stable slots,40 remaining proposals,20acts and no candidate status writes. On this Windows Debug/temp-SQLite run, POST mean10.60ms/max14.81ms, GET mean58.09ms/max69.67ms, max combined80.54ms. The literal old COUNT/zero-read assertions are classified as retired in-process/framework contracts, with their replacement tests and measured limits recorded; no claim that zero backend reads were preserved.
+
+Third checkpoint verification: all 1936 Electron component and live-backend cases passed in 105 files with no skips. Native Details9, gallery4 (including both install-folder handoffs), setup2 and merge6 passed in the combined native run. Coordinator inspected desktop/fullscreen Overview captures with actual artwork IPC. Two native fullscreen layout cases exposed synchronization gaps (fixture readiness and intermediate animation sampling); correction and focused rerun remain in progress. New production backend replacements passed game actions18, merge decisions9 and setup5 plus retained setup2. No acceptance criteria checked.
+
+Third checkpoint native run finished 83/85 passing; both failures were test synchronization gaps. The corrected full16-case Avalon layout rerun passed in24.8s on the unchanged production build, retaining opacity/inertness/focus/node-reuse assertions. Feature snapshot has 1936/105 passing integrated cases; all85 native cases now have passing coverage across the combined run and corrected layout run. Source inventory2435:600ported,535retained-backend,6framework-specific;1128pending,166partial. Next packages remain in progress; no criteria checked.
 <!-- SECTION:NOTES:END -->

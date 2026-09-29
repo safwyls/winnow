@@ -46,7 +46,7 @@ function fixture(mode: string, result: Partial<EpicSignInResult> = {}) {
   return { ...bridge, ...view, client }
 }
 async function consent() {
-  fireEvent.click(screen.getByRole('button', { name: 'Connect Epic Games' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Connect Epic Games' }))
   expect(await screen.findByText(preparation.consentNotice)).toBeTruthy()
   fireEvent.click(screen.getByLabelText('I agree to connect this account'))
 }

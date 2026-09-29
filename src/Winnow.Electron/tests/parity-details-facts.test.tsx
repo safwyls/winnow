@@ -10,9 +10,14 @@ import {
   refetchStatus,
   updatePageUrl,
 } from '../src/renderer/features/details-facts'
-import { MetadataRefresh, ReceptionLine } from '../src/renderer/features/details-presentation'
+import {
+  LifecycleEvidence,
+  MetadataRefresh,
+  ReceptionLine,
+} from '../src/renderer/features/details-presentation'
+import { lifecycleText } from '../src/shared/lifecycle'
 import { AcquisitionSummary, Screenshots, UpdateSignals } from '../src/renderer/features/parity-details'
-import type { GameDetails } from '../src/renderer/api/types'
+import type { GameDetails, Workspace } from '../src/renderer/api/types'
 import { clearViewState } from '../src/renderer/viewState'
 
 const clients: QueryClient[] = []
@@ -55,6 +60,53 @@ function mount(ui: React.ReactNode, result: unknown = { outcome: 1 }) {
 }
 
 describe('original details fact contracts', () => {
+  it.each([0, 'Unknown', 99, 'Unrecognized'])(
+    'keeps absent or unknown lifecycle evidence silent: %s',
+    (status) => {
+      expect(lifecycleText()).toBeNull()
+      expect(lifecycleText({ status, confidence: 0, reason: 'No source observed this game.' })).toBeNull()
+    },
+  )
+  it.each([
+    [1, 'Active'],
+    [2, 'Inactive'],
+    [3, 'Dead'],
+    [4, 'Abandoned'],
+    [5, 'Offline'],
+    [6, 'Delisted'],
+    [7, 'Cancelled'],
+  ])('presents lifecycle status %s with confidence and its source reason', (status, label) => {
+    expect(lifecycleText({ status, confidence: 0.98, reason: 'IGDB reports this status.' })).toBe(
+      `${label} · 98% confidence. IGDB reports this status.`,
+    )
+  })
+  it('describes the grouped lifecycle evidence and a saved Derelict exemption in Overview', () => {
+    const workspace = {
+      buckets: [
+        { resolvedWorkId: 2, game: { lifecycle: { status: 5, confidence: 0.98, reason: 'Wrong game' } } },
+        {
+          ownershipId: 3,
+          resolvedWorkId: 1,
+          lifecycle: { status: 5, confidence: 0.98, reason: 'One edition only' },
+          game: {
+            lifecycle: {
+              status: 6,
+              confidence: 0.9,
+              reason: 'Steam confirms the listing was removed.',
+              isExemptFromDerelict: true,
+            },
+          },
+        },
+      ],
+    } as unknown as Workspace
+    mount(<LifecycleEvidence workId={1} workspace={workspace} />)
+    expect(
+      screen.getByText(
+        'Delisted · 90% confidence. Steam confirms the listing was removed. Kept out of Derelict by your choice.',
+      ),
+    ).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/Wrong game|One edition only|cannot launch/)
+  })
   it('omits the acquisition block when neither date nor recognized licence is held', () => {
     for (const rows of [
       null,
@@ -235,15 +287,20 @@ describe.each(['desktop', 'fullscreen'])('%s screenshot lightbox contracts', (mo
     )
   }
   it('can show two overview previews while the gallery retains all screenshots', async () => {
-    mount(<Screenshots previewCount={2} details={facts({images:[{source:'igdb',kind:'screenshot',imageIds:'aa1,bb2,cc3'}]})} />)
-    expect(screen.getAllByRole('button',{name:/Open screenshot/})).toHaveLength(2)
+    mount(
+      <Screenshots
+        previewCount={2}
+        details={facts({ images: [{ source: 'igdb', kind: 'screenshot', imageIds: 'aa1,bb2,cc3' }] })}
+      />,
+    )
+    expect(screen.getAllByRole('button', { name: /Open screenshot/ })).toHaveLength(2)
     expect(screen.getByText('3 screenshots from IGDB')).toBeTruthy()
-    const origin = screen.getByRole('button',{name:'View gallery →'})
+    const origin = screen.getByRole('button', { name: 'View gallery →' })
     fireEvent.click(origin)
-    const dialog = await screen.findByRole('dialog',{name:'Screenshot 1 of 3'})
-    fireEvent.keyDown(dialog,{key:'ArrowLeft'})
-    expect(screen.getByRole('dialog',{name:'Screenshot 3 of 3'})).toBeTruthy()
-    fireEvent.click(screen.getByRole('button',{name:'Close screenshots'}))
+    const dialog = await screen.findByRole('dialog', { name: 'Screenshot 1 of 3' })
+    fireEvent.keyDown(dialog, { key: 'ArrowLeft' })
+    expect(screen.getByRole('dialog', { name: 'Screenshot 3 of 3' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Close screenshots' }))
     await waitFor(() => expect(document.activeElement).toBe(origin))
   })
   it('opens on the pressed shot, wraps both ways and keeps the strip selection in sync', async () => {

@@ -104,3 +104,29 @@ export function sourceSortFixture(review: MergeReview) {
     },
   ]
 }
+
+export function crossStoreTriple(review: MergeReview) {
+  review.workspace.works.push({ id: 5, name: 'Bastion' })
+  review.workspace.releases.push({ id: 105, workId: 5 })
+  ;(review.workspace.ownerships as unknown[]).push({ id: 5, releaseId: 105, store: 'epic' })
+  ;(review.workspace.buckets as unknown[]).push({
+    ownershipId: 5,
+    releaseId: 105,
+    workId: 5,
+    playtimeMinutes: 0,
+    bucket: 'forgotten',
+  })
+  review.candidates.push(
+    ...[
+      [12, 101],
+      [13, 102],
+    ].map(([id, leftReleaseId]) => ({
+      id: id!,
+      leftReleaseId: leftReleaseId!,
+      rightReleaseId: 105,
+      score: 0.98,
+      status: 'pending',
+      signalsJson: JSON.stringify({ band: 'Priority', title_similarity: 1 }),
+    })),
+  )
+}

@@ -53,6 +53,7 @@ export function gameLinks(game: LibraryGame, workspace: Workspace, events: Updat
       { label: 'Store page', url: `https://store.steampowered.com/app/${appId}/`, detail },
       { label: 'Patch notes', url: `https://store.steampowered.com/news/app/${appId}`, detail },
       { label: 'SteamDB', url: `https://steamdb.info/app/${appId}/`, detail },
+      { label: 'SteamGridDB', url: `https://www.steamgriddb.com/steam/${appId}`, detail },
     )
   }
   for (const entry of game.entries) {
@@ -61,6 +62,8 @@ export function gameLinks(game: LibraryGame, workspace: Workspace, events: Updat
     const key = entry.store === 'epic' ? workspace.epicLaunchKeys[id ?? '']?.namespace : id
     const url = key && webLink(workspace.storefronts?.[`${entry.store}:${key}`]?.storeUrl)
     if (url) links.push({ label: `${storeLabel(entry.store)} store page`, url })
+    if (entry.store === 'gog' && id && /^\d{1,12}$/.test(id))
+      links.push({ label: 'Show in GOG Galaxy', url: `goggalaxy://opengameview/gog_${id}` })
   }
   if (!steamIds.length) {
     const latest = events

@@ -4,7 +4,12 @@ import { join, resolve } from 'node:path'
 import electronPath from 'electron'
 import type { ApiRequest } from '../../src/shared/bridge'
 import type { ManualGame } from '../../src/renderer/api/types'
-import { buildMergeCards, mergeTitle, type MergeReview } from '../../src/renderer/features/parity-merge-model'
+import {
+  buildMergeCards,
+  mergeMemberLabels,
+  mergeTitle,
+  type MergeReview,
+} from '../../src/renderer/features/parity-merge-model'
 
 let app: ElectronApplication, page: Page, directory: string
 test.beforeAll(async () => {
@@ -89,10 +94,11 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
         name: proposed.section === 'stores' ? 'Across stores' : 'Editions',
         exact: true,
       })
+    const card = queue.getByRole('article', { name: `${title} proposal`, exact: true })
+    await expect(card).toBeVisible()
     const initial = await section
       .locator('article')
       .evaluateAll((cards) => cards.map((card) => card.getAttribute('aria-label')))
-    const card = queue.getByRole('article', { name: `${title} proposal`, exact: true })
     if (mode === 'fullscreen') await card.getByRole('button').click()
     await (mode === 'desktop' ? card : page.getByRole('dialog'))
       .getByRole('button', { name: 'Same game', exact: true })
@@ -194,11 +200,128 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     expect((after.workspace.preferredHeaderStores as Record<string, string>)[String(parent.workId)]).toBe(
       'gog',
     )
+    const changedCard = queue.getByRole('article', { name: `${childTitle} saved group`, exact: true })
+    await changedCard.scrollIntoViewIfNeeded()
+    await expect(changedCard).toBeInViewport()
+    const geometry = await changedCard.evaluate((element) => {
+      const box = element.getBoundingClientRect()
+      return {
+        left: box.left,
+        right: box.right,
+        width: window.innerWidth,
+        overflow: element.scrollWidth > element.clientWidth,
+      }
+    })
+    expect(geometry.left).toBeGreaterThanOrEqual(0)
+    expect(geometry.right).toBeLessThanOrEqual(geometry.width)
+    expect(geometry.overflow).toBe(false)
     await page.screenshot({ path: info.outputPath(`merge-${mode}-header.png`) })
     await api({
       route: 'identity.undo',
       body: { expectedRevision: after.revision, actIds: [saved.actId], candidateIds: [], refusedPairs: [] },
     })
+    await page.getByRole('button', { name: 'Close tools', exact: true }).click()
+  })
+  test(`${mode} persists a preferred platform through reload while keeping an override until the preference is cleared`, async () => {
+    const seed = await api<MergeReview>({ route: 'identity.get' })
+    const owned = (seed.workspace.ownerships as { store: string; releaseId: number }[]).find(
+      (entry) => entry.store === 'gog',
+    )!
+    const release = seed.workspace.releases.find((entry) => entry.id === owned.releaseId)!
+    const game = seed.workspace.works.find((work) => work.id === release.workId)! as {
+      name: string
+      firstReleaseYear?: number | null
+    }
+    await api({
+      route: 'manual.create',
+      body: { title: game.name, firstReleaseYear: game.firstReleaseYear, platformLabel: 'PC' },
+    })
+    await api({ route: 'identity.refresh', body: {} })
+    await surface(mode)
+    let review = await api<MergeReview>({ route: 'identity.get' })
+    const proposed = buildMergeCards(review).find(
+      (card) => !card.actId && card.section === 'stores' && card.rows.length > 1,
+    )!
+    expect(proposed).toBeTruthy()
+    const preferredRow = proposed.rows.find((row) =>
+      row.stores.some((store) => ['steam', 'epic', 'gog'].includes(store)),
+    )!
+    const overrideRow = proposed.rows.find((row) => row.workId !== preferredRow.workId)!
+    const store = preferredRow.stores.find((store) => ['steam', 'epic', 'gog'].includes(store))!
+    const label = ({ steam: 'Steam', epic: 'Epic Games', gog: 'GOG' } as Record<string, string>)[store]!
+    const choosePlatform = async (value: string, name: string) => {
+      if (mode === 'desktop')
+        await page.getByRole('combobox', { name: 'Preferred main platform', exact: true }).selectOption(value)
+      else {
+        await page.getByRole('button', { name: /^Preferred platform ·/ }).click()
+        await page.getByRole('dialog').getByRole('button', { name, exact: true }).click()
+      }
+      await expect
+        .poll(
+          async () =>
+            (
+              await api<{ preference: string; value: string }[]>({ route: 'preferences.presentation.get' })
+            ).find((item) => item.preference === 'PreferredMergePlatform')?.value,
+        )
+        .toBe(value)
+    }
+    const checkHeader = async (workId: number) => {
+      review = await api<MergeReview>({ route: 'identity.get' })
+      const current = buildMergeCards(review).find((card) => card.key === proposed.key)!
+      const title = current.rows.find((row) => row.workId === workId)!.title
+      const card = page
+        .locator('.merge-queue')
+        .getByRole('article', { name: `${title} proposal`, exact: true })
+      await expect(card).toBeVisible()
+      const memberLabel = mergeMemberLabels(current)[current.rows.findIndex((row) => row.workId === workId)]!
+      if (mode === 'desktop')
+        await expect(
+          card.getByRole('radio', { name: `Make ${memberLabel} the main game`, exact: true }),
+        ).toBeChecked()
+      else {
+        await card.getByRole('button').click()
+        await expect(
+          page.getByRole('dialog').getByRole('button', { name: `${memberLabel} · Header`, exact: true }),
+        ).toBeVisible()
+        await page.getByRole('button', { name: 'Back to proposals', exact: true }).click()
+      }
+      return { card, memberLabel }
+    }
+    await choosePlatform(store, label)
+    await page.reload()
+    await expect(page.getByRole('button', { name: 'Winnow home', exact: true })).toBeVisible()
+    await surface(mode)
+    await checkHeader(preferredRow.workId)
+    const parentIndex = proposed.rows.findIndex((row) => row.workId === overrideRow.workId)
+    const originalLabel = mergeMemberLabels(proposed)[parentIndex]!
+    const title = preferredRow.title
+    const card = page.locator('.merge-queue').getByRole('article', { name: `${title} proposal`, exact: true })
+    if (mode === 'desktop')
+      await card.getByRole('radio', { name: `Make ${originalLabel} the main game`, exact: true }).check()
+    else {
+      await card.getByRole('button').click()
+      await page
+        .getByRole('dialog')
+        .getByRole('button', { name: `${originalLabel} · Included`, exact: true })
+        .click()
+      await page.getByRole('button', { name: 'Make header', exact: true }).click()
+      await page.getByRole('button', { name: 'Back to proposals', exact: true }).click()
+    }
+    await checkHeader(overrideRow.workId)
+    await page.getByRole('button', { name: 'Close tools', exact: true }).click()
+    await surface(mode)
+    await checkHeader(overrideRow.workId)
+    await choosePlatform('', 'None')
+    await checkHeader(overrideRow.workId)
+    await page.reload()
+    await expect(page.getByRole('button', { name: 'Winnow home', exact: true })).toBeVisible()
+    await surface(mode)
+    if (mode === 'desktop')
+      await expect(page.getByRole('combobox', { name: 'Preferred main platform', exact: true })).toHaveValue(
+        '',
+      )
+    else
+      await expect(page.getByRole('button', { name: 'Preferred platform · None', exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Close tools', exact: true }).click()
   })
 }

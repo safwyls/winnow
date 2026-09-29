@@ -44,6 +44,7 @@ const bridge: WinnowBridge = {
   takeActivations: () => ipcRenderer.invoke('winnow:activation:pending'),
   onActivation: (callback) => subscribe<ApplicationActivation>('winnow:activation', callback),
   openDataFolder: (folder) => ipcRenderer.invoke('winnow:folder', folder),
+  openInstallFolder: (ownershipId) => ipcRenderer.invoke('winnow:install-folder', ownershipId),
   chooseManualExecutable: () => ipcRenderer.invoke('winnow:manual-executable'),
   chooseManualExecutableFacts: () => ipcRenderer.invoke('winnow:manual-executable-facts'),
   exportAcquisitions: () => ipcRenderer.invoke('winnow:acquisitions:export'),

@@ -6,7 +6,7 @@ import { useViewState } from '../viewState'
 import { Empty, Notice } from './shared'
 import './parity-library.css'
 import { useInlineEditorFocus } from './parity-library-focus'
-import { MergeQueue } from './parity-merge'
+import { MergeQueue, MergeQueueLoading } from './parity-merge'
 import { MergeRefresh } from './parity-merge-refresh'
 import { useIdentityReview } from './parity-merge-query'
 
@@ -466,6 +466,7 @@ export function IdentityTools({ onOpenGame, mode = 'desktop' }: { onOpenGame?: (
             </button>
           </div>
         )}
+        {!facts && review.isPending && <MergeQueueLoading />}
         {facts && (
           <MergeQueue
             mode={mode}

@@ -8,6 +8,11 @@ fullscreen uses a hero and a directional recommendation shelf. Theme Studio also
 floating covers and artwork portals, and **Catalogue**, with a reading desk and index.
 All compositions use the public theme interface available to installed themes.
 
+Avalon's desktop Details opens over the retained library with five sections and a fixed
+header. Fullscreen Details uses the original cinematic layout, two screenshot previews and
+separate About and Play history reading pages. More contains the shared metadata, matching,
+artwork and browsing actions. Closing restores the originating game and library position.
+
 Avalon reads existing authored Winnow JSON palettes from the library's `themes` folder,
 including their fonts and opening preferences. Theme Studio provides reload, diagnostics,
 folder access and safe export; saved file edits update the active palette automatically.

@@ -1,23 +1,43 @@
 {
   "FirstRunSetupDesktopTests.Skipping_IGDB_clears_the_masked_draft_without_saving_it": {
     "status": "ported",
-    "tests": [{ "file": "tests/parity-setup.test.tsx", "case": "discards an unsaved masked secret on skip and on presentation change" }],
+    "tests": [
+      {
+        "file": "tests/parity-setup.test.tsx",
+        "case": "discards an unsaved masked secret on skip and on presentation change"
+      }
+    ],
     "reason": "Both presentation modes discard unsaved secret fields when skipping or switching presentation, without calling the credential save endpoint."
   },
   "FirstRunSetupDesktopTests.Application_settings_exposes_the_shared_replay_command": {
     "status": "ported",
-    "tests": [{ "file": "tests/parity-settings.test.tsx", "case": "reopens setup from Application without resetting preferences" }],
+    "tests": [
+      {
+        "file": "tests/parity-settings.test.tsx",
+        "case": "reopens setup from Application without resetting preferences"
+      }
+    ],
     "reason": "Both settings surfaces reopen the shared saved setup cursor at Welcome and preserve preferences."
   },
   "FirstRunSetupDesktopTests.Platform_consent_traps_focus_and_escape_closes_only_that_layer": {
     "status": "ported",
-    "tests": [{ "file": "tests/parity-setup.test.tsx", "case": "closes Steam consent before navigating the wizard and traps the active layer" }],
+    "tests": [
+      {
+        "file": "tests/parity-setup.test.tsx",
+        "case": "closes Steam consent before navigating the wizard and traps the active layer"
+      }
+    ],
     "reason": "The nested consent dialog owns focus and Escape closes consent without changing setup progress on either surface."
   },
   "FirstRunSetupDesktopTests.Every_step_keeps_navigation_inside_a_short_desktop_window": {
     "status": "partial",
-    "tests": [{ "file": "tests/parity-setup.test.tsx", "case": "resumes every step, persists navigation, and completes only at Ready" }],
-    "reason": "All nine steps and saved navigation are exercised. CSS bounds the scroller and fixes the footer, but browser geometry at the minimum window height has not been asserted."
+    "tests": [
+      {
+        "file": "tests/electron/setup-parity.spec.ts",
+        "case": "setup keeps navigation visible, traps consent, resumes provider handoff and restores replay focus"
+      }
+    ],
+    "reason": "Native Chromium checks headings, Back, Skip setup and Continue bounds and Next focus through all 9 steps at 1000×640 desktop and 1280×720 fullscreen. The original additional requirement that IGDB Save/Remove actions sit outside the body scroller remains unported."
   },
   "FirstRunSetupDesktopTests.Header_and_footer_fills_stay_inside_the_rounded_frame": {
     "status": "partial",
@@ -25,105 +45,213 @@
     "reason": "The Electron wizard uses one clipped 8px frame for its header and footer. Equivalent rendered pixel checks for rounded corners in both themes remain required."
   },
   "FirstRunSetupDesktopTests.Tab_cycles_inside_setup_and_skip_all_restores_the_invoking_control": {
-    "status": "partial",
-    "tests": [{ "file": "tests/parity-setup.test.tsx", "case": "closes Steam consent before navigating the wizard and traps the active layer" }],
-    "reason": "Radix modal focus scopes contain the wizard and consent. The exact root Tab loop and invoking-control restoration are not yet covered by a migrated test."
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/setup-parity.spec.ts",
+        "case": "setup keeps navigation visible, traps consent, resumes provider handoff and restores replay focus"
+      },
+      {
+        "file": "tests/parity-setup-recovery.test.tsx",
+        "case": "restores the replay control even when its pending write removed focus before setup opened"
+      }
+    ],
+    "reason": "Both native presentations cycle Tab and Shift+Tab inside Welcome, whose two buttons are verified by the component test, then Skip setup restores the real replay button. Regression covers native disabling/blur before the replay progress write resolves."
   },
   "FirstRunSetupFullscreenTests.Controller_setup_blocks_root_navigation_and_returns_from_provider_to_same_step": {
     "status": "partial",
-    "tests": [{ "file": "tests/parity-setup.test.tsx", "case": "uses the presentation-specific Escape action after nested editors close" }],
+    "tests": [
+      {
+        "file": "tests/parity-setup.test.tsx",
+        "case": "uses the presentation-specific Escape action after nested editors close"
+      }
+    ],
     "reason": "The fullscreen wizard shares its saved cursor and Back/Escape moves to the previous step. Electron embeds configuration inside the step; physical controller root-navigation isolation and separate provider-page return need additional integration coverage."
   },
   "FirstRunSetupFullscreenTests.Application_settings_replay_opens_setup_instead_of_leaving_settings_stack_active": {
-    "status": "partial",
-    "tests": [{ "file": "tests/parity-settings.test.tsx", "case": "reopens setup from Application without resetting preferences" }],
-    "reason": "Settings replay updates the shared cursor and the application mounts a modal wizard. The controller stack behavior is not separately exercised in this component test."
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/setup-parity.spec.ts",
+        "case": "setup keeps navigation visible, traps consent, resumes provider handoff and restores replay focus"
+      }
+    ],
+    "reason": "The production fullscreen Settings Application replay opens Welcome as a modal; Tab stays in setup and completing it restores its invoking settings control. Native rendering uses the saved backend cursor."
   },
   "FirstRunSetupShellTests.New_install_opens_setup_after_startup_in_the_selected_presentation": {
     "status": "partial",
-    "tests": [{ "file": "tests/parity-setup.test.tsx", "case": "resumes every step, persists navigation, and completes only at Ready" }],
+    "tests": [
+      {
+        "file": "tests/parity-setup.test.tsx",
+        "case": "resumes every step, persists navigation, and completes only at Ready"
+      }
+    ],
     "reason": "Both presentation modes load and display persisted Welcome state. Full native application startup with a new backend data directory is outside the component test."
   },
   "FirstRunSetupShellTests.Controller_stays_in_steam_consent_and_back_closes_only_that_layer": {
     "status": "partial",
-    "tests": [{ "file": "tests/parity-setup.test.tsx", "case": "closes Steam consent before navigating the wizard and traps the active layer" }],
-    "reason": "The nested focus scope and Escape behavior are tested in both modes. The physical controller Back mapping is not covered by this test."
+    "tests": [
+      {
+        "file": "tests/electron/setup-parity.spec.ts",
+        "case": "setup keeps navigation visible, traps consent, resumes provider handoff and restores replay focus"
+      },
+      {
+        "file": "tests/parity-setup.test.tsx",
+        "case": "closes Steam consent before navigating the wizard and traps the active layer"
+      }
+    ],
+    "reason": "Native fullscreen Chromium consumes simulated gamepad Menu without opening a root menu and Back dismisses only Steam consent, retaining the Steam setup cursor. The original method invokes desktop gamepad directions and Back; the desktop sampler currently leaves those inactive. Directional containment therefore remains incomplete despite passing keyboard Tab containment in both modes."
   },
   "IgdbSettingsInteractionTests.Presentation_switches_clear_unsaved_secret": {
     "status": "ported",
-    "tests": [{ "file": "tests/parity-setup.test.tsx", "case": "discards an unsaved masked secret on skip and on presentation change" }],
+    "tests": [
+      {
+        "file": "tests/parity-setup.test.tsx",
+        "case": "discards an unsaved masked secret on skip and on presentation change"
+      }
+    ],
     "reason": "Secret-bearing controls remount when presentation changes and never persist the discarded draft."
   },
   "IgdbSettingsInteractionTests.Desktop_binds_masked_input_and_reports_missing_fields_without_exposing_secret": {
     "status": "partial",
-    "tests": [{ "file": "tests/parity-setup.test.tsx", "case": "waits for an explicit credential save and does not save again on Continue" }],
+    "tests": [
+      {
+        "file": "tests/parity-setup.test.tsx",
+        "case": "waits for an explicit credential save and does not save again on Continue"
+      }
+    ],
     "reason": "Masked input, explicit save and clearing after save are covered. The missing-field response and every remove-credentials outcome need migrated assertions."
   },
   "IgdbSettingsInteractionTests.Fullscreen_controller_opens_masked_editor_and_keeps_shared_values": {
     "status": "partial",
-    "tests": [{ "file": "tests/parity-setup.test.tsx", "case": "waits for an explicit credential save and does not save again on Continue" }],
+    "tests": [
+      {
+        "file": "tests/parity-setup.test.tsx",
+        "case": "waits for an explicit credential save and does not save again on Continue"
+      }
+    ],
     "reason": "Fullscreen fields use the same explicit-save API and masked inputs. Controller on-screen keyboard behavior is a separate integration requirement."
   },
   "PluginSettingsInteractionTests.Advanced_settings_start_collapsed_support_input_and_preserve_hidden_values_on_save": {
     "status": "partial",
-    "tests": [{ "file": "tests/parity-settings.test.tsx", "case": "starts advanced settings collapsed and preserves hidden values and stored secrets" }],
+    "tests": [
+      {
+        "file": "tests/parity-settings.test.tsx",
+        "case": "starts advanced settings collapsed and preserves hidden values and stored secrets"
+      }
+    ],
     "reason": "Collapsed disclosure, input, preserving hidden fields and clearing secret drafts after save are covered on both surfaces. Physical controller focus order and keyboard entry remain separate."
   },
   "PluginSettingsInteractionTests.Desktop_generated_fields_mask_secrets_save_and_clear_drafts_on_navigation": {
     "status": "partial",
     "tests": [
-      { "file": "tests/parity-settings.test.tsx", "case": "starts advanced settings collapsed and preserves hidden values and stored secrets" },
-      { "file": "tests/parity-settings.test.tsx", "case": "removes saved secrets explicitly and never replaces them with an empty save" }
+      {
+        "file": "tests/parity-settings.test.tsx",
+        "case": "starts advanced settings collapsed and preserves hidden values and stored secrets"
+      },
+      {
+        "file": "tests/parity-settings.test.tsx",
+        "case": "removes saved secrets explicitly and never replaces them with an empty save"
+      }
     ],
     "reason": "Generated fields mask secrets, preserve unsent stored values, save and remove explicitly. Plugin-tab navigation clears fields through unmounting but does not yet have a dedicated test."
   },
   "PluginSettingsInteractionTests.Desktop_and_fullscreen_share_restart_state_and_generated_field_removal": {
     "status": "partial",
-    "tests": [{ "file": "tests/parity-settings.test.tsx", "case": "removes saved secrets explicitly and never replaces them with an empty save" }],
+    "tests": [
+      {
+        "file": "tests/parity-settings.test.tsx",
+        "case": "removes saved secrets explicitly and never replaces them with an empty save"
+      }
+    ],
     "reason": "Secret removal is covered on both surfaces and cards render backend restart state. Library-service restart itself needs native lifecycle coverage."
   },
   "PluginSettingsInteractionTests.Artwork_order_accepts_any_number_of_named_plugin_sources": {
     "status": "partial",
-    "tests": [{ "file": "tests/parity-settings.test.tsx", "case": "orders available artwork sources and saves the backend-compatible format" }],
+    "tests": [
+      {
+        "file": "tests/parity-settings.test.tsx",
+        "case": "orders available artwork sources and saves the backend-compatible format"
+      }
+    ],
     "reason": "Available source ordering and migration of the old SteamGridDB id are tested. A larger generated set of named providers is not yet asserted."
   },
   "PluginSettingsInteractionTests.Zip_installation_help_and_archive_errors_are_visible_on_both_surfaces": {
     "status": "partial",
-    "tests": [{ "file": "tests/parity-settings.test.tsx", "case": "requests only a named official package and keeps its install operation visible" }],
+    "tests": [
+      {
+        "file": "tests/parity-settings.test.tsx",
+        "case": "requests only a named official package and keeps its install operation visible"
+      }
+    ],
     "reason": "Official package installation and status are covered; manual ZIP guidance is present. A failed archive snapshot needs a specific migrated rendering assertion."
   },
   "FullscreenSettingsTests.Reset_opens_confirmation_without_mutating_preferences": {
     "status": "ported",
-    "tests": [{ "file": "tests/parity-settings.test.tsx", "case": "requires confirmation before resetting fullscreen appearance and preserves desktop settings" }],
+    "tests": [
+      {
+        "file": "tests/parity-settings.test.tsx",
+        "case": "requires confirmation before resetting fullscreen appearance and preserves desktop settings"
+      }
+    ],
     "reason": "Opening or cancelling confirmation writes nothing. Confirming resets only the five named fullscreen appearance preferences."
   },
   "FullscreenSettingsTests.Cover_art_setting_tracks_shared_preference_and_controller_input": {
     "status": "partial",
-    "tests": [{ "file": "tests/parity-settings.test.tsx", "case": "keeps expansions ungrouped by default and saves the shared cover fit preference" }],
+    "tests": [
+      {
+        "file": "tests/parity-settings.test.tsx",
+        "case": "keeps expansions ungrouped by default and saves the shared cover fit preference"
+      }
+    ],
     "reason": "Both settings surfaces persist the shared fit/fill preference. Controller input and cover rendering consumption require integration coverage."
   },
   "FullscreenSettingsTests.Shared_visibility_change_refreshes_the_independent_fullscreen_library": {
     "status": "partial",
-    "tests": [{ "file": "tests/parity-settings.test.tsx", "case": "saves library visibility against fresh preferences without overwriting another frontend" }],
+    "tests": [
+      {
+        "file": "tests/parity-settings.test.tsx",
+        "case": "saves library visibility against fresh preferences without overwriting another frontend"
+      }
+    ],
     "reason": "Visibility commands preserve freshly read shared settings and invalidate library queries. Two independently mounted library screens are not asserted here."
   },
   "JournalNotificationTests.Activation_or_fallback_uses_the_finished_session_and_only_save_writes": {
     "status": "ported",
     "tests": [
-      { "file": "tests/parity-settings-notifications.test.tsx", "case": "uses the exact finished session, deduplicates events and writes only on Save" },
-      { "file": "tests/parity-settings-notifications.test.tsx", "case": "opens only the current native notification and never resurrects dismissed sessions" },
-      { "file": "tests/parity-settings-notifications.test.tsx", "case": "falls back without taking focus when the native notification fails" }
+      {
+        "file": "tests/parity-settings-notifications.test.tsx",
+        "case": "uses the exact finished session, deduplicates events and writes only on Save"
+      },
+      {
+        "file": "tests/parity-settings-notifications.test.tsx",
+        "case": "opens only the current native notification and never resurrects dismissed sessions"
+      },
+      {
+        "file": "tests/parity-settings-notifications.test.tsx",
+        "case": "falls back without taking focus when the native notification fails"
+      }
     ],
     "reason": "Native activation and in-window fallback both target the completed session, preserve an edited prompt against another session, and save only through explicit user action."
   },
   "JournalNotificationTests.Ignored_superseded_or_dismissed_notifications_do_not_reopen_an_old_session": {
     "status": "ported",
-    "tests": [{ "file": "tests/parity-settings-notifications.test.tsx", "case": "opens only the current native notification and never resurrects dismissed sessions" }],
+    "tests": [
+      {
+        "file": "tests/parity-settings-notifications.test.tsx",
+        "case": "opens only the current native notification and never resurrects dismissed sessions"
+      }
+    ],
     "reason": "Old notification activation is ignored after replacement or dismissal."
   },
   "JournalNotificationTests.A_headless_or_missing_native_window_reports_unavailable_without_an_application_error": {
     "status": "partial",
-    "tests": [{ "file": "tests/parity-settings-notifications.test.tsx", "case": "falls back without taking focus when the native notification fails" }],
+    "tests": [
+      {
+        "file": "tests/parity-settings-notifications.test.tsx",
+        "case": "falls back without taking focus when the native notification fails"
+      }
+    ],
     "reason": "Renderer fallback after unavailable or failed native notification is covered. The Electron Notification support check requires a main-process test."
   },
   "JournalNotificationTests.Bundled_dragon_decodes_to_an_owned_native_notification_icon": {
@@ -133,7 +261,12 @@
   },
   "SessionWatcherDiagnosticsTests.Both_shells_show_background_failure_without_taking_focus_and_clear_on_recovery": {
     "status": "ported",
-    "tests": [{ "file": "tests/parity-settings-notifications.test.tsx", "case": "shows a quiet tracking failure, opens logs, and clears only after full recovery" }],
+    "tests": [
+      {
+        "file": "tests/parity-settings-notifications.test.tsx",
+        "case": "shows a quiet tracking failure, opens logs, and clears only after full recovery"
+      }
+    ],
     "reason": "Both modes render a quiet failure notice, preserve focus, open logs and keep the notice until every outstanding backend failure has cleared."
   },
   "SessionWatcherDiagnosticsTests.Settings_keep_log_access_after_recovery_on_both_surfaces": {

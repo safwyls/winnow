@@ -199,6 +199,10 @@ describe.each(['desktop', 'fullscreen'] as const)('%s setup parity', (mode) => {
     expect(request.mock.calls.some(([input]) => input.route === 'setup.put')).toBe(false)
     fireEvent.click(screen.getByRole('button', { name: 'Skip this step' }))
     await screen.findByRole('heading', { name: 'Choose what appears' })
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+    await screen.findByRole('heading', { name: 'How Winnow fits your desktop' })
+    fireEvent.click(screen.getByRole('button', { name: 'Skip setup' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 })
 

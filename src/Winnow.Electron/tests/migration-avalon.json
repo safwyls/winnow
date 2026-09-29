@@ -1651,5 +1651,59 @@
     "status": "pending",
     "tests": [],
     "reason": "Electron currently presents inline Library search. The original dedicated Search page with its Go to results focus stop, return to the same first-row column and LT/RT two-row paging remains unported."
+  },
+  "GameDetailsTabInteractionTests.Populated_tabs_keep_the_header_pinned_and_all_content_reachable": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/electron/details-layout.spec.ts",
+        "case": "desktop Details at ${width}×${height} retains the header, bounded reading and modal origin"
+      }
+    ],
+    "reason": "Real desktop modal geometry at1200×640 and2560×1440 verifies the original width cap,82×123 cover, pinned header, five sections, bounded long-summary scrolling, retained offsets and tool/modal focus return. The original rich all-five-tab bottom-content traversal at1280×820, including expanded relationships, is not yet reproduced."
+  },
+  "GameDetailsTabInteractionTests.Long_title_publisher_and_three_store_header_keep_actions_inside_the_card": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/electron/details-layout.spec.ts",
+        "case": "desktop Details at ${width}×${height} retains the header, bounded reading and modal origin"
+      }
+    ],
+    "reason": "Long title and publisher fit the bounded desktop modal and leave readable content at1200×640. Three-store facts, an enabled primary launch action and exact icon containment still need the original populated fixture matrix."
+  },
+  "FullscreenDetailsTests.Detail_sections_wrap_content_and_keep_controller_actions_reachable": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/electron/details-layout.spec.ts",
+        "case": "fullscreen Details at ${width}×${height} and text ${scale}, interface ${uiScale} keeps cinematic identity and reading reachable"
+      }
+    ],
+    "reason": "Production fullscreen has original four sections, BodyFont,28/72 Overview, two screenshots and reading height over100px at1280×720 including140%text/120%interface and at2560×1440. About navigation and focus return pass. The original rich/empty Updates/Journal/Library action graph and every directional-controller target are not fully covered."
+  },
+  "FullscreenDetailsTests.Overview_previews_only_the_latest_saved_note_and_omits_missing_content": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "fullscreen Overview omits missing screenshots, reception and unsaved note copy with saved notes %s"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "fullscreen original Overview shows only the latest saved note and uses separate reading pages"
+      }
+    ],
+    "reason": "Both original notes-present and notes-absent snapshots verify latest-only note preview, no older/empty-journal/reception/screenshot placeholders, the exact missing-description copy, Journal/Latest note headings and the Open journal action selecting Journal. The separate original reading page test also proves complete older notes remain available there."
+  },
+  "FullscreenDetailsTests.Cinematic_details_lease_saved_landscape_across_the_canvas_and_release_on_close": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/electron/details-layout.spec.ts",
+        "case": "fullscreen Details at ${width}×${height} and text ${scale}, interface ${uiScale} keeps cinematic identity and reading reachable"
+      }
+    ],
+    "reason": "Native rendering verifies bounded two-line BodyFont titles, separate fullscreen composition and successful return atsmall/large sizes including combined text/interface scale. Saved versus automatic hero image selection, full-canvas pixel veils and every original image lease/release matrix remain unverified for this new Details composition."
   }
 }

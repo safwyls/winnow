@@ -166,7 +166,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     const card = page.locator('.avalon-cover').filter({ hasText: 'Hades' }).first()
     await expect(card).toBeVisible()
     await card.click({ modifiers: [] })
-    await expect(page.locator('.screen-details')).toBeVisible()
+    await expect(page.locator('.avalon-details')).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(search).toHaveValue('Hades')
     await search.fill('')

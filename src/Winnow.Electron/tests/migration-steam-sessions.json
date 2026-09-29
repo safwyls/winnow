@@ -472,5 +472,45 @@
       }
     ],
     "reason": "The backend HTTP challenge preserves the complete original request. The actual native main coordinator forwards consent, declined refresh permission and nondefault7-click/3-page bounds to that challenge and the capture reader without changing them. Reader safety ceilings remain enforced independently."
+  },
+  "SteamSignInResultRedactionTests.Neither_token_is_rendered_into_a_string": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-auth-integration.test.ts",
+        "case": "Neither_token_is_rendered_into_a_string"
+      }
+    ],
+    "reason": "Exercises the actual Electron signInToSteam completion logging callback. Only fixed outcome, ISO expiry, token-presence flags and UTF-8 page byte counts survive; every JWT segment, refresh token, account identity, provider detail and page contents remain absent. Sink failures do not alter sign-in outcome."
+  },
+  "SteamSignInResultRedactionTests.The_facts_a_log_line_exists_for_survive": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-auth-integration.test.ts",
+        "case": "The_facts_a_log_line_exists_for_survive"
+      }
+    ],
+    "reason": "Exercises the actual Electron signInToSteam completion logging callback. Only fixed outcome, ISO expiry, token-presence flags and UTF-8 page byte counts survive; every JWT segment, refresh token, account identity, provider detail and page contents remain absent. Sink failures do not alter sign-in outcome."
+  },
+  "SteamSignInResultRedactionTests.A_captured_page_set_is_reported_by_size_and_never_by_content": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-auth-integration.test.ts",
+        "case": "A_captured_page_set_is_reported_by_size_and_never_by_content"
+      }
+    ],
+    "reason": "Exercises the actual Electron signInToSteam completion logging callback. Only fixed outcome, ISO expiry, token-presence flags and UTF-8 page byte counts survive; every JWT segment, refresh token, account identity, provider detail and page contents remain absent. Sink failures do not alter sign-in outcome."
+  },
+  "SteamSignInResultRedactionTests.A_sign_in_with_no_refresh_token_says_so_rather_than_implying_one": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-auth-integration.test.ts",
+        "case": "A_sign_in_with_no_refresh_token_says_so_rather_than_implying_one"
+      }
+    ],
+    "reason": "Exercises the actual Electron signInToSteam completion logging callback. Only fixed outcome, ISO expiry, token-presence flags and UTF-8 page byte counts survive; every JWT segment, refresh token, account identity, provider detail and page contents remain absent. Sink failures do not alter sign-in outcome."
   }
 }

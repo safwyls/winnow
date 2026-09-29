@@ -309,6 +309,11 @@
   .merge-undo > span {
     flex: 1;
   }
+  .merge-dock-note {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+  }
   .mode-fullscreen .merge-row {
     min-height: 72px;
   }

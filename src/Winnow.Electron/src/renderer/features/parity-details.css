@@ -17,7 +17,7 @@
   }
   .screenshot-previews { align-items: flex-start; }
   .screenshot-previews > button { flex: 1 1 0; min-width: 0; }
-  .screenshot-previews img { width: 100%; height: auto; max-height: 240px; object-fit: contain; }
+  .screenshot-previews img { width: auto; max-width: 100%; height: auto; max-height: 240px; object-fit: contain; }
   .igdb-candidates {
     max-height: 340px;
     overflow: auto;

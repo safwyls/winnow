@@ -39,10 +39,62 @@ const expected = [
   'https://store.steampowered.com/app/10/',
   'https://store.steampowered.com/news/app/10',
   'https://steamdb.info/app/10/',
+  'https://www.steamgriddb.com/steam/10',
   'https://www.igdb.com/g/1hy',
 ]
 
 describe('game destinations', () => {
+  it.each([
+    [1942, '1hy'],
+    [233, '6h'],
+    [35, 'z'],
+    [36, '10'],
+  ])('uses IGDB identity %s as a numeric short reference', (igdbId, shortId) => {
+    const links = gameLinks(game, {
+      ...workspace,
+      works: [{ id: 1, name: 'A different display title', igdbId: Number(igdbId) }],
+    })
+    expect(links.find((link) => link.label === 'IGDB')?.url).toBe(`https://www.igdb.com/g/${shortId}`)
+  })
+  it.each([null, 0, -1])('omits an invalid IGDB identity: %s', (igdbId) => {
+    expect(
+      gameLinks(game, { ...workspace, works: [{ id: 1, name: 'Unmatched', igdbId }] }).some(
+        (link) => link.label === 'IGDB',
+      ),
+    ).toBe(false)
+  })
+  it('retains deduplicated Steam references when the installed copy is from GOG', () => {
+    const entries = [
+      { ...game.entries[0], store: 'gog', ownershipId: 7, releaseId: 8, installed: true },
+      game.entries[0],
+      { ...game.entries[0], ownershipId: 9 },
+    ]
+    const links = gameLinks({ ...game, entries }, workspace)
+    expect(links.filter((link) => link.label === 'SteamDB')).toEqual([
+      { label: 'SteamDB', url: 'https://steamdb.info/app/10/' },
+    ])
+    expect(links.filter((link) => link.label === 'SteamGridDB')).toEqual([
+      { label: 'SteamGridDB', url: 'https://www.steamgriddb.com/steam/10' },
+    ])
+  })
+  it('offers GOG browse navigation and omits invented Epic destinations', () => {
+    expect(
+      gameLinks(
+        { ...game, entries: [{ ...game.entries[0], store: 'gog' }] },
+        {
+          ...workspace,
+          works: [],
+          externalIds: [{ releaseId: 2, provider: 'gog', providerId: '1971477531' }],
+        },
+      ),
+    ).toEqual([{ label: 'Show in GOG Galaxy', url: 'goggalaxy://opengameview/gog_1971477531' }])
+    expect(
+      gameLinks(
+        { ...game, entries: [{ ...game.entries[0], store: 'epic' }] },
+        { ...workspace, works: [], externalIds: [] },
+      ),
+    ).toEqual([])
+  })
   it('uses the selected game identities and deduplicates copies', () => {
     const links = gameLinks(
       { ...game, entries: [...game.entries, { ...game.entries[0], ownershipId: 4 }] },
@@ -121,6 +173,7 @@ describe('game destinations', () => {
     expect(links).toEqual([
       { label: 'Epic Games store page', url: 'https://store.epicgames.com/en-US/p/test-game' },
       { label: 'GOG store page', url: 'https://www.gog.com/en/game/test_game' },
+      { label: 'Show in GOG Galaxy', url: 'goggalaxy://opengameview/gog_123' },
       { label: 'Latest patch notes', url: 'https://example.com/new' },
     ])
   })
@@ -157,12 +210,12 @@ describe('game destinations', () => {
             storefronts: { 'gog:123': { storeUrl } },
           },
         ),
-      ).toEqual([])
+      ).toEqual([{ label: 'Show in GOG Galaxy', url: 'goggalaxy://opengameview/gog_123' }])
   })
 })
 
 it.each(['desktop', 'fullscreen'] as const)(
-  'routes all five details links without dispatching a game action in %s',
+  'routes all six details links without dispatching a game action in %s',
   async (mode) => {
     const openExternal = vi.fn().mockResolvedValue(undefined)
     const request = vi.fn(async ({ route }: ApiRequest) => ({
@@ -183,7 +236,7 @@ it.each(['desktop', 'fullscreen'] as const)(
       </QueryClientProvider>,
     )
     const links = await screen.findByRole('navigation', { name: 'Game links' })
-    for (const label of ['View in Steam', 'Store page', 'Patch notes', 'SteamDB', 'IGDB'])
+    for (const label of ['View in Steam', 'Store page', 'Patch notes', 'SteamDB', 'SteamGridDB', 'IGDB'])
       fireEvent.click(within(links).getByRole('button', { name: label }))
     await waitFor(() => expect(openExternal.mock.calls.map(([url]) => url)).toEqual(expected))
     expect(request.mock.calls.some(([input]) => input.route === 'actions.execute')).toBe(false)
@@ -191,7 +244,10 @@ it.each(['desktop', 'fullscreen'] as const)(
 )
 
 it('reports failed external navigation and allows retry', async () => {
-  const openExternal = vi.fn().mockRejectedValueOnce(new Error('No handler')).mockResolvedValue({opened:true})
+  const openExternal = vi
+    .fn()
+    .mockRejectedValueOnce(new Error('No handler'))
+    .mockResolvedValue({ opened: true })
   Object.defineProperty(window, 'winnow', { value: { openExternal }, configurable: true })
   render(<GameLinks links={[{ label: 'View in Steam', url: expected[0] }]} />)
   fireEvent.click(screen.getByRole('button', { name: 'View in Steam' }))

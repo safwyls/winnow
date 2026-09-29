@@ -276,12 +276,12 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
   })
 })
 
-it('validates the theme and defaults without replacing host feature screens', () => {
+it('validates the theme and keeps shared Activity and Settings screens', () => {
   expect(validateThemeDefinition(avalon)).toBe(avalon)
   const profile = selectThemeProfile(DEFAULT_PROFILE, 'avalon', avalon)
   expect(resolvedThemeColors(profile).background).toBe('#0F1C1E')
   expect(profile.appearance.accent).toBe('#4DE8C2')
-  expect(avalon.Details).toBeUndefined()
+  expect(avalon.Details).toBeDefined()
   expect(avalon.Journal).toBeUndefined()
   expect(avalon.Settings).toBeUndefined()
 })

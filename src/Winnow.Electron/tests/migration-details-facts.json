@@ -260,103 +260,143 @@
     "reason": "The DOM has an actual dialog role and a position/count accessible name; its changing visible caption is a polite live region. This provides the semantics for which Avalonia required name-based workarounds."
   },
   "GameReceptionViewModelTests.No_rows_means_no_line": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-details-facts.test.tsx",
         "case": "omits reception when rows are absent, have no figure, or have zero respondents"
+      },
+      {
+        "case": "renders attributed reception and lifecycle evidence in the original reading surfaces",
+        "file": "tests/parity-action-controls.test.tsx"
       }
     ],
-    "reason": "The source-equivalent helper and compact/full reception components are tested. Integration into the new Avalon details composition is in progress and must be verified before marking this ported."
+    "reason": "The original population/formatting contracts and their integration into Avalon desktop Overview and fullscreen About are verified, including attributed accessible names."
   },
   "GameReceptionViewModelTests.A_source_with_no_figure_contributes_nothing": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-details-facts.test.tsx",
         "case": "omits reception when rows are absent, have no figure, or have zero respondents"
+      },
+      {
+        "case": "renders attributed reception and lifecycle evidence in the original reading surfaces",
+        "file": "tests/parity-action-controls.test.tsx"
       }
     ],
-    "reason": "The source-equivalent helper and compact/full reception components are tested. Integration into the new Avalon details composition is in progress and must be verified before marking this ported."
+    "reason": "The original population/formatting contracts and their integration into Avalon desktop Overview and fullscreen About are verified, including attributed accessible names."
   },
   "GameReceptionViewModelTests.Every_figure_is_attributed_and_carries_its_count": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-details-facts.test.tsx",
         "case": "orders three attributed populations without blending their figures"
+      },
+      {
+        "case": "renders attributed reception and lifecycle evidence in the original reading surfaces",
+        "file": "tests/parity-action-controls.test.tsx"
       }
     ],
-    "reason": "The source-equivalent helper and compact/full reception components are tested. Integration into the new Avalon details composition is in progress and must be verified before marking this ported."
+    "reason": "The original population/formatting contracts and their integration into Avalon desktop Overview and fullscreen About are verified, including attributed accessible names."
   },
   "GameReceptionViewModelTests.Steams_own_label_is_on_hover_and_not_on_the_line": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-details-facts.test.tsx",
         "case": "orders three attributed populations without blending their figures"
+      },
+      {
+        "case": "renders attributed reception and lifecycle evidence in the original reading surfaces",
+        "file": "tests/parity-action-controls.test.tsx"
       }
     ],
-    "reason": "The source-equivalent helper and compact/full reception components are tested. Integration into the new Avalon details composition is in progress and must be verified before marking this ported."
+    "reason": "The original population/formatting contracts and their integration into Avalon desktop Overview and fullscreen About are verified, including attributed accessible names."
   },
   "GameReceptionViewModelTests.A_count_of_zero_is_no_figure_rather_than_a_score_from_nobody": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-details-facts.test.tsx",
         "case": "omits reception when rows are absent, have no figure, or have zero respondents"
+      },
+      {
+        "case": "renders attributed reception and lifecycle evidence in the original reading surfaces",
+        "file": "tests/parity-action-controls.test.tsx"
       }
     ],
-    "reason": "The source-equivalent helper and compact/full reception components are tested. Integration into the new Avalon details composition is in progress and must be verified before marking this ported."
+    "reason": "The original population/formatting contracts and their integration into Avalon desktop Overview and fullscreen About are verified, including attributed accessible names."
   },
   "GameReceptionViewModelTests.The_three_figures_are_never_blended": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-details-facts.test.tsx",
         "case": "orders three attributed populations without blending their figures"
+      },
+      {
+        "case": "renders attributed reception and lifecycle evidence in the original reading surfaces",
+        "file": "tests/parity-action-controls.test.tsx"
       }
     ],
-    "reason": "The source-equivalent helper and compact/full reception components are tested. Integration into the new Avalon details composition is in progress and must be verified before marking this ported."
+    "reason": "The original population/formatting contracts and their integration into Avalon desktop Overview and fullscreen About are verified, including attributed accessible names."
   },
   "GameRefetchViewModelTests.Nothing_is_said_until_something_is_asked": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-details-facts.test.tsx",
         "case": "stays quiet initially and refreshes snapshots only after a write"
+      },
+      {
+        "case": "keeps refetch outcome %s in the More menu across close and reopen",
+        "file": "tests/parity-action-controls.test.tsx"
       }
     ],
-    "reason": "The new refresh control has source-equivalent outcome, write/refresh and carried-confirmation tests, including numeric API enums. Avalon details integration is in progress."
+    "reason": "Source-equivalent outcome helpers and the actual More control are tested in both Avalon modes. Only the Updated outcome refreshes visible facts, and its confirmation survives menu reconstruction."
   },
   "GameRefetchViewModelTests.Every_outcome_is_a_word": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-details-facts.test.tsx",
         "case": "with no invented percentage and supports the wire enum"
+      },
+      {
+        "case": "keeps refetch outcome %s in the More menu across close and reopen",
+        "file": "tests/parity-action-controls.test.tsx"
       }
     ],
-    "reason": "The new refresh control has source-equivalent outcome, write/refresh and carried-confirmation tests, including numeric API enums. Avalon details integration is in progress."
+    "reason": "Source-equivalent outcome helpers and the actual More control are tested in both Avalon modes. Only the Updated outcome refreshes visible facts, and its confirmation survives menu reconstruction."
   },
   "GameRefetchViewModelTests.Only_a_write_reopens_the_modal_and_carries_its_confirmation": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-details-facts.test.tsx",
         "case": "stays quiet initially and refreshes snapshots only after a write"
+      },
+      {
+        "case": "keeps refetch outcome %s in the More menu across close and reopen",
+        "file": "tests/parity-action-controls.test.tsx"
       }
     ],
-    "reason": "The new refresh control has source-equivalent outcome, write/refresh and carried-confirmation tests, including numeric API enums. Avalon details integration is in progress."
+    "reason": "Source-equivalent outcome helpers and the actual More control are tested in both Avalon modes. Only the Updated outcome refreshes visible facts, and its confirmation survives menu reconstruction."
   },
   "GameRefetchViewModelTests.A_carried_confirmation_is_shown_on_the_reopened_modal": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-details-facts.test.tsx",
         "case": "keeps a carried success visible when refreshed details reconstruct the control"
+      },
+      {
+        "case": "keeps refetch outcome %s in the More menu across close and reopen",
+        "file": "tests/parity-action-controls.test.tsx"
       }
     ],
-    "reason": "The new refresh control has source-equivalent outcome, write/refresh and carried-confirmation tests, including numeric API enums. Avalon details integration is in progress."
+    "reason": "Source-equivalent outcome helpers and the actual More control are tested in both Avalon modes. Only the Updated outcome refreshes visible facts, and its confirmation survives menu reconstruction."
   }
 }

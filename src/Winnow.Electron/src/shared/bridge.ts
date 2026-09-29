@@ -118,6 +118,7 @@ export interface WinnowBridge {
   takeActivations?(): Promise<ApplicationActivation[]>
   onActivation?(callback: (activation: ApplicationActivation) => void): () => void
   openDataFolder?(folder: 'logs' | 'plugins' | 'themes'): Promise<void>
+  openInstallFolder?(ownershipId: number): Promise<void>
   chooseManualExecutable?(): Promise<string | null>
   chooseManualExecutableFacts?(): Promise<import('./executable-facts').ExecutableFacts | null>
   exportAcquisitions?(): Promise<boolean>

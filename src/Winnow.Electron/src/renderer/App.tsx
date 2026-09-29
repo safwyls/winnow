@@ -241,7 +241,11 @@ export function App() {
       previous?.themeId === 'rift' &&
       previous.mode === mode &&
       (previous.page === 'details' || position.page === 'details')
-    if (previous && !portalJourney) {
+    const retainedDetails =
+      runtime.theme.id === 'avalon' && previous?.themeId === 'avalon' &&
+      mode === 'desktop' && previous.mode === mode &&
+      (previous.page === 'details' || position.page === 'details')
+    if (previous && !portalJourney && !retainedDetails) {
       document.getElementById('main-content')?.focus({ preventScroll: true })
       const content = document.getElementById('main-content')
       if (content) content.scrollTop = 0
@@ -357,8 +361,7 @@ export function App() {
       !activation ||
       setupProgress.isPending ||
       setupProgress.isError ||
-      typeof setupProgress.data?.step === 'number' ||
-      setupOpen ||
+      (activation.kind !== 'plugin' && (typeof setupProgress.data?.step === 'number' || setupOpen)) ||
       installRequest ||
       (activation.kind === 'game' && (library.isPending || !workspace.data))
     )
@@ -470,6 +473,7 @@ export function App() {
         </div>
         <Setup
           mode={mode}
+          suspended={!!installRequest}
           onOpenChange={setSetupOpen}
           appearance={
             <label className="field">
@@ -492,7 +496,7 @@ export function App() {
         {!setupOpen && <UpdateStatus />}
         <LinkNotifications />
         <Dialog.Root
-          open={!!installRequest && !setupOpen}
+          open={!!installRequest}
           onOpenChange={(open) => {
             if (!open) setInstallRequest(null)
           }}

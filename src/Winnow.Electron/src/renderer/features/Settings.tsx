@@ -35,7 +35,6 @@ import { NativeEpicAccount } from './EpicAccount'
 import { SteamAccountOperation, useSteamAccountBusy } from './SteamAccountOperation'
 
 export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
-  const [epicBusy, setEpicBusy] = useState(false)
   const [tab, setTab] = useViewState(`${mode}:settings:tab`, 'Connections')
   const stores = useApiQuery<StoreConnections>('connections.get')
   const igdb = useApiQuery<IgdbConnection>('connections.igdb.get')
@@ -43,7 +42,6 @@ export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
   const preferences = useApiQuery<LibraryPreferences>('preferences.library.get')
   const operations = useApiQuery<BackendOperation[]>('operations.get')
   const command = useCommand()
-  const steamState = stores.data ? steamConnectionState(stores.data) : null
   return (
     <section className={`feature-page settings-page mode-${mode}`}>
       <header className="feature-heading">
@@ -71,69 +69,14 @@ export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
       </nav>
       {tab === 'Connections' && (
         <div className="feature-grid">
-          {stores.data && steamState ? (
-            <SteamAccountOperation>
-              <SteamConnectionPanel
-                snapshot={stores.data}
-                busy={command.isPending}
-                error={stores.error}
-                signIn={
-                  <SteamAccount
-                    key={`steam-account:${mode}`}
-                    label={steamState.signInLabel}
-                    showAction={steamState.showSignIn}
-                    sessionPresent={stores.data.steam.hasSession}
-                  />
-                }
-                keyEditor={<SteamKeyForm key={`steam-key:${mode}`} hasKey={stores.data.steam.hasApiKey} />}
-                purchase={
-                  <>
-                    <SteamPageImport />
-                    <SteamCapture />
-                  </>
-                }
-                onSignOut={() => command.mutate({ route: 'connections.steam.signOut' })}
-                onClearKey={() => command.mutate({ route: 'connections.steam.key', body: { key: null } })}
-              />
-            </SteamAccountOperation>
+          {stores.data ? (
+            <>
+              <SteamConnectionCard snapshot={stores.data} mode={mode} error={stores.error} />
+              <EpicConnectionCard snapshot={stores.data} mode={mode} />
+            </>
           ) : (
-            <Notice error={stores.error} message="Loading Steam connection…" />
+            <Notice error={stores.error} message="Loading platform connections…" />
           )}
-          <section className="feature-panel">
-            <h2>Epic Games</h2>
-            <p
-              className="connection-state"
-              data-tone={stores.data?.epic?.isLive ? 'live' : stores.data?.epic ? 'attention' : 'quiet'}
-            >
-              {stores.data?.epic?.isLive
-                ? 'SIGNED IN'
-                : stores.data?.epic
-                  ? 'SESSION EXPIRED'
-                  : 'NOT SIGNED IN'}
-            </p>
-            <p>
-              {stores.data?.epic?.isLive
-                ? `Connected${stores.data.epic.displayName ? ` as ${stores.data.epic.displayName}` : '. Epic did not provide a display name'}.`
-                : stores.data?.epic
-                  ? `Epic sign-in expired${stores.data.epic.displayName ? ` for ${stores.data.epic.displayName}` : ''}. Sign in again to reconnect.`
-                  : 'Installed games are available through the local Epic library.'}
-            </p>
-            {stores.data?.epic ? (
-              <button
-                disabled={command.isPending || epicBusy}
-                onClick={() => command.mutate({ route: 'connections.epic.signOut' })}
-              >
-                Sign out of Epic
-              </button>
-            ) : null}
-            <EpicAccount
-              key={mode}
-              showAction={!stores.data?.epic?.isLive}
-              onBusyChange={setEpicBusy}
-              label={stores.data?.epic ? 'Sign in to Epic again' : 'Connect Epic Games'}
-            />
-            <p className="muted">Existing account connections are shared with other Winnow frontends.</p>
-          </section>
           <section className="feature-panel">
             <h2>IGDB</h2>
             <p>Descriptions, game identity, and artwork from IGDB.</p>
@@ -301,6 +244,96 @@ export function FeedbackHistory() {
       ) : (
         <Empty>You have not dismissed or snoozed any recommendations.</Empty>
       )}
+    </section>
+  )
+}
+
+export function SteamConnectionCard({
+  snapshot,
+  mode = 'desktop',
+  purchase = true,
+  error,
+}: {
+  snapshot: StoreConnections
+  mode?: Mode
+  purchase?: boolean
+  error?: unknown
+}) {
+  const command = useCommand()
+  const state = steamConnectionState(snapshot)
+  useSetupBusy(command.isPending)
+  return (
+    <SteamAccountOperation>
+      <SteamConnectionPanel
+        snapshot={snapshot}
+        busy={command.isPending}
+        error={error || command.error}
+        signIn={
+          <SteamAccount
+            key={mode}
+            label={state.signInLabel}
+            showAction={state.showSignIn}
+            sessionPresent={snapshot.steam.hasSession}
+          />
+        }
+        keyEditor={<SteamKeyForm key={mode} hasKey={snapshot.steam.hasApiKey} />}
+        purchase={
+          purchase ? (
+            <>
+              <SteamPageImport />
+              <SteamCapture />
+            </>
+          ) : null
+        }
+        onSignOut={() => command.mutate({ route: 'connections.steam.signOut' })}
+        onClearKey={() => command.mutate({ route: 'connections.steam.key', body: { key: null } })}
+      />
+    </SteamAccountOperation>
+  )
+}
+
+export function EpicConnectionCard({
+  snapshot,
+  mode = 'desktop',
+}: {
+  snapshot: StoreConnections
+  mode?: Mode
+}) {
+  const command = useCommand()
+  const [epicBusy, setEpicBusy] = useState(false)
+  useSetupBusy(command.isPending || epicBusy)
+  return (
+    <section className="feature-panel" aria-label="Epic connection">
+      <h2>Epic Games</h2>
+      <p
+        className="connection-state"
+        data-tone={snapshot.epic?.isLive ? 'live' : snapshot.epic ? 'attention' : 'quiet'}
+      >
+        {snapshot.epic?.isLive ? 'SIGNED IN' : snapshot.epic ? 'SESSION EXPIRED' : 'NOT SIGNED IN'}
+      </p>
+      <p>
+        {snapshot.epic?.isLive
+          ? `Connected${snapshot.epic.displayName ? ` as ${snapshot.epic.displayName}` : '. Epic did not provide a display name'}.`
+          : snapshot.epic
+            ? `Epic sign-in expired${snapshot.epic.displayName ? ` for ${snapshot.epic.displayName}` : ''}. Sign in again to reconnect.`
+            : 'Installed games are available through the local Epic library.'}
+      </p>
+      {snapshot.epic && (
+        <button
+          disabled={command.isPending || epicBusy}
+          onClick={() => command.mutate({ route: 'connections.epic.signOut' })}
+        >
+          Sign out of Epic
+        </button>
+      )}
+      <EpicAccount
+        key={mode}
+        showAction={!snapshot.epic?.isLive}
+        onBusyChange={setEpicBusy}
+        label={snapshot.epic ? 'Sign in to Epic again' : 'Connect Epic Games'}
+      />
+      <p className="muted">Existing account connections are shared with other Winnow frontends.</p>
+      <Notice error={command.error} />
     </section>
   )
 }

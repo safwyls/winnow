@@ -9,6 +9,7 @@ import {
   type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
+  type ReactNode,
 } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useVirtualizer } from '@tanstack/react-virtual'
@@ -65,6 +66,7 @@ import { revealShelfCover } from './avalon-row-motion'
 import { homePageStart, homeShelfPosition } from './avalon-navigation'
 import { AvalonFullscreenGrid } from './avalon-fullscreen-grid'
 import { useSystemReducedMotion } from '../useSystemReducedMotion'
+import { Details } from '../features/Details'
 
 const destinations = [
   { id: 'discover', label: 'For you', Icon: Compass },
@@ -150,6 +152,10 @@ function Collections({ context }: { context: ThemeContext }) {
 
 export function AvalonShell(context: ThemeContext) {
   const fullscreen = context.mode === 'fullscreen'
+  const detailsModal = !fullscreen && context.page === 'details'
+  const background = useRef<ReactNode>(null)
+  if (!detailsModal) background.current = context.children
+  const shellPage = detailsModal ? (context.previousPage ?? 'library') : context.page
   const appearance = useAvalonAppearance(context.profile, fullscreen, context.profileHydrated)
   const workspace = useWorkspace()
   const facts = useMemo(
@@ -168,16 +174,26 @@ export function AvalonShell(context: ThemeContext) {
       data-reduced-motion={context.profile.appearance.reducedMotion || undefined}
     >
       <header className="avalon-header">
-        <button className="avalon-brand" aria-label="Winnow home" onClick={() => context.setPage('discover')}>
-          <span className="dragon-mark" style={{ maskImage: `url(${dragon})` }} />
-          <strong>WINNOW</strong>
-        </button>
-        {fullscreen && (
+        {fullscreen && context.page === 'details' ? (
+          <button className="avalon-details-return" onClick={context.closeGame}>
+            B · Back to {destinations.find((item) => item.id === context.previousPage)?.label ?? 'Library'}
+          </button>
+        ) : (
+          <button
+            className="avalon-brand"
+            aria-label="Winnow home"
+            onClick={() => context.setPage('discover')}
+          >
+            <span className="dragon-mark" style={{ maskImage: `url(${dragon})` }} />
+            <strong>WINNOW</strong>
+          </button>
+        )}
+        {fullscreen && context.page !== 'details' && (
           <nav className="avalon-navigation" aria-label="Main navigation">
             {destinations.map(({ id, label }) => (
               <button
                 key={id}
-                aria-current={context.page === id ? 'page' : undefined}
+                aria-current={shellPage === id ? 'page' : undefined}
                 onClick={() => context.setPage(id)}
               >
                 {label}
@@ -218,7 +234,7 @@ export function AvalonShell(context: ThemeContext) {
             {destinations.map(({ id, label, Icon }) => (
               <button
                 key={id}
-                aria-current={context.page === id ? 'page' : undefined}
+                aria-current={shellPage === id ? 'page' : undefined}
                 onClick={() => context.setPage(id)}
               >
                 <Icon size={17} />
@@ -226,7 +242,7 @@ export function AvalonShell(context: ThemeContext) {
               </button>
             ))}
           </nav>
-          <Collections context={context} />
+          <Collections context={{ ...context, page: shellPage }} />
           <p className="avalon-rail-note">Your library has unread mail.</p>
         </aside>
       )}
@@ -246,7 +262,10 @@ export function AvalonShell(context: ThemeContext) {
           })
         }}
       >
-        <FactsContext.Provider value={facts}>{context.children}</FactsContext.Provider>
+        <FactsContext.Provider value={facts}>
+          {detailsModal ? background.current : context.children}
+          {detailsModal && context.children}
+        </FactsContext.Provider>
       </main>
       <footer className="avalon-footer">
         <span>
@@ -1269,6 +1288,17 @@ export const avalon: ThemeDefinition = {
   Shell: AvalonShell,
   Discover: AvalonDiscover,
   Library: AvalonLibrary,
+  Details: (context) =>
+    context.selectedWorkId != null ? (
+      <Details
+        presentation="avalon"
+        workId={context.selectedWorkId}
+        mode={context.mode}
+        onClose={context.closeGame}
+      />
+    ) : (
+      <p>Choose a game from your library.</p>
+    ),
   defaults: {
     appearance: {
       palette: 'winnow',

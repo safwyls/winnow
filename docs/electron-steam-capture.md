@@ -83,6 +83,13 @@ A host that cannot encrypt keeps the session for the current backend run and rep
 limitation. Native account mismatches and browser failures return distinct safe outcomes;
 provider exception text never becomes their displayed explanation.
 
+Native sign-in completion writes a bounded diagnostic log in the active backend data
+directory, `logs/electron-steam.log`. Each line contains only the outcome, session expiry,
+whether access and refresh tokens were captured, and captured page byte counts. Tokens,
+account identifiers, provider messages and page contents are excluded before the log sink
+receives a line. One previous file is retained when the current file reaches 512 KiB;
+an unavailable or unwritable log never changes the sign-in result.
+
 Tests execute the capture scripts against the sanitized account-page fixtures in
 `tests/fixtures/steam-account-pages/`, alongside mocked browser navigation, cancellation,
 identity changes and pending reads. These checks do not establish compatibility with the

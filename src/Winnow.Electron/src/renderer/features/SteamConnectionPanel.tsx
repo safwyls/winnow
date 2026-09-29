@@ -149,10 +149,12 @@ export function SteamConnectionPanel({
           accounts; it does not remove ownership or delete games.
         </p>
       </details>
-      <details>
-        <summary>Import purchase history</summary>
-        {purchase}
-      </details>
+      {purchase && (
+        <details>
+          <summary>Import purchase history</summary>
+          {purchase}
+        </details>
+      )}
       <Notice error={error} />
     </section>
   )
