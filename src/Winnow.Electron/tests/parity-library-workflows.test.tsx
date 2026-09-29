@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AvalonDiscover, AvalonLibrary, AvalonShell, avalon } from '../src/renderer/themes/avalon'
-import { useAvalonLists } from '../src/renderer/themes/avalon-list-state'
+import { filterFingerprint, useAvalonLists } from '../src/renderer/themes/avalon-list-state'
 import { useLibrary } from '../src/renderer/api/hooks'
 import { Details } from '../src/renderer/features/Details'
 import { DEFAULT_PROFILE, selectThemeProfile, type ThemeContext } from '../src/shared/theme'
@@ -121,6 +121,7 @@ afterEach(() => {
   for (const origin of ['library', 'details', 'feed', 'test'])
     for (const ids of ['100', '100,200', '300']) clearViewState(`draft:add-list:${origin}:${ids}`)
   clearViewState('draft:list:new')
+  for (const id of [10, 11, 12, 20]) clearViewState(`draft:list:${id}`)
 })
 function Fixture({ mode, origin = 'library' }: { mode: Mode; origin?: string }) {
   const library = useLibrary()
@@ -142,7 +143,14 @@ function Fixture({ mode, origin = 'library' }: { mode: Mode; origin?: string }) 
           blurb: '',
           supportsFeedback: false,
           reserve: [],
-          items: [{ ownershipId: 1, releaseId: 100, title: 'Alpha', reason: 'Ready to play.' }],
+          items: [
+            {
+              ownershipId: 1,
+              releaseId: 100,
+              title: library.data?.games[0]?.title ?? 'Alpha',
+              reason: 'Ready to play.',
+            },
+          ],
         },
       ],
     },
@@ -1063,6 +1071,533 @@ describe.each(['desktop', 'fullscreen'] as const)('list prompts in %s', (mode) =
       releaseIds: [100, 200],
       expectedRevision: 'm1',
     })
+  })
+})
+
+describe.each(['desktop', 'fullscreen'] as const)('original manual list contracts in %s', (mode) => {
+  function source() {
+    current.games = current.games.map((game, index) => ({
+      ...game,
+      title: ['Hades', 'Celeste', 'Tunic'][index],
+      entries: [{ ...game.entries[0], title: ['Hades', 'Celeste', 'Tunic'][index] }],
+    }))
+    current.lists = [
+      { id: 10, name: 'Friday night', isLive: false, releaseIds: [100, 200, 300], revision: 'm1' },
+    ]
+  }
+  const focus = (id: number) =>
+    act(() => document.querySelector<HTMLButtonElement>(`[data-avalon-game="${id}"]`)!.focus())
+
+  it('explains the original empty collection and offers both static and live creation', () => {
+    source()
+    current.lists = []
+    setup(mode)
+    expect(
+      screen.getByText('No lists yet. Choose New list below to create a static or live list.'),
+    ).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'New list…' }))
+    const dialog = screen.getByRole('dialog')
+    expect(
+      within(dialog).getByText('Choose games yourself, or let a live list follow your filters.'),
+    ).toBeTruthy()
+    expect(within(dialog).getByRole('button', { name: 'Create list' })).toBeTruthy()
+    fireEvent.click(within(dialog).getByLabelText('Keep this list up to date with filters'))
+    expect(within(dialog).getByRole('button', { name: 'Create live list' })).toBeTruthy()
+  })
+
+  it('explains empty Details membership when the only list is live', async () => {
+    source()
+    current.lists = [{ ...current.lists[0], name: 'Unplayed', isLive: true, filter: {}, releaseIds: [] }]
+    setup(mode, 'details')
+    expect(await screen.findByText('Create a list in Library tools.')).toBeTruthy()
+    expect(screen.queryAllByRole('checkbox')).toEqual([])
+    expect(screen.getByRole('button', { name: 'Add to list…' })).toBeTruthy()
+  })
+
+  it.each(['feed', 'details'])(
+    'adds only Hades from %s to existing and new lists while preserving Celeste selection and cancellation',
+    async (origin) => {
+      source()
+      current.lists = [
+        { ...current.lists[0], name: 'Friday', releaseIds: [] },
+        { id: 11, name: 'Automatic', isLive: true, releaseIds: [], revision: 'l1', filter: {} },
+      ]
+      handler = (input) => {
+        if (input.route === 'list.member.add') {
+          current.lists[0] = { ...current.lists[0], releaseIds: [100], revision: 'm2' }
+          return ok(current.lists[0])
+        }
+        if (input.route === 'list.create') {
+          const created = { id: 20, name: 'Next up', isLive: false, releaseIds: [100], revision: 'n1' }
+          current.lists.push(created)
+          return ok(created)
+        }
+        return undefined
+      }
+      const view = setup(mode)
+      focus(2)
+      expect(selectedCards()).toEqual([2])
+      view.rerender(
+        <QueryClientProvider client={view.client}>
+          <Fixture mode={mode} origin={origin} />
+        </QueryClientProvider>,
+      )
+      const add = () =>
+        fireEvent.click(
+          screen.getByRole('button', {
+            name: origin === 'feed' && mode === 'desktop' ? 'Add Hades to list…' : 'Add to list…',
+          }),
+        )
+      add()
+      expect(screen.getByRole('heading', { name: 'Add Hades to a list' })).toBeTruthy()
+      expect(
+        within(screen.getByRole('group', { name: 'Existing lists' }))
+          .getAllByRole('button')
+          .map((button) => button.textContent),
+      ).toEqual(['Friday'])
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Friday' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      add()
+      fireEvent.change(screen.getByLabelText('New list name'), { target: { value: 'Next up' } })
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'New list' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      if (origin === 'details')
+        expect(
+          (screen.getByRole('checkbox', { name: 'Remove from Next up' }) as HTMLInputElement).checked,
+        ).toBe(true)
+      else expect(screen.getAllByText('Ready to play.').length).toBeGreaterThan(0)
+      add()
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(
+        view.request.mock.calls
+          .filter(([input]) => input.route.startsWith('list.'))
+          .map(([input]) => [input.route, input.body]),
+      ).toEqual([
+        ['list.member.add', { releaseIds: [100], expectedRevision: 'm1' }],
+        ['list.create', { name: 'Next up', releaseIds: [100] }],
+      ])
+      view.rerender(
+        <QueryClientProvider client={view.client}>
+          <Fixture mode={mode} />
+        </QueryClientProvider>,
+      )
+      expect(selectedCards()).toEqual([2])
+      expect((screen.getByLabelText('My lists') as HTMLSelectElement).value).toBe('all')
+    },
+  )
+
+  it.each([false, true])(
+    'keeps the source collection and both selected games after saving to a destination: create=%s',
+    async (createNew) => {
+      source()
+      current.lists[0].releaseIds = [100, 200]
+      current.lists.push({ id: 11, name: 'Later', isLive: false, releaseIds: [], revision: 'r1' })
+      handler = (input) =>
+        input.route === (createNew ? 'list.create' : 'list.member.add')
+          ? ok({
+              id: createNew ? 20 : 11,
+              name: createNew ? 'New destination' : 'Later',
+              isLive: false,
+              releaseIds: [100, 200],
+              revision: 'r2',
+            })
+          : undefined
+      const view = setup(mode)
+      openList(10)
+      fireEvent.click(document.querySelector('[data-avalon-game="1"]')!, { ctrlKey: true })
+      fireEvent.click(document.querySelector('[data-avalon-game="2"]')!, { ctrlKey: true })
+      const elements = [...document.querySelectorAll('.avalon-library [data-avalon-game]')]
+      fireEvent.click(screen.getByRole('button', { name: 'Add 2 to list…' }))
+      if (createNew) {
+        fireEvent.change(screen.getByLabelText('New list name'), { target: { value: 'New destination' } })
+        fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'New list' }))
+      } else fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Later' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      expect((screen.getByLabelText('My lists') as HTMLSelectElement).value).toBe('10')
+      expect(cards()).toEqual([1, 2])
+      expect(selectedCards()).toEqual([1, 2])
+      for (const [index, element] of elements.entries())
+        expect(document.querySelectorAll('.avalon-library [data-avalon-game]')[index]).toBe(element)
+      expect(
+        view.client
+          .getQueryData<LibraryResponse>(['api', 'library.get'])!
+          .lists.find((list) => list.id === (createNew ? 20 : 11))?.releaseIds,
+      ).toEqual([100, 200])
+    },
+  )
+
+  it('opens the original Hades Celeste Tunic order and disables each move only at its corresponding boundary', () => {
+    source()
+    const view = setup(mode)
+    expect(cards()).toEqual([2, 1, 3])
+    openList(10)
+    expect(cards()).toEqual([1, 2, 3])
+    expect((screen.getByLabelText('Sort') as HTMLSelectElement).value).toBe('list-order')
+    for (const id of [1, 2, 3]) {
+      focus(id)
+      const earlier = screen.getByRole('button', { name: 'Move earlier' }),
+        later = screen.getByRole('button', { name: 'Move later' })
+      expect((earlier as HTMLButtonElement).disabled).toBe(id === 1)
+      expect((later as HTMLButtonElement).disabled).toBe(id === 3)
+      if (id !== 2) fireEvent.click(id === 1 ? earlier : later)
+    }
+    expect(view.request.mock.calls.some(([input]) => input.route === 'list.order')).toBe(false)
+  })
+
+  it('renames with the saved revision, reorders the picker and requires confirmation before deleting only the list', async () => {
+    source()
+    current.lists = [
+      { id: 11, name: 'Zebra', isLive: false, releaseIds: [100], revision: 'z1' },
+      { ...current.lists[0], name: 'Middle', releaseIds: [100] },
+    ]
+    handler = (input) => {
+      if (input.route === 'list.update') {
+        current = {
+          ...current,
+          lists: current.lists.map((list) =>
+            list.id === 10 ? { ...list, name: 'Aardvark', revision: 'm2' } : list,
+          ),
+        }
+        return ok(current.lists.find((list) => list.id === 10))
+      }
+      if (input.route === 'list.delete') {
+        current = { ...current, lists: current.lists.filter((list) => list.id !== 10) }
+        return ok(null)
+      }
+      return undefined
+    }
+    const view = setup(mode)
+    openList(10)
+    fireEvent.click(screen.getByRole('button', { name: 'Manage library' }))
+    const panel = screen.getByRole('heading', { name: 'Middle' }).closest('section')!
+    fireEvent.click(within(panel).getByRole('button', { name: 'Edit' }))
+    expect((within(panel).getByLabelText('List name') as HTMLInputElement).value).toBe('Middle')
+    fireEvent.change(within(panel).getByLabelText('List name'), { target: { value: 'Aardvark' } })
+    fireEvent.click(within(panel).getByRole('button', { name: 'Save list' }))
+    await screen.findByRole('heading', { name: 'Aardvark' })
+    fireEvent.click(within(panel).getByRole('button', { name: 'Delete list…' }))
+    expect(screen.getByRole('dialog', { name: 'Delete Aardvark?' })).toBeTruthy()
+    expect(screen.getByText('Its games will stay in your library.')).toBeTruthy()
+    expect(view.request.mock.calls.some(([input]) => input.route === 'list.delete')).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Keep list' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Close tools' }))
+    expect(
+      within(screen.getByLabelText('My lists'))
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['All games', 'Aardvark', 'Zebra'])
+    expect((screen.getByLabelText('My lists') as HTMLSelectElement).value).toBe('10')
+    fireEvent.click(screen.getByRole('button', { name: 'Manage library' }))
+    const renamed = screen.getByRole('heading', { name: 'Aardvark' }).closest('section')!
+    fireEvent.click(within(renamed).getByRole('button', { name: 'Delete list…' }))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete list' }))
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Aardvark' })).toBeNull())
+    fireEvent.click(screen.getByRole('button', { name: 'Close tools' }))
+    expect(cards()).toEqual([2, 1, 3])
+    expect((screen.getByLabelText('My lists') as HTMLSelectElement).value).toBe('all')
+    expect(
+      view.request.mock.calls
+        .filter(([input]) => ['list.update', 'list.delete'].includes(input.route))
+        .map(([input]) => input.body),
+    ).toEqual([{ name: 'Aardvark', description: null, expectedRevision: 'm1' }, { expectedRevision: 'm2' }])
+  })
+
+  it('retains a manual list when another game arrives and counts only its currently visible member games', async () => {
+    source()
+    current.lists[0].releaseIds = [100, 900]
+    const view = setup(mode)
+    openList(10)
+    expect(cards()).toEqual([1])
+    expect(screen.getByText('1 game')).toBeTruthy()
+    current.games.push({
+      ...current.games[2],
+      workId: 4,
+      title: 'Dead Cells',
+      entries: [
+        { ...current.games[2].entries[0], ownershipId: 4, releaseId: 400, workId: 4, title: 'Dead Cells' },
+      ],
+    })
+    act(() => view.client.setQueryData(['api', 'library.get'], structuredClone(current)))
+    await waitFor(() => expect(screen.getByLabelText('4 → 1')).toBeTruthy())
+    expect(cards()).toEqual([1])
+    expect(screen.getByText('1 game')).toBeTruthy()
+    expect(current.lists[0].releaseIds).toEqual([100, 900])
+    expect(view.request.mock.calls.some(([input]) => input.route.startsWith('list.'))).toBe(false)
+  })
+
+  it('arms add-to-list through keyboard selection and names multiple selections exactly once', () => {
+    source()
+    setup(mode)
+    expect(selectedCards()).toEqual(mode === 'fullscreen' ? [2] : [])
+    const celeste = document.querySelector<HTMLButtonElement>('[data-avalon-game="2"]')!
+    focus(2)
+    fireEvent.keyDown(celeste, { key: 'ArrowRight' })
+    expect(selectedCards()).toHaveLength(1)
+    expect((screen.getByRole('button', { name: 'Add to list…' }) as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.keyDown(document.querySelector('[data-avalon-game="1"]')!, { key: ' ', ctrlKey: true })
+    fireEvent.click(document.querySelector('[data-avalon-game="2"]')!, { ctrlKey: true })
+    expect(selectedCards()).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: 'Add 2 to list…' })).toHaveLength(1)
+  })
+
+  it('shows the original checked and unchecked memberships while excluding live lists in Details', async () => {
+    source()
+    current.lists = [
+      { ...current.lists[0], name: 'Finish these first', releaseIds: [100] },
+      { id: 11, name: 'Couch co-op night', isLive: false, releaseIds: [], revision: 'r1' },
+      { id: 12, name: 'Unplayed', isLive: true, releaseIds: [], filter: {}, revision: 'l1' },
+    ]
+    setup(mode, 'details')
+    expect(
+      ((await screen.findByRole('checkbox', { name: 'Remove from Finish these first' })) as HTMLInputElement)
+        .checked,
+    ).toBe(true)
+    expect(
+      (screen.getByRole('checkbox', { name: 'Add to Couch co-op night' }) as HTMLInputElement).checked,
+    ).toBe(false)
+    expect(screen.queryByRole('checkbox', { name: /Unplayed/ })).toBeNull()
+    expect(screen.getAllByRole('checkbox')).toHaveLength(2)
+  })
+
+  it('ticks and unticks the open game with committed revisions and refreshes the Library count', async () => {
+    source()
+    current.lists[0].releaseIds = []
+    handler = (input) => {
+      if (!['list.member.add', 'list.member.remove'].includes(input.route)) return undefined
+      current.lists[0] = {
+        ...current.lists[0],
+        releaseIds: input.route === 'list.member.add' ? [100] : [],
+        revision: input.route === 'list.member.add' ? 'm2' : 'm3',
+      }
+      return ok(current.lists[0])
+    }
+    const view = setup(mode, 'details')
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Add to Friday night' }))
+    await waitFor(() =>
+      expect(
+        (screen.getByRole('checkbox', { name: 'Remove from Friday night' }) as HTMLInputElement).checked,
+      ).toBe(true),
+    )
+    expect(view.client.getQueryData<LibraryResponse>(['api', 'library.get'])!.lists[0].releaseIds).toEqual([
+      100,
+    ])
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Remove from Friday night' }))
+    await waitFor(() =>
+      expect(
+        (screen.getByRole('checkbox', { name: 'Add to Friday night' }) as HTMLInputElement).checked,
+      ).toBe(false),
+    )
+    expect(view.client.getQueryData<LibraryResponse>(['api', 'library.get'])!.lists[0].releaseIds).toEqual([])
+    expect(
+      view.request.mock.calls
+        .filter(([input]) => input.route.startsWith('list.member.'))
+        .map(([input]) => input.body),
+    ).toEqual([
+      { releaseIds: [100], expectedRevision: 'm1' },
+      { releaseIds: [100], expectedRevision: 'm2' },
+    ])
+    view.rerender(
+      <QueryClientProvider client={view.client}>
+        <Fixture mode={mode} />
+      </QueryClientProvider>,
+    )
+    openList(10)
+    expect(cards()).toEqual([])
+  })
+})
+
+describe.each(['desktop', 'fullscreen'] as const)('original live list contracts in %s', (mode) => {
+  function source() {
+    const workspace = chromeLibrary()
+    current.games = current.games.map((game, index) => ({
+      ...game,
+      title: ['Disco Elysium', 'Hades', 'Tunic'][index],
+      entries: [game.entries[0]],
+    }))
+    current.lists = [
+      { id: 11, name: 'Every RPG', isLive: true, releaseIds: [], filter: { genreIds: [1] }, revision: 'r1' },
+    ]
+    return workspace
+  }
+  it('replaces prior buckets and list genres and leaves only the newly chosen bucket or All games', async () => {
+    source()
+    current.games[0].bucket = 'never_played'
+    current.lists.push({
+      id: 12,
+      name: 'Action',
+      isLive: true,
+      releaseIds: [],
+      filter: { genreIds: [2] },
+      revision: 'a1',
+    })
+    setup(mode)
+    fireEvent.click(screen.getByRole('button', { name: 'Started1' }))
+    expect(cards()).toEqual([2])
+    openList(11)
+    await waitFor(() => expect(cards()).toEqual([1]))
+    expect(screen.queryByRole('button', { name: 'Remove Started filter' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Update Every RPG' })).toBeNull()
+    openList(12)
+    expect(cards()).toEqual([2])
+    expect(screen.queryByRole('button', { name: 'Remove RPG filter' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Remove Action filter' })).toBeTruthy()
+    openList(11)
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search games' }), { target: { value: 'Disco' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Started1' }))
+    expect(cards()).toEqual([2])
+    expect((screen.getByLabelText('My lists') as HTMLSelectElement).value).toBe('all')
+    expect((screen.getByRole('textbox', { name: 'Search games' }) as HTMLInputElement).value).toBe('')
+    expect([...document.querySelectorAll('[data-filter-origin]')].map((chip) => chip.textContent)).toEqual([
+      'Started',
+    ])
+    expect(screen.getByRole('button', { name: 'Started1' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Started1' }).getAttribute('data-filter-rule')).toBeNull()
+    openList(11)
+    fireEvent.click(screen.getByRole('button', { name: 'All games3' }))
+    expect(cards()).toEqual([1, 2, 3])
+    expect(screen.queryByRole('region', { name: 'Current library filters' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'All games3' }).getAttribute('aria-pressed')).toBe('true')
+    expect(document.querySelectorAll('.avalon-buckets [aria-pressed="true"]')).toHaveLength(1)
+    expect(document.querySelectorAll('[data-filter-rule="true"]')).toHaveLength(0)
+  })
+  it('reverts and updates original genre rules by name and discovers a new Pillars of Eternity without writing list members', async () => {
+    const workspace = source(),
+      previous = handler
+    handler = (input) => {
+      if (input.route === 'list.filter') {
+        current = {
+          ...current,
+          lists: [
+            { ...current.lists[0], filter: (input.body as { filter: LibraryFilter }).filter, revision: 'r2' },
+          ],
+        }
+        return ok(current.lists[0])
+      }
+      return previous(input)
+    }
+    const view = setup(mode)
+    openList(11)
+    await waitFor(() => expect(cards()).toEqual([1]))
+    await genre(mode, 'Action')
+    expect(cards()).toEqual([1, 2])
+    expect(screen.getByRole('button', { name: 'Update Every RPG' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Revert Every RPG' }))
+    expect(cards()).toEqual([1])
+    expect(screen.queryByRole('button', { name: 'Update Every RPG' })).toBeNull()
+    await genre(mode, 'Action')
+    fireEvent.click(screen.getByRole('button', { name: 'Update Every RPG' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Update Every RPG' })).toBeNull())
+    expect(
+      view.client.getQueryData<LibraryResponse>(['api', 'library.get'])!.lists[0].filter?.genreIds,
+    ).toEqual([1, 2])
+    openList('all')
+    openList(11)
+    expect(cards()).toEqual([1, 2])
+    const newGame = {
+      ...current.games[0],
+      workId: 4,
+      title: 'Pillars of Eternity',
+      entries: [
+        {
+          ...current.games[0].entries[0],
+          ownershipId: 4,
+          releaseId: 400,
+          workId: 4,
+          title: 'Pillars of Eternity',
+        },
+      ],
+    }
+    current = { ...current, games: [...current.games, newGame] }
+    workspace.releaseFacets.push({ releaseId: 400, facetIds: [1], gameModes: [] })
+    act(() => {
+      view.client.setQueryData(['api', 'library.workspace', undefined], structuredClone(workspace))
+      view.client.setQueryData(['api', 'library.get'], structuredClone(current))
+    })
+    await waitFor(() => expect(cards()).toEqual([1, 2, 4]))
+    expect(screen.getByText('3 games')).toBeTruthy()
+    expect(current.lists[0].releaseIds).toEqual([])
+    expect(
+      view.request.mock.calls
+        .filter(([input]) => input.route.startsWith('list.'))
+        .map(([input]) => input.route),
+    ).toEqual(['list.filter'])
+  })
+  it('suggests the original Started RPG cut, opens its saved rules and restores them after leaving and reopening', async () => {
+    source()
+    const previous = handler
+    handler = (input) => {
+      if (input.route === 'list.live') {
+        const body = input.body as { name: string; filter: LibraryFilter }
+        const saved = {
+          id: 20,
+          name: body.name,
+          isLive: true,
+          releaseIds: [],
+          filter: body.filter,
+          revision: 'new',
+        }
+        current = { ...current, lists: [...current.lists, saved] }
+        return ok(saved)
+      }
+      return previous(input)
+    }
+    const view = setup(mode)
+    fireEvent.click(screen.getByRole('button', { name: 'Started2' }))
+    await genre(mode, 'RPG')
+    fireEvent.click(screen.getByRole('button', { name: 'Save filters as a live list…' }))
+    expect(screen.getByRole('dialog', { name: 'Name this live list' })).toBeTruthy()
+    expect((screen.getByLabelText('List name') as HTMLInputElement).value).toBe('Started · RPG')
+    fireEvent.change(screen.getByLabelText('List name'), { target: { value: 'Unfinished RPGs' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create live list' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect((screen.getByLabelText('My lists') as HTMLSelectElement).value).toBe('20')
+    expect(cards()).toEqual([1])
+    expect(screen.queryByRole('button', { name: 'Update Unfinished RPGs' })).toBeNull()
+    const body = view.request.mock.calls.find(([input]) => input.route === 'list.live')![0].body as {
+      name: string
+      filter: LibraryFilter
+    }
+    expect(body.name).toBe('Unfinished RPGs')
+    expect(filterFingerprint(body.filter)).toBe('{"buckets":["bounced"],"genreIds":[1]}')
+    openList('all')
+    expect(cards()).toEqual([1, 2, 3])
+    openList(20)
+    expect(cards()).toEqual([1])
+    expect(screen.getByRole('button', { name: 'Remove RPG filter' }).getAttribute('data-filter-origin')).toBe(
+      'list',
+    )
+    expect(screen.getByRole('button', { name: 'Started2' }).getAttribute('data-filter-rule')).toBe('true')
+    expect(screen.queryByRole('button', { name: 'Update Unfinished RPGs' })).toBeNull()
+  })
+  it('retains a live cut behind Home without marking both Home and its Library collection selected', async () => {
+    source()
+    const view = setup(mode)
+    openList(11)
+    await waitFor(() => expect(cards()).toEqual([1]))
+    view.rerender(
+      <QueryClientProvider client={view.client}>
+        <Fixture mode={mode} origin="feed" />
+      </QueryClientProvider>,
+    )
+    expect(
+      screen.getByRole('navigation', { name: 'Main navigation' }).querySelector('[aria-current="page"]')
+        ?.textContent,
+    ).toBe('For you')
+    const hiddenPicker = screen.queryByLabelText('My lists') as HTMLSelectElement | null
+    if (hiddenPicker) expect(hiddenPicker.value).toBe('all')
+    view.rerender(
+      <QueryClientProvider client={view.client}>
+        <Fixture mode={mode} />
+      </QueryClientProvider>,
+    )
+    expect((screen.getByLabelText('My lists') as HTMLSelectElement).value).toBe('11')
+    expect(cards()).toEqual([1])
+    expect(
+      screen.getByRole('navigation', { name: 'Main navigation' }).querySelector('[aria-current="page"]')
+        ?.textContent,
+    ).toContain('Library')
   })
 })
 

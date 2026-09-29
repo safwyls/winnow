@@ -23,7 +23,7 @@ import { SteamReportedActivity } from './activity-steam'
 import { ActivityTimeline } from './activity-timeline'
 import { ListMembershipChoice } from './parity-list-membership'
 import { ArtworkBrowser as ArtworkEditor } from './artwork-browser'
-import { AddToListButton } from './parity-list-prompt'
+import { AddToListButton, orderedLists } from './parity-list-prompt'
 import { DetailsRelationships } from './parity-details-identity'
 import { AvalonDetailsLayout } from './details-layout'
 import { noActionSentence } from '../../shared/game-actions'
@@ -538,17 +538,15 @@ export function HideGame({
 export function ListMembership({ workId, mode }: { workId: number; mode: Mode }) {
   const library = useLibrary()
   const game = library.data?.games.find((item) => item.workId === workId)
+  const lists = orderedLists(library.data?.lists ?? []).filter((list) => !list.isLive)
   return (
     <section className="feature-panel">
       <h2>In your lists</h2>
       {game && <AddToListButton games={[game]} mode={mode} origin="details" />}
-      {!library.data?.lists.length ? (
+      {!lists.length ? (
         <p className="muted">Create a list in Library tools.</p>
       ) : (
-        game &&
-        library.data.lists
-          .filter((list) => !list.isLive)
-          .map((list) => <ListMembershipChoice key={list.id} list={list} game={game} />)
+        game && lists.map((list) => <ListMembershipChoice key={list.id} list={list} game={game} />)
       )}
     </section>
   )

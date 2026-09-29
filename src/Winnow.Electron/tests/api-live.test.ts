@@ -1,8 +1,9 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { DatabaseSync } from 'node:sqlite'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { librarySchema, feedSchema, workspaceSchema } from '../src/renderer/api/hooks'
-import type { ActivityPage, JournalResponse, ManualGame, Metadata } from '../src/renderer/api/types'
+import type { ActivityPage, GameList, JournalResponse, ManualGame, Metadata } from '../src/renderer/api/types'
 import { createClientId } from '../src/renderer/api/client'
 import { journalPeriod } from '../src/renderer/api/journalPeriod'
 
@@ -100,6 +101,163 @@ describe.skipIf(!dataDir)('live frontend API on an explicitly supplied test libr
       )
     } finally {
       await api(`lists/${created.id}`, 'DELETE', { expectedRevision: revision }, 204)
+    }
+  })
+
+  it('persists the original manual list order, duplicate-add no-op, move and removal across fresh reads', async () => {
+    const entries: ManualGame[] = []
+    let list: GameList | undefined
+    try {
+      for (const title of ['Hades', 'Celeste', 'Tunic'])
+        entries.push(await api<ManualGame>('manual-games', 'POST', { title }))
+      const [hades, celeste, tunic] = entries.map((entry) => entry.releaseId)
+      list = await api<GameList>('lists', 'POST', {
+        name: 'Friday night',
+        releaseIds: [hades, celeste, tunic],
+      })
+      expect(list.releaseIds).toEqual([hades, celeste, tunic])
+      list = await api<GameList>(`lists/${list.id}/members`, 'POST', {
+        releaseIds: [hades],
+        expectedRevision: list.revision,
+      })
+      expect(list.releaseIds).toEqual([hades, celeste, tunic])
+      list = await api<GameList>(`lists/${list.id}/order`, 'PUT', {
+        releaseIds: [hades, tunic, celeste],
+        expectedRevision: list.revision,
+      })
+      list = await api<GameList>(`lists/${list.id}/members`, 'DELETE', {
+        releaseIds: [celeste],
+        expectedRevision: list.revision,
+      })
+      expect(list.releaseIds).toEqual([hades, tunic])
+      const reloaded = librarySchema.parse(await api('library'))
+      expect(reloaded.lists.find((saved) => saved.id === list!.id)?.releaseIds).toEqual([hades, tunic])
+      entries.push(await api<ManualGame>('manual-games', 'POST', { title: 'Dead Cells' }))
+      const expanded = librarySchema.parse(await api('library'))
+      expect(expanded.games.some((game) => game.workId === entries[3].workId)).toBe(true)
+      expect(expanded.lists.find((saved) => saved.id === list!.id)?.releaseIds).toEqual([hades, tunic])
+    } finally {
+      if (list) await api(`lists/${list.id}`, 'DELETE', { expectedRevision: list.revision }, 204)
+      for (const entry of entries) await api(`manual-games/${entry.ownershipId}`, 'DELETE', undefined, 204)
+    }
+  })
+
+  it('starts a footer list empty, persists membership ticks and deletes only the list after rename', async () => {
+    const entry = await api<ManualGame>('manual-games', 'POST', { title: 'Hades' })
+    let list: GameList | undefined
+    try {
+      list = await api<GameList>('lists', 'POST', { name: 'Friday night', releaseIds: [] })
+      expect(list.isLive).toBe(false)
+      expect(list.releaseIds).toEqual([])
+      list = await api<GameList>(`lists/${list.id}/members`, 'POST', {
+        releaseIds: [entry.releaseId],
+        expectedRevision: list.revision,
+      })
+      expect(
+        librarySchema.parse(await api('library')).lists.find((saved) => saved.id === list!.id)?.releaseIds,
+      ).toEqual([entry.releaseId])
+      list = await api<GameList>(`lists/${list.id}/members`, 'DELETE', {
+        releaseIds: [entry.releaseId],
+        expectedRevision: list.revision,
+      })
+      expect(
+        librarySchema.parse(await api('library')).lists.find((saved) => saved.id === list!.id)?.releaseIds,
+      ).toEqual([])
+      list = await api<GameList>(`lists/${list.id}`, 'PUT', {
+        name: 'Couch co-op night',
+        expectedRevision: list.revision,
+      })
+      expect(
+        librarySchema.parse(await api('library')).lists.find((saved) => saved.id === list!.id)?.name,
+      ).toBe('Couch co-op night')
+      const deletedId = list.id
+      await api(`lists/${list.id}`, 'DELETE', { expectedRevision: list.revision }, 204)
+      list = undefined
+      const reloaded = librarySchema.parse(await api('library'))
+      expect(reloaded.lists.some((saved) => saved.id === deletedId)).toBe(false)
+      expect(reloaded.games.some((game) => game.workId === entry.workId)).toBe(true)
+    } finally {
+      if (list) await api(`lists/${list.id}`, 'DELETE', { expectedRevision: list.revision }, 204)
+      await api(`manual-games/${entry.ownershipId}`, 'DELETE', undefined, 204)
+    }
+  })
+
+  it('persists live rules independently of a later matching title and accepts a revision-checked replacement cut', async () => {
+    const entries: ManualGame[] = []
+    let list: GameList | undefined
+    const filter = { stores: ['manual'], search: 'Hades', installed: false }
+    try {
+      entries.push(await api<ManualGame>('manual-games', 'POST', { title: 'Hades' }))
+      list = await api<GameList>('lists/live', 'POST', { name: 'My Hades games', filter })
+      expect(list.isLive).toBe(true)
+      expect(list.filter).toMatchObject(filter)
+      entries.push(await api<ManualGame>('manual-games', 'POST', { title: 'Hades II' }))
+      const reloaded = librarySchema.parse(await api('library'))
+      expect(reloaded.lists.find((saved) => saved.id === list!.id)?.filter).toMatchObject(filter)
+      expect(
+        reloaded.games.filter((game) => entries.some((entry) => entry.workId === game.workId)),
+      ).toHaveLength(2)
+      list = await api<GameList>(`lists/${list.id}/filter`, 'PUT', {
+        filter: { stores: ['manual'], search: 'Hades II' },
+        expectedRevision: list.revision,
+      })
+      expect(
+        librarySchema.parse(await api('library')).lists.find((saved) => saved.id === list!.id)?.filter,
+      ).toMatchObject({ stores: ['manual'], search: 'Hades II' })
+    } finally {
+      if (list) await api(`lists/${list.id}`, 'DELETE', { expectedRevision: list.revision }, 204)
+      for (const entry of entries) await api(`manual-games/${entry.ownershipId}`, 'DELETE', undefined, 204)
+    }
+  })
+  it('excludes the original Hades Soundtrack from visible membership while retaining both stored list entries', async () => {
+    const entries: ManualGame[] = []
+    let list: GameList | undefined
+    try {
+      for (const title of ['Hades', 'Hades Soundtrack'])
+        entries.push(await api<ManualGame>('manual-games', 'POST', { title }))
+      const database = new DatabaseSync(join(dataDir!, 'winnow.db'))
+      try {
+        database.prepare('UPDATE works SET steam_app_type = ? WHERE id = ?').run('music', entries[1].workId)
+      } finally {
+        database.close()
+      }
+      list = await api<GameList>('lists', 'POST', {
+        name: 'Friday night',
+        releaseIds: entries.map((entry) => entry.releaseId),
+      })
+      const reloaded = librarySchema.parse(await api('library'))
+      const stored = reloaded.lists.find((saved) => saved.id === list!.id)!
+      expect(stored.releaseIds).toHaveLength(2)
+      expect(
+        reloaded.games
+          .filter((game) => game.entries.some((entry) => stored.releaseIds.includes(entry.releaseId)))
+          .map((game) => game.title),
+      ).toEqual(['Hades'])
+    } finally {
+      if (list) await api(`lists/${list.id}`, 'DELETE', { expectedRevision: list.revision }, 204)
+      for (const entry of entries) await api(`manual-games/${entry.ownershipId}`, 'DELETE', undefined, 204)
+    }
+  })
+  it('persists the original Aardvark and Zebra names after renaming Middle', async () => {
+    const entry = await api<ManualGame>('manual-games', 'POST', { title: 'Hades' })
+    const saved: GameList[] = []
+    try {
+      for (const name of ['Zebra', 'Middle'])
+        saved.push(await api<GameList>('lists', 'POST', { name, releaseIds: [entry.releaseId] }))
+      saved[1] = await api<GameList>(`lists/${saved[1].id}`, 'PUT', {
+        name: 'Aardvark',
+        expectedRevision: saved[1].revision,
+      })
+      expect(
+        librarySchema
+          .parse(await api('library'))
+          .lists.filter((list) => saved.some((value) => value.id === list.id))
+          .map((list) => list.name),
+      ).toEqual(expect.arrayContaining(['Aardvark', 'Zebra']))
+    } finally {
+      for (const list of saved)
+        await api(`lists/${list.id}`, 'DELETE', { expectedRevision: list.revision }, 204)
+      await api(`manual-games/${entry.ownershipId}`, 'DELETE', undefined, 204)
     }
   })
   it('accepts frontend string IDs for an Epic challenge and cancels without authenticating an account', async () => {

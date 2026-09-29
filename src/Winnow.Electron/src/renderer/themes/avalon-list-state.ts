@@ -121,6 +121,7 @@ export function useAvalonLists(mode: Mode, lists: GameList[], ready = true, defa
     }
   }, [list?.revision, base?.revision, dirty, ready, listId])
   return {
+    lists,
     query,
     setQuery,
     bucket,

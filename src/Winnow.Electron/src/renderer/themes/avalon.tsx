@@ -33,7 +33,7 @@ import { useLibrary, useWorkspace } from '../api/hooks'
 import { request, storeLabel } from '../api/client'
 import { bucketLabel } from '../components/primitives'
 import { CreateListButton, LibraryTools } from '../features/LibraryTools'
-import { AddToListButton } from '../features/parity-list-prompt'
+import { AddToListButton, orderedLists } from '../features/parity-list-prompt'
 import { LiveListActions } from '../features/parity-live-actions'
 import { ListOrderActions } from '../features/parity-list-actions'
 import { libraryDefaultSort, useAvalonLists } from './avalon-list-state'
@@ -52,6 +52,7 @@ import {
   LibraryColumnHeaders,
   LibraryCutBar,
   libraryBucketLabel,
+  libraryCutChips,
   libraryIdle,
   libraryPlaytime,
   reflectedDensity,
@@ -149,7 +150,7 @@ function Collections({ context }: { context: ThemeContext }) {
           }}
         >
           <option value="all">All games</option>
-          {library.data?.lists.map((list) => (
+          {orderedLists(library.data?.lists ?? []).map((list) => (
             <option value={list.id} key={list.id}>
               {list.name}
               {list.isLive ? ' · Live' : ''}
@@ -161,7 +162,7 @@ function Collections({ context }: { context: ThemeContext }) {
         <button onClick={() => selectList('all')}>Close list</button>
       )}
       {!library.data?.lists.length && (
-        <p className="muted">No lists yet. Make one to keep a few games together.</p>
+        <p className="muted">No lists yet. Choose New list below to create a static or live list.</p>
       )}
       <CreateListButton mode={context.mode} />
     </div>
@@ -1118,7 +1119,21 @@ export function AvalonLibrary(context: ThemeContext) {
                 facts={facts}
                 workspace={workspace.data as AvalonWorkspace | undefined}
               >
-                <LiveListActions state={listState} mode={context.mode} compact />
+                <LiveListActions
+                  state={listState}
+                  mode={context.mode}
+                  compact
+                  nameSuggestion={libraryCutChips(
+                    listState,
+                    libraryGames,
+                    facts,
+                    workspace.data as AvalonWorkspace | undefined,
+                  )
+                    .filter((chip) => chip.origin !== 'context')
+                    .map((chip) => chip.label)
+                    .join(' · ')
+                    .slice(0, 200)}
+                />
               </LibraryCutBar>
               {listState.list && !listState.list.isLive && (
                 <ListOrderActions

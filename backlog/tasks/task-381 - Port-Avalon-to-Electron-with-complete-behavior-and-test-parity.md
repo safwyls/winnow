@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-29 19:36'
+updated_date: '2026-09-29 19:56'
 labels: []
 dependencies: []
 priority: high
@@ -82,6 +82,8 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 28. Audit all original ListsViewModel contracts. Add production HTTP persistence cases for original Hades/Celeste/Tunic manual-list order, deduplication, rename/delete, changing library membership and live rules. Pair these with desktop/fullscreen renderer assertions for targets, selection retention, counts, move boundaries, checked memberships and saved-rule navigation before upgrading existing partial mappings.
 
 29. Restore live-list creation from the cut bar: suggest a name from visible rules, publish the committed list, open its saved rules without inheriting the prior manual context, and verify reopening and Home/Library navigation on both surfaces. Keep the original source methods partial until their complete assertions have replacement evidence.
+
+30. Restore desktop collection presentation against RailListControlsTests and design-system section12: separate collapsible manual/live rows with projected counts, one active marker and same-row toggling; reopen the inline desktop filter panel with a live list and preserve it on exit. Verify the fullscreen source separately: its list-selection action returns to Browse and does not open a filter page automatically. Keep fullscreen presentation and controller behavior source-specific while updating the shared list tests and native navigation helpers.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -138,4 +140,6 @@ Final checkpoint-eleven/twelve component and live-backend repeat: all2490 cases 
 Checkpoint thirteen completes all24 LibraryGrain source methods: whole-pixel desktop wall and exact extents, linked-member Home/Activity navigation, one-game list counts and secondary-release list order. Full component/live-backend2509/127 passes with no skips. Full native139 test cases pass, but worker teardown exceeds60s and the command fails; strict spine and Library close assertions themselves pass. Open cleanup failure is recorded, not waived. Desktop/fullscreen screenshots inspected. Inventory861ported540retained13framework,859pending162partial; all AC remain unchecked. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-thirteen.md.
 
 Checkpoint fourteen restores source art alpha bytes, independent contrast matrices and consistent fresh/legacy Avalon palette resolution. Full component/live-backend2571/128 passes without skips; build/typecheck and150focusedtheme cases pass. Shared strict native cleanup catches orphaned Windows wrapper children. Direct inspector quit still failed2/44; queued native quit plus normal window-close waiting passed66repeated cases and the full139native suite with clean worker completion in5.5m, unchanged5sdeadline. No production quit change. Inventory880ported540retained13framework,843pending159partial. Evidence: checkpoint-fourteen.md. All AC remain unchecked; continuing original list flows.
+
+Checkpoint fifteen closes32/34original ListsViewModel methods with original named fixtures, both-mode renderer contracts and production HTTP/native persistence. Fixed empty manual-membership guidance, alphabetical list presentation after refresh, suggested live-list names and navigation after committed publication. Full component/live-backend2608/128 passes without skips; full native145passes with clean worker completion in5.9m; build/typecheck pass. Refined test-only queued quit to one debugger request after a post-quit timeout;30repeated native cases also pass with unchanged5sdeadline. Desktop/fullscreen captures inspected. Inventory911ported540retained13framework,831pending140partial. Automatic desktop filter opening and actual same-row toggle remain partial and drive plan30; fullscreen source returns to Browse without auto-opening filters. Evidence: checkpoint-fifteen.md. All AC stay unchecked.
 <!-- SECTION:NOTES:END -->

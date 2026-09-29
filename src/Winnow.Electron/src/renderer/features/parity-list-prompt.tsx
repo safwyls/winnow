@@ -7,6 +7,10 @@ import type { GameList, LibraryGame, LibraryResponse, Mode } from '../api/types'
 import { useViewState } from '../viewState'
 import { Notice } from './shared'
 
+export function orderedLists(lists: readonly GameList[]) {
+  return [...lists].sort((a, b) => a.name.localeCompare(b.name))
+}
+
 export async function cacheSavedList(client: ReturnType<typeof useQueryClient>, list: GameList) {
   if (!list || !Number.isFinite(list.id) || !list.revision || !Array.isArray(list.releaseIds))
     throw new Error('The saved list could not be checked.')
@@ -16,9 +20,7 @@ export async function cacheSavedList(client: ReturnType<typeof useQueryClient>, 
     (previous) =>
       previous && {
         ...previous,
-        lists: [...previous.lists.filter((item) => item.id !== list.id), list].sort((a, b) =>
-          a.name.localeCompare(b.name),
-        ),
+        lists: orderedLists([...previous.lists.filter((item) => item.id !== list.id), list]),
       },
   )
 }
@@ -86,9 +88,7 @@ function ListPrompt({
     }
   }, [])
   const update = (value: Partial<typeof draft>) => setDraft((previous) => ({ ...previous, ...value }))
-  const lists = (library.data?.lists ?? [])
-    .filter((list) => !list.isLive)
-    .sort((a, b) => a.name.localeCompare(b.name))
+  const lists = orderedLists(library.data?.lists ?? []).filter((list) => !list.isLive)
   async function save(list?: GameList) {
     if (sending.current || draft.busy || draft.uncertain || (!list && !draft.name.trim())) return
     sending.current = true

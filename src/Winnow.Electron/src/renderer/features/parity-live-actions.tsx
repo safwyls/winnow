@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useQueryClient } from '@tanstack/react-query'
 import { ApiError, request } from '../api/client'
@@ -13,10 +13,12 @@ export function LiveListActions({
   state,
   mode,
   compact = false,
+  nameSuggestion = '',
 }: {
   state: ReturnType<typeof useAvalonLists>
   mode: Mode
   compact?: boolean
+  nameSuggestion?: string
 }) {
   const [open, setOpen] = useState(false),
     [busy, setBusy] = useState(false),
@@ -25,7 +27,16 @@ export function LiveListActions({
   const writing = useRef(false),
     client = useQueryClient()
   const [creating, setCreating] = useState(false)
+  const [created, setCreated] = useState<GameList | null>(null)
   const { list, base, dirty, filter } = state
+  useEffect(() => {
+    // Navigation uses the published collection, so a queued older library read
+    // cannot immediately clear the newly saved list as missing.
+    if (!created || !state.lists.some((list) => list.id === created.id)) return
+    state.selectList(String(created.id))
+    setCreated(null)
+    setOpen(false)
+  }, [created, state])
   async function save() {
     if (!list?.isLive || !base || writing.current || blocked) return
     writing.current = true
@@ -127,12 +138,16 @@ export function LiveListActions({
             }}
             onPointerDownOutside={(event) => event.preventDefault()}
           >
-            <Dialog.Title>Save this view</Dialog.Title>
+            <Dialog.Title>Name this live list</Dialog.Title>
             <Dialog.Description>A live list keeps finding games that match these rules.</Dialog.Description>
             <CreateList
               draftKey={`draft:list:filters:${mode}`}
               initialFilter={filter}
-              onCreated={() => setOpen(false)}
+              initialName={nameSuggestion}
+              onCreated={async (saved) => {
+                await cacheSavedList(client, saved)
+                setCreated(saved)
+              }}
               onPendingChange={setCreating}
             />
             <Dialog.Close asChild>

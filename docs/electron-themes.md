@@ -82,6 +82,15 @@ control, and Down returns to the same column. LT/RT and Page Up/Down move two ro
 the footer shows the visible row range. Details returns to the retained query and result,
 and Back restores the page that opened Search.
 
+Both Library presentations keep manual lists in their stored order, with bounded move
+actions and removal that keeps the game in the library. List names stay alphabetical
+after refresh and rename. Adding from a cover, Home or Details targets those games while
+retaining the current collection and selection. Saving a live cut suggests a name from
+its rules and opens the committed list once Library has received it. Reopening restores
+the saved rules; leaving a live list removes its contributed rules, while leaving a
+manual list keeps the user's filters. Details offers membership ticks for manual lists
+and explains the empty state when only live lists exist.
+
 Avalon opens desktop game Details as a modal over the retained library, with an 82×123
 cover and five sections: Overview, Activity, Updates, Journal and Library. The bounded
 reading area retains each section's scroll position while its header stays fixed. Closing

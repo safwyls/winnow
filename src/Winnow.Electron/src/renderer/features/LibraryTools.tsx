@@ -10,6 +10,7 @@ import { useInlineEditorFocus } from './parity-library-focus'
 import { ManualGames } from './ManualGames'
 export { ManualEditor } from './ManualEditor'
 import { ConfirmationDialog } from './ConfirmationDialog'
+import { orderedLists } from './parity-list-prompt'
 
 export function LibraryTools({
   mode = 'desktop',
@@ -42,7 +43,7 @@ export function LibraryTools({
       {tab === 'Lists' && (
         <div className="feature-grid">
           <CreateList />
-          {library.data?.lists.map((list) => (
+          {orderedLists(library.data?.lists ?? []).map((list) => (
             <ListEditor key={list.id} list={list} />
           ))}
         </div>
@@ -110,16 +111,18 @@ export function CreateListButton({ mode }: { mode: Mode }) {
 export function CreateList({
   draftKey = 'draft:list:new',
   initialFilter,
+  initialName = '',
   onCreated,
   onPendingChange,
 }: {
   draftKey?: string
   initialFilter?: LibraryFilter
-  onCreated?: (list: GameList) => void
+  initialName?: string
+  onCreated?: (list: GameList) => void | Promise<void>
   onPendingChange?: (busy: boolean) => void
 } = {}) {
   const empty = {
-    name: '',
+    name: initialName,
     live: Boolean(initialFilter),
     filter: initialFilter ?? ({} as LibraryFilter),
     sending: false,
@@ -163,9 +166,9 @@ export function CreateList({
             }
           : { name, releaseIds: [] },
       })
+      if (active.current) await onCreated?.(saved as GameList)
       setDraft(empty)
       clearViewState(draftKey)
-      if (active.current) onCreated?.(saved as GameList)
     } catch (error) {
       update({
         sending: false,
@@ -414,18 +417,29 @@ function ListEditor({ list }: { list: GameList }) {
         </form>
       )}
       <ConfirmationDialog
-        open={confirm} onOpenChange={setConfirm}
-        trigger={<button disabled={draft?.sending} className="text-button">Delete list…</button>}
-        title={`Delete ${list.name}?`} description="Its games will stay in your library."
-        confirmLabel="Delete list" cancelLabel="Keep list"
-        pending={Boolean(draft?.sending) || command.isPending} error={command.error}
+        open={confirm}
+        onOpenChange={setConfirm}
+        trigger={
+          <button disabled={draft?.sending} className="text-button">
+            Delete list…
+          </button>
+        }
+        title={`Delete ${list.name}?`}
+        description="Its games will stay in your library."
+        confirmLabel="Delete list"
+        cancelLabel="Keep list"
+        pending={Boolean(draft?.sending) || command.isPending}
+        error={command.error}
         onConfirm={() =>
-              command.mutate({
-                route: 'list.delete',
-                params: { listId: list.id },
-                body: { expectedRevision: list.revision },
-              }, { onSuccess: () => setConfirm(false) })
-            }
+          command.mutate(
+            {
+              route: 'list.delete',
+              params: { listId: list.id },
+              body: { expectedRevision: list.revision },
+            },
+            { onSuccess: () => setConfirm(false) },
+          )
+        }
       />
       {!confirm && <Notice error={command.error} />}
     </section>

@@ -51,15 +51,19 @@ export async function closeFixture(application: ElectronApplication | undefined,
             window.on('close', () => console.error('FIXTURE_SHUTDOWN:window-close'))
             window.on('closed', () => console.error('FIXTURE_SHUTDOWN:window-closed'))
             window.on('unresponsive', () => console.error('FIXTURE_SHUTDOWN:unresponsive'))
-            window.webContents.on('will-prevent-unload', () => console.error('FIXTURE_SHUTDOWN:prevent-unload'))
+            window.webContents.on('will-prevent-unload', () =>
+              console.error('FIXTURE_SHUTDOWN:prevent-unload'),
+            )
+          }
+          // Playwright invokes quit from an inspector evaluation and then detaches.
+          // Defer the native call so it runs outside that evaluation without a
+          // second debugger request after the application's quit event.
+          const quit = app.quit.bind(app)
+          app.quit = () => {
+            setImmediate(quit)
           }
           return process.pid
         })
-        // Queue native quit outside the inspector evaluation, then let Playwright
-        // release its debugger after every window has completed normal teardown.
-        const windowsClosed = Promise.all(application.windows().map(window => window.waitForEvent('close')))
-        await application.evaluate(({ app }) => { setImmediate(() => app.quit()) })
-        await windowsClosed
         await application.close()
         if (child.exitCode === null && child.signalCode === null)
           await new Promise<void>((done) => child.once('exit', () => done()))
