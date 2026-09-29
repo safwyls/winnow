@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { resolvedThemeColors, type ThemeProfile } from '../../shared/theme'
+import { avalonPaletteId, resolvedThemeColors, type ThemeProfile } from '../../shared/theme'
 import type { WindowAppearanceResult } from '../../shared/windowAppearance'
 import { usePresentationPreferences } from '../features/SettingsPreferences'
 import { avalonPalette, type AvalonPalette } from './avalon-palettes'
@@ -12,7 +12,7 @@ import {
 } from './avalon-translucency'
 
 function paletteForProfile(profile: ThemeProfile): AvalonPalette {
-  const id = String(profile.settings.avalon?.palette ?? 'winnow')
+  const id = avalonPaletteId(profile)
   const original = avalonPalette(id)
   if (original) return original
   const colors = resolvedThemeColors(profile)

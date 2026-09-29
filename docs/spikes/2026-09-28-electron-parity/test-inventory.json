@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 859,
-    "partial": 162,
-    "ported": 861,
+    "pending": 843,
+    "partial": 159,
+    "ported": 880,
     "retained-backend": 540,
     "framework-specific": 13
   },
@@ -17188,22 +17188,50 @@
     {
       "id": "ThemeContrastTests.Flare_is_spent_on_nothing_else",
       "source": "tests/Winnow.Tests/ThemeContrastTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-theme-contrast.test.ts",
+          "case": "reserves Flare for unread updates with the original danger and selection hue separation"
+        }
+      ],
+      "reason": "All four calibrated palettes preserve unique Flare, at least 24 degrees from Danger and 60 from selection."
     },
     {
       "id": "ThemeContrastTests.The_tile_stays_opaque_whatever_the_field_does",
       "source": "tests/Winnow.Tests/ThemeContrastTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-theme-contrast.test.ts",
+          "case": "keeps tiles opaque and store marks on the cover at 82 percent in both reach states and layouts"
+        }
+      ],
+      "reason": "Every whole slider percentage, both reach states and layouts keep tiles/popovers opaque and store marks at the source Ground alpha byte 209. Native store-mark cases additionally inspect the computed fill in desktop/fullscreen."
     },
     {
       "id": "ThemeContrastTests.The_field_opens_only_when_asked_and_never_past_the_chrome",
       "source": "tests/Winnow.Tests/ThemeContrastTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-theme-contrast.test.ts",
+          "case": "opens the field only on request with monotone alpha, unchanged ground and the rail above it"
+        }
+      ],
+      "reason": "Independent byte compositing checks unchanged wall ink, opaque disabled reach, monotone alpha, rail elevation, matching pane tier and the original .006 linear admission tolerance."
     },
     {
       "id": "ThemeContrastTests.The_open_field_stays_under_the_art_at_least_as_far_as_the_labels_hold",
       "source": "tests/Winnow.Tests/ThemeContrastTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-theme-contrast.test.ts",
+          "case": "keeps the open field below dormant art until the independently measured AA ceiling"
+        }
+      ],
+      "reason": "Independent WCAG and source-over measurements reproduce the original #2C3237 dormant cover and back-solved #201F1E desktop."
     },
     {
       "id": "ThemeContrastTests.The_far_end_is_actually_transparent",
@@ -17225,7 +17253,14 @@
     {
       "id": "ThemeContrastTests.An_unknown_stored_theme_reads_as_unset",
       "source": "tests/Winnow.Tests/ThemeContrastTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/theme-runtime.test.tsx",
+          "case": "restores Winnow for the original unknown stored palette %s"
+        }
+      ],
+      "reason": "The original future, cold-storage, phosphor and null IDs resolve to Winnow through actual runtime hydration. Missing IDs choose the full palette; legacy profiles with explicit custom Studio colors retain their colors."
     },
     {
       "id": "ThemeContrastTests.An_overridden_session_never_writes_a_preference",
@@ -17255,12 +17290,12 @@
     {
       "id": "ThemeContrastTests.Picking_a_new_material_forgets_the_old_ones_answer",
       "source": "tests/Winnow.Tests/ThemeContrastTests.cs",
-      "status": "partial",
-      "reason": "Stale answer after fullscreen is ignored and teardown disables the material. Material-to-material response race still requires an explicit fixture.",
+      "status": "ported",
+      "reason": "Changing Acrylic to Mica immediately clears the old capability answer and restores solid panes. A delayed old Acrylic response cannot reopen transparency; only the current Mica response activates it.",
       "tests": [
         {
           "file": "tests/avalon-appearance.test.tsx",
-          "case": "ignores a late native material answer after entering fullscreen and releases material on unmount"
+          "case": "clears the previous material answer immediately and ignores its late response after choosing another material"
         }
       ]
     },
@@ -17279,31 +17314,38 @@
     {
       "id": "ThemeContrastTests.An_unknown_stored_backdrop_reads_as_unset",
       "source": "tests/Winnow.Tests/ThemeContrastTests.cs",
-      "status": "partial",
-      "reason": "Mica, default Acrylic, unknown none fallback and platform defaults are covered, but original future-ID/null map assertions are not all explicit.",
+      "status": "ported",
+      "reason": "The original Acrylic, Mica, none, future-ID and null preference fixtures explicitly resolve to their source defaults.",
       "tests": [
         {
           "file": "tests/avalon-translucency.test.ts",
-          "case": "retains stored choices over authored opening positions and has safe platform defaults"
+          "case": "resolves the original stored backdrop %s as %s"
         }
       ]
     },
     {
       "id": "ThemeContrastTests.The_old_boolean_preference_migrates",
       "source": "tests/Winnow.Tests/ThemeContrastTests.cs",
-      "status": "partial",
-      "reason": "Integer clamp, legacy true/false casing and whitespace, malformed and null are covered; complete exact original InlineData matrix will be retained until reproduced.",
+      "status": "ported",
+      "reason": "Every original null, empty, boolean, ordinary and clamped numeric fixture now has an exact counterpart.",
       "tests": [
         {
           "file": "tests/avalon-translucency.test.ts",
-          "case": "migrates legacy transparency %s to %s"
+          "case": "migrates each original stored transparency fixture %s to %s"
         }
       ]
     },
     {
       "id": "ThemeContrastTests.A_pane_carries_its_ink_further_than_the_chrome_does",
       "source": "tests/Winnow.Tests/ThemeContrastTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-theme-contrast.test.ts",
+          "case": "keeps pane prose, metadata and selected rows legible further than window chrome"
+        }
+      ],
+      "reason": "Independent ceilings cover primary/dim pane text, selected pane rows, rail and selected rail rows, plus all dark-desktop percentages."
     },
     {
       "id": "ThemeContrastTests.A_pane_is_the_field",
@@ -17320,52 +17362,122 @@
     {
       "id": "ThemeContrastTests.A_field_admits_what_the_art_field_admits",
       "source": "tests/Winnow.Tests/ThemeContrastTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-theme-contrast.test.ts",
+          "case": "admits the art field share through both inputs without walking their ink or increasing alpha"
+        }
+      ],
+      "reason": "Both layouts retain unchanged input inks, monotone alpha, original opaque endpoints, container/wall admission limits, .006 matching after 25 percent, and opaque inputs with disabled reach. Source implementation-only constants are verified through their emitted byte-alpha relationships."
     },
     {
       "id": "ThemeContrastTests.A_field_stays_legible_further_than_the_chrome_around_it",
       "source": "tests/Winnow.Tests/ThemeContrastTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-theme-contrast.test.ts",
+          "case": "keeps typed text, placeholders and focus rings legible beyond chrome on both input surfaces"
+        }
+      ],
+      "reason": "Both original input backgrounds retain typing ceilings of 100 percent on the bar and at least 96 in the panel; placeholder and Volt ring ceilings exceed chrome."
     },
     {
       "id": "ThemeContrastTests.Art_behind_the_back_face_and_the_modal_keeps_text_over_AA",
       "source": "tests/Winnow.Tests/ThemeContrastTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-theme-contrast.test.ts",
+          "case": "holds all four text inks above AA over all 256 artwork greys at every slider position"
+        }
+      ],
+      "reason": "Independent sums walk every source grey and slider percentage for Text, TextDim, Azure and Amber against both the art veil and hovered row. All four calibrated palettes clear 4.5:1."
     },
     {
       "id": "ThemeContrastTests.The_section_heading_takes_the_quietest_ink_that_still_clears_AA",
       "source": "tests/Winnow.Tests/ThemeContrastTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-theme-contrast.test.ts",
+          "case": "uses the readable heading, primary prose and reception inks on both flat and brightest artwork surfaces"
+        }
+      ],
+      "reason": "Original TextDim clears AA on flat/white-art surfaces while TextFaint fails on both."
     },
     {
       "id": "ThemeContrastTests.The_modal_prose_takes_the_primary_ink",
       "source": "tests/Winnow.Tests/ThemeContrastTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-theme-contrast.test.ts",
+          "case": "uses the readable heading, primary prose and reception inks on both flat and brightest artwork surfaces"
+        }
+      ],
+      "reason": "Original Text remains above both AA and TextDim on flat and brightest-art surfaces."
     },
     {
       "id": "ThemeContrastTests.The_reception_line_introduces_no_ink_below_the_floor",
       "source": "tests/Winnow.Tests/ThemeContrastTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-theme-contrast.test.ts",
+          "case": "uses the readable heading, primary prose and reception inks on both flat and brightest artwork surfaces"
+        }
+      ],
+      "reason": "The source primary/dim reception inks clear AA while faint attribution fails, measured on both original backgrounds."
     },
     {
       "id": "ThemeContrastTests.A_game_with_no_art_gets_the_flat_surface_back",
       "source": "tests/Winnow.Tests/ThemeContrastTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-theme-contrast.test.ts",
+          "case": "recovers the exact flat surface with no artwork and publishes the original veil and lightbox fills"
+        }
+      ],
+      "reason": "At all slider positions the art veil over the theme Surface recovers Surface byte for byte."
     },
     {
       "id": "ThemeContrastTests.The_art_veil_is_the_theme_surface_at_the_stated_alpha",
       "source": "tests/Winnow.Tests/ThemeContrastTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-theme-contrast.test.ts",
+          "case": "recovers the exact flat surface with no artwork and publishes the original veil and lightbox fills"
+        }
+      ],
+      "reason": "ArtVeil uses each calibrated Surface and source alpha byte 235; the CSS palette consumes the same token."
     },
     {
       "id": "ThemeContrastTests.Lightbox_controls_follow_the_theme_at_their_stated_opacity",
       "source": "tests/Winnow.Tests/ThemeContrastTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-theme-contrast.test.ts",
+          "case": "recovers the exact flat surface with no artwork and publishes the original veil and lightbox fills"
+        }
+      ],
+      "reason": "Resting controls use Surface alpha 178 and active controls SurfaceRaised alpha 217, published as live CSS variables. Native gallery coverage checks both presentation modes."
     },
     {
       "id": "ThemeContrastTests.One_step_less_veil_would_drop_the_default_theme_under_AA",
       "source": "tests/Winnow.Tests/ThemeContrastTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-theme-contrast.test.ts",
+          "case": "rejects one less veil step because Winnow metadata then drops below AA over white artwork"
+        }
+      ],
+      "reason": "The original 0.91 byte-alpha veil fails AA over white; the 0.92 veil clears it."
     },
     {
       "id": "ThemeJsonTests.Every_builtin_round_trips_through_the_format",

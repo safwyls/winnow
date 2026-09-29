@@ -15,9 +15,20 @@
     height: 68px;
     object-fit: contain;
   }
-  .screenshot-previews { align-items: flex-start; }
-  .screenshot-previews > button { flex: 1 1 0; min-width: 0; }
-  .screenshot-previews img { width: auto; max-width: 100%; height: auto; max-height: 240px; object-fit: contain; }
+  .screenshot-previews {
+    align-items: flex-start;
+  }
+  .screenshot-previews > button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .screenshot-previews img {
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: 240px;
+    object-fit: contain;
+  }
   .igdb-candidates {
     max-height: 340px;
     overflow: auto;
@@ -83,11 +94,11 @@
     height: 36px;
     min-height: 36px;
     padding: 0;
-    background: color-mix(in srgb, var(--surface) 70%, transparent);
+    background: var(--avalon-lightbox-fill, color-mix(in srgb, var(--surface) 70%, transparent));
     border: 1px solid transparent;
   }
   .screenshot-frame > button:is(:hover, :focus-visible) {
-    background: color-mix(in srgb, var(--raised) 85%, transparent);
+    background: var(--avalon-lightbox-active-fill, color-mix(in srgb, var(--raised) 85%, transparent));
   }
   .screenshot-frame > button:focus-visible {
     outline: 2px solid var(--accent);

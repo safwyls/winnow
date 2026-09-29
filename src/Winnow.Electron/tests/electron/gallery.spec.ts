@@ -1,3 +1,4 @@
+import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { mkdir, mkdtemp, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -24,36 +25,7 @@ test.beforeAll(async () => {
   page.on('pageerror', (error) => errors.push(error.message))
   await expect(page.locator('.avalon-cover').first()).toBeVisible()
 })
-test.afterAll(async () => {
-  if (application) {
-    let timer: ReturnType<typeof setTimeout> | undefined
-    try {
-      await Promise.race([
-        application.close(),
-        new Promise<void>((done) => {
-          timer = setTimeout(() => {
-            application.process().kill()
-            done()
-          }, 5000)
-        }),
-      ])
-    } finally {
-      clearTimeout(timer)
-    }
-  }
-  if (directory)
-    try {
-      const endpoint = JSON.parse(await readFile(join(directory, 'backend/endpoint.json'), 'utf8'))
-      if (new URL(endpoint.address).hostname !== '127.0.0.1') throw Error('Unexpected fixture address')
-      await fetch(new URL('/api/v1/lifecycle/shutdown', endpoint.address), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${endpoint.token}` },
-        signal: AbortSignal.timeout(5000),
-      })
-    } catch {
-      /* Preserve the isolated fixture for diagnosis. */
-    }
-})
+test.afterAll(async () => closeFixture(application, directory))
 
 for (const mode of ['desktop', 'fullscreen'] as const) {
   test(`${mode} gallery keeps wheel input, full image geometry, keyboard focus and origin return`, async () => {
@@ -110,6 +82,22 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await expect(dialog).toBeVisible()
     const close = page.getByRole('button', { name: 'Close screenshots', exact: true })
     await expect(close).toBeFocused()
+    const fills = await page.evaluate(() => {
+      const probe = document.createElement('span')
+      document.body.append(probe)
+      const colors = ['#16282AB2', '#1D3437D9'].map((value) => {
+        probe.style.backgroundColor = value
+        return getComputedStyle(probe).backgroundColor
+      })
+      probe.remove()
+      return colors
+    })
+    await page.mouse.move(0, 0)
+    await page.getByRole('button', { name: 'Next screenshot', exact: true }).focus()
+    await expect(close).toHaveCSS('background-color', fills[0])
+    await close.hover()
+    await expect(close).toHaveCSS('background-color', fills[1])
+    await close.focus()
     await expect(dialog.locator('img')).toBeVisible()
     for (const [width, height] of [
       [1280, 720],

@@ -1,3 +1,4 @@
+import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type Page } from '@playwright/test'
 import { mkdtemp, readFile } from 'node:fs/promises'
 import { resolve, join } from 'node:path'
@@ -145,31 +146,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await expect(replay).toBeFocused()
       expect(errors).toEqual([])
     } finally {
-      let stop: ReturnType<typeof setTimeout> | undefined
-      try {
-        await Promise.race([
-          application.close(),
-          new Promise<void>((done) => {
-            stop = setTimeout(() => {
-              application.process().kill()
-              done()
-            }, 5000)
-          }),
-        ])
-      } finally {
-        clearTimeout(stop)
-      }
-      try {
-        const endpoint = JSON.parse(await readFile(join(directory, 'backend/endpoint.json'), 'utf8'))
-        if (new URL(endpoint.address).hostname === '127.0.0.1')
-          await fetch(new URL('/api/v1/lifecycle/shutdown', endpoint.address), {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${endpoint.token}` },
-            signal: AbortSignal.timeout(5000),
-          })
-      } catch {
-        /* A failed startup may not create backend discovery. */
-      }
+      await closeFixture(application, directory)
     }
   })
 }

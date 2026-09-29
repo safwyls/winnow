@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { avalonArtTokens } from './avalon-translucency'
 import { contrastRatio } from '../../shared/theme'
 import {
   readAvalonJson,
@@ -324,6 +325,7 @@ export function avalonPalette(id: string): AvalonPalette | undefined {
 export function avalonPaletteStyle(id: string | AvalonPalette): CSSProperties | undefined {
   const palette = typeof id === 'string' ? avalonPalette(id) : id
   if (!palette) return undefined
+  const art = avalonArtTokens(palette)
   const foreground = (color: string) => {
     if (!palette.light) return color
     const surfaces = ['--avalon-well', '--bg', '--surface', '--raised'].map((key) => palette.colors[key])
@@ -344,6 +346,11 @@ export function avalonPaletteStyle(id: string | AvalonPalette): CSSProperties | 
   }
   return {
     ...palette.colors,
+    '--avalon-tile-chip-ground': art.TileChipGround,
+    '--avalon-art-veil': art.ArtVeil,
+    '--avalon-raised-faint': art.SurfaceRaisedFaint,
+    '--avalon-lightbox-fill': art.LightboxControlFill,
+    '--avalon-lightbox-active-fill': art.LightboxControlActiveFill,
     '--accent-foreground': foreground(palette.colors['--accent']),
     '--avalon-accent-hover-foreground': foreground(palette.colors['--avalon-accent-hover']),
     '--cool-foreground': foreground(palette.colors['--cool']),

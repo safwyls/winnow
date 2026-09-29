@@ -1,3 +1,4 @@
+import { closeFixture } from './fixture-cleanup'
 import {
   test,
   expect,
@@ -36,41 +37,7 @@ test.beforeAll(async () => {
   page.on('pageerror', (error) => errors.push(error.message))
   await expect(page.locator('.avalon-cover').first()).toBeVisible()
 })
-test.afterAll(async () => {
-  if (app) {
-    const child = app.process()
-    let timer: ReturnType<typeof setTimeout> | undefined
-    try {
-      await Promise.race([
-        (async () => {
-          await app.close()
-          if (child.exitCode === null && child.signalCode === null)
-            await new Promise<void>((done) => child.once('exit', () => done()))
-        })(),
-        new Promise<void>((done) => {
-          timer = setTimeout(() => {
-            child.kill('SIGKILL')
-            done()
-          }, 5000)
-        }),
-      ])
-    } finally {
-      clearTimeout(timer)
-    }
-  }
-  if (directory)
-    try {
-      const endpoint = JSON.parse(await readFile(join(directory, 'backend/endpoint.json'), 'utf8'))
-      if (new URL(endpoint.address).hostname !== '127.0.0.1') throw Error('Unexpected fixture address')
-      await fetch(new URL('/api/v1/lifecycle/shutdown', endpoint.address), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${endpoint.token}` },
-        signal: AbortSignal.timeout(5000),
-      })
-    } catch {
-      /* Preserve isolated diagnostics if the backend already stopped. */
-    }
-})
+test.afterAll(async () => closeFixture(app, directory))
 const dialog = () => page.locator('.artwork-browser-dialog')
 const detail = () => page.locator('.avalon-details')
 const candidate = (slot = 'Hero', index = 0) =>

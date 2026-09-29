@@ -53,7 +53,9 @@ times faster. The star field draws only on creation or resize; brightness change
 
 Avalon's **Avalon palette** setting selects Winnow, Nightshift, Tungsten, Box art, Bottle
 green, SilkCircuit, SilkCircuit Dawn, Rosé Pine or Rosé Pine Dawn. These are the original
-bundled palettes, including the light variants and their derived colors. **Studio colors**
+bundled palettes, including the light variants and their derived colors. Fresh profiles and
+missing palette IDs select the complete Winnow palette. Earlier Studio profiles with custom
+colors or a different shared palette retain those choices. **Studio colors**
 uses the shared color controls instead; an original palette takes precedence over those
 controls until Studio colors is selected. The selected palette applies to the document
 root, so portaled dialogs and native form controls follow it. Avalon keeps the original

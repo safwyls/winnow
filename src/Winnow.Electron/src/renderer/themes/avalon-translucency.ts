@@ -101,6 +101,18 @@ export function avalonAppearance(
   }
 }
 
+/** Art samples the cover beneath it, independently of the desktop material. */
+export function avalonArtTokens(palette: AvalonPalette) {
+  const c = palette.colors
+  return {
+    TileChipGround: alpha(c['--bg'], 0.82),
+    ArtVeil: alpha(c['--surface'], 0.92),
+    SurfaceRaisedFaint: alpha(c['--raised'], 0.08),
+    LightboxControlFill: alpha(c['--surface'], 0.7),
+    LightboxControlActiveFill: alpha(c['--raised'], 0.85),
+  }
+}
+
 /** WinnowTheme.Tokens' two compositing tiers; tiles and popup surfaces stay opaque. */
 export function avalonSurfaceTokens(
   palette: AvalonPalette,
@@ -133,6 +145,7 @@ export function avalonSurfaceTokens(
   )
   const raisedAlpha = strength + (0.1 - strength) * t
   return {
+    ...avalonArtTokens(palette),
     ShellGround: alpha(shellInk, shellAlpha),
     CaptionFill: layout === 'floating' ? alpha(shellInk, t > 0 ? 0 : 1) : alpha(surface, paneAlpha),
     ChromeSurface: alpha(surface, paneAlpha),

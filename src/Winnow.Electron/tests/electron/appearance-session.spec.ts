@@ -1,3 +1,4 @@
+import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication } from '@playwright/test'
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
@@ -119,32 +120,6 @@ test('development appearance overrides remain live on both surfaces without chan
     expect(await readFile(preferenceFile, 'utf8')).toBe(original)
     expect(errors).toEqual([])
   } finally {
-    if (app) {
-      const child = app.process()
-      let timer: ReturnType<typeof setTimeout> | undefined
-      try {
-        await Promise.race([
-          (async () => {
-            await app!.close()
-            if (child.exitCode === null && child.signalCode === null)
-              await new Promise<void>((done) => child.once('exit', () => done()))
-          })(),
-          new Promise<void>((done) => {
-            timer = setTimeout(() => {
-              child.kill('SIGKILL')
-              done()
-            }, 5000)
-          }),
-        ])
-      } finally {
-        clearTimeout(timer)
-      }
-    }
-    if (endpoint)
-      await fetch(new URL('/api/v1/lifecycle/shutdown', endpoint.address), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${endpoint.token}` },
-        signal: AbortSignal.timeout(5000),
-      }).catch(() => {})
+    await closeFixture(app, directory)
   }
 })

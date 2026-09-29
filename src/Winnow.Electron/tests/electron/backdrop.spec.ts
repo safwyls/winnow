@@ -1,3 +1,4 @@
+import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { mkdtemp, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -52,41 +53,7 @@ test.beforeAll(async () => {
     }
   })
 })
-test.afterAll(async () => {
-  if (application) {
-    const process = application.process()
-    let timer: ReturnType<typeof setTimeout> | undefined
-    try {
-      await Promise.race([
-        (async () => {
-          await application.close()
-          if (process.exitCode === null && process.signalCode === null)
-            await new Promise<void>((done) => process.once('exit', () => done()))
-        })(),
-        new Promise<void>((done) => {
-          timer = setTimeout(() => {
-            process.kill('SIGKILL')
-            done()
-          }, 5000)
-        }),
-      ])
-    } finally {
-      clearTimeout(timer)
-    }
-  }
-  if (directory)
-    try {
-      const endpoint = JSON.parse(await readFile(join(directory, 'backend/endpoint.json'), 'utf8'))
-      if (new URL(endpoint.address).hostname !== '127.0.0.1') throw Error('Unexpected fixture address')
-      await fetch(new URL('/api/v1/lifecycle/shutdown', endpoint.address), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${endpoint.token}` },
-        signal: AbortSignal.timeout(5000),
-      })
-    } catch {
-      /* Retain the isolated fixture for diagnosis. */
-    }
-})
+test.afterAll(async () => closeFixture(application, directory))
 async function surface(mode: 'desktop' | 'fullscreen', width = 1920, height = 1080) {
   await application.evaluate(
     ({ BrowserWindow }, value) => {
@@ -277,7 +244,15 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       const color = await details
         .locator('.avalon-backdrop-veil')
         .evaluate((node) => getComputedStyle(node).backgroundColor)
-      expect(color).toContain('0.92')
+      const originalVeil = await page.evaluate(() => {
+        const probe = document.createElement('span')
+        probe.style.backgroundColor = '#16282AEB'
+        document.body.append(probe)
+        const result = getComputedStyle(probe).backgroundColor
+        probe.remove()
+        return result
+      })
+      expect(color).toBe(originalVeil)
       expect(veil).toBe('none')
     } else expect(veil).toContain('55%')
     expect(

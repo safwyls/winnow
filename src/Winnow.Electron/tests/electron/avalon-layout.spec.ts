@@ -1,3 +1,4 @@
+import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -68,35 +69,7 @@ test.beforeAll(async () => {
   page.on('pageerror', (error) => errors.push(error.message))
   await expect(page.locator('.avalon-cover').first()).toBeVisible()
 })
-test.afterAll(async () => {
-  let timer: ReturnType<typeof setTimeout> | undefined
-  if (application)
-    try {
-      await Promise.race([
-        application.close(),
-        new Promise<void>((done) => {
-          timer = setTimeout(() => {
-            application.process().kill()
-            done()
-          }, 5000)
-        }),
-      ])
-    } finally {
-      clearTimeout(timer)
-    }
-  if (directory)
-    try {
-      const endpoint = JSON.parse(await readFile(join(directory, 'backend/endpoint.json'), 'utf8'))
-      if (new URL(endpoint.address).hostname !== '127.0.0.1') throw Error('Unexpected fixture address')
-      await fetch(new URL('/api/v1/lifecycle/shutdown', endpoint.address), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${endpoint.token}` },
-        signal: AbortSignal.timeout(5000),
-      })
-    } catch {
-      /* Keep the disposable directory for diagnostics. */
-    }
-})
+test.afterAll(async () => closeFixture(application, directory))
 async function replace(data: Fixture) {
   await application.evaluate(({ BrowserWindow }, value) => {
     ;(globalThis as unknown as { __winnowLayoutFixture: Fixture }).__winnowLayoutFixture = value
@@ -195,6 +168,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       await page.mouse.move(2, 2)
       const cover = page.locator('.avalon-library .avalon-cover[data-work-id="2"]')
       const initials = cover.locator('.avalon-store-initials')
+      await expect(initials.locator('span').first()).toHaveCSS('background-color', 'rgba(15, 28, 30, 0.82)')
       await expect(cover).toHaveAccessibleName('View Prey. Owned on Steam, Epic, GOG')
       await expect(initials).toHaveCSS('opacity', '1')
       await expect(initials.locator('span')).toHaveText(['S', 'E', 'G'])

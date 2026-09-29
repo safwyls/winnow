@@ -29,6 +29,7 @@
   }
   .avalon-store-initials > span {
     position: static;
+    background: var(--avalon-tile-chip-ground, color-mix(in srgb, var(--bg) 82%, transparent));
   }
   .avalon-cover:has(.avalon-store-initials) .avalon-cover-fallback {
     bottom: calc(24px + 10px * var(--theme-text-scale, 1));

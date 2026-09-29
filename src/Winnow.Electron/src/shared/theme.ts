@@ -39,6 +39,18 @@ export interface ThemeProfile {
   /** Inactive compositions retain their appearance; motion and interface scale stay global. */
   designs?: Record<string, Pick<ThemeProfile, 'appearance' | 'layout'>>
 }
+/** Older Studio profiles customized colors before they stored an Avalon palette ID. */
+export function avalonPaletteId(profile: ThemeProfile): string {
+  const stored = profile.settings.avalon?.palette
+  if (stored != null) return String(stored)
+  const appearance = profile.appearance
+  return appearance.palette !== 'winnow' ||
+    Object.keys(appearance.colors ?? {}).length > 0 ||
+    appearance.accent.toUpperCase() !== '#4DE8C2'
+    ? 'profile'
+    : 'winnow'
+}
+
 export interface ThemeGameCardProps {
   game: LibraryGame
   reason?: string

@@ -27,7 +27,7 @@ import {
   X,
 } from 'lucide-react'
 import type { ThemeContext, ThemeDefinition } from '../../shared/theme'
-import { themeSettingValues } from '../../shared/theme'
+import { avalonPaletteId, themeSettingValues } from '../../shared/theme'
 import type { LibraryGame, GameDetails } from '../api/types'
 import { useLibrary, useWorkspace } from '../api/hooks'
 import { request, storeLabel } from '../api/client'
@@ -200,12 +200,11 @@ export function AvalonShell(context: ThemeContext) {
     () => avalonFacts(context.games, workspace.data as AvalonWorkspace | undefined),
     [context.games, workspace.data],
   )
-  const settings = themeSettingValues(avalon, context.profile)
   return (
     <div
       className={`avalon-shell ${context.mode}`}
       style={{
-        ...avalonPaletteStyle(String(context.profile.settings.avalon?.palette ?? settings.palette)),
+        ...avalonPaletteStyle(avalonPaletteId(context.profile)),
         ...appearance.style,
       }}
       data-pane-layout={appearance.appearance.layout}
@@ -1427,7 +1426,7 @@ export const avalon: ThemeDefinition = {
       label: 'Avalon palette',
       description: 'The original bundled Winnow palettes. Choose Studio colors to use your custom palette.',
       type: 'select',
-      default: 'profile',
+      default: 'winnow',
       options: [
         { value: 'profile', label: 'Studio colors' },
         ...AVALON_PALETTES.map(({ id, name }) => ({ value: id, label: name })),

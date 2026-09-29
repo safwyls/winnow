@@ -78,7 +78,7 @@
     background: var(--surface);
   }
   .avalon-backdrop:not([data-fullscreen]) .avalon-backdrop-veil {
-    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    background: var(--avalon-art-veil, color-mix(in srgb, var(--surface) 92%, transparent));
   }
   .avalon-backdrop:not([data-fullscreen]) .avalon-backdrop-reading-veil {
     display: none;

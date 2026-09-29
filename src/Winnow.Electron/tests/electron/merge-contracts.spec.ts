@@ -1,3 +1,4 @@
+import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { mkdtemp, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -31,36 +32,7 @@ test.beforeAll(async () => {
   if (await page.getByRole('dialog', { name: 'Winnow setup' }).count())
     await page.getByRole('button', { name: 'Skip setup', exact: true }).click()
 })
-test.afterAll(async () => {
-  let timer: ReturnType<typeof setTimeout> | undefined
-  if (app)
-    try {
-      await Promise.race([
-        app.close(),
-        new Promise<void>((done) => {
-          timer = setTimeout(() => {
-            app.process().kill()
-            done()
-          }, 5000)
-        }),
-      ])
-    } finally {
-      clearTimeout(timer)
-    }
-  if (directory)
-    try {
-      const endpoint = JSON.parse(await readFile(join(directory, 'backend/endpoint.json'), 'utf8'))
-      if (new URL(endpoint.address).hostname !== '127.0.0.1')
-        throw Error('Unexpected fixture backend address')
-      await fetch(new URL('/api/v1/lifecycle/shutdown', endpoint.address), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${endpoint.token}` },
-        signal: AbortSignal.timeout(5000),
-      })
-    } catch {
-      /* Keep the temporary fixture for diagnostics. */
-    }
-})
+test.afterAll(async () => closeFixture(app, directory))
 async function api<T>(input: ApiRequest): Promise<T> {
   return page.evaluate(async (input) => {
     const result = await window.winnow.request(input)

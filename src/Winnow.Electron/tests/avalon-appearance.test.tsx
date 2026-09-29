@@ -193,6 +193,69 @@ it('rechecks material after OS accessibility changes and keeps saved preferences
   expect(writes).toEqual([])
 })
 
+it('clears the previous material answer immediately and ignores its late response after choosing another material', async () => {
+  const answers: { enabled: boolean; material: string; resolve: (value: WindowAppearanceResult) => void }[] =
+    []
+  vi.mocked(window.winnow.windowAppearance!).mockImplementation(
+    (request) => new Promise((resolve) => answers.push({ ...request, resolve })),
+  )
+  const hook = renderHook(() => useAvalonAppearance(profile(), false), { wrapper })
+  await waitFor(() => expect(answers.at(-1)).toMatchObject({ enabled: true, material: 'acrylic' }))
+  await act(async () => answers.at(-1)!.resolve({ requested: 'acrylic', supported: true, platform: 'win32' }))
+  expect(hook.result.current.active).toBe(true)
+  act(() => invalidate())
+  const oldAnswer = answers.at(-1)!
+  act(() =>
+    client.setQueryData(
+      ['api', 'preferences.presentation.get', undefined],
+      Object.entries({ ...values, Backdrop: 'mica' }).map(([preference, value]) => ({ preference, value })),
+    ),
+  )
+  await waitFor(() => expect(answers.at(-1)).toMatchObject({ enabled: true, material: 'mica' }))
+  expect(hook.result.current.active).toBe(false)
+  expect(hook.result.current.material.requested).toBe('none')
+  expect(hook.result.current.style).toHaveProperty('--avalon-pane-ground', '#0F1C1EFF')
+  await act(async () => oldAnswer.resolve({ requested: 'acrylic', supported: true, platform: 'win32' }))
+  expect(hook.result.current.active).toBe(false)
+  await act(async () => answers.at(-1)!.resolve({ requested: 'mica', supported: true, platform: 'win32' }))
+  expect(hook.result.current.active).toBe(true)
+  expect(document.documentElement.dataset.avalonMaterial).toBe('mica')
+  expect(writes).toEqual([])
+})
+
+it('opens content panes only for positive transparency with a current accepted native request', async () => {
+  values.Transparency = '0'
+  const answers: { enabled: boolean; resolve: (value: WindowAppearanceResult) => void }[] = []
+  vi.mocked(window.winnow.windowAppearance!).mockImplementation(
+    (request) => new Promise((resolve) => answers.push({ ...request, resolve })),
+  )
+  const hook = renderHook(() => useAvalonAppearance(profile(), false), { wrapper })
+  await waitFor(() =>
+    expect(client.getQueryData(['api', 'preferences.presentation.get', undefined])).toBeDefined(),
+  )
+  expect(hook.result.current.active).toBe(false)
+  expect(hook.result.current.style).toHaveProperty('--avalon-pane-ground', '#0F1C1EFF')
+  act(() =>
+    client.setQueryData(
+      ['api', 'preferences.presentation.get', undefined],
+      Object.entries({ ...values, Transparency: '50' }).map(([preference, value]) => ({ preference, value })),
+    ),
+  )
+  await waitFor(() => expect(answers.at(-1)!.enabled).toBe(true))
+  expect(hook.result.current.active).toBe(false)
+  expect(hook.result.current.style).toHaveProperty('--avalon-pane-ground', '#0F1C1EFF')
+  await act(async () => answers.at(-1)!.resolve({ requested: 'acrylic', supported: true, platform: 'win32' }))
+  expect(hook.result.current.active).toBe(true)
+  expect(hook.result.current.style).toHaveProperty('--avalon-pane-ground', '#0F1C1E96')
+  act(() => invalidate())
+  await act(async () => answers.at(-1)!.resolve({ requested: 'none', supported: false, platform: 'win32' }))
+  expect(hook.result.current.active).toBe(false)
+  expect(hook.result.current.style).toHaveProperty('--avalon-pane-ground', '#0F1C1EFF')
+  expect(hook.result.current.appearance.transparency).toBe(50)
+  expect(hook.result.current.appearance.wallTranslucent).toBe(true)
+  expect(writes).toEqual([])
+})
+
 it('applies a newly selected palette opening position once but preserves saved choices on initial load', async () => {
   const hook = renderHook(({ selected }) => useAvalonAppearance(profile(selected), false), {
     wrapper,

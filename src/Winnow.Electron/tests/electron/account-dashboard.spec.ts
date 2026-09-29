@@ -1,3 +1,4 @@
+import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { mkdtemp, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -32,41 +33,7 @@ test.beforeAll(async () => {
   page.on('pageerror', (error) => errors.push(error.message))
   await expect(page.locator('.avalon-cover').first()).toBeVisible()
 })
-test.afterAll(async () => {
-  if (application) {
-    let timer: ReturnType<typeof setTimeout> | undefined
-    try {
-      await Promise.race([
-        (async () => {
-          const child = application.process()
-          await application.close()
-          if (child.exitCode === null && child.signalCode === null)
-            await new Promise<void>((done) => child.once('exit', () => done()))
-        })(),
-        new Promise<void>((done) => {
-          timer = setTimeout(() => {
-            application.process().kill()
-            done()
-          }, 5000)
-        }),
-      ])
-    } finally {
-      clearTimeout(timer)
-    }
-  }
-  if (directory)
-    try {
-      const endpoint = JSON.parse(await readFile(join(directory, 'backend/endpoint.json'), 'utf8'))
-      if (new URL(endpoint.address).hostname !== '127.0.0.1') throw Error('Unexpected fixture address')
-      await fetch(new URL('/api/v1/lifecycle/shutdown', endpoint.address), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${endpoint.token}` },
-        signal: AbortSignal.timeout(5000),
-      })
-    } catch {
-      /* Keep the isolated diagnostics after the backend exits. */
-    }
-})
+test.afterAll(async () => closeFixture(application, directory))
 async function fixture(value: AccountStats | null) {
   await application.evaluate((_, value) => {
     ;(globalThis as unknown as { __accountFixture: unknown }).__accountFixture = value

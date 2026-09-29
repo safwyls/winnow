@@ -1,3 +1,4 @@
+import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type Page } from '@playwright/test'
 import { mkdtemp, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -229,37 +230,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       )
       expect(errors).toEqual([])
     } finally {
-      let timer: ReturnType<typeof setTimeout> | undefined
-      try {
-        await Promise.race([
-          (async () => {
-            const child = application.process()
-            await application.close()
-            if (child.exitCode === null && child.signalCode === null)
-              await new Promise<void>((done) => child.once('exit', () => done()))
-            expect(child.exitCode).toBe(0)
-          })(),
-          new Promise<void>((done) => {
-            timer = setTimeout(() => {
-              application.process().kill()
-              done()
-            }, 5000)
-          }),
-        ])
-      } finally {
-        clearTimeout(timer)
-      }
-      try {
-        const endpoint = JSON.parse(await readFile(join(directory, 'backend/endpoint.json'), 'utf8'))
-        if (new URL(endpoint.address).hostname !== '127.0.0.1') throw Error('Unexpected fixture backend')
-        await fetch(new URL('/api/v1/lifecycle/shutdown', endpoint.address), {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${endpoint.token}` },
-          signal: AbortSignal.timeout(5000),
-        })
-      } catch {
-        /* Keep this isolated fixture for diagnostics. */
-      }
+      await closeFixture(application, directory)
     }
   })
 }

@@ -1,3 +1,4 @@
+import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { mkdtemp, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -57,58 +58,7 @@ test.beforeAll(async () => {
   // Like the source fixture, constrain only the scroll viewport so eight titles overflow.
   await page.addStyleTag({ content: '.avalon-shell.desktop .avalon-library-scroll { max-height: 160px; }' })
 })
-test.afterAll(async () => {
-  if (directory)
-    try {
-      const endpoint = JSON.parse(await readFile(join(directory, 'backend/endpoint.json'), 'utf8'))
-      if (new URL(endpoint.address).hostname !== '127.0.0.1') throw Error('Unexpected fixture address')
-      await fetch(new URL('/api/v1/lifecycle/shutdown', endpoint.address), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${endpoint.token}` },
-        signal: AbortSignal.timeout(5000),
-      })
-    } catch {
-      /* Preserve the isolated fixture for diagnostics. */
-    }
-  if (app) {
-    const child = app.process()
-    const shutdown: string[] = []
-    child.stderr?.on('data', (chunk: Buffer) => {
-      for (const line of chunk.toString().split(/\r?\n/))
-        if (line.startsWith('SPINE_SHUTDOWN:')) shutdown.push(line)
-    })
-    await app.evaluate(({ app, BrowserWindow }) => {
-      app.on('before-quit', () => console.error('SPINE_SHUTDOWN:before-quit'))
-      app.on('will-quit', () => console.error('SPINE_SHUTDOWN:will-quit'))
-      app.on('quit', (_, code) => console.error(`SPINE_SHUTDOWN:quit:${code}`))
-      for (const window of BrowserWindow.getAllWindows())
-        window.on('closed', () => console.error('SPINE_SHUTDOWN:window-closed'))
-    })
-    let timeout: ReturnType<typeof setTimeout> | undefined
-    try {
-      await Promise.race([
-        app.close(),
-        new Promise<never>((_, reject) => {
-          timeout = setTimeout(() => {
-            const exitCode = child.exitCode,
-              signalCode = child.signalCode
-            if (exitCode === null && signalCode === null) child.kill('SIGKILL')
-            reject(
-              Error(
-                `Electron close timed out: exit=${exitCode}, signal=${signalCode}; ${shutdown.join(', ')}`,
-              ),
-            )
-          }, 5000)
-        }),
-      ])
-      if (child.exitCode === null && child.signalCode === null)
-        await new Promise<void>((done) => child.once('exit', () => done()))
-      expect(child.exitCode).toBe(0)
-    } finally {
-      clearTimeout(timeout)
-    }
-  }
-})
+test.afterAll(async () => closeFixture(app, directory))
 async function prepare(view: 'grid' | 'list') {
   await app.evaluate(({ BrowserWindow }) => {
     const window = BrowserWindow.getAllWindows()[0]!

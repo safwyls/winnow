@@ -22,6 +22,7 @@ import { migrateAvaloniaPalette } from '../themes/avalon-migration'
 import { fontFamilyStack } from '../../shared/typography'
 import {
   DEFAULT_PROFILE,
+  avalonPaletteId,
   THEME_API_VERSION,
   contrastRatio,
   parseThemeProfile,
@@ -98,10 +99,7 @@ export async function loadExternalTheme(
 export function applyThemeProfile(profile: ThemeProfile, root: HTMLElement = document.documentElement): void {
   const palette = resolvedThemeColors(profile)
   const typography = resolvedTypography(profile)
-  const avalonStyle =
-    profile.themeId === 'avalon'
-      ? avalonPaletteStyle(String(profile.settings.avalon?.palette ?? 'profile'))
-      : undefined
+  const avalonStyle = profile.themeId === 'avalon' ? avalonPaletteStyle(avalonPaletteId(profile)) : undefined
   const rgb = (hex: string) =>
     [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16) / 255).join(' ')
   const variables: Record<string, string> = {
@@ -151,6 +149,11 @@ export function applyThemeProfile(profile: ThemeProfile, root: HTMLElement = doc
     'danger',
     'amber-foreground',
     'danger-foreground',
+    'tile-chip-ground',
+    'art-veil',
+    'raised-faint',
+    'lightbox-fill',
+    'lightbox-active-fill',
   ])
     root.style.removeProperty(`--avalon-${key}`)
   if (profile.themeId === 'avalon') {
@@ -345,7 +348,7 @@ export function useThemeRuntime(
   }, [reloadAvalonThemes])
   useEffect(() => {
     if (!hydrated || profile.themeId !== 'avalon') return
-    const id = String(profile.settings.avalon?.palette ?? 'profile')
+    const id = avalonPaletteId(profile)
     if (id === 'profile' || avalonPalette(id)) return
     setProfile((current) => ({
       ...current,

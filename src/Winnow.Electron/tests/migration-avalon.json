@@ -694,42 +694,42 @@
     ]
   },
   "ThemeContrastTests.The_old_boolean_preference_migrates": {
-    "reason": "Integer clamp, legacy true/false casing and whitespace, malformed and null are covered; complete exact original InlineData matrix will be retained until reproduced.",
-    "status": "partial",
+    "reason": "Every original null, empty, boolean, ordinary and clamped numeric fixture now has an exact counterpart.",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/avalon-translucency.test.ts",
-        "case": "migrates legacy transparency %s to %s"
+        "case": "migrates each original stored transparency fixture %s to %s"
       }
     ]
   },
   "ThemeContrastTests.An_unknown_stored_backdrop_reads_as_unset": {
-    "reason": "Mica, default Acrylic, unknown none fallback and platform defaults are covered, but original future-ID/null map assertions are not all explicit.",
-    "status": "partial",
+    "reason": "The original Acrylic, Mica, none, future-ID and null preference fixtures explicitly resolve to their source defaults.",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/avalon-translucency.test.ts",
-        "case": "retains stored choices over authored opening positions and has safe platform defaults"
+        "case": "resolves the original stored backdrop %s as %s"
       }
     ]
   },
   "ThemeContrastTests.The_field_opens_only_when_the_desktop_is_actually_arriving": {
-    "reason": "Renderer surfaces revert solid when native policy refuses a material. Electron lacks an actual compositor-material getter, so successful native request cannot prove visible OS effect.",
+    "reason": "Explicit source sequence now covers zero transparency, a positive slider before an answer, accepted material, then refusal; panes stay solid until accepted and stored choices remain unchanged. Electron lacks an actual compositor-material getter, so successful native request cannot prove visible OS effect.",
     "status": "partial",
     "tests": [
       {
         "file": "tests/avalon-appearance.test.tsx",
-        "case": "rechecks material after OS accessibility changes and keeps saved preferences when it becomes unavailable"
+        "case": "opens content panes only for positive transparency with a current accepted native request"
       }
     ]
   },
   "ThemeContrastTests.Picking_a_new_material_forgets_the_old_ones_answer": {
-    "reason": "Stale answer after fullscreen is ignored and teardown disables the material. Material-to-material response race still requires an explicit fixture.",
-    "status": "partial",
+    "reason": "Changing Acrylic to Mica immediately clears the old capability answer and restores solid panes. A delayed old Acrylic response cannot reopen transparency; only the current Mica response activates it.",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/avalon-appearance.test.tsx",
-        "case": "ignores a late native material answer after entering fullscreen and releases material on unmount"
+        "case": "clears the previous material answer immediately and ignores its late response after choosing another material"
       }
     ]
   },

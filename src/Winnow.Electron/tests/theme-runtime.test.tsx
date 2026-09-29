@@ -35,6 +35,22 @@ afterEach(() => {
 })
 
 describe('theme runtime recovery and lifecycle', () => {
+  it.each(['a-theme-from-the-future', 'cold-storage', 'phosphor', null])(
+    'restores Winnow for the original unknown stored palette %s',
+    async (palette) => {
+      const saved = {
+        ...structuredClone(DEFAULT_PROFILE),
+        settings: { avalon: { palette } },
+      } as unknown as typeof DEFAULT_PROFILE
+      vi.mocked(window.winnow.loadPreferences).mockResolvedValue(saved)
+      const { result } = renderHook(() => useThemeRuntime(builtins))
+      await waitFor(() => expect(result.current.loading).toBe(false))
+      await waitFor(() => expect(document.documentElement.style.getPropertyValue('--bg')).toBe('#0F1C1E'))
+      expect(result.current.theme.id).toBe('avalon')
+      if (palette != null) expect(result.current.profile.settings.avalon?.palette).toBe('winnow')
+      expect(document.documentElement.style.getPropertyValue('--avalon-flare')).toBe('#FF4D93')
+    },
+  )
   it('starts and resets fresh installs with the original Avalon appearance', async () => {
     const { result } = renderHook(() => useThemeRuntime(builtins))
     await waitFor(() => expect(result.current.loading).toBe(false))
