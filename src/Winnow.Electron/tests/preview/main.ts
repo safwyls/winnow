@@ -135,6 +135,7 @@ const bridge = {
     )
       data = []
     else if (route === 'artworkState') {
+      if (parameters.get('art') === 'loading') return new Promise<never>(() => {})
       const sample = samples[(Number(params?.workId) - 1) % samples.length]
       const hero = params?.slot === 'Hero'
       const id = hero ? (sample.id === 'hades' ? 'hades-hero' : 'outer-hero') : sample.id

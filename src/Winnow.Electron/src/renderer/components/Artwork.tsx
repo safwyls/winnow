@@ -86,8 +86,8 @@ export function Artwork({
         />
       )}
       {loading ? (
-        <div className="art-loading">
-          <span className="art-loading-orbit" />
+        <div className={`art-loading${hero ? ' art-loading-hero' : ''}`}>
+          {hero && <span className="art-loading-orbit" />}
         </div>
       ) : (
         (!data || failed) && (

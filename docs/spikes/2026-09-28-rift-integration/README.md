@@ -285,9 +285,26 @@ A separate package is available at
 `src/Winnow.Electron/release/rift-trace-fix/win-unpacked/Winnow Afterglow.exe`. Its 52
 frontend output files match the archive byte-for-byte. Packaging reused the staged backend
 and notices; existing executable directories remain available for comparison. Keep
-DirectComposition enabled for the next hardware comparison. Flicker remains unresolved
-until the user verifies it; no refresh-rate, driver, registry or GPU-default changes were
-made. A subsequent timing capture should use a shorter, narrower recording to avoid
+DirectComposition enabled for hardware comparisons. The user tested this build and
+confirmed that flicker remains. No refresh-rate, driver, registry or GPU-default changes
+were made. A subsequent timing capture should use a shorter, narrower recording to avoid
 the buffer exhaustion observed here.
 
 ![Fullscreen fixture with one active card and its portal](library-active-layer.png)
+
+## Blank cover skeletons — TASK-380
+
+Loading cover artwork now uses a blank tile filled with the theme's raised-surface color.
+There is no ring, shimmer, gradient or text. This is the shared cover-loading behavior;
+hero images retain their indicator and missing/error artwork retains its fallback.
+The visual fixture accepts `art=loading` to keep artwork requests pending without a backend.
+Desktop and fullscreen Rift checks each found 12 empty loading tiles, no child indicators,
+no pseudo-element shimmer and no animation. Discover retained its single hero indicator.
+All 24 existing artwork and app checks, type checking and the production build passed.
+
+The separate package at
+`src/Winnow.Electron/release/rift-skeleton/win-unpacked/Winnow Afterglow.exe` matches all 52
+frontend output files. This is a loading-presentation change; the reported physical
+flicker remains unresolved.
+
+![Fullscreen library with artwork requests held pending](library-blank-skeletons.png)

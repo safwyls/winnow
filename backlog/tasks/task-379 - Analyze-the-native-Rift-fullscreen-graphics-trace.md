@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-29 02:34'
-updated_date: '2026-09-29 02:43'
+updated_date: '2026-09-29 02:59'
 labels: []
 dependencies: []
 type: spike
@@ -37,6 +37,8 @@ Analyze the user-provided TASK-378 startup trace to distinguish app rendering co
 Capture contains 20.016 seconds; the 200 MiB trace buffer filled and discarded 7669 chunks. DirectComposition present events are recorded. Begin-frame interval is 6061 us after startup (165 Hz). At 9.8-11 s the ambient portal produces 30 updates/s with low main-thread cost; at 13.24-14 s Chromium records 111 render surfaces, 110 for rounded corners, and 6185 render-pass draws across 64 displayed submissions. Source forces all resting effect cards into 3D transforms and runs two loading animations per cover. Apply a narrow layer/loading correction and verify the shared interaction and both Rift presentation modes; this does not establish a physical-flicker fix.
 
 Implemented resting transform:none in the shared artwork surface and still loading indicators only inside Rift Library. Preserved active lift/tilt, foil, Discover shuffle and portal timing. Reproducible sanitized analysis includes 6206 render-pass events in the busy interval (6185 duration events plus 21 instant events). 49 focused tests and production build passed. Desktop and fullscreen browser fixtures showed resting transforms none and a focused card with a 3D transform plus material canvas; screenshot saved. The separate rift-trace-fix package matches all 52 output files. Native before/after speedup and physical flicker are not verified.
+
+User hardware comparison: flicker remains in rift-trace-fix with normal DirectComposition. The layer/loading optimizations do not resolve physical monitor flicker.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

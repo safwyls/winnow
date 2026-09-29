@@ -407,6 +407,9 @@
   .art-loading {
     position: absolute;
     inset: 0;
+    background: var(--raised);
+  }
+  .art-loading-hero {
     display: grid;
     place-items: center;
     background:
@@ -418,7 +421,7 @@
       var(--surface);
     overflow: hidden;
   }
-  .art-loading::before {
+  .art-loading-hero::before {
     content: '';
     position: absolute;
     inset: 0;
