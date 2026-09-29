@@ -315,6 +315,10 @@ function Cover({ context, game, reason }) {
 Size the button and effect frame in the theme's CSS. Both wrapper spans inherit the corner
 radius. The child image must use centered `object-fit: cover` so the material aligns with
 the visible crop. Leave space around covers for their lift and shadow.
+Resting artwork surfaces use no transform; the active floating card supplies its own
+perspective. Avoid forcing every cover into a permanent 3D layer. Rift's dense Library
+keeps loading gradients and rings still so loading many covers does not animate every
+slot. Discover and details retain their individual loading indicators.
 
 ```css
 .my-theme .my-cover {

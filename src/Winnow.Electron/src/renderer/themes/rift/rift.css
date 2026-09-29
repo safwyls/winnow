@@ -870,6 +870,11 @@
 .rift-gallery .rift-cover {
   border-radius: calc(var(--radius) * 0.6);
 }
+.rift-gallery .art-loading::before,
+.rift-gallery .art-loading-orbit {
+  /* A dense gallery keeps its loading treatment without animating every slot. */
+  animation: none;
+}
 .rift-gallery .rift-cover .winnow-artwork-surface {
   box-shadow: 0 10px 23px #0005;
 }

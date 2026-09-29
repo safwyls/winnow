@@ -14,7 +14,8 @@
     border-radius: inherit;
     pointer-events: none;
     transform-origin: center;
-    transform: perspective(950px) translate3d(0, 0, 0);
+    /* Only the floating card needs a 3D layer; a gallery can contain hundreds. */
+    transform: none;
     transition:
       transform 260ms cubic-bezier(0.2, 0.75, 0.25, 1),
       box-shadow 260ms ease;

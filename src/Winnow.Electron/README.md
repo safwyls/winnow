@@ -30,6 +30,8 @@ retains material effects and descriptive side previews. Themes can reuse `Artwor
 `GamePreview` or the composed `GameCard` independently. One lazy Pixi renderer draws an active cover using
 its already-decoded image; static artwork remains available when WebGL is unavailable.
 System and profile reduced-motion settings keep focus effects stationary.
+Resting cards do not request permanent 3D layers. Rift's Library uses still loading
+placeholders, preserving its gradients and rings without animating every cover at once.
 
 Rift's Discover deck shuffles when you use its arrows, neighboring covers or left/right
 keys. The outgoing card swings aside as the next card rises into place over 520 ms.

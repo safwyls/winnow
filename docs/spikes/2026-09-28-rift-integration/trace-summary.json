@@ -1,0 +1,1558 @@
+{
+  "format": "All durations ms, offsets seconds. Nested duration totals are inclusive and must not be added together. Display feedback intervals are not monitor scanout or dropped-frame counts.",
+  "input": {
+    "bytes": 375080611,
+    "sha256": "281dd4feadb82c693c5dab5477e9fd3663bf7594bb8047ea639e56b2369c33ae",
+    "events": 1512212,
+    "durationSeconds": 20.016,
+    "product": "152.0.7977.130-64-devel",
+    "buffers": [
+      {
+        "abi_violations": 0,
+        "buffer_size": 209715200,
+        "bytes_overwritten": 0,
+        "bytes_read": 209666048,
+        "bytes_written": 209715200,
+        "chunks_committed_out_of_order": 0,
+        "chunks_discarded": 7669,
+        "chunks_overwritten": 0,
+        "chunks_read": 51188,
+        "chunks_rewritten": 0,
+        "chunks_written": 51200,
+        "data_loss_chunk_corrupted": 0,
+        "data_loss_orphan_continuation": 0,
+        "data_loss_overwrite": 0,
+        "data_loss_read_gap": 0,
+        "data_loss_reassembly_broken_chain": 0,
+        "data_loss_reassembly_gap": 0,
+        "data_loss_smb_full": 0,
+        "data_loss_writer_abort": 0,
+        "incremental_sequences_dropped": 0,
+        "padding_bytes_cleared": 0,
+        "padding_bytes_written": 0,
+        "patches_failed": 6,
+        "patches_succeeded": 138,
+        "readaheads_failed": 10135,
+        "readaheads_succeeded": 12998,
+        "sequence_packet_loss": 6,
+        "trace_writer_packet_loss": 43,
+        "write_wrap_count": 1
+      },
+      {
+        "abi_violations": 0,
+        "buffer_size": 262144,
+        "bytes_overwritten": 0,
+        "bytes_read": 135168,
+        "bytes_written": 135168,
+        "chunks_committed_out_of_order": 0,
+        "chunks_discarded": 0,
+        "chunks_overwritten": 0,
+        "chunks_read": 33,
+        "chunks_rewritten": 0,
+        "chunks_written": 33,
+        "data_loss_chunk_corrupted": 0,
+        "data_loss_orphan_continuation": 0,
+        "data_loss_overwrite": 0,
+        "data_loss_read_gap": 0,
+        "data_loss_reassembly_broken_chain": 0,
+        "data_loss_reassembly_gap": 0,
+        "data_loss_smb_full": 0,
+        "data_loss_writer_abort": 0,
+        "incremental_sequences_dropped": 0,
+        "padding_bytes_cleared": 0,
+        "padding_bytes_written": 0,
+        "patches_failed": 0,
+        "patches_succeeded": 0,
+        "readaheads_failed": 0,
+        "readaheads_succeeded": 2,
+        "sequence_packet_loss": 0,
+        "trace_writer_packet_loss": 0,
+        "write_wrap_count": 0
+      }
+    ]
+  },
+  "presentation": {
+    "directCompositionPresents": 2138,
+    "reportedFrames": 2137,
+    "intervalsMs": {
+      "n": 2136,
+      "total": 19744.555,
+      "p50": 6.078,
+      "p95": 30.395,
+      "p99": 36.461,
+      "max": 206.133
+    },
+    "longestGaps": [
+      {
+        "at": 13.227,
+        "ms": 206.133
+      },
+      {
+        "at": 0.389,
+        "ms": 127.349
+      },
+      {
+        "at": 2.536,
+        "ms": 78.732
+      },
+      {
+        "at": 16.119,
+        "ms": 54.449
+      },
+      {
+        "at": 19.97,
+        "ms": 54.447
+      },
+      {
+        "at": 18.26,
+        "ms": 48.567
+      },
+      {
+        "at": 19.916,
+        "ms": 48.488
+      },
+      {
+        "at": 9.776,
+        "ms": 42.513
+      },
+      {
+        "at": 13.384,
+        "ms": 42.421
+      },
+      {
+        "at": 12.978,
+        "ms": 42.393
+      },
+      {
+        "at": 5.574,
+        "ms": 36.546
+      },
+      {
+        "at": 4.707,
+        "ms": 36.531
+      }
+    ],
+    "requestedIntervalsUs": {
+      "6061": 6273,
+      "16666": 2
+    },
+    "swapChainPresentMs": {
+      "n": 2138,
+      "total": 1040.99,
+      "p50": 0.4,
+      "p95": 0.692,
+      "p99": 2.171,
+      "max": 14.516
+    },
+    "pendingFrames": {
+      "0": 5,
+      "1": 1992,
+      "2": 100
+    },
+    "resizes": [
+      {
+        "at": 0.25,
+        "size": "1424x941"
+      },
+      {
+        "at": 8.754,
+        "size": "3840x1792"
+      },
+      {
+        "at": 9.77,
+        "size": "3440x1440"
+      }
+    ]
+  },
+  "detailWindows": [
+    {
+      "from": 9.8,
+      "to": 11,
+      "surfaceReasonMaxima": {
+        "total": 3,
+        "root": 1,
+        "filter": 2
+      },
+      "reportedFrames": 36,
+      "renderPasses": 108,
+      "drawAndSwapMs": {
+        "n": 36,
+        "total": 7.4,
+        "p50": 0.184,
+        "p95": 0.302,
+        "p99": 0.35,
+        "max": 0.35
+      },
+      "mainFrameMs": {
+        "n": 198,
+        "total": 78.485,
+        "p50": 0.24,
+        "p95": 0.984,
+        "p99": 1.48,
+        "max": 1.586
+      }
+    },
+    {
+      "from": 13.24,
+      "to": 14,
+      "surfaceReasonMaxima": {
+        "total": 111,
+        "root": 1,
+        "rounded corner": 110
+      },
+      "reportedFrames": 64,
+      "renderPasses": 6206,
+      "drawAndSwapMs": {
+        "n": 64,
+        "total": 397.947,
+        "p50": 6.139,
+        "p95": 7.42,
+        "p99": 7.59,
+        "max": 7.59
+      },
+      "mainFrameMs": {
+        "n": 56,
+        "total": 286.417,
+        "p50": 4.699,
+        "p95": 9.297,
+        "p99": 10.967,
+        "max": 10.967
+      }
+    }
+  ],
+  "perSecond": [
+    {
+      "second": 0,
+      "displayed": 103,
+      "beginIntervalsUs": {
+        "6061": 237,
+        "16666": 2
+      },
+      "mainFrameMs": {
+        "n": 17,
+        "total": 12.276,
+        "p50": 0.416,
+        "p95": 2.227,
+        "p99": 2.227,
+        "max": 2.227
+      },
+      "functionMs": {
+        "n": 36,
+        "total": 88.676,
+        "p50": 0.048,
+        "p95": 15.164,
+        "p99": 62.585,
+        "max": 62.585
+      },
+      "paintMs": {
+        "n": 14,
+        "total": 1.958,
+        "p50": 0.114,
+        "p95": 0.389,
+        "p99": 0.389,
+        "max": 0.389
+      },
+      "renderPasses": 104,
+      "pipelineStates": {
+        "STATE_DROPPED": 24,
+        "STATE_NO_UPDATE_DESIRED": 7,
+        "STATE_PRESENTED_ALL": 103,
+        "STATE_PRESENTED_PARTIAL": 4
+      }
+    },
+    {
+      "second": 1,
+      "displayed": 165,
+      "beginIntervalsUs": {
+        "6061": 330
+      },
+      "mainFrameMs": {
+        "n": 8,
+        "total": 2.275,
+        "p50": 0.261,
+        "p95": 0.388,
+        "p99": 0.388,
+        "max": 0.388
+      },
+      "functionMs": {
+        "n": 2,
+        "total": 0.052,
+        "p50": 0.018,
+        "p95": 0.034,
+        "p99": 0.034,
+        "max": 0.034
+      },
+      "paintMs": {
+        "n": 0,
+        "total": 0,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0,
+        "max": 0
+      },
+      "renderPasses": 165,
+      "pipelineStates": {
+        "STATE_PRESENTED_ALL": 165
+      }
+    },
+    {
+      "second": 2,
+      "displayed": 144,
+      "beginIntervalsUs": {
+        "6061": 302
+      },
+      "mainFrameMs": {
+        "n": 85,
+        "total": 159.474,
+        "p50": 1.226,
+        "p95": 4.262,
+        "p99": 8.966,
+        "max": 8.966
+      },
+      "functionMs": {
+        "n": 424,
+        "total": 53.539,
+        "p50": 0.01,
+        "p95": 0.377,
+        "p99": 0.738,
+        "max": 23.291
+      },
+      "paintMs": {
+        "n": 133,
+        "total": 5.988,
+        "p50": 0.013,
+        "p95": 0.146,
+        "p99": 0.245,
+        "max": 1.122
+      },
+      "renderPasses": 602,
+      "pipelineStates": {
+        "STATE_PRESENTED_ALL": 123,
+        "STATE_NO_UPDATE_DESIRED": 4,
+        "STATE_PRESENTED_PARTIAL": 45,
+        "STATE_DROPPED": 20
+      }
+    },
+    {
+      "second": 3,
+      "displayed": 165,
+      "beginIntervalsUs": {
+        "6061": 330
+      },
+      "mainFrameMs": {
+        "n": 165,
+        "total": 287.993,
+        "p50": 1.455,
+        "p95": 3.52,
+        "p99": 4.277,
+        "max": 6.66
+      },
+      "functionMs": {
+        "n": 785,
+        "total": 88.938,
+        "p50": 0.023,
+        "p95": 0.357,
+        "p99": 2.548,
+        "max": 3.624
+      },
+      "paintMs": {
+        "n": 234,
+        "total": 25.849,
+        "p50": 0.078,
+        "p95": 0.275,
+        "p99": 0.358,
+        "max": 0.532
+      },
+      "renderPasses": 960,
+      "pipelineStates": {
+        "STATE_PRESENTED_ALL": 165,
+        "STATE_PRESENTED_PARTIAL": 52,
+        "STATE_NO_UPDATE_DESIRED": 17
+      }
+    },
+    {
+      "second": 4,
+      "displayed": 47,
+      "beginIntervalsUs": {
+        "6061": 333
+      },
+      "mainFrameMs": {
+        "n": 165,
+        "total": 76.343,
+        "p50": 0.236,
+        "p95": 1.133,
+        "p99": 2.399,
+        "max": 4.771
+      },
+      "functionMs": {
+        "n": 344,
+        "total": 22.821,
+        "p50": 0.032,
+        "p95": 0.337,
+        "p99": 0.454,
+        "max": 2.081
+      },
+      "paintMs": {
+        "n": 69,
+        "total": 3.295,
+        "p50": 0.063,
+        "p95": 0.096,
+        "p99": 0.16,
+        "max": 0.16
+      },
+      "renderPasses": 158,
+      "pipelineStates": {
+        "STATE_PRESENTED_ALL": 45,
+        "STATE_PRESENTED_PARTIAL": 1,
+        "STATE_NO_UPDATE_DESIRED": 121
+      }
+    },
+    {
+      "second": 5,
+      "displayed": 44,
+      "beginIntervalsUs": {
+        "6061": 330
+      },
+      "mainFrameMs": {
+        "n": 165,
+        "total": 79.018,
+        "p50": 0.229,
+        "p95": 1.134,
+        "p99": 2.287,
+        "max": 4.834
+      },
+      "functionMs": {
+        "n": 375,
+        "total": 26.561,
+        "p50": 0.019,
+        "p95": 0.353,
+        "p99": 0.601,
+        "max": 3.405
+      },
+      "paintMs": {
+        "n": 103,
+        "total": 3.427,
+        "p50": 0.01,
+        "p95": 0.077,
+        "p99": 0.15,
+        "max": 0.513
+      },
+      "renderPasses": 204,
+      "pipelineStates": {
+        "STATE_NO_UPDATE_DESIRED": 120,
+        "STATE_PRESENTED_ALL": 46,
+        "STATE_DROPPED": 1,
+        "STATE_PRESENTED_PARTIAL": 1
+      }
+    },
+    {
+      "second": 6,
+      "displayed": 165,
+      "beginIntervalsUs": {
+        "6061": 330
+      },
+      "mainFrameMs": {
+        "n": 165,
+        "total": 137.314,
+        "p50": 0.632,
+        "p95": 1.858,
+        "p99": 2.655,
+        "max": 2.789
+      },
+      "functionMs": {
+        "n": 566,
+        "total": 48.547,
+        "p50": 0.019,
+        "p95": 0.325,
+        "p99": 2.206,
+        "max": 5.6
+      },
+      "paintMs": {
+        "n": 114,
+        "total": 6.042,
+        "p50": 0.044,
+        "p95": 0.164,
+        "p99": 0.208,
+        "max": 0.255
+      },
+      "renderPasses": 947,
+      "pipelineStates": {
+        "STATE_PRESENTED_ALL": 165,
+        "STATE_PRESENTED_PARTIAL": 17,
+        "STATE_NO_UPDATE_DESIRED": 9,
+        "STATE_DROPPED": 1
+      }
+    },
+    {
+      "second": 7,
+      "displayed": 34,
+      "beginIntervalsUs": {
+        "6061": 330
+      },
+      "mainFrameMs": {
+        "n": 165,
+        "total": 61.337,
+        "p50": 0.214,
+        "p95": 0.977,
+        "p99": 1.26,
+        "max": 1.268
+      },
+      "functionMs": {
+        "n": 375,
+        "total": 18.744,
+        "p50": 0.02,
+        "p95": 0.305,
+        "p99": 0.351,
+        "max": 0.508
+      },
+      "paintMs": {
+        "n": 62,
+        "total": 1.878,
+        "p50": 0.027,
+        "p95": 0.06,
+        "p99": 0.066,
+        "max": 0.066
+      },
+      "renderPasses": 106,
+      "pipelineStates": {
+        "STATE_PRESENTED_ALL": 34,
+        "STATE_NO_UPDATE_DESIRED": 131
+      }
+    },
+    {
+      "second": 8,
+      "displayed": 75,
+      "beginIntervalsUs": {
+        "6061": 333
+      },
+      "mainFrameMs": {
+        "n": 154,
+        "total": 103.71,
+        "p50": 0.385,
+        "p95": 1.412,
+        "p99": 3.358,
+        "max": 3.791
+      },
+      "functionMs": {
+        "n": 804,
+        "total": 57.548,
+        "p50": 0.013,
+        "p95": 0.291,
+        "p99": 0.383,
+        "max": 17.262
+      },
+      "paintMs": {
+        "n": 160,
+        "total": 6.385,
+        "p50": 0.025,
+        "p95": 0.091,
+        "p99": 0.325,
+        "max": 0.367
+      },
+      "renderPasses": 370,
+      "pipelineStates": {
+        "STATE_NO_UPDATE_DESIRED": 86,
+        "STATE_PRESENTED_ALL": 68,
+        "STATE_PRESENTED_PARTIAL": 39,
+        "STATE_DROPPED": 4
+      }
+    },
+    {
+      "second": 9,
+      "displayed": 50,
+      "beginIntervalsUs": {
+        "6061": 330
+      },
+      "mainFrameMs": {
+        "n": 165,
+        "total": 102.4,
+        "p50": 0.417,
+        "p95": 1.48,
+        "p99": 1.881,
+        "max": 2.189
+      },
+      "functionMs": {
+        "n": 1049,
+        "total": 31.61,
+        "p50": 0.014,
+        "p95": 0.09,
+        "p99": 0.314,
+        "max": 0.461
+      },
+      "paintMs": {
+        "n": 121,
+        "total": 3.803,
+        "p50": 0.026,
+        "p95": 0.071,
+        "p99": 0.073,
+        "max": 0.162
+      },
+      "renderPasses": 234,
+      "pipelineStates": {
+        "STATE_PRESENTED_ALL": 50,
+        "STATE_PRESENTED_PARTIAL": 22,
+        "STATE_NO_UPDATE_DESIRED": 117
+      }
+    },
+    {
+      "second": 10,
+      "displayed": 30,
+      "beginIntervalsUs": {
+        "6061": 330
+      },
+      "mainFrameMs": {
+        "n": 165,
+        "total": 63.708,
+        "p50": 0.238,
+        "p95": 0.977,
+        "p99": 1.438,
+        "max": 1.586
+      },
+      "functionMs": {
+        "n": 495,
+        "total": 22.488,
+        "p50": 0.025,
+        "p95": 0.286,
+        "p99": 0.322,
+        "max": 0.407
+      },
+      "paintMs": {
+        "n": 60,
+        "total": 1.538,
+        "p50": 0.017,
+        "p95": 0.047,
+        "p99": 0.066,
+        "max": 0.066
+      },
+      "renderPasses": 90,
+      "pipelineStates": {
+        "STATE_NO_UPDATE_DESIRED": 135,
+        "STATE_PRESENTED_ALL": 30
+      }
+    },
+    {
+      "second": 11,
+      "displayed": 95,
+      "beginIntervalsUs": {
+        "6061": 330
+      },
+      "mainFrameMs": {
+        "n": 160,
+        "total": 113.403,
+        "p50": 0.594,
+        "p95": 1.455,
+        "p99": 2.536,
+        "max": 3.245
+      },
+      "functionMs": {
+        "n": 830,
+        "total": 44.036,
+        "p50": 0.022,
+        "p95": 0.267,
+        "p99": 0.403,
+        "max": 0.813
+      },
+      "paintMs": {
+        "n": 63,
+        "total": 1.757,
+        "p50": 0.027,
+        "p95": 0.06,
+        "p99": 0.079,
+        "max": 0.079
+      },
+      "renderPasses": 528,
+      "pipelineStates": {
+        "STATE_NO_UPDATE_DESIRED": 71,
+        "STATE_PRESENTED_ALL": 90,
+        "STATE_PRESENTED_PARTIAL": 65
+      }
+    },
+    {
+      "second": 12,
+      "displayed": 141,
+      "beginIntervalsUs": {
+        "6061": 314
+      },
+      "mainFrameMs": {
+        "n": 147,
+        "total": 150.463,
+        "p50": 0.749,
+        "p95": 1.964,
+        "p99": 9.228,
+        "max": 9.666
+      },
+      "functionMs": {
+        "n": 1329,
+        "total": 73.582,
+        "p50": 0.013,
+        "p95": 0.189,
+        "p99": 0.309,
+        "max": 26.979
+      },
+      "paintMs": {
+        "n": 197,
+        "total": 5.406,
+        "p50": 0.008,
+        "p95": 0.114,
+        "p99": 0.216,
+        "max": 1.209
+      },
+      "renderPasses": 733,
+      "pipelineStates": {
+        "STATE_PRESENTED_ALL": 132,
+        "STATE_PRESENTED_PARTIAL": 13,
+        "STATE_NO_UPDATE_DESIRED": 17,
+        "STATE_DROPPED": 2
+      }
+    },
+    {
+      "second": 13,
+      "displayed": 70,
+      "beginIntervalsUs": {
+        "6061": 244
+      },
+      "mainFrameMs": {
+        "n": 57,
+        "total": 381.354,
+        "p50": 4.706,
+        "p95": 9.589,
+        "p99": 94.937,
+        "max": 94.937
+      },
+      "functionMs": {
+        "n": 417,
+        "total": 7.934,
+        "p50": 0.007,
+        "p95": 0.059,
+        "p99": 0.122,
+        "max": 0.271
+      },
+      "paintMs": {
+        "n": 28,
+        "total": 0.951,
+        "p50": 0.008,
+        "p95": 0.182,
+        "p99": 0.459,
+        "max": 0.459
+      },
+      "renderPasses": 6540,
+      "pipelineStates": {
+        "STATE_PRESENTED_PARTIAL": 13,
+        "STATE_PRESENTED_ALL": 60,
+        "STATE_DROPPED": 71,
+        "STATE_NO_UPDATE_DESIRED": 88
+      }
+    },
+    {
+      "second": 14,
+      "displayed": 89,
+      "beginIntervalsUs": {
+        "6061": 302
+      },
+      "mainFrameMs": {
+        "n": 49,
+        "total": 499.482,
+        "p50": 10.657,
+        "p95": 21.314,
+        "p99": 31.467,
+        "max": 31.467
+      },
+      "functionMs": {
+        "n": 850,
+        "total": 45.521,
+        "p50": 0.004,
+        "p95": 0.341,
+        "p99": 0.577,
+        "max": 7.335
+      },
+      "paintMs": {
+        "n": 72,
+        "total": 6.143,
+        "p50": 0.032,
+        "p95": 0.225,
+        "p99": 0.36,
+        "max": 0.36
+      },
+      "renderPasses": 8069,
+      "pipelineStates": {
+        "STATE_NO_UPDATE_DESIRED": 18,
+        "STATE_PRESENTED_ALL": 48,
+        "STATE_DROPPED": 85,
+        "STATE_PRESENTED_PARTIAL": 75
+      }
+    },
+    {
+      "second": 15,
+      "displayed": 135,
+      "beginIntervalsUs": {
+        "6061": 322
+      },
+      "mainFrameMs": {
+        "n": 84,
+        "total": 565.734,
+        "p50": 7.56,
+        "p95": 10.652,
+        "p99": 12.379,
+        "max": 12.379
+      },
+      "functionMs": {
+        "n": 1250,
+        "total": 150.893,
+        "p50": 0.004,
+        "p95": 0.245,
+        "p99": 2.03,
+        "max": 47.669
+      },
+      "paintMs": {
+        "n": 276,
+        "total": 13.713,
+        "p50": 0.015,
+        "p95": 0.166,
+        "p99": 0.275,
+        "max": 1.682
+      },
+      "renderPasses": 10916,
+      "pipelineStates": {
+        "STATE_NO_UPDATE_DESIRED": 40,
+        "STATE_PRESENTED_ALL": 92,
+        "STATE_PRESENTED_PARTIAL": 91,
+        "STATE_DROPPED": 29
+      }
+    },
+    {
+      "second": 16,
+      "displayed": 140,
+      "beginIntervalsUs": {
+        "6061": 306
+      },
+      "mainFrameMs": {
+        "n": 118,
+        "total": 137.149,
+        "p50": 0.398,
+        "p95": 6.833,
+        "p99": 15.023,
+        "max": 27.867
+      },
+      "functionMs": {
+        "n": 1765,
+        "total": 55.16,
+        "p50": 0.002,
+        "p95": 0.046,
+        "p99": 0.15,
+        "max": 14.338
+      },
+      "paintMs": {
+        "n": 551,
+        "total": 14.669,
+        "p50": 0.005,
+        "p95": 0.033,
+        "p99": 0.509,
+        "max": 3.82
+      },
+      "renderPasses": 2806,
+      "pipelineStates": {
+        "STATE_DROPPED": 26,
+        "STATE_PRESENTED_PARTIAL": 31,
+        "STATE_PRESENTED_ALL": 117,
+        "STATE_NO_UPDATE_DESIRED": 3
+      }
+    },
+    {
+      "second": 17,
+      "displayed": 165,
+      "beginIntervalsUs": {
+        "6061": 330
+      },
+      "mainFrameMs": {
+        "n": 165,
+        "total": 92.277,
+        "p50": 0.567,
+        "p95": 0.846,
+        "p99": 1.302,
+        "max": 2.25
+      },
+      "functionMs": {
+        "n": 925,
+        "total": 14.152,
+        "p50": 0.008,
+        "p95": 0.046,
+        "p99": 0.063,
+        "max": 0.882
+      },
+      "paintMs": {
+        "n": 5,
+        "total": 0.525,
+        "p50": 0.109,
+        "p95": 0.19,
+        "p99": 0.19,
+        "max": 0.19
+      },
+      "renderPasses": 328,
+      "pipelineStates": {
+        "STATE_PRESENTED_ALL": 165
+      }
+    },
+    {
+      "second": 18,
+      "displayed": 137,
+      "beginIntervalsUs": {
+        "6061": 307
+      },
+      "mainFrameMs": {
+        "n": 55,
+        "total": 248.15,
+        "p50": 3.52,
+        "p95": 8.871,
+        "p99": 27.934,
+        "max": 27.934
+      },
+      "functionMs": {
+        "n": 1189,
+        "total": 167.457,
+        "p50": 0.003,
+        "p95": 0.1,
+        "p99": 1.052,
+        "max": 92.342
+      },
+      "paintMs": {
+        "n": 695,
+        "total": 22.85,
+        "p50": 0.007,
+        "p95": 0.1,
+        "p99": 0.645,
+        "max": 4.709
+      },
+      "renderPasses": 6334,
+      "pipelineStates": {
+        "STATE_PRESENTED_ALL": 90,
+        "STATE_PRESENTED_PARTIAL": 90,
+        "STATE_DROPPED": 28,
+        "STATE_NO_UPDATE_DESIRED": 40
+      }
+    },
+    {
+      "second": 19,
+      "displayed": 141,
+      "beginIntervalsUs": {
+        "6061": 299
+      },
+      "mainFrameMs": {
+        "n": 97,
+        "total": 459.492,
+        "p50": 4.862,
+        "p95": 8.819,
+        "p99": 23.762,
+        "max": 23.762
+      },
+      "functionMs": {
+        "n": 2017,
+        "total": 189.136,
+        "p50": 0.004,
+        "p95": 0.264,
+        "p99": 1.318,
+        "max": 39.387
+      },
+      "paintMs": {
+        "n": 983,
+        "total": 31.918,
+        "p50": 0.005,
+        "p95": 0.125,
+        "p99": 0.491,
+        "max": 3.843
+      },
+      "renderPasses": 2449,
+      "pipelineStates": {
+        "STATE_PRESENTED_PARTIAL": 118,
+        "STATE_PRESENTED_ALL": 96,
+        "STATE_DROPPED": 21,
+        "STATE_NO_UPDATE_DESIRED": 10
+      }
+    },
+    {
+      "second": 20,
+      "displayed": 2,
+      "beginIntervalsUs": {
+        "6061": 4
+      },
+      "mainFrameMs": {
+        "n": 0,
+        "total": 0,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0,
+        "max": 0
+      },
+      "functionMs": {
+        "n": 0,
+        "total": 0,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0,
+        "max": 0
+      },
+      "paintMs": {
+        "n": 0,
+        "total": 0,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0,
+        "max": 0
+      },
+      "renderPasses": 218,
+      "pipelineStates": {}
+    }
+  ],
+  "mainThreadFunctions": [
+    {
+      "name": "(anonymous) at index-IwC1-1Mt.js:10622",
+      "n": 590,
+      "total": 381.414,
+      "p50": 0.005,
+      "p95": 3.006,
+      "p99": 7.957,
+      "max": 47.669
+    },
+    {
+      "name": "performWorkUntilDeadline at index-IwC1-1Mt.js:595",
+      "n": 237,
+      "total": 333.839,
+      "p50": 0.038,
+      "p95": 3.346,
+      "p99": 39.387,
+      "max": 92.342
+    },
+    {
+      "name": "tick at index-IwC1-1Mt.js:40384",
+      "n": 1874,
+      "total": 231.505,
+      "p50": 0.048,
+      "p95": 0.38,
+      "p99": 0.565,
+      "max": 5.512
+    },
+    {
+      "name": "tick at index-IwC1-1Mt.js:37881",
+      "n": 230,
+      "total": 56.983,
+      "p50": 0.237,
+      "p95": 0.384,
+      "p99": 0.449,
+      "max": 0.577
+    },
+    {
+      "name": "tick at index-IwC1-1Mt.js:42946",
+      "n": 1294,
+      "total": 52.563,
+      "p50": 0.027,
+      "p95": 0.058,
+      "p99": 0.133,
+      "max": 3.946
+    },
+    {
+      "name": "dispatchContinuousEvent at index-IwC1-1Mt.js:13645",
+      "n": 3196,
+      "total": 37.842,
+      "p50": 0.005,
+      "p95": 0.037,
+      "p99": 0.075,
+      "max": 0.433
+    },
+    {
+      "name": "dispatchEvent at index-IwC1-1Mt.js:13655",
+      "n": 5057,
+      "total": 31.711,
+      "p50": 0.003,
+      "p95": 0.027,
+      "p99": 0.045,
+      "max": 0.932
+    },
+    {
+      "name": "_tick at index-D6EiLlHY.js:11789",
+      "n": 1894,
+      "total": 29.9,
+      "p50": 0.013,
+      "p95": 0.028,
+      "p99": 0.053,
+      "max": 0.606
+    },
+    {
+      "name": "(anonymous) at index-IwC1-1Mt.js:37727",
+      "n": 338,
+      "total": 17.784,
+      "p50": 0.015,
+      "p95": 0.149,
+      "p99": 0.238,
+      "max": 0.834
+    },
+    {
+      "name": "move at index-IwC1-1Mt.js:37636",
+      "n": 67,
+      "total": 13.709,
+      "p50": 0.143,
+      "p95": 0.764,
+      "p99": 0.844,
+      "max": 0.844
+    },
+    {
+      "name": "_onPointerMove at browserAll-BmyABBDW.js:2337",
+      "n": 417,
+      "total": 5.049,
+      "p50": 0.013,
+      "p95": 0.026,
+      "p99": 0.052,
+      "max": 0.099
+    },
+    {
+      "name": "(anonymous) at index-IwC1-1Mt.js:14733",
+      "n": 103,
+      "total": 3.063,
+      "p50": 0.025,
+      "p95": 0.059,
+      "p99": 0.187,
+      "max": 0.189
+    },
+    {
+      "name": "dispatchDiscreteEvent at index-IwC1-1Mt.js:13635",
+      "n": 112,
+      "total": 2.746,
+      "p50": 0.009,
+      "p95": 0.088,
+      "p99": 0.31,
+      "max": 0.57
+    },
+    {
+      "name": "resize at index-IwC1-1Mt.js:40309",
+      "n": 8,
+      "total": 1.743,
+      "p50": 0.206,
+      "p95": 0.524,
+      "p99": 0.524,
+      "max": 0.524
+    },
+    {
+      "name": "draw at index-IwC1-1Mt.js:40077",
+      "n": 2,
+      "total": 1.723,
+      "p50": 0.559,
+      "p95": 1.164,
+      "p99": 1.164,
+      "max": 1.164
+    },
+    {
+      "name": "(anonymous) at browserAll-BmyABBDW.js:50",
+      "n": 12,
+      "total": 1.032,
+      "p50": 0.056,
+      "p95": 0.223,
+      "p99": 0.223,
+      "max": 0.223
+    },
+    {
+      "name": "surface.addEventListener at index-IwC1-1Mt.js:37667",
+      "n": 166,
+      "total": 0.701,
+      "p50": 0.002,
+      "p95": 0.011,
+      "p99": 0.021,
+      "max": 0.048
+    },
+    {
+      "name": "(anonymous) at index-IwC1-1Mt.js:37645",
+      "n": 3,
+      "total": 0.611,
+      "p50": 0.201,
+      "p95": 0.257,
+      "p99": 0.257,
+      "max": 0.257
+    },
+    {
+      "name": "focus2 at index-IwC1-1Mt.js:41506",
+      "n": 1,
+      "total": 0.475,
+      "p50": 0.475,
+      "p95": 0.475,
+      "p99": 0.475,
+      "max": 0.475
+    },
+    {
+      "name": "(anonymous) at index-IwC1-1Mt.js:37668",
+      "n": 166,
+      "total": 0.42,
+      "p50": 0.002,
+      "p95": 0.007,
+      "p99": 0.012,
+      "max": 0.02
+    }
+  ],
+  "mainThreadPhases": [
+    {
+      "name": "ProxyMain::BeginMainFrame",
+      "n": 2351,
+      "total": 3733.352,
+      "p50": 0.6,
+      "p95": 6.9,
+      "p99": 11.823,
+      "max": 94.937
+    },
+    {
+      "name": "LocalFrameView::RunPaintLifecyclePhase",
+      "n": 2355,
+      "total": 976.59,
+      "p50": 0.02,
+      "p95": 2.655,
+      "p99": 5.594,
+      "max": 16.456
+    },
+    {
+      "name": "LocalFrameView::RunStyleAndLayoutLifecyclePhases",
+      "n": 3055,
+      "total": 807.045,
+      "p50": 0.076,
+      "p95": 1.521,
+      "p99": 2.302,
+      "max": 12.557
+    },
+    {
+      "name": "Layerize",
+      "n": 2314,
+      "total": 721.995,
+      "p50": 0.001,
+      "p95": 2.214,
+      "p99": 4.61,
+      "max": 15.323
+    },
+    {
+      "name": "ImplementationBase::WaitForCmd",
+      "n": 352,
+      "total": 653.937,
+      "p50": 0.54,
+      "p95": 5.551,
+      "p99": 23.653,
+      "max": 48.909
+    },
+    {
+      "name": "CommandBufferHelper::Finish",
+      "n": 347,
+      "total": 653.51,
+      "p50": 0.554,
+      "p95": 5.549,
+      "p99": 23.652,
+      "max": 48.908
+    },
+    {
+      "name": "CommandBufferProxyImpl::WaitForGetOffset",
+      "n": 344,
+      "total": 647.772,
+      "p50": 0.54,
+      "p95": 5.541,
+      "p99": 23.637,
+      "max": 48.888
+    },
+    {
+      "name": "UpdateLayoutTree",
+      "n": 1715,
+      "total": 612.406,
+      "p50": 0.136,
+      "p95": 1.68,
+      "p99": 2.225,
+      "max": 8.637
+    },
+    {
+      "name": "ImplementationBase::GetBucketContents",
+      "n": 276,
+      "total": 549.127,
+      "p50": 0.507,
+      "p95": 7.077,
+      "p99": 36.933,
+      "max": 48.914
+    },
+    {
+      "name": "PrePaint",
+      "n": 3055,
+      "total": 429.104,
+      "p50": 0.049,
+      "p95": 0.849,
+      "p99": 1.342,
+      "max": 2.162
+    },
+    {
+      "name": "FireAnimationFrame",
+      "n": 5293,
+      "total": 427.883,
+      "p50": 0.032,
+      "p95": 0.345,
+      "p99": 0.511,
+      "max": 5.553
+    },
+    {
+      "name": "LatencyInfo.Flow",
+      "n": 2226,
+      "total": 349.021,
+      "p50": 0.002,
+      "p95": 0.386,
+      "p99": 1.054,
+      "max": 50.07
+    },
+    {
+      "name": "WidgetBaseInputHandler::OnHandleInputEvent",
+      "n": 516,
+      "total": 346.596,
+      "p50": 0.248,
+      "p95": 1.039,
+      "p99": 8.896,
+      "max": 50.073
+    },
+    {
+      "name": "LocalFrameView::RunPrePaintLifecyclePhase",
+      "n": 3051,
+      "total": 315.767,
+      "p50": 0.031,
+      "p95": 0.669,
+      "p99": 1.093,
+      "max": 1.924
+    },
+    {
+      "name": "EventDispatch",
+      "n": 3132,
+      "total": 278.434,
+      "p50": 0.017,
+      "p95": 0.136,
+      "p99": 0.309,
+      "max": 48.225
+    },
+    {
+      "name": "TimerFire",
+      "n": 106,
+      "total": 271.852,
+      "p50": 2.317,
+      "p95": 4.833,
+      "p99": 8.978,
+      "max": 23.677
+    },
+    {
+      "name": "GLES2::GetString",
+      "n": 141,
+      "total": 232.185,
+      "p50": 0.346,
+      "p95": 4.737,
+      "p99": 36.972,
+      "max": 37.039
+    },
+    {
+      "name": "GLES2Implementation::GetRequestableExtensionsCHROMIUM()",
+      "n": 125,
+      "total": 203.923,
+      "p50": 0.197,
+      "p95": 4.616,
+      "p99": 23.665,
+      "max": 48.918
+    },
+    {
+      "name": "LocalFrameView::layout",
+      "n": 278,
+      "total": 192.03,
+      "p50": 0.297,
+      "p95": 2.151,
+      "p99": 10.608,
+      "max": 13.508
+    },
+    {
+      "name": "Layout",
+      "n": 278,
+      "total": 191.466,
+      "p50": 0.294,
+      "p95": 2.15,
+      "p99": 10.607,
+      "max": 13.508
+    },
+    {
+      "name": "LocalFrameView::performLayout",
+      "n": 278,
+      "total": 178.871,
+      "p50": 0.237,
+      "p95": 2.14,
+      "p99": 10.586,
+      "max": 13.499
+    },
+    {
+      "name": "LayerTreeHost::WaitForCommitCompletion",
+      "n": 2350,
+      "total": 160.46,
+      "p50": 0.004,
+      "p95": 0.089,
+      "p99": 0.548,
+      "max": 84.479
+    },
+    {
+      "name": "Paint",
+      "n": 3940,
+      "total": 158.095,
+      "p50": 0.011,
+      "p95": 0.16,
+      "p99": 0.36,
+      "max": 4.709
+    },
+    {
+      "name": "GLES2Implementation::GetProgramiv",
+      "n": 161,
+      "total": 116.731,
+      "p50": 0.002,
+      "p95": 3.395,
+      "p99": 14.23,
+      "max": 18.757
+    }
+  ],
+  "longestFunctions": [
+    {
+      "at": 18.056,
+      "ms": 92.342,
+      "cpuMs": 86.832,
+      "name": "performWorkUntilDeadline",
+      "line": 595
+    },
+    {
+      "at": 0.313,
+      "ms": 62.585,
+      "cpuMs": 5.253,
+      "name": "performWorkUntilDeadline",
+      "line": 595
+    },
+    {
+      "at": 15.92,
+      "ms": 47.669,
+      "cpuMs": 35.886,
+      "name": "(anonymous)",
+      "line": 10622
+    },
+    {
+      "at": 19.769,
+      "ms": 39.387,
+      "cpuMs": 38.88,
+      "name": "performWorkUntilDeadline",
+      "line": 595
+    },
+    {
+      "at": 12.886,
+      "ms": 26.979,
+      "cpuMs": 22.282,
+      "name": "(anonymous)",
+      "line": 10622
+    },
+    {
+      "at": 15.981,
+      "ms": 24.745,
+      "cpuMs": 23.525,
+      "name": "performWorkUntilDeadline",
+      "line": 595
+    },
+    {
+      "at": 2.413,
+      "ms": 23.291,
+      "cpuMs": 22.385,
+      "name": "(anonymous)",
+      "line": 10622
+    },
+    {
+      "at": 19.738,
+      "ms": 22.396,
+      "cpuMs": 20.113,
+      "name": "(anonymous)",
+      "line": 10622
+    },
+    {
+      "at": 18.02,
+      "ms": 22.126,
+      "cpuMs": 21.641,
+      "name": "(anonymous)",
+      "line": 10622
+    },
+    {
+      "at": 8.735,
+      "ms": 17.262,
+      "cpuMs": 16.653,
+      "name": "performWorkUntilDeadline",
+      "line": 595
+    },
+    {
+      "at": 0.245,
+      "ms": 15.164,
+      "cpuMs": 14.426,
+      "name": "performWorkUntilDeadline",
+      "line": 595
+    },
+    {
+      "at": 16.037,
+      "ms": 14.338,
+      "cpuMs": 13.758,
+      "name": "performWorkUntilDeadline",
+      "line": 595
+    }
+  ],
+  "interactions": [
+    {
+      "at": 8.73,
+      "type": "click"
+    },
+    {
+      "at": 12.885,
+      "type": "click"
+    },
+    {
+      "at": 15.92,
+      "type": "click"
+    },
+    {
+      "at": 18.02,
+      "type": "click"
+    },
+    {
+      "at": 19.737,
+      "type": "click"
+    }
+  ],
+  "animations": {
+    "totalStarts": 1666,
+    "byName": {
+      "spin": 2,
+      "background-color": 1,
+      "art-shimmer": 660,
+      "art-orbit": 660,
+      "opacity": 270,
+      "transform": 73
+    }
+  },
+  "contextEvents": {
+    "GpuChannel::CreateCommandBuffer": [
+      0.219,
+      0.22,
+      0.232,
+      0.233,
+      0.374,
+      2.493,
+      2.591,
+      2.605,
+      8.774,
+      11.265,
+      14.121,
+      14.385,
+      16.078,
+      18.846,
+      19.036,
+      19.891
+    ],
+    "GpuChannel::OnDestroyCommandBuffer": [
+      2.552,
+      8.764,
+      12.897,
+      12.899,
+      15.937,
+      15.941,
+      16.31,
+      19.631,
+      19.746
+    ],
+    "LaunchGpuProcess": [
+      0.085
+    ]
+  }
+}

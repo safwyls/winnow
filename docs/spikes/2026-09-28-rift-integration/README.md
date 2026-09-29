@@ -228,3 +228,66 @@ foil cover, cycle the Discover deck and open details. Keep the window open until
 capture ends. The trace stays local in the printed temporary path. No screenshot capture,
 network logging or debugger port is enabled. The trace can distinguish rendering and
 presentation timing problems; it cannot itself prove what the physical panel displayed.
+
+## Native capture analysis — TASK-379
+
+The user supplied `winnow-rift-20260928-192915.json` from the TASK-377 package with normal
+DirectComposition. The raw 375 MB trace remains outside the repository. The reproducible
+[analysis script](analyze-trace.mjs) writes a [sanitized aggregate](trace-summary.json):
+
+```powershell
+node docs/spikes/2026-09-28-rift-integration/analyze-trace.mjs <trace.json> <summary.json>
+```
+
+The capture contains 1,512,212 events over 20.016 seconds. Its 200 MiB binary trace buffer
+filled, discarding 7,669 chunks; it did not capture the requested 45 seconds. Later
+interactions may be absent. Instrumentation also adds overhead, so these timings are
+diagnostic observations, not uninstrumented performance measurements.
+
+Chromium records 2,138 DirectComposition presents. After two startup samples its reported
+begin-frame interval stays at 6,061 microseconds, approximately 165 Hz. The root surface
+changes from 1424 × 941 to 3840 × 1792 at 8.75 seconds, then 3440 × 1440 at 9.77 seconds.
+This establishes the capture reached the reported monitor resolution, without inferring
+HDR or VRR settings from the trace.
+
+| Recorded interval | Observation |
+| --- | --- |
+| 9.80–11.00 seconds | 36 reported presents in 1.2 seconds, matching the deliberate 30 Hz ambient portal cap; three render surfaces; maximum main-frame work 1.586 ms. |
+| 13.24–14.00 seconds | Up to 111 render surfaces, 110 attributed to rounded corners; 6,206 render-pass events across 64 `Display::DrawAndSwap` calls, about 97 per submission. Draw-and-swap CPU duration reaches 7.59 ms, exceeding the 6.061 ms refresh interval. |
+| Whole capture | 660 starts each of `art-shimmer` and `art-orbit`, plus 270 image-opacity transitions. These are starts across navigation, not concurrent animation counts. The longest React scheduler callback takes 92.342 ms at 18.056 seconds. |
+
+The portal JavaScript tick has a 0.38 ms 95th percentile. This measures its CPU callback,
+not GPU shader execution. Source inspection found every resting artwork surface had an
+identity 3D transform, while each loading cover animated both its shimmer and ring. In a
+dense gallery these are avoidable sources of layers and continuously changing content.
+The shared artwork surface now rests at `transform: none`; the floating card still gets
+perspective, lift and tilt. Rift Library keeps its loading gradients and rings still.
+Discover and details loading indicators and portal timing are unchanged.
+
+The presentation timestamps do not prove the physical panel's refresh or brightness.
+In this exact Chromium version,
+[DCompPresenter::CheckPendingFrames](https://github.com/chromium/chromium/blob/152.0.7977.130/ui/gl/dcomp_presenter.cc#L190)
+reports pending frames against the last vsync and explicitly lacks GPU-completion query
+tracking. [Display::FrameDisplayed](https://github.com/chromium/chromium/blob/152.0.7977.130/components/viz/service/display/display.cc#L1240)
+uses that feedback timestamp. A 30 Hz update rate or a long interval between these events
+must not be presented as evidence of monitor refresh switching, GPU completion, or a
+count of missed scans. Nested event totals and pipeline states also must not be added
+together as unique frame counts or independent CPU time.
+
+All 49 focused artwork, effect, preview, details and app tests passed; the production
+build passed with the existing Zod annotation notices. Browser fixture verification on
+desktop and fullscreen found no transforms on resting card surfaces and one raised
+surface with a material canvas on keyboard focus. Library navigation and the passive
+portal remained usable. These checks verify behavior, not a measured speedup on the
+native display path. No screenshot can establish the reported physical flicker.
+
+A separate package is available at
+`src/Winnow.Electron/release/rift-trace-fix/win-unpacked/Winnow Afterglow.exe`. Its 52
+frontend output files match the archive byte-for-byte. Packaging reused the staged backend
+and notices; existing executable directories remain available for comparison. Keep
+DirectComposition enabled for the next hardware comparison. Flicker remains unresolved
+until the user verifies it; no refresh-rate, driver, registry or GPU-default changes were
+made. A subsequent timing capture should use a shorter, narrower recording to avoid
+the buffer exhaustion observed here.
+
+![Fullscreen fixture with one active card and its portal](library-active-layer.png)
