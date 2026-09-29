@@ -1,3 +1,4 @@
+import { selectCollection, expectCollection, expectCollectionNames } from './collection-controls'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { mkdtemp } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -61,18 +62,29 @@ const visibleIds = () =>
   page
     .locator('.avalon-library [data-avalon-game]')
     .evaluateAll((nodes) => nodes.map((node) => Number((node as HTMLElement).dataset.avalonGame)))
-const picker = () => page.getByRole('combobox', { name: 'My lists', exact: true })
 
 for (const mode of ['desktop', 'fullscreen'] as const) {
   test(`${mode} restores alphabetical list names after a saved rename and renderer reload`, async () => {
     const saved: GameList[] = []
     try {
-      for (const name of ['Zebra', 'Middle']) saved.push(await api<GameList>({ route: 'list.create', body: { name, releaseIds: [entries[0].releaseId] } }))
-      saved[1] = await api<GameList>({ route: 'list.update', params: { listId: saved[1].id }, body: { name: 'Aardvark', expectedRevision: saved[1].revision } })
+      for (const name of ['Zebra', 'Middle'])
+        saved.push(
+          await api<GameList>({ route: 'list.create', body: { name, releaseIds: [entries[0].releaseId] } }),
+        )
+      saved[1] = await api<GameList>({
+        route: 'list.update',
+        params: { listId: saved[1].id },
+        body: { name: 'Aardvark', expectedRevision: saved[1].revision },
+      })
       await library(mode, true)
-      await expect(picker().locator('option')).toHaveText(['All games', 'Aardvark', 'Zebra'])
+      await expectCollectionNames(page, ['Aardvark', 'Zebra'])
     } finally {
-      for (const list of saved) await api({ route: 'list.delete', params: { listId: list.id }, body: { expectedRevision: list.revision } })
+      for (const list of saved)
+        await api({
+          route: 'list.delete',
+          params: { listId: list.id },
+          body: { expectedRevision: list.revision },
+        })
     }
   })
   test(`${mode} keeps original manual order and commits moves and removal through a renderer reload`, async () => {
@@ -83,7 +95,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     })
     try {
       await library(mode, true)
-      await picker().selectOption(String(list.id))
+      await selectCollection(page, list.id)
       await expect.poll(visibleIds).toEqual(entries.map((entry) => entry.workId))
       await card(hades).focus()
       await expect(page.getByRole('button', { name: 'Move earlier', exact: true })).toBeDisabled()
@@ -99,7 +111,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       )!
       expect(list.releaseIds).toEqual([hades.releaseId, tunic.releaseId])
       await library(mode, true)
-      await picker().selectOption(String(list.id))
+      await selectCollection(page, list.id)
       await expect.poll(visibleIds).toEqual([hades.workId, tunic.workId])
       expect(
         (await api<LibraryResponse>({ route: 'library.get' })).games.some(
@@ -138,7 +150,33 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       expect(list.isLive).toBe(true)
       expect(list.releaseIds).toEqual([])
       expect(list.filter?.search).toBe('Hades')
-      await expect(picker()).toHaveValue(String(list.id))
+      await expectCollection(page, list.id)
+      if (mode === 'desktop') {
+        const panel = page.getByRole('region', { name: 'Library filters', exact: true })
+        await expect(panel).toBeVisible()
+        for (const width of [1200, 1440]) {
+          await application.evaluate(
+            ({ BrowserWindow }, width) => BrowserWindow.getAllWindows()[0]!.setContentSize(width, 900),
+            width,
+          )
+          await expect
+            .poll(async () => {
+              const edge = (await panel.boundingBox())!.x
+              const controls = await page
+                .locator(
+                  '.avalon-toolbar button, .avalon-toolbar select, .avalon-toolbar input, .avalon-cut-bar button',
+                )
+                .all()
+              return Promise.all(
+                controls.map(async (control) => {
+                  const box = await control.boundingBox()
+                  return !box || box.x + box.width <= edge
+                }),
+              )
+            })
+            .not.toContain(false)
+        }
+      } else await expect(page.getByRole('dialog', { name: 'Library filters' })).toHaveCount(0)
       await expect(page.getByRole('button', { name: 'Remove search filter' })).toHaveAttribute(
         'data-filter-origin',
         'list',
@@ -148,16 +186,25 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await page.getByRole('button', { name: 'Winnow home' }).click()
       await expect(page.locator('.avalon-library')).toHaveCount(0)
       await library(mode)
-      await expect(picker()).toHaveValue(String(list.id))
+      await expectCollection(page, list.id)
       await expect.poll(visibleIds).toEqual([entries[0].workId, added.workId])
       await page.screenshot({ path: info.outputPath(`${mode}-live-list.png`) })
       await library(mode, true)
-      await picker().selectOption(String(list.id))
+      await selectCollection(page, list.id)
       await expect(page.getByRole('textbox', { name: 'Search games' })).toHaveValue('Hades')
       await expect.poll(visibleIds).toEqual([entries[0].workId, added.workId])
       await page.getByRole('button', { name: 'Leave this list' }).click()
       await expect(page.getByRole('textbox', { name: 'Search games' })).toHaveValue('')
       await expect(page.locator('.avalon-library [data-avalon-game]')).toHaveCount(4)
+      if (mode === 'desktop') {
+        await expect(page.getByRole('region', { name: 'Library filters', exact: true })).toBeVisible()
+        await selectCollection(page, list.id)
+        await expect.poll(visibleIds).toEqual([entries[0].workId, added.workId])
+        await selectCollection(page, list.id)
+        await expectCollection(page, 'all')
+        await expect(page.getByRole('textbox', { name: 'Search games' })).toHaveValue('')
+        await expect(page.getByRole('region', { name: 'Library filters', exact: true })).toBeVisible()
+      }
     } finally {
       if (list)
         await api({
@@ -170,3 +217,50 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     expect(errors).toEqual([])
   })
 }
+
+test('desktop independently collapses list sections with the keyboard and retains their state across Home', async () => {
+  let manual: GameList | undefined, live: GameList | undefined
+  try {
+    manual = await api<GameList>({
+      route: 'list.create',
+      body: { name: 'Rail static', releaseIds: [entries[0].releaseId] },
+    })
+    live = await api<GameList>({
+      route: 'list.live',
+      body: { name: 'Rail live', filter: { search: 'Hades' } },
+    })
+    await library('desktop', true)
+    const manualHeader = page.getByRole('button', { name: 'LISTS', exact: true })
+    const liveHeader = page.getByRole('button', { name: 'LIVE LISTS', exact: true })
+    const manualRow = page.getByRole('button', { name: 'Rail static, 1 game', exact: true })
+    const liveRow = page.getByRole('button', { name: 'Rail live, 1 game', exact: true })
+    await expect(manualRow).toBeVisible()
+    await expect(liveRow).toBeVisible()
+    await manualHeader.focus()
+    await page.keyboard.press('Enter')
+    await expect(manualHeader).toHaveAttribute('aria-expanded', 'false')
+    await expect(manualRow).toHaveCount(0)
+    await expect(liveRow).toBeVisible()
+    await liveHeader.focus()
+    await page.keyboard.press('Enter')
+    await expect(liveRow).toHaveCount(0)
+    await manualHeader.focus()
+    await page.keyboard.press('Enter')
+    await expect(manualRow).toBeVisible()
+    await page.getByRole('button', { name: 'Winnow home' }).click()
+    await library('desktop')
+    await expect(manualHeader).toHaveAttribute('aria-expanded', 'true')
+    await expect(liveHeader).toHaveAttribute('aria-expanded', 'false')
+    await expect(manualRow).toBeVisible()
+    await expect(liveRow).toHaveCount(0)
+    expect(errors).toEqual([])
+  } finally {
+    for (const list of [manual, live])
+      if (list)
+        await api({
+          route: 'list.delete',
+          params: { listId: list.id },
+          body: { expectedRevision: list.revision },
+        })
+  }
+})

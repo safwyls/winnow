@@ -40,6 +40,7 @@ export function useAvalonLists(mode: Mode, lists: GameList[], ready = true, defa
     null,
   )
   const [rules, setRules] = useViewState<LibraryFilter>(`${prefix}:rules`, {})
+  const [filtersOpen, setFiltersOpen] = useViewState(`${prefix}:filters-open`, false)
   const [base, setBase] = useViewState<GameList | null>(`${prefix}:list-base`, null)
   const list = lists.find((item) => String(item.id) === listId)
   useEffect(() => {
@@ -90,6 +91,7 @@ export function useAvalonLists(mode: Mode, lists: GameList[], ready = true, defa
         setPreviousSort(null)
       }
       loadRules(target.filter ?? {})
+      if (mode === 'desktop') setFiltersOpen(true)
     } else {
       if (!previousSort) setPreviousSort({ value: savedSort })
       setSort('list-order')
@@ -122,6 +124,8 @@ export function useAvalonLists(mode: Mode, lists: GameList[], ready = true, defa
   }, [list?.revision, base?.revision, dirty, ready, listId])
   return {
     lists,
+    filtersOpen,
+    setFiltersOpen,
     query,
     setQuery,
     bucket,

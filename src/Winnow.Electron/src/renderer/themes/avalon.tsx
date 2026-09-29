@@ -47,6 +47,7 @@ import { AVALON_PALETTES, avalonPaletteStyle } from './avalon-palettes'
 import { avalonFacts, matchesAvalonRules, type AvalonFactMap, type AvalonWorkspace } from './avalon-filters'
 import { AvalonFilterPanel } from './avalon-filter-panel'
 import { AvalonBrowseSpine } from './avalon-browse-spine'
+import { AvalonCollectionLists } from './avalon-collection-lists'
 import { ownershipStores, ownershipDescription } from './avalon-store-marks'
 import {
   LibraryColumnHeaders,
@@ -139,26 +140,39 @@ function Collections({ context }: { context: ThemeContext }) {
           </button>
         ))}
       </div>
-      <label className="avalon-list-picker">
-        My lists
-        <select
-          value={context.page === 'library' ? listId : 'all'}
-          onChange={(event) => {
-            selectList(event.target.value)
+      {context.mode === 'desktop' ? (
+        <AvalonCollectionLists
+          lists={library.data?.lists ?? []}
+          games={context.games}
+          selected={context.page === 'library' ? listId : null}
+          select={(id) => {
+            selectList(id)
             setTools(false)
             context.setPage('library')
           }}
-        >
-          <option value="all">All games</option>
-          {orderedLists(library.data?.lists ?? []).map((list) => (
-            <option value={list.id} key={list.id}>
-              {list.name}
-              {list.isLive ? ' · Live' : ''}
-            </option>
-          ))}
-        </select>
-      </label>
-      {context.page === 'library' && listId !== 'all' && (
+        />
+      ) : (
+        <label className="avalon-list-picker">
+          My lists
+          <select
+            value={context.page === 'library' ? listId : 'all'}
+            onChange={(event) => {
+              selectList(event.target.value)
+              setTools(false)
+              context.setPage('library')
+            }}
+          >
+            <option value="all">All games</option>
+            {orderedLists(library.data?.lists ?? []).map((list) => (
+              <option value={list.id} key={list.id}>
+                {list.name}
+                {list.isLive ? ' · Live' : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {context.mode === 'fullscreen' && context.page === 'library' && listId !== 'all' && (
         <button onClick={() => selectList('all')}>Close list</button>
       )}
       {!library.data?.lists.length && (
@@ -781,8 +795,8 @@ export function AvalonLibrary(context: ThemeContext) {
     [tools, setTools] = useViewState(`${prefix}:tools`, false)
   const [selected, setSelected] = useViewState<number | null>(`${prefix}:selected`, null)
   const [selection, setSelection] = useViewState<number[]>(`${prefix}:selection`, [])
-  const [filtersOpen, setFiltersOpen] = useState(false),
-    [selectionError, setSelectionError] = useState(''),
+  const { filtersOpen, setFiltersOpen } = listState
+  const [selectionError, setSelectionError] = useState(''),
     [selectionBusy, setSelectionBusy] = useState(false)
   const anchor = useRef<number | null>(null)
   const toolsReturn = useRef<{ workId: number | null; offset: number } | null>(null)

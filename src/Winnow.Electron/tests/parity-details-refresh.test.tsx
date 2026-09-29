@@ -7,6 +7,7 @@ import { Details } from '../src/renderer/features/Details'
 import { AvalonLibrary, AvalonShell, avalon } from '../src/renderer/themes/avalon'
 import { useLibrary } from '../src/renderer/api/hooks'
 import { clearViewState } from '../src/renderer/viewState'
+import { selectCollection, selectedCollection } from './library-collections'
 import { DEFAULT_PROFILE, selectThemeProfile, type ThemeContext } from '../src/shared/theme'
 import type { ApiRequest } from '../src/shared/bridge'
 import type { LibraryGame, Mode } from '../src/renderer/api/types'
@@ -81,6 +82,7 @@ afterEach(() => {
       'selected',
       'selection',
       'rules',
+      'filters-open',
     ])
       clearViewState(`avalon:library:${mode}:${key}`)
   }
@@ -183,7 +185,7 @@ describe.each(['desktop', 'fullscreen'] as const)('metadata refresh in %s', (mod
           <Fixture mode={mode} />
         </QueryClientProvider>,
       )
-      fireEvent.change(screen.getByLabelText('My lists'), { target: { value: '30' } })
+      selectCollection(30)
       fireEvent.click(screen.getByRole('button', { name: 'View Original title' }))
       fireEvent.click(screen.getByRole('button', { name: 'Metadata' }))
       fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'An unfinished title' } })
@@ -201,7 +203,7 @@ describe.each(['desktop', 'fullscreen'] as const)('metadata refresh in %s', (mod
       fireEvent.click(screen.getByRole('button', { name: 'Back to your library' }))
       if (field === 'first_release_year') await screen.findByText('No games match these filters.')
       else expect(screen.getByRole('button', { name: 'View Original title' })).toBeTruthy()
-      expect((screen.getByLabelText('My lists') as HTMLSelectElement).value).toBe('30')
+      expect(selectedCollection()).toBe('30')
       expect(
         client.getQueryData<{ lists: { releaseIds: number[] }[] }>(['api', 'library.get'])!.lists[0]!
           .releaseIds,

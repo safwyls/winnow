@@ -1,3 +1,4 @@
+import { selectCollection, collectionChoice } from './collection-controls'
 import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { mkdtemp, readFile } from 'node:fs/promises'
@@ -269,12 +270,10 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       route: 'list.create',
       body: { name: `${prefix} pack only`, releaseIds: [pack.releaseId] },
     })
-    await expect(
-      page.getByRole('combobox', { name: 'My lists', exact: true }).locator(`option[value="${packList.id}"]`),
-    ).toBeAttached()
-    await page.getByRole('combobox', { name: 'My lists', exact: true }).selectOption(String(packList.id))
+    await expect(await collectionChoice(page, packList.id)).toBeAttached()
+    await selectCollection(page, packList.id)
     await expect(page.locator('.avalon-library [data-avalon-game]')).toHaveCount(0)
-    await page.getByRole('combobox', { name: 'My lists', exact: true }).selectOption('all')
+    await selectCollection(page, 'all')
     await navigate('Settings')
     await expect(page.getByLabel('Group expansions with their base game', { exact: true })).toBeChecked()
     await page.getByLabel('Group expansions with their base game', { exact: true }).click()
@@ -318,7 +317,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       body: { name: `${prefix} favorites`, releaseIds: [created[0].releaseId] },
     })
     await navigate('Library')
-    await page.getByRole('combobox', { name: 'My lists', exact: true }).selectOption('all')
+    await selectCollection(page, 'all')
     await page.getByRole('textbox', { name: 'Search games', exact: true }).fill(prefix)
     await expect(page.locator('.avalon-library [data-avalon-game]')).toHaveCount(2)
     await expect(page.locator('.avalon-cut-count')).toContainText('→ 2')
@@ -386,7 +385,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await expect(page.getByRole('group', { name: 'Library columns' })).toHaveCount(0)
       await expect(page.getByRole('slider', { name: 'Density' })).toHaveCount(0)
     }
-    await page.getByRole('combobox', { name: 'My lists', exact: true }).selectOption(String(list.id))
+    await selectCollection(page, list.id)
     await expect(page.locator('.avalon-library [data-avalon-game]')).toHaveCount(1)
     await expect(cut.getByRole('button', { name: 'Leave this list' })).toHaveText(`LIST${prefix} favorites`)
     await cut.getByRole('button', { name: 'Remove search filter' }).click()

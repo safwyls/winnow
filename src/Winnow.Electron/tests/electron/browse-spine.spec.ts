@@ -1,3 +1,4 @@
+import { selectCollection, selectedCollection } from './collection-controls'
 import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { mkdtemp, readFile } from 'node:fs/promises'
@@ -70,9 +71,7 @@ async function prepare(view: 'grid' | 'list') {
     .getByRole('navigation', { name: 'Main navigation' })
     .getByRole('button', { name: 'Library', exact: true })
     .click()
-  const listPicker = page.getByRole('combobox', { name: 'My lists', exact: true })
-  if ((await listPicker.inputValue()) !== String(sourceList.id))
-    await listPicker.selectOption(String(sourceList.id))
+  if ((await selectedCollection(page)) !== String(sourceList.id)) await selectCollection(page, sourceList.id)
   await page.getByRole('combobox', { name: 'Sort', exact: true }).selectOption('dormant')
   await page.getByRole('button', { name: view === 'grid' ? 'Grid view' : 'List view', exact: true }).click()
   await expect(page.locator('.avalon-results-count')).toHaveText('8 games')

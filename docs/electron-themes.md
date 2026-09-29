@@ -91,6 +91,13 @@ the saved rules; leaving a live list removes its contributed rules, while leavin
 manual list keeps the user's filters. Details offers membership ticks for manual lists
 and explains the empty state when only live lists exist.
 
+Desktop presents manual and live lists in separate collapsible rail sections. Expansion
+lasts for the session, and each row counts projected games rather than stored release
+IDs. Clicking the active row leaves its list. A live list opens the inline filter panel;
+leaving the list clears its contributed rules and keeps that panel open. Toolbar and
+result controls reserve the panel's width. Fullscreen retains its own list selector and
+returns to Browse without automatically opening the filter page.
+
 Avalon opens desktop game Details as a modal over the retained library, with an 82×123
 cover and five sections: Overview, Activity, Updates, Journal and Library. The bounded
 reading area retains each section's scroll position while its header stays fixed. Closing

@@ -614,7 +614,8 @@
   .avalon-library-results > .avalon-library-scroll {
     width: 100%;
   }
-  .avalon-shell.desktop .avalon-library[data-filters-open='true'] .avalon-library-results {
+  .avalon-shell.desktop .avalon-library[data-filters-open='true'] > .avalon-toolbar,
+  .avalon-shell.desktop .avalon-library[data-filters-open='true'] > .avalon-library-browse {
     margin-right: 300px;
   }
   .avalon-filter-panel {

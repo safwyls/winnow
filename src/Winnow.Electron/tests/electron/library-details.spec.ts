@@ -1,3 +1,4 @@
+import { selectCollection, collectionChoice, expectCollection } from './collection-controls'
 import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { mkdtemp, readFile } from 'node:fs/promises'
@@ -139,8 +140,8 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     // time, so carry a real desktop draft into that surface before saving the year.
     await surface('desktop')
     // The API emits the same library invalidation used by the production renderer.
-    await expect(page.getByLabel('My lists').locator(`option[value="${list.id}"]`)).toHaveCount(1)
-    await page.getByLabel('My lists').selectOption(String(list.id))
+    await expect(await collectionChoice(page, list.id)).toHaveCount(1)
+    await selectCollection(page, list.id)
     await page.getByRole('button', { name: `View ${game.title}`, exact: true }).click()
     await page.getByRole('button', { name: 'More', exact: true }).click()
     await page.getByRole('button', { name: 'Edit metadata…', exact: true }).click()
@@ -149,7 +150,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await page.locator('.metadata-dialog').getByRole('button', { name: 'Back', exact: true }).click()
       await page.getByRole('button', { name: 'Close game details', exact: true }).click()
       await surface(mode)
-      await page.getByLabel('My lists').selectOption(String(list.id))
+      await selectCollection(page, list.id)
       await page.getByRole('button', { name: `View ${game.title}`, exact: true }).click()
       await page.getByRole('button', { name: 'More', exact: true }).click()
       await page.getByRole('button', { name: 'Edit metadata…', exact: true }).click()
@@ -182,12 +183,12 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       .click()
     await expect(page.locator('.avalon-details')).toHaveCount(0)
     await expect(page.getByText('No games match these filters.', { exact: true })).toBeVisible()
-    await expect(page.getByLabel('My lists')).toHaveValue(String(list.id))
+    await expectCollection(page, list.id)
     const saved = await api<LibraryResponse>({ route: 'library.get' })
     expect(saved.games.find((item) => item.workId === game.workId)?.firstReleaseYear).toBe(2017)
     expect(saved.games.find((item) => item.workId === game.workId)?.title).toBe(game.title)
     expect(saved.lists.find((item) => item.id === list.id)?.releaseIds).toEqual([])
-    await page.getByRole('button', { name: 'Close list', exact: true }).click()
+    await page.getByRole('button', { name: 'Leave this list', exact: true }).click()
     expect(failures).toEqual([])
   })
   test(`${mode} reviews grouped proposals, merges selected groups and retracts their exact acts through one Undo`, async () => {

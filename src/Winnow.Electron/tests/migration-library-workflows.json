@@ -174,7 +174,7 @@
     "reason": "The exact three source titles exercise both movement buttons at first, middle and last positions; disabled boundary actions emit no reorder request."
   },
   "ListsViewModelTests.A_live_list_is_saved_from_the_cut_and_reopens_onto_the_same_rules": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-library-workflows.test.tsx",
@@ -187,9 +187,17 @@
       {
         "file": "tests/electron/lists.spec.ts",
         "case": "saves and opens a named live cut, discovers a new matching game and restores the rules after reload"
+      },
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "opens live filters inline and toggles the same actual rail row off while leaving the panel open"
+      },
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "fullscreen returns to its Browse results after selecting a live list without opening the filter page"
       }
     ],
-    "reason": "Both modes now suggest Started · RPG, open the committed live list and restore its complete rules without marking an edit; native tests verify durable creation and reload. The source also automatically opens the filter panel when reopening a live list; Electron currently exposes restored rules through chips and the Filters action, so that presentation assertion remains open."
+    "reason": "Both modes preserve the original Started · RPG suggestion and committed saved rules. The desktop row automatically opens the inline panel and keeps it open on exit; fullscreen follows its source Browse-return behavior. Native production API tests verify creation, automatic desktop panel opening, subsequent matching games and renderer reload, with 1200/1440 toolbar containment."
   },
   "ListsViewModelTests.Opening_a_live_list_without_a_bucket_leaves_the_predefined_bucket_behind": {
     "status": "ported",
@@ -268,14 +276,22 @@
     "reason": "Switching Every RPG to Action replaces the genre, shows only Hades and removes the old RPG chip in both presentations."
   },
   "ListsViewModelTests.Clicking_the_open_live_list_again_leaves_it_and_its_rules": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-library-workflows.test.tsx",
         "case": "clicking the current live list again leaves its rules and preserves explicit unknown saved rules"
+      },
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "opens live filters inline and toggles the same actual rail row off while leaving the panel open"
+      },
+      {
+        "file": "tests/electron/lists.spec.ts",
+        "case": "saves and opens a named live cut, discovers a new matching game and restores the rules after reload"
       }
     ],
-    "reason": "The shared collection transition toggles the current list off and removes its explicit missing-store/facet rules. Native collection picker interaction remains."
+    "reason": "The actual desktop live-list row toggles off on its second activation, removes the contributed search/store rules, restores all games and retains one active bucket marker. Both composed renderer and native tests assert this; the policy test additionally preserves explicit unavailable-store/facet rules until exit."
   },
   "ListsViewModelTests.Inside_a_live_list_the_bar_says_which_rules_are_the_lists": {
     "status": "ported",
@@ -506,5 +522,19 @@
       }
     ],
     "reason": "Both modes show saved membership, use the committed revision for the subsequent untick and refresh the manual list to zero games. Production HTTP reads verify both durable states."
+  },
+  "RailListControlsTests.Sections_collapse_independently_and_footer_creates_either_kind": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "collapses manual and live sections independently and retains their state across Home navigation"
+      },
+      {
+        "file": "tests/electron/lists.spec.ts",
+        "case": "desktop independently collapses list sections with the keyboard and retains their state across Home"
+      }
+    ],
+    "reason": "Independent vector-chevron sections, accessible expanded state, projected counts and session retention pass in renderer and native keyboard tests. The source footer alignment and direct Static list/Live list menu, explanatory tooltips and return focus remain to be restored."
   }
 }
