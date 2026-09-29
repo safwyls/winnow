@@ -98,3 +98,19 @@ These checks used fixture records and the production React renderer, not a repac
 native executable. No GPU frame-time benchmark or physical controller test was performed.
 
 ![Discover cards mid-shuffle in the shared mock](discover-shuffle.png)
+
+## Mock Library foil repair — TASK-375
+
+The mock included Library captions in the initial shader dimensions, then watched only
+the artwork for resizing. The first observation therefore removed its new canvas. The
+renderer now measures the untransformed cover and normalizes pointer input from the
+stable button into that area, matching the production component's separation.
+
+The failure was reproduced with no material canvas while the cover still lifted. After
+the repair, the desktop canvas remained 163 × 244 pixels with both essential and taller
+context captions. Fullscreen retained a 151 × 227 canvas. Pointer input followed normally;
+keyboard focus and Still mode retained a stationary foil highlight. Discover keyboard
+cycling retained its material. Node syntax validation and all 20 production artwork-effect
+tests passed. No Electron production code changed or native executable was repackaged.
+
+![Library foil restored in the mock](library-foil.png)

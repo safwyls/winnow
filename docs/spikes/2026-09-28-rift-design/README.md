@@ -102,6 +102,10 @@ window blur. Hidden documents and dialogs stop their loops. The full-page expans
 only during its entrance and stops when complete or interrupted. The cover finish and
 pointer depth retain their separate modules, image reuse and graphics fallback.
 
+The finish renderer uses the untransformed artwork dimensions, independently of the
+button's caption height. Pointer input is normalized from the stable button into that
+artwork area, so Library captions and the Discover deck share the same material sizing.
+
 This mock remains separate from the production React `ArtworkEffects`, `GamePreview`
 and `GameCard` APIs. Integration into the Electron frontend follows design review. The
 first Rift proposal and the Afterglow restoration are recorded at commit 257d5e5; their
@@ -150,6 +154,15 @@ settled on the selected game. Production checks also covered rapid keyboard reve
 focus retention, details activation during the shuffle and immediate reduced-motion
 selection. The shared controller's focused tests and the Electron build passed; see
 the [integration evidence](../2026-09-28-rift-integration/README.md#discover-shuffle--task-374).
+
+TASK-375 repaired the Library material canvas disappearing after attachment. Browser
+inspection reproduced a 287-pixel card with only 244 pixels of artwork: measuring the
+card and observing the cover made the resize handler immediately remove the canvas.
+After the repair, desktop and fullscreen retained their correctly sized canvas during
+pointer movement, keyboard focus and Still mode, including taller contextual captions.
+Discover retained its material after keyboard cycling. The mock script passed Node's
+syntax check; all 20 production artwork-effect tests passed. Production already measures
+the artwork surface separately and required no code change for this bug.
 
 ## Assets
 

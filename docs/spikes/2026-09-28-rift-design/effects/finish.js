@@ -226,11 +226,13 @@
     // The outer button is a stable hit area; its visual surface may be tilted in 3D.
     const poster = cover.closest('.poster-grid:not(.records) .game-card');
     const bounds = (poster || cover).getBoundingClientRect();
-    if (!bounds.width || !bounds.height) return;
+    // Captions belong to the hit area, not the shader or its resize observation.
+    const artworkWidth = cover.offsetWidth, artworkHeight = cover.offsetHeight;
+    if (!bounds.width || !bounds.height || !artworkWidth || !artworkHeight) return;
     if (source === 'pointer' && (clientX < bounds.left || clientX > bounds.right || clientY < bounds.top || clientY > bounds.bottom)) { leave(); return; }
     input = source;
-    targetX = isStill() ? bounds.width * 0.5 : clientX - bounds.left;
-    targetY = isStill() ? bounds.height * 0.36 : clientY - bounds.top;
+    targetX = (isStill() ? 0.5 : Math.max(0, Math.min(1, (clientX - bounds.left) / bounds.width))) * artworkWidth;
+    targetY = (isStill() ? 0.36 : Math.max(0, Math.min(1, (clientY - bounds.top) / bounds.height))) * artworkHeight;
     goal = 1;
     if (active === cover && app?.canvas.isConnected) {
       if (isStill()) {
@@ -249,7 +251,7 @@
     active = cover;
     const request = generation;
     x = targetX; y = targetY; reveal = isStill() ? 1 : 0;
-    width = bounds.width; height = bounds.height;
+    width = artworkWidth; height = artworkHeight;
     try {
       await initialize();
       if (generation !== request || disposed || !cover.isConnected) return;
