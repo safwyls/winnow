@@ -475,6 +475,8 @@ not mean completed. Changing the period does not change this current composition
 
 Spending identifies Steam as its supported source. Other stores have no spending importer.
 Opening Spending refreshes the capture, including when returning within the same session.
+Its Refresh Steam spending action reads the latest capture without changing a valid currency
+selection. Desktop and fullscreen retain their own currency selections during the session.
 Capture dates remain the calendar dates on the source page. Missing dates omit their rows;
 undated transactions retain their own count and spending row. Licence acquisition methods
 use readable names such as Steam Store and Retail key.
@@ -494,8 +496,9 @@ Flare, and carry visible text equivalents so color and pointer hover are not req
 The highest recorded spending year describes captured history, not a complete lifetime.
 Average kept transaction value divides net spend by kept product transactions with recorded
 prices in the selected currency; a bundle counts once, and no per-game price is inferred.
-Desktop keeps detailed tables behind a disclosure; fullscreen retains its reading actions
-and controller-accessible currency choices.
+Desktop keeps detailed tables behind a disclosure; fullscreen opens the selected currency's
+breakdown in a reading panel and restores focus on return. Fullscreen currency choices work
+with directional navigation and Accept.
 
 The refund percentage divides original product rows flagged refunded by all product rows
 with recorded prices. The bundle percentage divides non-refunded product rows with more

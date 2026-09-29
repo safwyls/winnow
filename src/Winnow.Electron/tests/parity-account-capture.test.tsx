@@ -44,7 +44,10 @@ const clients: QueryClient[] = []
 afterEach(() => {
   cleanup()
   clients.splice(0).forEach((client) => client.clear())
-  for (const mode of ['desktop', 'fullscreen']) clearViewState(`${mode}:stats:section`)
+  for (const mode of ['desktop', 'fullscreen']) {
+    clearViewState(`${mode}:stats:section`)
+    clearViewState(`${mode}:stats:currency`)
+  }
   vi.restoreAllMocks()
 })
 function mount(mode: Mode, value: AccountStats, dashboard = false) {
@@ -69,7 +72,7 @@ function mount(mode: Mode, value: AccountStats, dashboard = false) {
   const view = render(
     <QueryClientProvider client={client}>
       <div data-mode={mode} className={`mode-${mode}`}>
-        {dashboard ? <GameplayDashboard mode={mode} /> : <AccountStatistics />}
+        {dashboard ? <GameplayDashboard mode={mode} /> : <AccountStatistics mode={mode} />}
       </div>
     </QueryClientProvider>,
   )
@@ -84,6 +87,11 @@ function mount(mode: Mode, value: AccountStats, dashboard = false) {
 const fact = (scope: HTMLElement, label: string, expected: string) => {
   const term = within(scope).getByText(label, { selector: 'dt' })
   expect(term.parentElement?.querySelector('dd')?.textContent).toBe(expected)
+}
+async function openBreakdown(mode: Mode) {
+  if (mode === 'desktop')
+    fireEvent.click(await screen.findByText('Detailed spending breakdown', { selector: 'summary' }))
+  else fireEvent.click(await screen.findByRole('button', { name: 'Read spending details' }))
 }
 
 describe.each<Mode>(['desktop', 'fullscreen'])('captured account facts on %s', (mode) => {
@@ -205,9 +213,10 @@ describe.each<Mode>(['desktop', 'fullscreen'])('captured account facts on %s', (
     const spending = await screen.findByRole('region', { name: 'Spending in $' })
     fact(spending, 'Before refunds', '$50.00')
     fact(spending, 'Net product spend', '$50.00')
-    expect(within(spending).getByRole('row', { name: 'Single-item purchases 4 $50.00' })).toBeTruthy()
-    expect(within(spending).getByRole('row', { name: 'Wallet top-ups 1 $20.00' })).toBeTruthy()
-    expect(within(spending).getByRole('row', { name: 'Redeemed wallet credit 1 $10.00' })).toBeTruthy()
+    await openBreakdown(mode)
+    expect(screen.getByRole('row', { name: 'Single-item purchases 4 $50.00' })).toBeTruthy()
+    expect(screen.getByRole('row', { name: 'Wallet top-ups 1 $20.00' })).toBeTruthy()
+    expect(screen.getByRole('row', { name: 'Redeemed wallet credit 1 $10.00' })).toBeTruthy()
     expect(screen.queryByText(/\$70\.00|\$80\.00/)).toBeNull()
   })
   it('The_year_table_lists_the_undated_slice_as_its_own_line', async () => {
@@ -223,6 +232,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('captured account facts on %s', (
       undatedNetSpendCents: 1500,
       undatedNetTransactionCount: 3,
     })
+    await openBreakdown(mode)
     const years = await screen.findByRole('table', { name: 'Spending by year details' })
     expect(
       within(years)
@@ -239,6 +249,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('captured account facts on %s', (
       transactionCount: 2,
       spendByYear: [{ year: 2021, transactionCount: 2, cents: 4000 }],
     })
+    await openBreakdown(mode)
     const years = await screen.findByRole('table', { name: 'Spending by year details' })
     expect(within(years).getAllByRole('row')).toHaveLength(2)
     expect(within(years).getByRole('row', { name: '2021 2 $40.00' })).toBeTruthy()
@@ -260,6 +271,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('captured account facts on %s', (
         isBundle: true,
       },
     })
+    await openBreakdown(mode)
     const biggest = await screen.findByRole('region', { name: 'Largest transaction' })
     expect(within(biggest).getByText('$120.00')).toBeTruthy()
     expect(within(biggest).getByText('24 Nov 2023')).toBeTruthy()

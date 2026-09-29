@@ -3,9 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AccountStatistics, SteamPageImport, type AccountStats } from '../src/renderer/features/Accounts'
+import { clearViewState } from '../src/renderer/viewState'
 
 afterEach(() => {
   cleanup()
+  for (const mode of ['desktop', 'fullscreen']) clearViewState(`${mode}:stats:currency`)
   vi.restoreAllMocks()
 })
 const slice = { count: 0, cents: 0 }
@@ -56,15 +58,25 @@ function mount(node: React.ReactNode, handler: (route: string, body: unknown) =>
   return request
 }
 describe('account summary parity with AccountStatsSummaryTests', () => {
-  it.each(['desktop', 'fullscreen'])(
+  it.each(['desktop', 'fullscreen'] as const)(
     'Statistics_render_known_and_unknown_account_scope_without_ambiguous_money_totals on %s',
     async (mode) => {
-      mount(<div className={`mode-${mode}`}><AccountStatistics /></div>, () => ({
-        ...base, knownAccountCount: 2, unknownAccountFactCount: 1, transactionCount: 3,
-        purchases: { count: 3, cents: 1500 }, netProductSpendCents: 1500,
-        grossProductSpendCents: 1500, refundedProductSpendCents: 0,
-        spendByYear: [{ year: 2026, transactionCount: 3, cents: 1500 }],
-      }))
+      mount(
+        <div className={`mode-${mode}`}>
+          <AccountStatistics mode={mode} />
+        </div>,
+        () => ({
+          ...base,
+          knownAccountCount: 2,
+          unknownAccountFactCount: 1,
+          transactionCount: 3,
+          purchases: { count: 3, cents: 1500 },
+          netProductSpendCents: 1500,
+          grossProductSpendCents: 1500,
+          refundedProductSpendCents: 0,
+          spendByYear: [{ year: 2026, transactionCount: 3, cents: 1500 }],
+        }),
+      )
       await screen.findByText(/2 identified accounts/)
       expect(screen.getByText(/unknown account may overlap identified/)).toBeTruthy()
       expect(screen.getByText(/1 facts have no captured account identity/)).toBeTruthy()
@@ -74,37 +86,40 @@ describe('account summary parity with AccountStatsSummaryTests', () => {
       expect(screen.getAllByText('—')).toHaveLength(2)
     },
   )
-  it.each(['desktop', 'fullscreen'])('keeps currencies and wallet funding separate on %s', async (mode) => {
-    const value = {
-      ...base,
-      isSingleCurrency: false,
-      currencySymbol: null,
-      netProductSpendCents: 999999,
-      currencyGroups: [
-        { ...base, currencySymbol: '$' },
-        { ...base, currencySymbol: '€', netProductSpendCents: 1200 },
-      ],
-    }
-    const request = mount(
-      <div className={`mode-${mode}`}>
-        <AccountStatistics />
-      </div>,
-      () => value,
-    )
-    await screen.findByText('33.3%')
-    expect(screen.getByText('50%')).toBeTruthy()
-    expect(within(screen.getByRole('region', { name: 'Spending in $' })).getAllByText('$30.00')).toHaveLength(
-      2,
-    )
-    expect(within(screen.getByRole('region', { name: 'Spending in €' })).getByText('€12.00')).toBeTruthy()
-    expect(screen.queryByText(/9,999.99/)).toBeNull()
-    expect(request).toHaveBeenCalledWith({
-      route: 'statistics.account',
-      params: { source: 'steam' },
-      body: undefined,
-      requestId: expect.stringMatching(/^[a-f0-9]{32}$/),
-    })
-  })
+  it.each(['desktop', 'fullscreen'] as const)(
+    'keeps currencies and wallet funding separate on %s',
+    async (mode) => {
+      const value = {
+        ...base,
+        isSingleCurrency: false,
+        currencySymbol: null,
+        netProductSpendCents: 999999,
+        currencyGroups: [
+          { ...base, currencySymbol: '$' },
+          { ...base, currencySymbol: '€', netProductSpendCents: 1200 },
+        ],
+      }
+      const request = mount(
+        <div className={`mode-${mode}`}>
+          <AccountStatistics mode={mode} />
+        </div>,
+        () => value,
+      )
+      await screen.findByText('33.3%')
+      expect(screen.getByText('50%')).toBeTruthy()
+      expect(
+        within(screen.getByRole('region', { name: 'Spending in $' })).getAllByText('$30.00'),
+      ).toHaveLength(2)
+      expect(within(screen.getByRole('region', { name: 'Spending in €' })).getByText('€12.00')).toBeTruthy()
+      expect(screen.queryByText(/9,999.99/)).toBeNull()
+      expect(request).toHaveBeenCalledWith({
+        route: 'statistics.account',
+        params: { source: 'steam' },
+        body: undefined,
+        requestId: expect.stringMatching(/^[a-f0-9]{32}$/),
+      })
+    },
+  )
   it('does not invent percentages or currency totals for unknown prices', async () => {
     mount(<AccountStatistics />, () => ({
       ...base,
@@ -138,7 +153,8 @@ describe('account summary parity with AccountStatsSummaryTests', () => {
     }))
     const spending = await screen.findByRole('region', { name: 'Spending in $' })
     expect(within(spending).getAllByText('Not available')).toHaveLength(3)
-    expect(within(spending).getByText('$900.00')).toBeTruthy()
+    fireEvent.click(screen.getByText('Detailed spending breakdown', { selector: 'summary' }))
+    expect(screen.getByRole('row', { name: 'Wallet top-ups 1 $900.00' })).toBeTruthy()
     expect(screen.queryByText('0%')).toBeNull()
   })
   it('Negative_amounts_stay_signed_and_zero_years_remain_recorded_facts', async () => {
@@ -178,7 +194,7 @@ describe('account summary parity with AccountStatsSummaryTests', () => {
     expect(screen.queryByText('$30.00')).toBeNull()
     expect(screen.queryByRole('region', { name: 'Captured spending charts' })).toBeNull()
   })
-  it.each(['desktop', 'fullscreen'])(
+  it.each(['desktop', 'fullscreen'] as const)(
     'switches chart currencies without blending amounts or losing focus on %s',
     async (mode) => {
       const usd = { ...base, spendByYear: [{ year: 2025, transactionCount: 2, cents: 3000 }] }
@@ -189,13 +205,17 @@ describe('account summary parity with AccountStatsSummaryTests', () => {
       }
       mount(
         <div className={`mode-${mode}`}>
-          <AccountStatistics />
+          <AccountStatistics mode={mode} />
         </div>,
         () => ({ ...base, isSingleCurrency: false, currencySymbol: null, currencyGroups: [usd, euro] }),
       )
-      const currency = await screen.findByLabelText('Chart currency')
+      const currency =
+        mode === 'desktop'
+          ? await screen.findByLabelText('Chart and detail currency')
+          : await screen.findByRole('button', { name: '€ · show charts' })
       currency.focus()
-      fireEvent.change(currency, { target: { value: '€' } })
+      if (mode === 'desktop') fireEvent.change(currency, { target: { value: '€' } })
+      else fireEvent.click(currency)
       const chart = screen.getByRole('region', { name: 'Spending by year' })
       expect(within(chart).getByText('€12.00')).toBeTruthy()
       expect(within(chart).queryByText('$30.00')).toBeNull()

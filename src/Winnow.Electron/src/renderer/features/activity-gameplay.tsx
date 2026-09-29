@@ -78,7 +78,11 @@ export function GameplayDashboard({
           </button>
         ))}
       </nav>
-      {section === 'spending' ? <AccountStatistics /> : <Gameplay mode={mode} onOpenGame={onOpenGame} />}
+      {section === 'spending' ? (
+        <AccountStatistics mode={mode} />
+      ) : (
+        <Gameplay mode={mode} onOpenGame={onOpenGame} />
+      )}
     </section>
   )
 }
@@ -262,17 +266,15 @@ function Gameplay({ mode, onOpenGame }: { mode: Mode; onOpenGame?: (id: number) 
             <Chart
               title="Games you spent time with"
               empty="No games with completed sessions in this period."
-              bars={(stats.topGames ?? [])
-                .slice(0, 10)
-                .map((row) => ({
-                  key: String(row.resolvedWorkId),
-                  label:
-                    library.data?.games.find((game) => game.workId === row.resolvedWorkId)?.title ??
-                    'Game no longer in your library',
-                  value: row.recordedSeconds,
-                  text: hours(row.recordedSeconds / 60),
-                  open: onOpenGame && (() => onOpenGame(row.resolvedWorkId)),
-                }))}
+              bars={(stats.topGames ?? []).slice(0, 10).map((row) => ({
+                key: String(row.resolvedWorkId),
+                label:
+                  library.data?.games.find((game) => game.workId === row.resolvedWorkId)?.title ??
+                  'Game no longer in your library',
+                value: row.recordedSeconds,
+                text: hours(row.recordedSeconds / 60),
+                open: onOpenGame && (() => onOpenGame(row.resolvedWorkId)),
+              }))}
             />
             <Chart
               title="Session lengths"

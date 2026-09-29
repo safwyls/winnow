@@ -1,6 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
 import { useQuery } from '@tanstack/react-query'
 import { request } from '../api/client'
+import type { Mode } from '../api/types'
+import { useViewState } from '../viewState'
 import { Empty, Notice } from './shared'
 import './accounts.css'
 
@@ -189,7 +192,10 @@ function AccountChart({
   title: string
   rows: { label: string; value: number; formatted: string }[]
 }) {
-  const max = Math.max(1, ...rows.map((row) => Math.abs(row.value)))
+  const minimum = Math.min(0, ...rows.map((row) => row.value))
+  const maximum = Math.max(0, ...rows.map((row) => row.value))
+  const range = Math.max(1, maximum - minimum)
+  const zero = (-minimum / range) * 100
   return (
     <section className="account-chart" aria-label={title}>
       <h3>{title}</h3>
@@ -197,11 +203,16 @@ function AccountChart({
         {rows.map((row) => (
           <li key={row.label}>
             <span>{row.label}</span>
-            <span
-              className={`account-chart-bar${row.value < 0 ? ' negative' : ''}`}
-              style={{ width: `${(Math.abs(row.value) / max) * 100}%` }}
-              aria-hidden="true"
-            />
+            <span className="account-chart-track" aria-hidden="true">
+              <span className="account-chart-zero" style={{ left: `${zero}%` }} />
+              <span
+                className={`account-chart-bar${row.value < 0 ? ' negative' : ''}`}
+                style={{
+                  left: `${((Math.min(0, row.value) - minimum) / range) * 100}%`,
+                  width: `${(Math.abs(row.value) / range) * 100}%`,
+                }}
+              />
+            </span>
             <strong>{row.formatted}</strong>
           </li>
         ))}
@@ -210,10 +221,7 @@ function AccountChart({
   )
 }
 
-function AccountCharts({ groups }: { groups: AccountStats[] }) {
-  const [selected, setSelected] = useState<string | null>(null)
-  const value = groups.find((group) => group.currencySymbol === selected) ?? groups[0]
-  if (!value) return null
+function AccountCharts({ value }: { value: AccountStats }) {
   const money = (cents: number) => capturedMoney(cents, value.currencySymbol)
   const kinds = [
     ['Purchases', value.purchases],
@@ -224,18 +232,6 @@ function AccountCharts({ groups }: { groups: AccountStats[] }) {
   const peak = [...value.spendByYear].sort((a, b) => b.cents - a.cents)[0]
   return (
     <section className="account-charts" aria-label="Captured spending charts">
-      {groups.length > 1 && (
-        <label className="field">
-          Chart currency
-          <select value={value.currencySymbol ?? ''} onChange={(event) => setSelected(event.target.value)}>
-            {groups.map((group) => (
-              <option key={group.currencySymbol} value={group.currencySymbol ?? ''}>
-                {group.currencySymbol}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
       <div className="feature-grid">
         <AccountChart
           title="Spending by year"
@@ -246,8 +242,7 @@ function AccountCharts({ groups }: { groups: AccountStats[] }) {
           }))}
         />
         {!negativeKinds && (
-          <AccountChart
-            title="Product spending by kind"
+          <CompositionChart
             rows={kinds
               .filter(([, slice]) => slice.cents > 0)
               .map(([label, slice]) => ({ label, value: slice.cents, formatted: money(slice.cents) }))}
@@ -272,19 +267,62 @@ function AccountCharts({ groups }: { groups: AccountStats[] }) {
   )
 }
 
-function SpendGroup({ value }: { value: AccountStats }) {
+function CompositionChart({ rows }: { rows: { label: string; value: number; formatted: string }[] }) {
+  const total = rows.reduce((sum, row) => sum + row.value, 0)
+  let offset = 0
+  return (
+    <section className="account-chart account-composition" aria-label="Product spending by kind">
+      <h3>Where the money went</h3>
+      <p className="muted">Kept product transactions. Wallet credit is excluded.</p>
+      {total > 0 ? (
+        <div className="account-donut-layout">
+          <svg className="account-donut" viewBox="0 0 160 160" aria-hidden="true">
+            {rows.map((row, index) => {
+              const start = offset
+              const share = (row.value / total) * 100
+              offset += share
+              return (
+                <circle
+                  key={row.label}
+                  className={`account-ink-${index}`}
+                  cx="80"
+                  cy="80"
+                  r="64"
+                  pathLength="100"
+                  fill="none"
+                  strokeWidth="24"
+                  strokeDasharray={`${share} ${100 - share}`}
+                  strokeDashoffset={-start}
+                  transform="rotate(-90 80 80)"
+                />
+              )
+            })}
+          </svg>
+          <ul>
+            {rows.map((row, index) => (
+              <li key={row.label}>
+                <span>
+                  <i className={`account-ink-${index}`} aria-hidden="true" />
+                  {row.label}
+                </span>
+                <strong>
+                  {row.formatted} · {Number(((100 * row.value) / total).toFixed(1))}%
+                </strong>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <p>No kept product amounts were recorded.</p>
+      )}
+    </section>
+  )
+}
+
+function SpendSummary({ value }: { value: AccountStats }) {
   const money = (cents: number) => capturedMoney(cents, value.currencySymbol)
   const productMoney = (cents: number) =>
     value.grossProductTransactionCount > 0 ? money(cents) : 'Not available'
-  const slices: [string, Slice][] = [
-    ['Single-item purchases', value.purchases],
-    ['Bundles', value.bundlePurchases],
-    ['Gifts given', value.giftPurchases],
-    ['In-game purchases', value.inGamePurchases],
-    ['Separate refund transactions', value.refundTransactions],
-    ['Wallet top-ups', value.walletCreditPurchases],
-    ['Redeemed wallet credit', value.walletCreditRedemptions],
-  ]
   return (
     <section
       className="feature-panel"
@@ -308,7 +346,25 @@ function SpendGroup({ value }: { value: AccountStats }) {
           <dd className="transaction-count">{value.refundedProductTransactionCount} transactions</dd>
         </div>
       </dl>
-      <table>
+    </section>
+  )
+}
+
+function SpendDetails({ value }: { value: AccountStats }) {
+  const money = (cents: number) => capturedMoney(cents, value.currencySymbol)
+  const slices: [string, Slice][] = [
+    ['Single-item purchases', value.purchases],
+    ['Bundles', value.bundlePurchases],
+    ['Gifts given', value.giftPurchases],
+    ['In-game purchases', value.inGamePurchases],
+    ['Separate refund transactions', value.refundTransactions],
+    ['Wallet top-ups', value.walletCreditPurchases],
+    ['Redeemed wallet credit', value.walletCreditRedemptions],
+  ]
+  return (
+    <section aria-label={`Spending details in ${value.currencySymbol}`}>
+      <p>Currency: {value.currencySymbol}. Amounts describe captured transactions.</p>
+      <table aria-label="Spending by kind details">
         <thead>
           <tr>
             <th scope="col">Kind</th>
@@ -374,7 +430,41 @@ function SpendGroup({ value }: { value: AccountStats }) {
   )
 }
 
-export function AccountStatistics() {
+function SpendingDetails({ value, mode }: { value: AccountStats; mode: Mode }) {
+  if (mode === 'desktop')
+    return (
+      <details className="feature-panel account-breakdown">
+        <summary>Detailed spending breakdown</summary>
+        <SpendDetails value={value} />
+      </details>
+    )
+  return (
+    <Dialog.Root>
+      <Dialog.Trigger asChild>
+        <button>Read spending details</button>
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="dialog-overlay" />
+        <Dialog.Content
+          className="dialog-content account-reading mode-fullscreen"
+          aria-describedby={undefined}
+        >
+          <header className="feature-heading">
+            <Dialog.Title>Spending details · {value.currencySymbol}</Dialog.Title>
+            <Dialog.Close asChild>
+              <button>Back</button>
+            </Dialog.Close>
+          </header>
+          <div className="account-reading-body" tabIndex={0} aria-label="Spending breakdown">
+            <SpendDetails value={value} />
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
+}
+
+export function AccountStatistics({ mode = 'desktop' }: { mode?: Mode }) {
   const stats = useQuery({
     queryKey: ['api', 'statistics.account', { source: 'steam' }],
     queryFn: ({ signal }) =>
@@ -385,6 +475,7 @@ export function AccountStatistics() {
   })
   const [error, setError] = useState<unknown>(null)
   const [message, setMessage] = useState('')
+  const [selected, setSelected] = useViewState<string | null>(`${mode}:stats:currency`, null)
   const data = stats.data
   const ambiguous = !!data && data.knownAccountCount > 0 && data.unknownAccountFactCount > 0
   const groups = data
@@ -394,32 +485,46 @@ export function AccountStatistics() {
         ? [data]
         : []
     : []
+  const selectedGroup = groups.find((group) => group.currencySymbol === selected) ?? groups[0]
+  const selectedSymbol = selectedGroup?.currencySymbol ?? null
+  useEffect(() => {
+    if (data && selected !== selectedSymbol) setSelected(selectedSymbol)
+  }, [data, selected, selectedSymbol, setSelected])
   const percentage = (numerator: number, denominator: number) =>
     !ambiguous && denominator > 0 && numerator >= 0 && numerator <= denominator
       ? `${Number(((100 * numerator) / denominator).toFixed(1))}%`
       : '—'
   return (
-    <section aria-label="Account spending" className="account-statistics">
+    <section aria-label="Account spending" className="account-statistics" data-mode={mode}>
       <header className="feature-heading">
         <div>
           <h2>What you brought home</h2>
           <p>Spending and licences from your captured Steam account pages.</p>
         </div>
-        {window.winnow.exportAcquisitions && (
-          <button
-            onClick={() => {
-              setError(null)
-              setMessage('')
-              void window.winnow.exportAcquisitions!()
-                .then((saved) => {
-                  if (saved) setMessage('Acquisitions exported.')
-                })
-                .catch(setError)
-            }}
-          >
-            Export acquisitions
+        <div className="account-actions">
+          <button disabled={stats.isFetching} onClick={() => void stats.refetch()}>
+            {stats.isFetching
+              ? 'Reading Steam spending…'
+              : stats.isError
+                ? 'Try again'
+                : 'Refresh Steam spending'}
           </button>
-        )}
+          {window.winnow.exportAcquisitions && (
+            <button
+              onClick={() => {
+                setError(null)
+                setMessage('')
+                void window.winnow.exportAcquisitions!()
+                  .then((saved) => {
+                    if (saved) setMessage('Acquisitions exported.')
+                  })
+                  .catch(setError)
+              }}
+            >
+              Export acquisitions
+            </button>
+          )}
+        </div>
       </header>
       <Notice error={stats.error || error} message={message} />
       {stats.isPending ? (
@@ -440,6 +545,11 @@ export function AccountStatistics() {
               <dd>{percentage(data.bundlePurchases.count, data.netProductTransactionCount)}</dd>
             </div>
           </dl>
+          <p className="muted">
+            Product transactions with recorded prices only. Wallet credit and standalone refund rows are
+            excluded. Percentages count transactions, not games or money; missing-price rows and uncaptured
+            pages are outside these figures.
+          </p>
           <CaptureCoverage value={data} />
           <p className="muted">
             These totals cover only the pages you captured. Purchases from other shops are absent. Currencies
@@ -464,12 +574,50 @@ export function AccountStatistics() {
             </p>
           ) : (
             <>
-              <AccountCharts groups={groups} />
               <div className="feature-grid">
                 {groups.map((group) => (
-                  <SpendGroup key={group.currencySymbol} value={group} />
+                  <SpendSummary key={group.currencySymbol} value={group} />
                 ))}
               </div>
+              {groups.length > 1 &&
+                (mode === 'desktop' ? (
+                  <label className="field account-currency">
+                    Chart and detail currency
+                    <select
+                      value={selectedSymbol ?? ''}
+                      onChange={(event) => setSelected(event.target.value)}
+                    >
+                      {groups.map((group) => (
+                        <option key={group.currencySymbol} value={group.currencySymbol ?? ''}>
+                          {group.currencySymbol}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <div
+                    className="account-currency account-actions"
+                    role="group"
+                    aria-label="Chart and detail currency"
+                  >
+                    {groups.map((group) => (
+                      <button
+                        key={group.currencySymbol}
+                        aria-pressed={group.currencySymbol === selectedSymbol}
+                        onClick={() => setSelected(group.currencySymbol)}
+                      >
+                        {group.currencySymbol} ·{' '}
+                        {group.currencySymbol === selectedSymbol ? 'selected' : 'show charts'}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              {selectedGroup && (
+                <>
+                  <AccountCharts value={selectedGroup} />
+                  <SpendingDetails value={selectedGroup} mode={mode} />
+                </>
+              )}
             </>
           )}
           {(ambiguous || groups.length === 0) && (

@@ -134,7 +134,7 @@ export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
         </>
       )}
       {tab === 'Application' && <ApplicationPreferences />}
-      {tab === 'Spending' && <AccountStatistics />}
+      {tab === 'Spending' && <AccountStatistics mode={mode} />}
       {tab === 'Appearance' && (
         <>
           <FullscreenPreferences mode={mode} />

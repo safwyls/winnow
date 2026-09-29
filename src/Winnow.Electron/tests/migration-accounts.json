@@ -1,17 +1,17 @@
 {
   "AccountStatsSummaryTests.Both_surfaces_show_shared_count_percentages_and_preserve_currency_boundaries": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-accounts.test.tsx",
         "case": "keeps currencies and wallet funding separate on %s"
       },
       {
-        "file": "tests/electron/parity.spec.ts",
-        "case": "spending preserves currency boundaries and chart focus at large text sizes"
+        "file": "tests/electron/account-dashboard.spec.ts",
+        "case": "currency summary preserves proportions, exclusions and font size"
       }
     ],
-    "reason": "Both real rendered surfaces display the original 33.3% and 50% proportions, keep dollar/euro amounts separate and enforce original statistic font minima. The original single-currency native fixture and full summary-copy assertions remain."
+    "reason": "The original single/mixed-currency transaction fixtures run through temporary SQLite, the production API and preload on both native surfaces. They assert 33.3% refunds, 50% bundles, $30/$10 net spend, the complete exclusion note, original 22/40px minima and bounded visible percentages."
   },
   "AccountStatsSummaryTests.Missing_prices_zero_denominators_and_ambiguous_accounts_do_not_invent_figures": {
     "status": "ported",
@@ -44,18 +44,22 @@
     "reason": "Empty captures, licence-only captures, unknown prices, zero product denominators and overlapping account identities never display invented money or percentages. Both surfaces additionally verify all-refunded purchases have a real 100% refund share, zero net spend, no bundle denominator and no kept-transaction average."
   },
   "AccountStatsSummaryTests.Currency_charts_switch_keep_focus_and_render_without_horizontal_overflow": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-accounts.test.tsx",
         "case": "switches chart currencies without blending amounts or losing focus on %s"
       },
       {
-        "file": "tests/electron/parity.spec.ts",
-        "case": "spending preserves currency boundaries and chart focus at large text sizes"
+        "file": "tests/electron/account-dashboard.spec.ts",
+        "case": "currency charts retain focus, refresh selection, exact composition and readable details"
+      },
+      {
+        "file": "tests/parity-account-dashboard.test.tsx",
+        "case": "keeps currency on refresh, selects a remaining currency when removed, and has independent surface state"
       }
     ],
-    "reason": "Both native surfaces retain the currency control's focus and constrain narrow charts at larger theme text size. Original 1920/1280 fullscreen and 1200/600 desktop matrices, controller currency changes and refresh retention remain."
+    "reason": "The original fake-repository chart payload runs through native main/preload at isolated desktop widths 1200/600 and fullscreen window widths 1920/1280 (140% text at 1280). Exact $16 average, 2023 peak, $1200/€240 composition, exclusively euro year labels, selector focus, controller Right/Accept and refresh retention are verified. Disclosure/reading controls share the chosen currency; geometry excludes horizontal overflow."
   },
   "AccountStatsSummaryTests.Overlapping_accounts_with_currency_groups_suppress_money_charts_but_keep_licence_counts": {
     "status": "ported",
@@ -73,6 +77,10 @@
       {
         "file": "tests/parity-accounts.test.tsx",
         "case": "Negative_amounts_stay_signed_and_zero_years_remain_recorded_facts"
+      },
+      {
+        "file": "tests/electron/account-dashboard.spec.ts",
+        "case": "signed year bars straddle zero and zero-valued years remain captured facts"
       }
     ],
     "reason": "Signed negative year amounts remain visible, invalid negative composition charts are withheld with an explanation, and a zero recorded year remains in the chart and peak-year insight."

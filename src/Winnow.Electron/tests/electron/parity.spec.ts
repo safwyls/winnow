@@ -211,8 +211,12 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await expect(
       statistics.getByRole('region', { name: 'Spending in €' }).getByText('€60.00', { exact: true }).first(),
     ).toBeVisible()
-    const currency = statistics.getByLabel('Chart currency')
-    await currency.selectOption('€')
+    const currency =
+      mode === 'desktop'
+        ? statistics.getByLabel('Chart and detail currency')
+        : statistics.getByRole('button', { name: /^€ ·/ })
+    if (mode === 'desktop') await currency.selectOption('€')
+    else await currency.click()
     await currency.focus()
     await expect(currency).toBeFocused()
     await expect(

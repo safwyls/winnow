@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-29 16:52'
+updated_date: '2026-09-29 17:12'
 labels: []
 dependencies: []
 priority: high
@@ -66,6 +66,8 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 21. Continue the source metadata overlay: desktop independent 1440x1000 dialog, fixed Back, bounded fields and five-size keyboard/validation matrix; fullscreen ordered field menu, per-field keyboard/save/reset/cancel and original-draft restoration. Then complete library read cancellation and latest-publication behavior. Continue pending Library/Steam mappings after reviewing their exact assertions; do not equate existing feature code with source-test completion.
 
 22. Continue exact remaining Library/filter and account-statistics source audits; close implementation or test gaps before classification. Retain original frontend tests and release entry points until the complete parity gate passes.
+
+22. Restore shared chart/detail currency selection with independent desktop/fullscreen state, explicit Spending refresh, signed zero-baseline year bars, theme-ink composition donut, desktop disclosure and fullscreen reading access. Verify original account summary/currency/large-text matrices, refresh and controller focus against source tests; update exact migration evidence after checks pass.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -110,4 +112,6 @@ Sixth package restores independent metadata desktop/fullscreen navigation. Nativ
 Checkpoint seven: restored Spending refresh-on-open, captured counts without blended currency totals, largest-transaction currency/date, bundle totals, absent-date handling, UTC page dates and readable licence methods. Desktop/fullscreen source fixtures add 26 component cases and two actual App navigation cases. Full Electron integration: 2419/2419 cases in 125 files, no skips. Build/typecheck pass; two native Spending layout/focus cases pass and screenshots inspected. Audited all 13 FilterPanelViewModel methods against production policy/rendered panel coverage. Inventory: 807 ported, 540 retained backend, 13 framework-specific, 911 pending, 164 partial. Gate still fails; no acceptance criteria checked. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-seven.md. Continuing Library and account dashboard parity.
 
 Checkpoint eight: fixed empty Library list headers, quoted empty searches, returning from desktop identity review through a collection, and consistent stored dimming parsing. Full Electron integration passed 2438/2438 cases across 125 files with no skips. Eight native Library lifecycle cases passed together, including keyboard/pointer Details activation, retained selection, decoded fixture covers, computed dimming filters, stable cover elements, reduced motion, persisted Settings writes, grouping, list cuts and chrome. Build/typecheck pass and both cover screenshots inspected. Inventory: 836 ported, 540 retained backend, 13 framework-specific, 881 pending, 165 partial. The original combined Steam/37-hour Details assertion remains partial; remaining Library grouping/lifecycle and no-settings-store coverage stays visible. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-eight.md. No acceptance criteria checked; continuing parity work.
+
+Checkpoint nine restores shared chart/detail currency selection, independent surface state, explicit refresh retention, signed year bars, composition donut, desktop disclosure and fullscreen reading access. Full Electron suite: 2442/2442 in 126 files, no skips. Native Spending/core parity: 24/24; source single/mixed fixtures and 1200/600 desktop plus 1920/1280 fullscreen matrices pass, including 140% text, controller Right/Accept/Back, focus, exact amounts and geometry. Screenshot review exposed and corrected undersized fullscreen copy, with explicit native font assertions. Build/typecheck pass. Inventory: 838 ported, 540 retained backend, 13 framework-specific, 881 pending, 163 partial. Evidence: checkpoint-nine.md. No acceptance criteria checked; continuing remaining Library/source parity.
 <!-- SECTION:NOTES:END -->
