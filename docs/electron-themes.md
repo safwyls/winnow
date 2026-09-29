@@ -251,6 +251,10 @@ and in hidden documents; ambient drawing is capped at 30 Hz. The DOM artwork rem
 cached source, and graphics failure leaves the reading surface usable.
 
 Rift's adapter owns cover-relative placement, preview intent, focus and the route transition.
+Its Library preview is a passive tooltip with a fixed reading plane, up to 420 pixels high
+on desktop and 440 in fullscreen. It ignores pointer events and contains no controls.
+The cover owns hover, focus and activation; clicking it or pressing Enter opens details.
+Escape dismisses the preview, and Tab follows the ordinary cover order.
 Other themes can reuse the surface without adopting those interactions. Check that
 `context.components.PortalSurface` exists before using it on older hosts. The inherited
 `--portal-rim-a` and `--portal-rim-b` variables hold three RGB components from 0 to 1 and

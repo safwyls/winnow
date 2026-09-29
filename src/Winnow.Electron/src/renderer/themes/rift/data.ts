@@ -47,7 +47,7 @@ export function previewPlacement(
   const room = side === 'right' ? right : left,
     docked = room < 280
   const panelWidth = docked ? Math.min(400, width - gutter * 2) : Math.min(preferred, room)
-  const panelHeight = Math.max(120, Math.min(540, bottom - top))
+  const panelHeight = Math.max(120, Math.min(fullscreen ? 440 : 420, bottom - top))
   return {
     width: panelWidth,
     height: panelHeight,

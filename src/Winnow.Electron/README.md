@@ -32,7 +32,10 @@ its already-decoded image; static artwork remains available when WebGL is unavai
 System and profile reduced-motion settings keep focus effects stationary.
 
 Rift's Library opens a fixed-size artwork portal beside a hovered or focused cover. It flips
-left or docks inside narrow windows, and Tab reaches its **View game** action. Opening a game
+left or docks inside narrow windows. The preview is informational: it has no buttons or
+pointer interaction, and follows only the cover's hover or keyboard focus. Click the cover
+or press Enter to open details; Tab moves to the next control and Escape dismisses the preview.
+Opening a game
 expands the portal across the content pane into the complete shared details screen, including
 editions, external links, history, journal, metadata and artwork controls. Back restores the
 browsing position. Portal roundness, edge shape and activity, star brightness and cover size

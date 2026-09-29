@@ -59,3 +59,18 @@ uses the normal cached `Artwork` component and authenticated preload bridge.
 Physical controller use, TV-distance readability and low-end GPU performance were not
 measured. The existing portable executable was not repackaged by this task; use the current
 source build or run the documented packaging command to update it.
+
+## Compact preview follow-up — TASK-373
+
+The cover preview now contains information only. Its fixed reading plane is 420 pixels
+high on desktop and 440 in fullscreen, bounded by the available viewport. It ignores
+pointer events and has no buttons; the cover owns hover, focus and details activation.
+
+The four focused Rift/app suites passed all 12 tests, the production build passed, and
+the mock script passed Node's syntax check. Production-renderer browser checks confirmed
+zero preview buttons, `pointer-events: none`, matching reading-plane client/scroll heights,
+closing when the cursor moves into the former preview area, and opening details from the
+cover. Fullscreen Tab moved directly to the next cover and Enter opened that game's details.
+The shared mock was checked in both modes with the same heights and keyboard behavior.
+
+![Compact informational preview](compact-preview.png)

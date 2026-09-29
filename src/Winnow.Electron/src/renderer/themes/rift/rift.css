@@ -889,6 +889,7 @@
   max-height: none;
 }
 .rift-cover-preview {
+  pointer-events: none;
   position: fixed;
   z-index: 60;
   color: #edf3f9;
@@ -898,7 +899,7 @@
 }
 .rift-preview-reading {
   height: 100%;
-  padding: 50px 43px;
+  padding: 36px 43px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -933,26 +934,9 @@
 .rift-preview-reading .rift-description {
   font-size: 12px;
   line-height: 1.75;
-  margin-bottom: 20px;
+  margin-bottom: 0;
   flex-shrink: 1;
   -webkit-line-clamp: 7;
-}
-.rift-preview-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: auto;
-  padding-top: 10px;
-}
-.rift-preview-actions > button:last-child {
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  border-radius: 50%;
-  background: #07101cb0;
-  color: #d5e4e8;
-  border: 1px solid #d5e4e830;
 }
 .rift-cover-preview[data-compact] .rift-preview-reading {
   padding: 38px;
@@ -981,9 +965,6 @@
 .rift-cover-preview[data-short] .rift-description {
   font-size: 11px;
   margin-bottom: 8px;
-}
-.rift-cover-preview[data-short] .primary {
-  padding: 8px 12px;
 }
 .rift-details {
   width: 100%;

@@ -1,17 +1,14 @@
 /* Cover-adjacent previews share the portal material with the full-page entrance. */
 .gallery-card{user-select:none}
-.card-flyout[data-portal]{--portal-accent:var(--accent);--portal-muted:#c7d6df;z-index:6}
-.card-flyout[data-portal] .flyout-body{padding:50px 43px}
+.card-flyout[data-portal]{--portal-accent:var(--accent);--portal-muted:#c7d6df;z-index:6;pointer-events:none}
+.card-flyout[data-portal] .flyout-body{padding:36px 43px}
 .card-flyout[data-portal] h3{font-family:var(--display);font-size:31px;line-height:1.12;letter-spacing:-.035em}
 .card-flyout[data-portal] h3.long-title{font-size:25px}
-body[data-mode=fullscreen] .card-flyout[data-portal] .flyout-body{padding:50px 43px}
+body[data-mode=fullscreen] .card-flyout[data-portal] .flyout-body{padding:36px 43px}
 body[data-mode=fullscreen] .card-flyout[data-portal] h3.long-title{font-size:25px}
 .card-flyout[data-portal] .flyout-reason{font:400 15px/1.5 var(--display);margin-top:15px;padding-top:15px}
-.card-flyout[data-portal] .flyout-description{font-size:12px;line-height:1.75;margin-bottom:20px}
+.card-flyout[data-portal] .flyout-description{font-size:12px;line-height:1.75;margin-bottom:0}
 .card-flyout[data-portal] .flyout-body>.eyebrow{font-size:7px;margin-inline:0;letter-spacing:.1em}
-.flyout-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:auto;padding-top:10px}
-.flyout-actions .primary{font-size:12px;padding:11px 15px}
-.flyout-actions .icon-button{width:30px;height:30px;background:#07101cb0}
 .card-flyout[data-plain=true]{border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:0 20px 70px #000a}
 body .card-flyout[data-compact=true] h3.long-title{font-size:21px;line-height:1.15}
 body .card-flyout[data-short=true] h3.long-title{font-size:18px}

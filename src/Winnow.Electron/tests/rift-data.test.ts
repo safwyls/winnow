@@ -67,7 +67,7 @@ describe('Rift portal preview placement', () => {
     const result = previewPlacement({ left: 190, right: 365, top: 310, height: 260 }, 390, 72, 644)
     expect(result.placement).toBe('docked')
     expect(result.width).toBe(354)
-    expect(result.height).toBe(540)
+    expect(result.height).toBe(420)
     expect(result.left).toBe(18)
     expect(result.top + result.height).toBe(644)
   })

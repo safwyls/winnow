@@ -32,11 +32,9 @@ afterEach(() => {
   card.remove()
   vi.restoreAllMocks()
 })
-function mount(keyboard = true) {
+function mount(keyboard = true, fullscreen = false) {
   const close = vi.fn(),
-    open = vi.fn(),
-    hold = vi.fn(),
-    leave = vi.fn()
+    open = vi.fn()
   const journey: RiftJourney = {
     origin: { current: null },
     options: { roundness: 60, waviness: 42, activity: 40 },
@@ -47,26 +45,19 @@ function mount(keyboard = true) {
   }
   render(
     <JourneyContext.Provider value={journey}>
-      <CoverPreview
-        target={{ game, card, keyboard }}
-        fullscreen={false}
-        close={close}
-        hold={hold}
-        leave={leave}
-      />
+      <CoverPreview target={{ game, card, keyboard }} fullscreen={fullscreen} close={close} />
     </JourneyContext.Provider>,
   )
-  return { close, open, hold, leave }
+  return { close, open }
 }
 describe('Rift cover preview interaction', () => {
-  it('lets keyboard users enter and leave the preview and consumes Escape before shell navigation', () => {
-    const { close } = mount()
+  it.each([false, true])('keeps keyboard focus on the cover in fullscreen=%s', (fullscreen) => {
+    const { close } = mount(true, fullscreen)
     card.focus()
-    fireEvent.keyDown(card, { key: 'Tab' })
-    const view = screen.getByRole('button', { name: 'View game' })
-    expect(document.activeElement).toBe(view)
-    expect(view.closest('[data-still]')?.getAttribute('data-still')).toBe('true')
-    fireEvent.keyDown(view, { key: 'Tab', shiftKey: true })
+    const preview = screen.getByRole('tooltip')
+    expect(card.getAttribute('aria-describedby')).toBe(preview.id)
+    expect(preview.querySelector('[data-still]')?.getAttribute('data-still')).toBe('true')
+    expect(fireEvent.keyDown(card, { key: 'Tab' })).toBe(true)
     expect(document.activeElement).toBe(card)
     const navigate = vi.fn()
     window.addEventListener('keydown', navigate)
@@ -75,16 +66,23 @@ describe('Rift cover preview interaction', () => {
     expect(navigate).not.toHaveBeenCalled()
     window.removeEventListener('keydown', navigate)
   })
-  it('uses the actual game and expanded preview bounds for the full details journey', () => {
-    const { open, hold, leave } = mount(false)
-    const preview = screen.getByRole('region', { name: `${game.title} preview` })
-    expect(preview.textContent).toContain(game.summary)
-    expect(preview.textContent).toContain('3h played')
-    fireEvent.pointerEnter(preview)
-    expect(hold).toHaveBeenCalled()
-    fireEvent.pointerLeave(preview)
-    expect(leave).toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: 'View game' }))
-    expect(open).toHaveBeenCalledWith(game.workId, preview)
-  })
+  it.each([false, true])(
+    'shows information without an interactive surface in fullscreen=%s',
+    (fullscreen) => {
+      const { open, close } = mount(false, fullscreen)
+    const preview = screen.getByRole('tooltip')
+      expect(preview.textContent).toContain(game.summary)
+      expect(preview.textContent).toContain('3h played')
+      expect(preview.querySelector('button, a, [tabindex]')).toBeNull()
+      fireEvent.pointerEnter(preview)
+      fireEvent.pointerLeave(preview)
+      fireEvent.click(preview)
+      expect(open).not.toHaveBeenCalled()
+      expect(close).not.toHaveBeenCalled()
+      fireEvent.focusIn(document.body)
+      expect(close).toHaveBeenCalled()
+      cleanup()
+      expect(card.hasAttribute('aria-describedby')).toBe(false)
+    },
+  )
 })

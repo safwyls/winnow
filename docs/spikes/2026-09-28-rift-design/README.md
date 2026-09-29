@@ -33,9 +33,11 @@ open the full details page.
 Library presents alphabetically ordered covers across the available browsing width,
 using the same materials and depth effects. Hover or keyboard focus opens a portal
 beside the cover. It flips left when needed, or docks within a narrow viewport. The
-preview contains the title, store, playtime, reason, description and **View game**.
-Move into it to read or choose the action. Tab moves from the cover into its actions;
-Escape dismisses it. Selecting the cover also opens details. Card scale changes density;
+preview contains the title, store, playtime, reason and description. It has no buttons
+or pointer interaction; leaving the cover closes it. Keyboard focus keeps the preview
+with its cover, Tab follows the cover order, and Escape dismisses it. Clicking the cover
+or pressing Enter opens details. The fixed reading plane is up to 420 pixels high on
+desktop and 440 in fullscreen. Card scale changes density;
 the text setting can hide metadata or add a short reason to return. Arrow keys move by
 column and row, and Home/End reach the first/last game.
 

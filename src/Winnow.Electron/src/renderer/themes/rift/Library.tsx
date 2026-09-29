@@ -26,7 +26,7 @@ export function RiftLibrary(context: ThemeContext) {
   const [preview, setPreview] = useState<PreviewTarget | null>(null)
   const currentPreview = useRef(preview)
   currentPreview.current = preview
-  const timers = useRef<{ show?: ReturnType<typeof setTimeout>; hide?: ReturnType<typeof setTimeout> }>({})
+  const timers = useRef<{ show?: ReturnType<typeof setTimeout> }>({})
   const dismissed = useRef<HTMLButtonElement | null>(null)
   const scroll = useRef<HTMLDivElement>(null),
     [size, setSize] = useState({ width: 1000, height: 700 })
@@ -60,7 +60,6 @@ export function RiftLibrary(context: ThemeContext) {
   })
   const close = useCallback((restore = false) => {
     clearTimeout(timers.current.show)
-    clearTimeout(timers.current.hide)
     const target = currentPreview.current?.card
     if (restore && target) {
       dismissed.current = target
@@ -68,25 +67,14 @@ export function RiftLibrary(context: ThemeContext) {
     }
     setPreview(null)
   }, [])
-  const hold = useCallback(() => {
-    clearTimeout(timers.current.hide)
-  }, [])
-  const leave = useCallback(() => {
-    clearTimeout(timers.current.show)
-    clearTimeout(timers.current.hide)
-    timers.current.hide = setTimeout(() => {
-      if (!document.activeElement?.closest('.rift-cover-preview')) setPreview(null)
-    }, 260)
-  }, [])
   function queue(
     game: LibraryGame,
     card: HTMLButtonElement,
     keyboard: boolean,
     pointer?: { x: number; y: number },
   ) {
-    hold()
     if (card === dismissed.current || currentPreview.current?.card === card) return
-    clearTimeout(timers.current.show)
+    close()
     if (keyboard) setPreview({ game, card, keyboard })
     else
       timers.current.show = setTimeout(() => {
@@ -119,7 +107,6 @@ export function RiftLibrary(context: ThemeContext) {
   useEffect(
     () => () => {
       clearTimeout(timers.current.show)
-      clearTimeout(timers.current.hide)
     },
     [],
   )
@@ -316,7 +303,11 @@ export function RiftLibrary(context: ThemeContext) {
                         }}
                         onPointerLeave={(event) => {
                           if (dismissed.current === event.currentTarget) dismissed.current = null
-                          leave()
+                          if (
+                            !currentPreview.current?.keyboard ||
+                            document.activeElement !== event.currentTarget
+                          )
+                            close()
                         }}
                         onFocus={(event) => {
                           if (event.currentTarget.matches(':focus-visible'))
@@ -324,11 +315,7 @@ export function RiftLibrary(context: ThemeContext) {
                         }}
                         onBlur={(event) => {
                           if (dismissed.current === event.currentTarget) dismissed.current = null
-                          if (
-                            !(event.relatedTarget instanceof Element) ||
-                            !event.relatedTarget.closest('.rift-cover-preview')
-                          )
-                            leave()
+                          close()
                         }}
                         onKeyDown={(event) => key(event, row.index * columns + offset)}
                       />
@@ -340,15 +327,7 @@ export function RiftLibrary(context: ThemeContext) {
           </div>
         </>
       )}
-      {preview && (
-        <CoverPreview
-          target={preview}
-          fullscreen={context.mode === 'fullscreen'}
-          close={close}
-          hold={hold}
-          leave={leave}
-        />
-      )}
+      {preview && <CoverPreview target={preview} fullscreen={context.mode === 'fullscreen'} close={close} />}
     </div>
   )
 }

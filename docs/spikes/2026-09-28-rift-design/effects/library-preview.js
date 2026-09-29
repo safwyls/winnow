@@ -5,12 +5,12 @@
   const panel=document.querySelector('#card-flyout');
   const portal=new WinnowPortalSurface(panel);
   const motion=document.querySelector('#preview-motion');
-  let active,pending,dismissed,showTimer,hideTimer,frame,source='pointer',pointer;
+  let active,pending,dismissed,showTimer,frame,source='pointer',pointer;
   const cardFor=target=>target instanceof Element?target.closest('.gallery-card'):null;
   const available=()=>state.page==='library'&&document.body.dataset.details!=='open'&&!document.querySelector('dialog[open]')&&!document.hidden;
 
   function hide() {
-    clearTimeout(showTimer);clearTimeout(hideTimer);cancelAnimationFrame(frame);
+    clearTimeout(showTimer);cancelAnimationFrame(frame);
     active?.removeAttribute('aria-describedby');active=pending=null;
     portal.hide();panel.hidden=true;
   }
@@ -28,9 +28,9 @@
     const side=right>=preferred||right>=left?'right':'left';
     const room=side==='right'?right:left,docked=room<280;
     const width=docked?Math.min(400,innerWidth-gutter*2):Math.min(preferred,room);
-    const height=Math.min(540,bottomEdge-topEdge);
+    const height=Math.min(document.body.dataset.mode==='fullscreen'?440:420,bottomEdge-topEdge);
     panel.dataset.placement=docked?'docked':side;
-    panel.dataset.compact=String(width<365||height<490);
+    panel.dataset.compact=String(width<365||height<420);
     panel.dataset.short=String(height<370);
     Object.assign(panel.style,{width:`${width}px`,height:`${height}px`,
       left:`${Math.round(docked?(innerWidth-width)/2:side==='right'?box.right+gap:box.left-gap-width)}px`,
@@ -50,7 +50,6 @@
       <span class="eyebrow">A WINDOW INTO THIS WORLD</span><h3 class="${game.title.length>45?'long-title':''}">${escapeHtml(game.title)}</h3>
       <div class="flyout-meta"><span>${game.store}</span><span>·</span><span>${game.time==='Unplayed'?'Never played':game.time+' played'}</span></div>
       <p class="flyout-reason">${escapeHtml(game.reason)}</p><p class="flyout-description">${escapeHtml(game.description)}</p>
-      <div class="flyout-actions"><button class="primary" data-view="${game.id}">View game ${icon('arrow-up-right')}</button><button class="icon-button" data-dismiss-preview aria-label="Dismiss preview">${icon('x')}</button></div>
       </div></div>`;
     panel.hidden=false;hydrateIcons();position();
     if(!active)return;
@@ -64,15 +63,10 @@
     void portal.show(moving,{x:origin.x-panel.offsetLeft,y:Math.max(0,Math.min(panel.offsetHeight,origin.y-panel.offsetTop))},portalArtwork(game));
   }
   function queue(card,input) {
-    clearTimeout(hideTimer);
     if(card===active||card===pending||card===dismissed||!available())return;
-    clearTimeout(showTimer);pending=card;
+    hide();pending=card;
     if(input==='keyboard')show(card,input);
     else {void portal.prepare(portalArtwork(byId.get(card.dataset.game)));showTimer=setTimeout(()=>show(card,input),140);}
-  }
-  function leave() {
-    clearTimeout(showTimer);pending=null;clearTimeout(hideTimer);
-    hideTimer=setTimeout(()=>{if(!panel.contains(document.activeElement))hide();},240);
   }
   function dismiss() {
     const card=active;dismissed=card;hide();card?.focus({preventScroll:true});
@@ -80,7 +74,6 @@
   document.addEventListener('pointerover',event=>{
     if(event.pointerType==='touch')return;
     pointer={x:event.clientX,y:event.clientY};
-    if(panel.contains(event.target)){clearTimeout(hideTimer);return;}
     const card=cardFor(event.target);
     if(card&&!card.contains(event.relatedTarget))queue(card,'pointer');
   });
@@ -89,29 +82,18 @@
     const card=cardFor(event.target);
     if(card&&!card.contains(event.relatedTarget)){
       if(dismissed===card)dismissed=null;
-      if(!panel.contains(event.relatedTarget))leave();
-    }else if(panel.contains(event.target)&&!panel.contains(event.relatedTarget)&&!active?.contains(event.relatedTarget))leave();
+      if(source!=='keyboard'||document.activeElement!==card)hide();
+    }
   });
   document.addEventListener('focusin',event=>{
-    if(panel.contains(event.target)){clearTimeout(hideTimer);return;}
     const card=cardFor(event.target);
     if(card&&card.matches(':focus-visible'))queue(card,'keyboard');else if(!card)hide();
   });
-  document.addEventListener('focusout',event=>{if(event.target===dismissed)dismissed=null;});
+  document.addEventListener('focusout',event=>{if(event.target===dismissed)dismissed=null;if(event.target===active)hide();});
   document.addEventListener('keydown',event=>{
     if(!active)return;
     if(event.key==='Escape'){dismiss();event.preventDefault();event.stopImmediatePropagation();}
-    if(event.key==='Tab'&&event.target===active&&!event.shiftKey){
-      event.preventDefault();panel.querySelector('[data-view]').focus();
-    }else if(event.key==='Tab'&&panel.contains(event.target)){
-      const action=panel.querySelector('[data-view]');
-      if(event.shiftKey&&event.target===action){event.preventDefault();active.focus({preventScroll:true});}
-      else if(!event.shiftKey&&event.target.matches('[data-dismiss-preview]')){
-        const next=active.nextElementSibling;event.preventDefault();hide();(next||$('#appearance')).focus();
-      }
-    }
   },true);
-  panel.addEventListener('click',event=>{if(event.target.closest('[data-dismiss-preview]'))dismiss();});
   document.addEventListener('scroll',event=>{
     if(panel.contains(event.target))return;
     if(source==='keyboard'&&active){cancelAnimationFrame(frame);frame=requestAnimationFrame(position);}else hide();

@@ -1,6 +1,5 @@
-import { useEffect, useRef, type CSSProperties } from 'react'
+import { useEffect, useId, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowUpRight, X } from 'lucide-react'
 import type { LibraryGame } from '../../api/types'
 import { Artwork } from '../../components/Artwork'
 import { PortalSurface } from '../../components/portal-effects'
@@ -18,17 +17,13 @@ export function CoverPreview({
   target,
   fullscreen,
   close,
-  hold,
-  leave,
 }: {
   target: PreviewTarget
   fullscreen: boolean
   close(restore?: boolean): void
-  hold(): void
-  leave(): void
 }) {
   const journey = useJourney(),
-    panel = useRef<HTMLDivElement>(null)
+    descriptionId = useId()
   const zoom = Number.parseFloat(getComputedStyle(document.body).zoom) || 1
   const card = target.card.getBoundingClientRect()
   const header = document.querySelector('.rift-bar')?.getBoundingClientRect()
@@ -41,36 +36,17 @@ export function CoverPreview({
     fullscreen,
   )
   useEffect(() => {
+    const previousDescription = target.card.getAttribute('aria-describedby')
+    target.card.setAttribute('aria-describedby', descriptionId)
     const key = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault()
         event.stopImmediatePropagation()
         close(true)
       }
-      if (event.key !== 'Tab') return
-      const actions = panel.current?.querySelectorAll<HTMLButtonElement>('button')
-      if (!actions?.length) return
-      if (event.target === target.card && !event.shiftKey) {
-        event.preventDefault()
-        actions[0].focus()
-      } else if (event.target === actions[0] && event.shiftKey) {
-        event.preventDefault()
-        target.card.focus({ preventScroll: true })
-      } else if (event.target === actions[actions.length - 1] && !event.shiftKey) {
-        event.preventDefault()
-        const cards = [...document.querySelectorAll<HTMLButtonElement>('.rift-gallery [data-rift-game]')]
-        const next = cards[cards.indexOf(target.card) + 1]
-        close()
-        ;(next ?? document.querySelector<HTMLButtonElement>('[aria-label="Theme Studio"]'))?.focus()
-      }
     }
     const focus = (event: FocusEvent) => {
-      if (
-        event.target instanceof Node &&
-        !panel.current?.contains(event.target) &&
-        !target.card.contains(event.target)
-      )
-        close()
+      if (event.target instanceof Node && !target.card.contains(event.target)) close()
     }
     const hide = () => close()
     document.addEventListener('keydown', key, true)
@@ -79,32 +55,27 @@ export function CoverPreview({
     window.addEventListener('blur', hide)
     document.addEventListener('visibilitychange', hide)
     return () => {
+      if (previousDescription) target.card.setAttribute('aria-describedby', previousDescription)
+      else target.card.removeAttribute('aria-describedby')
       document.removeEventListener('keydown', key, true)
       document.removeEventListener('focusin', focus)
       window.removeEventListener('resize', hide)
       window.removeEventListener('blur', hide)
       document.removeEventListener('visibilitychange', hide)
     }
-  }, [target, close])
+  }, [target, close, descriptionId])
   const origin = target.pointer
     ? { x: target.pointer.x / zoom - placement.left, y: target.pointer.y / zoom - placement.top }
     : undefined
   return createPortal(
     <div
-      ref={panel}
+      id={descriptionId}
       className={`rift-cover-preview ${fullscreen ? 'fullscreen' : ''}`}
       data-placement={placement.placement}
-      data-compact={placement.width < 365 || placement.height < 490 || undefined}
+      data-compact={placement.width < 365 || placement.height < 420 || undefined}
       data-short={placement.height < 380 || undefined}
-      role="region"
-      aria-label={`${target.game.title} preview`}
+      role="tooltip"
       style={placement as CSSProperties}
-      onPointerEnter={hold}
-      onPointerLeave={leave}
-      onFocusCapture={hold}
-      onBlurCapture={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) leave()
-      }}
     >
       <PortalSurface
         options={journey.options}
@@ -124,14 +95,6 @@ export function CoverPreview({
             {target.game.summary ??
               'View the game to explore its artwork, activity, journal and library record.'}
           </p>
-          <div className="rift-preview-actions">
-            <button className="primary" onClick={() => journey.open(target.game.workId, panel.current)}>
-              View game <ArrowUpRight size={16} />
-            </button>
-            <button aria-label="Dismiss preview" onClick={() => close(true)}>
-              <X size={16} />
-            </button>
-          </div>
         </div>
       </PortalSurface>
     </div>,
