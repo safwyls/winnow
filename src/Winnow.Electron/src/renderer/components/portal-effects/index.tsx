@@ -34,6 +34,7 @@ export function PortalSurface({
 }: PortalSurfaceProps) {
   const root = useRef<HTMLDivElement>(null)
   const art = useRef<HTMLDivElement>(null)
+  const reveal = useRef<HTMLDivElement>(null)
   const scene = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
   const controller = useRef<PortalController | null>(null)
@@ -45,9 +46,16 @@ export function PortalSurface({
   const latestOptions = useRef(normalized)
   latestOptions.current = normalized
   useEffect(() => {
-    if (!active || !root.current || !art.current || !scene.current || !content.current) return
+    if (!active || !root.current || !art.current || !scene.current || !content.current || !reveal.current)
+      return
     const instance = new PortalController(
-      { root: root.current, artwork: art.current, scene: scene.current, content: content.current },
+      {
+        root: root.current,
+        artwork: art.current,
+        scene: scene.current,
+        content: content.current,
+        reveal: reveal.current,
+      },
       {
         options: latestOptions.current,
         reducedMotion: still,
@@ -72,15 +80,17 @@ export function PortalSurface({
       hidden={!active}
       data-portal-expansion={!!expansion}
     >
-      <div className="winnow-portal-art-shadow" aria-hidden="true">
-        <div ref={art} className="winnow-portal-art">
-          {artwork}
+      <div ref={reveal} className="winnow-portal-reveal">
+        <div className="winnow-portal-art-shadow" aria-hidden="true">
+          <div ref={art} className="winnow-portal-art">
+            {artwork}
+          </div>
+        </div>
+        <div ref={content} className="winnow-portal-content">
+          {children}
         </div>
       </div>
       <div ref={scene} className="winnow-portal-scene" aria-hidden="true" />
-      <div ref={content} className="winnow-portal-content">
-        {children}
-      </div>
     </div>
   )
 }

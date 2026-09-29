@@ -1,6 +1,7 @@
 import {
   normalizePortalOptions,
   portalActivityRate,
+  portalCoversSurface,
   portalGeometry,
   portalPolygon,
   PORTAL_AMBIENT_MS,
@@ -14,6 +15,7 @@ import type { PortalRenderer } from './renderer'
 
 interface PortalElements {
   root: HTMLElement
+  reveal: HTMLElement
   artwork: HTMLElement
   scene: HTMLElement
   content: HTMLElement
@@ -187,11 +189,23 @@ export class PortalController {
       this.configuration.origin,
       this.configuration.expansion,
     )
+    if (this.configuration.expansion && portalCoversSurface(geometry, this.width, this.height)) {
+      this.complete()
+      return
+    }
     const clip = portalPolygon(geometry)
     const opening = this.progress < 1
-    this.elements.artwork.style.clipPath = clip
-    // Only the image mask moves at rest. The text plane is never repeatedly composited.
-    this.elements.content.style.clipPath = opening ? clip : 'none'
+    if (this.configuration.expansion) {
+      // One mask reveals the retained artwork and reading plane together.
+      this.elements.reveal.style.clipPath = clip
+      this.elements.artwork.style.clipPath = 'none'
+      this.elements.content.style.clipPath = 'none'
+    } else {
+      this.elements.reveal.style.clipPath = 'none'
+      this.elements.artwork.style.clipPath = clip
+      // Only the image mask moves at rest. The text plane is never repeatedly composited.
+      this.elements.content.style.clipPath = opening ? clip : 'none'
+    }
     this.elements.content.inert = opening
     this.elements.root.dataset.portalOpening = String(opening)
     this.elements.root.dataset.portalReady = 'true'
@@ -248,10 +262,12 @@ export class PortalController {
   private complete() {
     if (!this.configuration.expansion || this.expanded || this.disposed) return
     this.expanded = true
+    this.elements.reveal.style.clipPath = 'none'
     this.elements.artwork.style.clipPath = 'none'
     this.elements.content.style.clipPath = 'none'
     this.elements.content.inert = false
     this.elements.root.dataset.portalOpening = 'false'
+    this.elements.root.dataset.portalReady = 'true'
     this.elements.root.dataset.portalExpanded = 'true'
     this.renderer?.destroy()
     this.renderer = undefined
@@ -305,6 +321,10 @@ export class PortalController {
     this.renderer?.destroy()
     this.renderer = undefined
     this.elements.content.inert = false
+    this.elements.reveal.style.clipPath = 'none'
+    this.elements.artwork.style.clipPath = 'none'
+    this.elements.content.style.clipPath = 'none'
+    this.elements.root.dataset.portalOpening = 'false'
     this.elements.root.dataset.portalRunning = 'false'
   }
 }

@@ -4,6 +4,7 @@ import {
   normalizePortalOptions,
   portalActivityRate,
   portalContour,
+  portalCoversSurface,
   portalGeometry,
 } from '../src/renderer/components/portal-effects/geometry'
 
@@ -62,6 +63,49 @@ describe('portal geometry', () => {
     expect(start.center).toEqual({ x: -30, y: 200 })
     expect(end.center).toEqual({ x: 200, y: 270 })
   })
+
+  it.each([
+    [390, 600],
+    [1280, 720],
+    [3440, 1440],
+  ])(
+    'only retires the rim after the complete %s × %s perimeter is safely inside the aperture',
+    (width, height) => {
+      for (const roundness of [0, 70, 100]) {
+        const options = { roundness, waviness: 100, activity: 100 }
+        const source = { x: -80, y: height - 100, width: 400, height: 540 }
+        expect(
+          portalCoversSurface(portalGeometry(width, height, 0, options, 0, undefined, source), width, height),
+        ).toBe(false)
+        let covered = false
+        for (let step = 1; step <= 40; step++) {
+          const geometry = portalGeometry(width, height, step / 40, options, step / 10, undefined, source)
+          if (!portalCoversSurface(geometry, width, height)) continue
+          covered = true
+          const polygon = portalContour(geometry)
+          for (let sample = 0; sample <= 20; sample++) {
+            const fraction = sample / 20
+            for (const [x, y] of [
+              [fraction * width, 0],
+              [fraction * width, height],
+              [0, fraction * height],
+              [width, fraction * height],
+            ]) {
+              let inside = false
+              for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const a = polygon[i],
+                  b = polygon[j]
+                if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside
+              }
+              expect(inside).toBe(true)
+            }
+          }
+        }
+        // Small panes can reach the duration limit before the complete halo clears.
+        if (width >= 1280) expect(covered).toBe(true)
+      }
+    },
+  )
 
   it('stops at zero, reproduces the original rate at forty and clamps malformed settings', () => {
     expect(portalActivityRate(0)).toBe(0)

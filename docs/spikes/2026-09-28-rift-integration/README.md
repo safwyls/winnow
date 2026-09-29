@@ -151,3 +151,40 @@ comparison with `--disable-direct-composition` to assess hitching independently 
 known flicker workaround. The existing `release/win-unpacked` build was not overwritten.
 
 ![Discover with its portal retained while changing games](discover-persistent-portal.png)
+
+## Full-view reveal rendering work — TASK-377
+
+The user confirmed the shuffle improved in the TASK-376 build, but reported choppy
+details expansion with DirectComposition disabled. The suggested `translate3d(0, 0, 0)`
+and hidden backface can encourage layer isolation; they do not restore the Windows
+DirectComposition presentation path. Browser guidance recommends applying layer hints
+only to the affected animation and removing them afterward
+([web.dev](https://web.dev/articles/animations-guide)).
+
+Expansion previously assigned the same polygon independently to artwork and content on
+every frame. It now clips their common reveal wrapper once and temporarily promotes the
+wrapper and reading plane. No text or artwork scales. The rectangular fallback artwork
+shadow is disabled during full-view expansion. Previews retain their existing masks and
+ambient behavior. A conservative superellipse bound retires the rim only when the whole
+pane is inside its maximum ripple and 64-pixel halo margin; small panes can still reach
+the normal duration limit before that condition holds.
+
+All 36 focused portal lifecycle, geometry, details, preview and app tests passed. They
+cover fixed reading dimensions, perimeter coverage, early rim retirement, resize, blur,
+deactivation, unmount and reduced motion. The production build passed with the existing
+Zod annotation notices. Browser fixture checks observed one active polygon mask during
+desktop and fullscreen expansion, identity transforms on the reading plane, and hidden
+scrollbars during the reveal. At a 3440 × 1440 viewport the fullscreen content plane
+remained 3440 × 1320. Completion removed the clip, layer hints and canvas, enabled
+scrolling and focused Back. The viewport override was reset after verification.
+
+A separate portable directory is available at
+`src/Winnow.Electron/release/rift-portal/win-unpacked/Winnow Afterglow.exe`. All 52 output
+files matched its packaged archive byte-for-byte. Packaging reused the existing staged
+backend and notices; backend code and the previous executable directories were untouched.
+The historical static mock was not changed. This verifies structure, lifecycle and visual
+continuity, not native GPU timings or monitor flicker. No GPU trace was captured and the
+physical AW3423DWF comparison remains for the user, initially using the same
+`--disable-direct-composition` flag to isolate this rendering change.
+
+![Full-view details after the shared-mask reveal](details-shared-mask.png)

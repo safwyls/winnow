@@ -254,6 +254,14 @@ preference reveal the content immediately. Normal portals pause offscreen, on wi
 and in hidden documents; ambient drawing is capped at 30 Hz. The DOM artwork remains the
 cached source, and graphics failure leaves the reading surface usable.
 
+Full-view expansion reveals artwork and content through one shared mask. Temporary
+`translate3d`, backface visibility and `will-change: clip-path` hints isolate the reading
+plane while the contour changes; they are removed when the entrance ends or is interrupted.
+The content retains its final dimensions and is never scaled. The rim renderer retires
+as soon as the entire pane is safely inside the contour and its fading halo, or at the
+entrance duration limit. Small preview portals retain their separate image mask so the
+text does not move or get clipped by the ambient edge after opening.
+
 Rift's adapter owns cover-relative placement, preview intent, focus and the route transition.
 Its Library preview is a passive tooltip with a fixed reading plane, up to 420 pixels high
 on desktop and 440 in fullscreen. It ignores pointer events and contains no controls.

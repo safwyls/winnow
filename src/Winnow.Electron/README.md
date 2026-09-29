@@ -50,7 +50,10 @@ editions, external links, history, journal, metadata and artwork controls. Back 
 browsing position. Portal roundness, edge shape and activity, star brightness and cover size
 are Rift settings in Theme Studio; activity at zero holds the edge still. The star field has
 no continuous animation. Portals stop when inactive, and the full-page renderer is released
-after the entrance. `PortalSurface` can be reused by other themes independently of Rift.
+after the entrance. Full-view entrances use one shared clipping mask with temporary
+compositor hints, keeping artwork and text at their final size. The rim stops rendering
+once it is safely beyond the visible pane. These changes do not alter Electron's display
+defaults. `PortalSurface` can be reused by other themes independently of Rift.
 
 Switching compositions remembers each one's appearance and layout. Interface size and
 reduced motion remain shared accessibility preferences. Afterglow stays the default, with

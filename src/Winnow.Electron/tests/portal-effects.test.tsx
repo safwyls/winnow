@@ -94,9 +94,15 @@ describe('reusable portals', () => {
     )
     await settle()
     const plane = view.container.querySelector<HTMLElement>('.winnow-portal-content')!
+    const reveal = view.container.querySelector<HTMLElement>('.winnow-portal-reveal')!
     const root = view.container.querySelector<HTMLElement>('.winnow-portal-surface')!
     act(() => vi.advanceTimersByTime(160))
-    expect(plane.style.clipPath).toContain('polygon(')
+    expect(reveal.style.clipPath).toContain('polygon(')
+    expect(plane.style.clipPath).toBe('none')
+    expect(view.container.querySelector<HTMLElement>('.winnow-portal-art')!.style.clipPath).toBe('none')
+    expect(reveal.contains(plane)).toBe(true)
+    expect(reveal.contains(view.container.querySelector('.winnow-portal-art'))).toBe(true)
+    expect(root.dataset.portalOpening).toBe('true')
     expect(plane.style.width).toBe('')
     expect(plane.style.height).toBe('')
     expect(plane.style.transform).toBe('')
@@ -104,6 +110,7 @@ describe('reusable portals', () => {
     act(() => vi.advanceTimersByTime(600))
     expect(plane.inert).toBe(false)
     expect(plane.style.clipPath).toBe('none')
+    expect(reveal.style.clipPath).toBe('none')
     expect(view.container.querySelector<HTMLElement>('.winnow-portal-art')!.style.clipPath).toBe('none')
     expect(root.dataset.portalExpanded).toBe('true')
     expect(root.dataset.portalRunning).toBe('false')
@@ -117,6 +124,72 @@ describe('reusable portals', () => {
     expect(renderer.destroy).toHaveBeenCalledTimes(1)
     expect(intersectionDisconnect).toHaveBeenCalledTimes(1)
     expect(resizeDisconnect).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(['resize', 'blur', 'deactivate', 'unmount', 'reduced-motion'] as const)(
+    'releases the shared mask and temporary layer hint on %s during expansion',
+    async (action) => {
+      const expanded = vi.fn()
+      const properties = { expansion: { x: 40, y: 30, width: 160, height: 240 }, onExpanded: expanded }
+      const view = render(
+        <PortalSurface {...properties}>
+          <button>Back</button>
+        </PortalSurface>,
+      )
+      await settle()
+      act(() => vi.advanceTimersByTime(80))
+      const root = view.container.querySelector<HTMLElement>('.winnow-portal-surface')!
+      const reveal = view.container.querySelector<HTMLElement>('.winnow-portal-reveal')!
+      const plane = view.container.querySelector<HTMLElement>('.winnow-portal-content')!
+      expect(root.dataset.portalOpening).toBe('true')
+      act(() => {
+        if (action === 'resize') {
+          vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(700)
+          fireEvent.resize(window)
+        }
+        if (action === 'blur') fireEvent.blur(window)
+        if (action === 'deactivate')
+          view.rerender(
+            <PortalSurface {...properties} active={false}>
+              Back
+            </PortalSurface>,
+          )
+        if (action === 'unmount') view.unmount()
+        if (action === 'reduced-motion')
+          view.rerender(
+            <PortalSurface {...properties} reducedMotion>
+              Back
+            </PortalSurface>,
+          )
+      })
+      expect(root.dataset.portalOpening).toBe('false')
+      expect(root.dataset.portalRunning).toBe('false')
+      expect(reveal.style.clipPath).toBe('none')
+      expect(plane.inert).toBe(false)
+      expect(renderer.destroy).toHaveBeenCalledTimes(1)
+      expect(expanded).toHaveBeenCalledTimes(action === 'unmount' || action === 'deactivate' ? 0 : 1)
+      const renders = renderer.draw.mock.calls.length
+      act(() => vi.advanceTimersByTime(1000))
+      expect(renderer.draw).toHaveBeenCalledTimes(renders)
+    },
+  )
+
+  it('releases the large renderer once its rim has left the pane, before the overscan animation ends', async () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(3440)
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(1440)
+    const expanded = vi.fn()
+    const view = render(
+      <PortalSurface expansion={{ x: 50, y: 220, width: 400, height: 540 }} onExpanded={expanded}>
+        Details
+      </PortalSurface>,
+    )
+    await settle()
+    act(() => vi.advanceTimersByTime(550))
+    expect(expanded).toHaveBeenCalledTimes(1)
+    expect(renderer.destroy).toHaveBeenCalledTimes(1)
+    expect(view.container.querySelector<HTMLElement>('.winnow-portal-surface')!.dataset.portalRunning).toBe(
+      'false',
+    )
   })
 
   it('stops ambient frames at zero and resumes changed options without rebuilding the renderer', async () => {

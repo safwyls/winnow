@@ -98,3 +98,13 @@ export function portalPolygon(geometry: PortalGeometry): string {
     .map(({ x, y }) => `${x.toFixed(2)}px ${y.toFixed(2)}px`)
     .join(',')})`
 }
+
+/** A conservative bound: the entire pane is inside the edge and its visible halo. */
+export function portalCoversSurface(geometry: PortalGeometry, width: number, height: number): boolean {
+  const { center, radius, exponent, wave } = geometry
+  const x = Math.max(Math.abs(center.x), Math.abs(width - center.x)) / radius.x
+  const y = Math.max(Math.abs(center.y), Math.abs(height - center.y)) / radius.y
+  const contour = (x ** exponent + y ** exponent) ** (1 / exponent)
+  // The largest ripple is 1.62 * wave; 64px includes the shader's fading halo.
+  return (contour - 1) * Math.min(radius.x, radius.y) + 1.62 * Math.abs(wave) < -64
+}
