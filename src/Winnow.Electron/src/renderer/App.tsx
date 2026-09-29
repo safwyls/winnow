@@ -127,12 +127,17 @@ export function App() {
   ])
   const launchAttempts = useRef(new Map<number, { operationId: string; action: string }>())
   const position = positions[mode]
+  const detailOwners = useRef<Partial<Record<typeof mode, { workId: number; ids: number[] }>>>({})
   const navigate = useCallback(
     (page: ThemePage) => setPositions((all) => ({ ...all, [mode]: navigatePosition(all[mode], page) })),
     [mode],
   )
   const openGame = useCallback(
-    (workId: number) =>
+    (workId: number) => {
+      const game = library.data?.games.find(
+        (game) => game.workId === workId || game.entries.some((entry) => entry.workId === workId),
+      )
+      detailOwners.current[mode] = { workId, ids: game?.entries.map((entry) => entry.ownershipId) ?? [] }
       setPositions((all) => ({
         ...all,
         [mode]: {
@@ -141,9 +146,32 @@ export function App() {
           previous: all[mode].page === 'details' ? all[mode].previous : all[mode].page,
           page: 'details',
         },
-      })),
-    [mode],
+      }))
+    },
+    [mode, library.data],
   )
+  useEffect(() => {
+    if (!library.data) return
+    const games = library.data.games
+    // Visibility is decided by the same published library used by tiles and counts.
+    // Retain an open grouped game while one of its original ownerships remains visible.
+    setPositions((all) => {
+      let next = all
+      for (const surface of ['desktop', 'fullscreen'] as const) {
+        const current = all[surface]
+        if (current.page !== 'details' || current.workId === null) continue
+        const owner = detailOwners.current[surface]
+        const ids = owner?.workId === current.workId ? owner.ids : []
+        const visible = games.some((game) =>
+          ids.length
+            ? game.entries.some((entry) => ids.includes(entry.ownershipId))
+            : game.workId === current.workId || game.entries.some((entry) => entry.workId === current.workId),
+        )
+        if (!visible) next = { ...next, [surface]: navigatePosition(current, current.previous) }
+      }
+      return next
+    })
+  }, [library.data])
   const closeGame = useCallback(() => navigate(position.previous), [navigate, position.previous])
   const closeSearch = useCallback(
     () => setPositions((all) => ({ ...all, [mode]: returnFromSearch(all[mode]) })),

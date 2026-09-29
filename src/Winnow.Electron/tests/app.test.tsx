@@ -19,6 +19,21 @@ vi.mock('../src/renderer/components/portal-effects', () => ({
     return <div className="winnow-portal-surface">{children}</div>
   },
 }))
+// jsdom has no viewport; native suites verify the real virtualizer and scroll geometry.
+vi.mock('@tanstack/react-virtual', () => ({
+  useVirtualizer: (options: { count: number; estimateSize(): number }) => ({
+    getTotalSize: () => options.count * options.estimateSize(),
+    getVirtualItems: () =>
+      Array.from({ length: options.count }, (_, index) => ({
+        key: index,
+        index,
+        start: index * options.estimateSize(),
+      })),
+    measure: vi.fn(),
+    scrollToOffset: vi.fn(),
+    scrollToIndex: vi.fn(),
+  }),
+}))
 
 const game = {
   workId: 1,
@@ -144,6 +159,119 @@ function mountAfterglow() {
   return mount()
 }
 describe('integrated frontend', () => {
+  it.each([false, true])(
+    'a winning visibility snapshot closes excluded details while keeping the remaining game, fullscreen %s',
+    async (fullscreenMode) => {
+      const second = {
+        ...game,
+        workId: 2,
+        title: 'Remaining game',
+        entries: [{ ...game.entries[0], workId: 2, releaseId: 2, ownershipId: 2 }],
+      }
+      const original = window.winnow.request
+      window.winnow.request = vi.fn(async (input) =>
+        input.route === 'library.get'
+          ? { ok: true, status: 200, data: { games: [game, second], lists: [] } }
+          : original(input),
+      ) as WinnowBridge['request']
+      const client = mount()
+      await screen.findByRole('navigation', { name: 'Main navigation' })
+      act(() => fullscreen(fullscreenMode))
+      fireEvent.click(
+        within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', {
+          name: 'Library',
+        }),
+      )
+      fireEvent.click(await screen.findByRole('button', { name: `View ${game.title}` }))
+      await screen.findByRole('tab', { name: 'Overview' })
+      act(() => client.setQueryData(['api', 'library.get'], { games: [second], lists: [] }))
+      await waitFor(() => expect(document.querySelector('.avalon-details')).toBeNull())
+      expect(await screen.findByRole('button', { name: 'View Remaining game' })).toBeTruthy()
+      expect(screen.queryByRole('button', { name: `View ${game.title}` })).toBeNull()
+      client.clear()
+    },
+  )
+  it.each(
+    [false, true].flatMap((fullscreenMode) =>
+      ['close', 'new selection', 'hidden', 'new facts'].map((change) => [fullscreenMode, change] as const),
+    ),
+  )(
+    'pending details honor current navigation and visibility, fullscreen %s change %s',
+    async (fullscreenMode, change) => {
+      let finish!: (value: unknown) => void
+      const pending = new Promise((resolve) => {
+        finish = resolve
+      })
+      const second = {
+        ...game,
+        workId: 2,
+        title: 'Next selection',
+        entries: [{ ...game.entries[0], workId: 2, releaseId: 2, ownershipId: 2 }],
+      }
+      const original = window.winnow.request
+      window.winnow.cancelRequest = vi.fn(async () => true)
+      window.winnow.request = vi.fn(async (input) =>
+        input.route === 'library.get'
+          ? { ok: true, status: 200, data: { games: [game, second], lists: [] } }
+          : input.route === 'game.details' && input.params?.workId === 1
+            ? pending
+            : original(input),
+      ) as WinnowBridge['request']
+      const client = mount()
+      await screen.findByRole('navigation', { name: 'Main navigation' })
+      act(() => fullscreen(fullscreenMode))
+      fireEvent.click(
+        within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', {
+          name: 'Library',
+        }),
+      )
+      fireEvent.click(await screen.findByRole('button', { name: `View ${game.title}` }))
+      await waitFor(() =>
+        expect(
+          vi
+            .mocked(window.winnow.request)
+            .mock.calls.some(([input]) => input.route === 'game.details' && input.params?.workId === 1),
+        ).toBe(true),
+      )
+      if (change === 'close' || change === 'new selection') {
+        fireEvent.click(
+          screen.getByRole('button', { name: fullscreenMode ? 'B · Back to Library' : 'Close game details' }),
+        )
+        await waitFor(() => expect(document.querySelector('.avalon-details')).toBeNull())
+        expect(window.winnow.cancelRequest).toHaveBeenCalled()
+        if (change === 'new selection') {
+          fireEvent.click(await screen.findByRole('button', { name: 'View Next selection' }))
+          await screen.findByRole('heading', { name: 'Next selection', level: 1 })
+        }
+      } else {
+        act(() =>
+          client.setQueryData(['api', 'library.get'], {
+            games: change === 'hidden' ? [second] : [{ ...game, summary: 'Fresh fact' }, second],
+            lists: [],
+          }),
+        )
+        if (change === 'hidden')
+          await waitFor(() => expect(document.querySelector('.avalon-details')).toBeNull())
+        else await screen.findByText('Fresh fact')
+      }
+      await act(async () => {
+        finish({
+          ok: true,
+          status: 200,
+          data: { workId: 1, events: [], sessions: {}, ratings: [], journalEntries: [], achievements: [] },
+        })
+        await pending
+      })
+      if (change === 'close' || change === 'hidden')
+        expect(document.querySelector('.avalon-details')).toBeNull()
+      else if (change === 'new selection')
+        expect(screen.getByRole('heading', { name: 'Next selection', level: 1 })).toBeTruthy()
+      else expect(screen.getByText('Fresh fact')).toBeTruthy()
+      if (change !== 'new facts')
+        expect(client.getQueryData(['api', 'game.details', { workId: 1 }])).toBeUndefined()
+      client.clear()
+    },
+  )
   it('keeps desktop search inline and opens fullscreen Search with its own query and return origin', async () => {
     for (const key of ['query', 'rows', 'selected', 'in-results'])
       clearViewState(`avalon:search:fullscreen:${key}`)

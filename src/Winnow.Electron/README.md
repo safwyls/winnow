@@ -12,6 +12,10 @@ Avalon's desktop Details opens over the retained library with five sections and 
 header. Fullscreen Details uses the original cinematic layout, two screenshot previews and
 separate About and Play history reading pages. More contains the shared metadata, matching,
 artwork and browsing actions. Closing restores the originating game and library position.
+Metadata opens in its own desktop dialog, bounded to 1440 × 1000 with a fixed Back button.
+Fullscreen uses an ordered field menu: Back cancels the active field's draft and returns to
+its row; successful saves return with updated attribution. A edits, Y opens the keyboard,
+and B returns. Desktop retains unsaved drafts across dialog navigation.
 
 Settings groups Steam, Epic and GOG under **Platforms**, with one card at a time, attention
 markers and title counts from the whole library. Steam keeps credential guidance, account
@@ -281,6 +285,9 @@ opaque request identity; main accepts it only from the owning trusted renderer w
 that request is active. Completion and renderer destruction clean up the request.
 Leaving identity review cancels its manual suggestion refresh, and late responses
 cannot replace the next page's data or focus.
+Library, workspace and Details query hooks also consume cancellation. A refresh retires
+earlier reads before starting new ones, and late results cannot publish after cancellation
+or unmount. Both surfaces close Details when its ownerships leave the published library.
 
 `src/shared/theme.ts` is the theme contract; `src/renderer/theming` hosts packages and Studio;
 `src/renderer/features` holds reusable backend feature screens. Theme packages can reuse

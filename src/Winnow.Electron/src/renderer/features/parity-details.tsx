@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -466,15 +466,43 @@ const metadataMessages: Record<string, string> = {
   Conflict: 'The metadata changed elsewhere. Refresh before saving again.',
 }
 type FieldDraft = { value: string; revision: string }
+export interface MetadataEditorNavigation {
+  back(): boolean
+  focus(): void
+}
+const metadataOrder = ['name', 'first_release_year', 'summary', 'cover_url', 'publisher', 'background_url']
+const desktopMetadataOrder = [
+  'name',
+  'first_release_year',
+  'publisher',
+  'summary',
+  'cover_url',
+  'background_url',
+]
+const metadataSource = (source?: string | null) =>
+  source === 'user' ? 'YOU' : (source?.toUpperCase() ?? 'AUTO')
 
 export function MetadataEditor({
   workId,
   mode = 'desktop',
+  navigation = 'form',
+  navigationRef,
+  onBusyChange,
+  editText,
 }: {
   workId: number
   mode?: 'desktop' | 'fullscreen'
+  navigation?: 'form' | 'fields'
+  navigationRef?: Ref<MetadataEditorNavigation>
+  onBusyChange?(busy: boolean): void
+  editText?(input: HTMLInputElement | HTMLTextAreaElement): void
 }) {
   const [artworkSlot, setArtworkSlot] = useState<ArtworkSlot | null>(null)
+  const [activeField, setActiveField] = useState<string | null>(null)
+  const [resetField, setResetField] = useState<Metadata['fields'][number] | null>(null)
+  const editor = useRef<HTMLElement>(null),
+    fieldOrigin = useRef<HTMLButtonElement | null>(null)
+  const originalDraft = useRef<FieldDraft | undefined>(undefined)
   const metadata = useApiQuery<Metadata>('metadata.get', { workId })
   const [drafts, setDrafts] = useViewState<Record<string, FieldDraft>>(`draft:metadata-fields:${workId}`, {})
   const [sending, setSending] = useViewState<string | null>(`metadata-fields:${workId}:sending`, null)
@@ -483,6 +511,38 @@ export function MetadataEditor({
   const client = useQueryClient()
   const draft = (field: Metadata['fields'][number]) =>
     drafts[field.field] ?? { value: field.value ?? '', revision: metadata.data!.revision }
+  const menu = navigation === 'fields'
+  function returnToFields(discard: boolean) {
+    if (!activeField) return false
+    if (sending) return true
+    if (discard) {
+      const initial = originalDraft.current
+      setDrafts((previous) => {
+        const next = { ...previous }
+        if (initial) next[activeField] = initial
+        else delete next[activeField]
+        return next
+      })
+      setErrors((previous) => ({ ...previous, [activeField]: null }))
+    }
+    setActiveField(null)
+    requestAnimationFrame(() => fieldOrigin.current?.focus({ preventScroll: true }))
+    return true
+  }
+  const focus = () =>
+    editor.current
+      ?.querySelector<HTMLElement>(
+        menu ? '.metadata-field-menu button' : '[data-metadata-field="name"] input',
+      )
+      ?.focus()
+  useImperativeHandle(navigationRef, () => ({ back: () => returnToFields(true), focus }))
+  useEffect(() => {
+    if (!metadata.data || activeField || artworkSlot) return
+    focus()
+  }, [Boolean(metadata.data)])
+  useEffect(() => {
+    onBusyChange?.(Boolean(sending))
+  }, [sending, onBusyChange])
   async function save(field: Metadata['fields'][number], action: 'save' | 'reset' | 'upload', file?: File) {
     if (sending || !metadata.data) return
     const current = draft(field)
@@ -586,6 +646,10 @@ export function MetadataEditor({
           await client.invalidateQueries({
             predicate: (query) => ['artwork', 'artwork-image'].includes(String(query.queryKey[0])),
           })
+        if (menu) {
+          setActiveField(null)
+          requestAnimationFrame(() => fieldOrigin.current?.focus({ preventScroll: true }))
+        }
       }
     } catch (failure) {
       setErrors((previous) => ({ ...previous, [field.field]: failure }))
@@ -597,152 +661,268 @@ export function MetadataEditor({
     }
   }
   return (
-    <section className="feature-panel">
+    <section ref={editor} className={`feature-panel metadata-editor mode-${mode}`}>
       <h2>Metadata & sources</h2>
       <p className="muted">
         Save each field separately. Fields you edit stay yours until you return them to automatic updates.
       </p>
       <Notice error={metadata.error} />
       {metadata.isPending && <p role="status">Loading fields…</p>}
-      {metadata.data?.fields.map((field) => {
-        const current = draft(field),
-          label = fieldLabels[field.field] ?? field.field
-        const error = errors[field.field],
-          conflict = error instanceof ApiError && error.conflict
-        const art = ['cover_url', 'background_url'].includes(field.field)
-        return (
-          <form
-            className="editor-form"
-            noValidate
-            key={field.field}
-            onSubmit={(e) => {
-              e.preventDefault()
-              void save(field, 'save')
-            }}
-          >
-            <div className="feature-heading">
-              <h3>{label}</h3>
-              <small
-                title={
-                  field.source === 'user'
-                    ? 'You own this field. Automatic enrichment leaves it alone.'
-                    : `Last supplied by ${field.source ?? 'no provider'}.`
-                }
+      {menu && (
+        <div className="metadata-field-menu" hidden={activeField !== null}>
+          {[...(metadata.data?.fields ?? [])]
+            .sort((a, b) => metadataOrder.indexOf(a.field) - metadataOrder.indexOf(b.field))
+            .map((field) => (
+              <button
+                key={field.field}
+                disabled={Boolean(sending)}
+                onClick={(event) => {
+                  fieldOrigin.current = event.currentTarget
+                  if (field.field === 'cover_url' || field.field === 'background_url')
+                    setArtworkSlot(field.field === 'cover_url' ? 'Cover' : 'Hero')
+                  else {
+                    originalDraft.current = drafts[field.field]
+                    setActiveField(field.field)
+                    requestAnimationFrame(() =>
+                      editor.current
+                        ?.querySelector<HTMLElement>(
+                          `[data-metadata-field="${field.field}"] .metadata-edit-value`,
+                        )
+                        ?.focus(),
+                    )
+                  }
+                }}
               >
-                {field.source === 'user' ? 'YOU' : (field.source?.toUpperCase() ?? 'AUTO')}
-              </small>
-            </div>
-            {art && (
-              <Artwork
-                workId={workId}
-                hero={field.field === 'background_url'}
-                className="metadata-art-preview"
-              />
-            )}
-            <label className="field">
-              {label}
-              {field.field === 'summary' ? (
-                <textarea
-                  rows={5}
-                  disabled={Boolean(sending)}
-                  value={current.value}
-                  onChange={(e) =>
-                    setDrafts({ ...drafts, [field.field]: { ...current, value: e.target.value } })
-                  }
-                />
-              ) : (
-                <input
-                  autoFocus={field.field === 'name'}
-                  type={field.field === 'first_release_year' ? 'number' : 'text'}
-                  min={field.field === 'first_release_year' ? 1900 : undefined}
-                  max={field.field === 'first_release_year' ? 2200 : undefined}
-                  required={field.field === 'name'}
-                  disabled={Boolean(sending)}
-                  value={current.value}
-                  onChange={(e) =>
-                    setDrafts({ ...drafts, [field.field]: { ...current, value: e.target.value } })
-                  }
-                />
-              )}
-            </label>
-            {conflict && (
-              <div className="conflict-panel">
-                <p>This game changed elsewhere. Your {label.toLowerCase()} draft is preserved.</p>
-                <button type="button" disabled={Boolean(sending)} onClick={() => void metadata.refetch()}>
-                  Refresh saved metadata
-                </button>
-                {current.revision !== metadata.data!.revision && (
+                {fieldLabels[field.field] ?? field.field} · {metadataSource(field.source)}
+              </button>
+            ))}
+          <Notice message={Object.values(messages).filter(Boolean).at(-1)} />
+        </div>
+      )}
+      <div
+        className={`metadata-fields-grid ${menu ? 'field-page' : 'all-fields'}`}
+        hidden={menu && activeField === null}
+      >
+        {[...(metadata.data?.fields ?? [])]
+          .sort(
+            (a, b) =>
+              (menu ? metadataOrder : desktopMetadataOrder).indexOf(a.field) -
+              (menu ? metadataOrder : desktopMetadataOrder).indexOf(b.field),
+          )
+          .map((field) => {
+            const current = draft(field),
+              label = fieldLabels[field.field] ?? field.field
+            const error = errors[field.field],
+              conflict = error instanceof ApiError && error.conflict
+            const art = ['cover_url', 'background_url'].includes(field.field)
+            return (
+              <form
+                className="editor-form"
+                noValidate
+                key={field.field}
+                data-metadata-field={field.field}
+                hidden={menu && activeField !== field.field}
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  void save(field, 'save')
+                }}
+              >
+                <div className="feature-heading">
+                  <h3>{label}</h3>
+                  <small
+                    title={
+                      field.source === 'user'
+                        ? 'You own this field. Automatic enrichment leaves it alone.'
+                        : `Last supplied by ${field.source ?? 'no provider'}.`
+                    }
+                  >
+                    {metadataSource(field.source)}
+                  </small>
+                </div>
+                {art && (
+                  <Artwork
+                    workId={workId}
+                    hero={field.field === 'background_url'}
+                    className="metadata-art-preview"
+                  />
+                )}
+                <label className="field">
+                  <span className="sr-only">{label}</span>
+                  {field.field === 'summary' ? (
+                    <textarea
+                      rows={5}
+                      disabled={Boolean(sending)}
+                      value={current.value}
+                      onChange={(e) =>
+                        setDrafts({ ...drafts, [field.field]: { ...current, value: e.target.value } })
+                      }
+                    />
+                  ) : (
+                    <input
+                      autoFocus={!menu && field.field === 'name'}
+                      type="text"
+                      inputMode={field.field === 'first_release_year' ? 'numeric' : undefined}
+                      min={field.field === 'first_release_year' ? 1900 : undefined}
+                      max={field.field === 'first_release_year' ? 2200 : undefined}
+                      required={field.field === 'name'}
+                      disabled={Boolean(sending)}
+                      value={current.value}
+                      onChange={(e) =>
+                        setDrafts({ ...drafts, [field.field]: { ...current, value: e.target.value } })
+                      }
+                    />
+                  )}
+                </label>
+                {menu && (
                   <button
                     type="button"
-                    onClick={() => {
-                      setDrafts({
-                        ...drafts,
-                        [field.field]: { ...current, revision: metadata.data!.revision },
-                      })
-                      setErrors({ ...errors, [field.field]: null })
+                    className="metadata-edit-value"
+                    data-controller-context={activeField === field.field || undefined}
+                    disabled={Boolean(sending)}
+                    onClick={(event) => {
+                      const input = event.currentTarget
+                        .closest('form')
+                        ?.querySelector<HTMLInputElement | HTMLTextAreaElement>('input, textarea')
+                      input?.focus()
+                      if (input) editText?.(input)
                     }}
                   >
-                    Keep this draft for the next save
+                    Edit value
                   </button>
                 )}
+                {conflict && (
+                  <div className="conflict-panel">
+                    <p>This game changed elsewhere. Your {label.toLowerCase()} draft is preserved.</p>
+                    <button type="button" disabled={Boolean(sending)} onClick={() => void metadata.refetch()}>
+                      Refresh saved metadata
+                    </button>
+                    {current.revision !== metadata.data!.revision && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDrafts({
+                            ...drafts,
+                            [field.field]: { ...current, revision: metadata.data!.revision },
+                          })
+                          setErrors({ ...errors, [field.field]: null })
+                        }}
+                      >
+                        Keep this draft for the next save
+                      </button>
+                    )}
+                  </div>
+                )}
+                <div className="form-actions">
+                  {art && (
+                    <button
+                      type="button"
+                      disabled={Boolean(sending)}
+                      onClick={() => setArtworkSlot(field.field === 'cover_url' ? 'Cover' : 'Hero')}
+                    >
+                      Browse {field.field === 'cover_url' ? 'cover' : 'background'} artwork
+                    </button>
+                  )}
+                  <button disabled={Boolean(sending) || conflict}>
+                    {sending === field.field ? 'Saving…' : `Save ${label.toLowerCase()}`}
+                  </button>
+                  {field.source === 'user' && (
+                    <button
+                      type="button"
+                      disabled={Boolean(sending) || conflict}
+                      onClick={() => (menu ? setResetField(field) : void save(field, 'reset'))}
+                    >
+                      Use automatic {label.toLowerCase()}
+                    </button>
+                  )}
+                  {menu && (
+                    <button type="button" disabled={Boolean(sending)} onClick={() => returnToFields(true)}>
+                      Cancel
+                    </button>
+                  )}
+                  {drafts[field.field] && (
+                    <button
+                      type="button"
+                      disabled={Boolean(sending)}
+                      onClick={() => {
+                        const next = { ...drafts }
+                        delete next[field.field]
+                        setDrafts(next)
+                        setErrors({ ...errors, [field.field]: null })
+                      }}
+                    >
+                      Discard {label.toLowerCase()} draft
+                    </button>
+                  )}
+                </div>
+                {art && (
+                  <label className="field">
+                    Choose {label.toLowerCase()} file
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={Boolean(sending) || conflict}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        e.target.value = ''
+                        if (file) void save(field, 'upload', file)
+                      }}
+                    />
+                  </label>
+                )}
+                <Notice error={error} message={messages[field.field]} />
+              </form>
+            )
+          })}
+      </div>
+      {resetField && (
+        <Dialog.Root
+          open
+          onOpenChange={(open) => {
+            if (!open && !sending) setResetField(null)
+          }}
+        >
+          <Dialog.Portal>
+            <Dialog.Overlay className="dialog-overlay metadata-confirm-overlay" />
+            <Dialog.Content
+              className="dialog-content metadata-confirm"
+              aria-describedby={undefined}
+              onOpenAutoFocus={(event) => {
+                event.preventDefault()
+                document.querySelector<HTMLButtonElement>('.metadata-confirm [data-cancel]')?.focus()
+              }}
+              onCloseAutoFocus={(event) => {
+                event.preventDefault()
+                if (activeField)
+                  editor.current
+                    ?.querySelector<HTMLElement>(
+                      `[data-metadata-field="${activeField}"] .metadata-edit-value`,
+                    )
+                    ?.focus()
+                else fieldOrigin.current?.focus()
+              }}
+              onEscapeKeyDown={(event) => {
+                if (sending) event.preventDefault()
+              }}
+            >
+              <Dialog.Title>Reset {fieldLabels[resetField.field]}?</Dialog.Title>
+              <div className="form-actions">
+                <button data-cancel disabled={Boolean(sending)} onClick={() => setResetField(null)}>
+                  Cancel
+                </button>
+                <button
+                  disabled={Boolean(sending)}
+                  onClick={async () => {
+                    await save(resetField, 'reset')
+                    setResetField(null)
+                  }}
+                >
+                  Use automatic {fieldLabels[resetField.field].toLowerCase()}
+                </button>
               </div>
-            )}
-            <div className="form-actions">
-              {art && (
-                <button
-                  type="button"
-                  disabled={Boolean(sending)}
-                  onClick={() => setArtworkSlot(field.field === 'cover_url' ? 'Cover' : 'Hero')}
-                >
-                  Browse {field.field === 'cover_url' ? 'cover' : 'background'} artwork
-                </button>
-              )}
-              <button disabled={Boolean(sending) || conflict}>
-                {sending === field.field ? 'Saving…' : `Save ${label.toLowerCase()}`}
-              </button>
-              {field.source === 'user' && (
-                <button
-                  type="button"
-                  disabled={Boolean(sending) || conflict}
-                  onClick={() => void save(field, 'reset')}
-                >
-                  Use automatic {label.toLowerCase()}
-                </button>
-              )}
-              {drafts[field.field] && (
-                <button
-                  type="button"
-                  disabled={Boolean(sending)}
-                  onClick={() => {
-                    const next = { ...drafts }
-                    delete next[field.field]
-                    setDrafts(next)
-                    setErrors({ ...errors, [field.field]: null })
-                  }}
-                >
-                  Discard {label.toLowerCase()} draft
-                </button>
-              )}
-            </div>
-            {art && (
-              <label className="field">
-                Choose {label.toLowerCase()} file
-                <input
-                  type="file"
-                  accept="image/*"
-                  disabled={Boolean(sending) || conflict}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    e.target.value = ''
-                    if (file) void save(field, 'upload', file)
-                  }}
-                />
-              </label>
-            )}
-            <Notice error={error} message={messages[field.field]} />
-          </form>
-        )
-      })}
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+      )}
       {artworkSlot && (
         <ArtworkBrowserDialog
           workId={workId}

@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-29 15:42'
+updated_date: '2026-09-29 16:15'
 labels: []
 dependencies: []
 priority: high
@@ -64,6 +64,8 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 20. After the backdrop package, restore source contrast and session appearance override behavior, including preference-write suppression, and verify both presentation surfaces. Continue Steam connection panel, seam and account-statistics contracts after the page-policy package. Root verifies artwork file import through the real API and browser geometry, focus, controller and metadata return behavior before classifying its source tests.
 
 21. Continue the source metadata overlay: desktop independent 1440x1000 dialog, fixed Back, bounded fields and five-size keyboard/validation matrix; fullscreen ordered field menu, per-field keyboard/save/reset/cancel and original-draft restoration. Then complete library read cancellation and latest-publication behavior. Continue pending Library/Steam mappings after reviewing their exact assertions; do not equate existing feature code with source-test completion.
+
+22. Continue exact remaining Library/filter and account-statistics source audits; close implementation or test gaps before classification. Retain original frontend tests and release entry points until the complete parity gate passes.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -102,4 +104,6 @@ Committed third milestone02989cb (78files). Next root package restores all28 IGD
 Fourth checkpoint: integrated Electron component/live-backend run passed all 2130 cases across111 files with no skips. Original seven failures were corrected fixture assumptions: six Steam dialog/count fixtures and one merge click racing a still-disabled action. The final Search native pass exposed and fixed a real initial-focus race; its new controlled-frame regression plus Search/App30 passed, followed by Search4 native. Targeted native coverage for this checkpoint is53 distinct cases across passing Search4, layout16, core parity14, Details9, gallery4, manual/Platforms2, Steam import2 and Library2; successful reruns fixed fixture synchronization and child-exit cleanup without relaxing assertions. Manual production HTTP6 passed; source mappings now689ported535retained12framework-specific with1040pending159partial out of2435. New Details/artwork/backdrop/auth implementation remains unstaged for the next package. All acceptance criteria remain unchecked.
 
 Fifth checkpoint: all2371 Electron component/live-backend cases pass in123files, no skips. Native artwork6,Details9,Library4,backdrops4,Steam policy2,and session-appearance1 all pass across recorded runs. Short artwork icon collapse and fullscreen1280x720 high-scale reading-space failures were fixed without relaxing geometry assertions. Full Windows Release13-assembly .NET run:6837pass,2repository-check failures,2Linux-only skips; corrected identity-reader inventory and legacy-name documentation, then13targeted enforcement checks pass.45migration hashes verified. Agent quota stopped parallel work; coordinator repaired unfinishedLibrary fixtures and SteamKey test compilation and verified session overrides. Source inventory now746ported540retained13framework-specific,972pending164partial. Details/artwork mappings and checkpoint-five.md record limits; no acceptance criteria checked.
+
+Sixth package restores independent metadata desktop/fullscreen navigation. Native five desktop sizes plus fullscreen controller A/Y/B pass; 19 metadata/Details/Library native cases passed, then metadata6 exited cleanly after child-exit cleanup. Electron integrated2385/124 all pass after cancellation-aware account assertion repair; subsequent expanded pending-Details matrix passes App24. Library/workspace/Details read cancellation rejects late publication and composed App tests close excluded Details. Source audit781ported540retained13framework,936pending165partial. Two library ordering contracts remain partial for combined settings/editor and independent selection evidence; no acceptance criteria checked.
 <!-- SECTION:NOTES:END -->

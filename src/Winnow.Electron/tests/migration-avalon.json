@@ -172,20 +172,44 @@
     "reason": "Unmount removes the portal/described-by association; late metadata cannot restore it."
   },
   "LibraryRefreshOrderingTests.Slower_manual_reload_cannot_replace_newer_settings_and_metadata_refresh": {
-    "status": "pending",
-    "reason": "Needs controlled out-of-order API/workspace refresh tests for account and visibility settings on both surfaces."
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/parity-library-publication.test.tsx",
+        "case": "a slow manual read cannot overwrite a newer committed visibility and metadata snapshot"
+      }
+    ],
+    "reason": "Production query hooks cancel the superseded read and reject late bridge results; the replacement verifies count, visible identities and summary after a winning snapshot. The complete composed maturity/account/non-game settings matrix with an open metadata editor still needs source-equivalent evidence."
   },
   "LibraryRefreshOrderingTests.Winning_visibility_snapshot_closes_hidden_details_and_keeps_valid_selection": {
-    "status": "pending",
-    "reason": "Theme selection pruning is covered, but winning-snapshot detail closure needs composed App coverage."
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/app.test.tsx",
+        "case": "a winning visibility snapshot closes excluded details while keeping the remaining game"
+      }
+    ],
+    "reason": "Both App surfaces close excluded Details and preserve remaining visible games using the same published library. Original independent valid-primary-selection retention still needs a composed assertion."
   },
   "LibraryRefreshOrderingTests.Cancelled_or_disposed_load_never_publishes_even_when_the_reader_ignores_cancellation": {
-    "status": "pending",
-    "reason": "Requires cancelled-query and lifecycle publication coverage in shared API hooks."
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-publication.test.tsx",
+        "case": "a reader that ignores %s cannot publish its late library, workspace or details"
+      }
+    ],
+    "reason": "Both explicit cancellation and disposal of the last mounted reader cancel the named IPC requests and reject all late library, workspace and Details responses, leaving no published query data."
   },
   "LibraryRefreshOrderingTests.Pending_details_honor_close_new_selection_and_newly_published_visibility": {
-    "status": "pending",
-    "reason": "Requires composed pending-detail navigation and latest-visible-snapshot coverage in App."
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/app.test.tsx",
+        "case": "pending details honor current navigation and visibility, fullscreen %s change %s"
+      }
+    ],
+    "reason": "The complete App tests close, replacement selection, exclusion and newer facts while a reader deliberately ignores cancellation. Both desktop and fullscreen retain only current navigation and facts when the earlier response arrives."
   },
   "LibraryPreparationResponsivenessTests.Input_runs_during_preparation_without_publishing_partial_or_stale_tiles": {
     "status": "pending",

@@ -29,7 +29,12 @@ test.afterAll(async () => {
     let timer: ReturnType<typeof setTimeout> | undefined
     try {
       await Promise.race([
-        application.close(),
+        (async () => {
+          const child = application.process()
+          await application.close()
+          if (child.exitCode === null && child.signalCode === null)
+            await new Promise<void>((done) => child.once('exit', () => done()))
+        })(),
         new Promise<void>((done) => {
           timer = setTimeout(() => {
             application.process().kill()
@@ -125,7 +130,7 @@ for (const [width, height] of [
     await expect.poll(() => reading.evaluate((node) => node.scrollTop)).toBe(200)
     await details.getByRole('button', { name: 'More', exact: true }).click()
     await details.getByRole('button', { name: 'Edit metadata…', exact: true }).click()
-    await expect(details.getByLabel('Name', { exact: true })).toBeFocused()
+    await expect(page.locator('.metadata-dialog').getByLabel('Name', { exact: true })).toBeFocused()
     await page.keyboard.press('Escape')
     await expect(details.getByRole('tab', { name: 'Overview', exact: true })).toHaveAttribute(
       'aria-selected',

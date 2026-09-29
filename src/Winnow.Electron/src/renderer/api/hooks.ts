@@ -87,7 +87,7 @@ export const workspaceSchema = z
 export function useApiQuery<T>(route: string, params?: Record<string, string | number>, enabled = true) {
   return useQuery({
     queryKey: ['api', route, params],
-    queryFn: () => request<T>(route, params),
+    queryFn: ({ signal }) => request<T>(route, params, undefined, signal),
     retry: false,
     enabled,
     staleTime: 30_000,
@@ -96,7 +96,8 @@ export function useApiQuery<T>(route: string, params?: Record<string, string | n
 export function useLibrary() {
   return useQuery({
     queryKey: ['api', 'library.get'],
-    queryFn: async () => librarySchema.parse(await request('library.get')) as LibraryResponse,
+    queryFn: async ({ signal }) =>
+      librarySchema.parse(await request('library.get', undefined, undefined, signal)) as LibraryResponse,
     retry: false,
     staleTime: 30_000,
   })
@@ -143,7 +144,10 @@ export function useFeed() {
 export function useWorkspace() {
   return useQuery({
     queryKey: ['api', 'library.workspace', undefined],
-    queryFn: async () => workspaceSchema.parse(await request('library.workspace')) as unknown as Workspace,
+    queryFn: async ({ signal }) =>
+      workspaceSchema.parse(
+        await request('library.workspace', undefined, undefined, signal),
+      ) as unknown as Workspace,
     retry: false,
     staleTime: 30_000,
   })

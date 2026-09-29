@@ -177,6 +177,7 @@ export function EntryActions({
 
 export function Details(props: {
   workId: number
+  editText?(input: HTMLInputElement | HTMLTextAreaElement): void
   mode?: Mode
   onClose?: () => void
   presentation?: 'shared' | 'avalon'

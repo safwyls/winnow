@@ -154,11 +154,27 @@
     "reason": "Native gamepad A selects, page arrival retains that candidate's focus, and A saves; actions remain within bounds at default text and 140% text with reduced motion."
   },
   "ArtworkBrowserTests.Metadata_overlay_bounds_fields_and_keeps_navigation_reachable": {
-    "status": "partial",
-    "reason": "Shared metadata editing and drafts are present; the source independent desktop overlay geometry and five-size field/navigation matrix are not yet ported."
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/metadata-dialog.spec.ts",
+        "case": "bounds fields and keeps navigation reachable"
+      }
+    ],
+    "reason": "Native Electron checks the five original window sizes including 120% text, the 1440px bound and 24px inset, 30 forward/backward Tab moves, all six fields inside the scroll body, a fixed Back button, local year refusal, and an artwork round trip preserving the unsaved title and precise Browse focus."
   },
   "ArtworkBrowserTests.Fullscreen_metadata_keeps_field_order_and_validation_navigation": {
-    "status": "partial",
-    "reason": "Metadata fields and validation exist in the shared editor, but the original fullscreen field-menu and per-field Back/discard navigation still need implementation and native evidence."
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/metadata-dialog.spec.ts",
+        "case": "fullscreen metadata keeps field order, keyboard editing, validation and Back restoration"
+      },
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "orders attributed menu fields and restores the original draft on Back after a validation refusal"
+      }
+    ],
+    "reason": "The native fullscreen menu preserves all six source rows and their source badges. Entering a field focuses Edit value, opens the shared keyboard, validates under the field, and Back restores the original draft and menu-row focus. Artwork rows open the correct slot and return to the same row."
   }
 }

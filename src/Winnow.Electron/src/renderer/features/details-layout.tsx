@@ -15,7 +15,8 @@ import { primaryEntry } from '../../shared/game-actions'
 import type { GameDetails, LibraryGame, Mode, Workspace } from '../api/types'
 import { Artwork } from '../components/Artwork'
 import { EntryActions, GameLinks, HideGame, ListMembership } from './Details'
-import { IgdbMatch, LibraryFacts, MetadataEditor, Screenshots, UpdateSignals } from './parity-details'
+import { IgdbMatch, LibraryFacts, Screenshots, UpdateSignals } from './parity-details'
+import { MetadataDialog } from './metadata-dialog'
 import { ReceptionLine, MetadataRefresh, LifecycleEvidence } from './details-presentation'
 import { DetailsRelationships } from './parity-details-identity'
 import { AddToListButton } from './parity-list-prompt'
@@ -60,10 +61,12 @@ export function AvalonDetailsLayout({
   workId,
   mode = 'desktop',
   onClose,
+  editText,
 }: {
   workId: number
   mode?: Mode
   onClose?: () => void
+  editText?(input: HTMLInputElement | HTMLTextAreaElement): void
 }) {
   const fullscreen = mode === 'fullscreen',
     id = useId()
@@ -79,6 +82,7 @@ export function AvalonDetailsLayout({
   const [expanded, setExpanded] = useState(false)
   const [matchNote, setMatchNote] = useState('')
   const [artworkOpen, setArtworkOpen] = useState(false)
+  const [metadataOpen, setMetadataOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [editing, setEditing] = useViewState<number | null>(`${mode}:details:${workId}:editing`, null)
   const body = useRef<HTMLDivElement>(null),
@@ -339,8 +343,7 @@ export function AvalonDetailsLayout({
     </section>
   )
   let panel: ReactNode
-  if (tool === 'Metadata') panel = <MetadataEditor workId={workId} mode={mode} />
-  else if (tool === 'Game match')
+  if (tool === 'Game match')
     panel = (
       <IgdbMatch
         workId={workId}
@@ -410,7 +413,12 @@ export function AvalonDetailsLayout({
     )
   const content = (
     <>
-      <AvalonBackdrop workId={game?.workId ?? workId} fullscreen={fullscreen} cinematic={fullscreen} className="avalon-detail-backdrop" />
+      <AvalonBackdrop
+        workId={game?.workId ?? workId}
+        fullscreen={fullscreen}
+        cinematic={fullscreen}
+        className="avalon-detail-backdrop"
+      />
       <header className="avalon-details-header" aria-label="Game identity">
         {!fullscreen && <Artwork workId={workId} eager className="avalon-detail-cover" />}
         <div className="avalon-details-identity">
@@ -464,7 +472,13 @@ export function AvalonDetailsLayout({
               open={moreOpen}
               setOpen={setMoreOpen}
               buttonRef={more}
-              onChoose={(next) => (next === 'Artwork' ? setArtworkOpen(true) : setTool(next))}
+              onChoose={(next) =>
+                next === 'Artwork'
+                  ? setArtworkOpen(true)
+                  : next === 'Metadata'
+                    ? setMetadataOpen(true)
+                    : setTool(next)
+              }
               workId={workId}
               links={links}
               management={
@@ -533,6 +547,18 @@ export function AvalonDetailsLayout({
         {panel}
       </div>
       {editing != null && <JournalEditor sessionId={editing} onClose={() => setEditing(null)} />}
+      {metadataOpen && (
+        <MetadataDialog
+          workId={workId}
+          title={game?.title ?? 'Game'}
+          mode={mode}
+          editText={editText}
+          onClose={() => {
+            setMetadataOpen(false)
+            requestAnimationFrame(() => more.current?.focus({ preventScroll: true }))
+          }}
+        />
+      )}
       {artworkOpen && (
         <ArtworkBrowserDialog
           workId={workId}

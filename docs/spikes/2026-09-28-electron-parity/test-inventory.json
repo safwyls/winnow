@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 972,
-    "partial": 164,
-    "ported": 746,
+    "pending": 936,
+    "partial": 165,
+    "ported": 781,
     "retained-backend": 540,
     "framework-specific": 13
   },
@@ -7725,22 +7725,66 @@
     {
       "id": "LibraryChromeTests.The_density_slider_binds_the_mirrored_value_over_the_view_models_own_range",
       "source": "tests/Winnow.Tests/LibraryChromeTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-lifecycle.spec.ts",
+          "case": "presents clearable real list cuts and source library chrome"
+        },
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "mirrors density across the declared 108 to 200 range and adds grid columns toward the right"
+        }
+      ],
+      "reason": "The native desktop uses real library records: density endpoints 108/200 narrow the cards toward the right; row art remains 24×36, row/header grid tracks and cell starts match, and missing-art labels cannot alter column sizing. Fullscreen keeps its separate fixed controller layout."
     },
     {
       "id": "LibraryChromeTests.The_mirror_is_taken_over_the_range_the_slider_declares",
       "source": "tests/Winnow.Tests/LibraryChromeTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-lifecycle.spec.ts",
+          "case": "presents clearable real list cuts and source library chrome"
+        },
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "mirrors density across the declared 108 to 200 range and adds grid columns toward the right"
+        }
+      ],
+      "reason": "The native desktop uses real library records: density endpoints 108/200 narrow the cards toward the right; row art remains 24×36, row/header grid tracks and cell starts match, and missing-art labels cannot alter column sizing. Fullscreen keeps its separate fixed controller layout."
     },
     {
       "id": "LibraryChromeTests.Every_list_row_draws_its_cover_in_a_fixed_column",
       "source": "tests/Winnow.Tests/LibraryChromeTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-lifecycle.spec.ts",
+          "case": "presents clearable real list cuts and source library chrome"
+        },
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "mirrors density across the declared 108 to 200 range and adds grid columns toward the right"
+        }
+      ],
+      "reason": "The native desktop uses real library records: density endpoints 108/200 narrow the cards toward the right; row art remains 24×36, row/header grid tracks and cell starts match, and missing-art labels cannot alter column sizing. Fullscreen keeps its separate fixed controller layout."
     },
     {
       "id": "LibraryChromeTests.The_list_header_and_the_list_row_declare_the_same_columns",
       "source": "tests/Winnow.Tests/LibraryChromeTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-lifecycle.spec.ts",
+          "case": "presents clearable real list cuts and source library chrome"
+        },
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "mirrors density across the declared 108 to 200 range and adds grid columns toward the right"
+        }
+      ],
+      "reason": "The native desktop uses real library records: density endpoints 108/200 narrow the cards toward the right; row art remains 24×36, row/header grid tracks and cell starts match, and missing-art labels cannot alter column sizing. Fullscreen keeps its separate fixed controller layout."
     },
     {
       "id": "LibraryGrainTests.An_unlinked_library_is_tile_for_tile_the_library_it_was",
@@ -8292,12 +8336,34 @@
     {
       "id": "LibraryViewModelTests.Column_headers_toggle_the_shared_sort_state",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "toggles all three column headers through the shared menu state with one active direction"
+        },
+        {
+          "file": "tests/electron/library-lifecycle.spec.ts",
+          "case": "presents clearable real list cuts and source library chrome"
+        }
+      ],
+      "reason": "Each header starts in the source default direction, reverses when selected again, updates the shared selected menu value and visible order, and leaves exactly one direction indicator. Menu selection also updates the active header."
     },
     {
       "id": "LibraryViewModelTests.The_menu_marks_the_active_order_and_the_button_names_it",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-workflows.test.tsx",
+          "case": "toggles all three column headers through the shared menu state with one active direction"
+        },
+        {
+          "file": "tests/electron/library-lifecycle.spec.ts",
+          "case": "presents clearable real list cuts and source library chrome"
+        }
+      ],
+      "reason": "Each header starts in the source default direction, reverses when selected again, updates the shared selected menu value and visible order, and leaves exactly one direction indicator. Menu selection also updates the active header."
     },
     {
       "id": "LibraryViewModelTests.Sort_applies_within_a_bucket_filter_and_a_search",
@@ -13838,12 +13904,26 @@
     {
       "id": "SteamConnectionPanelTests.The_permission_is_unticked_and_a_declined_sign_in_still_succeeds",
       "source": "tests/Winnow.Tests/SteamConnectionPanelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-panel-contracts.test.tsx",
+          "case": "The_permission_is_unticked_and_a_declined_sign_in_still_succeeds"
+        }
+      ],
+      "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
     },
     {
       "id": "SteamConnectionPanelTests.Only_the_permission_control_sets_the_capture_flag",
       "source": "tests/Winnow.Tests/SteamConnectionPanelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-panel-contracts.test.tsx",
+          "case": "Only_the_permission_control_sets_the_capture_flag"
+        }
+      ],
+      "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
     },
     {
       "id": "SteamConnectionPanelTests.Signing_out_withdraws_the_permission",
@@ -13932,7 +14012,18 @@
     {
       "id": "SteamConnectionPanelTests.Cancelling_a_running_sign_in_ends_it_and_stores_nothing",
       "source": "tests/Winnow.Tests/SteamConnectionPanelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-connections.test.tsx",
+          "case": "allows cancelling a running native sign-in without presenting cancellation as a failure"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/SteamSessionParityTests.cs",
+          "case": "Refused_or_cancelled_sign_in_changes_no_session_and_requests_no_refresh"
+        }
+      ],
+      "reason": "Renderer cancellation is neutral; the production HTTP fixture separately proves a canceled attempt stores no session and requests no refresh."
     },
     {
       "id": "SteamConnectionPanelTests.Signing_out_clears_the_identity_the_session_earned",
@@ -13965,7 +14056,14 @@
     {
       "id": "SteamConnectionPanelTests.The_save_command_refuses_an_empty_field",
       "source": "tests/Winnow.Tests/SteamConnectionPanelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-panel-contracts.test.tsx",
+          "case": "The_save_command_refuses_an_empty_field"
+        }
+      ],
+      "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
     },
     {
       "id": "SteamConnectionPanelTests.Saving_a_key_hands_it_over_empties_the_field_and_says_it_is_in_use",
@@ -13994,7 +14092,14 @@
     {
       "id": "SteamConnectionPanelTests.A_key_from_the_environment_cannot_be_cleared_here_and_says_so",
       "source": "tests/Winnow.Tests/SteamConnectionPanelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-panel-contracts.test.tsx",
+          "case": "A_key_from_the_environment_cannot_be_cleared_here_and_says_so"
+        }
+      ],
+      "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
     },
     {
       "id": "SteamConnectionPanelTests.The_key_page_is_opened_through_the_shared_dispatcher",
@@ -14071,27 +14176,62 @@
     {
       "id": "SteamConnectionPanelTests.The_three_blocked_branches_are_distinct",
       "source": "tests/Winnow.Tests/SteamConnectionPanelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-connections.test.tsx",
+          "case": "explains unconfirmed identity with key=%s session=%s"
+        }
+      ],
+      "reason": "Each credential state has its own blocked-identity explanation and disables the unconfirmed account scope."
     },
     {
       "id": "SteamConnectionPanelTests.The_both_credentials_sentence_names_the_key_and_the_reason",
       "source": "tests/Winnow.Tests/SteamConnectionPanelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-panel-contracts.test.tsx",
+          "case": "Renewal_copy_states_automatic_renewal_and_names_its_limits and Each_method_states_what_it_gives_up"
+        }
+      ],
+      "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
     },
     {
       "id": "SteamConnectionPanelTests.Renewal_copy_states_automatic_renewal_and_names_its_limits",
       "source": "tests/Winnow.Tests/SteamConnectionPanelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-panel-contracts.test.tsx",
+          "case": "Renewal_copy_states_automatic_renewal_and_names_its_limits and Each_method_states_what_it_gives_up"
+        }
+      ],
+      "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
     },
     {
       "id": "SteamConnectionPanelTests.The_environment_key_sentence_names_the_variable_and_both_consequences",
       "source": "tests/Winnow.Tests/SteamConnectionPanelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-panel-contracts.test.tsx",
+          "case": "A_key_from_the_environment_cannot_be_cleared_here_and_says_so"
+        }
+      ],
+      "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
     },
     {
       "id": "SteamConnectionPanelTests.The_permission_says_that_declining_is_a_complete_answer",
       "source": "tests/Winnow.Tests/SteamConnectionPanelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-panel-contracts.test.tsx",
+          "case": "The_permission_is_unticked_and_a_declined_sign_in_still_succeeds"
+        }
+      ],
+      "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
     },
     {
       "id": "SteamConnectionPanelTests.A_link_that_will_not_open_still_gives_the_address",
@@ -14108,17 +14248,38 @@
     {
       "id": "SteamConnectionPanelTests.Each_method_states_what_it_gives_up",
       "source": "tests/Winnow.Tests/SteamConnectionPanelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-panel-contracts.test.tsx",
+          "case": "Renewal_copy_states_automatic_renewal_and_names_its_limits and Each_method_states_what_it_gives_up"
+        }
+      ],
+      "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
     },
     {
       "id": "SteamConnectionPanelTests.Every_credential_combination_shows_each_methods_state_and_control",
       "source": "tests/Winnow.Tests/SteamConnectionPanelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-panel-contracts.test.tsx",
+          "case": "Every_credential_combination_shows_each_methods_state_and_control"
+        }
+      ],
+      "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
     },
     {
       "id": "SteamConnectionPanelTests.A_session_that_cannot_renew_surfaces_at_the_top_level",
       "source": "tests/Winnow.Tests/SteamConnectionPanelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-panel-contracts.test.tsx",
+          "case": "A_session_that_cannot_renew_surfaces_at_the_top_level"
+        }
+      ],
+      "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
     },
     {
       "id": "SteamConnectionPanelTests.A_calm_session_keeps_its_sentence_in_the_disclosure",
@@ -14135,17 +14296,38 @@
     {
       "id": "SteamConnectionPanelTests.The_three_disclosures_start_shut_and_open_on_their_own_command",
       "source": "tests/Winnow.Tests/SteamConnectionPanelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-panel-contracts.test.tsx",
+          "case": "The_disclosures_still_carry_everything_that_left_the_top_level"
+        }
+      ],
+      "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
     },
     {
       "id": "SteamConnectionPanelTests.The_disclosures_still_carry_everything_that_left_the_top_level",
       "source": "tests/Winnow.Tests/SteamConnectionPanelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-panel-contracts.test.tsx",
+          "case": "The_disclosures_still_carry_everything_that_left_the_top_level"
+        }
+      ],
+      "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
     },
     {
       "id": "SteamConnectionPanelTests.The_terse_state_lines_are_one_per_state",
       "source": "tests/Winnow.Tests/SteamConnectionPanelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-panel-contracts.test.tsx",
+          "case": "The_terse_state_lines_are_one_per_state"
+        }
+      ],
+      "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
     },
     {
       "id": "SteamConnectionPanelTests.Every_health_state_has_a_terse_line_too",
@@ -14174,52 +14356,116 @@
     {
       "id": "SteamConnectionSeamTests.Only_successful_key_changes_request_background_ownership_refresh_after_reconciliation",
       "source": "tests/Winnow.Tests/SteamConnectionSeamTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/SteamKeyParityTests.cs",
+          "case": "Only_successful_key_changes_request_background_ownership_refresh_after_reconciliation"
+        }
+      ],
+      "reason": "The replacement runs authenticated production HTTP against temporary real storage and the production credential selector/reconciliation services. It preserves the asserted state and write behavior without the retired in-process frontend seam."
     },
     {
       "id": "SteamConnectionSeamTests.A_signed_in_keyless_user_reads_as_configured",
       "source": "tests/Winnow.Tests/SteamConnectionSeamTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/SteamSessionParityTests.cs",
+          "case": "Minted_session_reaches_the_real_selector_and_survives_backend_restart"
+        }
+      ],
+      "reason": "The replacement runs authenticated production HTTP against temporary real storage and the production credential selector/reconciliation services. It preserves the asserted state and write behavior without the retired in-process frontend seam."
     },
     {
       "id": "SteamConnectionSeamTests.An_expired_session_is_present_but_not_usable",
       "source": "tests/Winnow.Tests/SteamConnectionSeamTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/SteamSessionParityTests.cs",
+          "case": "Token_only_session_is_kept_explained_live_then_expired_and_can_reconnect"
+        }
+      ],
+      "reason": "The replacement runs authenticated production HTTP against temporary real storage and the production credential selector/reconciliation services. It preserves the asserted state and write behavior without the retired in-process frontend seam."
     },
     {
       "id": "SteamConnectionSeamTests.A_key_from_the_settings_table_is_the_one_this_screen_owns",
       "source": "tests/Winnow.Tests/SteamConnectionSeamTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/SteamKeyParityTests.cs",
+          "case": "A_configuration_key_is_not_owned_and_saved_settings_take_precedence_until_cleared"
+        }
+      ],
+      "reason": "The replacement runs authenticated production HTTP against temporary real storage and the production credential selector/reconciliation services. It preserves the asserted state and write behavior without the retired in-process frontend seam."
     },
     {
       "id": "SteamConnectionSeamTests.A_key_from_configuration_is_not",
       "source": "tests/Winnow.Tests/SteamConnectionSeamTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/SteamKeyParityTests.cs",
+          "case": "A_configuration_key_is_not_owned_and_saved_settings_take_precedence_until_cleared"
+        }
+      ],
+      "reason": "The replacement runs authenticated production HTTP against temporary real storage and the production credential selector/reconciliation services. It preserves the asserted state and write behavior without the retired in-process frontend seam."
     },
     {
       "id": "SteamConnectionSeamTests.A_host_with_no_steam_module_answers_nothing_rather_than_throwing",
       "source": "tests/Winnow.Tests/SteamConnectionSeamTests.cs",
-      "status": "pending"
+      "status": "partial",
+      "reason": "The production backend always registers Steam services. The renderer missing-native-window case is covered, but the original optional no-Steam-module constructor has no audited replacement yet."
     },
     {
       "id": "SteamConnectionSeamTests.Saving_a_key_writes_it_and_invalidates_the_credential_provider",
       "source": "tests/Winnow.Tests/SteamConnectionSeamTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/SteamKeyParityTests.cs",
+          "case": "Saving_a_key_writes_it_and_invalidates_the_credential_provider"
+        }
+      ],
+      "reason": "The replacement runs authenticated production HTTP against temporary real storage and the production credential selector/reconciliation services. It preserves the asserted state and write behavior without the retired in-process frontend seam."
     },
     {
       "id": "SteamConnectionSeamTests.A_host_that_cannot_encrypt_refuses_rather_than_writing_plaintext",
       "source": "tests/Winnow.Tests/SteamConnectionSeamTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/SteamKeyParityTests.cs",
+          "case": "A_host_that_cannot_encrypt_refuses_rather_than_writing_plaintext"
+        }
+      ],
+      "reason": "The replacement runs authenticated production HTTP against temporary real storage and the production credential selector/reconciliation services. It preserves the asserted state and write behavior without the retired in-process frontend seam."
     },
     {
       "id": "SteamConnectionSeamTests.Clearing_a_key_empties_the_row_and_invalidates",
       "source": "tests/Winnow.Tests/SteamConnectionSeamTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/SteamKeyParityTests.cs",
+          "case": "Clearing_or_saving_a_blank_field_empties_both_rows_and_invalidates"
+        }
+      ],
+      "reason": "The replacement runs authenticated production HTTP against temporary real storage and the production credential selector/reconciliation services. It preserves the asserted state and write behavior without the retired in-process frontend seam."
     },
     {
       "id": "SteamConnectionSeamTests.Saving_a_blank_field_clears_rather_than_storing_whitespace",
       "source": "tests/Winnow.Tests/SteamConnectionSeamTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/SteamKeyParityTests.cs",
+          "case": "Clearing_or_saving_a_blank_field_empties_both_rows_and_invalidates"
+        }
+      ],
+      "reason": "The replacement runs authenticated production HTTP against temporary real storage and the production credential selector/reconciliation services. It preserves the asserted state and write behavior without the retired in-process frontend seam."
     },
     {
       "id": "SteamHarvestScriptSelectorTests.The_row_counter_no_longer_looks_for_an_id_that_is_not_on_the_page",
@@ -18578,8 +18824,14 @@
     {
       "id": "ArtworkBrowserTests.Metadata_overlay_bounds_fields_and_keeps_navigation_reachable",
       "source": "tests/Winnow.Ui.Tests/ArtworkBrowserTests.cs",
-      "status": "partial",
-      "reason": "Shared metadata editing and drafts are present; the source independent desktop overlay geometry and five-size field/navigation matrix are not yet ported."
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/metadata-dialog.spec.ts",
+          "case": "bounds fields and keeps navigation reachable"
+        }
+      ],
+      "reason": "Native Electron checks the five original window sizes including 120% text, the 1440px bound and 24px inset, 30 forward/backward Tab moves, all six fields inside the scroll body, a fixed Back button, local year refusal, and an artwork round trip preserving the unsaved title and precise Browse focus."
     },
     {
       "id": "ArtworkBrowserTests.Desktop_overlay_keeps_preview_and_actions_visible_while_only_gallery_scrolls",
@@ -18620,8 +18872,18 @@
     {
       "id": "ArtworkBrowserTests.Fullscreen_metadata_keeps_field_order_and_validation_navigation",
       "source": "tests/Winnow.Ui.Tests/ArtworkBrowserTests.cs",
-      "status": "partial",
-      "reason": "Metadata fields and validation exist in the shared editor, but the original fullscreen field-menu and per-field Back/discard navigation still need implementation and native evidence."
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/metadata-dialog.spec.ts",
+          "case": "fullscreen metadata keeps field order, keyboard editing, validation and Back restoration"
+        },
+        {
+          "file": "tests/parity-metadata-editor.test.tsx",
+          "case": "orders attributed menu fields and restores the original draft on Back after a validation refusal"
+        }
+      ],
+      "reason": "The native fullscreen menu preserves all six source rows and their source badges. Entering a field focuses Edit value, opens the shared keyboard, validates under the field, and Back restores the original draft and menu-row focus. Artwork rows open the correct slot and return to the same row."
     },
     {
       "id": "ArtworkPreferenceBackdropTests.Fullscreen_unowned_group_root_background_precedes_owned_child_heroes",
@@ -21392,26 +21654,50 @@
     {
       "id": "LibraryRefreshOrderingTests.Slower_manual_reload_cannot_replace_newer_settings_and_metadata_refresh",
       "source": "tests/Winnow.Ui.Tests/LibraryRefreshOrderingTests.cs",
-      "status": "pending",
-      "reason": "Needs controlled out-of-order API/workspace refresh tests for account and visibility settings on both surfaces."
+      "status": "partial",
+      "tests": [
+        {
+          "file": "tests/parity-library-publication.test.tsx",
+          "case": "a slow manual read cannot overwrite a newer committed visibility and metadata snapshot"
+        }
+      ],
+      "reason": "Production query hooks cancel the superseded read and reject late bridge results; the replacement verifies count, visible identities and summary after a winning snapshot. The complete composed maturity/account/non-game settings matrix with an open metadata editor still needs source-equivalent evidence."
     },
     {
       "id": "LibraryRefreshOrderingTests.Winning_visibility_snapshot_closes_hidden_details_and_keeps_valid_selection",
       "source": "tests/Winnow.Ui.Tests/LibraryRefreshOrderingTests.cs",
-      "status": "pending",
-      "reason": "Theme selection pruning is covered, but winning-snapshot detail closure needs composed App coverage."
+      "status": "partial",
+      "tests": [
+        {
+          "file": "tests/app.test.tsx",
+          "case": "a winning visibility snapshot closes excluded details while keeping the remaining game"
+        }
+      ],
+      "reason": "Both App surfaces close excluded Details and preserve remaining visible games using the same published library. Original independent valid-primary-selection retention still needs a composed assertion."
     },
     {
       "id": "LibraryRefreshOrderingTests.Cancelled_or_disposed_load_never_publishes_even_when_the_reader_ignores_cancellation",
       "source": "tests/Winnow.Ui.Tests/LibraryRefreshOrderingTests.cs",
-      "status": "pending",
-      "reason": "Requires cancelled-query and lifecycle publication coverage in shared API hooks."
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-library-publication.test.tsx",
+          "case": "a reader that ignores %s cannot publish its late library, workspace or details"
+        }
+      ],
+      "reason": "Both explicit cancellation and disposal of the last mounted reader cancel the named IPC requests and reject all late library, workspace and Details responses, leaving no published query data."
     },
     {
       "id": "LibraryRefreshOrderingTests.Pending_details_honor_close_new_selection_and_newly_published_visibility",
       "source": "tests/Winnow.Ui.Tests/LibraryRefreshOrderingTests.cs",
-      "status": "pending",
-      "reason": "Requires composed pending-detail navigation and latest-visible-snapshot coverage in App."
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/app.test.tsx",
+          "case": "pending details honor current navigation and visibility, fullscreen %s change %s"
+        }
+      ],
+      "reason": "The complete App tests close, replacement selection, exclusion and newer facts while a reader deliberately ignores cancellation. Both desktop and fullscreen retain only current navigation and facts when the earlier response arrives."
     },
     {
       "id": "LinkDestinationTests.Details_more_menu_opens_reference_page_through_saved_destination",

@@ -104,3 +104,24 @@ year/month idle text. Steam identity reaches the real install/store/news destina
 The focused Details/action/facts run passed 204 cases. Eight methods are mapped to
 these component or production HTTP checks; the ninth asserts only an unbound singular
 gap-caption string and is classified with the other retired caption contracts above.
+
+## Independent metadata navigation
+
+The desktop editor now has a separate 1440 × 1000 dialog with a 24px inset, fixed Back
+button and bounded field scrolling. Fullscreen retains the original six-row menu and
+per-field navigation. Back discards the active field's changes; successful save/reset
+returns to its newly attributed row. Reset asks for confirmation and defaults to Cancel.
+The editor shares one busy state, and the existing keyboard handles controller A/Y/B.
+
+All five original desktop dimensions pass native checks, including 940 × 820 at 120%
+text. The checks traverse 30 Tab steps in each direction, measure every field within
+the scroll body, retain Back during scrolling and test invalid-year placement. Opening
+artwork preserves the desktop title draft and restores Browse focus. The fullscreen
+native check verifies ordering, keyboard entry, validation, draft restoration and row
+focus through the production controller sampler. Six new component cases cover saved
+attribution, refused reset, default-cancel confirmation and busy navigation.
+
+The first native pass exposed the inherited 700px generic-dialog width limit, which
+was removed. The second pass exposed a test locator that included a textarea's current
+text; using its accessible textbox name preserves the original geometry assertions.
+The coordinator inspected desktop and fullscreen captures after the corrections.

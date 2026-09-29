@@ -1303,6 +1303,7 @@ export const avalon: ThemeDefinition = {
     context.selectedWorkId != null ? (
       <Details
         presentation="avalon"
+        editText={context.editText}
         workId={context.selectedWorkId}
         mode={context.mode}
         onClose={context.closeGame}

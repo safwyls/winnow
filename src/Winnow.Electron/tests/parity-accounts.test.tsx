@@ -102,6 +102,7 @@ describe('account summary parity with AccountStatsSummaryTests', () => {
       route: 'statistics.account',
       params: { source: 'steam' },
       body: undefined,
+      requestId: expect.stringMatching(/^[a-f0-9]{32}$/),
     })
   })
   it('does not invent percentages or currency totals for unknown prices', async () => {

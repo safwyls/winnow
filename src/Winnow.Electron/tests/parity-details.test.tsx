@@ -586,6 +586,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details compo
     expect(screen.queryByRole('heading', { name: 'Game details' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'More' }))
     fireEvent.click(screen.getByRole('button', { name: 'Edit metadata…' }))
+    if (mode === 'fullscreen') fireEvent.click(await screen.findByRole('button', { name: 'Name · IGDB' }))
     await screen.findByRole('textbox', { name: 'Name' })
     expect(
       request.mock.calls.some(([input]) => input.route === 'metadata.get' && input.params?.workId === 1),
@@ -641,19 +642,34 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details compo
     expect(document.activeElement).toBe(document.querySelector('.avalon-details-menu button'))
     expect(document.activeElement?.textContent).toBe('View in Steam')
     fireEvent.click(screen.getByRole('button', { name: 'Edit metadata…' }))
+    if (mode === 'fullscreen') fireEvent.click(await screen.findByRole('button', { name: 'Name · IGDB' }))
     const input = await screen.findByRole('textbox', { name: 'Name' })
-    await waitFor(() => expect(document.activeElement).toBe(input))
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        mode === 'desktop' ? input : screen.getByRole('button', { name: 'Edit value' }),
+      ),
+    )
     fireEvent.change(input, { target: { value: 'Unfinished title' } })
     expect(screen.queryAllByRole('tab')).toHaveLength(0)
-    fireEvent.click(screen.getByRole('button', { name: 'Back to Library' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+    if (mode === 'fullscreen') {
+      await waitFor(() =>
+        expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Name · IGDB' })),
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+    }
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /Edit metadata/ })).toBeNull())
     expect(screen.getByRole('tab', { name: 'Library' }).getAttribute('aria-selected')).toBe('true')
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'More' }))
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'More' })))
     fireEvent.click(screen.getByRole('button', { name: 'More' }))
     fireEvent.click(screen.getByRole('button', { name: 'Edit metadata…' }))
+    if (mode === 'fullscreen') fireEvent.click(await screen.findByRole('button', { name: 'Name · IGDB' }))
     expect(((await screen.findByRole('textbox', { name: 'Name' })) as HTMLInputElement).value).toBe(
-      'Unfinished title',
+      mode === 'desktop' ? 'Unfinished title' : 'Original game',
     )
-    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Name' }), { key: 'Escape' })
+    if (mode === 'fullscreen')
+      fireEvent.keyDown(screen.getByRole('button', { name: 'Name · IGDB' }), { key: 'Escape' })
     await waitFor(() => expect(screen.queryAllByRole('tab')).toHaveLength(mode === 'desktop' ? 5 : 4))
     expect(close).not.toHaveBeenCalled()
     expect(request.mock.calls.some(([input]) => input.route === 'metadata.edit')).toBe(false)

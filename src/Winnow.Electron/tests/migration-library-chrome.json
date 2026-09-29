@@ -1,0 +1,86 @@
+{
+  "LibraryChromeTests.The_density_slider_binds_the_mirrored_value_over_the_view_models_own_range": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/library-lifecycle.spec.ts",
+        "case": "presents clearable real list cuts and source library chrome"
+      },
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "mirrors density across the declared 108 to 200 range and adds grid columns toward the right"
+      }
+    ],
+    "reason": "The native desktop uses real library records: density endpoints 108/200 narrow the cards toward the right; row art remains 24×36, row/header grid tracks and cell starts match, and missing-art labels cannot alter column sizing. Fullscreen keeps its separate fixed controller layout."
+  },
+  "LibraryChromeTests.The_mirror_is_taken_over_the_range_the_slider_declares": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/library-lifecycle.spec.ts",
+        "case": "presents clearable real list cuts and source library chrome"
+      },
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "mirrors density across the declared 108 to 200 range and adds grid columns toward the right"
+      }
+    ],
+    "reason": "The native desktop uses real library records: density endpoints 108/200 narrow the cards toward the right; row art remains 24×36, row/header grid tracks and cell starts match, and missing-art labels cannot alter column sizing. Fullscreen keeps its separate fixed controller layout."
+  },
+  "LibraryChromeTests.Every_list_row_draws_its_cover_in_a_fixed_column": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/library-lifecycle.spec.ts",
+        "case": "presents clearable real list cuts and source library chrome"
+      },
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "mirrors density across the declared 108 to 200 range and adds grid columns toward the right"
+      }
+    ],
+    "reason": "The native desktop uses real library records: density endpoints 108/200 narrow the cards toward the right; row art remains 24×36, row/header grid tracks and cell starts match, and missing-art labels cannot alter column sizing. Fullscreen keeps its separate fixed controller layout."
+  },
+  "LibraryChromeTests.The_list_header_and_the_list_row_declare_the_same_columns": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/library-lifecycle.spec.ts",
+        "case": "presents clearable real list cuts and source library chrome"
+      },
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "mirrors density across the declared 108 to 200 range and adds grid columns toward the right"
+      }
+    ],
+    "reason": "The native desktop uses real library records: density endpoints 108/200 narrow the cards toward the right; row art remains 24×36, row/header grid tracks and cell starts match, and missing-art labels cannot alter column sizing. Fullscreen keeps its separate fixed controller layout."
+  },
+  "LibraryViewModelTests.Column_headers_toggle_the_shared_sort_state": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "toggles all three column headers through the shared menu state with one active direction"
+      },
+      {
+        "file": "tests/electron/library-lifecycle.spec.ts",
+        "case": "presents clearable real list cuts and source library chrome"
+      }
+    ],
+    "reason": "Each header starts in the source default direction, reverses when selected again, updates the shared selected menu value and visible order, and leaves exactly one direction indicator. Menu selection also updates the active header."
+  },
+  "LibraryViewModelTests.The_menu_marks_the_active_order_and_the_button_names_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "toggles all three column headers through the shared menu state with one active direction"
+      },
+      {
+        "file": "tests/electron/library-lifecycle.spec.ts",
+        "case": "presents clearable real list cuts and source library chrome"
+      }
+    ],
+    "reason": "Each header starts in the source default direction, reverses when selected again, updates the shared selected menu value and visible order, and leaves exactly one direction indicator. Menu selection also updates the active header."
+  }
+}
