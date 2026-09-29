@@ -49,6 +49,36 @@ public sealed class ArtworkBrowserService(
         return key is { } actual ? new("automatic", "Automatic", actual.ToString(), slot, actual) { IsCurrent = true } : null;
     }
 
+    public async Task<BackdropArtwork> GetBackdropAsync(long workId, double aspectRatio, CancellationToken ct = default)
+    {
+        if (workId <= 0 || !double.IsFinite(aspectRatio) || aspectRatio <= 0 || aspectRatio > 32)
+            throw new ArgumentException("Invalid backdrop dimensions or game.");
+        var work = await works.GetAsync(workId, ct);
+        if (work is null) return new([], null);
+        var hero = await selections.GetAsync(workId, ArtworkSlot.Hero, ct);
+        var cover = await selections.GetAsync(workId, ArtworkSlot.Cover, ct);
+        var ids = await SteamIdsAsync(workId, ct);
+        IReadOnlyList<WorkImages> rows = [];
+        try
+        {
+            var group = await selections.GroupAsync(workId, ct);
+            rows = await BackdropImages.LoadAsync(images, workId, group, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            // Saved art and launcher fallbacks remain useful when image metadata cannot be read.
+        }
+        ct.ThrowIfCancellationRequested();
+        var keys = BackdropSelection.Candidates(work.BackgroundUrl, rows, aspectRatio, ids, preferences?.SourceOrder).ToList();
+        if (hero is not null && ArtKeys.Resolve(hero.AssetKey) is { } selected) keys.Insert(0, selected);
+        var coverKey = cover is not null ? ArtKeys.Resolve(cover.AssetKey) : null;
+        coverKey ??= new CoverSelection(preferences?.AvailableSources.Select(s => s.Id)).Select(work.CoverUrl,
+            ids.FirstOrDefault(), pins is not null && await pins.GetAsync(workId, ct) is not null);
+        return new(keys.Distinct().Select(key => new BackdropArtworkCandidate(key,
+            BackdropSelection.AspectRatio(key, rows), BackdropSelection.IsHero(key))).ToArray(), coverKey);
+    }
+
     public async Task<ArtworkBrowserPage> BrowseAsync(long workId, ArtworkSlot slot, string sourceId,
         string? cursor = null, CancellationToken ct = default)
     {

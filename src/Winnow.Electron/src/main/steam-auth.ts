@@ -1,15 +1,15 @@
-import { BrowserWindow, session, type Session } from 'electron'
+import { BrowserWindow, session, shell, type Session } from 'electron'
 import { randomUUID } from 'node:crypto'
 import type { SteamCaptureResult, SteamSignInOptions, SteamSignInResult } from '../shared/bridge'
 import type { BackendTransport } from './transport'
 import { captureSteamAccountPages } from './steam-capture'
 import { createAccountBrowser, type AccountBrowser } from './account-browser'
 import { steamSignInDiagnostic } from './steam-diagnostics'
+import { installSteamBrowserPolicy } from './steam-browser-policy'
+import { steamCaptureFailure } from './steam-capture-result'
 import {
   readSteamIdentity,
   steamMintAllowed,
-  steamFrameNavigationAllowed,
-  steamNavigationAllowed,
   steamTokenProbe,
   SteamIdentityMismatchError,
 } from './steam-auth-policy'
@@ -119,18 +119,7 @@ async function runSteamSignIn(
     if (cancelled)
       return { signedIn: false, outcome: 4, detail: 'Steam sign-in cancelled. Nothing was changed.' }
     browser = createAccountBrowser(parent, privateSession, 'Connect Steam · Winnow')
-    browser.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
-    browser.on('page-title-updated', (event) => event.preventDefault())
-    browser.webContents.on('will-navigate', (event, url) => {
-      if (!steamNavigationAllowed(url)) event.preventDefault()
-    })
-    browser.webContents.on('will-redirect', (event, url) => {
-      if (!steamNavigationAllowed(url)) event.preventDefault()
-    })
-    browser.webContents.on('will-frame-navigate', (event) => {
-      if (!steamFrameNavigationAllowed(event.url, event.isMainFrame)) event.preventDefault()
-    })
-    browser.webContents.on('will-attach-webview', (event) => event.preventDefault())
+    installSteamBrowserPolicy(browser, (url) => shell.openExternal(url))
     const authWindow = browser
     const authSession = privateSession
     const outcome = new Promise<SteamSignInResult>((resolve, reject) => {
@@ -285,6 +274,11 @@ export async function captureSteamPages(
   parent: BrowserWindow,
   options: { consentGranted: boolean },
 ): Promise<SteamCaptureResult> {
+  if (options?.consentGranted === false)
+    return steamCaptureFailure(
+      'cancelled',
+      'Account-page capture was not started because permission was declined.',
+    )
   if (options?.consentGranted !== true)
     throw new Error('Agree to read your Steam account pages before opening the capture window.')
   if (active) throw new Error('A Steam window is already open.')
@@ -301,27 +295,16 @@ export async function captureSteamPages(
     profile.setPermissionCheckHandler(() => false)
     profile.on('will-download', (event) => event.preventDefault())
     browser = createAccountBrowser(parent, profile, 'Capture Steam account pages · Winnow')
-    browser.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
-    browser.on('page-title-updated', (event) => event.preventDefault())
-    browser.webContents.on('will-navigate', (event, url) => {
-      if (!steamNavigationAllowed(url)) event.preventDefault()
-    })
-    browser.webContents.on('will-redirect', (event, url) => {
-      if (!steamNavigationAllowed(url)) event.preventDefault()
-    })
-    browser.webContents.on('will-frame-navigate', (event) => {
-      if (!steamFrameNavigationAllowed(event.url, event.isMainFrame)) event.preventDefault()
-    })
-    browser.webContents.on('will-attach-webview', (event) => event.preventDefault())
+    installSteamBrowserPolicy(browser, (url) => shell.openExternal(url))
     parent.once('closed', close)
     return await captureSteamAccountPages(browser)
   } catch {
-    return {
-      captureOutcome: browser ? 'failed' : 'unavailable',
-      captureDetail: browser
+    return steamCaptureFailure(
+      browser ? 'failed' : 'unavailable',
+      browser
         ? 'Steam account pages could not be read. Try again or import saved pages.'
         : 'The Steam capture window could not open. You can still import saved pages.',
-    }
+    )
   } finally {
     parent.off('closed', close)
     try {

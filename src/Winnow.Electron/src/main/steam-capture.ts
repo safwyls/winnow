@@ -1,8 +1,16 @@
 import type { AccountBrowser } from './account-browser'
 import type { SteamCapturedPages, SteamCaptureResult } from '../shared/bridge'
-import { steamNavigationAllowed } from './steam-auth-policy'
+import { steamCaptureFailure } from './steam-capture-result'
+import {
+  steamAccountPages,
+  steamCaptureLimits,
+  steamCapturePage,
+  steamPageStep,
+  type SteamPageKind,
+} from './steam-page-policy'
+export { steamCapturePage } from './steam-page-policy'
 
-type PageKind = 'licenses' | 'history'
+type PageKind = SteamPageKind
 interface PageSnapshot {
   steamId: string | null
   rows: number
@@ -11,21 +19,10 @@ interface PageSnapshot {
   range?: { from: number; to: number; total: number } | null
   html?: string
 }
-export function steamCapturePage(value: string): PageKind | null {
-  if (!steamNavigationAllowed(value)) return null
-  const url = new URL(value)
-  if (url.origin !== 'https://store.steampowered.com') return null
-  return url.pathname === '/account/licenses/'
-    ? 'licenses'
-    : url.pathname === '/account/history/'
-      ? 'history'
-      : null
-}
-
 /** Every invocation checks its own document before reading any account content. */
 export function steamCaptureScript(kind: PageKind, action: 'probe' | 'capture' | 'more'): string {
   return `(() => {
-    if (location.origin !== 'https://store.steampowered.com' || location.pathname !== '/account/${kind}/') return null;
+    if (location.origin !== 'https://store.steampowered.com' || location.pathname.replace(/^\\/+|\\/+$/g, '').toLowerCase() !== 'account/${kind}') return null;
     if (document.querySelector('input[type="password"]')) return null;
     const kind = ${JSON.stringify(kind)}, action = ${JSON.stringify(action)};
     const table = [...document.querySelectorAll(kind === 'licenses' ? 'table.account_table' : 'table.wallet_history_table')]
@@ -82,13 +79,9 @@ export async function captureSteamAccountPages(
   } = {},
 ): Promise<SteamCaptureResult> {
   if (browser.isDestroyed())
-    return {
-      captureOutcome: 'cancelled',
-      captureDetail: 'The window closed before account pages could be captured.',
-    }
+    return steamCaptureFailure('cancelled', 'The window closed before account pages could be captured.')
   const deadline = options.deadline ?? Date.now() + 15 * 60_000
-  const licensesCap = Math.min(200, Math.max(0, options.maxLicensesPages ?? 50))
-  const historyCap = Math.min(500, Math.max(0, options.maxLoadMoreClicks ?? 100))
+  const { licenses: licensesCap, history: historyCap } = steamCaptureLimits(options)
   const pages: SteamCapturedPages = {
     additionalLicensesHtml: [],
     capturedAt: new Date().toISOString(),
@@ -169,8 +162,10 @@ export async function captureSteamAccountPages(
   }
   try {
     try {
-      let url = 'https://store.steampowered.com/account/licenses/'
+      let url: string = steamAccountPages.licenses
       let covered = 0,
+        rows = 0,
+        rowsBefore = -1,
         expectedTotal: number | undefined,
         contiguous = true
       const visited = new Set<string>()
@@ -182,6 +177,7 @@ export async function captureSteamAccountPages(
         }
         visited.add(url)
         browser.setTitle(`Reading Steam licences (${followed + 1} of at most ${licensesCap + 1}) · Winnow`)
+        if (followed > 0) licensesPagesWalked++
         const { probe, execute } = await visit(url, 'licenses')
         const capture = (await execute('capture')) as PageSnapshot | null
         if (!capture?.html) throw new Error('The licence page could not be read completely.')
@@ -192,7 +188,7 @@ export async function captureSteamAccountPages(
           throw new Error('The capture reached its size limit.')
         if (!pages.licensesHtml) pages.licensesHtml = capture.html
         else pages.additionalLicensesHtml.push(capture.html)
-        licensesPagesWalked++
+        rows += capture.rows
         if (capture.range) {
           const { from, to, total } = capture.range
           if (
@@ -208,17 +204,14 @@ export async function captureSteamAccountPages(
         } else if (followed > 0 || capture.nextUrl) contiguous = false
         licensesTruncated =
           !!capture.nextUrl || !contiguous || (expectedTotal !== undefined && covered !== expectedTotal)
-        if (!capture.nextUrl) {
-          licensesStoppedBecause = licensesTruncated ? 'stalled' : 'exhausted'
+        const decision = steamPageStep(licensesPagesWalked, rowsBefore, rows, !!capture.nextUrl, licensesCap)
+        if (decision !== 'continue') {
+          licensesStoppedBecause = decision === 'exhausted' && licensesTruncated ? 'stalled' : decision
           break
         }
-        if (followed >= licensesCap || capture.rows === 0) {
-          licensesTruncated = true
-          licensesStoppedBecause = followed >= licensesCap ? 'cap' : 'stalled'
-          break
-        }
-        if (steamCapturePage(capture.nextUrl) !== 'licenses')
+        if (!capture.nextUrl || steamCapturePage(capture.nextUrl) !== 'licenses')
           throw new Error('Steam offered an unexpected licence page; it was not read.')
+        rowsBefore = rows
         url = capture.nextUrl
       }
     } catch (failure) {
@@ -229,15 +222,19 @@ export async function captureSteamAccountPages(
     }
     try {
       browser.setTitle('Reading Steam purchase history · Winnow')
-      const { probe, execute } = await visit('https://store.steampowered.com/account/history/', 'history')
-      let latest = probe
-      for (let clicks = 0; latest.hasMore; clicks++) {
-        if (clicks >= historyCap) {
-          historyTruncated = true
-          historyStoppedBecause = 'cap'
+      const { probe, execute } = await visit(steamAccountPages.history, 'history')
+      let latest = probe,
+        rowsBefore = -1
+      for (;;) {
+        const decision = steamPageStep(loadMoreClicks, rowsBefore, latest.rows, latest.hasMore, historyCap)
+        if (decision !== 'continue') {
+          historyTruncated = decision !== 'exhausted'
+          historyStoppedBecause = decision
           break
         }
-        browser.setTitle(`Loading Steam purchase history (${clicks + 1} of at most ${historyCap}) · Winnow`)
+        browser.setTitle(
+          `Loading Steam purchase history (${loadMoreClicks + 1} of at most ${historyCap}) · Winnow`,
+        )
         if (!(await execute('more'))) {
           historyTruncated = true
           historyStoppedBecause = 'stalled'
@@ -246,6 +243,7 @@ export async function captureSteamAccountPages(
         loadMoreClicks++
         const growthDeadline = Math.min(deadline, Date.now() + 15_000),
           before = latest.rows
+        rowsBefore = before
         do {
           await pause()
           const next = (await execute('probe')) as PageSnapshot | null
@@ -253,11 +251,6 @@ export async function captureSteamAccountPages(
           sameIdentity(probe.steamId, next.steamId)
           latest = next
         } while (latest.rows <= before && latest.hasMore && Date.now() < growthDeadline)
-        if (latest.rows <= before && latest.hasMore) {
-          historyTruncated = true
-          historyStoppedBecause = 'stalled'
-          break
-        }
       }
       const capture = (await execute('capture')) as PageSnapshot | null
       if (!capture?.html) throw new Error('The purchase-history page could not be read completely.')
@@ -278,11 +271,10 @@ export async function captureSteamAccountPages(
     }
   } catch (failure) {
     if (failure instanceof IdentityChanged)
-      return {
-        captureOutcome: 'failed',
-        captureDetail:
-          'Steam account identity changed or could not be confirmed. These pages were discarded.',
-      }
+      return steamCaptureFailure(
+        'failed',
+        'Steam account identity changed or could not be confirmed. These pages were discarded.',
+      )
     licensesTruncated ||= !pages.licensesHtml
     historyTruncated ||= !pages.historyHtml
     interrupted = failure instanceof CaptureStopped

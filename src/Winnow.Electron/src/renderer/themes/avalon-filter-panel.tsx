@@ -4,6 +4,7 @@ import {
   AVALON_FACET_GROUPS,
   avalonRuleOptions,
   avalonYearRange,
+  matchesAvalonRules,
   type AvalonFactMap,
   type AvalonWorkspace,
 } from './avalon-filters'
@@ -11,6 +12,8 @@ import {
 export function AvalonFilterPanel({
   filter,
   games,
+  allGames = games,
+  optionOrder,
   facts,
   workspace,
   fullscreen,
@@ -19,6 +22,8 @@ export function AvalonFilterPanel({
 }: {
   filter: LibraryFilter
   games: LibraryGame[]
+  allGames?: LibraryGame[]
+  optionOrder?: Map<string, (string | number)[]>
   facts: AvalonFactMap
   workspace?: AvalonWorkspace
   fullscreen: boolean
@@ -31,6 +36,16 @@ export function AvalonFilterPanel({
   const [error, setError] = useState('')
   const ref = useRef<HTMLElement>(null),
     origin = useRef(document.activeElement as HTMLElement | null)
+  const localOrder = useRef(new Map<string, (string | number)[]>())
+  const order = optionOrder ?? localOrder.current
+  const previousFilter = useRef(filter)
+  useEffect(() => {
+    if (fullscreen) return
+    setDraft(filter)
+    if (filter.yearFrom !== previousFilter.current.yearFrom) setFrom(String(filter.yearFrom ?? ''))
+    if (filter.yearTo !== previousFilter.current.yearTo) setTo(String(filter.yearTo ?? ''))
+    previousFilter.current = filter
+  }, [filter, fullscreen])
   const valid = avalonYearRange(from, to)
   function update(next: LibraryFilter) {
     setDraft(next)
@@ -49,11 +64,42 @@ export function AvalonFilterPanel({
       origin.current?.focus()
     }
   }, [])
-  const groups = [
-    ['stores', '', 'Stores'],
-    ['buckets', '', 'Library status'],
-    ...AVALON_FACET_GROUPS,
-  ] as const
+  const groups = [['stores', '', 'Stores'], ...AVALON_FACET_GROUPS] as const
+  const visibleGroups = groups.flatMap(([key, , label]) => {
+    const options = avalonRuleOptions(games, facts, workspace, draft, key, allGames),
+      selected = (draft[key] ?? []) as (string | number)[]
+    if (
+      !options.length ||
+      (!selected.length &&
+        options.length === 1 &&
+        allGames.length > 0 &&
+        allGames.every((game) =>
+          matchesAvalonRules(game, { [key]: [options[0].value] }, facts.get(game.workId)),
+        ))
+    )
+      return []
+    const previous = order.get(key) ?? []
+    const additions = options
+      .filter((option) => !previous.includes(option.value))
+      .sort((a, b) =>
+        key === 'stores' || key === 'gameModes'
+          ? a.label.localeCompare(b.label)
+          : b.count - a.count || a.label.localeCompare(b.label),
+      )
+    const stable = [...previous, ...additions.map((option) => option.value)]
+    order.set(key, stable)
+    return [
+      {
+        key,
+        label,
+        selected,
+        options: options.sort((a, b) => stable.indexOf(a.value) - stable.indexOf(b.value)),
+      },
+    ]
+  })
+  const datedYears = allGames.flatMap((game) =>
+    game.firstReleaseYear == null ? [] : [game.firstReleaseYear],
+  )
   return (
     <section
       ref={ref}
@@ -90,26 +136,30 @@ export function AvalonFilterPanel({
         <button onClick={close}>{fullscreen ? 'Cancel' : 'Close filters'}</button>
       </header>
       <div className="avalon-filter-fields">
-        <div className="avalon-filter-year">
-          <label>
-            From this year
-            <input
-              aria-label="From this year"
-              inputMode="numeric"
-              value={from}
-              onChange={(event) => year(event.target.value, to)}
-            />
-          </label>
-          <label>
-            Up to this year
-            <input
-              aria-label="Up to this year"
-              inputMode="numeric"
-              value={to}
-              onChange={(event) => year(from, event.target.value)}
-            />
-          </label>
-        </div>
+        {(datedYears.length > 0 || from || to) && (
+          <div className="avalon-filter-year">
+            <label>
+              From this year
+              <input
+                aria-label="From this year"
+                inputMode="numeric"
+                value={from}
+                placeholder={datedYears.length ? String(Math.min(...datedYears)) : undefined}
+                onChange={(event) => year(event.target.value, to)}
+              />
+            </label>
+            <label>
+              Up to this year
+              <input
+                aria-label="Up to this year"
+                inputMode="numeric"
+                value={to}
+                placeholder={datedYears.length ? String(Math.max(...datedYears)) : undefined}
+                onChange={(event) => year(from, event.target.value)}
+              />
+            </label>
+          </div>
+        )}
         {error && <p role="alert">{error}</p>}
         <label>
           Installation
@@ -124,23 +174,10 @@ export function AvalonFilterPanel({
             <option value="false">Not installed</option>
           </select>
         </label>
-        <label>
-          Update status
-          <select
-            value={draft.hasUnread == null ? '' : String(draft.hasUnread)}
-            onChange={(event) =>
-              update({ ...draft, hasUnread: event.target.value ? event.target.value === 'true' : null })
-            }
-          >
-            <option value="">Any update status</option>
-            <option value="true">Unread updates</option>
-            <option value="false">No unread updates</option>
-          </select>
-        </label>
-        {groups.map(([key, , label]) => {
-          const options = avalonRuleOptions(games, facts, workspace, draft, key),
-            selected = (draft[key] ?? []) as (string | number)[]
-          if (!options.length) return null
+        {!visibleGroups.some((group) => group.key !== 'stores') && (
+          <p className="muted">No game metadata is available to filter yet.</p>
+        )}
+        {visibleGroups.map(({ key, label, options, selected }) => {
           return (
             <details key={key} open={selected.length ? true : undefined}>
               <summary>

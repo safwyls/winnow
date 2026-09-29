@@ -1,0 +1,154 @@
+{
+  "FullscreenBackdropTests.Saved_background_survives_failed_image_metadata_read": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/BackdropArtworkTests.cs",
+        "case": "Saved_background_survives_failed_metadata_and_cancellation_is_not_swallowed"
+      }
+    ],
+    "reason": "The real HTTP query preserves the saved background when image metadata throws; cancellation remains cancellation. The renderer consumes these ordered keys."
+  },
+  "FullscreenBackdropTests.Synchronous_metadata_read_leaves_dispatcher_free_and_stale_selection_cannot_present": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-backdrop.test.ts",
+        "case": "cancels superseded metadata and cannot present its late selection"
+      },
+      {
+        "file": "tests/electron/backdrop.spec.ts",
+        "case": "detaching Home cancels the real named image request and releases retained decoded art"
+      }
+    ],
+    "reason": "Metadata runs behind the authenticated HTTP boundary in the separate backend process. Controlled late metadata never starts stale image work, and actual renderer detachment aborts the named IPC image fetch without blocking navigation."
+  },
+  "FullscreenBackdropTests.Ready_selection_does_not_cut_short_visible_crossfade": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-backdrop.test.ts",
+        "case": "a ready selection preserves the visible blend with reduced motion %s and missing replacement %s"
+      },
+      {
+        "file": "tests/avalon-backdrop.test.ts",
+        "case": "detach cancels pending art and releases current outgoing queued and late resources exactly once"
+      }
+    ],
+    "reason": "All four original reduced-motion/fallback combinations retain the two visible layers at a controlled half fade, dispose a superseded ready result, and then present only the latest result. Detachment releases visible, outgoing, queued and late pixels exactly once."
+  },
+  "FullscreenBackdropTests.Selection_keeps_ready_landscape_and_ignores_superseded_completion": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-backdrop.test.ts",
+        "case": "retains ready landscape while loading and releases superseded pixels with reduced motion %s"
+      },
+      {
+        "file": "tests/avalon-backdrop.test.ts",
+        "case": "failed resolution upgrades keep the usable image and smaller sizes do not request it again"
+      },
+      {
+        "file": "tests/electron/backdrop.spec.ts",
+        "case": "fullscreen Home crossfades independent source geometry, keeps visible art while loading, and releases replaced URLs"
+      }
+    ],
+    "reason": "Both motion modes keep ready art during selection, abort superseded work and ignore late pixels. A real compositor frame samples independent current/outgoing layers and object URLs return to one after replacement; detach returns them to zero."
+  },
+  "FullscreenBackdropTests.Failed_landscape_shows_cover_only_after_resolution_and_detach_cancels_pending_art": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-backdrop.test.ts",
+        "case": "tries ranked artwork then screenshots before a separately sized cover fallback"
+      },
+      {
+        "file": "tests/avalon-backdrop.test.ts",
+        "case": "detach cancels pending art and releases current outgoing queued and late resources exactly once"
+      },
+      {
+        "file": "tests/electron/backdrop.spec.ts",
+        "case": "detaching Home cancels the real named image request and releases retained decoded art"
+      }
+    ],
+    "reason": "Cover fallback starts only after all landscape attempts fail, has its own decode width, and is released on detach. Pending requests use an owner-scoped cancel ID; late image completion cannot reattach pixels."
+  },
+  "FullscreenBackdropTests.Desktop_backdrop_tries_ranked_art_then_screenshot_and_keeps_portrait_separate": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/BackdropArtworkTests.cs",
+        "case": "Candidate_endpoint_preserves_grouped_choices_source_order_and_portrait_fallback_without_fetching_images"
+      },
+      {
+        "file": "tests/avalon-backdrop.test.ts",
+        "case": "tries ranked artwork then screenshots before a separately sized cover fallback"
+      },
+      {
+        "file": "tests/electron/backdrop.spec.ts",
+        "case": "${mode} Details uses its original reading veil and releases its backdrop on close"
+      }
+    ],
+    "reason": "The backend preserves saved/ranked landscape choices separately from portrait, and the new backdrop releases pending/current image resources. The existing shared portrait Artwork component still uses its own encoded query cache; the original assertion that a pending portrait lease is cancelled immediately on Details disposal is not covered by this package."
+  },
+  "FullscreenBackdropTests.Fullscreen_tries_artwork_then_screenshot_before_cover": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/BackdropArtworkTests.cs",
+        "case": "Candidate_endpoint_preserves_grouped_choices_source_order_and_portrait_fallback_without_fetching_images"
+      },
+      {
+        "file": "tests/avalon-backdrop.test.ts",
+        "case": "tries ranked artwork then screenshots before a separately sized cover fallback"
+      }
+    ],
+    "reason": "Authoritative candidate order retains artwork before screenshot; the renderer exhausts that sequence before requesting the separate cover. No cover is presented while a landscape candidate is pending."
+  },
+  "FullscreenBackdropTests.Both_backdrops_size_each_candidate_for_its_source_proportions": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-backdrop.test.ts",
+        "case": "sizes each source candidate independently with fullscreen %s and ratio %s"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/BackdropArtworkTests.cs",
+        "case": "Image_endpoint_supports_the_original_3840_bucket_and_rejects_larger_requests"
+      }
+    ],
+    "reason": "The complete desktop/fullscreen × panoramic/16:9 source matrix requests 3840 or 1920 as appropriate and recalculates the following screenshot independently. Real HTTP supports the original 3840 image bucket and rejects larger requests."
+  },
+  "FullscreenBackdropTests.Steam_hero_adapts_crop_and_crossfades_independent_geometry": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/avalon-backdrop.test.ts",
+        "case": "Steam hero geometry and decode width stay independent of landscape layers with fullscreen %s"
+      },
+      {
+        "file": "tests/avalon-backdrop-renderer.test.tsx",
+        "case": "renders source geometry in independent transition layers with cinematic %s"
+      },
+      {
+        "file": "tests/electron/backdrop.spec.ts",
+        "case": "fullscreen Home crossfades independent source geometry, keeps visible art while loading, and releases replaced URLs"
+      }
+    ],
+    "reason": "Native Home measures fitted 2520×813.75 heroes, independent landscape transition geometry, extreme-width centering, crop return and the mask rule. Component tests exercise cinematic/non-cinematic layer geometry. The original raw-pixel assertions for the lower-image alpha and Ground color, across the full cinematic/1920/2520 matrix, are not yet replicated."
+  },
+  "FullscreenBackdropTests.Desktop_hero_tries_IGDB_then_standard_hero_then_cover": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/BackdropArtworkTests.cs",
+        "case": "Candidate_endpoint_preserves_grouped_choices_source_order_and_portrait_fallback_without_fetching_images"
+      },
+      {
+        "file": "tests/avalon-backdrop.test.ts",
+        "case": "desktop exhausts high-resolution hero artwork screenshot standard hero and portrait in source order"
+      }
+    ],
+    "reason": "The backend retains Steam high-resolution hero, ranked artwork/screenshot and standard hero order. The desktop controller exhausts those candidates then portrait with original source-specific decode buckets, ends empty when all fail, and aborts all remaining work on disposal."
+  }
+}

@@ -105,6 +105,7 @@ export interface UpdateEvent {
   kind: string
   occurredAt: string
   title?: string | null
+  buildId?: string | null
   url?: string | null
 }
 export interface GameDetails {
@@ -181,6 +182,10 @@ export interface ArtworkCandidate {
   previewKey: CoverKey
   offerId?: string | null
   creator?: string | null
+  thumbnailKey?: CoverKey | null
+  pageUrl?: string | null
+  width?: number | null
+  height?: number | null
   isCurrent: boolean
 }
 export interface ArtworkState {

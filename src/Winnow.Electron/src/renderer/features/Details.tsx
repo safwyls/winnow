@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import { useInfiniteQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { ArrowLeft, ArrowUpRight, Play, Download, RefreshCw } from 'lucide-react'
 import {
   ApiError,
@@ -12,7 +12,7 @@ import {
   openExternal,
 } from '../api/client'
 import { useApiQuery, useCommand, useDetails, useLibrary, useWorkspace } from '../api/hooks'
-import type { ArtworkPage, ArtworkState, GameEntry, Mode, Workspace } from '../api/types'
+import type { GameEntry, Mode, Workspace } from '../api/types'
 import { JournalEditor, SessionRows } from './Journal'
 import { Empty, Notice } from './shared'
 import { Artwork } from '../components/Artwork'
@@ -22,6 +22,7 @@ import { IgdbMatch, LibraryFacts, MetadataEditor, Screenshots, UpdateSignals } f
 import { SteamReportedActivity } from './activity-steam'
 import { ActivityTimeline } from './activity-timeline'
 import { ListMembershipChoice } from './parity-list-membership'
+import { ArtworkBrowser as ArtworkEditor } from './artwork-browser'
 import { AddToListButton } from './parity-list-prompt'
 import { DetailsRelationships } from './parity-details-identity'
 import { AvalonDetailsLayout } from './details-layout'
@@ -444,7 +445,7 @@ function SharedDetails({
               )}
             </section>
           )}
-          {tab === 'Metadata' && <MetadataEditor key={workId} workId={workId} />}
+          {tab === 'Metadata' && <MetadataEditor key={workId} workId={workId} mode={mode} />}
           {tab === 'Game match' && (
             <IgdbMatch
               key={workId}
@@ -462,7 +463,9 @@ function SharedDetails({
               {game && <DetailsRelationships game={game} mode={mode} />}
             </>
           )}
-          {tab === 'Artwork' && <ArtworkEditor key={workId} workId={workId} />}
+          {tab === 'Artwork' && (
+            <ArtworkEditor key={workId} workId={workId} mode={mode} title={game?.title} />
+          )}
         </div>
         <aside className="detail-sidebar">
           <section className="feature-panel">
@@ -550,157 +553,4 @@ export function ListMembership({ workId, mode }: { workId: number; mode: Mode })
   )
 }
 
-export function ArtworkEditor({ workId }: { workId: number }) {
-  const [slot, setSlot] = useViewState(`artwork:${workId}:slot`, 'Hero')
-  const [source, setSource] = useViewState(`artwork:${workId}:source`, '')
-  const [url, setUrl] = useViewState(`draft:artwork:${workId}:url`, '')
-  const state = useApiQuery<ArtworkState>('artwork.get', { workId, slot })
-  const sources = useApiQuery<{ id: string; name: string; slots: number[] }[]>('artwork.sources')
-  const page = useInfiniteQuery({
-    queryKey: ['api', 'artwork.browse', workId, slot, source],
-    initialPageParam: null as string | null,
-    queryFn: ({ pageParam }) =>
-      request<ArtworkPage>('artwork.browse', {
-        workId,
-        slot,
-        source,
-        ...(pageParam ? { cursor: pageParam } : {}),
-      }),
-    getNextPageParam: (last) => last.nextCursor ?? undefined,
-    enabled: Boolean(source),
-    retry: false,
-    staleTime: 30_000,
-  })
-  const candidates = page.data?.pages.flatMap((item) => item.items) ?? []
-  const browseMessage = page.data?.pages.at(-1)?.message
-  const command = useCommand<{ success: boolean; message: string }>()
-  const client = useQueryClient()
-  async function change(route: string, body: unknown) {
-    try {
-      await command.mutateAsync({ route, params: { workId, slot }, body })
-      await client.invalidateQueries({ queryKey: ['artwork'] })
-    } catch {
-      /* Render the backend error without repeating the command. */
-    }
-  }
-  return (
-    <section className="feature-panel">
-      <h2>Make it yours</h2>
-      <p className="muted">Choose artwork from your connected sources, or use an image URL.</p>
-      <div className="form-row">
-        <label className="field">
-          Artwork
-          <select
-            value={slot}
-            onChange={(event) => {
-              setSlot(event.target.value)
-              setSource('')
-              command.reset()
-            }}
-          >
-            <option>Hero</option>
-            <option>Cover</option>
-            <option>Icon</option>
-          </select>
-        </label>
-        <label className="field">
-          Source
-          <select value={source} onChange={(event) => setSource(event.target.value)}>
-            <option value="">Choose a source</option>
-            {sources.data
-              ?.filter((item) => item.slots.includes(['Hero', 'Cover', 'Icon'].indexOf(slot)))
-              .map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-          </select>
-        </label>
-      </div>
-      <Notice
-        error={state.error || sources.error || page.error || command.error}
-        message={command.data?.message ?? browseMessage}
-      />
-      <div className="artwork-options">
-        {candidates.map((candidate) => (
-          <button
-            className="artwork-option"
-            key={`${candidate.sourceId}:${candidate.assetId}`}
-            disabled={command.isPending || !candidate.offerId || !state.data}
-            onClick={() =>
-              void change('artwork.put', { offerId: candidate.offerId, revision: state.data!.revision })
-            }
-          >
-            <CandidateImage provider={candidate.previewKey.provider} id={candidate.previewKey.id} />
-            <span>
-              {candidate.creator ?? candidate.sourceName}
-              {candidate.isCurrent ? ' · Current' : ''}
-            </span>
-          </button>
-        ))}
-      </div>
-      {page.hasNextPage && (
-        <button disabled={page.isFetchingNextPage} onClick={() => void page.fetchNextPage()}>
-          {page.isFetchingNextPage ? 'Loading artwork…' : 'More artwork'}
-        </button>
-      )}
-      {source && !page.isPending && !candidates.length && <Empty>No artwork from this source.</Empty>}
-      <form
-        className="editor-form"
-        onSubmit={(event) => {
-          event.preventDefault()
-          if (state.data) void change('artwork.url', { url, revision: state.data.revision })
-        }}
-      >
-        <label className="field">
-          Image URL
-          <input
-            type="url"
-            required
-            value={url}
-            onChange={(event) => setUrl(event.target.value)}
-            placeholder="https://…"
-          />
-        </label>
-        <div className="form-actions">
-          <button disabled={command.isPending || !state.data}>Use image URL</button>
-          <button
-            type="button"
-            disabled={command.isPending || !state.data}
-            onClick={() => void change('artwork.reset', { revision: state.data!.revision })}
-          >
-            Restore automatic artwork
-          </button>
-        </div>
-      </form>
-      {command.error instanceof ApiError && command.error.conflict && (
-        <button
-          onClick={() => {
-            void state.refetch()
-            command.reset()
-          }}
-        >
-          Refresh the current artwork before choosing again
-        </button>
-      )}
-    </section>
-  )
-}
-
-function CandidateImage({ provider, id }: { provider: string; id: string }) {
-  const image = useApiArtwork(provider, id)
-  return image ? (
-    <img src={image} alt="Artwork preview" loading="lazy" />
-  ) : (
-    <span className="art-placeholder">Preview unavailable</span>
-  )
-}
-import { useQuery } from '@tanstack/react-query'
-function useApiArtwork(provider: string, id: string) {
-  return useQuery({
-    queryKey: ['artwork', provider, id, 400],
-    queryFn: () => window.winnow.artwork(provider, id, 400),
-    retry: false,
-    staleTime: Infinity,
-  }).data
-}
+export { ArtworkBrowser as ArtworkEditor } from './artwork-browser'

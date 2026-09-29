@@ -54,18 +54,18 @@ export function useAvalonLists(mode: Mode, lists: GameList[], ready = true, defa
   }, [defaultSort, observedDefault, previousSort, setPreviousSort, setSort, setObservedDefault])
   const filter: LibraryFilter = {
     ...rules,
-    search: query || null,
+    search: query.trim() || null,
     ...(store !== 'all' ? { stores: [store] } : {}),
     ...(bucket === 'installed' ? { installed: true } : bucket !== 'all' ? { buckets: [bucket] } : {}),
   }
   const dirty =
     !!list?.isLive && filterFingerprint(filter) !== filterFingerprint(base?.filter ?? list.filter ?? {})
   function loadRules(value: LibraryFilter) {
-    const { search, ...rest } = value
+    const { search, buckets, ...rest } = value
     setQuery(search ?? '')
-    setBucket('all')
+    setBucket(buckets?.length === 1 ? buckets[0] : 'all')
     setStore('all')
-    setRules(rest)
+    setRules(buckets && buckets.length > 1 ? { ...rest, buckets } : rest)
   }
   function leave() {
     if (base?.isLive || list?.isLive) loadRules({})
@@ -99,8 +99,10 @@ export function useAvalonLists(mode: Mode, lists: GameList[], ready = true, defa
     setBase(target)
   }
   function selectBucket(value: string) {
+    const toggleOff = !list?.isLive && value !== 'all' && bucket === value
     leave()
-    setBucket(value)
+    setRules((current) => ({ ...current, buckets: [] }))
+    setBucket(toggleOff ? 'all' : value)
   }
   function revert() {
     if (list?.isLive) {
@@ -130,6 +132,7 @@ export function useAvalonLists(mode: Mode, lists: GameList[], ready = true, defa
     setSort,
     rules,
     setRules,
+    applyFilter: loadRules,
     list,
     base,
     setBase,

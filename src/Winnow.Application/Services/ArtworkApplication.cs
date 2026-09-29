@@ -14,6 +14,9 @@ public sealed class ArtworkApplication(ArtworkBrowserService browser, IApplicati
 
     public IReadOnlyList<ArtworkBrowserSource> Sources => browser.Sources;
 
+    public Task<BackdropArtwork> BackdropAsync(long workId, double aspectRatio, CancellationToken ct)
+        => browser.GetBackdropAsync(workId, aspectRatio, ct);
+
     public async Task<ArtworkState> StateAsync(long workId, ArtworkSlot slot, CancellationToken ct)
     {
         Validate(slot);

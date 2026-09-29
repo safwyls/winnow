@@ -5,10 +5,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   acquisitionFacts,
   durationText,
+  detailIdle,
+  detailPlaytime,
   playtimeRecordLine,
   receptionFigures,
   refetchStatus,
   updatePageUrl,
+  updateHeadline,
 } from '../src/renderer/features/details-facts'
 import {
   LifecycleEvidence,
@@ -60,6 +63,28 @@ function mount(ui: React.ReactNode, result: unknown = { outcome: 1 }) {
 }
 
 describe('original details fact contracts', () => {
+  it.each([
+    [0, '—'],
+    [7, '7m'],
+    [59, '59m'],
+    [60, '1h'],
+    [119, '1h'],
+    [16080, '268h'],
+  ])('uses the original compact playtime for %s minutes', (minutes, expected) => {
+    expect(detailPlaytime(Number(minutes))).toBe(expected)
+  })
+  it('preserves the original combined year and month idle span', () => {
+    expect(detailIdle('2024-12-29T00:00:00Z', Date.parse('2026-09-29T00:00:00Z'))).toBe('1y 8mo')
+    expect(detailIdle('2026-09-30T00:00:00Z', Date.parse('2026-09-29T00:00:00Z'))).toBe('1d')
+  })
+  it.each([
+    [{ title: 'Version one', buildId: '123', kind: 'build_push' }, 'Version one'],
+    [{ title: '  ', buildId: '123', kind: 'build_push' }, 'Build 123'],
+    [{ title: null, kind: 'announcement' }, 'Announcement'],
+    [{ title: null, kind: 'build_push' }, 'Build pushed'],
+  ])('uses source headlines with explicit build and announcement fallbacks: %s', (event, expected) => {
+    expect(updateHeadline(event)).toBe(expected)
+  })
   it.each([0, 'Unknown', 99, 'Unrecognized'])(
     'keeps absent or unknown lifecycle evidence silent: %s',
     (status) => {

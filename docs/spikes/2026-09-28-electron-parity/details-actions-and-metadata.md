@@ -94,3 +94,13 @@ Those five tests are recorded as retired view-model contracts with replacement t
 evidence, not claimed as literal ports. The original nullable popup Hide-command test
 also checks Avalonia construction rather than the always-available authenticated HTTP
 capability. The source reduced-motion assertion still awaits explicit panel evidence.
+
+The remaining nine `LibraryViewModelTests` Details contracts are now reviewed. Both
+surfaces compose recorded playtime readings, retain readable historical updates
+without an unread claim, and order update headlines newest first with build/title
+fallbacks. Missing metadata produces absent identity fields and the original compact
+playtime dash; live enrichment updates publisher, install path, playtime and combined
+year/month idle text. Steam identity reaches the real install/store/news destinations.
+The focused Details/action/facts run passed 204 cases. Eight methods are mapped to
+these component or production HTTP checks; the ninth asserts only an unbound singular
+gap-caption string and is classified with the other retired caption contracts above.

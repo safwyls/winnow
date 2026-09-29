@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { StoreConnections } from '../api/types'
-import { steamConnectionState } from './steamConnection'
+import { steamCapturePermissionExplanation, steamConnectionState } from './steamConnection'
 import { AccountVisibility } from './SettingsPreferences'
 import { Notice } from './shared'
 import './steam-connections.css'
@@ -128,6 +128,7 @@ function SteamConnectionContent({
             Winnow also forgets which account the sign-in identified as yours unless a key has already
             confirmed it.
           </p>
+          <p>{steamCapturePermissionExplanation}</p>
         </details>
       </section>
       <section aria-label="Steam API key method">
@@ -152,8 +153,8 @@ function SteamConnectionContent({
           </p>
           {steam.hasApiKey && !steam.apiKeyIsAppManaged && (
             <p>
-              This key is supplied by configuration. Remove it from its source to clear it; Winnow cannot
-              clear it here.
+              This key is supplied by configuration, such as Steam__ApiKey. A key saved here takes
+              precedence. Winnow cannot remove the configured key; remove it from its source to clear it.
             </p>
           )}
         </details>

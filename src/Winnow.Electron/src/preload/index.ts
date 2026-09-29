@@ -14,13 +14,15 @@ function subscribe<T>(channel: string, callback: (value: T) => void): () => void
   return () => ipcRenderer.removeListener(channel, listener)
 }
 const bridge: WinnowBridge = {
+  importArtwork: (input) => ipcRenderer.invoke('winnow:artwork:import', input),
   request: (request) => ipcRenderer.invoke('winnow:request', request),
   cancelRequest: (requestId) => ipcRenderer.invoke('winnow:request:cancel', requestId),
   connection: () => ipcRenderer.invoke('winnow:connection'),
   onEvent: (callback) => subscribe<BackendEvent>('winnow:event', callback),
   onConnection: (callback) => subscribe<ConnectionState>('winnow:connection', callback),
-  artwork: (provider, id, width) => ipcRenderer.invoke('winnow:artwork', provider, id, width),
+  artwork: (provider, id, width, requestId) => ipcRenderer.invoke('winnow:artwork', provider, id, width, requestId),
   loadPreferences: () => ipcRenderer.invoke('winnow:preferences:load'),
+  appearanceSession: () => ipcRenderer.invoke('winnow:appearance:session'),
   savePreferences: (value) => ipcRenderer.invoke('winnow:preferences:save', value),
   importProfile: () => ipcRenderer.invoke('winnow:profile:import'),
   exportProfile: (value) => ipcRenderer.invoke('winnow:profile:export', value),

@@ -292,7 +292,7 @@ export function AccountStatistics() {
         <>
           <p>
             {data.transactionCount} transactions · {data.licenseCount} licences
-            {data.knownAccountCount > 1 ? ` · ${data.knownAccountCount} captured accounts` : ''}.
+            {data.knownAccountCount > 1 ? ` · ${data.knownAccountCount} identified accounts` : ''}.
           </p>
           <dl className="facts-grid">
             <div>

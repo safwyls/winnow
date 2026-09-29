@@ -3,7 +3,10 @@
 Steam sign-in uses a private Electron browser session. The sandboxed application renderer
 receives the sign-in outcome, never the access or refresh token. Main passes credentials to
 the existing backend connection API and clears the browser's storage and cache when the
-window closes. Main denies downloads, popups, webviews and permission requests in this window.
+window closes. Main denies downloads, child windows, webviews and permission requests.
+Valve popup links navigate the same private window; other validated web links open in the
+default browser. Application URLs, launcher commands, local loopback services and non-web
+schemes cannot use that handoff.
 
 Only exact Steam HTTPS origins can navigate the private window's main document. Embedded
 HTTPS challenge frames can use other web origins, with no application bridge or token probe.
@@ -29,6 +32,9 @@ B or Escape can still cancel.
 Purchase and licence capture is a separate consent, off by default when opening sign-in.
 Settings › Platforms › Steam also offers a separate capture window that does not save sign-in credentials.
 Both routes read only `/account/licenses/` and `/account/history/` on Steam's store origin.
+Path matching ignores case and leading/trailing slashes; paginator query parameters do not
+change the page identity. The document checks the same rule again before capture. Main-document
+redirects follow the navigation policy and never become token or page-capture callbacks.
 The window title reports progress; closing the window stops further reads. In the dedicated
 purchase-import route, agreeing to capture also authorizes import of the available pages,
 including a partial capture. Selecting saved HTML files likewise reads and imports them in
@@ -39,7 +45,9 @@ The licence walker follows at most fifty further pages by default. Purchase hist
 at most one hundred load-more clicks, waiting up to fifteen seconds for a click to add rows.
 The native sign-in request can override these counts; the reader clamps them to two hundred
 further licence pages and five hundred history clicks. Malformed counts are rejected before
-opening a browser. These limits, stalled pages and rejected pagination are reported as incomplete captures.
+opening a browser. The reported licence-page count excludes the initial page. Both page loops
+use the same stopping order: no remaining control, reached limit, no new rows, then continue.
+These limits, stalled pages and rejected pagination are reported as incomplete captures.
 Page content is limited to 64 MiB per document and 128 MiB across the capture. The import API
 still applies its own payload and parsing limits. Large accounts can import additional saved
 pages separately.
@@ -102,3 +110,9 @@ navigation, capture lock and zero provider-script execution by the input host. N
 controller tests supply mocked hardware state; physical controller and OS keyboard checks
 remain separate. Playwright's CDP keyboard injection bypasses Electron's native keyboard
 event hook, so the lock hook is verified by an event-level test rather than that injection.
+
+`tests/electron/steam-policy.spec.ts` verifies both native presentation modes with intercepted
+Steam pages. It checks in-place Valve popup navigation, the external handoff boundary, blocked
+application/launcher/loopback targets, normalized account-page redirects, query pagination,
+and absence of the application preload in provider documents. Its external-open callback is
+recorded rather than launching a real browser; coordinator tests verify the shell adapter.

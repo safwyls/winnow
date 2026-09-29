@@ -2,6 +2,7 @@ import { readableWebUrl } from './security'
 
 /** The sign-in window is a private browser, never the application's trusted renderer. */
 export function steamNavigationAllowed(value: string): boolean {
+  if (value === 'about:blank') return true
   try {
     const url = new URL(value)
     return (

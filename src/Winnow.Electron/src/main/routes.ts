@@ -65,6 +65,7 @@ export const routes: Record<string, Route> = {
   'updates.restore': ['POST', 'releases/:releaseId/restore-updates'],
   'updates.acknowledgement': ['GET', 'releases/:releaseId/acknowledgement'],
   'artwork.sources': ['GET', 'artwork/sources'],
+  'artwork.backdrop': ['GET', 'works/:workId/backdrop', ['aspectRatio']],
   'artwork.get': ['GET', 'works/:workId/artwork/:slot'],
   'artwork.browse': ['GET', 'works/:workId/artwork/:slot/browse', ['source', 'cursor']],
   'artwork.put': ['PUT', 'works/:workId/artwork/:slot'],

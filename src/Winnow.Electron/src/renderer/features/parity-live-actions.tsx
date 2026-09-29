@@ -9,7 +9,15 @@ import { cacheSavedList } from './parity-list-prompt'
 import { CreateList } from './LibraryTools'
 import { Notice } from './shared'
 
-export function LiveListActions({ state, mode }: { state: ReturnType<typeof useAvalonLists>; mode: Mode }) {
+export function LiveListActions({
+  state,
+  mode,
+  compact = false,
+}: {
+  state: ReturnType<typeof useAvalonLists>
+  mode: Mode
+  compact?: boolean
+}) {
   const [open, setOpen] = useState(false),
     [busy, setBusy] = useState(false),
     [problem, setProblem] = useState<unknown>(null),
@@ -68,7 +76,9 @@ export function LiveListActions({ state, mode }: { state: ReturnType<typeof useA
   if (list?.isLive)
     return (
       <div className="avalon-applied-filters" aria-label="Live list rules">
-        <span>{dirty ? `Unsaved rules for ${list.name}` : `Rules for ${list.name}`}</span>
+        <span className={compact ? 'sr-only' : undefined}>
+          {dirty ? `Unsaved rules for ${list.name}` : `Rules for ${list.name}`}
+        </span>
         {dirty && (
           <>
             <button disabled={busy || blocked} onClick={() => void save()}>

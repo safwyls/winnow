@@ -72,6 +72,15 @@ authoritative. Do not query SQLite or reimplement identity resolution and recomm
 in a frontend. Credentials and storage keys have no generic read/write endpoint; credential
 forms submit dedicated commands and read redacted connection state.
 
+`GET works/{workId}/backdrop?aspectRatio=...` returns ordered backdrop candidates and a
+separate portrait fallback. Each candidate includes its source aspect ratio and whether
+an ultrawide surface should fit the whole hero. The backend applies saved artwork choices,
+grouped identities and artwork-source preferences through the shared presentation policy;
+frontends should try that order rather than rank images themselves. This query reads local
+metadata and does not download images. `GET artwork/image` accepts decode widths from 64
+through 3840 pixels. Clients should cancel obsolete image requests and release decoded
+resources when a view closes.
+
 ## Live changes
 
 Subscribe to `GET /api/v1/events` before loading snapshots. The response is `text/event-stream`;

@@ -69,6 +69,8 @@ public sealed class IdentityReadInventoryTests
             "An action selects an exact ownership and source; the resolved snapshot validates visibility without changing the launched store copy."),
         new("src/Winnow.Application/Services/ArtworkBrowserService.cs", "GetCurrentAsync", Policy.Resolve,
             "Saved artwork and external IDs are read through the confirmed same-game group. The display adapter supplies the library-projected cover for preferred headers and pins."),
+        new("src/Winnow.Application/Services/ArtworkBrowserService.cs", "GetBackdropAsync", Policy.Resolve,
+            "Keeps the requested work's fallback art while collecting saved choices, observed images and launcher IDs through its confirmed same-game group."),
         new("src/Winnow.Application/Services/ArtworkBrowserService.cs", "IgdbAsync", Policy.Resolve,
             "Enumerates each original work within the confirmed group to offer its source artwork, without copying observations or changing identity."),
         new("src/Winnow.Application/Services/ArtworkBrowserService.cs", "GameAsync", Policy.Resolve,

@@ -56,6 +56,24 @@ function mount(node: React.ReactNode, handler: (route: string, body: unknown) =>
   return request
 }
 describe('account summary parity with AccountStatsSummaryTests', () => {
+  it.each(['desktop', 'fullscreen'])(
+    'Statistics_render_known_and_unknown_account_scope_without_ambiguous_money_totals on %s',
+    async (mode) => {
+      mount(<div className={`mode-${mode}`}><AccountStatistics /></div>, () => ({
+        ...base, knownAccountCount: 2, unknownAccountFactCount: 1, transactionCount: 3,
+        purchases: { count: 3, cents: 1500 }, netProductSpendCents: 1500,
+        grossProductSpendCents: 1500, refundedProductSpendCents: 0,
+        spendByYear: [{ year: 2026, transactionCount: 3, cents: 1500 }],
+      }))
+      await screen.findByText(/2 identified accounts/)
+      expect(screen.getByText(/unknown account may overlap identified/)).toBeTruthy()
+      expect(screen.getByText(/1 facts have no captured account identity/)).toBeTruthy()
+      expect(screen.queryByText('$15.00')).toBeNull()
+      expect(screen.queryByRole('table')).toBeNull()
+      expect(screen.queryByRole('region', { name: 'Captured spending charts' })).toBeNull()
+      expect(screen.getAllByText('—')).toHaveLength(2)
+    },
+  )
   it.each(['desktop', 'fullscreen'])('keeps currencies and wallet funding separate on %s', async (mode) => {
     const value = {
       ...base,

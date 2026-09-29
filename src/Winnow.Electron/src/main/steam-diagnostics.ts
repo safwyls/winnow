@@ -29,7 +29,7 @@ export function steamSignInDiagnostic(result: SteamSignInResult): string {
   const bytes = (html?: string | null) => (typeof html === 'string' ? Buffer.byteLength(html, 'utf8') : 0)
   const licenses = [result.pages?.licensesHtml, ...(result.pages?.additionalLicensesHtml ?? [])]
   const pageFacts = result.pages
-    ? `, licences=${licenses.reduce<number>((sum, html) => sum + bytes(html), 0)} bytes, history=${bytes(result.pages.historyHtml)} bytes`
+    ? `, licences=${licenses.reduce<number>((sum, html) => sum + bytes(html), 0)} bytes, history=${bytes(result.pages.historyHtml)} bytes, content redacted`
     : ''
   return `SteamSignInResult(${outcome}, expires=${expiry}, access token ${result.signedIn === true ? 'held' : 'absent'}, refresh token ${result.refreshTokenCaptured === true ? 'held' : 'absent'}${pageFacts})`
 }

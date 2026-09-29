@@ -1,11 +1,11 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 1040,
-    "partial": 159,
-    "ported": 689,
-    "retained-backend": 535,
-    "framework-specific": 12
+    "pending": 972,
+    "partial": 164,
+    "ported": 746,
+    "retained-backend": 540,
+    "framework-specific": 13
   },
   "tests": [
     {
@@ -8358,47 +8358,114 @@
     {
       "id": "LibraryViewModelTests.Update_events_are_listed_newest_first_and_only_announcements_link_out",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "lists source update headlines newest first and offers only supported reader pages"
+        }
+      ],
+      "reason": "Both Avalon modes show the original three headlines in descending date order, correlate the announcement/build into unread rows, retain old news without an unread claim and expose only its supported reader URL. The unbound GapCaption/RailMarks assertions are superseded by active Updates/timeline composition, as documented in details-actions-and-metadata.md."
     },
     {
       "id": "LibraryViewModelTests.One_update_is_singular",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "This source method asserts only the obsolete GameDetailsViewModel.GapCaption string. Neither active baseline desktop nor fullscreen views bind GapCaption; they show the Updates tab and timeline. Both Electron Details modes assert the active 1 unread update shortcut with its singular wording in the source update-composition replacement.",
+      "tests": [
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "lists source update headlines newest first and offers only supported reader pages"
+        }
+      ]
     },
     {
       "id": "LibraryViewModelTests.An_update_older_than_the_last_session_is_history_not_a_missed_one",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "keeps a readable update from before the last session as history without an unread claim"
+        }
+      ],
+      "reason": "Both modes keep the dated historical row and reader button, without an unread flag. The old unbound gap-caption string is not part of either active view."
     },
     {
       "id": "LibraryViewModelTests.Opening_details_carries_the_steam_appid_through_to_real_links",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-action-controls.test.tsx",
+          "case": "carries the Steam identity into Install and the real store and news destinations"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+          "case": "Store_actions_keep_the_measured_launcher_URI_and_action_kind"
+        }
+      ],
+      "reason": "Both modes dispatch Install for the correct ownership and open the original Steam store/news URLs. The actual production HTTP dispatcher test separately measures the resulting Steam install URI."
     },
     {
       "id": "LibraryViewModelTests.The_panel_reports_the_playtime_history_winnow_has_recorded",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "composes the recorded playtime series only when the API supplies readings: %s"
+        }
+      ],
+      "reason": "Both modes compose the ownership history supplied by the details API into the original two-reading increase of 1h 7m."
     },
     {
       "id": "LibraryViewModelTests.No_snapshot_source_means_no_record_line",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "composes the recorded playtime series only when the API supplies readings: %s"
+        }
+      ],
+      "reason": "An absent API history creates no Checked record sentence; both modes show the existing explicit empty-state message."
     },
     {
       "id": "LibraryViewModelTests.Missing_metadata_renders_as_absent_rows_rather_than_placeholders",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "renders absent metadata and zero playtime without inventing a publisher date or install path"
+        }
+      ],
+      "reason": "Both modes omit absent identity fields, show the original empty-summary and never-opened sentences, use the compact zero-playtime dash, report Not installed and offer no invented folder or date."
     },
     {
       "id": "LibraryViewModelTests.Enriched_metadata_is_bound_when_it_lands",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "binds refreshed enrichment and installation facts into the already open panel"
+        }
+      ],
+      "reason": "The already mounted panel receives refreshed title/year/summary/playtime/date through the live library query; both modes show 268h and the combined year/month idle span, and retained ownership data exposes the actual install path."
     },
     {
       "id": "LibraryViewModelTests.Playtime_without_a_date_reads_as_unrecorded_not_as_never",
       "source": "tests/Winnow.Tests/LibraryViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "distinguishes no play from missing last-session dates for %s minutes"
+        }
+      ],
+      "reason": "Both modes include the exact source 7-minute case, retain its 7m figure and Steam missing-session-date sentence, and never claim it was never opened."
     },
     {
       "id": "LibraryViewModelTests.All_games_is_selected_on_launch_and_counts_the_whole_library",
@@ -12079,102 +12146,402 @@
     {
       "id": "SteamAccountPagePolicyTests.Only_the_store_origin_can_be_read",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "Only_the_store_origin_can_be_read"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts further licence pages and stops when a followed document adds no rows"
+        },
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
     },
     {
       "id": "SteamAccountPagePolicyTests.Valves_login_and_support_origins_are_navigable_but_never_read",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "Valves_login_and_support_origins_are_navigable_but_never_read"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts further licence pages and stops when a followed document adds no rows"
+        },
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
     },
     {
       "id": "SteamAccountPagePolicyTests.Anything_outside_the_flow_is_refused_and_a_popup_to_it_leaves_the_window",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "Anything_outside_the_flow_is_refused_and_a_popup_to_it_leaves_the_window"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts further licence pages and stops when a followed document adds no rows"
+        },
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
     },
     {
       "id": "SteamAccountPagePolicyTests.Plaintext_http_on_the_right_host_is_still_refused",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "Plaintext_http_on_the_right_host_is_still_refused"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts further licence pages and stops when a followed document adds no rows"
+        },
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
     },
     {
       "id": "SteamAccountPagePolicyTests.A_non_web_scheme_is_blocked_and_not_handed_anywhere",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "A_non_web_scheme_is_blocked_and_not_handed_anywhere"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts further licence pages and stops when a followed document adds no rows"
+        },
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
     },
     {
       "id": "SteamAccountPagePolicyTests.There_is_no_redirect_to_capture_in_this_flow",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "There_is_no_redirect_to_capture_in_this_flow"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts further licence pages and stops when a followed document adds no rows"
+        },
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
     },
     {
       "id": "SteamAccountPagePolicyTests.The_two_pages_are_recognised",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "The_two_pages_are_recognised"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts further licence pages and stops when a followed document adds no rows"
+        },
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
     },
     {
       "id": "SteamAccountPagePolicyTests.Nothing_else_is_ever_read",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "Nothing_else_is_ever_read"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts further licence pages and stops when a followed document adds no rows"
+        },
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
     },
     {
       "id": "SteamAccountPagePolicyTests.The_session_only_ever_navigates_to_those_two_pages",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "The_session_only_ever_navigates_to_those_two_pages"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts further licence pages and stops when a followed document adds no rows"
+        },
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
     },
     {
       "id": "SteamAccountPagePolicyTests.The_cap_is_clamped_into_range_whatever_the_request_asks_for",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "The_cap_is_clamped_into_range_whatever_the_request_asks_for"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts further licence pages and stops when a followed document adds no rows"
+        },
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
     },
     {
       "id": "SteamAccountPagePolicyTests.Clicking_continues_while_the_control_is_there_and_the_rows_grow",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "Clicking_continues_while_the_control_is_there_and_the_rows_grow"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts further licence pages and stops when a followed document adds no rows"
+        },
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
     },
     {
       "id": "SteamAccountPagePolicyTests.Clicking_stops_when_the_control_goes_away",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "Clicking_stops_when_the_control_goes_away"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts further licence pages and stops when a followed document adds no rows"
+        },
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
     },
     {
       "id": "SteamAccountPagePolicyTests.Clicking_stops_at_the_cap_even_with_more_to_load",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "Clicking_stops_at_the_cap_even_with_more_to_load"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts further licence pages and stops when a followed document adds no rows"
+        },
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
     },
     {
       "id": "SteamAccountPagePolicyTests.The_licences_cap_is_clamped_independently_of_the_load_more_one",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "The_licences_cap_is_clamped_independently_of_the_load_more_one"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts further licence pages and stops when a followed document adds no rows"
+        },
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
     },
     {
       "id": "SteamAccountPagePolicyTests.The_paginator_is_followed_while_there_is_a_next_page_and_the_rows_grow",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "The_paginator_is_followed_while_there_is_a_next_page_and_the_rows_grow"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts further licence pages and stops when a followed document adds no rows"
+        },
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
     },
     {
       "id": "SteamAccountPagePolicyTests.The_paginator_stops_when_there_is_no_next_page",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "The_paginator_stops_when_there_is_no_next_page"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts further licence pages and stops when a followed document adds no rows"
+        },
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
     },
     {
       "id": "SteamAccountPagePolicyTests.The_paginator_stops_at_the_cap_with_more_pages_to_go",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "The_paginator_stops_at_the_cap_with_more_pages_to_go"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts further licence pages and stops when a followed document adds no rows"
+        },
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
     },
     {
       "id": "SteamAccountPagePolicyTests.The_paginator_stops_when_a_page_adds_no_rows",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "The_paginator_stops_when_a_page_adds_no_rows"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts further licence pages and stops when a followed document adds no rows"
+        },
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
     },
     {
       "id": "SteamAccountPagePolicyTests.Both_pages_are_judged_by_one_rule",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "Both_pages_are_judged_by_one_rule"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts further licence pages and stops when a followed document adds no rows"
+        },
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
     },
     {
       "id": "SteamAccountPagePolicyTests.Clicking_stops_when_a_click_stops_producing_rows",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagePolicyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "Clicking_stops_when_a_click_stops_producing_rows"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts further licence pages and stops when a followed document adds no rows"
+        },
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
     },
     {
       "id": "SteamAccountPageTruncationTests.The_last_licences_page_is_complete_even_though_the_advertised_total_is_higher",
@@ -12224,67 +12591,198 @@
     {
       "id": "SteamAccountPagesContractTests.A_complete_capture_carries_both_documents_and_when_it_happened",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Core/Ingest/SteamAccountPages.cs",
+        "src/Winnow.Application/Details/ImportApplication.cs"
+      ],
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/SteamPagesContractParityTests.cs",
+          "case": "Frontend_page_JSON_reaches_the_production_importer_with_documents_time_and_account_intact"
+        }
+      ],
+      "reason": "The production /imports/steam/pages endpoint still deserializes the exact Core SteamAccountPages type; ImportApplication uses its IsEmpty/TotalByteCount behavior and the production saved-file loader uses its immutable With method. The original DTO tests passed unchanged. New real HTTP tests prove camelCase frontend JSON, additional documents, nullable history, source/account and capture time survive into persisted facts. This retention applies only to the page DTO, not the retired WebView harvester result or policy."
     },
     {
       "id": "SteamAccountPagesContractTests.The_embedded_session_and_the_saved_files_produce_the_same_shape",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Core/Ingest/SteamAccountPages.cs",
+        "src/Winnow.Application/Details/ImportApplication.cs"
+      ],
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/SteamPagesContractParityTests.cs",
+          "case": "Frontend_page_JSON_reaches_the_production_importer_with_documents_time_and_account_intact"
+        }
+      ],
+      "reason": "The production /imports/steam/pages endpoint still deserializes the exact Core SteamAccountPages type; ImportApplication uses its IsEmpty/TotalByteCount behavior and the production saved-file loader uses its immutable With method. The original DTO tests passed unchanged. New real HTTP tests prove camelCase frontend JSON, additional documents, nullable history, source/account and capture time survive into persisted facts. This retention applies only to the page DTO, not the retired WebView harvester result or policy."
     },
     {
       "id": "SteamAccountPagesContractTests.A_page_at_a_time_is_representable",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Core/Ingest/SteamAccountPages.cs",
+        "src/Winnow.Application/Details/ImportApplication.cs"
+      ],
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/SteamPagesContractParityTests.cs",
+          "case": "Frontend_page_JSON_reaches_the_production_importer_with_documents_time_and_account_intact"
+        }
+      ],
+      "reason": "The production /imports/steam/pages endpoint still deserializes the exact Core SteamAccountPages type; ImportApplication uses its IsEmpty/TotalByteCount behavior and the production saved-file loader uses its immutable With method. The original DTO tests passed unchanged. New real HTTP tests prove camelCase frontend JSON, additional documents, nullable history, source/account and capture time survive into persisted facts. This retention applies only to the page DTO, not the retired WebView harvester result or policy."
     },
     {
       "id": "SteamAccountPagesContractTests.Whitespace_is_not_a_page",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Core/Ingest/SteamAccountPages.cs",
+        "src/Winnow.Application/Details/ImportApplication.cs"
+      ],
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/SteamPagesContractParityTests.cs",
+          "case": "Frontend_page_JSON_reaches_the_production_importer_with_documents_time_and_account_intact"
+        }
+      ],
+      "reason": "The production /imports/steam/pages endpoint still deserializes the exact Core SteamAccountPages type; ImportApplication uses its IsEmpty/TotalByteCount behavior and the production saved-file loader uses its immutable With method. The original DTO tests passed unchanged. New real HTTP tests prove camelCase frontend JSON, additional documents, nullable history, source/account and capture time survive into persisted facts. This retention applies only to the page DTO, not the retired WebView harvester result or policy."
     },
     {
       "id": "SteamAccountPagesContractTests.Byte_counts_are_utf8_and_are_the_only_measure_of_a_document",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Core/Ingest/SteamAccountPages.cs",
+        "src/Winnow.Application/Details/ImportApplication.cs"
+      ],
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/SteamPagesContractParityTests.cs",
+          "case": "Frontend_page_JSON_reaches_the_production_importer_with_documents_time_and_account_intact"
+        }
+      ],
+      "reason": "The production /imports/steam/pages endpoint still deserializes the exact Core SteamAccountPages type; ImportApplication uses its IsEmpty/TotalByteCount behavior and the production saved-file loader uses its immutable With method. The original DTO tests passed unchanged. New real HTTP tests prove camelCase frontend JSON, additional documents, nullable history, source/account and capture time survive into persisted facts. This retention applies only to the page DTO, not the retired WebView harvester result or policy."
     },
     {
       "id": "SteamAccountPagesContractTests.Neither_the_pages_nor_the_result_render_their_contents",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-native-auth-integration.test.ts",
+          "case": "Neither_the_pages_nor_the_result_render_their_contents"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/SteamPagesContractParityTests.cs",
+          "case": "Frontend_page_JSON_reaches_the_production_importer_with_documents_time_and_account_intact"
+        }
+      ],
+      "reason": "The production page DTO still redacts its string output. Electron result logging goes through the actual sign-in completion callback and an allowlist formatter; tests verify UTF-8 sizes and an explicit redacted marker while refusing game names, prices, HTML and credentials. Raw page transport is deliberately separate from diagnostic formatting."
     },
     {
       "id": "SteamAccountPagesContractTests.A_complete_run_reports_how_far_the_history_was_expanded",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "a complete run reports twelve history expansions and both captured documents with their timestamp"
+        }
+      ],
+      "reason": "The actual Electron reader captures both documents and reports twelve clicks with exhausted history and no error. Its captureDetail is the renderer readiness message; the outcome/stop fields replace the old factory outcome and nullable error detail."
     },
     {
       "id": "SteamAccountPagesContractTests.A_capped_run_says_so_so_the_parser_knows_the_page_is_truncated",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "caps both page walks and preserves incomplete markers for the import parser"
+        }
+      ],
+      "reason": "Actual zero-cap capture retains each initial page and explicit cap/truncation markers without silently claiming the whole account."
     },
     {
       "id": "SteamAccountPagesContractTests.The_licences_walk_is_reported_the_same_way_the_history_clicks_are",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "reports %s further licence pages with capped=%s after the real page walk"
+        }
+      ],
+      "reason": "Actual nine-further-page completion and fifty-further-page cap verify the source counter definition and stop reason, independently from history clicks."
     },
     {
       "id": "SteamAccountPagesContractTests.A_caller_that_ignores_the_licences_walk_still_compiles_and_reads_sensibly",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs",
-      "status": "pending"
+      "status": "partial",
+      "tests": [
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "a complete run reports twelve history expansions and both captured documents with their timestamp"
+        }
+      ],
+      "reason": "Electron reports zero further pages for a single-page capture, and its bridge fields remain optional for existing renderer callers. The original test also pins a C# factory overload defaulting an omitted stop reason to null. That factory is not part of the production Electron capture composition, so its exact source-compatibility assertion is not claimed as migrated."
     },
     {
       "id": "SteamAccountPagesContractTests.A_partial_run_still_hands_over_what_it_got",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "returns already captured pages when the private window is closed during a later read"
+        }
+      ],
+      "reason": "Closing during the second document returns the first document, a partial outcome and interrupted stop metadata for the renderer import path."
     },
     {
       "id": "SteamAccountPagesContractTests.Every_failure_carries_a_reason_and_no_pages",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-native-auth-integration.test.ts",
+          "case": "capture consent refusal and browser unavailability return reasons and zero counts without pages"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "keeps an unsigned-in timeout neutral and a recognizable-page failure actionable"
+        }
+      ],
+      "reason": "Actual consent/browser/session/recognition failure paths return cancelled, unavailable, no-session or failed with a readable reason, no page body and zero counts."
     },
     {
       "id": "SteamAccountPagesContractTests.A_request_will_not_run_without_consent_being_recorded",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPagesContractTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-native-auth-integration.test.ts",
+          "case": "capture consent refusal and browser unavailability return reasons and zero counts without pages"
+        },
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "defaults to a fifteen minute account session before returning no-session without pages"
+        },
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "The_cap_is_clamped_into_range_whatever_the_request_asks_for"
+        },
+        {
+          "file": "tests/parity-steam-page-policy.test.ts",
+          "case": "The_licences_cap_is_clamped_independently_of_the_load_more_one"
+        }
+      ],
+      "reason": "The required boolean bridge option is checked before any session or browser exists. Native capture defaults to fifteen minutes and the original independent 100-click/50-further-page bounds, with 500/200 ceilings."
     },
     {
       "id": "SteamHarvestScriptsTests.The_walk_replaces_the_paginator_it_followed",
@@ -15895,7 +16393,22 @@
     {
       "id": "ThemeContrastTests.An_overridden_session_never_writes_a_preference",
       "source": "tests/Winnow.Tests/ThemeContrastTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/appearance-session.test.ts",
+          "case": "all appearance edits stay live in memory while unrelated preferences retain normal persistence"
+        },
+        {
+          "file": "tests/appearance-session-runtime.test.tsx",
+          "case": "resolves capture palette %s with authored catalog %s before hydration and never imports stored fonts"
+        },
+        {
+          "file": "tests/electron/appearance-session.spec.ts",
+          "case": "development appearance overrides remain live on both surfaces without changing either saved appearance store"
+        }
+      ],
+      "reason": "The original theme/transparency/material/wall mutations remain observable within the overridden session and do not reach persistent settings. Native checks exercise both presentation modes, a preexisting Electron profile, actual named IPC and direct reads of the independent backend preference store; ordinary library preferences still persist. Development switch parsing and authored/legacy palette lookup are checked separately."
     },
     {
       "id": "ThemeContrastTests.A_substituted_backdrop_is_not_the_same_answer_as_a_refused_one",
@@ -17921,77 +18434,194 @@
     {
       "id": "ArtworkBrowserTests.Fullscreen_triggers_cycle_artwork_slots_and_preserve_their_browsing_state",
       "source": "tests/Winnow.Ui.Tests/ArtworkBrowserTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-artwork-browser.test.tsx",
+          "case": "retains each slot preview source and gallery position and cycles with controller triggers"
+        },
+        {
+          "file": "tests/electron/artwork-browser.spec.ts",
+          "case": "fullscreen artwork preserves controller selection focus during paging"
+        }
+      ],
+      "reason": "Both surfaces retain slot selection/source/scroll. Native fullscreen tests drive real gamepad sampling through six trigger transitions, A selection/save and B return; pending writes prevent trigger changes in the component case."
     },
     {
       "id": "ArtworkBrowserTests.Desktop_artwork_source_uses_the_shared_link_router",
       "source": "tests/Winnow.Ui.Tests/ArtworkBrowserTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-artwork-browser.test.tsx",
+          "case": "routes source attribution through the shared dispatcher and keeps imports explicit"
+        }
+      ],
+      "reason": "The same named external-link bridge receives the attributed HTTPS source and surfaces its confirmation; no browser is opened during the test."
     },
     {
       "id": "ArtworkBrowserTests.Preview_and_back_do_not_write_and_apply_changes_only_the_selected_slot",
       "source": "tests/Winnow.Ui.Tests/ArtworkBrowserTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-artwork-browser.test.tsx",
+          "case": "previews without writing, saves only the chosen slot and resets only that slot"
+        },
+        {
+          "file": "tests/parity-artwork-browser.test.tsx",
+          "case": "closes its own overlay without writing a preview"
+        },
+        {
+          "file": "tests/electron/artwork-browser.spec.ts",
+          "case": "desktop artwork traps both keyboard directions and Back restores More without writing"
+        }
+      ],
+      "reason": "Both modes preview without writes, apply only the selected slot and reset that slot. Native Back restores Details More without committing."
     },
     {
       "id": "ArtworkBrowserTests.Sources_fail_independently_retry_and_page_without_replacing_selection",
       "source": "tests/Winnow.Ui.Tests/ArtworkBrowserTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-artwork-browser.test.tsx",
+          "case": "loads retries and pages independently while retaining candidate identity and selection"
+        },
+        {
+          "file": "tests/parity-artwork-browser.test.tsx",
+          "case": "keeps a refused save selected and prevents slot changes or duplicate saves while pending"
+        }
+      ],
+      "reason": "Independent provider failure/retry and pagination preserve selection and candidate identity; refusal leaves selection available without a false success."
     },
     {
       "id": "ArtworkBrowserTests.Closing_ignores_late_provider_results_and_unsupported_icon_is_explicit",
       "source": "tests/Winnow.Ui.Tests/ArtworkBrowserTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-artwork-browser.test.tsx",
+          "case": "ignores a cancelled provider result after immediate reopen and refreshes external current art"
+        },
+        {
+          "file": "tests/parity-artwork-browser.test.tsx",
+          "case": "makes unsupported icon sources explicit without querying or hiding them"
+        }
+      ],
+      "reason": "Closing aborts named provider work; a late result cannot populate a reopened browser. IGDB Icon remains visible with its unsupported explanation and no request."
     },
     {
       "id": "ArtworkBrowserTests.Rapid_reopen_restarts_loading_and_retains_previews_across_slots",
       "source": "tests/Winnow.Ui.Tests/ArtworkBrowserTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-artwork-browser.test.tsx",
+          "case": "ignores a cancelled provider result after immediate reopen and refreshes external current art"
+        },
+        {
+          "file": "tests/parity-artwork-browser.test.tsx",
+          "case": "retains each slot preview source and gallery position and cycles with controller triggers"
+        }
+      ],
+      "reason": "Reopening starts a new provider request and reads external Current changes. Slot transitions retain preview and source choices; the prior pending response cannot replace them."
     },
     {
       "id": "ArtworkBrowserTests.Commit_refreshes_projection_before_current_and_distinguishes_refresh_failure",
       "source": "tests/Winnow.Ui.Tests/ArtworkBrowserTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-artwork-browser.test.tsx",
+          "case": "refreshes the library projection before Current and distinguishes a saved image from refresh failure"
+        }
+      ],
+      "reason": "A successful write refreshes library projections before Current. A later projection failure keeps the explicit saved confirmation and requires refreshing instead of retrying the committed write."
     },
     {
       "id": "ArtworkBrowserTests.Each_slot_retains_its_browsing_position",
       "source": "tests/Winnow.Ui.Tests/ArtworkBrowserTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-artwork-browser.test.tsx",
+          "case": "retains each slot preview source and gallery position and cycles with controller triggers"
+        }
+      ],
+      "reason": "Both presentation modes restore independent Hero/Cover scrollTop positions, selection and source while cycling in both directions."
     },
     {
       "id": "ArtworkBrowserTests.Desktop_details_host_restores_more_focus_on_escape",
       "source": "tests/Winnow.Ui.Tests/ArtworkBrowserTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/artwork-browser.spec.ts",
+          "case": "keeps preview and actions fixed while only the gallery scrolls"
+        }
+      ],
+      "reason": "All three source desktop dimensions open from Details More; Escape removes the artwork overlay and restores More focus."
     },
     {
       "id": "ArtworkBrowserTests.Desktop_artwork_row_restores_its_browse_button_and_unsaved_metadata_draft",
       "source": "tests/Winnow.Ui.Tests/ArtworkBrowserTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-artwork-browser.test.tsx",
+          "case": "keeps the metadata draft and returns focus to its invoking artwork row"
+        }
+      ],
+      "reason": "Both modes keep the unsaved name draft mounted while the modal Cover browser owns focus. Escape restores the precise Browse control without writes. The existing Details native cases separately verify editor Escape returns to More."
     },
     {
       "id": "ArtworkBrowserTests.Metadata_overlay_bounds_fields_and_keeps_navigation_reachable",
       "source": "tests/Winnow.Ui.Tests/ArtworkBrowserTests.cs",
-      "status": "pending"
+      "status": "partial",
+      "reason": "Shared metadata editing and drafts are present; the source independent desktop overlay geometry and five-size field/navigation matrix are not yet ported."
     },
     {
       "id": "ArtworkBrowserTests.Desktop_overlay_keeps_preview_and_actions_visible_while_only_gallery_scrolls",
       "source": "tests/Winnow.Ui.Tests/ArtworkBrowserTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/artwork-browser.spec.ts",
+          "case": "keeps preview and actions fixed while only the gallery scrolls"
+        }
+      ],
+      "reason": "All original 1280×820,1200×640,1920×1080 rows test every slot, revision-checked writes, positive image bounds, stationary preview/actions and gallery scrolling. Hero and Cover aspect ratios are measured; real IPC carries deterministic PNG pixels."
     },
     {
       "id": "ArtworkBrowserTests.Desktop_overlay_cycles_keyboard_focus_and_back_restores_details_without_writing",
       "source": "tests/Winnow.Ui.Tests/ArtworkBrowserTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/artwork-browser.spec.ts",
+          "case": "desktop artwork traps both keyboard directions and Back restores More without writing"
+        }
+      ],
+      "reason": "Forward/backward keyboard traversal returns to Back within 60 steps, stays in the modal, visits at least eight controls and closes without writing."
     },
     {
       "id": "ArtworkBrowserTests.Fullscreen_controller_can_select_and_preserves_candidate_focus_when_pages_arrive",
       "source": "tests/Winnow.Ui.Tests/ArtworkBrowserTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/artwork-browser.spec.ts",
+          "case": "fullscreen artwork preserves controller selection focus during paging"
+        }
+      ],
+      "reason": "Native gamepad A selects, page arrival retains that candidate's focus, and A saves; actions remain within bounds at default text and 140% text with reduced motion."
     },
     {
       "id": "ArtworkBrowserTests.Fullscreen_metadata_keeps_field_order_and_validation_navigation",
       "source": "tests/Winnow.Ui.Tests/ArtworkBrowserTests.cs",
-      "status": "pending"
+      "status": "partial",
+      "reason": "Metadata fields and validation exist in the shared editor, but the original fullscreen field-menu and per-field Back/discard navigation still need implementation and native evidence."
     },
     {
       "id": "ArtworkPreferenceBackdropTests.Fullscreen_unowned_group_root_background_precedes_owned_child_heroes",
@@ -18858,52 +19488,174 @@
     {
       "id": "FullscreenBackdropTests.Saved_background_survives_failed_image_metadata_read",
       "source": "tests/Winnow.Ui.Tests/FullscreenBackdropTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/BackdropArtworkTests.cs",
+          "case": "Saved_background_survives_failed_metadata_and_cancellation_is_not_swallowed"
+        }
+      ],
+      "reason": "The real HTTP query preserves the saved background when image metadata throws; cancellation remains cancellation. The renderer consumes these ordered keys."
     },
     {
       "id": "FullscreenBackdropTests.Synchronous_metadata_read_leaves_dispatcher_free_and_stale_selection_cannot_present",
       "source": "tests/Winnow.Ui.Tests/FullscreenBackdropTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-backdrop.test.ts",
+          "case": "cancels superseded metadata and cannot present its late selection"
+        },
+        {
+          "file": "tests/electron/backdrop.spec.ts",
+          "case": "detaching Home cancels the real named image request and releases retained decoded art"
+        }
+      ],
+      "reason": "Metadata runs behind the authenticated HTTP boundary in the separate backend process. Controlled late metadata never starts stale image work, and actual renderer detachment aborts the named IPC image fetch without blocking navigation."
     },
     {
       "id": "FullscreenBackdropTests.Ready_selection_does_not_cut_short_visible_crossfade",
       "source": "tests/Winnow.Ui.Tests/FullscreenBackdropTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-backdrop.test.ts",
+          "case": "a ready selection preserves the visible blend with reduced motion %s and missing replacement %s"
+        },
+        {
+          "file": "tests/avalon-backdrop.test.ts",
+          "case": "detach cancels pending art and releases current outgoing queued and late resources exactly once"
+        }
+      ],
+      "reason": "All four original reduced-motion/fallback combinations retain the two visible layers at a controlled half fade, dispose a superseded ready result, and then present only the latest result. Detachment releases visible, outgoing, queued and late pixels exactly once."
     },
     {
       "id": "FullscreenBackdropTests.Selection_keeps_ready_landscape_and_ignores_superseded_completion",
       "source": "tests/Winnow.Ui.Tests/FullscreenBackdropTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-backdrop.test.ts",
+          "case": "retains ready landscape while loading and releases superseded pixels with reduced motion %s"
+        },
+        {
+          "file": "tests/avalon-backdrop.test.ts",
+          "case": "failed resolution upgrades keep the usable image and smaller sizes do not request it again"
+        },
+        {
+          "file": "tests/electron/backdrop.spec.ts",
+          "case": "fullscreen Home crossfades independent source geometry, keeps visible art while loading, and releases replaced URLs"
+        }
+      ],
+      "reason": "Both motion modes keep ready art during selection, abort superseded work and ignore late pixels. A real compositor frame samples independent current/outgoing layers and object URLs return to one after replacement; detach returns them to zero."
     },
     {
       "id": "FullscreenBackdropTests.Failed_landscape_shows_cover_only_after_resolution_and_detach_cancels_pending_art",
       "source": "tests/Winnow.Ui.Tests/FullscreenBackdropTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-backdrop.test.ts",
+          "case": "tries ranked artwork then screenshots before a separately sized cover fallback"
+        },
+        {
+          "file": "tests/avalon-backdrop.test.ts",
+          "case": "detach cancels pending art and releases current outgoing queued and late resources exactly once"
+        },
+        {
+          "file": "tests/electron/backdrop.spec.ts",
+          "case": "detaching Home cancels the real named image request and releases retained decoded art"
+        }
+      ],
+      "reason": "Cover fallback starts only after all landscape attempts fail, has its own decode width, and is released on detach. Pending requests use an owner-scoped cancel ID; late image completion cannot reattach pixels."
     },
     {
       "id": "FullscreenBackdropTests.Desktop_backdrop_tries_ranked_art_then_screenshot_and_keeps_portrait_separate",
       "source": "tests/Winnow.Ui.Tests/FullscreenBackdropTests.cs",
-      "status": "pending"
+      "status": "partial",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/BackdropArtworkTests.cs",
+          "case": "Candidate_endpoint_preserves_grouped_choices_source_order_and_portrait_fallback_without_fetching_images"
+        },
+        {
+          "file": "tests/avalon-backdrop.test.ts",
+          "case": "tries ranked artwork then screenshots before a separately sized cover fallback"
+        },
+        {
+          "file": "tests/electron/backdrop.spec.ts",
+          "case": "${mode} Details uses its original reading veil and releases its backdrop on close"
+        }
+      ],
+      "reason": "The backend preserves saved/ranked landscape choices separately from portrait, and the new backdrop releases pending/current image resources. The existing shared portrait Artwork component still uses its own encoded query cache; the original assertion that a pending portrait lease is cancelled immediately on Details disposal is not covered by this package."
     },
     {
       "id": "FullscreenBackdropTests.Fullscreen_tries_artwork_then_screenshot_before_cover",
       "source": "tests/Winnow.Ui.Tests/FullscreenBackdropTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/BackdropArtworkTests.cs",
+          "case": "Candidate_endpoint_preserves_grouped_choices_source_order_and_portrait_fallback_without_fetching_images"
+        },
+        {
+          "file": "tests/avalon-backdrop.test.ts",
+          "case": "tries ranked artwork then screenshots before a separately sized cover fallback"
+        }
+      ],
+      "reason": "Authoritative candidate order retains artwork before screenshot; the renderer exhausts that sequence before requesting the separate cover. No cover is presented while a landscape candidate is pending."
     },
     {
       "id": "FullscreenBackdropTests.Both_backdrops_size_each_candidate_for_its_source_proportions",
       "source": "tests/Winnow.Ui.Tests/FullscreenBackdropTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-backdrop.test.ts",
+          "case": "sizes each source candidate independently with fullscreen %s and ratio %s"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/BackdropArtworkTests.cs",
+          "case": "Image_endpoint_supports_the_original_3840_bucket_and_rejects_larger_requests"
+        }
+      ],
+      "reason": "The complete desktop/fullscreen × panoramic/16:9 source matrix requests 3840 or 1920 as appropriate and recalculates the following screenshot independently. Real HTTP supports the original 3840 image bucket and rejects larger requests."
     },
     {
       "id": "FullscreenBackdropTests.Steam_hero_adapts_crop_and_crossfades_independent_geometry",
       "source": "tests/Winnow.Ui.Tests/FullscreenBackdropTests.cs",
-      "status": "pending"
+      "status": "partial",
+      "tests": [
+        {
+          "file": "tests/avalon-backdrop.test.ts",
+          "case": "Steam hero geometry and decode width stay independent of landscape layers with fullscreen %s"
+        },
+        {
+          "file": "tests/avalon-backdrop-renderer.test.tsx",
+          "case": "renders source geometry in independent transition layers with cinematic %s"
+        },
+        {
+          "file": "tests/electron/backdrop.spec.ts",
+          "case": "fullscreen Home crossfades independent source geometry, keeps visible art while loading, and releases replaced URLs"
+        }
+      ],
+      "reason": "Native Home measures fitted 2520×813.75 heroes, independent landscape transition geometry, extreme-width centering, crop return and the mask rule. Component tests exercise cinematic/non-cinematic layer geometry. The original raw-pixel assertions for the lower-image alpha and Ground color, across the full cinematic/1920/2520 matrix, are not yet replicated."
     },
     {
       "id": "FullscreenBackdropTests.Desktop_hero_tries_IGDB_then_standard_hero_then_cover",
       "source": "tests/Winnow.Ui.Tests/FullscreenBackdropTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/BackdropArtworkTests.cs",
+          "case": "Candidate_endpoint_preserves_grouped_choices_source_order_and_portrait_fallback_without_fetching_images"
+        },
+        {
+          "file": "tests/avalon-backdrop.test.ts",
+          "case": "desktop exhausts high-resolution hero artwork screenshot standard hero and portrait in source order"
+        }
+      ],
+      "reason": "The backend retains Steam high-resolution hero, ranked artwork/screenshot and standard hero order. The desktop controller exhausts those candidates then portrait with original source-specific decode buckets, ends empty when all fail, and aborts all remaining work on disposal."
     },
     {
       "id": "FullscreenBrowseTests.Switching_collections_keeps_the_new_covers_after_queued_notifications_settle",

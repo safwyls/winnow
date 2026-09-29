@@ -13,6 +13,7 @@ const native = vi.hoisted(() => ({
   clearStorage: vi.fn(),
   clearCache: vi.fn(),
   capture: vi.fn(),
+  openExternal: vi.fn(),
 }))
 interface MockWindow extends EventEmitter {
   webContents: EventEmitter & {
@@ -20,6 +21,7 @@ interface MockWindow extends EventEmitter {
     getURL(): string
     isLoading(): boolean
     executeJavaScript: typeof native.probe
+    setWindowOpenHandler: ReturnType<typeof vi.fn>
   }
   destroyed: boolean
   close(): void
@@ -59,10 +61,14 @@ vi.mock('electron', async () => {
       this.webContents.emit('did-start-navigation', {}, url, false, true)
     }
   }
-  return { BrowserWindow: Window, session: { fromPartition: native.partition } }
+  return {
+    BrowserWindow: Window,
+    session: { fromPartition: native.partition },
+    shell: { openExternal: native.openExternal },
+  }
 })
 vi.mock('../src/main/steam-capture', () => ({ captureSteamAccountPages: native.capture }))
-import { cancelSteamWindow, signInToSteam } from '../src/main/steam-auth'
+import { cancelSteamWindow, captureSteamPages, signInToSteam } from '../src/main/steam-auth'
 import { createAccountBrowser } from '../src/main/account-browser'
 
 function deferred<T>() {
@@ -95,6 +101,7 @@ beforeEach(() => {
   native.clearStorage.mockReset().mockResolvedValue(undefined)
   native.clearCache.mockReset().mockResolvedValue(undefined)
   native.capture.mockReset().mockResolvedValue({ captureDetail: 'Pages ready for review.' })
+  native.openExternal.mockReset().mockResolvedValue(undefined)
   native.partition.mockReset().mockReturnValue(
     Object.assign(new EventEmitter(), {
       setPermissionRequestHandler: vi.fn(),
@@ -117,6 +124,54 @@ afterEach(() => {
 })
 
 describe('Steam native sign-in races and credential boundaries', () => {
+  it('capture consent refusal and browser unavailability return reasons and zero counts without pages', async () => {
+    const parent = new EventEmitter() as BrowserWindow
+    const refused = await captureSteamPages(parent, { consentGranted: false })
+    expect(refused).toMatchObject({ captureOutcome: 'cancelled', loadMoreClicks: 0, licensesPagesWalked: 0 })
+    expect(refused.captureDetail).toBeTruthy()
+    expect(refused.pages).toBeUndefined()
+    expect(native.partition).not.toHaveBeenCalled()
+    expect(native.windows).toHaveLength(0)
+    native.partition.mockImplementationOnce(() => {
+      throw Error('Unavailable')
+    })
+    const unavailable = await captureSteamPages(parent, { consentGranted: true })
+    expect(unavailable).toMatchObject({
+      captureOutcome: 'unavailable',
+      loadMoreClicks: 0,
+      licensesPagesWalked: 0,
+    })
+    expect(unavailable.captureDetail).toBeTruthy()
+    expect(unavailable.pages).toBeUndefined()
+  })
+  it.each(['sign-in', 'capture'])(
+    'installs the guarded popup handoff in the production %s coordinator',
+    async (flow) => {
+      const captured = deferred<{}>()
+      if (flow === 'capture') native.capture.mockReturnValue(captured.promise)
+      const pending =
+        flow === 'capture'
+          ? captureSteamPages(new EventEmitter() as BrowserWindow, { consentGranted: true })
+          : start(false)
+      const browser = await windowReady()
+      const popup = browser.webContents.setWindowOpenHandler.mock.calls[0][0]
+      expect(popup({ url: 'https://help.steampowered.com/en/' })).toEqual({ action: 'deny' })
+      expect(browser.webContents.getURL()).toBe('https://help.steampowered.com/en/')
+      popup({ url: 'https://example.com/assistance' })
+      expect(native.openExternal).toHaveBeenCalledWith('https://example.com/assistance')
+      for (const url of [
+        'steam://run/10',
+        'winnow-app://app/index.html',
+        'file:///private',
+        'http://127.0.0.1:4400/',
+      ])
+        popup({ url })
+      expect(native.openExternal).toHaveBeenCalledOnce()
+      browser.close()
+      captured.resolve({})
+      await pending
+    },
+  )
   it.each([false, true])(
     'declined consent cancels before any window or backend request even with purchase capture=%s',
     async (capturePurchaseHistory) => {
@@ -366,9 +421,9 @@ describe('Steam native sign-in races and credential boundaries', () => {
     )
   })
 
-  it('A_captured_page_set_is_reported_by_size_and_never_by_content', async () => {
-    const licensesHtml = '<html>SECRET-LICENCE-ROW</html>',
-      historyHtml = '<html>SECRET-PURCHASE-ROW</html>'
+  it('A_captured_page_set_is_reported_by_size_and_never_by_content; Neither_the_pages_nor_the_result_render_their_contents', async () => {
+    const licensesHtml = '<html>Half-Life 2, retail key, 2004</html>',
+      historyHtml = '<html>Half-Life 2 £19.99</html>'
     native.capture.mockResolvedValue({
       pages: { licensesHtml, historyHtml, additionalLicensesHtml: ['<table>é</table>'] },
     })
@@ -384,7 +439,8 @@ describe('Steam native sign-in races and credential boundaries', () => {
     await vi.advanceTimersByTimeAsync(1000)
     await result
     const line = log.mock.calls[0][0]
-    expect(line).not.toMatch(/SECRET-LICENCE-ROW|SECRET-PURCHASE-ROW|<html>|<table>/)
+    expect(line).not.toMatch(/Half-Life|19\.99|<html>|<table>/)
+    expect(line).toContain('content redacted')
     expect(line).toContain(`licences=${Buffer.byteLength(licensesHtml + '<table>é</table>')} bytes`)
     expect(line).toContain(`history=${Buffer.byteLength(historyHtml)} bytes`)
   })

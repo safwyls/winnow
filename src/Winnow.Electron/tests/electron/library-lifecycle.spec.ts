@@ -121,15 +121,23 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await page.getByLabel('Sort', { exact: true }).selectOption('title-desc')
     await page.locator(`.avalon-library [data-avalon-game="${pack.workId}"]`).focus()
     const rawBefore = await api<LibraryResponse>({ route: 'library.get' })
-    const workspaceBefore = await api<{ buckets: { workId: number; bucket: string }[] }>({ route: 'library.workspace' })
-    expect(workspaceBefore.buckets.some((row) => row.workId === pack.workId && row.bucket === 'never_played')).toBe(true)
+    const workspaceBefore = await api<{ buckets: { workId: number; bucket: string }[] }>({
+      route: 'library.workspace',
+    })
+    expect(
+      workspaceBefore.buckets.some((row) => row.workId === pack.workId && row.bucket === 'never_played'),
+    ).toBe(true)
     await navigate('Settings')
     await page
       .getByRole('navigation', { name: 'Settings section' })
       .getByRole('button', { name: 'Library', exact: true })
       .click()
-    await page.getByRole('combobox', { name: 'Default library sort', exact: true }).selectOption('NameAscending')
-    await expect(page.getByRole('combobox', { name: 'Default library sort', exact: true })).toHaveValue('NameAscending')
+    await page
+      .getByRole('combobox', { name: 'Default library sort', exact: true })
+      .selectOption('NameAscending')
+    await expect(page.getByRole('combobox', { name: 'Default library sort', exact: true })).toHaveValue(
+      'NameAscending',
+    )
     await expect(page.getByLabel('Group expansions with their base game', { exact: true })).toBeEnabled()
     await expect(page.getByLabel('Group expansions with their base game', { exact: true })).not.toBeChecked()
     await page.getByLabel('Group expansions with their base game', { exact: true }).click()
@@ -176,6 +184,117 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await navigate('Library')
     await expect(page.locator('.avalon-library [data-avalon-game]')).toHaveCount(2)
     await expect(page.locator('.avalon-expansion-mark')).toHaveCount(0)
+    expect(failures).toEqual([])
+  })
+}
+
+for (const mode of ['desktop', 'fullscreen'] as const) {
+  test(`${mode} presents clearable real list cuts and source library chrome`, async ({}, info) => {
+    await app.evaluate(({ BrowserWindow }, mode) => {
+      const window = BrowserWindow.getAllWindows()[0]!
+      window.setFullScreen(false)
+      window.setContentSize(1440, 900)
+      window.webContents.send('winnow:fullscreen:changed', mode === 'fullscreen')
+    }, mode)
+    await expect(page.locator('.avalon-shell')).toHaveClass(new RegExp(mode))
+    const prefix = `Chrome ${mode}`
+    const created: ManualGame[] = []
+    for (const title of [`${prefix} Alpha`, `${prefix} Bravo`])
+      created.push(
+        await api<ManualGame>({
+          route: 'manual.create',
+          body: {
+            title,
+            firstReleaseYear: 2006,
+            platformLabel: 'PC',
+            executablePath: null,
+            installPath: null,
+            igdbId: null,
+            steamAppId: null,
+          },
+        }),
+      )
+    const list = await api<{ id: number }>({
+      route: 'list.create',
+      body: { name: `${prefix} favorites`, releaseIds: [created[0].releaseId] },
+    })
+    await navigate('Library')
+    await page.getByRole('combobox', { name: 'My lists', exact: true }).selectOption('all')
+    await page.getByRole('textbox', { name: 'Search games', exact: true }).fill(prefix)
+    await expect(page.locator('.avalon-library [data-avalon-game]')).toHaveCount(2)
+    await expect(page.locator('.avalon-cut-count')).toContainText('→ 2')
+    const cut = page.getByRole('region', { name: 'Current library filters' })
+    await expect(cut.getByRole('button', { name: 'Remove search filter' })).toHaveAttribute(
+      'aria-description',
+      `SEARCH: ${prefix}`,
+    )
+    if (mode === 'desktop') {
+      const slider = page.getByRole('slider', { name: 'Density', exact: true })
+      await slider.focus()
+      await slider.press('Home')
+      await expect(slider).toHaveValue('108')
+      const wide = await page.locator('.avalon-library [data-avalon-game]').first().boundingBox()
+      await slider.press('End')
+      await expect(slider).toHaveValue('200')
+      await expect
+        .poll(
+          async () => (await page.locator('.avalon-library [data-avalon-game]').first().boundingBox())!.width,
+        )
+        .toBeLessThan(wide!.width)
+      await page.getByRole('button', { name: 'List view', exact: true }).click()
+      const header = page.getByRole('group', { name: 'Library columns' })
+      for (const [column, first, second] of [
+        ['playtime', 'time', 'time-low'],
+        ['title', 'title', 'title-desc'],
+        ['idle', 'dormant', 'recent'],
+      ]) {
+        await header.getByRole('button', { name: `Sort by ${column}`, exact: true }).click()
+        await expect(page.getByRole('combobox', { name: 'Sort', exact: true })).toHaveValue(first)
+        await header.getByRole('button', { name: `Sort by ${column}`, exact: true }).click()
+        await expect(page.getByRole('combobox', { name: 'Sort', exact: true })).toHaveValue(second)
+        await expect(header.locator('[data-sort-direction]')).toHaveCount(1)
+      }
+      const geometry = await page.evaluate(() => {
+        const header = document.querySelector<HTMLElement>('.avalon-record-header')!,
+          rows = [...document.querySelectorAll<HTMLElement>('.avalon-record')]
+        return {
+          headerColumns: getComputedStyle(header).gridTemplateColumns,
+          rows: rows.map((row) => ({
+            columns: getComputedStyle(row).gridTemplateColumns,
+            cover: {
+              width: row.querySelector('.artwork')!.getBoundingClientRect().width,
+              height: row.querySelector('.artwork')!.getBoundingClientRect().height,
+            },
+            starts: [...row.children].map((cell) => cell.getBoundingClientRect().left),
+          })),
+          starts: [...header.children].map((cell) => cell.getBoundingClientRect().left),
+          titleJustification: getComputedStyle(header.children[1]).justifyContent,
+          placeholderText: [...document.querySelectorAll('.avalon-record .art-placeholder span')].map(
+            (label) => getComputedStyle(label).display,
+          ),
+        }
+      })
+      expect(geometry.titleJustification).toBe('flex-start')
+      expect(geometry.placeholderText.length).toBeGreaterThan(0)
+      expect(geometry.placeholderText.every((display) => display === 'none')).toBe(true)
+      for (const row of geometry.rows) {
+        expect(row.columns).toBe(geometry.headerColumns)
+        expect(row.cover).toEqual({ width: 24, height: 36 })
+        for (const index of [1, 2, 4, 5])
+          expect(Math.abs(row.starts[index] - geometry.starts[index])).toBeLessThanOrEqual(1)
+      }
+    } else {
+      await expect(page.getByRole('group', { name: 'Library columns' })).toHaveCount(0)
+      await expect(page.getByRole('slider', { name: 'Density' })).toHaveCount(0)
+    }
+    await page.getByRole('combobox', { name: 'My lists', exact: true }).selectOption(String(list.id))
+    await expect(page.locator('.avalon-library [data-avalon-game]')).toHaveCount(1)
+    await expect(cut.getByRole('button', { name: 'Leave this list' })).toHaveText(`LIST${prefix} favorites`)
+    await cut.getByRole('button', { name: 'Remove search filter' }).click()
+    await expect(page.locator('.avalon-library [data-avalon-game]')).toHaveCount(1)
+    await page.screenshot({ path: info.outputPath(`${mode}-library-chrome.png`) })
+    await cut.getByRole('button', { name: 'Leave this list' }).click()
+    await expect(cut).toHaveCount(0)
     expect(failures).toEqual([])
   })
 }

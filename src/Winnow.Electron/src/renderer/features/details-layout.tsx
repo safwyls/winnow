@@ -14,7 +14,7 @@ import { dateLabel, hours, storeLabel } from '../api/client'
 import { primaryEntry } from '../../shared/game-actions'
 import type { GameDetails, LibraryGame, Mode, Workspace } from '../api/types'
 import { Artwork } from '../components/Artwork'
-import { ArtworkEditor, EntryActions, GameLinks, HideGame, ListMembership } from './Details'
+import { EntryActions, GameLinks, HideGame, ListMembership } from './Details'
 import { IgdbMatch, LibraryFacts, MetadataEditor, Screenshots, UpdateSignals } from './parity-details'
 import { ReceptionLine, MetadataRefresh, LifecycleEvidence } from './details-presentation'
 import { DetailsRelationships } from './parity-details-identity'
@@ -26,6 +26,9 @@ import { Empty, Notice } from './shared'
 import { gameLinks, type GameLink } from '../api/gameLinks'
 import { useViewState } from '../viewState'
 import { InstallFolderButton } from './install-folder'
+import { detailIdle, detailPlaytime } from './details-facts'
+import { ArtworkBrowserDialog } from './artwork-browser'
+import { AvalonBackdrop } from '../themes/avalon-backdrop'
 import './details-layout.css'
 
 const desktopSections = ['Overview', 'Activity', 'Updates', 'Journal', 'Library'] as const
@@ -75,6 +78,7 @@ export function AvalonDetailsLayout({
     [tool, setTool] = useState<Tool | null>(null)
   const [expanded, setExpanded] = useState(false)
   const [matchNote, setMatchNote] = useState('')
+  const [artworkOpen, setArtworkOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [editing, setEditing] = useViewState<number | null>(`${mode}:details:${workId}:editing`, null)
   const body = useRef<HTMLDivElement>(null),
@@ -285,12 +289,12 @@ export function AvalonDetailsLayout({
     <section className="avalon-personal-history" aria-label="Play history">
       <div className="avalon-history-figures">
         <div>
-          <strong>{game ? hours(game.playtimeMinutes) : '—'}</strong>
+          <strong>{game ? detailPlaytime(game.playtimeMinutes) : '—'}</strong>
           <span>played</span>
         </div>
         {game?.lastPlayedAt && (
           <div>
-            <strong>{relativePlayed(game.lastPlayedAt)}</strong>
+            <strong>{detailIdle(game.lastPlayedAt)}</strong>
             <span>since last played</span>
           </div>
         )}
@@ -335,7 +339,7 @@ export function AvalonDetailsLayout({
     </section>
   )
   let panel: ReactNode
-  if (tool === 'Metadata') panel = <MetadataEditor workId={workId} />
+  if (tool === 'Metadata') panel = <MetadataEditor workId={workId} mode={mode} />
   else if (tool === 'Game match')
     panel = (
       <IgdbMatch
@@ -348,7 +352,6 @@ export function AvalonDetailsLayout({
         }}
       />
     )
-  else if (tool === 'Artwork') panel = <ArtworkEditor workId={workId} />
   else if (reading === 'History' || section === 'Activity') panel = history
   else if (reading === 'About')
     panel = (
@@ -407,7 +410,7 @@ export function AvalonDetailsLayout({
     )
   const content = (
     <>
-      <Artwork workId={workId} hero eager className="avalon-detail-backdrop" />
+      <AvalonBackdrop workId={game?.workId ?? workId} fullscreen={fullscreen} cinematic={fullscreen} className="avalon-detail-backdrop" />
       <header className="avalon-details-header" aria-label="Game identity">
         {!fullscreen && <Artwork workId={workId} eager className="avalon-detail-cover" />}
         <div className="avalon-details-identity">
@@ -461,7 +464,7 @@ export function AvalonDetailsLayout({
               open={moreOpen}
               setOpen={setMoreOpen}
               buttonRef={more}
-              onChoose={(next) => setTool(next)}
+              onChoose={(next) => (next === 'Artwork' ? setArtworkOpen(true) : setTool(next))}
               workId={workId}
               links={links}
               management={
@@ -530,6 +533,17 @@ export function AvalonDetailsLayout({
         {panel}
       </div>
       {editing != null && <JournalEditor sessionId={editing} onClose={() => setEditing(null)} />}
+      {artworkOpen && (
+        <ArtworkBrowserDialog
+          workId={workId}
+          title={game?.title ?? 'Game artwork'}
+          mode={mode}
+          onClose={() => {
+            setArtworkOpen(false)
+            requestAnimationFrame(() => more.current?.focus({ preventScroll: true }))
+          }}
+        />
+      )}
     </>
   )
   if (fullscreen)
@@ -573,10 +587,6 @@ export function AvalonDetailsLayout({
   )
 }
 
-function relativePlayed(date: string) {
-  const days = Math.max(0, Math.floor((Date.now() - Date.parse(date)) / 86_400_000))
-  return days >= 365 ? `${Math.floor(days / 365)}y` : days >= 30 ? `${Math.floor(days / 30)}mo` : `${days}d`
-}
 function Achievements({ game, details }: { game?: LibraryGame; details?: GameDetails }) {
   if (!details?.achievements.length) return null
   return (

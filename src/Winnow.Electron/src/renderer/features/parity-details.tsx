@@ -9,8 +9,9 @@ import { useViewState } from '../viewState'
 import { Artwork } from '../components/Artwork'
 import { Empty, Notice } from './shared'
 import './parity-details.css'
-import { acquisitionFacts, playtimeRecordLine, updatePageUrl } from './details-facts'
+import { acquisitionFacts, playtimeRecordLine, updateHeadline, updatePageUrl } from './details-facts'
 import { timelineUpdates } from './activity-timeline-model'
+import { ArtworkBrowserDialog, type ArtworkSlot } from './artwork-browser'
 import { InstallFolderButton } from './install-folder'
 
 export { IgdbMatch } from './igdb-match'
@@ -236,7 +237,9 @@ export function UpdateSignals({ details, game }: { details?: GameDetails; game?:
   const [actionError, setActionError] = useState<unknown>(null)
   const [linkError, setLinkError] = useState<unknown>(null)
   const events = timelineUpdates(
-    facts?.events ?? [],
+    [...(facts?.events ?? [])].sort(
+      (a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt) || b.id - a.id,
+    ),
     facts?.acknowledgements ?? {},
     game?.lastPlayedAt,
     game?.playtimeMinutes ?? 0,
@@ -298,7 +301,7 @@ export function UpdateSignals({ details, game }: { details?: GameDetails; game?:
             className="update-row"
             key={event.id}
             data-unread={event.unread}
-            aria-label={`${event.title ?? event.kind.replaceAll('_', ' ')} · ${dateLabel(event.occurredAt)}${event.unread ? ' · unread' : ''}`}
+            aria-label={`${updateHeadline(event)} · ${dateLabel(event.occurredAt)}${event.unread ? ' · unread' : ''}`}
           >
             <div>
               <time>{dateLabel(event.occurredAt)}</time>
@@ -308,7 +311,7 @@ export function UpdateSignals({ details, game }: { details?: GameDetails; game?:
                     ●{' '}
                   </span>
                 )}
-                {event.title ?? event.kind.replaceAll('_', ' ')}
+                {updateHeadline(event)}
               </h3>
             </div>
             {updatePageUrl(event.url) ? (
@@ -464,7 +467,14 @@ const metadataMessages: Record<string, string> = {
 }
 type FieldDraft = { value: string; revision: string }
 
-export function MetadataEditor({ workId }: { workId: number }) {
+export function MetadataEditor({
+  workId,
+  mode = 'desktop',
+}: {
+  workId: number
+  mode?: 'desktop' | 'fullscreen'
+}) {
+  const [artworkSlot, setArtworkSlot] = useState<ArtworkSlot | null>(null)
   const metadata = useApiQuery<Metadata>('metadata.get', { workId })
   const [drafts, setDrafts] = useViewState<Record<string, FieldDraft>>(`draft:metadata-fields:${workId}`, {})
   const [sending, setSending] = useViewState<string | null>(`metadata-fields:${workId}:sending`, null)
@@ -678,6 +688,15 @@ export function MetadataEditor({ workId }: { workId: number }) {
               </div>
             )}
             <div className="form-actions">
+              {art && (
+                <button
+                  type="button"
+                  disabled={Boolean(sending)}
+                  onClick={() => setArtworkSlot(field.field === 'cover_url' ? 'Cover' : 'Hero')}
+                >
+                  Browse {field.field === 'cover_url' ? 'cover' : 'background'} artwork
+                </button>
+              )}
               <button disabled={Boolean(sending) || conflict}>
                 {sending === field.field ? 'Saving…' : `Save ${label.toLowerCase()}`}
               </button>
@@ -724,6 +743,15 @@ export function MetadataEditor({ workId }: { workId: number }) {
           </form>
         )
       })}
+      {artworkSlot && (
+        <ArtworkBrowserDialog
+          workId={workId}
+          title={metadata.data?.title ?? 'Game artwork'}
+          mode={mode}
+          initialSlot={artworkSlot}
+          onClose={() => setArtworkSlot(null)}
+        />
+      )}
     </section>
   )
 }

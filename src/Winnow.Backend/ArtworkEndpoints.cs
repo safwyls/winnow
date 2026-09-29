@@ -13,6 +13,8 @@ public static class ArtworkEndpoints
     public static void MapArtworkApi(this WebApplication app)
     {
         app.MapGet("/api/v1/artwork/sources", (ArtworkApplication artwork) => artwork.Sources);
+        app.MapGet("/api/v1/works/{workId:long}/backdrop", (long workId, double? aspectRatio, ArtworkApplication artwork, CancellationToken ct)
+            => artwork.BackdropAsync(workId, aspectRatio ?? 16d / 9, ct));
         var group = app.MapGroup("/api/v1/works/{workId:long}/artwork/{slot}");
         group.MapGet("", (long workId, ArtworkSlot slot, ArtworkApplication artwork, CancellationToken ct) => artwork.StateAsync(workId, slot, ct));
         group.MapGet("/browse", (long workId, ArtworkSlot slot, string source, string? cursor, ArtworkApplication artwork, CancellationToken ct)
@@ -47,7 +49,7 @@ public static class ArtworkEndpoints
             var key = new CoverKey(provider, id);
             if (!sources.Any(source => source.CanHandle(key))) return Results.NotFound();
             var requestedWidth = width ?? 1920;
-            if (requestedWidth is < 64 or > 2560) return Results.BadRequest();
+            if (requestedWidth is < 64 or > 3840) return Results.BadRequest();
             await Images.WaitAsync(ct);
             try
             {

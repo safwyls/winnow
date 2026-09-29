@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Details } from '../src/renderer/features/Details'
 import { clearViewState } from '../src/renderer/viewState'
@@ -136,6 +136,209 @@ afterEach(() => {
 })
 
 describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details composition', (mode) => {
+  it('lists source update headlines newest first and offers only supported reader pages', async () => {
+    const events = [
+      {
+        id: 3,
+        releaseId: 100,
+        kind: 'announcement',
+        occurredAt: '2024-03-01T09:00:00Z',
+        title: 'Old news',
+        url: 'javascript:alert(1)',
+      },
+      { id: 2, releaseId: 100, kind: 'build_push', occurredAt: '2026-08-10T09:00:00Z', buildId: '24678461' },
+      {
+        id: 1,
+        releaseId: 100,
+        kind: 'announcement',
+        occurredAt: '2026-08-11T09:00:00Z',
+        title: 'v1.19.2 Patch',
+        url: 'https://store.steampowered.com/news/app/383120/view/1',
+      },
+    ]
+    setup(
+      mode,
+      (input) => {
+        if (input.route === 'library.get')
+          return {
+            ok: true,
+            status: 200,
+            data: {
+              games: [{ ...game, playtimeMinutes: 2220, lastPlayedAt: '2017-01-02T08:00:00Z' }],
+              lists: [],
+            },
+          }
+        if (input.route === 'library.workspace')
+          return {
+            ok: true,
+            status: 200,
+            data: { ...workspace, buckets: [{ resolvedWorkId: 1, game: { unreadUpdateCount: 1 } }] },
+          }
+        if (input.route === 'game.details')
+          return { ok: true, status: 200, data: { ...facts, events, acknowledgements: {} } }
+      },
+      'avalon',
+    )
+    fireEvent.click(await screen.findByRole('button', { name: '1 unread update →' }))
+    const rows = [...document.querySelectorAll<HTMLElement>('.update-row')]
+    expect(rows.map((row) => within(row).getByRole('heading').textContent?.replace('● ', ''))).toEqual([
+      'v1.19.2 Patch',
+      'Build 24678461',
+      'Old news',
+    ])
+    expect(rows.map((row) => row.dataset.unread)).toEqual(['true', 'true', 'false'])
+    expect(rows.map((row) => within(row).queryAllByRole('button').length)).toEqual([1, 0, 0])
+    fireEvent.click(within(rows[0]).getByRole('button'))
+    await waitFor(() =>
+      expect(window.winnow.openExternal).toHaveBeenCalledWith(
+        'https://store.steampowered.com/news/app/383120/view/1',
+      ),
+    )
+    expect(screen.getByRole('heading', { name: 'Updates' })).toBeTruthy()
+    expect(events[0].title).toBe('Old news')
+  })
+  it('keeps a readable update from before the last session as history without an unread claim', async () => {
+    setup(
+      mode,
+      (input) => {
+        if (input.route === 'library.get')
+          return {
+            ok: true,
+            status: 200,
+            data: { games: [{ ...game, lastPlayedAt: '2026-08-10T00:00:00Z' }], lists: [] },
+          }
+        if (input.route === 'game.details')
+          return {
+            ok: true,
+            status: 200,
+            data: {
+              ...facts,
+              events: [
+                {
+                  id: 1,
+                  releaseId: 100,
+                  kind: 'announcement',
+                  occurredAt: '2023-12-12T16:38:21Z',
+                  title: 'December 12, 2023 Update',
+                  url: 'https://store.steampowered.com/news/app/80/view/1',
+                },
+              ],
+            },
+          }
+      },
+      'avalon',
+    )
+    fireEvent.click(await screen.findByRole('tab', { name: 'Updates' }))
+    const row = screen.getByRole('article', { name: /^December 12, 2023 Update/ })
+    expect(row.getAttribute('data-unread')).toBe('false')
+    expect(within(row).getByRole('button')).toBeTruthy()
+    expect(screen.queryByText(/unread update/)).toBeNull()
+  })
+  it.each([true, false])(
+    'composes the recorded playtime series only when the API supplies readings: %s',
+    async (recorded) => {
+      setup(
+        mode,
+        (input) =>
+          input.route === 'game.details'
+            ? {
+                ok: true,
+                status: 200,
+                data: {
+                  ...facts,
+                  history: recorded
+                    ? {
+                        10: [
+                          { id: 1, playtimeMinutes: 176, observedAt: '2026-08-01T00:00:00Z' },
+                          { id: 2, playtimeMinutes: 243, observedAt: '2026-08-03T00:00:00Z' },
+                        ],
+                      }
+                    : {},
+                },
+              }
+            : undefined,
+        'avalon',
+      )
+      fireEvent.click(await screen.findByRole('tab', { name: 'Library' }))
+      if (recorded) {
+        fireEvent.click(screen.getByText('Steam · 2 readings'))
+        expect(screen.getByText(/Checked 2 times since .* — up 1h 7m\./)).toBeTruthy()
+        expect(screen.queryByText('No playtime readings recorded yet.')).toBeNull()
+      } else {
+        expect(screen.getByText('No playtime readings recorded yet.')).toBeTruthy()
+        expect(screen.queryByText(/^Checked /)).toBeNull()
+      }
+    },
+  )
+  it('renders absent metadata and zero playtime without inventing a publisher date or install path', async () => {
+    setup(
+      mode,
+      (input) => {
+        if (input.route === 'library.get')
+          return {
+            ok: true,
+            status: 200,
+            data: {
+              games: [
+                {
+                  ...game,
+                  title: 'Bare',
+                  playtimeMinutes: 0,
+                  bucket: 'never_played',
+                  entries: [{ ...game.entries[0], installed: false, playtimeMinutes: 0 }],
+                },
+              ],
+              lists: [],
+            },
+          }
+        if (input.route === 'game.details')
+          return {
+            ok: true,
+            status: 200,
+            data: { ...facts, events: [], history: {}, images: [], ownerships: [] },
+          }
+      },
+      'avalon',
+    )
+    await screen.findByRole('heading', { name: 'Bare' })
+    expect(document.querySelector('[data-details-identity-line]')).toBeNull()
+    expect(screen.getByText('No description yet. Metadata fills in automatically.')).toBeTruthy()
+    expect(screen.getByText("You've never opened this.")).toBeTruthy()
+    expect(document.querySelector('.avalon-history-figures strong')?.textContent).toBe('—')
+    expect(screen.queryByText('since last played')).toBeNull()
+    expect(screen.getByText('Steam · Not installed')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'More' }))
+    expect(screen.queryByRole('button', { name: 'Open install folder' })).toBeNull()
+  })
+  it('binds refreshed enrichment and installation facts into the already open panel', async () => {
+    const { client } = setup(mode, undefined, 'avalon')
+    await screen.findByRole('heading', { name: 'Original game' })
+    const date = new Date()
+    date.setMonth(date.getMonth() - 21)
+    client.setQueryData(['api', 'library.get'], {
+      games: [
+        {
+          ...game,
+          title: 'Factorio',
+          firstReleaseYear: 2020,
+          playtimeMinutes: 16080,
+          lastPlayedAt: date.toISOString(),
+          summary: 'You crash-land on an alien planet.',
+        },
+      ],
+      lists: [],
+    })
+    expect(await screen.findByRole('heading', { name: 'Factorio' })).toBeTruthy()
+    expect(screen.getByText('2020')).toBeTruthy()
+    expect(screen.getByText('You crash-land on an alien planet.')).toBeTruthy()
+    expect(screen.queryByText('No description yet. Metadata fills in automatically.')).toBeNull()
+    expect(screen.getByText('268h')).toBeTruthy()
+    expect(document.querySelectorAll('.avalon-history-figures strong')[1]?.textContent).toMatch(/^1y /)
+    expect(screen.getByText('Steam · Installed')).toBeTruthy()
+    fireEvent.click(screen.getByRole('tab', { name: 'Library' }))
+    fireEvent.click(screen.getByText('Installation & identifiers'))
+    expect(screen.getByText(facts.ownerships[0].installPath)).toBeTruthy()
+  })
   it('keeps a metadata-poor provisional game readable and installable without inventing a session or folder', async () => {
     setup(
       mode,
@@ -232,7 +435,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details compo
       ).toBe(nameIsProvisional)
     },
   )
-  it.each([0, 28])(
+  it.each([0, 7, 28])(
     'distinguishes no play from missing last-session dates for %s minutes',
     async (playtimeMinutes) => {
       setup(
@@ -257,6 +460,9 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details compo
         ),
       ).toBeNull()
       expect(screen.queryByText('Unknown', { exact: true })).toBeNull()
+      expect(document.querySelector('.avalon-history-figures strong')?.textContent).toBe(
+        playtimeMinutes ? `${playtimeMinutes}m` : '—',
+      )
     },
   )
   it('keeps the game match menu face and query while its own Back control folds the editor', async () => {

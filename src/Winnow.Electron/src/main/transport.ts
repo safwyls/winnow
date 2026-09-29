@@ -3,6 +3,8 @@ import { join } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 import type { ApiRequest, ApiResult, BackendEvent, ConnectionState } from '../shared/bridge'
 import { resolveRoute } from './routes'
+import { artworkFileLimit, validArtworkImport } from './artwork-import'
+import type { ArtworkImport, ArtworkSaveResult } from '../shared/bridge'
 
 export interface Discovery {
   address: string
@@ -346,7 +348,30 @@ export class BackendTransport {
       }
     }
   }
-  async artwork(provider: string, id: string, width = 1280): Promise<string | null> {
+  async importArtwork(input: ArtworkImport, bytes: Uint8Array): Promise<ApiResult<ArtworkSaveResult>> {
+    if (!validArtworkImport(input) || !bytes.length || bytes.length > artworkFileLimit)
+      return { ok: false, status: 400, message: 'Choose a non-empty image no larger than 16 MiB.' }
+    let connection: Discovery
+    try { connection = await this.ready() }
+    catch { return { ok: false, status: 503, message: 'The backend is unavailable. Reconnect before trying again.' } }
+    try {
+      const query = new URLSearchParams({ revision: input.revision })
+      const response = await this.fetcher(new URL(`/api/v1/works/${input.workId}/artwork/${input.slot}/image?${query}`, connection.address), {
+        method: 'POST', headers: { Authorization: `Bearer ${connection.token}`, 'Content-Type': 'application/octet-stream', Accept: 'application/json' },
+        body: new Uint8Array(bytes).buffer, redirect: 'error', signal: AbortSignal.any([this.lifetime.signal, AbortSignal.timeout(120000)]),
+      })
+      if (response.status === 401) this.attempt?.abort()
+      const text = (await response.text()).replaceAll(connection.token, '[redacted]')
+      if (text.length > 1024 * 1024) throw new Error('Response too large')
+      const data = text ? JSON.parse(text) : undefined
+      if (!response.ok) return { ok: false, status: response.status, data, message: String(data?.detail ?? data?.title ?? `Backend returned ${response.status}`).slice(0, 1000) }
+      if (typeof data?.success !== 'boolean' || typeof data?.message !== 'string') throw new Error('Invalid artwork response')
+      return { ok: true, status: response.status, data }
+    } catch {
+      return { ok: false, status: 0, message: 'The response was lost. The image may have been saved. Refresh current artwork before trying again.' }
+    }
+  }
+  async artwork(provider: string, id: string, width = 1280, requestSignal?: AbortSignal): Promise<string | null> {
     if (
       typeof provider !== 'string' ||
       !/^[a-zA-Z0-9:.-]{1,80}$/.test(provider) ||
@@ -354,19 +379,22 @@ export class BackendTransport {
       !/^[a-zA-Z0-9_.-]{1,256}$/.test(id) ||
       !Number.isInteger(width) ||
       width < 64 ||
-      width > 2560
+      width > 3840
     )
       return null
     try {
+      requestSignal?.throwIfAborted()
       const connection = await this.ready()
+      requestSignal?.throwIfAborted()
       const query = new URLSearchParams({ provider, id, width: String(width) })
       const response = await this.fetcher(new URL(`/api/v1/artwork/image?${query}`, connection.address), {
         headers: { Authorization: `Bearer ${connection.token}` },
         redirect: 'error',
-        signal: AbortSignal.any([this.lifetime.signal, AbortSignal.timeout(30000)]),
+        signal: AbortSignal.any([this.lifetime.signal, AbortSignal.timeout(30000), ...(requestSignal ? [requestSignal] : [])]),
       })
       if (!response.ok || response.headers.get('content-type')?.split(';')[0] !== 'image/png') return null
       const bytes = await response.arrayBuffer()
+      requestSignal?.throwIfAborted()
       if (bytes.byteLength > 32 * 1024 * 1024) return null
       return `data:image/png;base64,${Buffer.from(bytes).toString('base64')}`
     } catch {

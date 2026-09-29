@@ -30,7 +30,7 @@ import { SteamCapture, SteamCaptureReview } from './SteamCapture'
 import type { SteamCaptureResult } from '../../shared/bridge'
 import { BackendRestart } from './BackendRestart'
 import { SteamConnectionPanel } from './SteamConnectionPanel'
-import { steamConnectionState } from './steamConnection'
+import { steamCapturePermissionExplanation, steamConnectionState } from './steamConnection'
 import { NativeEpicAccount } from './EpicAccount'
 import { SteamAccountOperation, useSteamAccountBusy } from './SteamAccountOperation'
 import { Platforms } from './Platforms'
@@ -370,7 +370,7 @@ export function SteamKeyForm({ hasKey }: { hasKey?: boolean } = {}) {
   const busy = useSteamAccountBusy(command.isPending)
   useSetupBusy(command.isPending)
   async function save() {
-    if (busy) return
+    if (busy || !key.trim()) return
     setMessage('')
     const result = await command.mutateAsync({ route: 'connections.steam.key', body: { key } })
     if (result === 0) setKey('')
@@ -550,8 +550,7 @@ export function SteamAccount({
                 Also capture purchase history and licences
               </label>
               <p className="muted">
-                Off by default. This reads what you bought, what you paid and how licences arrived. You review
-                the captured pages before importing.
+                {steamCapturePermissionExplanation}
               </p>
               <div className="form-actions">
                 <button disabled={pending} onClick={() => void signIn()}>

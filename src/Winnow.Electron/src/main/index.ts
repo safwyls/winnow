@@ -19,6 +19,8 @@ import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
 import { release as osRelease } from 'node:os'
 import { WindowAppearanceController } from './window-appearance'
+import { appearanceSession } from '../shared/appearance-session'
+import { SessionAppearance } from './appearance-session'
 import { AvalonThemeStore } from './avalon-theme-store'
 import type { LibraryResponse, Workspace } from '../renderer/api/types'
 import { recentGames } from './jump-list'
@@ -39,6 +41,7 @@ import type { ApplicationUpdateAction, ApplicationUpdateSnapshot } from '../shar
 import type { ApiRequest, ApplicationActivation, BackendEvent, ConnectionState } from '../shared/bridge'
 import { quoteArgument, readActivation, validateActivationArguments, validatedActivation } from './activation'
 import { BackendTransport } from './transport'
+import { importArtworkFile } from './artwork-import'
 import { cancelSteamWindow, captureSteamPages, signInToSteam } from './steam-auth'
 import { writeSteamDiagnostic } from './steam-diagnostics'
 import { EpicSignInController } from './epic-auth'
@@ -120,6 +123,8 @@ let window: BrowserWindow | undefined
 let transport: BackendTransport | undefined
 let updater: ApplicationUpdater | undefined
 let safeTheme = process.argv.includes('--safe-theme')
+const captureAppearance = appearanceSession(startupArgs, app.isPackaged)
+const sessionAppearance = captureAppearance ? new SessionAppearance(captureAppearance) : null
 let quitting = false
 let tray: Tray | undefined
 let rendererAcceptsActivation = false
@@ -406,15 +411,21 @@ async function initialize(): Promise<void> {
   }
   const requestLifetimes = new RequestLifetimes()
   const requestOwners = new WeakSet<object>()
-  ipcMain.handle('winnow:request', (event, request: ApiRequest) => {
-    validateSender(event)
-    if (!requestOwners.has(event.sender)) {
-      const owner = event.sender
+  const observeRequestOwner = (owner: Electron.WebContents) => {
+    if (!requestOwners.has(owner)) {
       requestOwners.add(owner)
       owner.once('destroyed', () => requestLifetimes.close(owner))
       owner.on('render-process-gone', () => requestLifetimes.close(owner))
     }
-    return requestLifetimes.run(event.sender, request, (signal) => transport!.request(request, signal))
+  }
+  ipcMain.handle('winnow:request', (event, request: ApiRequest) => {
+    validateSender(event)
+    observeRequestOwner(event.sender)
+    return requestLifetimes.run(event.sender, request, (signal) =>
+      sessionAppearance
+        ? sessionAppearance.request(request, () => transport!.request(request, signal))
+        : transport!.request(request, signal),
+    )
   })
   ipcMain.handle('winnow:request:cancel', (event, requestId: unknown) => {
     validateSender(event)
@@ -422,12 +433,15 @@ async function initialize(): Promise<void> {
   })
   handle('winnow:connection', () => transport!.connection())
   handle('winnow:fonts', () => fonts.read(window!.webContents))
-  handle('winnow:window:appearance', value => new WindowAppearanceController(window!, () => ({
-    platform: process.platform, release: osRelease(),
-    highContrast: nativeTheme.shouldUseHighContrastColors || nativeTheme.inForcedColorsMode,
-    reducedTransparency: nativeTheme.prefersReducedTransparency,
-    remoteSession: process.env.SESSIONNAME?.toUpperCase().startsWith('RDP-') ?? false,
-  })).apply(value))
+  handle('winnow:window:appearance', (value) =>
+    new WindowAppearanceController(window!, () => ({
+      platform: process.platform,
+      release: osRelease(),
+      highContrast: nativeTheme.shouldUseHighContrastColors || nativeTheme.inForcedColorsMode,
+      reducedTransparency: nativeTheme.prefersReducedTransparency,
+      remoteSession: process.env.SESSIONNAME?.toUpperCase().startsWith('RDP-') ?? false,
+    })).apply(value),
+  )
   nativeTheme.on('updated', () => emit('winnow:window:appearance:invalidated', undefined))
   handle('winnow:backend:restart', () => backendService.restart())
   handle('winnow:update:snapshot', () => updater!.snapshot)
@@ -438,10 +452,38 @@ async function initialize(): Promise<void> {
     rendererAcceptsActivation = true
     return pendingActivations.splice(0)
   })
-  handle('winnow:artwork', (provider: string, id: string, width?: number) =>
-    transport!.artwork(provider, id, width),
+  ipcMain.handle(
+    'winnow:artwork',
+    async (event, provider: string, id: string, width?: number, requestId?: string) => {
+      validateSender(event)
+      observeRequestOwner(event.sender)
+      const result = await requestLifetimes.run(
+        event.sender,
+        { route: 'artwork.image', requestId },
+        async (signal) => ({
+          ok: true,
+          status: 200,
+          data: await transport!.artwork(provider, id, width, signal),
+        }),
+      )
+      return result.ok ? (result.data ?? null) : null
+    },
+  )
+  handle('winnow:artwork:import', (input: unknown) =>
+    importArtworkFile(input, {
+      choose: async () => {
+        const choice = await dialog.showOpenDialog(window!, {
+          title: 'Choose artwork',
+          properties: ['openFile'],
+          filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'] }],
+        })
+        return choice.canceled ? null : (choice.filePaths[0] ?? null)
+      },
+      upload: (target, bytes) => transport!.importArtwork(target, bytes),
+    }),
   )
   handle('winnow:preferences:load', async () => {
+    if (sessionAppearance) return sessionAppearance.loadProfile()
     if (safeTheme) return null
     try {
       return await readProfile(preferencesFile)
@@ -449,7 +491,10 @@ async function initialize(): Promise<void> {
       return null
     }
   })
-  handle('winnow:preferences:save', (value: unknown) => saveProfile(preferencesFile, value))
+  handle('winnow:appearance:session', () => captureAppearance)
+  handle('winnow:preferences:save', (value: unknown) =>
+    sessionAppearance ? sessionAppearance.saveProfile(value) : saveProfile(preferencesFile, value),
+  )
   handle('winnow:profile:import', async () => {
     const choice = await dialog.showOpenDialog(window!, {
       title: 'Import appearance profile',
@@ -469,11 +514,15 @@ async function initialize(): Promise<void> {
     return true
   })
   handle('winnow:themes:list', () => listThemePackages(themesRoot))
-  const avalonThemes = new AvalonThemeStore(async () => {
-    const result = await transport!.request<{ directory: string }>({ route: 'plugins.directory' })
-    if (!result.ok || !result.data?.directory) throw new Error('Connect to your library before reading its themes.')
-    return join(dirname(result.data.directory), 'themes')
-  }, () => emit('winnow:avalon-themes:changed', undefined))
+  const avalonThemes = new AvalonThemeStore(
+    async () => {
+      const result = await transport!.request<{ directory: string }>({ route: 'plugins.directory' })
+      if (!result.ok || !result.data?.directory)
+        throw new Error('Connect to your library before reading its themes.')
+      return join(dirname(result.data.directory), 'themes')
+    },
+    () => emit('winnow:avalon-themes:changed', undefined),
+  )
   handle('winnow:avalon-themes:list', async () => {
     const preparation = await avalonThemes.prepare()
     const catalogue = await avalonThemes.load()
@@ -537,15 +586,17 @@ async function initialize(): Promise<void> {
     const problem = await shell.openPath(path)
     if (problem) throw new Error('The folder could not be opened.')
   })
-  handle('winnow:install-folder', (ownershipId: unknown) => openInstallFolder(ownershipId, {
-    workspace: async () => {
-      const result = await transport!.request<InstallationWorkspace>({route:'library.workspace'})
-      if (!result.ok || !result.data) throw new Error('Connect to your library before opening this folder.')
-      return result.data
-    },
-    isDirectory: async path => (await stat(path)).isDirectory(),
-    openPath: path => shell.openPath(path),
-  }))
+  handle('winnow:install-folder', (ownershipId: unknown) =>
+    openInstallFolder(ownershipId, {
+      workspace: async () => {
+        const result = await transport!.request<InstallationWorkspace>({ route: 'library.workspace' })
+        if (!result.ok || !result.data) throw new Error('Connect to your library before opening this folder.')
+        return result.data
+      },
+      isDirectory: async (path) => (await stat(path)).isDirectory(),
+      openPath: (path) => shell.openPath(path),
+    }),
+  )
   const chooseManualExecutable = async () => {
     const result = await dialog.showOpenDialog(window!, {
       title: 'Choose game executable',
@@ -573,18 +624,30 @@ async function initialize(): Promise<void> {
     await writeFile(choice.filePath, result.data.content, 'utf8')
     return true
   })
-  handle('winnow:steam:signin', (options: SteamSignInOptions) => signInToSteam(window!, transport!, options, (message) => {
-    // Resolve the active backend location so legacy-directory fallback installs share their logs.
-    void transport!.request<{ directory: string }>({ route: 'plugins.directory' }).then((result) => {
-      if (result.ok && result.data?.directory) writeSteamDiagnostic(dirname(result.data.directory), message)
-    }).catch(() => {})
-  }))
-  const epicSignIn = new EpicSignInController(transport!, join(app.getPath('userData'), 'account-profiles'), join(here, '../preload/epic.cjs'))
+  handle('winnow:steam:signin', (options: SteamSignInOptions) =>
+    signInToSteam(window!, transport!, options, (message) => {
+      // Resolve the active backend location so legacy-directory fallback installs share their logs.
+      void transport!
+        .request<{ directory: string }>({ route: 'plugins.directory' })
+        .then((result) => {
+          if (result.ok && result.data?.directory)
+            writeSteamDiagnostic(dirname(result.data.directory), message)
+        })
+        .catch(() => {})
+    }),
+  )
+  const epicSignIn = new EpicSignInController(
+    transport!,
+    join(app.getPath('userData'), 'account-profiles'),
+    join(here, '../preload/epic.cjs'),
+  )
   app.once('will-quit', () => epicSignIn.dispose())
   handle('winnow:epic:prepare', () => epicSignIn.prepare(window!))
   handle('winnow:epic:signin', (options: EpicSignInOptions) => epicSignIn.signIn(window!, options))
   handle('winnow:epic:browser', (options: EpicSignInOptions) => epicSignIn.openManual(window!, options))
-  handle('winnow:epic:complete', (options: EpicSignInOptions & { callback: string }) => epicSignIn.completeManual(window!, options))
+  handle('winnow:epic:complete', (options: EpicSignInOptions & { callback: string }) =>
+    epicSignIn.completeManual(window!, options),
+  )
   handle('winnow:epic:cancel', () => epicSignIn.cancel(window!))
   handle('winnow:steam:cancel', () => cancelSteamWindow(window!))
   handle('winnow:steam:capture', (options: { consentGranted: boolean }) =>
@@ -787,10 +850,12 @@ async function initialize(): Promise<void> {
 
 if (!ownsInstance) app.quit()
 else if (startupArgumentError) {
-  app.exit(reportStartupFailure(startupArgumentError, {
-    exitCode: dataDirectoryRefusalCode,
-    surface: dialog.showErrorBox,
-  }))
+  app.exit(
+    reportStartupFailure(startupArgumentError, {
+      exitCode: dataDirectoryRefusalCode,
+      surface: dialog.showErrorBox,
+    }),
+  )
 } else
   app
     .whenReady()

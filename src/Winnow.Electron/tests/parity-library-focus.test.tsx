@@ -110,6 +110,7 @@ afterEach(() => {
       'selected',
       'selection',
       'rules',
+      'filter-order',
     ])
       clearViewState(`${prefix}:${key}`)
     libraryScroll.delete(prefix)

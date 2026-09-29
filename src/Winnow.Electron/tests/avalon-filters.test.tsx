@@ -156,6 +156,148 @@ describe('Avalon library filters', () => {
 
 describe.each([false, true])('Avalon filter panel fullscreen=%s', (fullscreen) => {
   it.each([
+    ['gog', 'GOG'],
+    ['plugin:xbox', 'Xbox'],
+  ])('hides empty metadata and a universal store then exposes the arriving %s provider', (store, label) => {
+    const steam = {
+      ...games[0],
+      firstReleaseYear: null,
+      entries: [{ ...games[0].entries[0], releaseId: 900 }],
+    }
+    const initial = [steam],
+      apply = vi.fn(),
+      close = vi.fn()
+    const props = {
+      filter: {},
+      games: initial,
+      allGames: initial,
+      facts: avalonFacts(initial, workspace),
+      workspace,
+      fullscreen,
+      apply,
+      close,
+    }
+    const view = render(<AvalonFilterPanel {...props} />)
+    expect(screen.queryByText('Genres')).toBeNull()
+    expect(screen.queryByText('Tags')).toBeNull()
+    expect(screen.queryByText('Stores')).toBeNull()
+    expect(screen.queryByRole('textbox', { name: 'From this year' })).toBeNull()
+    expect(screen.getByText('No game metadata is available to filter yet.')).toBeDefined()
+    expect(screen.getByRole('combobox', { name: 'Installation' })).toBeDefined()
+    expect(screen.queryByRole('combobox', { name: 'Update status' })).toBeNull()
+    expect(screen.queryByText('Library status')).toBeNull()
+    const next = [
+      ...initial,
+      { ...games[1], firstReleaseYear: null, entries: [{ ...games[1].entries[0], store, releaseId: 901 }] },
+    ]
+    view.rerender(
+      <AvalonFilterPanel {...props} games={next} allGames={next} facts={avalonFacts(next, workspace)} />,
+    )
+    fireEvent.click(screen.getByRole('checkbox', { name: `${label}, 1 matching title` }))
+    expect(screen.getByRole('checkbox', { name: 'Steam, 1 matching title' })).toBeDefined()
+    if (fullscreen) fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
+    expect(apply.mock.lastCall?.[0].stores).toEqual([store])
+    const nextFacts = avalonFacts(next, workspace)
+    expect(
+      next
+        .filter((game) => matchesAvalonRules(game, apply.mock.lastCall![0], nextFacts.get(game.workId)))
+        .map((game) => game.title),
+    ).toEqual(['Bravo'])
+  })
+  it('keeps known saved zero-count facets named and clearable even when no title carries them', () => {
+    const empty = [{ ...games[2], entries: [] }],
+      apply = vi.fn()
+    render(
+      <AvalonFilterPanel
+        filter={{ genreIds: [1], stores: ['gog'] }}
+        games={empty}
+        facts={avalonFacts(empty, workspace)}
+        workspace={workspace}
+        fullscreen={fullscreen}
+        apply={apply}
+        close={vi.fn()}
+      />,
+    )
+    const rpg = screen.getByRole('checkbox', { name: 'RPG, 0 matching titles' }) as HTMLInputElement
+    expect(rpg.checked).toBe(true)
+    expect(rpg.disabled).toBe(false)
+    fireEvent.click(rpg)
+    if (fullscreen) fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
+    expect(apply.mock.lastCall?.[0]).toMatchObject({ genreIds: [], stores: ['gog'] })
+  })
+  it('freezes common-first ordering while residual zero options disable', () => {
+    const two = [games[0], games[1], { ...games[2], entries: [{ ...games[1].entries[0], releaseId: 30 }] }],
+      matrix: AvalonWorkspace = {
+        facets: [
+          { id: 1, kind: 'genre', slug: 'rpg', name: 'RPG' },
+          { id: 2, kind: 'genre', slug: 'shooter', name: 'Shooter' },
+          { id: 3, kind: 'game_mode', slug: 'co_op', name: 'Co-op' },
+          { id: 4, kind: 'game_mode', slug: 'single', name: 'Single player' },
+        ],
+        releaseFacets: [
+          { releaseId: 10, facetIds: [1], gameModes: ['co_op'] },
+          { releaseId: 20, facetIds: [2], gameModes: ['single'] },
+          { releaseId: 30, facetIds: [2], gameModes: ['single'] },
+        ],
+      },
+      apply = vi.fn()
+    render(
+      <AvalonFilterPanel
+        filter={{}}
+        games={two}
+        facts={avalonFacts(two, matrix)}
+        workspace={matrix}
+        fullscreen={fullscreen}
+        apply={apply}
+        close={vi.fn()}
+      />,
+    )
+    const genreOrder = () =>
+      [...document.querySelectorAll('details')]
+        .find((group) => group.querySelector('summary')?.textContent.startsWith('Genres'))!
+        .querySelectorAll('.avalon-filter-options label > span')
+    const before = [...genreOrder()].map((node) => node.textContent)
+    expect(before).toEqual(['Shooter', 'RPG'])
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Co-op, 1 matching title' }))
+    expect(
+      (screen.getByRole('checkbox', { name: 'Shooter, 0 matching titles' }) as HTMLInputElement).disabled,
+    ).toBe(true)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'RPG, 1 matching title' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Co-op, 1 matching title' }))
+    // Select the other mode before RPG so its selected zero remains a way out.
+    fireEvent.click(screen.getByRole('checkbox', { name: 'RPG, 1 matching title' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Single player, 2 matching titles' }))
+    expect([...genreOrder()].map((node) => node.textContent)).toEqual(before)
+    expect(
+      (screen.getByRole('checkbox', { name: 'RPG, 0 matching titles' }) as HTMLInputElement).disabled,
+    ).toBe(true)
+  })
+  it('keeps a checked zero-count option enabled so a restored empty cut can be widened', () => {
+    const apply = vi.fn()
+    render(
+      <AvalonFilterPanel
+        filter={{ genreIds: [1], stores: ['xbox'] }}
+        games={games}
+        facts={facts}
+        workspace={workspace}
+        fullscreen={fullscreen}
+        apply={apply}
+        close={vi.fn()}
+      />,
+    )
+    const selected = screen.getByRole('checkbox', { name: 'RPG, 0 matching titles' }) as HTMLInputElement
+    expect(selected.checked).toBe(true)
+    expect(selected.disabled).toBe(false)
+    fireEvent.click(selected)
+    if (fullscreen) fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
+    const filter = apply.mock.lastCall![0]
+    expect(
+      games
+        .filter((game) => matchesAvalonRules(game, filter, facts.get(game.workId)))
+        .map((game) => game.title),
+    ).toEqual(['Bravo'])
+  })
+  it.each([
     ['999', '2020', false],
     ['1000', '9999', true],
     ['9999', '9999', true],

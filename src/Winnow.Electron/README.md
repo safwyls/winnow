@@ -82,7 +82,7 @@ Catalogue and installed-theme profiles retain their choices; fresh installs and 
 recovery use Avalon.
 
 On the first Electron launch for a library, Avalon loads its authored theme files before
-importing the saved palette from `appearance.theme`. The legacy `hoard` default maps to
+importing the saved palette from `appearance.theme`. The legacy default identifier maps to
 Winnow only when no authored theme claims that ID. An existing Electron profile takes
 precedence. Saved role fonts and text sizes for bundled and authored palettes also import
 from `appearance.typography`. This import does not change Avalonia's palette or typography

@@ -110,6 +110,7 @@ afterEach(() => {
       'selected',
       'selection',
       'rules',
+      'filter-order',
     ])
       clearViewState(`avalon:library:${mode}:${key}`)
     for (const key of ['tab', 'editing']) clearViewState(`${mode}:details:1:${key}`)
@@ -215,6 +216,224 @@ const selectedCards = () =>
     )
     .map((card) => Number(card.dataset.avalonGame))
 
+function chromeLibrary() {
+  current.games = current.games.map((game, index) => ({
+    ...game,
+    bucket: index === 2 ? 'never_played' : 'bounced',
+    playtimeMinutes: [300, 60, 0][index],
+    lastPlayedAt: ['2024-01-01T00:00:00Z', '2026-09-01T00:00:00Z', null][index],
+  }))
+  current.lists[1] = {
+    ...current.lists[1],
+    name: 'RPGs',
+    filter: { genreIds: [1], buckets: ['bounced'] },
+    releaseIds: [100],
+  }
+  const workspace = {
+    works: [],
+    externalIds: [],
+    epicLaunchKeys: {},
+    pluginActions: {},
+    facets: ['RPG', 'Action', 'Strategy'].map((name, index) => ({
+      id: index + 1,
+      kind: 'genre',
+      slug: name.toLowerCase(),
+      name,
+    })),
+    releaseFacets: current.games.map((game, index) => ({
+      releaseId: game.entries[0].releaseId,
+      facetIds: [index + 1],
+      gameModes: [],
+    })),
+  }
+  handler = (input) => (input.route === 'library.workspace' ? ok(workspace) : undefined)
+  return workspace
+}
+async function genre(mode: Mode, name: string) {
+  fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+  fireEvent.click(await screen.findByRole('checkbox', { name: new RegExp(`^${name},`) }))
+  fireEvent.click(
+    screen.getByRole('button', { name: mode === 'fullscreen' ? 'Apply filters' : 'Close filters' }),
+  )
+}
+
+describe('Library column and density controls', () => {
+  it('toggles all three column headers through the shared menu state with one active direction', () => {
+    chromeLibrary()
+    setup('desktop')
+    fireEvent.click(screen.getByRole('button', { name: 'List view' }))
+    for (const [column, sort, direction, order] of [
+      ['playtime', 'time', 'descending', [1, 2, 3]],
+      ['playtime', 'time-low', 'ascending', [3, 2, 1]],
+      ['title', 'title', 'ascending', [1, 2, 3]],
+      ['title', 'title-desc', 'descending', [3, 2, 1]],
+      ['idle', 'dormant', 'descending', [3, 1, 2]],
+      ['idle', 'recent', 'ascending', [2, 1, 3]],
+    ] as const) {
+      fireEvent.click(screen.getByRole('button', { name: `Sort by ${column}` }))
+      expect((screen.getByRole('combobox', { name: 'Sort' }) as HTMLSelectElement).value).toBe(sort)
+      expect(cards()).toEqual(order)
+      expect(document.querySelectorAll('.avalon-record-header [data-sort-direction]')).toHaveLength(1)
+      expect(
+        screen.getByRole('button', { name: `Sort by ${column}` }).getAttribute('data-sort-direction'),
+      ).toBe(direction)
+    }
+    fireEvent.change(screen.getByRole('combobox', { name: 'Sort' }), { target: { value: 'title' } })
+    expect(screen.getByRole('button', { name: 'Sort by title' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Sort by idle' }).getAttribute('aria-pressed')).toBe('false')
+  })
+  it('mirrors density across the declared 108 to 200 range and adds grid columns toward the right', () => {
+    setup('desktop')
+    const slider = screen.getByRole('slider', { name: 'Density' }) as HTMLInputElement
+    expect([slider.min, slider.max, slider.value]).toEqual(['108', '200', '160'])
+    fireEvent.change(slider, { target: { value: '108' } })
+    expect(document.querySelector<HTMLElement>('.avalon-grid-row')!.style.gridTemplateColumns).toContain(
+      'repeat(4,',
+    )
+    fireEvent.change(slider, { target: { value: '200' } })
+    expect(document.querySelector<HTMLElement>('.avalon-grid-row')!.style.gridTemplateColumns).toContain(
+      'repeat(7,',
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'List view' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Grid view' }))
+    expect(slider.value).toBe('200')
+  })
+})
+
+describe.each(['desktop', 'fullscreen'] as const)('Library cut bar in %s', (mode) => {
+  it('explains an empty saved facet cut and restores matching games by dropping one rule', async () => {
+    chromeLibrary()
+    current.lists[1] = { ...current.lists[1], filter: { genreIds: [1], stores: ['gog'] }, releaseIds: [] }
+    setup(mode)
+    openList(11)
+    await screen.findByRole('button', { name: 'Remove RPG filter' })
+    expect(cards()).toEqual([])
+    expect(screen.getByText('No titles match these filters. Drop one to widen the cut.')).toBeDefined()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove RPG filter' }))
+    expect(cards()).toEqual([3])
+  })
+  it('states total and remaining games and removes every bucket and genre rule independently', async () => {
+    chromeLibrary()
+    setup(mode)
+    expect(screen.queryByRole('region', { name: 'Current library filters' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Started2' }))
+    await genre(mode, 'RPG')
+    const bar = screen.getByRole('region', { name: 'Current library filters' })
+    expect(within(bar).getByLabelText('3 → 1')).toBeDefined()
+    const chips = [...bar.querySelectorAll('[data-filter-origin]')]
+    expect(chips.map((chip) => chip.textContent)).toEqual(['Started', 'RPG'])
+    expect(chips.map((chip) => chip.getAttribute('aria-description'))).toEqual([
+      'BUCKET: Started',
+      'GENRE: RPG',
+    ])
+    fireEvent.click(within(bar).getByRole('button', { name: 'Remove RPG filter' }))
+    expect(cards()).toEqual([1, 2])
+    fireEvent.click(within(bar).getByRole('button', { name: 'Remove Started filter' }))
+    expect(cards()).toEqual([1, 2, 3])
+    expect(screen.queryByRole('region', { name: 'Current library filters' })).toBeNull()
+  })
+  it('marks saved live-list rules neutrally and turns unsaved additions into saved rules after Update', async () => {
+    chromeLibrary()
+    const old = handler
+    handler = (input) => {
+      if (input.route === 'list.filter') {
+        const body = input.body as { filter: LibraryFilter; expectedRevision: string }
+        expect(body.expectedRevision).toBe('l1')
+        current.lists[1] = {
+          ...current.lists[1],
+          filter: body.filter,
+          revision: 'l2',
+          releaseIds: [100, 200],
+        }
+        return ok(current.lists[1])
+      }
+      return old(input)
+    }
+    setup(mode)
+    openList(11)
+    const brought = await screen.findByRole('button', { name: 'Remove RPG filter' })
+    expect(brought.getAttribute('aria-description')).toBe('GENRE: RPG — from this live list')
+    expect(screen.getByRole('button', { name: 'Leave this list' }).textContent).toContain('LIVE LISTRPGs')
+    expect(screen.getByRole('button', { name: 'Leave this list' }).getAttribute('data-filter-origin')).toBe(
+      'context',
+    )
+    expect((screen.getByRole('combobox', { name: 'My lists' }) as HTMLSelectElement).value).toBe('11')
+    expect(document.querySelector('.avalon-cut-chips')!.firstElementChild).toBe(
+      screen.getByRole('button', { name: 'Leave this list' }),
+    )
+    const rail = screen.getByRole('group', { name: 'Library collections' })
+    expect(
+      within(rail)
+        .getAllByRole('button')
+        .filter((button) => button.getAttribute('aria-pressed') === 'true'),
+    ).toHaveLength(0)
+    expect(within(rail).getByRole('button', { name: 'Started2' }).getAttribute('data-filter-rule')).toBe(
+      'true',
+    )
+    await genre(mode, 'Action')
+    const added = screen.getByRole('button', { name: 'Remove Action filter' })
+    expect(added.getAttribute('aria-description')).toBe('GENRE: Action — yours, not saved to this list')
+    expect(added.getAttribute('data-filter-origin')).toBe('unsaved')
+    expect(cards()).toEqual([1, 2])
+    fireEvent.click(screen.getByRole('button', { name: 'Update RPGs' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Update RPGs' })).toBeNull())
+    for (const chip of document.querySelectorAll(
+      '.avalon-cut-chips [data-filter-origin]:not([data-filter-origin="context"])',
+    ))
+      expect(chip.getAttribute('data-filter-origin')).toBe('list')
+    fireEvent.click(screen.getByRole('button', { name: 'Leave this list' }))
+    expect(cards()).toEqual([1, 2, 3])
+    expect(screen.queryByRole('region', { name: 'Current library filters' })).toBeNull()
+  })
+  it('keeps user rules when leaving a manual context and clears search using its own chip', async () => {
+    const workspace = chromeLibrary()
+    current.lists[0] = { ...current.lists[0], releaseIds: [100, 200] }
+    workspace.releaseFacets = workspace.releaseFacets!.map((row) =>
+      row.releaseId === 300 ? { ...row, facetIds: [1] } : row,
+    )
+    setup(mode)
+    openList(10)
+    await genre(mode, 'RPG')
+    expect(screen.getByRole('button', { name: 'Leave this list' }).textContent).toContain('LISTHandpicked')
+    expect(screen.getByRole('button', { name: 'Leave this list' }).getAttribute('data-filter-origin')).toBe(
+      'context',
+    )
+    expect(screen.getByRole('button', { name: 'Remove RPG filter' }).getAttribute('data-filter-origin')).toBe(
+      'user',
+    )
+    expect(cards()).toEqual([1])
+    fireEvent.click(screen.getByRole('button', { name: 'Leave this list' }))
+    expect(cards()).toEqual([1, 3])
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search games' }), { target: { value: 'no match' } })
+    expect(cards()).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'Remove search filter' }))
+    expect(cards()).toEqual([1, 3])
+  })
+  it('toggles the current bucket off outside a live list and clears only panel rules from the panel', async () => {
+    chromeLibrary()
+    setup(mode)
+    const started = screen.getByRole('button', { name: 'Started2' })
+    fireEvent.click(started)
+    fireEvent.click(started)
+    expect(cards()).toEqual([1, 2, 3])
+    fireEvent.click(started)
+    await genre(mode, 'RPG')
+    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+    const panel = screen.getByRole(mode === 'fullscreen' ? 'dialog' : 'region', { name: 'Library filters' })
+    fireEvent.click(within(panel).getByRole('button', { name: 'Clear filters' }))
+    fireEvent.click(
+      within(panel).getByRole('button', { name: mode === 'fullscreen' ? 'Apply filters' : 'Close filters' }),
+    )
+    expect(cards()).toEqual([1, 2])
+    expect(screen.getByRole('button', { name: 'Remove Started filter' })).toBeDefined()
+    expect(screen.queryByRole('button', { name: 'Remove RPG filter' })).toBeNull()
+    if (mode === 'fullscreen') {
+      expect(screen.queryByRole('slider', { name: 'Density' })).toBeNull()
+      expect(screen.queryByRole('group', { name: 'Library columns' })).toBeNull()
+    }
+  })
+})
+
 describe.each(['desktop', 'fullscreen'] as const)('library selection in %s', (mode) => {
   it('retains selected identities after reload and sort while keyboard navigation leaves one selected game', async () => {
     const view = setup(mode)
@@ -274,13 +493,17 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
     current.games = current.games.map((game, index) => ({
       ...game,
       bucket: ['bounced', 'active', 'never_played'][index]!,
-      entries: index === 0
-        ? [{ ...game.entries[0]!, store: 'steam' }, { ...game.entries[1]!, store: 'epic' }]
-        : [{ ...game.entries[0]!, store: index === 1 ? 'steam' : 'gog' }],
+      entries:
+        index === 0
+          ? [
+              { ...game.entries[0]!, store: 'steam' },
+              { ...game.entries[1]!, store: 'epic' },
+            ]
+          : [{ ...game.entries[0]!, store: index === 1 ? 'steam' : 'gog' }],
     }))
     setup(mode)
     expect(cards()).toHaveLength(3)
-    for (const label of ['All games3', 'Bounced1', 'In rotation1', 'Never played1'])
+    for (const label of ['All games3', 'Started1', 'In rotation1', 'Never played1'])
       expect(screen.getByRole('button', { name: label })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
     const panel = screen.getByRole(mode === 'fullscreen' ? 'dialog' : 'region', { name: 'Library filters' })

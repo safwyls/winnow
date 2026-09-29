@@ -113,24 +113,36 @@ export function avalonRuleOptions(
   workspace: AvalonWorkspace | undefined,
   filter: LibraryFilter,
   key: string,
+  choicesGames: LibraryGame[] = games,
 ) {
   const group = AVALON_FACET_GROUPS.find(([field]) => field === key)
   const selected = values(filter, key)
   const choices: { value: string | number; label: string; count: number; missing?: boolean }[] =
     key === 'stores'
-      ? [...new Set(games.flatMap((game) => game.entries.map((entry) => entry.store)))].map((value) => ({
-          value,
-          label: storeLabel(value),
-          count: 0,
-        }))
+      ? [...new Set(choicesGames.flatMap((game) => game.entries.map((entry) => entry.store)))].map(
+          (value) => ({
+            value,
+            label: storeLabel(value),
+            count: 0,
+          }),
+        )
       : key === 'buckets'
-        ? [...new Set(games.map((game) => game.bucket))].map((value) => ({
+        ? [...new Set(choicesGames.map((game) => game.bucket))].map((value) => ({
             value,
             label: value.replaceAll('_', ' '),
             count: 0,
           }))
         : (workspace?.facets ?? [])
-            .filter((facet) => facet.kind === group?.[1])
+            .filter(
+              (facet) =>
+                facet.kind === group?.[1] &&
+                (selected.includes(key === 'gameModes' ? facet.slug : facet.id) ||
+                  choicesGames.some((game) =>
+                    key === 'gameModes'
+                      ? facts.get(game.workId)?.gameModes.has(facet.slug)
+                      : facts.get(game.workId)?.facetIds.has(facet.id),
+                  )),
+            )
             .map((facet) => ({
               value: key === 'gameModes' ? facet.slug : facet.id,
               label: facet.name,

@@ -146,6 +146,7 @@ beforeEach(() => {
       'selected',
       'selection',
       'rules',
+      'filter-order',
       'tools',
     ])
       clearViewState(`avalon:library:${mode}:${key}`)

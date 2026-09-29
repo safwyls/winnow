@@ -78,6 +78,31 @@ function mount(
 }
 
 describe.each(['desktop', 'fullscreen'] as const)('original game actions in %s details', (mode) => {
+  it('carries the Steam identity into Install and the real store and news destinations', async () => {
+    const { request } = mount(<Details presentation="avalon" workId={1} mode={mode} />, [
+      { ...entry, installed: false },
+    ])
+    fireEvent.click(await screen.findByRole('button', { name: 'Install' }))
+    await waitFor(() =>
+      expect(
+        request.mock.calls.some(
+          ([input]) =>
+            input.route === 'actions.execute' &&
+            input.params?.ownershipId === 1 &&
+            (input.body as { action: string }).action === 'Install',
+        ),
+      ).toBe(true),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'More' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Store page' }))
+    await waitFor(() =>
+      expect(window.winnow.openExternal).toHaveBeenCalledWith('https://store.steampowered.com/app/620/'),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Patch notes' }))
+    await waitFor(() =>
+      expect(window.winnow.openExternal).toHaveBeenCalledWith('https://store.steampowered.com/news/app/620'),
+    )
+  })
   it('withholds every store action and link for a malformed Steam identity', async () => {
     const facts = {
       ...workspace,

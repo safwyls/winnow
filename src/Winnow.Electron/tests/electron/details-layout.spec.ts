@@ -182,6 +182,13 @@ for (const [width, height, scale, uiScale] of [
         family: style.fontFamily,
         bodyFamily: getComputedStyle(document.documentElement).getPropertyValue('--font-body').trim(),
         readingHeight: reading.getBoundingClientRect().height,
+        headerHeight: hero.getBoundingClientRect().height,
+        actionsHeight: node.querySelector('.avalon-details-actions')!.getBoundingClientRect().height,
+        rootHeight: node.getBoundingClientRect().height,
+        zoom: getComputedStyle(document.body).zoom,
+        htmlScale: getComputedStyle(document.documentElement).getPropertyValue(
+          '--fullscreen-interface-scale',
+        ),
         heroBottom: hero.getBoundingClientRect().bottom,
         height: innerHeight,
         width: innerWidth,
@@ -193,7 +200,7 @@ for (const [width, height, scale, uiScale] of [
     })
     expect(metrics.titleHeight).toBeLessThanOrEqual(metrics.lineHeight * 2 * uiScale + 1)
     expect(metrics.family.replace(/["']/g, '')).toBe(metrics.bodyFamily.replace(/["']/g, ''))
-    expect(metrics.readingHeight).toBeGreaterThan(100)
+    expect(metrics.readingHeight, JSON.stringify(metrics)).toBeGreaterThan(100)
     expect(metrics.heroBottom).toBeLessThan(metrics.height - 100)
     expect(metrics.personalRatio).toBeCloseTo(0.28, 2)
     await expect(details.getByRole('button', { name: /^Open screenshot / })).toHaveCount(2)
@@ -227,7 +234,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
     await page.getByRole('textbox', { name: 'Search games', exact: true }).fill(title!)
     await page.locator('.avalon-cover').first().click()
     const details = page.locator('.avalon-details')
-    await expect(details.locator('.avalon-detail-backdrop img.art-ready')).toBeVisible()
+    await expect(details.locator('.avalon-detail-backdrop[data-state="ready"] img')).toBeVisible()
     await expect(details.getByRole('tab', { name: 'Overview', exact: true })).toHaveAttribute(
       'aria-selected',
       'true',

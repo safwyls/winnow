@@ -12,6 +12,12 @@ export interface ApiResult<T = unknown> {
   data?: T
   message?: string
 }
+export interface ArtworkImport {
+  workId: number
+  slot: 'Hero' | 'Cover' | 'Icon'
+  revision: string
+}
+export interface ArtworkSaveResult { success: boolean; message: string }
 export interface ConnectionState {
   connected: boolean
   message: string
@@ -51,6 +57,7 @@ export interface SteamCaptureResult {
   captureOutcome?: 'captured' | 'partial' | 'cancelled' | 'unavailable' | 'failed' | 'no-session'
   licensesStoppedBecause?: 'exhausted' | 'cap' | 'stalled' | 'interrupted' | 'failed'
   historyStoppedBecause?: 'exhausted' | 'cap' | 'stalled' | 'interrupted' | 'failed'
+  /** Further licence pages followed after the initial page. */
   licensesPagesWalked?: number
   loadMoreClicks?: number
   pages?: SteamCapturedPages
@@ -83,6 +90,8 @@ export type ApplicationActivation =
   | { kind: 'game'; ownershipId: number }
   | { kind: 'plugin'; pluginId: string; releaseTag: string }
 export interface WinnowBridge {
+  appearanceSession?(): Promise<import('./appearance-session').AppearanceSession | null>
+  importArtwork?(input: ArtworkImport): Promise<ApiResult<ArtworkSaveResult> | null>
   prepareEpicSignIn?(): Promise<import('./epic').EpicSignInPreparation | null>
   epicSignIn?(options: import('./epic').EpicSignInOptions): Promise<import('./epic').EpicSignInResult>
   openEpicSignInInBrowser?(options: import('./epic').EpicSignInOptions): Promise<void>
@@ -93,7 +102,7 @@ export interface WinnowBridge {
   connection(): Promise<ConnectionState>
   onEvent(callback: (event: BackendEvent) => void): () => void
   onConnection(callback: (state: ConnectionState) => void): () => void
-  artwork(provider: string, id: string, width?: number): Promise<string | null>
+  artwork(provider: string, id: string, width?: number, requestId?: string): Promise<string | null>
   loadPreferences(): Promise<unknown>
   savePreferences(value: unknown): Promise<void>
   importProfile(): Promise<unknown | null>

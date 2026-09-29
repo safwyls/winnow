@@ -1,0 +1,20 @@
+{
+  "ThemeContrastTests.An_overridden_session_never_writes_a_preference": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/appearance-session.test.ts",
+        "case": "all appearance edits stay live in memory while unrelated preferences retain normal persistence"
+      },
+      {
+        "file": "tests/appearance-session-runtime.test.tsx",
+        "case": "resolves capture palette %s with authored catalog %s before hydration and never imports stored fonts"
+      },
+      {
+        "file": "tests/electron/appearance-session.spec.ts",
+        "case": "development appearance overrides remain live on both surfaces without changing either saved appearance store"
+      }
+    ],
+    "reason": "The original theme/transparency/material/wall mutations remain observable within the overridden session and do not reach persistent settings. Native checks exercise both presentation modes, a preexisting Electron profile, actual named IPC and direct reads of the independent backend preference store; ordinary library preferences still persist. Development switch parsing and authored/legacy palette lookup are checked separately."
+  }
+}

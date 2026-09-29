@@ -61,6 +61,9 @@ public sealed class SteamSessionParityTests
         var snapshot = await host.Snapshot();
         Assert.True(snapshot.Steam.HasSession);
         Assert.True(snapshot.Steam.SessionUsable);
+        Assert.False(snapshot.Steam.HasApiKey);
+        Assert.True(snapshot.Steam.HasUsableCredential);
+        Assert.Equal(expires, snapshot.Steam.SessionExpiresAt);
         Assert.Equal(SteamSessionHealth.Live, snapshot.SteamHealth);
         Assert.Equal(Account, snapshot.Steam.SessionAccount);
         Assert.True((await host.Visibility()).AccountConfirmed);
@@ -89,6 +92,8 @@ public sealed class SteamSessionParityTests
         var expired = await host.Snapshot();
         Assert.True(expired.Steam.HasSession);
         Assert.False(expired.Steam.SessionUsable);
+        Assert.True(expired.Steam.HasAnyCredential);
+        Assert.False(expired.Steam.HasUsableCredential);
         Assert.Equal(Account, expired.Steam.SessionAccount);
         Assert.Equal(SteamSessionHealth.Expired, expired.SteamHealth);
         Assert.Null(await host.Service<ISteamCredentialProvider>().GetCurrentAsync(SteamCredentialPurpose.UserInitiated));

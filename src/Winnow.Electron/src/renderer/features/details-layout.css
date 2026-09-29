@@ -38,18 +38,6 @@
     pointer-events: none;
     overflow: hidden;
   }
-  .avalon-detail-backdrop img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    opacity: 0.25;
-  }
-  .avalon-detail-backdrop::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, transparent, var(--surface) 45%);
-  }
   .avalon-details-header {
     display: flex;
     gap: 20px;
@@ -306,14 +294,6 @@
     height: 100%;
     font-size: calc(clamp(16px, 1.25vw, 24px) * var(--detail-scale));
   }
-  .avalon-shell .avalon-details.fullscreen .avalon-detail-backdrop img {
-    opacity: 1;
-  }
-  .avalon-shell .avalon-details.fullscreen .avalon-detail-backdrop::after {
-    background:
-      linear-gradient(90deg, var(--bg), color-mix(in srgb, var(--bg) 85%, transparent) 32%, transparent),
-      linear-gradient(180deg, color-mix(in srgb, var(--bg) 65%, transparent), transparent 25%, var(--bg) 65%);
-  }
   .avalon-shell .avalon-details.fullscreen .avalon-details-header {
     padding: 0 0 12px;
   }
@@ -431,6 +411,14 @@
     grid-column: 1 / -1;
     font-size: calc(clamp(15px, 1.146vw, 22px) * var(--detail-scale));
     color: var(--muted);
+  }
+  @media (max-height: 800px) {
+    .avalon-shell.fullscreen .avalon-details.fullscreen .avalon-details-identity {
+      max-width: 100%;
+    }
+    .avalon-shell.fullscreen .avalon-details.fullscreen .avalon-details-actions {
+      row-gap: 12px;
+    }
   }
   @media (max-width: 850px) {
     .avalon-details.desktop {

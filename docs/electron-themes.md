@@ -92,6 +92,15 @@ game links and install-folder access when available. Edits and library operation
 same shared controls as other compositions. Afterglow, Rift and Catalogue retain the shared
 Details screen and its existing section arrangement.
 
+Avalon's Home and Details backdrops use the backend's ranked candidates, including saved
+artwork, grouped store identities, landscape art, screenshots and portrait fallback.
+Visible artwork remains while its replacement loads. Fullscreen completes each 180 ms
+crossfade before showing the latest queued result; reduced motion replaces it immediately.
+Steam heroes fit their whole composition from 21:9 upward, with independent geometry for
+each transition layer. Desktop Details uses the palette's Surface color at 92% over art;
+fullscreen uses Ground gradients around its reading areas. The renderer cancels obsolete
+image requests and releases decoded images when replaced or detached.
+
 Avalon's **Theme typography** controls choose heading, interface and data fonts separately.
 The bundled families are always listed. **Find installed fonts** queries local family names;
 it does not read font files. You can also enter an installed family name. Missing families
@@ -156,13 +165,23 @@ Profiles are stored in the Electron user-data directory under
 separate profiles and installed themes. Palette and typography edits stay in this profile.
 Window appearance controls share the original backend preferences with Avalonia.
 When no Electron profile exists, the first launch reads the backend's `appearance.theme`
-after loading authored palettes, and selects its matching Avalon palette. The legacy `hoard`
-default maps to Winnow only when no authored palette claims that ID. Valid palette entries
+after loading authored palettes, and selects its matching Avalon palette. The legacy
+default identifier maps to Winnow only when no authored palette claims that ID. Valid palette entries
 in `appearance.typography` import at the same time; one invalid entry does not discard the
 other palettes' fonts. Existing Electron profiles take precedence, and later palette
 changes stay in the Electron profile. If the preference
 cannot be read, the app keeps the initial profile unsaved so restarting can retry; an
 explicit appearance edit or reset may still be saved.
+
+Unpackaged development runs also accept the original capture switches:
+`--theme=<palette>`, `--transparency=<0-100>`, `--transparent`,
+`--backdrop=acrylic|mica`, `--wall=on|off` and `--layout=floating|flush`.
+Any of these starts a session-only appearance override. Authored palettes are loaded
+before resolving the requested ID. Existing profile colors/fonts are not imported,
+and subsequent appearance edits remain live in memory without writing either the
+Electron profile or backend appearance preferences. Unrelated library preferences
+still persist. Packaged builds ignore these capture switches.
+
 An explicit `--data-dir` also redirects Electron's user-data and Chromium state beneath
 `<data-dir>/electron-userdata` before the window starts.
 

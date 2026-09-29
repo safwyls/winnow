@@ -2,6 +2,18 @@
 const originalFetch = globalThis.fetch
 globalThis.fetch = async (input, init) => {
   const url = new URL(input instanceof Request ? input.url : input)
+  if (
+    url.hostname === '127.0.0.1' &&
+    (!init?.method || init.method === 'GET') &&
+    globalThis.__detailsHero &&
+    /^\/api\/v1\/works\/\d+\/backdrop$/.test(url.pathname)
+  )
+    return Response.json({
+      candidates: [
+        { key: { provider: 'igdb-shot', id: 'fixture_hero' }, aspectRatio: 16 / 9, fitWholeHero: false },
+      ],
+      coverKey: null,
+    })
   const response = await originalFetch(input, init)
   if (url.hostname !== '127.0.0.1' || (init?.method && init.method !== 'GET') || !response.ok) return response
   if (globalThis.__detailsHero && /^\/api\/v1\/works\/\d+\/artwork\/Hero$/.test(url.pathname))

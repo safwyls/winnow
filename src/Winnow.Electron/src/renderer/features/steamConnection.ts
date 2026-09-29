@@ -1,4 +1,7 @@
 import type { StoreConnections } from '../api/types'
+
+export const steamCapturePermissionExplanation =
+  'Off by default. Declining is a complete answer: purchase history and licence pages are never opened unless you choose to capture them. Capture reads what you bought, what you paid and how licences arrived. You review the captured pages before importing.'
 export const steamHealthMessages = [
   'No sign-in session is stored.',
   'The sign-in is working.',

@@ -1,4 +1,4 @@
-import type { GameDetails } from '../api/types'
+import type { GameDetails, UpdateEvent } from '../api/types'
 import { dateLabel } from '../api/client'
 
 export interface AcquisitionInput {
@@ -65,6 +65,31 @@ export function durationText(minutes: number) {
     hours = Math.floor(whole / 60),
     rest = whole % 60
   return hours ? `${hours}h${rest ? ` ${rest}m` : ''}` : `${whole}m`
+}
+
+export function detailPlaytime(minutes: number) {
+  return minutes <= 0 ? '—' : minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h`
+}
+
+export function detailIdle(date: string, now = Date.now()) {
+  const days = Math.max(0, (now - Date.parse(date)) / 86_400_000)
+  if (!Number.isFinite(days)) return '—'
+  if (days < 30) return `${Math.max(1, Math.floor(days))}d`
+  const months = Math.floor(days / 30.4375)
+  if (months < 12) return `${months}mo`
+  const years = Math.floor(months / 12),
+    rest = months % 12
+  return `${years}y${rest ? ` ${rest}mo` : ''}`
+}
+
+export function updateHeadline(event: Pick<UpdateEvent, 'title' | 'buildId' | 'kind'>) {
+  return event.title?.trim()
+    ? event.title
+    : event.buildId
+      ? `Build ${event.buildId}`
+      : event.kind === 'announcement'
+        ? 'Announcement'
+        : 'Build pushed'
 }
 
 export function updatePageUrl(value?: string | null): string | null {
