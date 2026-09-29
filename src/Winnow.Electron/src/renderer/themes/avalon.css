@@ -122,9 +122,16 @@
   }
   .avalon-rail {
     min-height: 0;
-    overflow: auto;
+    overflow: hidden;
     background: var(--avalon-chrome-surface, var(--surface));
     border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+  }
+  .avalon-rail-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
     padding: 24px 12px 12px;
     display: flex;
     flex-direction: column;
@@ -1135,7 +1142,7 @@
     .avalon-shell.desktop {
       grid-template-columns: 150px minmax(0, 1fr);
     }
-    .avalon-rail {
+    .avalon-rail-scroll {
       padding: 20px 4px 8px;
     }
     .avalon-library-total strong {

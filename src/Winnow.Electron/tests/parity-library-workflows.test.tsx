@@ -125,6 +125,8 @@ afterEach(() => {
   clearViewState('avalon:collections:manual-expanded')
   clearViewState('avalon:collections:live-expanded')
   clearViewState('draft:list:new')
+  clearViewState('draft:list:rail:manual')
+  clearViewState('draft:list:rail:live')
   for (const id of [10, 11, 12, 20]) clearViewState(`draft:list:${id}`)
 })
 function Fixture({ mode, origin = 'library' }: { mode: Mode; origin?: string }) {
@@ -878,7 +880,8 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
     const view = setup(mode)
     fireEvent.click(document.querySelector('[data-avalon-game="1"]')!, { ctrlKey: true })
     fireEvent.click(document.querySelector('[data-avalon-game="2"]')!, { ctrlKey: true })
-    fireEvent.click(screen.getByRole('button', { name: 'New list…' }))
+    fireEvent.click(screen.getByRole('button', { name: mode === 'desktop' ? 'New list' : 'New list…' }))
+    if (mode === 'desktop') fireEvent.click(screen.getByRole('menuitem', { name: 'Static list' }))
     fireEvent.change(screen.getByLabelText('List name'), { target: { value: 'Empty list' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create list' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
@@ -1100,7 +1103,20 @@ describe.each(['desktop', 'fullscreen'] as const)('original manual list contract
     expect(
       screen.getByText('No lists yet. Choose New list below to create a static or live list.'),
     ).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'New list…' }))
+    fireEvent.click(screen.getByRole('button', { name: mode === 'desktop' ? 'New list' : 'New list…' }))
+    if (mode === 'desktop') {
+      const menu = screen.getByRole('menu', { name: 'New list' })
+      expect(within(menu).getByRole('menuitem', { name: 'Static list' }).title).toBe(
+        'Choose the games yourself. Add or remove titles whenever you like.',
+      )
+      expect(within(menu).getByRole('menuitem', { name: 'Live list' }).title).toBe(
+        'Save the current library filters. Matching games update automatically.',
+      )
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'Static list' }))
+      expect(screen.getByRole('dialog', { name: 'Name this list' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Create list' })).toBeTruthy()
+      return
+    }
     const dialog = screen.getByRole('dialog')
     expect(
       within(dialog).getByText('Choose games yourself, or let a live list follow your filters.'),
@@ -1650,6 +1666,129 @@ it('checks an uncertain creation before allowing a retry and can use the saved l
 })
 
 describe('desktop collection rows', () => {
+  it.each(['Static list', 'Live list'])(
+    'opens the original %s naming prompt and returns cancellation focus to New list',
+    async (label) => {
+      const view = setup('desktop')
+      const trigger = screen.getByRole('button', { name: 'New list' })
+      act(() => trigger.focus())
+      fireEvent.click(trigger)
+      const choice = screen.getByRole('menuitem', { name: label })
+      expect(choice.getAttribute('aria-description')).toBe(choice.title)
+      expect(choice.title.length).toBeGreaterThan(20)
+      fireEvent.click(choice)
+      expect(screen.queryByRole('menu')).toBeNull()
+      const dialog = screen.getByRole('dialog', {
+        name: label === 'Static list' ? 'Name this list' : 'Name this live list',
+      })
+      expect(document.activeElement).toBe(within(dialog).getByLabelText('List name'))
+      expect(within(dialog).queryByRole('checkbox')).toBeNull()
+      fireEvent.change(within(dialog).getByLabelText('List name'), { target: { value: 'Not saved' } })
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+      await waitFor(() => expect(document.activeElement).toBe(trigger))
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(view.request.mock.calls.filter(([input]) => input.route.startsWith('list.'))).toEqual([])
+    },
+  )
+
+  it('navigates the creation menu with arrows and Escape returns focus without creating anything', () => {
+    setup('desktop')
+    const trigger = screen.getByRole('button', { name: 'New list' })
+    fireEvent.click(trigger)
+    const menu = screen.getByRole('menu')
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Static list' }))
+    fireEvent.keyDown(menu, { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Live list' }))
+    fireEvent.keyDown(menu, { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Static list' }))
+    fireEvent.keyDown(menu, { key: 'End' })
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Live list' }))
+    fireEvent.keyDown(menu, { key: 'Escape' })
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(document.activeElement).toBe(trigger)
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('saves the complete current cut from the footer, suggests its first two rules and opens the committed live list', async () => {
+    chromeLibrary()
+    const previous = handler
+    handler = (input) => {
+      if (input.route === 'list.live') {
+        const body = input.body as { name: string; filter: LibraryFilter }
+        const saved = {
+          id: 77,
+          name: body.name,
+          filter: body.filter,
+          isLive: true,
+          releaseIds: [],
+          revision: 'new',
+        }
+        current = { ...current, lists: [...current.lists, saved] }
+        return ok(saved)
+      }
+      return previous(input)
+    }
+    const view = setup('desktop')
+    fireEvent.click(screen.getByRole('button', { name: 'Started2' }))
+    await genre('desktop', 'RPG')
+    fireEvent.change(screen.getByLabelText('Search games'), { target: { value: 'Alpha' } })
+    fireEvent.click(screen.getByRole('button', { name: 'New list' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Live list' }))
+    const dialog = screen.getByRole('dialog', { name: 'Name this live list' })
+    expect((within(dialog).getByLabelText('List name') as HTMLInputElement).value).toBe('Started · RPG')
+    fireEvent.change(within(dialog).getByLabelText('List name'), { target: { value: 'Tonight' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(selectedCollection()).toBe('77')
+    expect(cards()).toEqual([1])
+    expect(screen.getByRole('region', { name: 'Library filters' })).toBeTruthy()
+    const body = view.request.mock.calls.find(([input]) => input.route === 'list.live')![0].body as {
+      name: string
+      filter: LibraryFilter
+    }
+    expect(body.name).toBe('Tonight')
+    expect(filterFingerprint(body.filter)).toBe('{"buckets":["bounced"],"genreIds":[1],"search":"Alpha"}')
+  })
+
+  it('keeps a failed footer name, locks a pending retry and restores a usable creation menu after saving', async () => {
+    let finish!: (value: unknown) => void
+    let fail = true
+    handler = (input) =>
+      input.route === 'list.create'
+        ? fail
+          ? { ok: false, status: 400, message: 'Cannot create this list' }
+          : new Promise((resolve) => {
+              finish = resolve
+            })
+        : undefined
+    const view = setup('desktop')
+    fireEvent.click(screen.getByRole('button', { name: 'New list' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Static list' }))
+    fireEvent.change(screen.getByLabelText('List name'), { target: { value: 'Weekend' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create list' }))
+    await screen.findByText('Cannot create this list')
+    expect((screen.getByLabelText('List name') as HTMLInputElement).value).toBe('Weekend')
+    fail = false
+    fireEvent.click(screen.getByRole('button', { name: 'Create list' }))
+    const dialog = screen.getByRole('dialog')
+    for (const button of within(dialog).getAllByRole('button'))
+      expect((button as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    expect(screen.getByRole('dialog')).toBe(dialog)
+    await waitFor(() => expect(typeof finish).toBe('function'))
+    await act(async () =>
+      finish(ok({ id: 78, name: 'Weekend', isLive: false, releaseIds: [], revision: 'new' })),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(view.request.mock.calls.filter(([input]) => input.route === 'list.create')).toHaveLength(2)
+    fireEvent.click(screen.getByRole('button', { name: 'New list' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Static list' }))
+    expect((screen.getByLabelText('List name') as HTMLInputElement).value).toBe('')
+    expect((screen.getByRole('button', { name: 'Cancel' }) as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
   it('collapses manual and live sections independently and retains their state across Home navigation', () => {
     const view = setup('desktop')
     const manual = screen.getByRole('button', { name: 'LISTS' })

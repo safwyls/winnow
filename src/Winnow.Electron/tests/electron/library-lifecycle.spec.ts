@@ -38,7 +38,9 @@ async function api<T>(input: ApiRequest): Promise<T> {
   }, input) as Promise<T>
 }
 const navigate = (name: string) =>
-  page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name, exact: true }).click()
+  (name === 'Settings' ? page : page.getByRole('navigation', { name: 'Main navigation' }))
+    .getByRole('button', { name, exact: true })
+    .click()
 const preference = (name: string, value: string) =>
   api({ route: 'preferences.presentation.put', params: { preference: name }, body: { value } })
 

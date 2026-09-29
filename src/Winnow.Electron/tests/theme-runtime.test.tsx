@@ -47,7 +47,8 @@ describe('theme runtime recovery and lifecycle', () => {
       await waitFor(() => expect(result.current.loading).toBe(false))
       await waitFor(() => expect(document.documentElement.style.getPropertyValue('--bg')).toBe('#0F1C1E'))
       expect(result.current.theme.id).toBe('avalon')
-      if (palette != null) expect(result.current.profile.settings.avalon?.palette).toBe('winnow')
+      if (palette != null)
+        await waitFor(() => expect(result.current.profile.settings.avalon?.palette).toBe('winnow'))
       expect(document.documentElement.style.getPropertyValue('--avalon-flare')).toBe('#FF4D93')
     },
   )

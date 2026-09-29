@@ -264,3 +264,130 @@ test('desktop independently collapses list sections with the keyboard and retain
         })
   }
 })
+
+test('desktop rail footer stays reachable in a short window and its keyboard menu names either list with focus restoration', async ({}, info) => {
+  const saved: GameList[] = []
+  try {
+    for (let index = 0; index < 24; index++)
+      saved.push(
+        await api<GameList>({
+          route: 'list.create',
+          body: { name: `Long collection ${index}: an evening with friends`, releaseIds: [] },
+        }),
+      )
+    await library('desktop', true)
+    const trigger = page.getByRole('button', { name: 'New list', exact: true })
+    const settings = page.getByRole('button', { name: 'Settings', exact: true })
+    for (const width of [1200, 800]) {
+      await application.evaluate(({ BrowserWindow }, width) => {
+        const window = BrowserWindow.getAllWindows()[0]!
+        window.setMinimumSize(0, 0)
+        window.setContentSize(width, 600)
+      }, width)
+      await expect(trigger).toBeVisible()
+      await expect(settings).toBeVisible()
+      const left = (await trigger.boundingBox())!,
+        right = (await settings.boundingBox())!
+      expect(left.x + left.width).toBeLessThan(right.x)
+      expect(Math.abs(left.y + left.height / 2 - right.y - right.height / 2)).toBeLessThan(1)
+      expect(right.y + right.height).toBeLessThanOrEqual(600)
+      expect(
+        await page
+          .locator('.avalon-rail-scroll')
+          .evaluate((element) => element.scrollHeight > element.clientHeight),
+      ).toBe(true)
+      for (const kind of ['Static list', 'Live list']) {
+        await trigger.focus()
+        await page.keyboard.press('Enter')
+        const menu = page.getByRole('menu', { name: 'New list' })
+        await expect(menu.getByRole('menuitem', { name: 'Static list' })).toBeFocused()
+        if (kind === 'Live list') await page.keyboard.press('ArrowDown')
+        const choice = menu.getByRole('menuitem', { name: kind, exact: true })
+        await expect(choice).toBeFocused()
+        expect(await choice.getAttribute('title')).toBe(
+          kind === 'Static list'
+            ? 'Choose the games yourself. Add or remove titles whenever you like.'
+            : 'Save the current library filters. Matching games update automatically.',
+        )
+        await page.keyboard.press('Enter')
+        await expect(menu).toHaveCount(0)
+        const dialog = page.getByRole('dialog', {
+          name: kind === 'Static list' ? 'Name this list' : 'Name this live list',
+          exact: true,
+        })
+        await expect(dialog.getByLabel('List name', { exact: true })).toBeFocused()
+        await dialog.getByLabel('List name', { exact: true }).fill('Unconfirmed')
+        await page.keyboard.press('Escape')
+        await expect(dialog).toHaveCount(0)
+        await expect(trigger).toBeFocused()
+      }
+    }
+    await trigger.click()
+    await page.screenshot({ path: info.outputPath('desktop-short-rail-footer.png') })
+    await page.keyboard.press('Escape')
+    expect((await api<LibraryResponse>({ route: 'library.get' })).lists).toHaveLength(24)
+    await settings.click()
+    await expect(settings).toHaveAttribute('aria-current', 'page')
+    await expect(page.getByRole('heading', { name: 'Make yourself at home.' })).toBeVisible()
+    expect(errors).toEqual([])
+  } finally {
+    for (const list of saved)
+      await api({
+        route: 'list.delete',
+        params: { listId: list.id },
+        body: { expectedRevision: list.revision },
+      })
+  }
+})
+
+test('desktop footer creates an empty static list and saves the current live rules through the real API', async () => {
+  const saved: GameList[] = []
+  try {
+    await library('desktop', true)
+    const trigger = page.getByRole('button', { name: 'New list', exact: true })
+    await card(entries[0]).focus()
+    await trigger.click()
+    await page.getByRole('menuitem', { name: 'Static list' }).click()
+    await page
+      .getByRole('dialog', { name: 'Name this list', exact: true })
+      .getByLabel('List name')
+      .fill('Empty weekend')
+    await page.getByRole('button', { name: 'Create list', exact: true }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    let list = (await api<LibraryResponse>({ route: 'library.get' })).lists.find(
+      (list) => list.name === 'Empty weekend',
+    )!
+    saved.push(list)
+    expect(list.releaseIds).toEqual([])
+    expect(list.isLive).toBe(false)
+    await expectCollection(page, 'all')
+    await page.getByRole('textbox', { name: 'Search games' }).fill('Hades')
+    await trigger.click()
+    await page.getByRole('menuitem', { name: 'Live list' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Name this live list', exact: true })
+    await expect(dialog.getByLabel('List name')).toHaveValue('Hades')
+    await dialog.getByLabel('List name').fill('Footer Hades')
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    list = (await api<LibraryResponse>({ route: 'library.get' })).lists.find(
+      (list) => list.name === 'Footer Hades',
+    )!
+    saved.push(list)
+    expect(list.isLive).toBe(true)
+    expect(list.filter?.search).toBe('Hades')
+    await expectCollection(page, list.id)
+    await expect.poll(visibleIds).toEqual([entries[0].workId])
+    await expect(page.getByRole('region', { name: 'Library filters', exact: true })).toBeVisible()
+    await library('desktop', true)
+    await selectCollection(page, list.id)
+    await expect.poll(visibleIds).toEqual([entries[0].workId])
+    expect(errors).toEqual([])
+  } finally {
+    for (const list of saved)
+      await api({
+        route: 'list.delete',
+        params: { listId: list.id },
+        body: { expectedRevision: list.revision },
+      })
+  }
+})

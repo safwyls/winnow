@@ -468,7 +468,7 @@ describe('integrated frontend', () => {
       }
       fireEvent.click(navigation().getByRole('button', { name: 'Library' }))
       expect(screen.getByRole('button', { name: 'Never played1' }).getAttribute('aria-pressed')).toBe('true')
-      fireEvent.click(navigation().getByRole('button', { name: 'Settings' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
       const sections = () => within(screen.getByRole('navigation', { name: 'Settings section' }))
       expect(sections().getByRole('button', { name: 'Platforms' }).getAttribute('aria-pressed')).toBe('true')
       for (let click = 0; click < 2; click++)
@@ -478,7 +478,7 @@ describe('integrated frontend', () => {
       if (mode === 'desktop') fireEvent.click(screen.getByRole('button', { name: 'All games1' }))
       else fireEvent.click(navigation().getByRole('button', { name: 'Library' }))
       expect(screen.queryByRole('navigation', { name: 'Settings section' })).toBeNull()
-      fireEvent.click(navigation().getByRole('button', { name: 'Settings' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
       expect(sections().getByRole('button', { name: 'Appearance' }).getAttribute('aria-pressed')).toBe('true')
       client.clear()
       clearViewState(`${mode}:settings:tab`)

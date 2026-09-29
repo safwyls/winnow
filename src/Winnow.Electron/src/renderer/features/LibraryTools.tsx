@@ -112,18 +112,22 @@ export function CreateList({
   draftKey = 'draft:list:new',
   initialFilter,
   initialName = '',
+  fixedKind,
+  confirmLabel,
   onCreated,
   onPendingChange,
 }: {
   draftKey?: string
   initialFilter?: LibraryFilter
   initialName?: string
+  fixedKind?: 'manual' | 'live'
+  confirmLabel?: string
   onCreated?: (list: GameList) => void | Promise<void>
   onPendingChange?: (busy: boolean) => void
 } = {}) {
   const empty = {
     name: initialName,
-    live: Boolean(initialFilter),
+    live: fixedKind ? fixedKind === 'live' : Boolean(initialFilter),
     filter: initialFilter ?? ({} as LibraryFilter),
     sending: false,
     uncertain: false,
@@ -199,7 +203,7 @@ export function CreateList({
   }
   return (
     <section className="feature-panel">
-      <h2>A new list</h2>
+      {!fixedKind && <h2>A new list</h2>}
       <form
         onSubmit={(event) => {
           event.preventDefault()
@@ -217,16 +221,18 @@ export function CreateList({
             placeholder="For a rainy afternoon"
           />
         </label>
-        <label className="check-field">
-          <input
-            type="checkbox"
-            disabled={draft.sending || draft.uncertain}
-            checked={live}
-            onChange={(event) => update({ live: event.target.checked })}
-          />
-          Keep this list up to date with filters
-        </label>
-        {live && (
+        {!fixedKind && (
+          <label className="check-field">
+            <input
+              type="checkbox"
+              disabled={draft.sending || draft.uncertain}
+              checked={live}
+              onChange={(event) => update({ live: event.target.checked })}
+            />
+            Keep this list up to date with filters
+          </label>
+        )}
+        {live && !fixedKind && (
           <LiveFilterFields
             filter={draft.filter}
             disabled={draft.sending || draft.uncertain}
@@ -282,7 +288,7 @@ export function CreateList({
             className="primary-button"
             disabled={command.isPending || draft.sending || draft.uncertain || !name.trim()}
           >
-            Create {live ? 'live ' : ''}list
+            {confirmLabel ?? `Create ${live ? 'live ' : ''}list`}
           </button>
           <button type="button" disabled={command.isPending || draft.sending} onClick={discard}>
             Discard draft

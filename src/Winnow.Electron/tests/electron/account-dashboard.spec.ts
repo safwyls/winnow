@@ -56,10 +56,7 @@ async function surface(mode: 'desktop' | 'fullscreen', width: number, scale = 1)
     (scale) => document.documentElement.style.setProperty('--theme-text-scale', String(scale)),
     scale,
   )
-  await page
-    .getByRole('navigation', { name: 'Main navigation' })
-    .getByRole('button', { name: 'Settings', exact: true })
-    .click()
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page
     .getByRole('navigation', { name: 'Settings section' })
     .getByRole('button', { name: 'Spending', exact: true })

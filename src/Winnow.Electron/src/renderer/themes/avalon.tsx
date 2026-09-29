@@ -48,6 +48,7 @@ import { avalonFacts, matchesAvalonRules, type AvalonFactMap, type AvalonWorkspa
 import { AvalonFilterPanel } from './avalon-filter-panel'
 import { AvalonBrowseSpine } from './avalon-browse-spine'
 import { AvalonCollectionLists } from './avalon-collection-lists'
+import { AvalonRailFooter } from './avalon-rail-footer'
 import { ownershipStores, ownershipDescription } from './avalon-store-marks'
 import {
   LibraryColumnHeaders,
@@ -178,7 +179,7 @@ function Collections({ context }: { context: ThemeContext }) {
       {!library.data?.lists.length && (
         <p className="muted">No lists yet. Choose New list below to create a static or live list.</p>
       )}
-      <CreateListButton mode={context.mode} />
+      {context.mode === 'fullscreen' && <CreateListButton mode={context.mode} />}
     </div>
   )
 }
@@ -289,24 +290,29 @@ export function AvalonShell(context: ThemeContext) {
       </header>
       {!fullscreen && (
         <aside className="avalon-rail">
-          <div className="avalon-library-total">
-            <strong>{projected.games.length.toLocaleString()}</strong>
-            <span>games in your library</span>
+          <div className="avalon-rail-scroll">
+            <div className="avalon-library-total">
+              <strong>{projected.games.length.toLocaleString()}</strong>
+              <span>games in your library</span>
+            </div>
+            <nav className="avalon-navigation" aria-label="Main navigation">
+              {destinations
+                .filter((item) => item.id !== 'settings')
+                .map(({ id, label, Icon }) => (
+                  <button
+                    key={id}
+                    aria-current={shellPage === id ? 'page' : undefined}
+                    onClick={() => context.setPage(id)}
+                  >
+                    <Icon size={17} />
+                    {label}
+                  </button>
+                ))}
+            </nav>
+            <Collections context={{ ...context, page: shellPage, games: projected.games }} />
+            <p className="avalon-rail-note">Your library has unread mail.</p>
           </div>
-          <nav className="avalon-navigation" aria-label="Main navigation">
-            {destinations.map(({ id, label, Icon }) => (
-              <button
-                key={id}
-                aria-current={shellPage === id ? 'page' : undefined}
-                onClick={() => context.setPage(id)}
-              >
-                <Icon size={17} />
-                {label}
-              </button>
-            ))}
-          </nav>
-          <Collections context={{ ...context, page: shellPage, games: projected.games }} />
-          <p className="avalon-rail-note">Your library has unread mail.</p>
+          <AvalonRailFooter context={{ ...context, page: shellPage, games: projected.games }} />
         </aside>
       )}
       <main
@@ -1144,6 +1150,7 @@ export function AvalonLibrary(context: ThemeContext) {
                     workspace.data as AvalonWorkspace | undefined,
                   )
                     .filter((chip) => chip.origin !== 'context')
+                    .slice(0, 2)
                     .map((chip) => chip.label)
                     .join(' · ')
                     .slice(0, 200)}

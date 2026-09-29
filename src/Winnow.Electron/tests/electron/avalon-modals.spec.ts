@@ -30,6 +30,9 @@ test.beforeAll(async () => {
   page = await application.firstWindow()
   page.on('pageerror', (error) => errors.push(error.message))
   await expect(page.locator('.avalon-shell')).toBeVisible()
+  await expect
+    .poll(() => page.evaluate(async () => (await window.winnow.request({ route: 'library.get' })).ok))
+    .toBe(true)
 })
 
 async function api<T>(input: ApiRequest): Promise<T> {

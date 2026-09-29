@@ -98,6 +98,12 @@ leaving the list clears its contributed rules and keeps that panel open. Toolbar
 result controls reserve the panel's width. Fullscreen retains its own list selector and
 returns to Browse without automatically opening the filter page.
 
+The desktop rail scrolls its collections above a fixed footer. New list opens keyboard
+accessible Static list and Live list choices; the Settings cog stays alongside it. The
+live choice snapshots the current cut, suggests its first two rules and opens the saved
+list. Static creation starts empty. Cancelling either naming prompt returns focus to
+New list, and pending writes prevent cancellation or duplicate submission.
+
 Avalon opens desktop game Details as a modal over the retained library, with an 82×123
 cover and five sections: Overview, Activity, Updates, Journal and Library. The bounded
 reading area retains each section's scroll position while its header stays fixed. Closing

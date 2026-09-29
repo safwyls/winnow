@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-29 20:13'
+updated_date: '2026-09-29 20:43'
 labels: []
 dependencies: []
 priority: high
@@ -86,6 +86,8 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 30. Restore desktop collection presentation against RailListControlsTests and design-system section12: separate collapsible manual/live rows with projected counts, one active marker and same-row toggling; reopen the inline desktop filter panel with a live list and preserve it on exit. Verify the fullscreen source separately: its list-selection action returns to Browse and does not open a filter page automatically. Keep fullscreen presentation and controller behavior source-specific while updating the shared list tests and native navigation helpers.
 
 31. Restore the original desktop rail footer: fixed New list and Settings alignment, vector icon, accessible Static list/Live list menu with explanatory tooltips, current-cut live creation and cancellation focus restoration. Preserve fullscreen creation separately. Verify short-window overflow, keyboard actions and both-mode creation persistence before upgrading the remaining rail-section source contract.
+
+32. Restore exact fullscreen Browse collection and filter-draft contracts: four trigger-cycled collections independent of desktop, retained per-collection cover selection/viewport, and atomic draft filter/sort/bucket apply or cancel. Verify source directional/resize/queued-notification behavior with native and renderer tests; retain separate compact-toolbar and remaining fullscreen visual work until its source assertions are covered.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -146,4 +148,10 @@ Checkpoint fourteen restores source art alpha bytes, independent contrast matric
 Checkpoint fifteen closes32/34original ListsViewModel methods with original named fixtures, both-mode renderer contracts and production HTTP/native persistence. Fixed empty manual-membership guidance, alphabetical list presentation after refresh, suggested live-list names and navigation after committed publication. Full component/live-backend2608/128 passes without skips; full native145passes with clean worker completion in5.9m; build/typecheck pass. Refined test-only queued quit to one debugger request after a post-quit timeout;30repeated native cases also pass with unchanged5sdeadline. Desktop/fullscreen captures inspected. Inventory911ported540retained13framework,831pending140partial. Automatic desktop filter opening and actual same-row toggle remain partial and drive plan30; fullscreen source returns to Browse without auto-opening filters. Evidence: checkpoint-fifteen.md. All AC stay unchecked.
 
 Checkpoint sixteen restores separate desktop list sections, projected counts, session collapse, actual same-row toggling and automatic inline live filters with width reserved for all Library controls. Fullscreen retains its separate Browse return. Build/typecheck and122focused cases pass; full component/live2613/128passes without skips on unchanged serial repeat. Initial simultaneous run timed out two unrelated fixtures; no timeout/assertion relaxed. Native affected matrix48/50 exposed two test-selector errors; corrected Lists/Details15/15 passes, alongside35unchanged affected cases from first run. Captures inspected. All34ListsViewModel methods now mapped; inventory913ported540retained13framework830pending139partial. Footer menu/focus remains partial. Evidence: checkpoint-sixteen.md. All AC stay unchecked.
+
+Footer implementation and initial2618component/live checks pass. The first148-case full native attempt passed140, failed3and skipped5 after one serial-fixture failure, with a worker cleanup error. Modal startup read library before backend discovery was ready; its detached scratch backend remained alive and was authenticated-shutdown after verifying its exact data-dir command line. Two lifecycle failures were an ambiguous Settings/main Library test selector. Added readiness polling, restored navigation scoping and bounded late-discovery cleanup without changing the existing5sElectron-exit deadline. Three real HTTP cleanup contracts plus121workflow cases pass124/124; final build passes. Full verification is repeating sequentially. Short-window footer keyboard/cancellation and static/live persistence cases already passed.
+
+Footer verification now passes all2621component/live cases in129files and the corrected23native modal/Library/list cases with clean completion. A theme normalization assertion now waits for published profile state rather than already-present fallback colors. Inspected the800x600footer capture. Full148native repeat is in progress; inventory914ported540retained13framework830pending138partial. All acceptance criteria remain unchecked.
+
+Checkpoint seventeen native repeat passes148/148with clean worker completion in5.7minutes. Full component/live2621/129and build/typecheck pass. Desktop source rail footer is complete, including short-window geometry, both naming paths, cancellation focus and API persistence; fullscreen creation remains verified separately. Evidence:docs/spikes/2026-09-28-electron-parity/checkpoint-seventeen.md. Inventory914ported540retained13framework830pending138partial. No acceptance criteria checked; plan32fullscreen source contracts are next.
 <!-- SECTION:NOTES:END -->

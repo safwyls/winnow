@@ -524,7 +524,7 @@
     "reason": "Both modes show saved membership, use the committed revision for the subsequent untick and refresh the manual list to zero games. Production HTTP reads verify both durable states."
   },
   "RailListControlsTests.Sections_collapse_independently_and_footer_creates_either_kind": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-library-workflows.test.tsx",
@@ -533,8 +533,20 @@
       {
         "file": "tests/electron/lists.spec.ts",
         "case": "desktop independently collapses list sections with the keyboard and retains their state across Home"
+      },
+      {
+        "file": "tests/electron/lists.spec.ts",
+        "case": "desktop rail footer stays reachable in a short window and its keyboard menu names either list with focus restoration"
+      },
+      {
+        "file": "tests/electron/lists.spec.ts",
+        "case": "desktop footer creates an empty static list and saves the current live rules through the real API"
+      },
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "saves the complete current cut from the footer, suggests its first two rules and opens the committed live list"
       }
     ],
-    "reason": "Independent vector-chevron sections, accessible expanded state, projected counts and session retention pass in renderer and native keyboard tests. The source footer alignment and direct Static list/Live list menu, explanatory tooltips and return focus remain to be restored."
+    "reason": "Independent vector-chevron sections, accessible expanded state, projected counts and session retention pass in renderer and native keyboard tests. Native short-window geometry verifies the fixed footer alignment and reachability; its Static list/Live list menu supplies explanatory tooltips, the original naming prompts, initial name focus and cancellation return focus. Production API cases verify empty static creation and current-cut live persistence."
   }
 }

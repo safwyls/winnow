@@ -151,7 +151,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
   test(`${mode} exposes account and application settings and keeps Activity in bounds`, async () => {
     await surface(mode, 1280, 720)
     const navigation = page.getByRole('navigation', { name: 'Main navigation' })
-    await navigation.getByRole('button', { name: 'Settings', exact: true }).click()
+    await page.getByRole('button', { name: 'Settings', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Make yourself at home.' })).toBeVisible()
     await page
       .getByRole('navigation', { name: 'Settings section' })
@@ -169,7 +169,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
   test(`${mode} spending preserves currency boundaries and chart focus at large text sizes`, async () => {
     await surface(mode, 1280, 720)
     const navigation = page.getByRole('navigation', { name: 'Main navigation' })
-    await navigation.getByRole('button', { name: 'Settings', exact: true }).click()
+    await page.getByRole('button', { name: 'Settings', exact: true }).click()
     await page
       .getByRole('navigation', { name: 'Settings section' })
       .getByRole('button', { name: 'Spending', exact: true })

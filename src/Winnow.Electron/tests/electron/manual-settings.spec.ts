@@ -73,7 +73,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await expect(page.locator('.avalon-shell')).toHaveClass(new RegExp(mode))
       const tap = await controller(page)
       const nav = page.getByRole('navigation', { name: 'Main navigation' })
-      await nav.getByRole('button', { name: 'Settings', exact: true }).click()
+      await page.getByRole('button', { name: 'Settings', exact: true }).click()
       await expect(page.getByRole('region', { name: 'Steam connection' })).toBeVisible()
       await page.getByRole('button', { name: 'GOG', exact: true }).click()
       await expect(page.getByRole('region', { name: 'GOG connection' })).toBeVisible()
@@ -222,7 +222,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
         }
         await api(page, { route: 'manual.delete', params: { ownershipId: entry.ownershipId } })
       }
-      await nav.getByRole('button', { name: 'Settings', exact: true }).click()
+      await page.getByRole('button', { name: 'Settings', exact: true }).click()
       const count = page.locator('#platform-steam .platform-title-count')
       await expect(count).toHaveText('1 game in your library')
       expect(await count.evaluate((element) => getComputedStyle(element).fontVariantNumeric)).toBe(

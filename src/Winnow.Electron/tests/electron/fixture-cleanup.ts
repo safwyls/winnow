@@ -3,13 +3,28 @@ import { execFile } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
+import { setTimeout as delay } from 'node:timers/promises'
+
+async function fixtureEndpoint(directory: string) {
+  const deadline = Date.now() + 5000
+  for (;;) {
+    try {
+      return JSON.parse(await readFile(join(directory, 'backend/endpoint.json'), 'utf8'))
+    } catch (error) {
+      // A test can fail while the separately started backend is still publishing
+      // discovery. Quitting the renderer first would orphan that fixture backend.
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT' || Date.now() >= deadline) throw error
+      await delay(100)
+    }
+  }
+}
 
 /** Only a fixture's own discovery file and launched process are eligible for cleanup. */
 export async function closeFixture(application: ElectronApplication | undefined, directory?: string) {
   let backendError: unknown
   if (directory) {
     try {
-      const endpoint = JSON.parse(await readFile(join(directory, 'backend/endpoint.json'), 'utf8'))
+      const endpoint = await fixtureEndpoint(directory)
       const address = new URL(endpoint.address)
       if (address.protocol !== 'http:' || address.hostname !== '127.0.0.1' || address.pathname !== '/')
         throw Error('Unexpected fixture backend address')

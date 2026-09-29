@@ -38,10 +38,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       window.webContents.send('winnow:fullscreen:changed', mode === 'fullscreen')
     }, mode)
     await expect(page.locator('.avalon-shell')).toHaveClass(new RegExp(mode))
-    await page
-      .getByRole('navigation', { name: 'Main navigation' })
-      .getByRole('button', { name: 'Settings', exact: true })
-      .click()
+    await page.getByRole('button', { name: 'Settings', exact: true }).click()
     await page
       .getByRole('navigation', { name: 'Settings section' })
       .getByRole('button', { name: 'Platforms', exact: true })
