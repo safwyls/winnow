@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 15:00'
+updated_date: '2026-09-30 15:26'
 labels: []
 dependencies: []
 priority: high
@@ -172,6 +172,8 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 63. Audit the remaining outbound-link and Steam harvest script contracts against current production Electron routing and capture. Port exact URI/identifier fixtures and execute capture scripts against sanitized original page fixtures, including script failures and paginator completion. Preserve the independent native sign-in surface and test both entry paths; record source mechanism changes precisely rather than claiming blanket class coverage.
 
 64. Complete the remaining LinkDestinationTests with source-equivalent shared-preference and production Library-to-Details-to-router coverage. Exercise the original reference targets and in-app/browser/store preference matrix, fallback feedback and focus, on desktop and fullscreen. Use isolated fake network responses and OS dispatch recorders with the real backend, and preserve game action authority. Then run the combined native suite at a frozen milestone while auditing remaining controller and fullscreen contracts.
+
+65. Consolidate the remaining frozen contract inventory into finite feature and verification work packages, distinguishing confirmed behavior defects from unverified implementations and obsolete framework mechanisms. Audit shared controller filtering and the fullscreen Details/navigation interaction family together, then implement exact original thresholds, independent reconnect suppression and repeat timing with production input tests. Keep native verification on frozen sources, and treat Electron release/CI cutover as an explicit final work package. Report remaining scope clearly; do not interpret test-accounting percentage as product completion.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -342,4 +344,6 @@ Plan 61 verified: all 49 focused artwork/cache cases, build/typecheck, all 64 na
 Plan 62 verified: final build/typecheck and all 3201 component/live API cases in 158 files pass without skips (49.74s). All 35 affected native cases passed (2.3m); visual review then corrected desktop-sized fullscreen footer text, and all 15 final native Details cases pass (50.2s). Exact original width/height matrices, populated/empty prose measure, persistent polite refresh feedback, focus return and colors are measured. Technical facts are directly visible and the maintenance order is preserved. Initial stale disclosure/copy assertions and a desktop-only reception assertion applied to fullscreen were corrected. Seven source methods gain behavioral evidence, three CLR converter assertions are explicitly classified; inventory1199ported625retained23framework487pending101partial. Checkpoint-forty-eight.md records evidence. All AC remain unchecked. Continuing recorded plan63 outbound links and Steam harvest scripts.
 
 Plan63 verified: build/typecheck, all247focused cases and all3241component/liveAPI cases in158files pass without skips50.27s. Shared renderer/main reading validation restores HTTP destinations, omits unsafe targets and empty labels, and normalizes dispatch. Steam script errors now return failed probes; pagination requests fresh documents in the same private session. Initial native20/22 passed; two interceptor Cookie-header assumptions were replaced by direct private-session/cookie-jar checks, while actual cache headers remain asserted. All7final native browser/account cases pass20.5s; all15Details cases passed in the first group. Eighteen source methods completed; inventory1217ported625retained23framework469pending101partial. Evidence checkpoint-forty-nine.md. All AC remain unchecked.
+
+Plan64 verified: build/typecheck, all3249component/liveAPI cases in158files without skips53.65s, and all8final native destination cases33.9s pass. Earlier group also passes all6action-panel and2isolated-reader cases. Native tests exposed notices behind scrims, detached-host popover exceptions and Escape dismissing the owner; all fixed with reachable modal-scoped top-layer notices and origin restoration. Shared destination persistence is verified through desktop, real fullscreen/controller A and reload. Five source methods completed; inventory1222ported625retained23framework464pending101partial. Checkpoint-fifty.md records evidence. User requested clearer forecast after30hours; clarified that77percent is test accounting, not product completeness. Consolidated controller/Details audit and explicit release/CI cutover remain; all AC remain unchecked.
 <!-- SECTION:NOTES:END -->

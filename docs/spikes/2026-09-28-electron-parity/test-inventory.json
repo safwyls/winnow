@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 469,
+    "pending": 464,
     "partial": 101,
-    "ported": 1217,
+    "ported": 1222,
     "retained-backend": 625,
     "framework-specific": 23
   },
@@ -25619,27 +25619,74 @@
     {
       "id": "LinkDestinationTests.Details_more_menu_opens_reference_page_through_saved_destination",
       "source": "tests/Winnow.Ui.Tests/LinkDestinationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/link-destinations.spec.ts",
+          "case": "Library Details opens all original reference targets through the saved in-app destination"
+        }
+      ],
+      "reason": "Both native presentations open Details from the production Library and invoke all three original IGDB 1942, SteamDB 440 and SteamGridDB 440 reference targets. The saved in-app preference opens the exact URL in the isolated native reader; no external dispatch occurs and focus returns to the originating action."
     },
     {
       "id": "LinkDestinationTests.Both_presentations_route_store_and_general_web_links",
       "source": "tests/Winnow.Ui.Tests/LinkDestinationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/link-destinations.spec.ts",
+          "case": "Details applies saved browser and store preferences and reports general-page fallback"
+        },
+        {
+          "file": "tests/parity-link-policy.test.ts",
+          "case": "routes %s / %s / %s / %s to %s with fallback %s"
+        }
+      ],
+      "reason": "The original exact URL/preference/availability matrix is exercised by the main-process policy tests. Actual desktop and fullscreen Details additionally verify the shared saved preference through in-app Steam store reading, default-browser reference reading, native Steam store dispatch and general-page browser fallback with reachable feedback."
     },
     {
       "id": "LinkDestinationTests.Library_created_details_receive_the_shared_router",
       "source": "tests/Winnow.Ui.Tests/LinkDestinationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/link-destinations.spec.ts",
+          "case": "Details applies saved browser and store preferences and reports general-page fallback"
+        }
+      ],
+      "reason": "Each native case navigates through the real Library to create Details, saves presentation preferences through the real backend and invokes the rendered action. Browser and store dispatch are observed at the OS boundary, demonstrating composition rather than a separately constructed Details fixture."
     },
     {
       "id": "LinkDestinationTests.Desktop_and_controller_share_destination_and_persist_it",
       "source": "tests/Winnow.Ui.Tests/LinkDestinationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/link-destinations.spec.ts",
+          "case": "desktop and controller link settings share confirmed values and persist through a renderer reload"
+        }
+      ],
+      "reason": "The desktop selector saves browser, actual native fullscreen displays that saved value, controller A changes it to store, desktop displays store, and a renderer reload restores the same persisted backend preference. The controller row retains focus."
     },
     {
       "id": "LinkDestinationTests.Both_presentations_surface_browser_fallback",
       "source": "tests/Winnow.Ui.Tests/LinkDestinationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/link-destinations.spec.ts",
+          "case": "Details reports a failed embedded reader as browser fallback without losing its origin"
+        },
+        {
+          "file": "tests/parity-link-notifications.test.tsx",
+          "case": "keeps fallback dismissal inside the current dialog and restores the link after %s"
+        },
+        {
+          "file": "tests/parity-link-notifications.test.tsx",
+          "case": "opens another notice after the previous dialog and notice have closed"
+        }
+      ],
+      "reason": "The actual embedded reader fails to load a fixture document on both surfaces. Main dispatches the browser fallback and the renderer exposes the exact status without stealing focus. Escape dismisses only the notice and returns focus to the reference action; pointer dismissal also passes for store fallback. Notices remain reachable above dialog scrims and survive owning-dialog replacement."
     },
     {
       "id": "LinkDestinationTests.Both_settings_surfaces_report_a_failed_preference_write",

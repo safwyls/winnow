@@ -50,6 +50,9 @@ reports progress and completion in a persistent footer outside the reading area;
 uses its own text scale. Refreshing keeps the selected section and returns focus to More.
 Reading links use the same validation before rendering and dispatch: valid HTTP and HTTPS
 destinations remain available, while invalid targets or empty labels produce no button.
+Desktop and controller settings share the saved reading destination. Browser fallback
+notices remain reachable above open dialogs; dismissing one restores its originating
+action, and Escape from the notice leaves the dialog open.
 Steam account capture follows the page's own paginator in the private sign-in session and
 requests fresh documents. Page-script errors leave capture failures for the host to report.
 Updates counts correlated patches per release, using the largest count for linked editions.

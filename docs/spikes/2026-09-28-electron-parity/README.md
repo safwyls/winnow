@@ -45,6 +45,13 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [saved destination checkpoint](checkpoint-fifty.md) records all 3,249 component/live
+API cases and all eight final native destination cases passing. Library-created Details,
+desktop/controller preferences and browser fallback use the production composition.
+Notices remain reachable above dialog scrims, survive dialog replacement and consume
+Escape without closing their owner. Five source methods gain complete evidence; 464 pending
+and 101 partial methods remain. These inventory counts do not estimate product completion.
+
 The [link and capture checkpoint](checkpoint-forty-nine.md) records all 3,241 component/live
 API cases and seven final native browser/account cases passing. The affected Details matrix
 also passes. Shared link validation preserves HTTP destinations and omits invalid buttons;

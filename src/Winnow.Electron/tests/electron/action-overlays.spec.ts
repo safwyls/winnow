@@ -71,6 +71,9 @@ async function surface(text = 1, reduced = true, scale = 1, safe = 5) {
       page.evaluate(() => document.documentElement.style.getPropertyValue('--fullscreen-safe-ratio')),
     )
     .toBe(String(safe / 100))
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.classList.contains('reduced-motion')))
+    .toBe(reduced)
   await page
     .getByRole('navigation', { name: 'Main navigation' })
     .getByRole('button', { name: 'Library', exact: true })

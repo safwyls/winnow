@@ -3,6 +3,9 @@
   z-index: 900;
   right: 24px;
   bottom: 24px;
+  left: auto;
+  top: auto;
+  margin: 0;
   display: flex;
   align-items: center;
   gap: 16px;
