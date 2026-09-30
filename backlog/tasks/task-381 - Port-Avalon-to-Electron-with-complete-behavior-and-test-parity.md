@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 12:13'
+updated_date: '2026-09-30 12:24'
 labels: []
 dependencies: []
 priority: high
@@ -154,6 +154,10 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 53 rating-cap fixture follow-up: the full run records an ArrowLeft sent while Content age limit is disabled; the expectation then remains at Adults only instead of18+. The helper waits for enabled only after each press, leaving its first press unsynchronized. After the run completes, require enabled before every directional press and rerun the three original rating-cap workflows with their persistence/count/focus assertions unchanged.
 
 55. Restore the original unread accessible copy on desktop and fullscreen: retain badge eligibility and correlated update counts, announce singular/plural counts only on badged games, keep Patched navigation counts and feed reason/status accessible. Verify the eight UnreadAccessibleCopyTests contracts through component, native and retained backend evidence. Preserve the separate fullscreen presentation and existing acknowledgement policy.
+
+56. Restore desktop recommendation-card composition against FeedCardActionTests: one lifting cover frame containing compact launch/Details and a48px three-icon feedback strip, persistent title/reason below, fixed geometry through receipt/Undo, keyboard-only action focus and bounded noninteractive previews. Reuse the shared feed model and list prompt, keep fullscreen hero/shelf feedback distinct, and verify both surfaces, preview lifecycle/edge positions and the exact original pointer/keyboard matrices. Prepare unreferenced work during any full frozen-source native run; integrate only after it ends.
+
+57. Audit remaining domain-only source tests while the native source snapshot stays frozen. For each retained-backend classification, inspect exact source assertions, production backend registrations and current implementation paths; keep UI-dependent contracts pending and record only demonstrated equivalence. Stage proposed mapping evidence under.tmp until verification finishes.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -306,4 +310,6 @@ Plan53 verified: all3139 component/liveAPI cases pass across155files without ski
 Checkpoint39 complete native run:271passed2failed0skipped0flaky in29.6m. JSON preserved at.tmp/metadata-complete-native/results.json. All11new metadata cases and all13tray cases passed. Account-dashboard direct fixture DELETE hit database locked while startup still covered visible tiles; readiness and bounded atomic SQLite seeding are now corrected. Rating-cap first ArrowLeft failed with a briefly disabled row; helper now waits for enabled and matching value before each press. Both original assertion matrices will rerun. Production bundle wasc42471b5; six artwork probes compiled the in-progress Plan54 cover source, so this is not one complete frozen source snapshot. Plan54 focused verification is now running. No AC checked.
 
 Plan54 verified: all3154 component/liveAPI cases pass across156files without skips52.73s; final build/typecheck and inventory audit pass. Original26CardDetails cases pass with captures. Native73regression passed64 and exposed9cover failures: double two-pixel lift and synthetic mouse-enter on reattachment. Fixed both without weakening assertions; all20final native cover cases pass20.8s. Original108/148/200geometry,12immediate presses,recycling,focus,fullrectangleDetails and real desktop/fullscreen routing verified; captures inspected. All13dashboard/rating follow-ups from checkpoint39 also pass. Seventeen methods completed; inventory1147ported559retained17framework611pending101partial. Evidence checkpoint-forty.md. Plan55 unread accessibility is next. All AC remain unchecked.
+
+Plan55 verified: all3168 component/liveAPI cases pass across156files without skips52.22s; build/typecheck and inventory audit pass. All33native cases pass1.6m, including exact1/3/1234/missing update-count names, eligibility, duplicate editions, feed accessible descriptions and silent/saved/Undo status on both surfaces, plus fullscreen controller collections and cover regressions. Original8UnreadAccessibleCopyTests outcomes confirmed passed in checkpoint39TRX. Seven methods ported and one retained backend; inventory1154ported560retained17framework603pending101partial. Evidence checkpoint-forty-one.md. The complete frozen-source native suite is next; Plan56 feed-card work stays in scratch files until it completes. All AC remain unchecked.
 <!-- SECTION:NOTES:END -->

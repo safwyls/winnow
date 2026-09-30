@@ -18,6 +18,8 @@ interface Options {
   attached: boolean
   workId: number
   fullscreen: boolean
+  unreadCount: number
+  reason: string
 }
 const defaults: Options = {
   width: 148,
@@ -30,6 +32,8 @@ const defaults: Options = {
   attached: true,
   workId: 1,
   fullscreen: false,
+  unreadCount: -1,
+  reason: '',
 }
 const probe = {
   opened: [] as number[],
@@ -47,6 +51,13 @@ function Probe() {
   const [options, setOptions] = useState(defaults)
   probe.configure = (patch) => setOptions((state) => ({ ...state, ...patch }))
   const game = coverGame(options.workId, options.installed, options.played, options.singleStore)
+  const workspace = coverWorkspace(game)
+  if (options.unreadCount >= 0)
+    workspace.buckets = game.entries.map((entry) => ({
+      resolvedWorkId: game.workId,
+      releaseId: entry.releaseId,
+      game: { unreadUpdateCount: options.unreadCount },
+    }))
   const profile = coverProfile()
   profile.appearance.reducedMotion = options.reduced
   const context = {
@@ -81,11 +92,12 @@ function Probe() {
         Outside
       </button>
       <div id="slot" data-width={options.width} style={{ width: options.width, margin: 40 }}>
-        <AvalonCoverWorkspace.Provider value={coverWorkspace(game)}>
+        <AvalonCoverWorkspace.Provider value={workspace}>
           {options.attached && (
             <AvalonCover
               context={context}
               game={game}
+              reason={options.reason || undefined}
               selected={options.selected}
               expansion={
                 options.expansions

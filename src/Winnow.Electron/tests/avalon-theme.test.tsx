@@ -124,6 +124,23 @@ function mount(ctx: ThemeContext, Screen: ComponentType<ThemeContext>) {
   const mounted = render(tree(ctx))
   return { ...mounted, update: (value: ThemeContext) => mounted.rerender(tree(value)) }
 }
+
+it.each(['desktop', 'fullscreen'] as const)(
+  'Patched navigation announces its twelve games and meaning in %s',
+  (mode) => {
+    const ctx = context(mode)
+    ctx.page = 'library'
+    ctx.games = Array.from({ length: 12 }, (_, index) =>
+      game(index + 1, {
+        bucket: 'stale_but_patched',
+        playtimeMinutes: 600,
+      }),
+    )
+    ctx.children = <AvalonLibrary {...ctx} />
+    mount(ctx, AvalonShell)
+    expect(libraryRole('button', { name: 'Patched, 12 games with unread updates' })).toBeDefined()
+  },
+)
 beforeEach(() => {
   fixtures.workspace = undefined
   vi.stubGlobal(
@@ -833,9 +850,12 @@ it('marks linked releases as read without swallowing pushes newer than the displ
   }))
   Object.defineProperty(window, 'winnow', { value: { request }, configurable: true })
   mount(ctx, AvalonLibrary)
-  fireEvent.click(libraryRole('button', { name: 'View Library game 1, patched since you played' }), {
-    ctrlKey: true,
-  })
+  fireEvent.click(
+    libraryRole('button', { name: 'View Library game 1, patched since you played: 1 update' }),
+    {
+      ctrlKey: true,
+    },
+  )
   fireEvent.click(libraryRole('button', { name: 'Mark as read' }))
   await waitFor(() =>
     expect(request).toHaveBeenCalledWith(

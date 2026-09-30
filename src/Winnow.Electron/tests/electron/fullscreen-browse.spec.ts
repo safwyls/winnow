@@ -141,10 +141,12 @@ test('fullscreen triggers cycle exactly four collections, retain cover positions
   await controller()
   for (const label of ['Installed', 'Never played', 'Patched', 'All games']) {
     await tap(7)
-    await expect(collections().getByRole('button', { name: label, exact: true })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
+    await expect(
+      collections().getByRole('button', {
+        name: label === 'Patched' ? 'Patched, 20 games with unread updates' : label,
+        exact: true,
+      }),
+    ).toHaveAttribute('aria-pressed', 'true')
     await expect(active().first()).toBeVisible()
     await page.evaluate(() => {
       ;(window as unknown as { browseNodes: Element[] }).browseNodes = [
@@ -169,10 +171,9 @@ test('fullscreen triggers cycle exactly four collections, retain cover positions
   await expect(grid().locator(`[data-avalon-game="${saved}"]`)).toBeFocused()
   await expect(grid().locator('.avalon-row-viewport')).toHaveAttribute('data-first-row', '1')
   await tap(6)
-  await expect(collections().getByRole('button', { name: 'Patched', exact: true })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  )
+  await expect(
+    collections().getByRole('button', { name: 'Patched, 20 games with unread updates', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true')
   await surface('desktop')
   await expect(page.getByLabel('Search games', { exact: true })).toHaveValue('Game 60')
   await expect(page.getByLabel('Sort', { exact: true })).toHaveValue('time')

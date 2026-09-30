@@ -1,10 +1,10 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 611,
+    "pending": 603,
     "partial": 101,
-    "ported": 1147,
-    "retained-backend": 559,
+    "ported": 1154,
+    "retained-backend": 560,
     "framework-specific": 17
   },
   "tests": [
@@ -19418,42 +19418,129 @@
     {
       "id": "UnreadAccessibleCopyTests.A_patched_tile_says_so_and_says_how_many",
       "source": "tests/Winnow.Tests/UnreadAccessibleCopyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-cover-tiles.test.tsx",
+          "case": "announces %i correlated updates once across store copies in"
+        },
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "unread accessible copy preserves exact counts and eligibility in"
+        }
+      ],
+      "reason": "Desktop and fullscreen accessible cover names include the three-update count and title. Duplicate store copies do not multiply the work aggregate."
     },
     {
       "id": "UnreadAccessibleCopyTests.One_update_is_worded_as_one",
       "source": "tests/Winnow.Tests/UnreadAccessibleCopyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-cover-tiles.test.tsx",
+          "case": "announces %i correlated updates once across store copies in"
+        },
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "unread accessible copy preserves exact counts and eligibility in"
+        }
+      ],
+      "reason": "Both surfaces announce 1 update, never 1 updates, and localize plural counts."
     },
     {
       "id": "UnreadAccessibleCopyTests.A_badge_with_no_count_still_states_the_badge",
       "source": "tests/Winnow.Tests/UnreadAccessibleCopyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-cover-tiles.test.tsx",
+          "case": "states a badge without inventing a zero count in"
+        },
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "unread accessible copy preserves exact counts and eligibility in"
+        }
+      ],
+      "reason": "An eligible badge without a supplied count keeps its meaning and never invents a zero-update claim."
     },
     {
       "id": "UnreadAccessibleCopyTests.A_tile_with_no_badge_says_nothing_about_updates",
       "source": "tests/Winnow.Tests/UnreadAccessibleCopyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-cover-tiles.test.tsx",
+          "case": "keeps an unbadged unplayed game free of update claims in"
+        },
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "unread accessible copy preserves exact counts and eligibility in"
+        }
+      ],
+      "reason": "The single-store unplayed game keeps only its View-title name, including when source update counts exist; no unread dot or update clause is emitted."
     },
     {
       "id": "UnreadAccessibleCopyTests.The_patched_rail_row_announces_its_count_and_its_meaning",
       "source": "tests/Winnow.Tests/UnreadAccessibleCopyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-theme.test.tsx",
+          "case": "Patched navigation announces its twelve games and meaning in %s"
+        },
+        {
+          "file": "tests/electron/fullscreen-browse.spec.ts",
+          "case": "fullscreen triggers cycle exactly four collections, retain cover positions and leave desktop cuts alone"
+        }
+      ],
+      "reason": "Both collection surfaces announce Patched, the game count and games with unread updates. Native fullscreen controller cycling verifies the same named control remains reachable."
     },
     {
       "id": "UnreadAccessibleCopyTests.A_feed_card_names_itself_with_its_reason",
       "source": "tests/Winnow.Tests/UnreadAccessibleCopyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-feed-ui.test.tsx",
+          "case": "exposes the recommendation reason at its cover Tab stop and announces only a saved verdict"
+        },
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "unread accessible copy preserves exact counts and eligibility in"
+        },
+        {
+          "file": "tests/electron/feed.spec.ts",
+          "case": "saves a dated receipt, holds Undo, and retains history after navigation"
+        }
+      ],
+      "reason": "Both surfaces expose the game in the button name and the recommendation reason as its ARIA description. Native accessible-description assertions verify the same focus stop carries the reason; the browser description replaces the combined Avalonia automation string."
     },
     {
       "id": "UnreadAccessibleCopyTests.A_feed_card_reports_no_status_until_it_has_one",
       "source": "tests/Winnow.Tests/UnreadAccessibleCopyTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-feed-ui.test.tsx",
+          "case": "exposes the recommendation reason at its cover Tab stop and announces only a saved verdict"
+        },
+        {
+          "file": "tests/electron/feed.spec.ts",
+          "case": "saves a dated receipt, holds Undo, and retains history after navigation"
+        }
+      ],
+      "reason": "Both surfaces remain silent before feedback, expose a status only after a saved verdict, and remove it after Undo."
     },
     {
       "id": "UnreadAccessibleCopyTests.The_query_counts_only_the_pushes_the_badge_stands_for",
       "source": "tests/Winnow.Tests/UnreadAccessibleCopyTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The unchanged original SQLite test verifies two correlated pushes while excluding an unannounced build and an uncorrelated announcement. LibraryQueryRepository remains registered in the production backend and its work aggregate is serialized by LibraryApplication.GetWorkspaceAsync. The original case passed in the full Release suite at checkpoint 39.",
+      "implementation": [
+        "src/Winnow.Data/Repositories/LibraryQueryRepository.cs",
+        "src/Winnow.Application/Library/LibraryApplication.Workspace.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "UpdateFlagTests.The_watermark_is_the_flagging_push_and_never_the_clock",

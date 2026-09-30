@@ -45,6 +45,12 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [unread accessibility checkpoint](checkpoint-forty-one.md) records all 3,168
+component/live API cases and 33 native cases passing. Cover/list names retain exact patch
+counts, collection names explain their count, and feed reason/status checks cover both
+surfaces. Seven source methods gain Electron evidence and one retains its backend test;
+603 methods remain pending and 101 partial.
+
 The [cover tile checkpoint](checkpoint-forty.md) records 3,154 passing component/live API
 cases and all 20 final native cover checks. The first native regression exposed and then
 verified fixes for double hover movement and stationary-pointer reattachment. All dashboard

@@ -169,6 +169,20 @@ afterEach(() => {
 })
 
 describe.each(['desktop', 'fullscreen'] as const)('feed feedback in %s', (mode) => {
+  it('exposes the recommendation reason at its cover Tab stop and announces only a saved verdict', async () => {
+    mount(mode, (context) => {
+      context.games[0]!.title = 'Outer Wilds'
+      context.feed!.shelves[0].items[0].reason = 'Bought 3 years ago, never opened.'
+    })
+    await tick(10)
+    const cover = screen.getByRole('button', { name: 'View Outer Wilds' })
+    expect(cover.getAttribute('aria-description')).toBe('Bought 3 years ago, never opened.')
+    expect(screen.queryByRole('status')).toBeNull()
+    await click('Not interested')
+    expect(screen.getByRole('status').textContent).toContain('Off the feed.')
+    await click('Undo')
+    expect(screen.queryByRole('status')).toBeNull()
+  })
   it('opens response history from an empty feed and returns to the same empty surface', async () => {
     mount(mode, (context) => {
       context.feed = { ...context.feed!, candidateCount: 0, shelves: [] }

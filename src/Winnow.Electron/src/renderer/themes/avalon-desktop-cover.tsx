@@ -16,6 +16,7 @@ import { libraryIdle, libraryPlaytime } from './avalon-library-chrome'
 import { ownershipDescription, ownershipStores } from './avalon-store-marks'
 import { useAvalonPreview } from './avalon-preview'
 import { FeedReason } from './avalon-feed'
+import { unreadLabel } from './avalon-unread'
 import './avalon-desktop-cover.css'
 
 // The shell already observes this snapshot; tiles share it without another query per cover.
@@ -44,9 +45,15 @@ export function AvalonDesktopCover({
   onContextMenu,
   expansion,
   patched,
+  unreadCount,
   style,
   workspace,
-}: AvalonCoverProps & { patched: boolean; style: CSSProperties; workspace?: Workspace }) {
+}: AvalonCoverProps & {
+  patched: boolean
+  unreadCount: number
+  style: CSSProperties
+  workspace?: Workspace
+}) {
   const { Artwork } = context.components
   const hover = useAvalonPreview(context, game, reason)
   const [pointer, setPointer] = useState(false)
@@ -130,7 +137,7 @@ export function AvalonDesktopCover({
           data-avalon-game={game.workId}
           data-work-id={game.workId}
           data-selected={selected || undefined}
-          aria-label={`View ${game.title}${patched ? ', patched since you played' : ''}${ownershipDescription(game)}${expansion ? `. ${expansion.text}` : ''}`}
+          aria-label={`View ${game.title}${unreadLabel(patched, unreadCount)}${ownershipDescription(game)}${expansion ? `. ${expansion.text}` : ''}`}
           aria-description={reason}
           onMouseEnter={(event) => hover.open(event.currentTarget)}
           onMouseLeave={hover.close}

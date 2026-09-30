@@ -69,11 +69,38 @@ const counters = () =>
     opened: [...(window as any).coverProbe.opened],
     launches: [...(window as any).coverProbe.launches],
   }))
-async function configure(value: Record<string, number | boolean>) {
+async function configure(value: Record<string, number | boolean | string>) {
   await page.evaluate(async (value) => {
     ;(window as any).coverProbe.configure(value)
     await new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done())))
   }, value)
+}
+
+for (const fullscreen of [false, true]) {
+  test(`unread accessible copy preserves exact counts and eligibility in ${fullscreen ? 'fullscreen' : 'desktop'}`, async () => {
+    await configure({ fullscreen })
+    const title = 'A deliberately long game title occupying two lines'
+    await expect(cover()).toHaveAccessibleName(
+      `View ${title}, patched since you played. Owned on Steam, GOG, Epic`,
+    )
+    for (const count of [1, 3, 1234]) {
+      await configure({ unreadCount: count })
+      await expect(cover()).toHaveAccessibleName(
+        `View ${title}, patched since you played: ${count.toLocaleString()} ${count === 1 ? 'update' : 'updates'}. Owned on Steam, GOG, Epic`,
+      )
+      await expect(cover().locator('.avalon-unread')).toHaveCount(1)
+    }
+    await configure({ unreadCount: 0 })
+    await expect(cover()).toHaveAccessibleName(`View ${title}. Owned on Steam, GOG, Epic`)
+    await expect(cover().locator('.avalon-unread')).toHaveCount(0)
+    await configure({ unreadCount: 3, played: false, singleStore: true })
+    await expect(cover()).toHaveAccessibleName(`View ${title}`)
+    await expect(cover().locator('.avalon-unread')).toHaveCount(0)
+    await configure({ reason: 'Bought 3 years ago, never opened.' })
+    await cover().focus()
+    await expect(cover()).toBeFocused()
+    await expect(cover()).toHaveAccessibleDescription('Bought 3 years ago, never opened.')
+  })
 }
 async function hidden() {
   for (const action of [primary(), details()]) {

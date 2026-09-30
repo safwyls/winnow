@@ -15,6 +15,7 @@ export interface AvalonGameFacts {
   facetIds: Set<number>
   gameModes: Set<string>
   unread: boolean
+  unreadCount: number
   watermarks: Map<number, string>
 }
 export type AvalonFactMap = Map<number, AvalonGameFacts>
@@ -38,6 +39,7 @@ export function avalonFacts(games: LibraryGame[], workspace?: AvalonWorkspace): 
         facetIds: new Set(),
         gameModes: new Set(),
         unread: false,
+        unreadCount: 0,
         watermarks: new Map(),
       }
       for (const entry of game.entries) {
@@ -48,6 +50,10 @@ export function avalonFacts(games: LibraryGame[], workspace?: AvalonWorkspace): 
       facts.unread =
         (game.playtimeMinutes > 0 || !!game.lastPlayedAt) &&
         (rows ? rows.some((row) => row.game.unreadUpdateCount > 0) : game.bucket === 'stale_but_patched')
+      // Each ownership carries the same work aggregate. Store copies are not additive.
+      facts.unreadCount = facts.unread
+        ? Math.max(0, ...(rows ?? []).map((row) => row.game.unreadUpdateCount))
+        : 0
       for (const row of rows ?? [])
         if (
           row.majorUpdateAt &&

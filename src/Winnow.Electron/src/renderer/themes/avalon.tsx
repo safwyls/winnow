@@ -84,6 +84,7 @@ import { AvalonSearch } from './avalon-search'
 import { AvalonBackdrop } from './avalon-backdrop'
 import { AvalonLibraryPanel } from './avalon-library-panel'
 import { UpdateCaption } from '../features/Updates'
+import { unreadLabel } from './avalon-unread'
 
 const destinations = [
   { id: 'discover', label: 'For you', Icon: Compass },
@@ -120,6 +121,11 @@ function Collections({ context, fullscreenTools }: { context: ThemeContext; full
         {buckets.map((id) => (
           <button
             key={id}
+            aria-label={
+              id === 'stale_but_patched'
+                ? `Patched, ${context.games.filter((game) => matchesBucket(game, id)).length.toLocaleString()} games with unread updates`
+                : undefined
+            }
             data-controller-tab={context.mode === 'fullscreen' || undefined}
             aria-pressed={context.page === 'library' && activeBucket === id && listId === 'all'}
             data-filter-rule={
@@ -386,9 +392,10 @@ export function AvalonShell(context: ThemeContext) {
 }
 
 export function AvalonCover(props: AvalonCoverProps) {
-  const facts = useContext(FactsContext).get(props.game.workId)
   const workspace = useContext(AvalonCoverWorkspace)
-  if (props.context.mode === 'fullscreen') return <AvalonFullscreenCover {...props} />
+  const facts =
+    useContext(FactsContext).get(props.game.workId) ??
+    avalonFacts([props.game], workspace as AvalonWorkspace | undefined).get(props.game.workId)
   const { game, context } = props
   const dim = themeSettingValues(avalon, context.profile).dimCovers
   const { saturation, brightness, hue } = dormancy(game.lastPlayedAt)
@@ -400,9 +407,19 @@ export function AvalonCover(props: AvalonCoverProps) {
   const patched =
     facts?.unread ??
     (game.bucket === 'stale_but_patched' && (game.playtimeMinutes > 0 || !!game.lastPlayedAt))
+  const unreadCount = facts?.unreadCount ?? 0
+  if (context.mode === 'fullscreen')
+    return <AvalonFullscreenCover {...props} patched={patched} unreadCount={unreadCount} />
   // A reused grid slot must release the outgoing tile's press, focus and preview.
   return (
-    <AvalonDesktopCover key={game.workId} {...props} patched={patched} style={style} workspace={workspace} />
+    <AvalonDesktopCover
+      key={game.workId}
+      {...props}
+      patched={patched}
+      unreadCount={unreadCount}
+      style={style}
+      workspace={workspace}
+    />
   )
 }
 
@@ -416,8 +433,9 @@ function AvalonFullscreenCover({
   onClick,
   onContextMenu,
   expansion,
-}: AvalonCoverProps) {
-  const facts = useContext(FactsContext).get(game.workId)
+  patched,
+  unreadCount,
+}: AvalonCoverProps & { patched: boolean; unreadCount: number }) {
   const hover = useAvalonPreview(context, game, reason)
   const { Artwork } = context.components
   const dim = themeSettingValues(avalon, context.profile).dimCovers
@@ -427,9 +445,6 @@ function AvalonFullscreenCover({
       ? `saturate(${saturation}) hue-rotate(${hue}deg) brightness(${brightness})`
       : 'none',
   } as CSSProperties
-  const patched =
-    facts?.unread ??
-    (game.bucket === 'stale_but_patched' && (game.playtimeMinutes > 0 || !!game.lastPlayedAt))
   const stores = ownershipStores(game)
   return (
     <>
@@ -439,7 +454,7 @@ function AvalonFullscreenCover({
         data-work-id={game.workId}
         data-selected={selected || undefined}
         style={style}
-        aria-label={`View ${game.title}${patched ? ', patched since you played' : ''}${ownershipDescription(game)}${expansion ? `. ${expansion.text}` : ''}`}
+        aria-label={`View ${game.title}${unreadLabel(patched, unreadCount)}${ownershipDescription(game)}${expansion ? `. ${expansion.text}` : ''}`}
         aria-description={reason}
         onMouseEnter={(event) => hover.open(event.currentTarget)}
         onMouseLeave={hover.close}
@@ -1496,7 +1511,7 @@ export function AvalonLibrary(context: ThemeContext) {
                                   key={game.workId}
                                   data-avalon-game={game.workId}
                                   data-work-id={game.workId}
-                                  aria-label={`View ${game.title}${ownershipDescription(game)}${projected.marks.has(game.workId) ? `. ${projected.marks.get(game.workId)!.text}` : ''}`}
+                                  aria-label={`View ${game.title}${unreadLabel(facts.get(game.workId)?.unread ?? false, facts.get(game.workId)?.unreadCount ?? 0)}${ownershipDescription(game)}${projected.marks.has(game.workId) ? `. ${projected.marks.get(game.workId)!.text}` : ''}`}
                                   aria-pressed={
                                     selection.length
                                       ? selection.includes(game.workId)

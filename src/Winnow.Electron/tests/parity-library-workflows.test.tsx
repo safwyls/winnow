@@ -740,7 +740,7 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
     expect(cards()).toHaveLength(3)
     for (const label of mode === 'desktop'
       ? ['All games3', 'Started1', 'In rotation1', 'Never played1']
-      : ['All games3', 'Installed1', 'Never played1', 'Patched0'])
+      : ['All games3', 'Installed1', 'Never played1', 'Patched, 0 games with unread updates'])
       expect(libraryRole('button', { name: label })).toBeTruthy()
     fireEvent.click(libraryRole('button', { name: 'Filters' }))
     const panel = libraryRole(mode === 'fullscreen' ? 'dialog' : 'region', { name: 'Library filters' })

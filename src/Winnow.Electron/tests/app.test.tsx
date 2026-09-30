@@ -453,7 +453,7 @@ describe('integrated frontend', () => {
       expect(first.getAttribute('data-selected')).toBe('true')
       fireEvent.keyDown(first, { key: 'ArrowRight' })
       const grouped = await screen.findByRole('button', {
-        name: 'View Prey, patched since you played. Owned on Steam, Epic',
+        name: 'View Prey, patched since you played: 1 update. Owned on Steam, Epic',
       })
       await waitFor(() => expect(grouped.getAttribute('data-selected')).toBe('true'))
       fireEvent.keyDown(grouped, { key: 'ArrowRight' })

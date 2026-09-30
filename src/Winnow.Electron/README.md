@@ -13,6 +13,10 @@ corner on hover or keyboard focus. Clicking the cover still opens Details. Selec
 keeps its border without pinning the action dock open; recycled tiles release outgoing
 focus and pending feedback. Store words and compact playtime/idle figures share the
 Library scrim. Fullscreen keeps its separate directional cover and Details action path.
+Accessible cover and list names state the unread patch count, with singular/plural wording
+and no duplicate count for store copies. The Patched collection announces its game count
+and meaning. Recommendations expose their reason at the cover's focus stop and announce
+feedback only after it is saved.
 
 Avalon's desktop Details opens over the retained library with five sections and a fixed
 header. Fullscreen Details uses the original cinematic layout, two screenshot previews and

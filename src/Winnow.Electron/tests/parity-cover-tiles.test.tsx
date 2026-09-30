@@ -68,6 +68,38 @@ function reveal(f: ReturnType<typeof setup>) {
   fireEvent.mouseMove(f.tile())
 }
 
+for (const mode of ['desktop', 'fullscreen'] as const) {
+  it.each([1, 3, 1234])(`announces %i correlated updates once across store copies in ${mode}`, (count) => {
+    const game = coverGame(),
+      workspace = coverWorkspace(game)
+    workspace.buckets = game.entries.map((entry) => ({
+      releaseId: entry.releaseId,
+      resolvedWorkId: game.workId,
+      game: { unreadUpdateCount: count },
+    }))
+    const f = setup({ mode, game, workspace })
+    expect(f.cover().getAttribute('aria-label')).toBe(
+      `View ${game.title}, patched since you played: ${count.toLocaleString()} ${count === 1 ? 'update' : 'updates'}. Owned on Steam, GOG, Epic`,
+    )
+    expect(f.cover().querySelector('.avalon-unread')).not.toBeNull()
+  })
+  it(`states a badge without inventing a zero count in ${mode}`, () => {
+    const f = setup({ mode })
+    expect(f.cover().getAttribute('aria-label')).toContain('patched since you played')
+    expect(f.cover().getAttribute('aria-label')).not.toMatch(/\d+ updates?/)
+    expect(f.cover().querySelector('.avalon-unread')).not.toBeNull()
+  })
+  it(`keeps an unbadged unplayed game free of update claims in ${mode}`, () => {
+    const game = coverGame(1, false, false, true),
+      workspace = coverWorkspace(game)
+    game.title = 'Tunic'
+    workspace.buckets = [{ resolvedWorkId: 1, releaseId: 10, game: { unreadUpdateCount: 3 } }]
+    const f = setup({ mode, game, workspace })
+    expect(f.cover().getAttribute('aria-label')).toBe('View Tunic')
+    expect(f.cover().querySelector('.avalon-unread')).toBeNull()
+  })
+}
+
 it('keeps a stationary mouse-enter inert until fresh movement reveals the controls', () => {
   const f = setup()
   fireEvent.mouseEnter(f.tile())
