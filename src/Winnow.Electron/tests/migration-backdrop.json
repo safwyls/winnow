@@ -73,24 +73,6 @@
     ],
     "reason": "Cover fallback starts only after all landscape attempts fail, has its own decode width, and is released on detach. Pending requests use an owner-scoped cancel ID; late image completion cannot reattach pixels."
   },
-  "FullscreenBackdropTests.Desktop_backdrop_tries_ranked_art_then_screenshot_and_keeps_portrait_separate": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "../../tests/Winnow.Backend.Tests/BackdropArtworkTests.cs",
-        "case": "Candidate_endpoint_preserves_grouped_choices_source_order_and_portrait_fallback_without_fetching_images"
-      },
-      {
-        "file": "tests/avalon-backdrop.test.ts",
-        "case": "tries ranked artwork then screenshots before a separately sized cover fallback"
-      },
-      {
-        "file": "tests/electron/backdrop.spec.ts",
-        "case": "${mode} Details uses its original reading veil and releases its backdrop on close"
-      }
-    ],
-    "reason": "The backend preserves saved/ranked landscape choices separately from portrait, and the new backdrop releases pending/current image resources. The existing shared portrait Artwork component still uses its own encoded query cache; the original assertion that a pending portrait lease is cancelled immediately on Details disposal is not covered by this package."
-  },
   "FullscreenBackdropTests.Fullscreen_tries_artwork_then_screenshot_before_cover": {
     "status": "ported",
     "tests": [
@@ -118,24 +100,6 @@
       }
     ],
     "reason": "The complete desktop/fullscreen × panoramic/16:9 source matrix requests 3840 or 1920 as appropriate and recalculates the following screenshot independently. Real HTTP supports the original 3840 image bucket and rejects larger requests."
-  },
-  "FullscreenBackdropTests.Steam_hero_adapts_crop_and_crossfades_independent_geometry": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/avalon-backdrop.test.ts",
-        "case": "Steam hero geometry and decode width stay independent of landscape layers with fullscreen %s"
-      },
-      {
-        "file": "tests/avalon-backdrop-renderer.test.tsx",
-        "case": "renders source geometry in independent transition layers with cinematic %s"
-      },
-      {
-        "file": "tests/electron/backdrop.spec.ts",
-        "case": "fullscreen Home crossfades independent source geometry, keeps visible art while loading, and releases replaced URLs"
-      }
-    ],
-    "reason": "Native Home measures fitted 2520×813.75 heroes, independent landscape transition geometry, extreme-width centering, crop return and the mask rule. Component tests exercise cinematic/non-cinematic layer geometry. The original raw-pixel assertions for the lower-image alpha and Ground color, across the full cinematic/1920/2520 matrix, are not yet replicated."
   },
   "FullscreenBackdropTests.Desktop_hero_tries_IGDB_then_standard_hero_then_cover": {
     "status": "ported",

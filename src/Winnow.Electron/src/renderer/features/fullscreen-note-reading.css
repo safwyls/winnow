@@ -1,0 +1,46 @@
+@layer components {
+  .dialog-content.fullscreen-note-reading {
+    --reading-scale: calc(var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+    position: fixed;
+    inset: 0 auto auto 0;
+    transform: none;
+    width: calc(100vw / var(--effective-interface-scale));
+    height: calc(100dvh / var(--effective-interface-scale));
+    max-width: none;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+    background: var(--bg);
+    padding: calc(100vh * var(--fullscreen-safe-ratio, 0.05) / var(--effective-interface-scale))
+      calc(100vw * var(--fullscreen-safe-ratio, 0.05) / var(--effective-interface-scale));
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow: hidden;
+  }
+  .fullscreen-note-reading > header {
+    flex: 0 0 auto;
+  }
+  .fullscreen-note-reading > header button {
+    font-size: calc(clamp(18.67px, 1.458vw, 28px) * var(--reading-scale));
+  }
+  .fullscreen-note-reading > header h2 {
+    font: 700 calc(clamp(21.33px, 1.667vw, 32px) * var(--reading-scale))/1.3 var(--font-body);
+    margin: 20px 0 0;
+    max-width: min(1200px, 62.5vw);
+    overflow-wrap: anywhere;
+  }
+  .fullscreen-note-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+  .fullscreen-note-scroll > p {
+    margin: 0;
+    max-width: min(1200px, 62.5vw);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font: calc(clamp(16px, 1.25vw, 24px) * var(--reading-scale))/1.5 var(--font-body);
+  }
+}

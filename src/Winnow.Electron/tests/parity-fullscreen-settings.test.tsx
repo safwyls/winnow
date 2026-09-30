@@ -116,6 +116,70 @@ describe('fullscreen source setting rows', () => {
     fireEvent.click(toggle)
     await waitFor(() => expect(toggle.getAttribute('aria-checked')).toBe('true'))
   })
+  it('persists five-point interface adjustments across reloads and clamps at both limits without changing text size', async () => {
+    const f = fixture({ FullscreenTextScale: '1.3', FullscreenSafeMargin: '3' })
+    const first = render(<FullscreenAppearance />, { wrapper: f.wrapper })
+    let row = await ready('Interface scale')
+    expect(row.textContent).toContain('100%')
+    row.focus()
+    for (const value of ['105%', '110%', '115%']) await direction(row, 'ArrowRight', value)
+    expect(f.values.FullscreenInterfaceScale).toBe('1.15')
+    expect(document.activeElement).toBe(row)
+    first.unmount()
+    f.client.clear()
+    render(<FullscreenAppearance />, { wrapper: f.wrapper })
+    row = await ready('Interface scale')
+    expect(row.textContent).toContain('115%')
+    row.focus()
+    await direction(row, 'ArrowRight', '120%')
+    const writeCount = () =>
+      f.request.mock.calls.filter(([input]) => input.route === 'preferences.presentation.put').length
+    let count = writeCount()
+    fireEvent.keyDown(row, { key: 'ArrowRight' })
+    expect(writeCount()).toBe(count)
+    for (const value of ['115%', '110%', '105%', '100%', '95%', '90%', '85%', '80%'])
+      await direction(row, 'ArrowLeft', value)
+    count = writeCount()
+    fireEvent.keyDown(row, { key: 'ArrowLeft' })
+    expect(writeCount()).toBe(count)
+    const increase = screen.getByRole('button', { name: 'Increase interface scale' })
+    const decrease = screen.getByRole('button', { name: 'Decrease interface scale' })
+    expect(increase.tabIndex).toBe(-1)
+    expect(decrease.tabIndex).toBe(-1)
+    fireEvent.click(increase)
+    await waitFor(() => expect(f.values.FullscreenInterfaceScale).toBe('0.85'))
+    await waitFor(() => expect(row.disabled).toBe(false))
+    fireEvent.click(decrease)
+    await waitFor(() => expect(f.values.FullscreenInterfaceScale).toBe('0.8'))
+    await waitFor(() => expect(row.disabled).toBe(false))
+    expect(document.activeElement).toBe(row)
+    expect(f.values.FullscreenTextScale).toBe('1.3')
+    expect(f.values.FullscreenSafeMargin).toBe('3')
+    expect(
+      f.request.mock.calls
+        .filter(([input]) => input.route === 'preferences.presentation.put')
+        .every(([input]) => input.params?.preference === 'FullscreenInterfaceScale'),
+    ).toBe(true)
+  })
+  it.each([
+    ['5', '120%'],
+    ['0', '80%'],
+    ['NaN', '100%'],
+    ['Infinity', '100%'],
+    ['-Infinity', '100%'],
+    ['', '100%'],
+    ['   ', '100%'],
+  ])(
+    'reads saved interface scale %s as %s without overwriting it or the independent text size',
+    async (value, expected) => {
+      const f = fixture({ FullscreenInterfaceScale: value, FullscreenTextScale: '1.3' })
+      render(<FullscreenAppearance />, { wrapper: f.wrapper })
+      expect((await ready('Interface scale')).textContent).toContain(expected)
+      expect((await ready('Text size')).textContent).toContain('130%')
+      expect(f.values.FullscreenInterfaceScale).toBe(value)
+      expect(f.request.mock.calls.filter(([input]) => input.route.endsWith('.put'))).toHaveLength(0)
+    },
+  )
   it('reflects desktop dormancy changes in the fullscreen switch and writes back the shared preference', async () => {
     const f = fixture()
     render(

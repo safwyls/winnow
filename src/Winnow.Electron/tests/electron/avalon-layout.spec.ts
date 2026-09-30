@@ -592,7 +592,7 @@ test('fullscreen retains row nodes, carries and clamps columns on revisits, and 
 })
 test('fullscreen keeps cover geometry stable for long titles and two-line reasons at every text scale', async () => {
   await surface('fullscreen', 1280, 720)
-  const data = fixture()
+  const data = fixture([3])
   data.library.games[1].title =
     'An exceptionally long game title that must stay on a single line without pushing the cover shelf below the screen '.repeat(
       4,
@@ -612,9 +612,12 @@ test('fullscreen keeps cover geometry stable for long titles and two-line reason
       scale,
     )
     await activeCovers().first().focus()
-    const before = await activeCovers().first().boundingBox()
+    const coverGeometry = () =>
+      activeCovers().evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().toJSON()))
+    const before = await coverGeometry()
+    expect(before).toHaveLength(3)
     await page.keyboard.press('ArrowRight')
-    const after = await activeCovers().first().boundingBox()
+    const after = await coverGeometry()
     expect(after).toEqual(before)
     const text = await page.locator('.avalon-home-hero').evaluate((hero) => {
       const title = hero.querySelector('h1')!,
@@ -625,13 +628,19 @@ test('fullscreen keeps cover geometry stable for long titles and two-line reason
         ellipsis: getComputedStyle(title).textOverflow,
         reasonHeight: reason.getBoundingClientRect().height,
         reasonLine: parseFloat(getComputedStyle(reason).lineHeight),
+        zoom: parseFloat(getComputedStyle(document.body).zoom),
+        titleSize: parseFloat(getComputedStyle(title).fontSize),
+        titleLength: title.textContent!.length,
       }
     })
-    expect(Math.abs(text.titleHeight - text.lineHeight)).toBeLessThan(1)
+    expect(Math.abs(text.titleHeight - text.lineHeight * text.zoom)).toBeLessThan(1)
+    expect(text.titleLength).toBeGreaterThan(100)
+    expect((text.titleSize * 1920) / 1280).toBeCloseTo(64, 0)
     expect(text.ellipsis).toBe('ellipsis')
-    expect(Math.abs(text.reasonHeight - text.reasonLine * 2)).toBeLessThan(1)
+    expect(Math.abs(text.reasonHeight - text.reasonLine * 2 * text.zoom)).toBeLessThan(1)
+    expect(((text.reasonHeight / text.zoom) * 1920) / 1280).toBeCloseTo(72 * scale, 0)
     await page.keyboard.press('ArrowRight')
-    expect(await activeCovers().first().boundingBox()).toEqual(before)
+    expect(await coverGeometry()).toEqual(before)
     expect(await page.locator('.avalon-home-hero > p').boundingBox()).toMatchObject({
       height: text.reasonHeight,
     })
@@ -711,7 +720,7 @@ for (const [margin, text] of [
 ])
   test(`fullscreen interface scaling preserves shelf alignment at margin ${margin}, text ${text}`, async () => {
     await surface('fullscreen', 1920, 1080)
-    await replace(fixture())
+    await replace(fixture([20, 20, 20, 20, 20, 20]))
     await page.getByRole('button', { name: 'Show Layout shelf 1', exact: true }).click()
     await settled()
     await page.evaluate(
@@ -739,7 +748,8 @@ for (const [margin, text] of [
     const initial = await geometry()
     const safeArea = await page.locator('.avalon-shell').evaluate((shell) => ({
       supported: CSS.supports('padding-block', 'calc(5% * (100vh / 100vw))'),
-      padding: parseFloat(getComputedStyle(shell).paddingTop),
+      padding:
+        parseFloat(getComputedStyle(shell).paddingTop) * parseFloat(getComputedStyle(document.body).zoom),
     }))
     expect(safeArea.supported).toBe(true)
     expect(safeArea.padding).toBeCloseTo((1080 * margin) / 100, 0)
@@ -755,11 +765,22 @@ for (const [margin, text] of [
       const next = await geometry()
       expect(Math.abs(next.bottomGap)).toBeLessThan(3)
       expect(Math.abs(next.centerGap)).toBeLessThan(1)
-      expect(next.headingGap / scale).toBeGreaterThanOrEqual(11)
-      expect(next.headingGap / scale).toBeLessThanOrEqual(13)
+      expect(next.headingGap / (scale * 0.85)).toBeGreaterThanOrEqual(11)
+      expect(next.headingGap / (scale * 0.85)).toBeLessThanOrEqual(13)
       if (scale <= 1) {
         expect(next.height / initial.height).toBeGreaterThanOrEqual(scale - 0.02)
         expect(next.height / initial.height).toBeLessThanOrEqual(scale + 0.02)
+      }
+      if (scale === 0.8) {
+        await activeCovers().first().focus()
+        await page.keyboard.press('ArrowDown')
+        await settled()
+        await expect(page.locator('.avalon-home-shelf > h2')).toHaveText('Layout shelf 2')
+        const changed = await geometry()
+        expect(changed.height / initial.height).toBeGreaterThanOrEqual(0.78)
+        expect(changed.height / initial.height).toBeLessThanOrEqual(0.82)
+        expect(Math.abs(changed.bottomGap)).toBeLessThan(3)
+        expect(Math.abs(changed.centerGap)).toBeLessThan(1)
       }
     }
   })

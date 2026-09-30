@@ -30,7 +30,14 @@ export function useHomeRowGeometry(
         innerHeight -
         (parseFloat(getComputedStyle(shell).paddingTop) + parseFloat(getComputedStyle(shell).paddingBottom)) *
           zoom
-      const { height, width, capacity } = homeRowLayout(element.clientWidth, available, canvasHeight, zoom)
+      // Cover targets use reference pixels; display resolution must not enlarge them a second time.
+      const viewportScale = Math.max(1, Math.min(innerHeight / 1080, innerWidth / 1920))
+      const { height, width, capacity } = homeRowLayout(
+        element.clientWidth,
+        available,
+        canvasHeight / viewportScale,
+        zoom / viewportScale,
+      )
       const value = `${height}px`
       if (element.style.getPropertyValue('--home-row-height') !== value)
         element.style.setProperty('--home-row-height', value)

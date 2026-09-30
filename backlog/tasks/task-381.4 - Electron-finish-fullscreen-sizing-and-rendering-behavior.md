@@ -1,10 +1,11 @@
 ---
 id: TASK-381.4
 title: 'Electron: finish fullscreen sizing and rendering behavior'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:44'
+updated_date: '2026-09-30 22:48'
 labels:
   - electron
   - parity
@@ -68,13 +69,39 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Original reference/minimum/ultrawide and text/interface scale matrices preserve cover padding, artwork extent, information hierarchy, shelf indicators and visible row geometry.
-- [ ] #2 Original layout/performance diagnostic contracts have equivalent measurements or justified mechanism-specific dispositions; resizing and returning to desktop do not introduce stale layout or persistent rendering work.
-- [ ] #3 All 19 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
-- [ ] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+- [x] #1 Original reference/minimum/ultrawide and text/interface scale matrices preserve cover padding, artwork extent, information hierarchy, shelf indicators and visible row geometry.
+- [x] #2 Original layout/performance diagnostic contracts have equivalent measurements or justified mechanism-specific dispositions; resizing and returning to desktop do not introduce stale layout or persistent rendering work.
+- [x] #3 All 19 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Compare all 19 assigned source methods and their full fixtures against Electron behavior; preserve existing CSS/React mechanisms where equivalent and document framework differences rather than inventing unused events.
+2. Restore demonstrated gaps: original edge-colored Fit cover padding with Fill/release cleanup; source shelf arrow/dot target geometry and no mouse focus capture; fullscreen Activity title/date/note hierarchy and bounded reading with fixed Back focus. Keep desktop presentation separate.
+3. Verify interface scale, baseline/key migration, persistence, finite clamps, independent text size and confirmed reset. Measure root/header/content scaling, fixed physical safe margins, full backdrops and bounded keyboard at reference/ultrawide sizes; correct only demonstrated gaps against the governing visual spec.
+4. Strengthen native Home matrices for long titles, empty/short/long reasons, six shelves of twenty cards, bottom alignment and selected shelf changes; verify four root backdrops. Test exact row-refresh observation, scheduled/reversed movement, retained footer/viewport and source shelf indicators. Add backdrop pixel/lifetime and cover-padding evidence.
+5. Integrate bounded domain-agent work, run focused checks then the complete component/API suite and affected isolated native suites. Inspect desktop/fullscreen screenshots, record per-method evidence for only these 19 contracts, update documentation, commit and pause before TASK-381.5.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Restored the 0.85 fullscreen baseline and reference display scaling, normalized Home cover geometry for 4K, added source edge-color Fit padding and shelf target geometry, and preserved mouse/controller focus. Activity now has the source typography, bounded note reading with saved safe margins and return focus, plus the original full-canvas journal/Settings decoration assets. Desktop has separate regression coverage and retains its presentation.
+
+Verification: build/typecheck and formatting pass; all 3,369 component/live API cases across 165 files pass (54.20s). All 94 distinct affected native cases pass across saved batches, including the final 69-case regression (6.6m) and both final reading-size cases (18.9s). Both migrated application-service legacy preference cases pass. Source review findings on margins, decorations and typography were corrected and verified; screenshots inspected. Fullscreen physical devices/TV-distance validation remains TASK-381.40.
+
+All 19 assigned source methods now have executed replacement evidence. Inventory: 1,303 ported, 625 retained backend, 30 framework-specific, 391 pending and 86 partial; complete migration gate remains expected-failing for 477 unresolved methods. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-fifty-nine.md and .tmp/fullscreen-sizing-native-summary.json. This is affected-suite evidence, not a full native or .NET aggregate rerun. Task stops for review before TASK-381.5.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Restored fullscreen scaling, fitted artwork padding, shelf controls, Activity reading and decorative backdrops; migrated all 19 assigned source contracts. Build, 3,369 component/API cases, 94 distinct native cases and two application-service cases pass. Evidence: checkpoint-fifty-nine.md. Pausing for review before TASK-381.5.
+<!-- SECTION:FINAL_SUMMARY:END -->

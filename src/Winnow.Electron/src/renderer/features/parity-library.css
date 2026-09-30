@@ -3,10 +3,12 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    max-height: calc(85dvh / (var(--interface-scale, 1) * var(--fullscreen-interface-scale, 1)));
+    max-height: calc(85dvh / var(--effective-interface-scale));
     overflow: hidden;
   }
-  .list-prompt-dialog > :not(.list-prompt-choices) { flex-shrink: 0; }
+  .list-prompt-dialog > :not(.list-prompt-choices) {
+    flex-shrink: 0;
+  }
   .list-prompt-choices {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -15,7 +17,9 @@
     overflow: auto;
     scrollbar-gutter: stable;
   }
-  .list-prompt-choices:empty { display: none; }
+  .list-prompt-choices:empty {
+    display: none;
+  }
   .list-prompt-choices button {
     width: 100%;
     white-space: normal;
@@ -23,11 +27,17 @@
     justify-content: flex-start;
     text-align: left;
   }
-  .list-prompt-dialog form { margin: 0; overflow: auto; scrollbar-gutter: stable; }
-  .list-prompt-dialog .field { margin-top: 0; }
+  .list-prompt-dialog form {
+    margin: 0;
+    overflow: auto;
+    scrollbar-gutter: stable;
+  }
+  .list-prompt-dialog .field {
+    margin-top: 0;
+  }
   :root[data-mode='fullscreen'] :is(.list-prompt-dialog, .confirmation-dialog) {
     width: 900px;
-    max-width: calc((100vw - 80px) / (var(--interface-scale, 1) * var(--fullscreen-interface-scale, 1)));
+    max-width: calc((100vw - 80px) / var(--effective-interface-scale));
     font-size: calc(24px * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
   }
   :root[data-mode='fullscreen'] :is(.list-prompt-dialog, .confirmation-dialog) h2 {

@@ -31,7 +31,7 @@ Reproduce the original inventory with PowerShell 7 from the repository root:
 
 | Status | Meaning |
 |---|---|
-| `ported` | An identified Electron test exercises the original behavioral contract. |
+| `ported` | An identified replacement test exercises the original behavior through Electron or its shared application/backend boundary. |
 | `partial` | Tests cover part of the contract; the reason names the remaining gap. |
 | `pending` | No complete migration evidence has been recorded. |
 | `retained-backend` | The original test exercises an implementation retained in the shared backend, with implementation paths recorded. |
@@ -44,6 +44,13 @@ inventory is independent of the current source tree. Its evidence checks locate 
 names; executing those tests and reviewing the assertion scope remain separate checks.
 
 ## Measured checks
+
+The [fullscreen sizing checkpoint](checkpoint-fifty-nine.md) records all 3,369 component/live
+API cases passing. It restores the 85% baseline, display scaling, artwork edge padding,
+source shelf targets, Activity reading hierarchy and full-canvas decorative backdrops.
+All 19 assigned source methods gain complete replacement evidence; 391 pending and 86 partial
+methods remain. Native pixel, scale, reading, row-motion and regression evidence is recorded
+in the checkpoint. TASK-381.4 stops for review before TASK-381.5.
 
 The [fullscreen lifecycle checkpoint](checkpoint-fifty-eight.md) records all 3,358 component/live
 API cases and 87 distinct native lifecycle, navigation and affected-page cases passing. Startup entry,

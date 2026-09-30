@@ -1,6 +1,12 @@
 @layer base, components, themes;
 @layer base {
   :root {
+    --fullscreen-base-scale: 1;
+    --fullscreen-viewport-scale: 1;
+    --effective-interface-scale: calc(
+      var(--interface-scale, 1) * var(--fullscreen-interface-scale, 1) * var(--fullscreen-base-scale) *
+        var(--fullscreen-viewport-scale)
+    );
     --bg: #18191b;
     --surface: #202124;
     --raised: #292a2d;
@@ -21,9 +27,14 @@
     color: var(--text);
     background: var(--bg);
   }
+  :root[data-mode='fullscreen'] {
+    --fullscreen-base-scale: 0.85;
+    /* Larger displays retain the reference density; smaller windows use the responsive component sizes. */
+    --fullscreen-viewport-scale: max(1, min(calc(100dvh / 1080px), calc(100dvw / 1920px)));
+  }
   body {
-    zoom: calc(var(--interface-scale, 1) * var(--fullscreen-interface-scale, 1));
-    height: calc(100dvh / (var(--interface-scale, 1) * var(--fullscreen-interface-scale, 1)));
+    zoom: var(--effective-interface-scale);
+    height: calc(100dvh / var(--effective-interface-scale));
     overflow: hidden;
   }
   #root {

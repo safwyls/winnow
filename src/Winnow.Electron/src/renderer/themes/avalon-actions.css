@@ -7,7 +7,7 @@
   }
   .avalon-actions-panel {
     --action-text-scale: calc(var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
-    --action-zoom: calc(var(--interface-scale, 1) * var(--fullscreen-interface-scale, 1));
+    --action-zoom: var(--effective-interface-scale);
     --action-unit: min(calc(100vw / 1920), calc(100vh / 1080));
     --action-safe-x: calc(100vw * var(--fullscreen-safe-ratio, 0.05) / var(--action-zoom));
     --action-safe-y: calc(100vh * var(--fullscreen-safe-ratio, 0.05) / var(--action-zoom));

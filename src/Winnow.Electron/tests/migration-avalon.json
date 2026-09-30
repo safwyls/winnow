@@ -43,50 +43,6 @@
     "reason": "At 3440×1440 with ultrawide fit enabled and interface scale 0.8, ten recommendation covers render; nine Right presses focus and fully reveal the tenth.",
     "status": "ported"
   },
-  "FullscreenHomeLayoutTests.Reducing_interface_scale_reduces_rendered_home_covers": {
-    "tests": [
-      {
-        "case": "fullscreen interface scaling preserves shelf alignment at margin ${margin}, text ${text}",
-        "file": "tests/electron/avalon-layout.spec.ts"
-      },
-      {
-        "case": "sizes Home from an unscaled reference instead of consuming extra zoomed-out height",
-        "file": "tests/avalon-row-motion.test.ts"
-      }
-    ],
-    "reason": "Native 1920×1080 matrices at 5%/text 1 and 10%/text 1.4 verify covers exceed 100 px,0.8 and 1.0 height ratios within 0.02, bottom anchor,12 px heading gap and centered rail through 1.2. Original scaled-cover ratio after changing shelves still needs an explicit rendered assertion.",
-    "status": "partial"
-  },
-  "FullscreenHomeLayoutTests.Long_title_keeps_single_line_cover_geometry": {
-    "tests": [
-      {
-        "case": "fullscreen keeps cover geometry stable for long titles and two-line reasons at every text scale",
-        "file": "tests/electron/avalon-layout.spec.ts"
-      }
-    ],
-    "reason": "At 1280×720 and text 0.7/1/1.4, long titles retain one line and ellipsis while cover bounds remain unchanged. Exact original 64 px reference-canvas typography and its 0.85 baseline transform have not been reconciled with Electron responsive CSS sizes.",
-    "status": "partial"
-  },
-  "FullscreenHomeLayoutTests.Root_backdrops_fill_canvas_outside_safe_margins": {
-    "tests": [
-      {
-        "case": "ultrawide fullscreen reaches every recommendation and its backdrop fills the canvas",
-        "file": "tests/electron/avalon-layout.spec.ts"
-      }
-    ],
-    "reason": "Home backdrop geometry fills the full 3440×1440 canvas outside 10% safe margins. The original four-screen matrix including Library, Activity and Settings is not yet covered.",
-    "status": "partial"
-  },
-  "FullscreenHomeLayoutTests.Description_length_preserves_home_cover_geometry": {
-    "tests": [
-      {
-        "case": "fullscreen keeps cover geometry stable for long titles and two-line reasons at every text scale",
-        "file": "tests/electron/avalon-layout.spec.ts"
-      }
-    ],
-    "reason": "Native empty, long and short reasons reserve exactly two line heights and preserve cover bounds at text 0.7/1/1.4. The original 72×text-scale reference-coordinate height, transformed by the Avalonia canvas baseline, is not yet an equivalent absolute-size assertion in Electron.",
-    "status": "partial"
-  },
   "FullscreenHomeLayoutTests.Long_home_hero_settles_after_returning_from_settings_at_large_text": {
     "tests": [
       {
@@ -1350,16 +1306,6 @@
       {
         "file": "tests/electron/avalon-layout.spec.ts",
         "case": "fullscreen retains row nodes, carries and clamps columns on revisits, and reverses without fading"
-      }
-    ]
-  },
-  "FullscreenRowViewportTests.Row_refresh_keeps_neighbors_and_notifies_only_for_realization_changes": {
-    "reason": "Updated row content retains neighbor DOM identity; row invalidation notification cardinality from the original RowsChanged event has not yet received a complete equivalent observer contract test.",
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/avalon-row-viewport.test.tsx",
-        "case": "refreshes one row without replacing its neighbors and immediately exposes appended data"
       }
     ]
   },

@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { ImageOff } from 'lucide-react'
+import { CoverPadding } from './CoverPadding'
 import { artworkWidth, type ArtworkLease, type OwnedArtwork } from './artwork-cache'
 import {
   artworkFreshness,
@@ -176,6 +177,9 @@ export function Artwork({
               : 'missing'
       }
     >
+      {className.split(/\s+/).includes('artwork-edge-padding') && (
+        <CoverPadding image={ready && !failed ? image.current : null} owner={asset} />
+      )}
       {asset && !failed && (
         <img
           ref={attachImage}

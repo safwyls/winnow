@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1728 800">
+  <title>Quiet concentric contours</title>
+  <path d="M800 800 C720 580 1050 640 980 400 S1110 20 1440 10 S1830 210 1760 550 L1728 800 Z" fill="#1D3437" data-fill="SurfaceRaised" opacity=".6"/>
+  <path d="M900 800 C800 600 1150 590 1090 400 S1220 120 1440 120 S1710 260 1690 510 S1530 670 1640 800" fill="none" stroke="#2B4A4C" data-stroke="Line" stroke-width="4"/>
+  <path d="M1000 800 C900 640 1240 580 1200 400 S1350 210 1470 230 S1620 330 1590 510 S1440 710 1520 800" fill="none" stroke="#8FA5A0" data-stroke="TextDim" stroke-width="3" opacity=".2"/>
+  <path d="M1110 800 C1030 660 1350 600 1310 430 S1410 320 1470 330 S1530 440 1480 540 S1370 710 1410 800" fill="none" stroke="#2B4A4C" data-stroke="Line" stroke-width="3"/>
+  <path d="M500 660 L780 660 L880 560 M1540 120 L1670 120 M1610 80 L1610 160" fill="none" stroke="#2B4A4C" data-stroke="Line" stroke-width="2"/>
+</svg>

@@ -52,10 +52,12 @@ for (const { id, source } of baseline.tests) {
     for (const test of entry.tests) {
       const path = resolve(root, 'src/Winnow.Electron', test.file)
       const electronTest = !relative(resolve(root, 'src/Winnow.Electron/tests'), path).startsWith('..')
-      // Legacy frontend coordinators moved into backend HTTP use cases. Their
-      // replacement tests must exercise that production boundary, not a retired alias.
+      // Shared coordinators and preferences live behind the backend API. Their
+      // replacement tests exercise the HTTP boundary or its application service.
       const backendTest =
-        !relative(resolve(root, 'tests/Winnow.Backend.Tests'), path).startsWith('..') && path.endsWith('.cs')
+        ['Winnow.Backend.Tests', 'Winnow.Application.Tests'].some(
+          (project) => !relative(resolve(root, 'tests', project), path).startsWith('..'),
+        ) && path.endsWith('.cs')
       if ((electronTest || backendTest) && test.case && (await readFile(path, 'utf8')).includes(test.case))
         continue
       throw new Error(`Missing test evidence ${test.file}: ${test.case} for ${id}`)

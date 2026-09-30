@@ -72,6 +72,56 @@ it('refreshes one row without replacing its neighbors and immediately exposes ap
   expect(view.getByRole('button').textContent).toBe('Game 3')
   expect(view.container.querySelector('[data-first-row]')?.getAttribute('data-first-row')).toBe('3')
 })
+it('publishes one realized content refresh without notifying for offscreen rows or animation frames', () => {
+  const renderRows = (first: number, items = rows) => (
+    <AvalonRowViewport rows={items} first={first} reducedMotion={false} visible={2}>
+      {(row) => <button>{row.title}</button>}
+    </AvalonRowViewport>
+  )
+  const view = render(renderRows(0))
+  const neighbor = view.container.querySelector('[data-row-id="shelf-1"]')
+  const original = view.container.querySelector('[data-row-id="shelf-0"]')
+  const observer = new MutationObserver(() => {})
+  observer.observe(view.container, { subtree: true, childList: true, characterData: true })
+  const refreshed = [{ ...rows[0], title: 'Updated game' }, ...rows.slice(1)]
+  view.rerender(renderRows(0, refreshed))
+  // React updates the retained text node rather than replacing the whole realized control.
+  expect(observer.takeRecords()).toHaveLength(1)
+  expect(original?.textContent).toBe('Updated game')
+  expect(view.container.querySelector('[data-row-id="shelf-0"]')).toBe(original)
+  expect(view.container.querySelector('[data-row-id="shelf-1"]')).toBe(neighbor)
+  view.rerender(renderRows(0, refreshed))
+  expect(observer.takeRecords()).toHaveLength(0)
+  const unseen = refreshed.map((row, index) => (index === 500 ? { ...row, title: 'Offscreen update' } : row))
+  view.rerender(renderRows(0, unseen))
+  expect(observer.takeRecords()).toHaveLength(0)
+  view.rerender(renderRows(1, unseen))
+  expect(observer.takeRecords().length).toBeGreaterThan(0)
+  frame(1000)
+  frame(1110)
+  expect(observer.takeRecords()).toHaveLength(0)
+  expect(view.container.querySelector('[data-row-id="shelf-1"]')).toBe(neighbor)
+  observer.disconnect()
+})
+
+it('retains arranged translations before the first frame and immediately after reversing', () => {
+  const items = rows.slice(0, 8)
+  const view = render(tree(0, items))
+  const incoming = view.container.querySelector<HTMLElement>('[data-row-id="shelf-1"]')!
+  const initial = incoming.style.transform
+  view.rerender(tree(1, items))
+  expect(incoming.style.transform).toBe(initial)
+  frame(1000)
+  expect(incoming.style.transform).toBe(initial)
+  frame(1090)
+  const beforeReverse = incoming.style.transform
+  expect(beforeReverse).not.toBe(initial)
+  view.rerender(tree(0, items))
+  expect(incoming.style.transform).toBe(beforeReverse)
+  expect(view.container.querySelector('[data-row-id="shelf-1"]')).toBe(incoming)
+  frame(2000)
+  expect(incoming.style.transform).toBe(beforeReverse)
+})
 it('bounds DOM realization on distant navigation and removes old rows on replacement and empty data', () => {
   const view = render(tree(0))
   view.rerender(tree(900))

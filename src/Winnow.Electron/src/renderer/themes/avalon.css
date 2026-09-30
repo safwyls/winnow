@@ -906,7 +906,7 @@
     );
   }
   .avalon-home {
-    --home-hero-top: 3vh;
+    --home-hero-top: calc(3vh / var(--fullscreen-viewport-scale));
     --home-title-margin: 24px;
     /* Reserve the supported theme-size range so typography changes do not resize covers. */
     --home-body-reserve: calc(var(--fullscreen-body-size) * var(--fullscreen-text-scale, 1) * 1.2);
@@ -1043,36 +1043,6 @@
     overflow-wrap: anywhere;
     font-size: calc(clamp(16px, 1.25vw, 24px) * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
     line-height: 1.2;
-  }
-  .avalon-shelf-navigation {
-    grid-column: 2;
-    grid-row: 2;
-    z-index: 2;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    align-items: center;
-    justify-content: center;
-    min-height: 0;
-  }
-  .avalon-shelf-navigation button {
-    width: 34px;
-    height: 34px;
-    min-height: 0;
-    flex-shrink: 1;
-    padding: 6px;
-    border: 0;
-    background: transparent;
-  }
-  .avalon-shelf-navigation i {
-    width: 8px;
-    height: 8px;
-    border: 1px solid var(--muted);
-    border-radius: 50%;
-  }
-  .avalon-shelf-navigation button[aria-current='true'] i {
-    border-color: var(--accent);
-    background: var(--accent);
   }
   .avalon-shell.fullscreen .avalon-library {
     padding: 0;

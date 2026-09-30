@@ -15,8 +15,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import {
   BookOpen,
-  ChevronDown,
-  ChevronUp,
   Compass,
   Expand,
   Grid2X2,
@@ -83,10 +81,12 @@ import { homePageStart, homeShelfPosition, initialGridPosition } from './avalon-
 import { AvalonFullscreenGrid, type AvalonGridHandle, type AvalonSavedGrid } from './avalon-fullscreen-grid'
 import { FullscreenStatus } from '../components/FullscreenStatus'
 import { RootBumper, SectionLabel, SectionNavigation } from '../components/SectionNavigation'
+import { AvalonShelfIndicator } from './avalon-shelf-indicator'
 import { useSystemReducedMotion } from '../useSystemReducedMotion'
 import { Details } from '../features/Details'
 import { AvalonSearch } from './avalon-search'
 import { AvalonBackdrop } from './avalon-backdrop'
+import { AvalonAmbientBackdrop } from './avalon-ambient-backdrop'
 import { AvalonLibraryPanel } from './avalon-library-panel'
 import { UpdateCaption } from '../features/Updates'
 import { unreadLabel } from './avalon-unread'
@@ -278,6 +278,9 @@ export function AvalonShell(context: ThemeContext) {
       data-pane-layout={appearance.appearance.layout}
       data-reduced-motion={context.profile.appearance.reducedMotion || undefined}
     >
+      {fullscreen && (shellPage === 'journal' || shellPage === 'settings') && (
+        <AvalonAmbientBackdrop page={shellPage} />
+      )}
       {fullscreen &&
         shellPage === 'library' &&
         librarySelected !== null &&
@@ -508,7 +511,10 @@ function AvalonFullscreenCover({
         onFocus={onFocus}
         onKeyDown={onKeyDown}
       >
-        <Artwork workId={game.workId} />
+        <Artwork
+          workId={game.workId}
+          className={context.mode === 'fullscreen' ? 'artwork-edge-padding' : undefined}
+        />
         <span className="avalon-cover-fallback" aria-hidden="true">
           {game.title}
         </span>
@@ -840,36 +846,11 @@ export function AvalonDiscover(context: ThemeContext) {
             )
           }}
         </AvalonRowViewport>
-        <div className="avalon-shelf-navigation" aria-label="Recommendation shelves">
-          <button
-            tabIndex={-1}
-            aria-label="Previous shelf"
-            disabled={shelfIndex === 0}
-            onClick={() => changeShelf(shelfIndex - 1)}
-          >
-            <ChevronUp />
-          </button>
-          {shelves.map((entry, index) => (
-            <button
-              tabIndex={-1}
-              key={entry.id}
-              data-controller-tab
-              aria-label={`Show ${entry.title}`}
-              aria-current={index === shelfIndex ? 'true' : undefined}
-              onClick={() => changeShelf(index)}
-            >
-              <i />
-            </button>
-          ))}
-          <button
-            tabIndex={-1}
-            aria-label="Next shelf"
-            disabled={shelfIndex === shelves.length - 1}
-            onClick={() => changeShelf(shelfIndex + 1)}
-          >
-            <ChevronDown />
-          </button>
-        </div>
+        <AvalonShelfIndicator
+          titles={shelves.map((entry) => entry.title)}
+          selected={shelfIndex}
+          onSelect={changeShelf}
+        />
       </section>
     </div>
   )

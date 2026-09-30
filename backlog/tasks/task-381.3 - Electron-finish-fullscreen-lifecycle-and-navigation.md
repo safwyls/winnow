@@ -1,11 +1,11 @@
 ---
 id: TASK-381.3
 title: 'Electron: finish fullscreen lifecycle and navigation'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:44'
-updated_date: '2026-09-30 22:11'
+updated_date: '2026-09-30 22:12'
 labels:
   - electron
   - parity
@@ -73,7 +73,7 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [x] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -100,4 +100,6 @@ User review found missing main-menu LB/RB glyphs. Restored the original bundled 
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
 Completed in f9e22fc3. Preserved fullscreen entry/exit, cursor ownership, stable local sections, exact return focus, shared appearance and independent presentation state. All 3358 component/live API cases and 87 distinct native cases pass; build/typecheck, formatting and migration report pass. All 17 assigned source methods now have equivalent executed evidence; 496 unresolved methods remain elsewhere. See checkpoint-fifty-eight.md for visual evidence and device limitations. Paused for user review; TASK-381.4 has not started.
+
+Root LB/RB review omission corrected in d5746fd0; 120 focused component cases and 17 native header/navigation cases pass, including rendered-glyph assertions and inspected minimum-size screenshots. User explicitly authorized continuing to TASK-381.4 after this correction.
 <!-- SECTION:FINAL_SUMMARY:END -->

@@ -115,6 +115,19 @@ theme, typography and cover choices. The Controller guide keeps ten mappings and
 help on one screen. Spending and recommendation history open from Library; background
 operations open from Application.
 
+Displayed 100% interface scale uses the original 85% baseline. Larger displays scale the
+reference layout uniformly, so 4K retains the same cover density as 1080p. Smaller windows
+use responsive typography. Safe margins stay proportional to the physical window, independently
+of interface scale; text size remains a separate preference. Old interface-scale settings
+restart at the new baseline once, while subsequent adjustments persist separately.
+
+Fullscreen fitted covers extend each artwork edge's sampled color into its adjacent gap.
+Fill mode clears the padding; dimming applies to the image and padding together. Shelf
+arrows and dots fit within the cover row and preserve controller focus when clicked.
+Activity's journal artwork and Settings' contours fill the canvas behind their safe margins.
+Activity notes open on a bounded reading page with a fixed Back action and directional
+scrolling. Closing returns focus to the invoking action; desktop keeps its note dialog.
+
 Fullscreen Library and Application use the original adjustment rows, switches, section
 rules and separate reading panes. Library sort, journal prompts, visibility, expansion
 grouping, startup, tray and link choices share their saved values with desktop. Left and

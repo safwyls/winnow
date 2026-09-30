@@ -137,7 +137,10 @@ for (const [width, height, scale, uiScale] of [
     )
     await expect(page.locator('html')).toHaveCSS('--fullscreen-text-scale', String(scale))
     await expect(page.locator('html')).toHaveCSS('--fullscreen-interface-scale', String(uiScale))
-    await expect(page.locator('body')).toHaveCSS('zoom', String(uiScale))
+    const expectedZoom = uiScale * 0.85 * Math.max(1, Math.min(height / 1080, width / 1920))
+    await expect
+      .poll(() => page.locator('body').evaluate((node) => parseFloat(getComputedStyle(node).zoom)))
+      .toBeCloseTo(expectedZoom, 5)
     const origin = page.locator('.avalon-cover').first()
     await origin.click()
     const details = page.locator('.avalon-details.fullscreen')
@@ -173,7 +176,7 @@ for (const [width, height, scale, uiScale] of [
             parseFloat(getComputedStyle(overview).gap) * parseFloat(getComputedStyle(document.body).zoom)),
       }
     })
-    expect(metrics.titleHeight).toBeLessThanOrEqual(metrics.lineHeight * 2 * uiScale + 1)
+    expect(metrics.titleHeight).toBeLessThanOrEqual(metrics.lineHeight * 2 * expectedZoom + 1)
     expect(metrics.family.replace(/["']/g, '')).toBe(metrics.bodyFamily.replace(/["']/g, ''))
     expect(metrics.readingHeight, JSON.stringify(metrics)).toBeGreaterThan(100)
     expect(metrics.heroBottom).toBeLessThan(metrics.height - 100)

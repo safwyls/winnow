@@ -207,6 +207,17 @@
     min-height: 100px;
     padding: 24px;
   }
+  .mode-fullscreen .activity-history .timeline-entry .text-button {
+    font: 700
+      calc(clamp(21.33px, 1.667vw, 32px) * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1))/1.3
+      var(--font-body);
+  }
+  .mode-fullscreen .activity-history .timeline-entry time {
+    color: var(--muted);
+    font-size: calc(
+      clamp(14.67px, 1.146vw, 22px) * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1)
+    );
+  }
   .mode-fullscreen .activity-chart li button {
     min-height: 76px;
   }
@@ -223,5 +234,14 @@
     .activity-charts {
       grid-template-columns: minmax(0, 1fr);
     }
+  }
+}
+@layer themes {
+  .mode-fullscreen .activity-preview .activity-note-label {
+    text-transform: uppercase;
+    color: var(--muted);
+    font: 400
+      calc(clamp(12px, 0.938vw, 18px) * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1))/1.4
+      var(--font-body);
   }
 }

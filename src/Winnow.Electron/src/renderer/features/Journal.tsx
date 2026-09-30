@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useId, useRef, useState } from 'react'
 import { SectionLabel, SectionNavigation } from '../components/SectionNavigation'
+import { FullscreenNoteReading } from './FullscreenNoteReading'
 import * as Dialog from '@radix-ui/react-dialog'
 import { BookOpen, X } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -375,6 +376,12 @@ export function Journal({
   const [selected, setSelected] = useViewState<string | null>(`${mode}:journal:selected`, null)
   const [openError, setOpenError] = useState<unknown>(null)
   const [reading, setReading] = useState(false)
+  const readingOrigin = useRef<HTMLElement | null>(null)
+  const openReading = () => {
+    readingOrigin.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    setReading(true)
+  }
+  const restoreReadingFocus = () => readingOrigin.current?.focus({ preventScroll: true })
   const library = useLibrary()
   const preferences = useApiQuery<{ promptAfterPlay: boolean }>('journal.preferences.get')
   const activity = useActivity(bounds.fromUtc, bounds.untilUtc, section, workId)
@@ -424,7 +431,7 @@ export function Journal({
         }
         if (event.key.toLowerCase() === 'y' && chosen?.note?.note) {
           event.preventDefault()
-          setReading(true)
+          openReading()
         }
       }}
     >
@@ -576,7 +583,9 @@ export function Journal({
                   ? 'Journal prompts are off. Turn them on in Display preferences after a game.'
                   : 'Your notes will live here. Open a recorded session to add your first one.'
                 : section === 1
-                  ? 'No updates in this period. Updates from your games will appear here.'
+                  ? mode === 'fullscreen' && days === 0
+                    ? 'No updates this week'
+                    : 'No updates in this period. Updates from your games will appear here.'
                   : 'No recorded sessions in this period. Sessions appear after Winnow observes you playing.'}
             </Empty>
           ) : (
@@ -678,7 +687,12 @@ export function Journal({
                     </p>
                   )}
                   {chosen?.update && <h3>{chosen.update.title ?? chosen.update.kind}</h3>}
-                  {chosen?.note?.note && <blockquote>{chosen.note.note}</blockquote>}
+                  {chosen?.note?.note && (
+                    <>
+                      {mode === 'fullscreen' && <h3 className="activity-note-label">Your note</h3>}
+                      <blockquote>{chosen.note.note}</blockquote>
+                    </>
+                  )}
                   {!!chosen?.note?.rating && <p>{chosen.note.rating} / 5</p>}
                   <div className="form-actions">
                     {chosenGame && onOpenGame && (
@@ -693,7 +707,7 @@ export function Journal({
                       </button>
                     )}
                     {chosen?.note?.note && (
-                      <button data-controller-context onClick={() => setReading(true)}>
+                      <button data-controller-context onClick={openReading}>
                         Read note
                       </button>
                     )}
@@ -715,18 +729,34 @@ export function Journal({
         </>
       )}
       {editing != null && <JournalEditor sessionId={editing} onClose={() => setEditing(null)} />}
-      <Dialog.Root open={reading} onOpenChange={setReading}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="dialog-overlay" />
-          <Dialog.Content className="dialog-content journal-dialog">
-            <Dialog.Title>{chosenGame?.title ?? 'Your session note'}</Dialog.Title>
-            <Dialog.Description>{chosen && dateLabel(chosen.atUtc)}</Dialog.Description>
-            <blockquote style={{ whiteSpace: 'pre-wrap' }}>{chosen?.note?.note}</blockquote>
-            {!!chosen?.note?.rating && <p>{chosen.note.rating} / 5</p>}
-            <Dialog.Close>Close note</Dialog.Close>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      {mode === 'fullscreen' ? (
+        <FullscreenNoteReading
+          open={reading}
+          onOpenChange={setReading}
+          title={chosenGame?.title ?? 'Your session note'}
+          note={chosen?.note?.note ?? ''}
+          restoreFocus={restoreReadingFocus}
+        />
+      ) : (
+        <Dialog.Root open={reading} onOpenChange={setReading}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="dialog-overlay" />
+            <Dialog.Content
+              className="dialog-content journal-dialog"
+              onCloseAutoFocus={(event) => {
+                event.preventDefault()
+                restoreReadingFocus()
+              }}
+            >
+              <Dialog.Title>{chosenGame?.title ?? 'Your session note'}</Dialog.Title>
+              <Dialog.Description>{chosen && dateLabel(chosen.atUtc)}</Dialog.Description>
+              <blockquote style={{ whiteSpace: 'pre-wrap' }}>{chosen?.note?.note}</blockquote>
+              {!!chosen?.note?.rating && <p>{chosen.note.rating} / 5</p>}
+              <Dialog.Close>Close note</Dialog.Close>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+      )}
     </section>
   )
 }

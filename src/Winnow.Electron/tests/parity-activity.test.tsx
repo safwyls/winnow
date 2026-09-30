@@ -406,7 +406,7 @@ describe('activity browsing parity', () => {
     await screen.findByRole('button', { name: 'Read note' })
     fireEvent.keyDown(screen.getByRole('region', { name: 'Activity events' }), { key: 'y' })
     expect(within(await screen.findByRole('dialog')).getByText('Read this next time')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Close note' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
     const edit = screen.getByRole('button', { name: 'Edit selected note' })
     expect(edit.hasAttribute('data-controller-play')).toBe(true)
     fireEvent.click(edit)

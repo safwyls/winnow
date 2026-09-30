@@ -27,6 +27,7 @@ import { rift } from './themes/rift'
 import { useThemeRuntime, ThemeBoundary, installThemeSDK } from './theming/runtime'
 import { ThemeStudio } from './theming/ThemeStudio'
 import { FullscreenThemeSettings } from './features/FullscreenThemeSettings'
+import { boundedSetting } from './features/FullscreenAppearance'
 import { GameCard, Impression } from './components/primitives'
 import { Artwork } from './components/Artwork'
 import { GamePreview } from './components/GamePreview'
@@ -150,10 +151,7 @@ export function App() {
     return () => cancelAnimationFrame(frame)
   }, [startup.visible])
   useEffect(() => {
-    const clamp = (value: string | null | undefined, fallback: number, min: number, max: number) => {
-      const number = value === null || value === undefined ? fallback : Number(value)
-      return Number.isFinite(number) ? Math.max(min, Math.min(max, number)) : fallback
-    }
+    const clamp = boundedSetting
     const root = document.documentElement
     root.dataset.mode = mode
     root.style.setProperty(
