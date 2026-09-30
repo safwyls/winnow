@@ -26,6 +26,7 @@ export function libraryRole(...args: Parameters<typeof screen.getByRole>) {
   return screen.getByRole(role, options)
 }
 export function libraryLabel(...args: Parameters<typeof screen.getByLabelText>) {
+  if (args[0] === 'Sort' && !fullscreenLibrary()) return screen.getByRole('button', { name: /^Sort ·/ })
   if (fullscreenLibrary() && !screen.queryByLabelText(...args)) {
     fireEvent.click(libraryRole('button', { name: 'More' }))
     fireEvent.click(screen.getByText('Current search and sort'))
@@ -34,4 +35,15 @@ export function libraryLabel(...args: Parameters<typeof screen.getByLabelText>) 
   const details = field.closest('details')
   if (details && !details.open) fireEvent.click(details.querySelector('summary')!)
   return field
+}
+export function setLibrarySort(value: string) {
+  if (fullscreenLibrary()) fireEvent.change(libraryLabel('Sort'), { target: { value } })
+  else {
+    fireEvent.click(screen.getByRole('button', { name: /^Sort ·/ }))
+    const option = screen
+      .getAllByRole('menuitemradio')
+      .find((item) => (item as HTMLButtonElement).value === value)
+    if (!option) throw new Error(`Missing library sort option: ${value}`)
+    fireEvent.click(option)
+  }
 }

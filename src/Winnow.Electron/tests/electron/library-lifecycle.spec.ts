@@ -114,7 +114,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await navigate('Library')
     if (mode === 'desktop') await page.getByRole('button', { name: 'Grid view', exact: true }).click()
     await setLibrarySort(page, 'dormant')
-    if (mode === 'desktop') await page.getByLabel('Sort', { exact: true }).focus()
+    if (mode === 'desktop') await page.getByRole('button', { name: /^Sort ·/ }).focus()
     else await page.getByRole('button', { name: 'Filter & sort', exact: true }).focus()
     await page.mouse.move(5, 5)
     const covers = page.locator('.avalon-library .avalon-cover:not([data-selected="true"])')
@@ -375,9 +375,9 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
         ['idle', 'dormant', 'recent'],
       ]) {
         await header.getByRole('button', { name: `Sort by ${column}`, exact: true }).click()
-        await expect(page.getByRole('combobox', { name: 'Sort', exact: true })).toHaveValue(first)
+        await expect(page.getByRole('button', { name: /^Sort ·/ })).toHaveAttribute('value', first)
         await header.getByRole('button', { name: `Sort by ${column}`, exact: true }).click()
-        await expect(page.getByRole('combobox', { name: 'Sort', exact: true })).toHaveValue(second)
+        await expect(page.getByRole('button', { name: /^Sort ·/ })).toHaveAttribute('value', second)
         await expect(header.locator('[data-sort-direction]')).toHaveCount(1)
       }
       const geometry = await page.evaluate(() => {

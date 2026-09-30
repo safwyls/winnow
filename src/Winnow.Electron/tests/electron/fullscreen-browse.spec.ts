@@ -3,6 +3,7 @@ import { mkdtemp, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
 import { closeFixture } from './fixture-cleanup'
+import { setLibrarySort } from './library-controls'
 import type { LibraryResponse, FeedSnapshot } from '../../src/renderer/api/types'
 
 type FixtureHost = { __winnowLayoutFixture: { library: LibraryResponse; feed: FeedSnapshot } }
@@ -124,7 +125,7 @@ async function tap(button: number) {
 test('fullscreen triggers cycle exactly four collections, retain cover positions and leave desktop cuts alone', async () => {
   await surface('desktop')
   await page.getByLabel('Search games', { exact: true }).fill('Game 60')
-  await page.getByLabel('Sort', { exact: true }).selectOption('time')
+  await setLibrarySort(page, 'time')
   await surface('fullscreen')
   await expect(collections().getByRole('button')).toHaveText([
     'All games60',
@@ -176,7 +177,7 @@ test('fullscreen triggers cycle exactly four collections, retain cover positions
   ).toHaveAttribute('aria-pressed', 'true')
   await surface('desktop')
   await expect(page.getByLabel('Search games', { exact: true })).toHaveValue('Game 60')
-  await expect(page.getByLabel('Sort', { exact: true })).toHaveValue('time')
+  await expect(page.getByRole('button', { name: /^Sort ·/ })).toHaveAttribute('value', 'time')
   expect(errors).toEqual([])
 })
 

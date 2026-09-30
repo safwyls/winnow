@@ -10,7 +10,15 @@ import { dormancy } from '../themes/avalon-data'
 import { mergeIdle, mergePlaytime, mergeRollup, mergeRowDetail, mergeRowMark } from './parity-merge-facts'
 import { MergeBatchConfirmation, MergeMemberSheet, MergeOptionsSheet } from './parity-merge-overlay'
 import { refreshIdentityReview } from './parity-merge-query'
-import { mergeActionCopy, mergeActionNames } from './parity-merge-copy'
+import {
+  mergeActionCopy,
+  mergeActionNames,
+  mergeScreenCopy,
+  mergeSectionNames as sectionNames,
+  mergeSortOptions as sortOptions,
+  mergePlatformOptions as platformOptions,
+} from './parity-merge-copy'
+import { SortMenu } from '../components/SortMenu'
 import {
   buildMergeCards,
   exactMergeCards,
@@ -32,31 +40,13 @@ import {
 } from './parity-merge-model'
 import './parity-merge.css'
 
-const sectionNames: Record<MergeSection, string> = {
-  stores: 'Across stores',
-  editions: 'Editions',
-  expansions: 'Expansions',
-  parts: 'Parts',
-  tests: 'Test builds',
-}
 type Choice = Pick<MergeCard, 'parent' | 'included' | 'selected'>
 type Mutation = { revision: string; actId?: number }
-const sortOptions = [
-  { value: 'strength', label: 'Strongest match' },
-  { value: 'playtime', label: 'Playtime at stake' },
-  { value: 'title', label: 'Title' },
-]
-const platformOptions = [
-  { value: '', label: 'None' },
-  { value: 'steam', label: 'Steam' },
-  { value: 'epic', label: 'Epic Games' },
-  { value: 'gog', label: 'GOG' },
-]
 
 export function MergeQueueLoading() {
   return (
-    <div className="merge-queue" role="group" aria-label="Possible matches" aria-busy="true">
-      <p role="status">Loading possible matches…</p>
+    <div className="merge-queue" role="group" aria-label={mergeScreenCopy.possibleMatches} aria-busy="true">
+      <p role="status">{mergeScreenCopy.loading}</p>
       {mergeSections.map((kind) => (
         <section className="merge-section" aria-label={sectionNames[kind]} key={kind}>
           <h3>{sectionNames[kind]}</h3>
@@ -467,7 +457,7 @@ export function MergeQueue({
       className="merge-queue"
       ref={root}
       role="group"
-      aria-label="Possible matches"
+      aria-label={mergeScreenCopy.possibleMatches}
       tabIndex={mode === 'desktop' ? 0 : undefined}
       onKeyDown={(event) => {
         if (
@@ -505,46 +495,41 @@ export function MergeQueue({
         {mode === 'fullscreen' ? (
           <>
             <button onClick={() => setOptionSheet('sort')}>
-              Sort · {sortOptions.find((option) => option.value === sort)!.label}
+              {mergeScreenCopy.sortPrefix}
+              {sortOptions.find((option) => option.value === sort)!.label}
             </button>
             <button onClick={() => setOptionSheet('kind')}>
-              Kind · {section === 'all' ? 'All proposals' : sectionNames[section]}
+              {mergeScreenCopy.kindPrefix}
+              {section === 'all' ? 'All proposals' : sectionNames[section]}
             </button>
             <button disabled={blocked} onClick={() => setOptionSheet('platform')}>
-              Preferred platform ·{' '}
+              {mergeScreenCopy.platformPrefix}
               {platformOptions.find((option) => option.value === preferred)?.label ?? storeLabel(preferred)}
             </button>
           </>
         ) : (
           <>
+            <SortMenu
+              value={sort}
+              options={sortOptions}
+              onChange={(value) => {
+                setSort(value as MergeSort)
+                setPositions({ sort: value as MergeSort, keys: [] })
+              }}
+            />
             <label>
-              Sort proposals
+              {mergeScreenCopy.preferredMainPlatform}
               <select
-                aria-label="Sort proposals"
-                value={sort}
-                onChange={(event) => {
-                  const value = event.target.value as MergeSort
-                  setSort(value)
-                  setPositions({ sort: value, keys: [] })
-                }}
-              >
-                <option value="strength">Strongest match</option>
-                <option value="playtime">Playtime at stake</option>
-                <option value="title">Title</option>
-              </select>
-            </label>
-            <label>
-              Preferred main platform
-              <select
-                aria-label="Preferred main platform"
+                aria-label={mergeScreenCopy.preferredMainPlatform}
                 value={preferred}
                 disabled={blocked}
                 onChange={(event) => void savePreferred(event.target.value)}
               >
-                <option value="">None</option>
-                <option value="steam">Steam</option>
-                <option value="epic">Epic Games</option>
-                <option value="gog">GOG</option>
+                {platformOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </label>
           </>
@@ -574,7 +559,7 @@ export function MergeQueue({
         </button>
       </div>
       {mode === 'desktop' && (
-        <nav className="tabs" aria-label="Proposal kinds">
+        <nav className="tabs" aria-label={mergeScreenCopy.proposalKinds}>
           {(['all', ...mergeSections] as const).map((kind) => (
             <button key={kind} aria-pressed={section === kind} onClick={() => setSection(kind)}>
               {kind === 'all' ? 'All proposals' : sectionNames[kind]}
@@ -590,8 +575,10 @@ export function MergeQueue({
             : 'nothing waiting'
         })()}
         {section !== 'all' && (
-          <span className="merge-count-cut" aria-label="Filtered proposals">
-            {cards.filter((card) => !card.actId).length} → {shown.filter((card) => !card.actId).length}
+          <span className="merge-count-cut" aria-label={mergeScreenCopy.filteredProposals}>
+            {cards.filter((card) => !card.actId).length}
+            {mergeScreenCopy.countArrow}
+            {shown.filter((card) => !card.actId).length}
           </span>
         )}
       </p>
@@ -613,7 +600,7 @@ export function MergeQueue({
             }
           }}
         >
-          Check saved review
+          {mergeScreenCopy.checkSaved}
         </button>
       )}
       {mergeSections.map((kind) => {
@@ -652,7 +639,9 @@ export function MergeQueue({
                     <strong>{mergeTitle(card)}</strong>
                     <span>
                       {card.selected ? 'Selected · ' : ''}
-                      {card.actId ? 'Grouped' : card.confidence} · {mergeRollup(card)}
+                      {card.actId ? 'Grouped' : card.confidence}
+                      {mergeScreenCopy.separator}
+                      {mergeRollup(card)}
                     </span>
                   </button>
                 ) : (
@@ -679,7 +668,7 @@ export function MergeQueue({
                               disabled={blocked}
                               onChange={(event) => choose({ ...card, selected: event.target.checked })}
                             />
-                            Select group
+                            {mergeScreenCopy.selectGroup}
                           </label>
                         </>
                       )}
@@ -687,13 +676,15 @@ export function MergeQueue({
                     {card.actId ? (
                       <div className="form-actions">
                         <p>
-                          {card.rows.length} entries ·{' '}
-                          {mergePlaytime({ minutes: mergeMinutes(card), pack: false })} · nested, nothing
-                          deleted
+                          {card.rows.length} {mergeScreenCopy.entries}
+                          {mergeScreenCopy.separator}
+                          {mergePlaytime({ minutes: mergeMinutes(card), pack: false })}
+                          {mergeScreenCopy.separator}
+                          {mergeScreenCopy.nested}
                         </p>
                         {card.header && (
                           <label>
-                            Header store
+                            {mergeScreenCopy.headerStore}
                             <select
                               aria-label={`Header store for ${mergeTitle(card)}`}
                               value={card.header.store}
@@ -804,7 +795,7 @@ export function MergeQueue({
                                   aria-label={`Details for ${rowLabels.get(card.key)![index]}`}
                                   onClick={() => openGame(card, row.workId)}
                                 >
-                                  Details
+                                  {mergeScreenCopy.details}
                                 </button>
                               )}
                               {row.workId !== card.parent && (
@@ -934,32 +925,32 @@ export function MergeQueue({
         />
       )}
       {undo && undo.expiresAt > Date.now() && (
-        <aside className="merge-undo" aria-label="Review undo" role="status">
+        <aside className="merge-undo" aria-label={mergeScreenCopy.reviewUndo} role="status">
           <span>
             <strong>{mergeDock(undo).title}</strong>
             <span className="merge-dock-note">{mergeDock(undo).note}</span>
           </span>
           <button disabled={blocked} title={mergeActionCopy.undoTip} onClick={() => void reverse()}>
-            Undo review decisions
+            {mergeScreenCopy.undo}
           </button>
           <button
-            aria-label="Dismiss review undo"
+            aria-label={mergeScreenCopy.dismissUndo}
             title={mergeActionCopy.dismissTip}
             disabled={busy}
             onClick={() => setUndo(null)}
           >
-            Dismiss
+            {mergeScreenCopy.dismiss}
           </button>
         </aside>
       )}
       {refusalUntil !== null && (
-        <aside className="merge-undo" role="status" aria-label="Review notice">
+        <aside className="merge-undo" role="status" aria-label={mergeScreenCopy.reviewNotice}>
           <span>
-            <strong>Couldn't link those.</strong>
-            <span className="merge-dock-note">That proposal was out of date · nothing changed.</span>
+            <strong>{mergeScreenCopy.refused}</strong>
+            <span className="merge-dock-note">{mergeScreenCopy.refusedNote}</span>
           </span>
-          <button aria-label="Dismiss review notice" onClick={() => setRefusalUntil(null)}>
-            Dismiss
+          <button aria-label={mergeScreenCopy.dismissNotice} onClick={() => setRefusalUntil(null)}>
+            {mergeScreenCopy.dismiss}
           </button>
         </aside>
       )}

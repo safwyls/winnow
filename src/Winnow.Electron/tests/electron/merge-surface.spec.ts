@@ -56,6 +56,101 @@ test.beforeEach(async () => {
 })
 test.afterEach(() => expect(errors).toEqual([]))
 
+for (const zoom of [0.8, 1, 1.4])
+  test(`shared desktop sort menu keeps original rows and selected dot inside a lower window corner at scale ${zoom}`, async ({}, info) => {
+    await application.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0].setContentSize(700, 420),
+    )
+    await page.evaluate((zoom) => {
+      document.body.style.zoom = String(zoom)
+    }, zoom)
+    await page.addStyleTag({
+      content: '.shared-sort-trigger { position: fixed; right: 12px; bottom: 12px; z-index: 10; }',
+    })
+    const trigger = page.getByRole('button', { name: 'Sort · Strongest match', exact: true })
+    await trigger.click()
+    const menu = page.getByRole('menu', { name: 'Sort order', exact: true })
+    await expect(menu.getByRole('menuitemradio')).toHaveText([
+      'Strongest match',
+      'Playtime at stake',
+      'Title',
+    ])
+    await expect(menu.getByRole('menuitemradio', { name: 'Strongest match', exact: true })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    const geometry = await menu.evaluate((node) => {
+      const rect = node.getBoundingClientRect(),
+        row = node.querySelector('button')!,
+        dot = node.querySelector('.shared-sort-dot')!
+      return {
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+        width: rect.width,
+        rowHeight: row.getBoundingClientRect().height,
+        dot: dot.getBoundingClientRect().width,
+        border: getComputedStyle(node).borderTopWidth,
+        inset: getComputedStyle(node).paddingTop,
+        radius: getComputedStyle(node).borderTopLeftRadius,
+      }
+    })
+    expect(geometry.left).toBeGreaterThanOrEqual(8 * zoom - 1)
+    expect(geometry.right).toBeLessThanOrEqual(700 - 8 * zoom + 1)
+    expect(geometry.top).toBeGreaterThanOrEqual(8 * zoom - 1)
+    expect(geometry.bottom).toBeLessThanOrEqual((await trigger.boundingBox())!.y)
+    expect(geometry.width).toBeGreaterThanOrEqual(176 * zoom - 1)
+    expect(geometry.width).toBeLessThanOrEqual(320 * zoom + 1)
+    expect(geometry.rowHeight).toBeCloseTo(30 * zoom, 0)
+    expect(geometry.dot).toBeCloseTo(6 * zoom, 0)
+    // Chromium snaps this hairline to one device pixel at each tested zoom.
+    expect(parseFloat(geometry.border) * zoom).toBeCloseTo(1, 5)
+    expect([geometry.inset, geometry.radius]).toEqual(['4px', '4px'])
+    await menu.getByRole('menuitemradio', { name: 'Title', exact: true }).click()
+    await expect(menu).toHaveCount(0)
+    await expect(trigger).toHaveCount(0)
+    const selected = page.getByRole('button', { name: 'Sort · Title', exact: true })
+    await expect(selected).toBeFocused()
+    await selected.click()
+    await expect(menu.getByRole('menuitemradio', { name: 'Title', exact: true })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    await expect(menu.getByRole('menuitemradio', { checked: true })).toHaveCount(1)
+    await page.screenshot({ path: info.outputPath(`sort-menu-${zoom}.png`) })
+  })
+
+test('shared sort menu keyboard and outside dismissal restore the correct focus without writing a merge answer', async () => {
+  const trigger = page.getByRole('button', { name: 'Sort · Strongest match', exact: true })
+  await trigger.focus()
+  await page.keyboard.press('ArrowDown')
+  const menu = page.getByRole('menu', { name: 'Sort order', exact: true })
+  await expect(menu.getByRole('menuitemradio', { name: 'Strongest match', exact: true })).toBeFocused()
+  await page.keyboard.press('End')
+  await expect(menu.getByRole('menuitemradio', { name: 'Title', exact: true })).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(menu).toHaveCount(0)
+  await expect(trigger).toBeFocused()
+  await page.keyboard.press('ArrowUp')
+  await expect(menu.getByRole('menuitemradio', { name: 'Title', exact: true })).toBeFocused()
+  await page.keyboard.press('Home')
+  await page.keyboard.press('p')
+  await expect(menu.getByRole('menuitemradio', { name: 'Playtime at stake', exact: true })).toBeFocused()
+  await page.keyboard.press('Enter')
+  const sorted = page.getByRole('button', { name: 'Sort · Playtime at stake', exact: true })
+  await expect(sorted).toBeFocused()
+  await sorted.click()
+  await page.keyboard.press('Tab')
+  await expect(menu).toHaveCount(0)
+  await expect(page.getByRole('combobox', { name: 'Preferred main platform', exact: true })).toBeFocused()
+  await sorted.click()
+  await page.getByRole('button', { name: 'Outside the queue', exact: true }).click()
+  await expect(menu).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Outside the queue', exact: true })).toBeFocused()
+  expect(await page.evaluate(() => (window as any).mergeSurfaceProbe.writes)).toEqual([])
+})
+
 test('desktop row hover cross-fades reason ink in 120ms and restores row fill in 140ms without moving cards', async ({}, info) => {
   const card = page.getByRole('article', { name: 'Bastion proposal', exact: true })
   const reason = card.locator('.merge-reason'),

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { useState } from 'react'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { libraryRole, libraryLabel, returnToLibrary } from './library-controls'
+import { libraryRole, libraryLabel, returnToLibrary, setLibrarySort } from './library-controls'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { AvalonLibrary, AvalonShell } from '../src/renderer/themes/avalon'
@@ -144,7 +144,7 @@ afterEach(() => {
 it('keeps fullscreen filter, collection and sort edits local until Apply without changing desktop', () => {
   const request = setup()
   change(libraryLabel('Search games'), 'desktop')
-  change(libraryLabel('Sort'), 'time')
+  setLibrarySort('time')
   changeSurface()
   const before = cards()
   fireEvent.click(libraryRole('button', { name: 'Filters' }))
@@ -168,7 +168,7 @@ it('keeps fullscreen filter, collection and sort edits local until Apply without
 it('discards changed fullscreen sort and collection on Cancel or Back and clears only draft filters', () => {
   setup()
   changeSurface()
-  change(libraryLabel('Sort'), 'time-low')
+  setLibrarySort('time-low')
   for (const cancel of ['Cancel', 'Back']) {
     fireEvent.click(libraryRole('button', { name: 'Filters' }))
     const panel = within(filterPanel())

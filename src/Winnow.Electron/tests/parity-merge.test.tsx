@@ -983,14 +983,8 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       expect(screen.getAllByRole('article')).toEqual(before)
       await answer('Bastion', 'Same game')
       await screen.findByRole('article', { name: 'Bastion saved group' })
-      if (mode === 'desktop')
-        fireEvent.change(screen.getByRole('combobox', { name: 'Sort proposals' }), {
-          target: { value: 'title' },
-        })
-      else {
-        fireEvent.click(screen.getByRole('button', { name: 'Sort · Strongest match' }))
-        fireEvent.click(screen.getByRole('button', { name: 'Title' }))
-      }
+      fireEvent.click(screen.getByRole('button', { name: 'Sort · Strongest match' }))
+      fireEvent.click(screen.getByRole(mode === 'desktop' ? 'menuitemradio' : 'button', { name: 'Title' }))
       expect(screen.getAllByRole('article').at(-1)).toBe(first)
     })
     it('restores consecutive dismissed groups to their original slots with one Undo', async () => {
@@ -1138,16 +1132,10 @@ for (const mode of ['desktop', 'fullscreen'] as const)
         ['playtime', 'Playtime at stake', ['Prey', 'The Witcher 3: Wild Hunt', 'The Stanley Parable']],
         ['title', 'Title', ['Prey', 'The Stanley Parable', 'The Witcher 3: Wild Hunt']],
       ] as const) {
-        if (mode === 'desktop')
-          fireEvent.change(screen.getByRole('combobox', { name: 'Sort proposals' }), { target: { value } })
-        else {
-          fireEvent.click(screen.getByRole('button', { name: /^Sort ·/ }))
-          fireEvent.click(screen.getByRole('button', { name: label }))
-        }
+        fireEvent.click(screen.getByRole('button', { name: /^Sort ·/ }))
+        fireEvent.click(screen.getByRole(mode === 'desktop' ? 'menuitemradio' : 'button', { name: label }))
         expect(titles()).toEqual(expected)
-        if (mode === 'desktop')
-          expect((screen.getByRole('option', { name: label }) as HTMLOptionElement).selected).toBe(true)
-        else expect(screen.getByRole('button', { name: `Sort · ${label}` })).toBeTruthy()
+        expect(screen.getByRole('button', { name: `Sort · ${label}` })).toBeTruthy()
       }
     })
     it('does not answer a group twice and retains exact zero-hour resolved metadata', async () => {
@@ -1653,7 +1641,7 @@ it('desktop leaves unrelated keys and modified shortcuts to their focused contro
       expect(event.defaultPrevented).toBe(false)
     }
   }
-  const control = screen.getByRole('combobox', { name: 'Sort proposals' })
+  const control = screen.getByRole('combobox', { name: 'Preferred main platform' })
   control.focus()
   for (const key of ['s', 'd', 'Enter', ' ', 'ArrowDown']) {
     const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })

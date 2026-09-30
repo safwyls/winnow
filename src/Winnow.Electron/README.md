@@ -30,6 +30,12 @@ Up/Down moves the row cursor, Space chooses the header, S or Enter accepts the g
 D keeps its games separate. Other keys remain with the focused control. Fullscreen
 continues through Manage library → Identity review with its member and confirmation sheets.
 
+Desktop Library and Merges share a compact sort menu. Its button states the selected order;
+choosing a row closes the menu and returns focus. Arrow keys, Home/End and typed initials
+move within it; Escape returns to the button and Tab continues to the next control.
+The menu stays inside the window at the saved interface scale. Fullscreen keeps its own
+filter and sort panels.
+
 Avalon's desktop Details opens over the retained library with five sections and a fixed
 header. Fullscreen Details uses the original cinematic layout, two screenshot previews and
 separate About and Play history reading pages. More contains the shared metadata, matching,

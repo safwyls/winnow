@@ -45,6 +45,12 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [shared sort checkpoint](checkpoint-forty-six.md) records all 3,190 component/live API
+cases and all 17 final native merge/menu cases passing. Desktop Library and Merges share
+the original compact menu; a queued-scroll race is fixed. Two more source methods are
+complete, leaving 509 pending and 101 partial. The wider native suite remains due for a
+combined final pass.
+
 The [dedicated Merges checkpoint](checkpoint-forty-five.md) records all 35 native cases
 passing, including the complete 22-case Avalon layout matrix. Desktop gains its direct
 rail destination, Details return cursor and original keyboard scope; fullscreen keeps its

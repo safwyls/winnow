@@ -291,7 +291,7 @@ export function MergeOptionsSheet({
   disabled?: boolean
   title: string
   value: string
-  options: { value: string; label: string }[]
+  options: readonly { value: string; label: string }[]
   onChoose(value: string): void
   onClose(): void
 }) {

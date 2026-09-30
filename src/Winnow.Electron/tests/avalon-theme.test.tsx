@@ -785,7 +785,8 @@ it.each([true, false])(
     ctx.games = ctx.games.map((game) => ({ ...game, summary: 'Refreshed metadata' }))
     mounted.update(ctx)
     expect(screen.getByText('2 selected')).toBeDefined()
-    fireEvent.change(libraryRole('combobox', { name: 'Sort' }), { target: { value: 'title-desc' } })
+    fireEvent.click(libraryRole('button', { name: /^Sort ·/ }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Name Z–A' }))
     fireEvent.click(libraryRole('button', { name: grid ? 'List view' : 'Grid view' }))
     expect(screen.getByText('2 selected')).toBeDefined()
     fireEvent.change(libraryRole('textbox', { name: 'Search games' }), {

@@ -209,7 +209,7 @@ describe('integrated frontend', () => {
     await screen.findByText('nothing waiting')
     expect(merges.textContent).toBe('Merges')
     expect(merges.style.opacity).toBe('')
-    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Sort proposals' }), { key: 'Escape' })
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Preferred main platform' }), { key: 'Escape' })
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'Merges', level: 1 })).toBeNull())
     expect(
       within(screen.getByRole('navigation', { name: 'Main navigation' }))

@@ -13,6 +13,8 @@ export async function libraryAction(page: Page, name: string | RegExp) {
   return action
 }
 export async function libraryField(page: Page, name: string) {
+  if (name === 'Sort' && (await page.locator('.avalon-shell.desktop').count()))
+    return page.getByRole('button', { name: /^Sort ·/ })
   const field = page.getByLabel(name, { exact: true })
   if (await field.isVisible()) return field
   if (!(await page.getByRole('dialog', { name: 'Library options', exact: true }).isVisible()))
@@ -37,9 +39,17 @@ export async function setLibrarySort(page: Page, sort: string) {
     const panel = page.getByRole('dialog', { name: 'Library filters', exact: true })
     await panel.getByRole('combobox', { name: 'Sort', exact: true }).selectOption(sort)
     await panel.getByRole('button', { name: 'Apply filters' }).click()
-  } else await page.getByLabel('Sort', { exact: true }).selectOption(sort)
+  } else {
+    await page.getByRole('button', { name: /^Sort ·/ }).click()
+    await page
+      .getByRole('menu', { name: 'Sort order', exact: true })
+      .locator(`[role="menuitemradio"][value="${sort}"]`)
+      .click()
+  }
 }
 export async function expectLibrarySort(page: Page, sort: string) {
-  await expect(await libraryField(page, 'Sort')).toHaveValue(sort)
+  const field = await libraryField(page, 'Sort')
+  if (await page.locator('.avalon-shell.desktop').count()) await expect(field).toHaveAttribute('value', sort)
+  else await expect(field).toHaveValue(sort)
   await returnToLibrary(page)
 }

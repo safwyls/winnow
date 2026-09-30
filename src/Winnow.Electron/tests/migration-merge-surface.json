@@ -1,4 +1,23 @@
 {
+  "MergesSurfaceTests.The_sort_button_carries_the_sort_menu": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/sort-menu.test.tsx", "case": "sort button announces the current order and opens selected radio items that close and restore focus on selection" },
+      { "file": "tests/electron/merge-surface.spec.ts", "case": "shared desktop sort menu keeps original rows and selected dot inside a lower window corner at scale" },
+      { "file": "tests/electron/merge-surface.spec.ts", "case": "shared sort menu keyboard and outside dismissal restore the correct focus without writing a merge answer" },
+      { "file": "tests/electron/merge-contracts.spec.ts", "case": "keeps a real answered slot through separation and opens keyboard sort actions" },
+      { "file": "tests/electron/browse-spine.spec.ts", "case": "spine preserves ordering and selection with source pointer, scrub, halo and keyboard behavior" }
+    ],
+    "reason": "Library and desktop Merges use the same compact SortMenu component. Its name carries the selected order, each radio row closes the menu and restores focus, and native tests measure the original row/dot/inset geometry at 80%, 100% and 140% zoom. Keyboard navigation, typeahead, one-layer Escape, outside dismissal and real Library ordering are verified. Fullscreen retains its independent sort sheets."
+  },
+  "MergesSurfaceTests.Every_user_facing_string_on_the_screen_comes_from_copy": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/parity-merge-surface-contract.test.ts", "case": "static merge markup reads its visible text and accessible copy through bindings" },
+      { "file": "tests/parity-merge-surface-contract.test.ts", "case": "queue and receipt copy use ordinary answers without retract merge records or cancel" }
+    ],
+    "reason": "Static queue markup text, labels, tooltips and placeholders bind to the copy module; section, sort and platform options are centralized there too. The AST guard rejects literal JSX text and literal user-facing attributes. As in the original XAML guard, dynamic bindings are allowed; model and fact sentences retain their separate behavioral tests."
+  },
   "MergesSurfaceTests.The_rail_row_binds_its_label_and_carries_no_count_and_no_opacity": {
     "status": "ported",
     "tests": [

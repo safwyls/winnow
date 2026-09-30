@@ -34,6 +34,7 @@ import { useLibrary, useWorkspace } from '../api/hooks'
 import { request, storeLabel } from '../api/client'
 import { bucketLabel } from '../components/primitives'
 import { CreateListButton, LibraryTools, ListEditor } from '../features/LibraryTools'
+import { SortMenu } from '../components/SortMenu'
 import { AddToListButton, orderedLists } from '../features/parity-list-prompt'
 import { LiveListActions } from '../features/parity-live-actions'
 import { ListOrderActions } from '../features/parity-list-actions'
@@ -100,6 +101,14 @@ const desktopDestinations = [
   ...destinations.slice(1).filter((item) => item.id !== 'settings'),
 ] as const
 const stateKey = (context: ThemeContext) => `avalon:library:${context.mode}`
+const librarySortOptions = [
+  { value: 'dormant', label: 'Dormant longest' },
+  { value: 'title', label: 'Name A–Z' },
+  { value: 'title-desc', label: 'Name Z–A' },
+  { value: 'recent', label: 'Last played' },
+  { value: 'time', label: 'Playtime high to low' },
+  { value: 'time-low', label: 'Playtime low to high' },
+] as const
 const FactsContext = createContext<AvalonFactMap>(new Map())
 
 function Collections({ context, fullscreenTools }: { context: ThemeContext; fullscreenTools?: ReactNode }) {
@@ -1154,18 +1163,30 @@ export function AvalonLibrary(context: ThemeContext) {
           </select>
         </label>
       )}
-      <label>
-        Sort
-        <select aria-label="Sort" value={sort} onChange={(event) => setSort(event.target.value)}>
-          <option value="dormant">Dormant longest</option>
-          <option value="title">Name A–Z</option>
-          <option value="title-desc">Name Z–A</option>
-          <option value="recent">Last played</option>
-          <option value="time">Playtime high to low</option>
-          <option value="time-low">Playtime low to high</option>
-          {listState.list && !listState.list.isLive && <option value="list-order">List order</option>}
-        </select>
-      </label>
+      {fullscreen ? (
+        <label>
+          Sort
+          <select aria-label="Sort" value={sort} onChange={(event) => setSort(event.target.value)}>
+            <option value="dormant">Dormant longest</option>
+            <option value="title">Name A–Z</option>
+            <option value="title-desc">Name Z–A</option>
+            <option value="recent">Last played</option>
+            <option value="time">Playtime high to low</option>
+            <option value="time-low">Playtime low to high</option>
+            {listState.list && !listState.list.isLive && <option value="list-order">List order</option>}
+          </select>
+        </label>
+      ) : (
+        <SortMenu
+          value={sort}
+          options={
+            listState.list && !listState.list.isLive
+              ? [...librarySortOptions, { value: 'list-order', label: 'List order' }]
+              : librarySortOptions
+          }
+          onChange={setSort}
+        />
+      )}
       {!fullscreen && (
         <>
           <div className="avalon-segmented" role="group" aria-label="Library view">

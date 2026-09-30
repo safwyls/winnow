@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { libraryRole, libraryLabel, returnToLibrary } from './library-controls'
+import { libraryRole, libraryLabel, returnToLibrary, setLibrarySort } from './library-controls'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AvalonDiscover, AvalonLibrary, AvalonShell, avalon } from '../src/renderer/themes/avalon'
@@ -398,14 +398,15 @@ describe('Library column and density controls', () => {
       ['idle', 'recent', 'ascending', [2, 1, 3]],
     ] as const) {
       fireEvent.click(libraryRole('button', { name: `Sort by ${column}` }))
-      expect((libraryRole('combobox', { name: 'Sort' }) as HTMLSelectElement).value).toBe(sort)
+      expect((libraryRole('button', { name: /^Sort ·/ }) as HTMLButtonElement).value).toBe(sort)
       expect(cards()).toEqual(order)
       expect(document.querySelectorAll('.avalon-record-header [data-sort-direction]')).toHaveLength(1)
       expect(libraryRole('button', { name: `Sort by ${column}` }).getAttribute('data-sort-direction')).toBe(
         direction,
       )
     }
-    fireEvent.change(libraryRole('combobox', { name: 'Sort' }), { target: { value: 'title' } })
+    fireEvent.click(libraryRole('button', { name: /^Sort ·/ }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Name A–Z' }))
     expect(libraryRole('button', { name: 'Sort by title' }).getAttribute('aria-pressed')).toBe('true')
     expect(libraryRole('button', { name: 'Sort by idle' }).getAttribute('aria-pressed')).toBe('false')
   })
@@ -583,7 +584,7 @@ describe.each(['desktop', 'fullscreen'] as const)('library selection in %s', (mo
         games: current.games.map((game) => ({ ...game, summary: 'Fresh summary' })),
       }),
     )
-    fireEvent.change(libraryLabel('Sort'), { target: { value: 'title-desc' } })
+    setLibrarySort('title-desc')
     expect(selectedCards()).toEqual([2, 1])
     act(() => card(3).focus())
     fireEvent.keyDown(card(3), { key: 'ArrowRight' })
@@ -664,7 +665,7 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
     setup(mode)
     expect((libraryLabel('Sort') as HTMLSelectElement).value).toBe('dormant')
     expect(cards()).toEqual([3, 2, 1])
-    fireEvent.change(libraryLabel('Sort'), { target: { value: 'recent' } })
+    setLibrarySort('recent')
     expect(cards()).toEqual([1, 2, 3])
   })
   it('sorts unequal playtimes both ways and names with mixed case independently', () => {
@@ -680,7 +681,7 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
       ['title', [2, 1, 3]],
       ['title-desc', [3, 1, 2]],
     ] as const) {
-      fireEvent.change(libraryLabel('Sort'), { target: { value: sort } })
+      setLibrarySort(sort)
       expect(cards()).toEqual(order)
     }
   })
@@ -710,7 +711,7 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
     const never = libraryRole('button', { name: 'Never played3' })
     fireEvent.click(never)
     expect(selected()).toEqual([never])
-    fireEvent.change(libraryLabel('Sort'), { target: { value: 'title-desc' } })
+    setLibrarySort('title-desc')
     fireEvent.change(libraryLabel('Search games'), { target: { value: 'alpha' } })
     expect(cards()).toEqual([1])
     fireEvent.change(libraryLabel('Search games'), { target: { value: 'zero' } })
@@ -822,7 +823,7 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
         lastPlayedAt: [null, '2026-09-01T00:00:00Z', '2025-09-01T00:00:00Z'][index],
       }))
       const view = setup(mode)
-      fireEvent.change(libraryLabel('Sort'), { target: { value: 'title-desc' } })
+      setLibrarySort('title-desc')
       preferences.values.DefaultSort = saved
       view.rerender(
         <QueryClientProvider client={view.client}>
@@ -831,7 +832,7 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
       )
       expect((libraryLabel('Sort') as HTMLSelectElement).value).toBe(sort)
       expect(cards()).toEqual(order)
-      fireEvent.change(libraryLabel('Sort'), { target: { value: 'title-desc' } })
+      setLibrarySort('title-desc')
       expect(preferences.values.DefaultSort).toBe(saved)
       expect(view.request.mock.calls.some(([input]) => input.route === 'preferences.presentation.put')).toBe(
         false,
@@ -844,7 +845,7 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
   )
   it('applies a saved default on return while retaining a manual list until it closes', () => {
     const view = setup(mode)
-    fireEvent.change(libraryLabel('Sort'), { target: { value: 'title-desc' } })
+    setLibrarySort('title-desc')
     openList(10)
     expect(cards()).toEqual([3, 1, 2])
     view.unmount()
@@ -861,7 +862,7 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
   it('updates the order of a live list without changing its rules or writing its revision', () => {
     const view = setup(mode)
     openList(11)
-    fireEvent.change(libraryLabel('Sort'), { target: { value: 'time-low' } })
+    setLibrarySort('time-low')
     preferences.values.DefaultSort = 'NameDescending'
     view.rerender(
       <QueryClientProvider client={view.client}>
@@ -998,7 +999,7 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
     fireEvent.click(libraryRole('button', { name: 'Leave this list' }))
     expect(cards()).toEqual([3, 2, 1])
     expect((libraryLabel('Sort') as HTMLSelectElement).value).toBe('title-desc')
-    fireEvent.change(libraryLabel('Sort'), { target: { value: 'title' } })
+    setLibrarySort('title')
     openList(10)
     openList('all')
     expect(cards()).toEqual([1, 2, 3])

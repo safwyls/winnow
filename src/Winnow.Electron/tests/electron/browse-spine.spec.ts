@@ -1,3 +1,4 @@
+import { setLibrarySort } from './library-controls'
 import { selectCollection, selectedCollection } from './collection-controls'
 import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
@@ -72,7 +73,7 @@ async function prepare(view: 'grid' | 'list') {
     .getByRole('button', { name: 'Library', exact: true })
     .click()
   if ((await selectedCollection(page)) !== String(sourceList.id)) await selectCollection(page, sourceList.id)
-  await page.getByRole('combobox', { name: 'Sort', exact: true }).selectOption('dormant')
+  await setLibrarySort(page, 'dormant')
   await page.getByRole('button', { name: view === 'grid' ? 'Grid view' : 'List view', exact: true }).click()
   await expect(page.locator('.avalon-results-count')).toHaveText('8 games')
   await scrollTo(0)
@@ -122,7 +123,7 @@ for (const view of ['grid', 'list'] as const) {
     await expect(rail.locator(':scope > *').nth(13)).toHaveAttribute('data-halo', '4')
     expect(await displacement(13)).toBeCloseTo(-13, 1)
     await page.mouse.move(400, 200)
-    await page.getByRole('combobox', { name: 'Sort', exact: true }).selectOption('title')
+    await setLibrarySort(page, 'title')
     await scrollTo(0)
     await expect(rail.getByRole('button')).toHaveCount(27)
     await expect(rail.getByRole('button', { name: 'Jump to #' })).toBeDisabled()
@@ -178,7 +179,7 @@ for (const view of ['grid', 'list'] as const) {
     await hover(20)
     await page.mouse.down()
     await page.mouse.up()
-    await expect(page.getByRole('combobox', { name: 'Sort', exact: true })).toHaveValue('title')
+    await expect(page.getByRole('button', { name: /^Sort ·/ })).toHaveAttribute('value', 'title')
     await expect.poll(offset).toBeGreaterThan(0)
     await scrollTo(0)
     await expect(page.locator(`.avalon-library [data-work-id="${selected}"]`)).toHaveAttribute(
@@ -195,14 +196,14 @@ for (const view of ['grid', 'list'] as const) {
     await jumpP.focus()
     await jumpP.press('Enter')
     await expect.poll(offset).toBe(scrubbed)
-    await page.getByRole('combobox', { name: 'Sort', exact: true }).selectOption('title-desc')
+    await setLibrarySort(page, 'title-desc')
     await scrollTo(0)
     await expect(rail.getByRole('button').first()).toHaveAccessibleName('Jump to Z')
     const jumpC = rail.getByRole('button', { name: 'Jump to C' })
     await jumpC.focus()
     await jumpC.press('Space')
     await expect.poll(offset).toBeGreaterThan(0)
-    await expect(page.getByRole('combobox', { name: 'Sort', exact: true })).toHaveValue('title-desc')
+    await expect(page.getByRole('button', { name: /^Sort ·/ })).toHaveAttribute('value', 'title-desc')
     await hover(8)
     await page.screenshot({ path: info.outputPath(`${view}-spine-wave.png`) })
     await page.mouse.move(400, 200)
@@ -215,7 +216,7 @@ for (const view of ['grid', 'list'] as const) {
     ).toBe(true)
     await scrollTo(0)
     await expect(rail.getByRole('button', { name: 'Jump to T' })).toHaveAttribute('data-halo', '4')
-    await page.getByRole('combobox', { name: 'Sort', exact: true }).selectOption('time')
+    await setLibrarySort(page, 'time')
     await expect(rail.locator('.avalon-sort-notch')).toHaveCount(27)
     await expect(rail.getByRole('button')).toHaveCount(0)
     await page.emulateMedia({ reducedMotion: 'no-preference' })
@@ -223,7 +224,7 @@ for (const view of ['grid', 'list'] as const) {
 
   test(`${view} retains scroll after adding to a list and restores it after Details changes the underlying offset`, async () => {
     await prepare(view)
-    await page.getByRole('combobox', { name: 'Sort', exact: true }).selectOption('title')
+    await setLibrarySort(page, 'title')
     await scrollTo(200)
     const before = await offset()
     expect(before).toBeGreaterThan(0)
