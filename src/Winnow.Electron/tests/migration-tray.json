@@ -1,0 +1,52 @@
+{
+  "TrayWindowInteractionTests.Reactivation_preserves_presentation_and_restores_minimized_or_hidden_sessions": {
+    "status": "ported",
+    "tests": [{ "file": "tests/electron/tray.spec.ts", "case": "native tray restoration preserves" }],
+    "reason": "Actual Electron windows retain normal, maximized and fullscreen presentation through visible activation, minimize/restore and close-to-tray/restore. Native menu and double-click actions restore taskbar participation; the renderer's fullscreen class agrees with native state."
+  },
+  "TrayWindowInteractionTests.Fullscreen_startup_opens_tv_and_can_return_to_desktop_without_reapplying_preference": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/tray.spec.ts",
+        "case": "fullscreen startup round trips both values without requesting a tray icon or reapplying on restore"
+      }
+    ],
+    "reason": "A real restart with a saved legacy True value opens fullscreen. Returning to desktop, hiding/reactivating, and changing the saved startup value do not reapply it. A subsequent restart with False remains in desktop."
+  },
+  "TrayWindowInteractionTests.Minimize_to_tray_hides_the_window_and_restore_returns_it_to_the_taskbar": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/electron/tray.spec.ts", "case": "native tray restoration preserves" },
+      {
+        "file": "tests/window-tray.test.ts",
+        "case": "keeps a recovery route after disabling preferences while hidden by %s"
+      }
+    ],
+    "reason": "Real native minimization hides the window and calls setSkipTaskbar(true). The actual tray activation restores visibility, the previous presentation and taskbar participation. Disabling preferences while hidden preserves the recovery icon until restoration."
+  },
+  "TrayWindowInteractionTests.Close_to_tray_cancels_close_until_the_tray_exit_is_used": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/tray.spec.ts",
+        "case": "quit destroys the native icon and exits instead of hiding"
+      },
+      {
+        "file": "tests/electron/tray.spec.ts",
+        "case": "a confirmed tray save reaches the native handler before a subsequent close can exit"
+      }
+    ],
+    "reason": "Close hides the real native window without exiting; native tray Exit and ordinary app quit destroy the icon, close the window and exit zero. A held native preference read verifies a confirmed save cannot race a subsequent close. The fixture detaches its inspector only after the application's quit event."
+  },
+  "TrayWindowInteractionTests.Background_start_opens_directly_into_the_tray": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/tray.spec.ts",
+        "case": "background startup suppresses saved fullscreen and releases its temporary native icon on restore"
+      }
+    ],
+    "reason": "A real --background launch with both tray preferences absent and fullscreen startup saved True remains hidden, outside the taskbar and in desktop presentation. Native Open restores desktop and destroys the temporary icon."
+  }
+}

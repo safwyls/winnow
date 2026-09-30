@@ -45,16 +45,16 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [fullscreen Library/Application checkpoint](checkpoint-thirty-seven.md) records 3,093
-passing component/API cases across 152 files, with build and typecheck passing. Native
-shared settings, controller rows, reading bounds, rating and update workflows pass.
-The [Appearance/Controller checkpoint](checkpoint-thirty-six.md) records the latest full
-native run: 239 passed and five navigation/selector failures on `88506ebe`. Those five
-have passing follow-up evidence in checkpoint 37. The last entirely passing combined run,
+The [tray/window checkpoint](checkpoint-thirty-eight.md) records 3,111 passing component/API
+cases across 153 files, with build and typecheck passing. All 44 focused native cases pass,
+including the new tray matrix, Library, startup, activation, journal, Settings and updates.
+The [fullscreen Library/Application checkpoint](checkpoint-thirty-seven.md) records the
+latest full native run: 247 passed and two Settings selector failures on `fb1640d8`. Both
+have passing follow-up evidence in checkpoint 38. The last entirely passing combined run,
 all 236 cases on `7c48c35b`, is in the [IGDB/startup checkpoint](checkpoint-thirty-five.md).
 All 133 backend HTTP cases also pass there, including credential protection and rollback.
-The migration inventory contains 1,117 ported, 559 retained backend, 17 framework-specific,
-638 pending and 104 partial methods. The migration gate remains incomplete.
+The migration inventory contains 1,124 ported, 559 retained backend, 17 framework-specific,
+633 pending and 102 partial methods. The migration gate remains incomplete.
 The [journal checkpoint](checkpoint-thirty-three.md)
 records the latest full .NET pass: 6,869 passed and two Linux-only skips across 13 assemblies,
 including all 896 Avalonia UI cases. The table below preserves earlier measured checkpoints.

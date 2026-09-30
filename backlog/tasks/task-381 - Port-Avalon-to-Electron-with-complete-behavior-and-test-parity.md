@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 09:32'
+updated_date: '2026-09-30 10:27'
 labels: []
 dependencies: []
 priority: high
@@ -142,6 +142,8 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 51. Restore source fullscreen Library and Application settings rows: shared default sort, journal, visibility and expansion toggles, directional content-age and link choices, startup/tray switches, OS startup status, Library tools access and parent-return focus. Reuse the existing validated preferences and native bridges; preserve desktop controls, updater workflows and additional settings pages. Verify bidirectional desktop/fullscreen values and real controller navigation on isolated data, then complete the remaining metadata/artwork hierarchy separately.
 
 52. Restore native tray lifecycle against App.UpdateTrayVisibility and TrayWindowInteractionTests: show an icon only for a tray preference, an explicit background start, or a window hidden in the tray; retain a recovery route while hidden and release it on restore when no preference needs it. Verify minimize/close behavior, preference changes, ordinary quit and update shutdown with controlled native instrumentation and isolated data. Preserve cold background preparation, activation and the active backend data-directory behavior. Complete the remaining derived TrayIconWanted contracts only with native evidence; then continue Metadata/artwork hierarchy and sync workflows.
+
+53. Restore Metadata and artwork settings on both surfaces: add one shared, durable manual metadata operation with original progress, completion and retry guidance; preserve operation identity across uncertain responses; ignore late backend progress after completion. Fullscreen opens separate IGDB metadata and Artwork source order pages with original reading hierarchy, bounded scrolling, directional movement and return focus. Verify original metadata-sync and hierarchy contracts through component, backend and native tests at original and enlarged text sizes. Keep tray package verification and evidence separate until both packages pass.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -282,4 +284,8 @@ Plan50 verified: all3071 component/liveAPI cases pass in151files without skips53
 Checkpoint36 complete native run on 88506ebe: 239 passed, five failed, no skips or flaky cases, 24.3 minutes. Report copied to .tmp/fullscreen-settings-complete-native/results.json. Two failures are ambiguous Theme Studio selectors; two Epic and one Platforms/manual test assume the old initial Settings section. Navigation corrections preserve all workflow assertions. Plan51 shared Library/Application rows now build and pass all 3089 component/live API cases in 152 files, no skips, 54.19s. Focused 135 cases pass. New native geometry/controller/shared-state checks are running; no acceptance criteria checked.
 
 Plan51 verified: all3093 component/live API cases pass in152files without skips51.60s; final build/typecheck and migration audit pass. Fullscreen Library/Application restore source rows, shared values, reading panes, Library tools return, diagnostics and update switches. Native40regression passed38; two rating typography overrides were fixed. All13follow-up cases pass2.5m, including both long-hero failures; all5final diagnostics/settings cases pass1.1m. Captures inspected. All five checkpoint36 failures have passing follow-ups. Four contracts completed; hierarchy remains partial for IGDB/artwork. Inventory1117ported559retained17framework638pending104partial. Evidence checkpoint-thirty-seven.md. Plan52 tray audit also found exact-lowercase native preference checks miss legacy True values; cover those while restoring conditional icon presence. All AC remain unchecked.
+
+Checkpoint37 complete native run on fb1640d8: 247 passed, two failed, no skips or flaky cases, 25.4 minutes. Report copied to .tmp/fullscreen-shared-settings-complete-native/results.json. Both failures use old desktop controls in fullscreen Library lifecycle tests: dormancy now lives in Appearance as a switch; default sort and expansion grouping use restored directional rows/switches. Fixture navigation is corrected without removing persistence, retained-artwork or raw-data assertions. Plan52 tray build/typecheck and79 focused unit cases pass;12 new native workflows are running. All AC remain unchecked.
+
+Plan52 verified: all3111 component/liveAPI cases pass across153files without skips51.99s; final build/typecheck and migration audit pass. All44 native regression cases pass6.5m, including13 tray workflows and both corrected fullscreen Library fixtures. Native checks first exposed a confirmed-preference race: main now refreshes saved settings before returning successful writes. Exit fixtures now detach their inspector only after native quit; process exit0 is asserted. Real tray icons obey saved preferences, retain hidden recovery, preserve all window states and accept legacy True values. Seven source methods completed; inventory1124ported559retained17framework633pending102partial. Evidence checkpoint-thirty-eight.md. Plan53 metadata source changes are separate and still unverified. All AC remain unchecked.
 <!-- SECTION:NOTES:END -->

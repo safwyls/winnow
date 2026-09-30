@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 638,
-    "partial": 104,
-    "ported": 1117,
+    "pending": 633,
+    "partial": 102,
+    "ported": 1124,
     "retained-backend": 559,
     "framework-specific": 17
   },
@@ -804,26 +804,34 @@
     {
       "id": "ApplicationSettingsViewModelTests.Tray_preferences_are_off_when_absent_and_round_trip",
       "source": "tests/Winnow.Tests/ApplicationSettingsViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-setup-recovery.test.tsx",
           "case": "Tray_preferences_are_off_when_absent_and_round_trip"
+        },
+        {
+          "file": "tests/electron/tray.spec.ts",
+          "case": "tray preferences default off, round trip, and share exactly one native icon"
         }
       ],
-      "reason": "Both presentation paths cover absent defaults and persisted round trips. The original derived TrayIconWanted assertion still needs equivalent native tray lifecycle evidence."
+      "reason": "Both presentation paths cover absent defaults and persisted round trips. Real native tests verify no default icon, one shared icon for either preference, both saved legacy True values across restart, and icon disposal when the last preference is disabled."
     },
     {
       "id": "ApplicationSettingsViewModelTests.Fullscreen_startup_defaults_off_and_round_trips_both_values",
       "source": "tests/Winnow.Tests/ApplicationSettingsViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-setup-recovery.test.tsx",
           "case": "Fullscreen_startup_defaults_off_and_round_trips_both_values"
+        },
+        {
+          "file": "tests/electron/tray.spec.ts",
+          "case": "fullscreen startup round trips both values without requesting a tray icon or reapplying on restore"
         }
       ],
-      "reason": "Both presentation paths cover absent defaults and persisted round trips. The original derived TrayIconWanted assertion still needs equivalent native tray lifecycle evidence."
+      "reason": "Both presentation paths cover absent defaults and persisted round trips. Native restarts verify each saved value and prove fullscreen startup alone never creates a tray icon. Restoration and later preference changes do not reapply startup presentation."
     },
     {
       "id": "ApplicationSettingsViewModelTests.Startup_toggle_updates_the_operating_system_registration",
@@ -25589,27 +25597,70 @@
     {
       "id": "TrayWindowInteractionTests.Reactivation_preserves_presentation_and_restores_minimized_or_hidden_sessions",
       "source": "tests/Winnow.Ui.Tests/TrayWindowInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/tray.spec.ts",
+          "case": "native tray restoration preserves"
+        }
+      ],
+      "reason": "Actual Electron windows retain normal, maximized and fullscreen presentation through visible activation, minimize/restore and close-to-tray/restore. Native menu and double-click actions restore taskbar participation; the renderer's fullscreen class agrees with native state."
     },
     {
       "id": "TrayWindowInteractionTests.Fullscreen_startup_opens_tv_and_can_return_to_desktop_without_reapplying_preference",
       "source": "tests/Winnow.Ui.Tests/TrayWindowInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/tray.spec.ts",
+          "case": "fullscreen startup round trips both values without requesting a tray icon or reapplying on restore"
+        }
+      ],
+      "reason": "A real restart with a saved legacy True value opens fullscreen. Returning to desktop, hiding/reactivating, and changing the saved startup value do not reapply it. A subsequent restart with False remains in desktop."
     },
     {
       "id": "TrayWindowInteractionTests.Minimize_to_tray_hides_the_window_and_restore_returns_it_to_the_taskbar",
       "source": "tests/Winnow.Ui.Tests/TrayWindowInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/tray.spec.ts",
+          "case": "native tray restoration preserves"
+        },
+        {
+          "file": "tests/window-tray.test.ts",
+          "case": "keeps a recovery route after disabling preferences while hidden by %s"
+        }
+      ],
+      "reason": "Real native minimization hides the window and calls setSkipTaskbar(true). The actual tray activation restores visibility, the previous presentation and taskbar participation. Disabling preferences while hidden preserves the recovery icon until restoration."
     },
     {
       "id": "TrayWindowInteractionTests.Close_to_tray_cancels_close_until_the_tray_exit_is_used",
       "source": "tests/Winnow.Ui.Tests/TrayWindowInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/tray.spec.ts",
+          "case": "quit destroys the native icon and exits instead of hiding"
+        },
+        {
+          "file": "tests/electron/tray.spec.ts",
+          "case": "a confirmed tray save reaches the native handler before a subsequent close can exit"
+        }
+      ],
+      "reason": "Close hides the real native window without exiting; native tray Exit and ordinary app quit destroy the icon, close the window and exit zero. A held native preference read verifies a confirmed save cannot race a subsequent close. The fixture detaches its inspector only after the application's quit event."
     },
     {
       "id": "TrayWindowInteractionTests.Background_start_opens_directly_into_the_tray",
       "source": "tests/Winnow.Ui.Tests/TrayWindowInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/tray.spec.ts",
+          "case": "background startup suppresses saved fullscreen and releases its temporary native icon on restore"
+        }
+      ],
+      "reason": "A real --background launch with both tray preferences absent and fullscreen startup saved True remains hidden, outside the taskbar and in desktop presentation. Native Open restores desktop and destroys the temporary icon."
     },
     {
       "id": "UpdateAcknowledgementCompositionTests.Selection_acknowledges_only_patches_visible_before_a_new_push_arrives",

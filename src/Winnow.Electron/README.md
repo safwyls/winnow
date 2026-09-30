@@ -53,6 +53,13 @@ opens from Library settings and Back returns to its action. Application includes
 help, the active backend's log directory, setup replay and update controls. Unsupported
 startup registration is omitted from fullscreen and explained in desktop settings.
 
+The notification-area icon appears when either tray preference is enabled or Winnow starts
+in the background. A hidden window keeps its icon until restored, even if another frontend
+disables both preferences. **Open Winnow** preserves normal, maximized or fullscreen
+presentation; **Exit** closes the frontend. Ordinary windows need no icon. Background
+launches suppress the fullscreen startup preference and show the window if the notification
+area is unavailable. Existing capitalized boolean preferences remain supported.
+
 **Plugins** gives every runtime-loaded provider its own tab, followed by **Manage plugins**.
 Overflow arrows scroll the tabs without changing the selection. Ordinary drafts survive
 navigation; secret replacements clear on departure or successful save. Advanced fields

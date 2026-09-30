@@ -50,6 +50,13 @@ tray lifecycle, whose remaining source contracts are recorded separately.
 - All five final native settings checks pass in 1.1 minutes after the independent
   diagnostics lookup: `.tmp/fullscreen-shared-settings-diagnostics-native/results.json`.
   The isolated backend's exact log-directory path is verified through the rendered UI.
+- The complete 249-case native run on `fb1640d8` finishes with 247 passes and two failures,
+  no skips or flaky cases, in 25.4 minutes. Both failures are in the older Library lifecycle
+  fixture: fullscreen dormancy still selects Library and a checkbox, while sort and expansion
+  grouping still select desktop controls. Their traces confirm the restored fullscreen
+  Appearance switch and Library adjustment rows. The full report is preserved at
+  `.tmp/fullscreen-shared-settings-complete-native/results.json`; corrected navigation keeps
+  the original persistence, retained-image and raw-data assertions for follow-up verification.
 
 Four source methods gain complete evidence. The settings hierarchy method is now partial:
 Library's original cases pass, while the separate IGDB and artwork-order hierarchy remains

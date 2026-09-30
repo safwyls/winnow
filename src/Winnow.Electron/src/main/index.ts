@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
 import { release as osRelease } from 'node:os'
 import { WindowAppearanceController } from './window-appearance'
+import { WindowTrayController } from './window-tray'
 import { appearanceSession } from '../shared/appearance-session'
 import { SessionAppearance } from './appearance-session'
 import { AvalonThemeStore } from './avalon-theme-store'
@@ -136,7 +137,7 @@ let safeTheme = process.argv.includes('--safe-theme')
 const captureAppearance = appearanceSession(startupArgs, app.isPackaged)
 const sessionAppearance = captureAppearance ? new SessionAppearance(captureAppearance) : null
 let quitting = false
-let tray: Tray | undefined
+let windowTray: WindowTrayController | undefined
 let rendererAcceptsActivation = false
 const pendingActivations = new ActivationQueue()
 const initialActivation = readActivation(process.argv.slice(app.isPackaged ? 1 : 2))
@@ -322,19 +323,14 @@ async function initialize(): Promise<void> {
     }
   })
   let preferences: Record<string, string | null> = {}
-  let startupPreferencesApplied = false
   const preferencesRefresh = new SnapshotRefresh(async () => {
     const result = await transport!.request<Array<{ preference: string; value: string | null }>>({
       route: 'preferences.presentation.get',
     })
     if (!result.ok || !Array.isArray(result.data)) return
     preferences = Object.fromEntries(result.data.map((entry) => [entry.preference, entry.value]))
+    windowTray?.preferences(preferences)
     void updater?.refreshPreferences().catch(() => {})
-    if (!startupPreferencesApplied && window) {
-      startupPreferencesApplied = true
-      if (preferences.StartInFullscreen === 'true' && !process.argv.includes('--background'))
-        window.setFullScreen(true)
-    }
   })
   transport = new BackendTransport({
     discover: () => discoverBackend(dataDirectory),
@@ -432,11 +428,14 @@ async function initialize(): Promise<void> {
   ipcMain.handle('winnow:request', (event, request: ApiRequest) => {
     validateSender(event)
     observeRequestOwner(event.sender)
-    return requestLifetimes.run(event.sender, request, (signal) =>
-      sessionAppearance
+    return requestLifetimes.run(event.sender, request, async (signal) => {
+      const response = await (sessionAppearance
         ? sessionAppearance.request(request, () => transport!.request(request, signal))
-        : transport!.request(request, signal),
-    )
+        : transport!.request(request, signal))
+      // Native window actions must observe a confirmed setting before the renderer can act on it.
+      if (response.ok && request.route === 'preferences.presentation.put') await preferencesRefresh.request()
+      return response
+    })
   })
   ipcMain.handle('winnow:request:cancel', (event, requestId: unknown) => {
     validateSender(event)
@@ -703,9 +702,7 @@ async function initialize(): Promise<void> {
     })
     journalNotifications.set(value.sessionId, notification)
     notification.once('click', () => {
-      window?.show()
-      window?.restore()
-      window?.focus()
+      showPrimary()
       window?.webContents.send('winnow:journal:activated', value.sessionId)
       journalNotifications.delete(value.sessionId)
     })
@@ -754,25 +751,26 @@ async function initialize(): Promise<void> {
       presentationVisible = visible
       emit('winnow:window:visibility', visible)
     }
-    window.on('show', () => visibility(true))
+    window.on('show', () => {
+      windowTray?.shown()
+      visibility(true)
+    })
     window.on('hide', () => visibility(false))
     window.on('minimize', () => visibility(false))
     window.on('restore', () => visibility(window?.isVisible() ?? false))
     window.once('ready-to-show', () => {
-      if (!process.argv.includes('--background') || !tray) window?.show()
+      windowTray?.ready()
     })
     window.on('minimize', () => {
-      if (tray && preferences.MinimizeToTray === 'true') window?.hide()
+      windowTray?.minimized()
     })
     window.on('close', (event) => {
-      if (!quitting && tray && preferences.CloseToTray === 'true') {
-        event.preventDefault()
-        window?.hide()
-      }
+      if (!quitting && windowTray?.closing()) event.preventDefault()
     })
     window.on('closed', () => {
       window = undefined
     })
+    windowTray?.prepare()
     void window.loadURL(rendererUrl)
   }
   Menu.setApplicationMenu(
@@ -812,32 +810,39 @@ async function initialize(): Promise<void> {
       },
     ]),
   )
-  createWindow()
   showPrimary = () => {
+    if (quitting) return
     if (!window) createWindow()
-    window?.show()
-    window?.restore()
-    window?.focus()
+    windowTray?.restore()
     showRequested = false
   }
-  try {
-    tray = new Tray(
-      app.isPackaged
-        ? join(process.resourcesPath, 'icon.ico')
-        : join(app.getAppPath(), 'resources', 'icon.ico'),
-    )
-    const show = showPrimary
-    tray.setToolTip('Winnow')
-    tray.setContextMenu(
-      Menu.buildFromTemplate([
-        { label: 'Open Winnow', click: show },
-        { label: 'Quit Winnow', click: () => app.quit() },
-      ]),
-    )
-    tray.on('double-click', show)
-  } catch {
-    /* A desktop without a notification area keeps ordinary window close behavior. */
-  }
+  windowTray = new WindowTrayController({
+    background: process.argv.includes('--background'),
+    window: () => window,
+    createIcon: () => {
+      const icon = new Tray(
+        app.isPackaged
+          ? join(process.resourcesPath, 'icon.ico')
+          : join(app.getAppPath(), 'resources', 'icon.ico'),
+      )
+      try {
+        icon.setToolTip('Winnow')
+        icon.setContextMenu(
+          Menu.buildFromTemplate([
+            { label: 'Open Winnow', click: showPrimary },
+            { type: 'separator' },
+            { label: 'Exit', click: () => app.quit() },
+          ]),
+        )
+        icon.on('double-click', showPrimary)
+        return icon
+      } catch (error) {
+        icon.destroy()
+        throw error
+      }
+    },
+  })
+  createWindow()
   app.on('activate', () => {
     showPrimary()
   })
@@ -899,9 +904,8 @@ const drainUpdates = quitDrain(
 )
 app.on('before-quit', (event) => {
   quitting = true
+  windowTray?.dispose()
   if (updater && drainUpdates(event)) return
-  tray?.destroy()
-  tray = undefined
   transport?.stop()
 })
 app.on('window-all-closed', () => {

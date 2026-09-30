@@ -155,9 +155,12 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await navigate('Settings')
     await page
       .getByRole('navigation', { name: 'Settings section' })
-      .getByRole('button', { name: 'Library', exact: true })
+      .getByRole('button', { name: mode === 'fullscreen' ? 'Appearance' : 'Library', exact: true })
       .click()
-    const toggle = page.getByRole('checkbox', { name: 'Dim dormant covers', exact: true })
+    const toggle = page.getByRole(mode === 'fullscreen' ? 'switch' : 'checkbox', {
+      name: 'Dim dormant covers',
+      exact: true,
+    })
     await expect(toggle).toBeChecked()
     await toggle.click()
     await expect(toggle).not.toBeChecked()
@@ -242,17 +245,30 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       .getByRole('navigation', { name: 'Settings section' })
       .getByRole('button', { name: 'Library', exact: true })
       .click()
-    await page
-      .getByRole('combobox', { name: 'Default library sort', exact: true })
-      .selectOption('NameAscending')
-    await expect(page.getByRole('combobox', { name: 'Default library sort', exact: true })).toHaveValue(
-      'NameAscending',
-    )
-    await expect(page.getByLabel('Group expansions with their base game', { exact: true })).toBeEnabled()
-    await expect(page.getByLabel('Group expansions with their base game', { exact: true })).not.toBeChecked()
-    await page.getByLabel('Group expansions with their base game', { exact: true }).click()
-    await expect(page.getByLabel('Group expansions with their base game', { exact: true })).toBeChecked()
-    await expect(page.getByLabel('Group expansions with their base game', { exact: true })).toBeEnabled()
+    if (mode === 'desktop') {
+      await page
+        .getByRole('combobox', { name: 'Default library sort', exact: true })
+        .selectOption('NameAscending')
+      await expect(page.getByRole('combobox', { name: 'Default library sort', exact: true })).toHaveValue(
+        'NameAscending',
+      )
+    } else {
+      const sort = page.getByRole('button', { name: 'Default library sort', exact: true })
+      for (const value of ['Recently played', 'Playtime high to low', 'Playtime low to high', 'Name A–Z']) {
+        await expect(sort).toBeEnabled()
+        await sort.press('ArrowRight')
+        await expect(sort).toContainText(value)
+      }
+    }
+    const grouping = page.getByRole(mode === 'fullscreen' ? 'switch' : 'checkbox', {
+      name: mode === 'fullscreen' ? 'Group expansions' : 'Group expansions with their base game',
+      exact: true,
+    })
+    await expect(grouping).toBeEnabled()
+    await expect(grouping).not.toBeChecked()
+    await grouping.click()
+    await expect(grouping).toBeChecked()
+    await expect(grouping).toBeEnabled()
     await navigate('Library')
     await expectLibrarySort(page, 'title')
     await expect(page.locator('.avalon-library [data-avalon-game]')).toHaveCount(1)
@@ -286,10 +302,10 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await expect(page.locator('.avalon-library [data-avalon-game]')).toHaveCount(0)
     await selectCollection(page, 'all')
     await navigate('Settings')
-    await expect(page.getByLabel('Group expansions with their base game', { exact: true })).toBeChecked()
-    await page.getByLabel('Group expansions with their base game', { exact: true }).click()
-    await expect(page.getByLabel('Group expansions with their base game', { exact: true })).not.toBeChecked()
-    await expect(page.getByLabel('Group expansions with their base game', { exact: true })).toBeEnabled()
+    await expect(grouping).toBeChecked()
+    await grouping.click()
+    await expect(grouping).not.toBeChecked()
+    await expect(grouping).toBeEnabled()
     await navigate('Library')
     await expect(page.locator('.avalon-library [data-avalon-game]')).toHaveCount(2)
     await expect(page.locator('.avalon-expansion-mark')).toHaveCount(0)

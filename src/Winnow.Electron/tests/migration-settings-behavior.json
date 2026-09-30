@@ -160,24 +160,32 @@
     "reason": "Both presentation paths read and update the named native startup-registration boundary. Rejected registration updates restore the saved checkbox state and display the failure; no actual OS startup registration is changed by these tests."
   },
   "ApplicationSettingsViewModelTests.Tray_preferences_are_off_when_absent_and_round_trip": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-setup-recovery.test.tsx",
         "case": "Tray_preferences_are_off_when_absent_and_round_trip"
+      },
+      {
+        "file": "tests/electron/tray.spec.ts",
+        "case": "tray preferences default off, round trip, and share exactly one native icon"
       }
     ],
-    "reason": "Both presentation paths cover absent defaults and persisted round trips. The original derived TrayIconWanted assertion still needs equivalent native tray lifecycle evidence."
+    "reason": "Both presentation paths cover absent defaults and persisted round trips. Real native tests verify no default icon, one shared icon for either preference, both saved legacy True values across restart, and icon disposal when the last preference is disabled."
   },
   "ApplicationSettingsViewModelTests.Fullscreen_startup_defaults_off_and_round_trips_both_values": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-setup-recovery.test.tsx",
         "case": "Fullscreen_startup_defaults_off_and_round_trips_both_values"
+      },
+      {
+        "file": "tests/electron/tray.spec.ts",
+        "case": "fullscreen startup round trips both values without requesting a tray icon or reapplying on restore"
       }
     ],
-    "reason": "Both presentation paths cover absent defaults and persisted round trips. The original derived TrayIconWanted assertion still needs equivalent native tray lifecycle evidence."
+    "reason": "Both presentation paths cover absent defaults and persisted round trips. Native restarts verify each saved value and prove fullscreen startup alone never creates a tray icon. Restoration and later preference changes do not reapply startup presentation."
   },
   "FirstRunSetupShellTests.Plugin_handoff_shows_installation_over_a_fresh_optional_setup": {
     "status": "ported",
