@@ -367,7 +367,13 @@ export function AvalonShell(context: ThemeContext) {
             ? `Arrows to browse · Enter to view${shellPage === 'library' ? ' · Y · Library options' : ''} · Esc to go back`
             : 'Your library. Rediscovered.'}
         </span>
-        <span>{fullscreen ? 'F11 · Back to desktop' : 'Ctrl+K · Search'}</span>
+        <span>
+          {fullscreen
+            ? shellPage === 'discover'
+              ? 'LT / RT  Shelf'
+              : 'F11 · Back to desktop'
+            : 'Ctrl+K · Search'}
+        </span>
       </footer>
     </div>
   )

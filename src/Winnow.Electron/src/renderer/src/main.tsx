@@ -9,6 +9,7 @@ import '@fontsource/newsreader/400-italic.css'
 import '@fontsource/jetbrains-mono/400.css'
 import '../styles.css'
 import { App } from '../App'
+import { closeArtworkImages } from '../components/artwork-images'
 
 const client = new QueryClient({
   defaultOptions: {
@@ -16,6 +17,13 @@ const client = new QueryClient({
     mutations: { retry: false },
   },
 })
+window.addEventListener(
+  'pagehide',
+  () => {
+    void closeArtworkImages(client)
+  },
+  { once: true },
+)
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={client}>

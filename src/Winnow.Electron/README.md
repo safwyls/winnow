@@ -116,8 +116,13 @@ fullscreen and unsupported environments stay solid. Covers remain opaque. See
 
 Artwork selection still refreshes with library events. Unchanged images reuse encoded bytes
 for up to two minutes, with explicit artwork changes and reconnects forcing revalidation.
-The first image load still uses the backend's cached PNG/base64 transport; this frontend
-change does not introduce smaller backend image variants.
+Visible images share decoded pixels through leases. The renderer admits at most 128 image
+loads, runs six at once and keeps a 32 MiB decoded scrollback cache; visible covers remain
+valid after eviction. The last departing consumer cancels its pending request. Detached
+images clear their sources, and unused encoded entries expire after five minutes.
+Requests use the original display-width buckets, measured at the actual pixel density,
+over the existing backend PNG/base64 transport. Avalon's saved Fit/Fill preference changes
+the crop without changing cover bounds or fetching the image again.
 
 ## Run from source
 

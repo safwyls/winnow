@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 808,
+    "pending": 796,
     "partial": 137,
-    "ported": 937,
+    "ported": 949,
     "retained-backend": 540,
     "framework-specific": 13
   },
@@ -19980,47 +19980,130 @@
     {
       "id": "CoverLifetimeTests.Direct_cache_callers_share_one_task_factory_under_contention",
       "source": "tests/Winnow.Ui.Tests/CoverLifetimeTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/artwork-cache.test.ts",
+          "case": "one hundred direct callers share one factory and decoded object"
+        }
+      ],
+      "reason": "One hundred simultaneous requests share one loader and the same owned pixel object. The decoded cache contains one entry and shutdown disposes it once."
     },
     {
       "id": "CoverLifetimeTests.Concurrent_same_slot_requests_share_one_decode_and_leases_outlive_cache_shutdown",
       "source": "tests/Winnow.Ui.Tests/CoverLifetimeTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/artwork-cache.test.ts",
+          "case": "one hundred leases retain the shared pixels across cache shutdown and release them once"
+        }
+      ],
+      "reason": "One hundred visible leases share one factory and decoded object. Cache shutdown leaves every lease readable; repeated releases dispose pixels exactly once after the final lease and leave zero live slots."
     },
     {
       "id": "CoverLifetimeTests.Admission_is_bounded_and_releasing_scroll_consumers_cancels_abandoned_work",
       "source": "tests/Winnow.Ui.Tests/CoverLifetimeTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/artwork-cache.test.ts",
+          "case": "eighty scroll requests admit only four slots and two factories, and cancellation drains the queue"
+        },
+        {
+          "file": "tests/artwork.test.tsx",
+          "case": "cancels shared bytes only after the final mounted consumer leaves and refuses a late response"
+        }
+      ],
+      "reason": "The source 80-request fixture admits four slots and runs two factories. The other 76 finish empty without admission. Releasing consumers cancels active and queued work, leaves zero pending/decoded/live slots, and permits retry. The composed loader rejects late encoded bytes. Disk and negative-cache writes remain in the unchanged backend CoverPipeline with cancellation checks before publication."
     },
     {
       "id": "CoverLifetimeTests.Releasing_one_lease_keeps_the_shared_fetch_until_the_final_lease_leaves",
       "source": "tests/Winnow.Ui.Tests/CoverLifetimeTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/artwork-cache.test.ts",
+          "case": "releasing one lease keeps a shared fetch alive until the final consumer leaves"
+        },
+        {
+          "file": "tests/artwork.test.tsx",
+          "case": "cancels shared bytes only after the final mounted consumer leaves and refuses a late response"
+        }
+      ],
+      "reason": "Two mounted consumers share an authenticated image request. Detaching one does not cancel it; detaching the last cancels the exact named request and prevents a late response from populating encoded or decoded caches."
     },
     {
       "id": "CoverLifetimeTests.Shutdown_during_bitmap_conversion_disposes_unpublished_pixels_before_returning",
       "source": "tests/Winnow.Ui.Tests/CoverLifetimeTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/artwork.test.tsx",
+          "case": "shutdown during browser decoding waits for retirement and releases unpublished pixels once"
+        }
+      ],
+      "reason": "Shutdown during the actual shared browser decoder aborts and clears its image, remains pending until the blocked decoder retires, publishes no image, and revokes its URL exactly once."
     },
     {
       "id": "CoverLifetimeTests.Shutdown_drains_an_inflight_source_and_refuses_late_publication_and_new_admissions",
       "source": "tests/Winnow.Ui.Tests/CoverLifetimeTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/artwork.test.tsx",
+          "case": "shutdown drains an ignored bridge cancellation without caching late bytes or admitting new reads"
+        },
+        {
+          "file": "tests/artwork-cache.test.ts",
+          "case": "shutdown drains an ignored cancellation and disposes unpublished pixels"
+        }
+      ],
+      "reason": "A source that ignores cancellation keeps shutdown pending. New admissions are refused, late bytes never reach the encoded cache or decoder, and shutdown leaves no pending or decoded entries. Existing backend disk cancellation guards remain in CoverPipeline, invoked by ArtworkEndpoints with request cancellation."
     },
     {
       "id": "CoverLifetimeTests.Desktop_and_fullscreen_covers_recover_after_a_transient_failure",
       "source": "tests/Winnow.Ui.Tests/CoverLifetimeTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/artwork-lifetime.spec.ts",
+          "case": "${mode} reattaches after a transient image failure at the same display width"
+        },
+        {
+          "file": "tests/artwork.test.tsx",
+          "case": "retries a transient decode failure after detach and reattach"
+        }
+      ],
+      "reason": "Both production Avalon cover compositions run in a sandboxed Electron renderer. A failed first image read becomes a placeholder; detach/reattach requests the same 480px bucket again and displays decoded pixels. A separate component case covers transient browser-decoder failure."
     },
     {
       "id": "CoverLifetimeTests.Detail_cover_retries_the_same_display_width_after_null",
       "source": "tests/Winnow.Ui.Tests/CoverLifetimeTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/artwork.test.tsx",
+          "case": "requests the first real display bucket and retries a null result at the unchanged width"
+        }
+      ],
+      "reason": "The shared Details/cover artwork component measures 400px and requests only the 480px bucket. A null response remains retryable when layout requests that unchanged size again; success uses the same width and another measurement does not reread it."
     },
     {
       "id": "CoverLifetimeTests.Reattached_covers_wait_for_retiring_loads_instead_of_staying_blank",
       "source": "tests/Winnow.Ui.Tests/CoverLifetimeTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/artwork-lifetime.spec.ts",
+          "case": "${mode} canceled image work retires before reattachment starts its replacement"
+        },
+        {
+          "file": "tests/artwork-cache.test.ts",
+          "case": "a replacement lease waits for canceled work to retire before starting another factory"
+        }
+      ],
+      "reason": "Both native surfaces detach a cover during a held request and record its named cancellation. Reattachment cannot join or duplicate the canceled factory. Releasing the retiring response starts exactly one replacement, displays pixels, and detaching returns live slots to zero."
     },
     {
       "id": "CoverPresentationTests.Inherited_fit_changes_existing_and_new_portrait_images_but_leaves_backgrounds_alone",
@@ -21138,12 +21221,30 @@
     {
       "id": "FullscreenBrowseTests.Fullscreen_records_only_the_visible_feed_shelf_as_surfaced",
       "source": "tests/Winnow.Ui.Tests/FullscreenBrowseTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/feed-exposure.spec.ts",
+          "case": "fullscreen exposes only the attached shelf and RT accumulates both shelves at ${width}×${height}"
+        }
+      ],
+      "reason": "The original two shelves and four games run at 1920×1080 and 1280×720 through production Home, controller handling and impression IPC. Loading both shelves while Library is mounted records nothing. Home exposes only the first two releases, RT accumulates exactly four with correct shelf IDs, LT returns without duplicates, and the footer shows LT / RT Shelf. Desktop modal/clipping exposure remains covered in feed.spec.ts."
     },
     {
       "id": "FullscreenBrowseTests.Cover_leases_pixels_only_while_attached_and_repaints_dormancy_changes",
       "source": "tests/Winnow.Ui.Tests/FullscreenBrowseTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/artwork-lifetime.spec.ts",
+          "case": "${mode} first layout uses warm display pixels and fit, dormancy and selection preserve the image"
+        },
+        {
+          "file": "tests/artwork.test.tsx",
+          "case": "clears detached DOM sources, retains warm pixels and reuses the node through dormancy changes"
+        }
+      ],
+      "reason": "Dimming toggles the production cover filter while retaining its image and bytes. Detach clears the retained DOM image source and releases every visible lease; reattachment obtains warm art without a backend read. Final detach returns the lease count to zero on both surfaces."
     },
     {
       "id": "FullscreenBrowseTests.Backdrop_uses_repository_screenshot_and_releases_pixels_on_detach",
@@ -21235,7 +21336,14 @@
     {
       "id": "FullscreenCoverRequestTests.First_layout_requests_only_the_display_bucket_and_uses_warm_art",
       "source": "tests/Winnow.Ui.Tests/FullscreenCoverRequestTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/artwork-lifetime.spec.ts",
+          "case": "${mode} first layout uses warm display pixels and fit, dormancy and selection preserve the image"
+        }
+      ],
+      "reason": "The production Avalon cover is 400×600 on each surface. A warm 480px entry supplies the exact source URL; no guessed initial size is requested. Contain/fill/contain changes preserve cover bounds, source and image identity; selection does not refetch. App tests separately verify that the saved fit preference reaches both surfaces."
     },
     {
       "id": "FullscreenDetailsTests.Detail_sections_wrap_content_and_keep_controller_actions_reachable",

@@ -13,6 +13,8 @@ import { useIdentityReview } from '../src/renderer/features/parity-merge-query'
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
   vi.useRealTimers()
   for (const key of [
     'queue-section',
@@ -1411,6 +1413,28 @@ it('desktop rows show every owned-store chip in source order with distinct membe
 it.each(['user', 'igdb', 'steam'])(
   'desktop queue rows use the authoritative %s artwork key without substituting a store capsule',
   async (provider) => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      width: 96,
+      height: 144,
+      top: 0,
+      left: 0,
+      right: 96,
+      bottom: 144,
+      toJSON() {},
+    })
+    vi.stubGlobal(
+      'Image',
+      class {
+        src = ''
+        naturalWidth = 160
+        naturalHeight = 240
+        async decode() {}
+      },
+    )
+    URL.createObjectURL = vi.fn(() => 'blob:merge-art')
+    URL.revokeObjectURL = vi.fn()
     const artwork = vi.fn(
       async (_provider: string, _id: string, _width: number) => 'data:image/png;base64,iVBORw0KGgo=',
     )
@@ -1434,8 +1458,8 @@ it.each(['user', 'igdb', 'steam'])(
     window.winnow.artwork = artwork
     const card = await screen.findByRole('article', { name: 'Bastion proposal' })
     await waitFor(() => expect(card.querySelectorAll('img')).toHaveLength(2))
-    expect(artwork).toHaveBeenCalledWith(provider, '1', 600)
-    expect(artwork).toHaveBeenCalledWith('steam', '2', 600)
+    expect(artwork).toHaveBeenCalledWith(provider, '1', 160, expect.stringMatching(/^[a-f0-9]{32}$/))
+    expect(artwork).toHaveBeenCalledWith('steam', '2', 160, expect.stringMatching(/^[a-f0-9]{32}$/))
     expect(artwork.mock.calls.filter((call) => call[1] === '1')).toHaveLength(1)
   },
 )

@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-29 23:44'
+updated_date: '2026-09-30 00:19'
 labels: []
 dependencies: []
 priority: high
@@ -96,6 +96,8 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 35. After checkpoint-twenty verification, port original FullscreenActionOverlay contracts: retain and disable the origin, trap keyboard/controller input, restore its trigger, treat right-click as Back, support nested actions and child editors, and preserve the original right-edge panel, safe margins, typography, wrapping, scroll and reduced-motion behavior. Integrate shared action presentation into Avalon Library and Details while preserving the desktop dropdown and existing child workflows. Verify source-equivalent component/native behavior and both-surface regression gates before mapping original methods.
 
 36. After the action-panel checkpoint, migrate the original two-shelf exposure fixture at1920x1080and1280x720: no surfacing before Home mounts, only its visible shelf, cumulative second-shelf surfacing through RT, and retained LT/RT hints. Then port cover ownership/lifetime contracts with bounded shared image work, cancellation after the last consumer, late-result disposal, transient retry and display-width buckets; verify desktop and fullscreen independently before marking those source methods ported.
+
+37. After the artwork checkpoint, port the original plugin-settings interaction and view-model contracts. Preserve separate desktop and fullscreen navigation, loaded runtime summaries, archive/install diagnostics, generated fields, collapsed advanced values, required-field reveal, busy locking and secret clearing. Close device sign-in cancellation races and preserve keyboard/controller focus. Validate the source Xbox/artwork-provider fixtures on both surfaces and map methods only after equivalent assertions pass.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -176,4 +178,8 @@ Checkpoint twenty verification is complete: all157native cases pass with clean w
 Plan35 now integrates the fullscreen edge panel into Library options and Details More, including retained inert origin, Back routing, nested Hide, focus, safe margins, source typography and independent scrolling. All 2654 component/live-backend cases in133files pass without skips in43.91s; build/typecheck passes. All13new native cases pass in26.2s; the complete170case native suite is running. Screenshots inspected. Inventory now937ported540retained13framework808pending137partial. Evidence: checkpoint-twenty-one.md. No acceptance criteria checked.
 
 Checkpoint twenty-one passes all170native cases with clean completion in6.6m; full component/live2654/133and build/typecheck pass. The first native run167/170exposed two old inline-menu selectors and one unreproduced relationship-form click failure;24repeats plus the corrected full suite pass. Startup fetch interception now has a positive Play control and a real identity-request assertion. Evidence:checkpoint-twenty-one.md. All AC remain unchecked. Plan36feed exposure fixtures and an unintegrated bounded artwork cache are under development and are not claimed as completed parity.
+
+Plan 36 now implements the original two-shelf exposure matrix and a shared artwork lease/cache path. All 2,680 component/live API cases pass across 134 files in 44.40 seconds; build/typecheck passes. Six native artwork cases pass on both surfaces, and the expanded 178-case native suite is running. Native and component tests cover first measured width, warm pixels, Fit/Fill, dormancy, bounded admission, last-consumer cancellation, late-response rejection, shutdown and retry after reattachment. Inventory: 949 ported, 540 retained backend, 13 framework-specific, 796 pending and 137 partial. Evidence: checkpoint-twenty-two.md. No acceptance criteria checked.
+
+Checkpoint 22 complete: 2680 component/live API cases across 134 files and all 178 native Electron cases passed (7.2 minutes); build/typecheck pass. Inspected desktop/fullscreen artwork probes and settled two-shelf fullscreen captures at 1280x720 and 1920x1080. Inventory: 949 ported, 540 retained backend, 13 framework-specific, 796 pending, 137 partial. All acceptance criteria remain unchecked; continuing Plan 37 plugin settings.
 <!-- SECTION:NOTES:END -->

@@ -1,14 +1,59 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Artwork } from '../src/renderer/components/Artwork'
 import { refreshSnapshots } from '../src/renderer/refresh'
 import type { ApiRequest } from '../src/shared/bridge'
+import { artworkImages, closeArtworkImages } from '../src/renderer/components/artwork-images'
 
-afterEach(() => {
+const clients: QueryClient[] = []
+beforeEach(() => {
+  const BlobType = Blob
+  const urls = new WeakMap<Blob, string>()
+  vi.stubGlobal(
+    'Blob',
+    class extends BlobType {
+      constructor(parts: BlobPart[], options?: BlobPropertyBag) {
+        super(parts, options)
+        urls.set(this, `blob:${btoa(String.fromCharCode(...(parts[0] as Uint8Array)))}`)
+      }
+    },
+  )
+  URL.createObjectURL = vi.fn((blob: Blob) => urls.get(blob)!)
+  URL.revokeObjectURL = vi.fn()
+  vi.stubGlobal(
+    'Image',
+    class {
+      src = ''
+      naturalWidth = 640
+      naturalHeight = 960
+      decode = vi.fn(async () => undefined)
+    },
+  )
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    return {
+      x: 0,
+      y: 0,
+      width: this.classList.contains('hero-fixture') ? 1920 : 600,
+      height: 900,
+      top: 0,
+      bottom: 900,
+      left: 0,
+      right: 600,
+      toJSON() {},
+    }
+  })
+})
+
+afterEach(async () => {
   cleanup()
+  for (const client of clients.splice(0)) {
+    await closeArtworkImages(client)
+    client.clear()
+  }
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
   vi.useRealTimers()
 })
 
@@ -28,11 +73,16 @@ function deferred<T>() {
   return { promise, resolve }
 }
 function installBridge(request: ReturnType<typeof vi.fn>, artwork = vi.fn().mockResolvedValue(sourceA)) {
-  Object.defineProperty(window, 'winnow', { value: { request, artwork }, configurable: true })
-  return { request, artwork }
+  const cancelRequest = vi.fn(async () => true)
+  Object.defineProperty(window, 'winnow', { value: { request, artwork, cancelRequest }, configurable: true })
+  return { request, artwork, cancelRequest }
 }
 function queryClient() {
-  return new QueryClient({ defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } } })
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+  })
+  clients.push(client)
+  return client
 }
 function view(client: QueryClient, workId = 1) {
   return (
@@ -64,11 +114,22 @@ describe('Artwork loading and fallback states', () => {
       vi.fn().mockReturnValue(bytes.promise),
     )
     const { container } = render(view(queryClient()))
-    await waitFor(() => expect(bridge.artwork).toHaveBeenCalledWith('steam', '123', 600))
+    await waitFor(() =>
+      expect(bridge.artwork).toHaveBeenCalledWith(
+        'steam',
+        '123',
+        640,
+        expect.stringMatching(/^[a-f0-9]{32}$/),
+      ),
+    )
     expect(container.querySelector('.art-loading')).not.toBeNull()
     expect(container.querySelector('img')).toBeNull()
     await act(async () => bytes.resolve(sourceA))
-    await waitFor(() => expect(container.querySelector('img')?.getAttribute('src')).toBe(sourceA))
+    await waitFor(() =>
+      expect(container.querySelector('img')?.getAttribute('src')).toBe(
+        sourceA.replace('data:image/png;base64,', 'blob:'),
+      ),
+    )
     const image = container.querySelector('img')!
     expect(image.classList.contains('art-ready')).toBe(false)
     expect(container.querySelector('.art-loading')).not.toBeNull()
@@ -112,11 +173,17 @@ describe('Artwork loading and fallback states', () => {
         data: { current: { previewKey: { provider: 'steam', id: '456' } }, revision: 'selection-b' },
       }),
     )
-    await waitFor(() => expect(container.querySelector('img')?.getAttribute('src')).toBe(sourceB))
+    await waitFor(() =>
+      expect(container.querySelector('img')?.getAttribute('src')).toBe(
+        sourceB.replace('data:image/png;base64,', 'blob:'),
+      ),
+    )
     expect(container.querySelector('.art-loading')).not.toBeNull()
     fireEvent.load(container.querySelector('img')!)
     expect(container.querySelector('.art-loading')).toBeNull()
-    expect(container.querySelector('img')?.getAttribute('src')).toBe(sourceB)
+    expect(container.querySelector('img')?.getAttribute('src')).toBe(
+      sourceB.replace('data:image/png;base64,', 'blob:'),
+    )
   })
 
   it('reuses valid cached bytes on remount but waits for the new image element to load', async () => {
@@ -127,7 +194,9 @@ describe('Artwork loading and fallback states', () => {
     fireEvent.load(first.container.querySelector('img')!)
     first.unmount()
     const second = render(view(client))
-    expect(second.container.querySelector('img')?.getAttribute('src')).toBe(sourceA)
+    expect(second.container.querySelector('img')?.getAttribute('src')).toBe(
+      sourceA.replace('data:image/png;base64,', 'blob:'),
+    )
     expect(second.container.querySelector('.art-loading')).not.toBeNull()
     fireEvent.load(second.container.querySelector('img')!)
     expect(second.container.querySelector('.art-loading')).toBeNull()
@@ -179,7 +248,7 @@ describe('Artwork image reuse', () => {
       </QueryClientProvider>,
     )
     await waitFor(() => expect(bridge.request).toHaveBeenCalledTimes(2))
-    expect(bridge.artwork).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(bridge.artwork).toHaveBeenCalledTimes(1))
     await act(async () => bytes.resolve(sourceA))
     await waitFor(() => expect(container.querySelectorAll('img')).toHaveLength(2))
     expect(bridge.artwork).toHaveBeenCalledTimes(1)
@@ -212,9 +281,19 @@ describe('Artwork image reuse', () => {
     fireEvent.load(container.querySelector('img')!)
     request.mockResolvedValue({ ...currentArt, data: { ...currentArt.data, revision: 'selection-b' } })
     await act(async () => refreshSnapshots(client))
-    await waitFor(() => expect(container.querySelector('img')?.getAttribute('src')).toBe(sourceB))
+    await waitFor(() =>
+      expect(container.querySelector('img')?.getAttribute('src')).toBe(
+        sourceB.replace('data:image/png;base64,', 'blob:'),
+      ),
+    )
     expect(bridge.artwork).toHaveBeenCalledTimes(2)
-    expect(bridge.artwork).toHaveBeenNthCalledWith(2, 'steam', '123', 600)
+    expect(bridge.artwork).toHaveBeenNthCalledWith(
+      2,
+      'steam',
+      '123',
+      640,
+      expect.stringMatching(/^[a-f0-9]{32}$/),
+    )
     expect(container.querySelector('.art-loading')).not.toBeNull()
     fireEvent.load(container.querySelector('img')!)
     expect(container.querySelector('.art-loading')).toBeNull()
@@ -229,7 +308,11 @@ describe('Artwork image reuse', () => {
     const { container } = render(view(client))
     await waitFor(() => expect(container.querySelector('img')).not.toBeNull())
     await act(async () => refreshSnapshots(client, { artwork: true }))
-    await waitFor(() => expect(container.querySelector('img')?.getAttribute('src')).toBe(sourceB))
+    await waitFor(() =>
+      expect(container.querySelector('img')?.getAttribute('src')).toBe(
+        sourceB.replace('data:image/png;base64,', 'blob:'),
+      ),
+    )
     expect(bridge.artwork).toHaveBeenCalledTimes(2)
   })
 
@@ -247,7 +330,11 @@ describe('Artwork image reuse', () => {
       oldBytes.resolve(sourceA)
       await refresh
     })
-    await waitFor(() => expect(container.querySelector('img')?.getAttribute('src')).toBe(sourceB))
+    await waitFor(() =>
+      expect(container.querySelector('img')?.getAttribute('src')).toBe(
+        sourceB.replace('data:image/png;base64,', 'blob:'),
+      ),
+    )
     expect(bridge.artwork).toHaveBeenCalledTimes(2)
   })
 
@@ -257,13 +344,13 @@ describe('Artwork image reuse', () => {
     const { container } = render(
       <QueryClientProvider client={client}>
         <Artwork workId={1} />
-        <Artwork workId={1} hero />
+        <Artwork workId={1} hero className="hero-fixture" />
       </QueryClientProvider>,
     )
     await waitFor(() => expect(container.querySelectorAll('img')).toHaveLength(2))
     expect(bridge.artwork).toHaveBeenCalledTimes(2)
-    expect(bridge.artwork).toHaveBeenCalledWith('steam', '123', 600)
-    expect(bridge.artwork).toHaveBeenCalledWith('steam', '123', 1920)
+    expect(bridge.artwork).toHaveBeenCalledWith('steam', '123', 640, expect.stringMatching(/^[a-f0-9]{32}$/))
+    expect(bridge.artwork).toHaveBeenCalledWith('steam', '123', 1920, expect.stringMatching(/^[a-f0-9]{32}$/))
   })
 
   it('bounds unchanged byte reuse to two minutes when state refreshes', async () => {
@@ -278,7 +365,11 @@ describe('Artwork image reuse', () => {
     await waitFor(() => expect(container.querySelector('img')).not.toBeNull())
     clock.mockReturnValue(now + 120_001)
     await act(async () => refreshSnapshots(client))
-    await waitFor(() => expect(container.querySelector('img')?.getAttribute('src')).toBe(sourceB))
+    await waitFor(() =>
+      expect(container.querySelector('img')?.getAttribute('src')).toBe(
+        sourceB.replace('data:image/png;base64,', 'blob:'),
+      ),
+    )
     expect(bridge.artwork).toHaveBeenCalledTimes(2)
   })
 
@@ -293,7 +384,11 @@ describe('Artwork image reuse', () => {
       const { container } = render(view(client))
       await waitFor(() => expect(container.textContent).toContain('Artwork unavailable'))
       await act(async () => refreshSnapshots(client))
-      await waitFor(() => expect(container.querySelector('img')?.getAttribute('src')).toBe(sourceA))
+      await waitFor(() =>
+        expect(container.querySelector('img')?.getAttribute('src')).toBe(
+          sourceA.replace('data:image/png;base64,', 'blob:'),
+        ),
+      )
       expect(bridge.artwork).toHaveBeenCalledTimes(2)
       fireEvent.load(container.querySelector('img')!)
       expect(container.querySelector('.artwork')?.getAttribute('data-state')).toBe('ready')
@@ -308,7 +403,11 @@ describe('Artwork image reuse', () => {
     fireEvent.error(container.querySelector('img')!)
     expect(container.querySelector('img')).toBeNull()
     await act(async () => refreshSnapshots(client))
-    await waitFor(() => expect(container.querySelector('img')?.getAttribute('src')).toBe(sourceA))
+    await waitFor(() =>
+      expect(container.querySelector('img')?.getAttribute('src')).toBe(
+        sourceA.replace('data:image/png;base64,', 'blob:'),
+      ),
+    )
     expect(bridge.artwork).toHaveBeenCalledTimes(2)
     expect(container.querySelector('.art-loading')).not.toBeNull()
     fireEvent.load(container.querySelector('img')!)
@@ -331,16 +430,234 @@ describe('Artwork image reuse', () => {
 
   it('releases inactive state and encoded image entries after five minutes', async () => {
     installBridge(vi.fn().mockResolvedValue(currentArt))
+    vi.useFakeTimers()
     const client = queryClient()
     const result = render(view(client))
-    await waitFor(() => expect(result.container.querySelector('img')).not.toBeNull())
-    vi.useFakeTimers()
-    // Reschedule both GC timers under the fake clock before unmounting.
-    await act(async () => refreshSnapshots(client, { artwork: true }))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10)
+    })
+    expect(result.container.querySelector('img')).not.toBeNull()
+    const cache = artworkImages(client)
     result.unmount()
+    expect(cache.liveSlots).toBe(0)
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled()
     expect(client.getQueryCache().getAll()).toHaveLength(2)
     await vi.advanceTimersByTimeAsync(300_001)
     expect(client.getQueryCache().getAll()).toHaveLength(0)
+    expect(cache.decodedCount).toBe(0)
+    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1)
     client.clear()
   })
+})
+
+describe('Artwork visible ownership', () => {
+  it('cancels shared bytes only after the final mounted consumer leaves and refuses a late response', async () => {
+    const bytes = deferred<string>()
+    const bridge = installBridge(
+      vi.fn().mockResolvedValue(currentArt),
+      vi.fn(() => bytes.promise),
+    )
+    const client = queryClient()
+    const covers = (ids: number[]) => (
+      <QueryClientProvider client={client}>
+        {ids.map((id) => (
+          <Artwork key={id} workId={id} />
+        ))}
+      </QueryClientProvider>
+    )
+    const result = render(covers([1, 2]))
+    try {
+      await waitFor(() => expect(bridge.artwork).toHaveBeenCalledTimes(1))
+      const requestId = bridge.artwork.mock.calls[0]![3]
+      result.rerender(covers([2]))
+      expect(bridge.cancelRequest).not.toHaveBeenCalledWith(requestId)
+      result.unmount()
+      expect(bridge.cancelRequest).toHaveBeenCalledWith(requestId)
+      bytes.resolve(sourceA)
+      await waitFor(() => expect(artworkImages(client).pendingCount).toBe(0))
+      expect(artworkImages(client).liveSlots).toBe(0)
+      expect(artworkImages(client).decodedCount).toBe(0)
+      expect(URL.createObjectURL).not.toHaveBeenCalled()
+      expect(client.getQueryData(['artwork-image', 'steam', '123', 640, 'selection-a'])).toBeUndefined()
+    } finally {
+      bytes.resolve(sourceA)
+    }
+  })
+
+  it('reattaching waits for the retiring request before retrying the same image', async () => {
+    const bytes = deferred<string>()
+    const bridge = installBridge(
+      vi.fn().mockResolvedValue(currentArt),
+      vi.fn().mockReturnValueOnce(bytes.promise).mockResolvedValue(sourceB),
+    )
+    const client = queryClient()
+    const first = render(view(client))
+    try {
+      await waitFor(() => expect(bridge.artwork).toHaveBeenCalledTimes(1))
+      first.unmount()
+      const second = render(view(client))
+      expect(bridge.artwork).toHaveBeenCalledTimes(1)
+      await act(async () => bytes.resolve(sourceA))
+      await waitFor(() =>
+        expect(second.container.querySelector('img')?.getAttribute('src')).toBe(
+          sourceB.replace('data:image/png;base64,', 'blob:'),
+        ),
+      )
+      expect(bridge.artwork).toHaveBeenCalledTimes(2)
+      expect(URL.createObjectURL).toHaveBeenCalledTimes(1)
+      second.unmount()
+      expect(artworkImages(client).liveSlots).toBe(0)
+    } finally {
+      bytes.resolve(sourceA)
+    }
+  })
+
+  it('clears detached DOM sources, retains warm pixels and reuses the node through dormancy changes', async () => {
+    const bridge = installBridge(vi.fn().mockResolvedValue(currentArt))
+    const client = queryClient()
+    const cover = (dormant: boolean) => (
+      <QueryClientProvider client={client}>
+        <Artwork workId={1} className={dormant ? 'dormant' : 'vivid'} />
+      </QueryClientProvider>
+    )
+    const first = render(cover(false))
+    await waitFor(() => expect(first.container.querySelector('img')).not.toBeNull())
+    const image = first.container.querySelector('img')!
+    fireEvent.load(image)
+    first.rerender(cover(true))
+    first.rerender(cover(false))
+    expect(first.container.querySelector('img')).toBe(image)
+    expect(bridge.artwork).toHaveBeenCalledTimes(1)
+    first.unmount()
+    expect(image.getAttribute('src')).toBeNull()
+    expect(artworkImages(client).liveSlots).toBe(0)
+    const second = render(cover(false))
+    expect(second.container.querySelector('img')).not.toBeNull()
+    expect(bridge.artwork).toHaveBeenCalledTimes(1)
+    second.unmount()
+    expect(artworkImages(client).liveSlots).toBe(0)
+  })
+
+  it('retries a transient decode failure after detach and reattach', async () => {
+    const decode = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Temporary decode failure'))
+      .mockResolvedValue(undefined)
+    vi.stubGlobal(
+      'Image',
+      class {
+        src = ''
+        naturalWidth = 640
+        naturalHeight = 960
+        decode = decode
+      },
+    )
+    const bridge = installBridge(vi.fn().mockResolvedValue(currentArt))
+    const client = queryClient()
+    const first = render(view(client))
+    await waitFor(() => expect(first.container.textContent).toContain('Artwork unavailable'))
+    first.unmount()
+    expect(artworkImages(client).liveSlots).toBe(0)
+    const second = render(view(client))
+    await waitFor(() => expect(second.container.querySelector('img')).not.toBeNull())
+    expect(bridge.artwork).toHaveBeenCalledTimes(2)
+    expect(decode).toHaveBeenCalledTimes(2)
+    second.unmount()
+  })
+
+  it('requests the first real display bucket and retries a null result at the unchanged width', async () => {
+    vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockReturnValue({
+      x: 0,
+      y: 0,
+      width: 400,
+      height: 600,
+      top: 0,
+      bottom: 600,
+      left: 0,
+      right: 400,
+      toJSON() {},
+    })
+    const bridge = installBridge(
+      vi.fn().mockResolvedValue(currentArt),
+      vi.fn().mockResolvedValueOnce(null).mockResolvedValue(sourceA),
+    )
+    const result = render(view(queryClient()))
+    await waitFor(() => expect(result.container.textContent).toContain('Artwork unavailable'))
+    expect(bridge.artwork).toHaveBeenNthCalledWith(1, 'steam', '123', 480, expect.any(String))
+    fireEvent(window, new Event('resize'))
+    await waitFor(() => expect(result.container.querySelector('img')).not.toBeNull())
+    expect(bridge.artwork).toHaveBeenNthCalledWith(2, 'steam', '123', 480, expect.any(String))
+    fireEvent(window, new Event('resize'))
+    expect(bridge.artwork).toHaveBeenCalledTimes(2)
+  })
+})
+
+it('shutdown during browser decoding waits for retirement and releases unpublished pixels once', async () => {
+  const decoding = deferred<void>()
+  const decode = vi.fn(() => decoding.promise)
+  const decoder = { src: '', naturalWidth: 640, naturalHeight: 960, decode }
+  vi.stubGlobal(
+    'Image',
+    class {
+      constructor() {
+        return decoder
+      }
+    },
+  )
+  installBridge(vi.fn().mockResolvedValue(currentArt))
+  const client = queryClient(),
+    result = render(view(client))
+  try {
+    await waitFor(() => expect(decode).toHaveBeenCalledTimes(1))
+    const cache = artworkImages(client)
+    let stopped = false
+    const shutdown = closeArtworkImages(client).then(() => {
+      stopped = true
+    })
+    await Promise.resolve()
+    expect(stopped).toBe(false)
+    expect(decoder.src).toBe('')
+    decoding.resolve()
+    await act(async () => shutdown)
+    expect(result.container.querySelector('img')).toBeNull()
+    expect(cache.pendingCount).toBe(0)
+    expect(cache.decodedCount).toBe(0)
+    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1)
+  } finally {
+    decoding.resolve()
+  }
+})
+
+it('shutdown drains an ignored bridge cancellation without caching late bytes or admitting new reads', async () => {
+  const bytes = deferred<string>()
+  const bridge = installBridge(
+    vi.fn().mockResolvedValue(currentArt),
+    vi.fn(() => bytes.promise),
+  )
+  const client = queryClient(),
+    result = render(view(client))
+  try {
+    await waitFor(() => expect(bridge.artwork).toHaveBeenCalledTimes(1))
+    const cache = artworkImages(client)
+    let stopped = false
+    const shutdown = closeArtworkImages(client).then(() => {
+      stopped = true
+    })
+    await Promise.resolve()
+    expect(stopped).toBe(false)
+    expect(bridge.cancelRequest).toHaveBeenCalledWith(bridge.artwork.mock.calls[0]![3])
+    const refused = vi.fn()
+    expect(await cache.get('another', refused)).toBeNull()
+    expect(refused).not.toHaveBeenCalled()
+    bytes.resolve(sourceA)
+    await act(async () => shutdown)
+    expect(result.container.querySelector('img')).toBeNull()
+    expect(cache.pendingCount).toBe(0)
+    expect(cache.decodedCount).toBe(0)
+    expect(URL.createObjectURL).not.toHaveBeenCalled()
+    expect(client.getQueryData(['artwork-image', 'steam', '123', 640, 'selection-a'])).toBeUndefined()
+    expect(bridge.artwork).toHaveBeenCalledTimes(1)
+  } finally {
+    bytes.resolve(sourceA)
+  }
 })

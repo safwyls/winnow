@@ -380,7 +380,7 @@
   .avalon-cover > .artwork img {
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: var(--cover-art-fit, contain);
   }
   .avalon-cover .art-placeholder span {
     visibility: hidden;
@@ -761,7 +761,7 @@
   .avalon-record > .artwork img {
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: var(--cover-art-fit, contain);
   }
   .avalon-record strong {
     font-family: var(--font-display);

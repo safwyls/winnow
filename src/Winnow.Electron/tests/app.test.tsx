@@ -596,6 +596,25 @@ describe('integrated frontend', () => {
     },
   )
   it.each([
+    ['fit', 'contain'],
+    ['fill', 'cover'],
+  ])('applies cover art %s on both surfaces', async (value, expected) => {
+    const original = window.winnow.request
+    window.winnow.request = vi.fn(async (input) =>
+      input.route === 'preferences.presentation.get'
+        ? { ok: true, status: 200, data: [{ preference: 'CoverArtMode', value }] }
+        : original(input),
+    ) as WinnowBridge['request']
+    const client = mount()
+    await waitFor(() =>
+      expect(document.documentElement.style.getPropertyValue('--cover-art-fit')).toBe(expected),
+    )
+    act(() => fullscreen(true))
+    await waitFor(() => expect(document.documentElement.dataset.mode).toBe('fullscreen'))
+    expect(document.documentElement.style.getPropertyValue('--cover-art-fit')).toBe(expected)
+    client.clear()
+  })
+  it.each([
     [undefined, 'true'],
     ['yes please', 'true'],
     ['false', 'false'],

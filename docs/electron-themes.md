@@ -71,6 +71,8 @@ at the destination. The cover row and shelf rail share a bottom anchor; Home siz
 from the unscaled canvas so a smaller interface adds room without enlarging its covers.
 Each shelf retains its horizontal overflow page; moving between shelves carries the current
 visible column and clamps shorter pages. Only the current page's covers are realized.
+The fullscreen Home footer shows **LT / RT Shelf**. Loading recommendations offscreen does
+not record them as seen; changing shelves records only the newly exposed cards.
 Fullscreen Library keeps two visible rows, retaining overlapping covers during each vertical
 slide. Arrows, Page Up/Down and the wheel share its selection state; filtering follows the
 selected game when it remains in the results. Returning from another section restores the
@@ -463,7 +465,12 @@ h(context.components.GameCard, {
 ```
 
 For a custom layout, compose the primitives. `ArtworkEffects` wraps one decoded image;
-use `Artwork` for authenticated, cached cover loading. Give the untransformed button a ref
+use `Artwork` for authenticated, cached cover loading. Give it measurable bounds: it requests
+the smallest original width bucket that fits those bounds at the display's pixel density.
+Mounted instances share decoded pixels; the last departing consumer cancels pending work.
+The 32 MiB cache bounds unused decoded scrollback while visible leases retain their pixels.
+Avalon's cover and list art use `--cover-art-fit`, which the host sets from Fit/Fill preferences.
+Give the untransformed button a ref
 and pass it as `interactionRef` so pointer coordinates remain stable as the visual tilts.
 Without this ref, the effect wrapper itself supplies the fixed interaction area. Keep
 interactive controls outside the tilted surface; that surface ignores pointer events.

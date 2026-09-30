@@ -119,6 +119,7 @@ export function App() {
     )
     root.dataset.fitUltrawide = String(preferences.FullscreenFitUltrawide === 'true')
     root.dataset.dimDormant = String(preferences.DimDormantCovers?.trim().toLowerCase() !== 'false')
+    root.style.setProperty('--cover-art-fit', preferences.CoverArtMode === 'fill' ? 'cover' : 'contain')
     root.classList.toggle('reduced-motion', reducedMotion)
   }, [
     mode,
@@ -127,6 +128,7 @@ export function App() {
     preferences.FullscreenSafeMargin,
     preferences.FullscreenFitUltrawide,
     preferences.DimDormantCovers,
+    preferences.CoverArtMode,
     reducedMotion,
   ])
   const launchAttempts = useRef(new Map<number, { operationId: string; action: string }>())
