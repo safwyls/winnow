@@ -1,7 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, type ReactNode } from 'react'
 import './fullscreen-settings.css'
 
-export function useFullscreenSettingsEntry(ready: boolean) {
+export function useFullscreenSettingsEntry(ready: boolean, entryKey?: string) {
   const surface = useRef<HTMLElement>(null)
   useEffect(() => {
     if (!ready) return
@@ -18,7 +18,7 @@ export function useFullscreenSettingsEntry(ready: boolean) {
           ?.focus({ preventScroll: true })
     }, 0)
     return () => clearTimeout(timer)
-  }, [ready])
+  }, [ready, entryKey])
   return surface
 }
 

@@ -136,6 +136,8 @@ for (const [width, height, scale, uiScale] of [
       [scale, uiScale],
     )
     await expect(page.locator('html')).toHaveCSS('--fullscreen-text-scale', String(scale))
+    await expect(page.locator('html')).toHaveCSS('--fullscreen-interface-scale', String(uiScale))
+    await expect(page.locator('body')).toHaveCSS('zoom', String(uiScale))
     const origin = page.locator('.avalon-cover').first()
     await origin.click()
     const details = page.locator('.avalon-details.fullscreen')

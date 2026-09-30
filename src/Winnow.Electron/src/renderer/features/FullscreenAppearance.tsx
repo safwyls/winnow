@@ -216,7 +216,7 @@ export function FullscreenAppearance({ themeControls }: { themeControls?: ReactN
 export function FullscreenSettingsPreview({
   section = 'Appearance',
 }: {
-  section?: 'Appearance' | 'Library' | 'Application'
+  section?: 'Appearance' | 'Library' | 'Application' | 'Metadata & artwork'
 }) {
   const preferences = usePresentationPreferences()
   const library = useLibrary()

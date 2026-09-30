@@ -252,6 +252,7 @@ export interface BackendOperation {
   state: string
   message: string
   updatedAt: string
+  metadataResult?: number | null
 }
 export interface ManualGame {
   ownershipId: number

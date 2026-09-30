@@ -51,6 +51,14 @@ updater shutdown drains, and later notifications cannot recreate them during qui
 
 Seven source methods now have complete evidence. Inventory: 1,124 ported, 559 retained
 backend, 17 framework-specific, 633 pending and 102 partial out of 2,435 methods. The
-complete 262-case native suite has not yet passed together. The broader migration
+complete 262-case native suite on `d5f2994d` passes 259 cases, with three failures and no
+skips or flaky results, in 27.6 minutes. Report: `.tmp/tray-complete-native/results.json`.
+Two fixtures stop waiting for initial readiness at 15 seconds while the frontend remains
+in preparation; the application permits 45 seconds for first attachment. The fullscreen
+Details case at 2560×1440 reports a title height consistent with the preceding case's 1.2
+interface scale: 168.94px instead of the expected two 70.4px lines. Its fixture waits for text scale but not
+interface scale before measuring. Follow-up checks must verify both applied values and
+retain the original title-height assertion. None of these failures came from the 13 tray
+workflows, which all passed. The broader migration
 acceptance criteria remain unchecked; the subsequent metadata hierarchy and sync work
 is separate from this verified package.

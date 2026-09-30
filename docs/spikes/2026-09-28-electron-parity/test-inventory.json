@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 633,
-    "partial": 102,
-    "ported": 1124,
+    "pending": 628,
+    "partial": 101,
+    "ported": 1130,
     "retained-backend": 559,
     "framework-specific": 17
   },
@@ -1249,7 +1249,18 @@
     {
       "id": "ArtworkOrderViewModelTests.Move_commands_persist_and_reload_order_and_refuse_endpoints",
       "source": "tests/Winnow.Tests/ArtworkOrderViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-metadata-settings.test.tsx",
+          "case": "%s persists and reloads source order, refuses endpoints and migrates the provider id"
+        },
+        {
+          "file": "tests/electron/metadata-settings.spec.ts",
+          "case": "metadata child pages retain hierarchy reading bounds controller return and saved order"
+        }
+      ],
+      "reason": "Desktop and fullscreen refuse endpoint moves, save SteamGridDB above Steam, reconstruct the UI from persisted preferences, and move it back. Native controller input persists the backend preference and retains focus on the moved source. The legacy provider ID maps to the plugin ID."
     },
     {
       "id": "ArtworkPreferencesTests.Saved_order_survives_restart_and_invalid_entries_keep_all_sources",
@@ -23317,14 +23328,18 @@
     {
       "id": "FullscreenSettingsHierarchyTests.Settings_groups_keep_text_within_their_reading_region_and_controls_reachable",
       "source": "tests/Winnow.Ui.Tests/FullscreenSettingsHierarchyTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/electron/fullscreen-shared-settings.spec.ts",
           "case": "fullscreen Library and Application settings retain reading bounds and focus"
+        },
+        {
+          "file": "tests/electron/metadata-settings.spec.ts",
+          "case": "metadata child pages retain hierarchy reading bounds controller return and saved order"
         }
       ],
-      "reason": "Library passes both original 2560×1440 text-scale cases, with named sections, one-pixel rules wider than 300px, contained text and controls fully reachable after focus. Additional 720p Library/Application checks pass. The original IGDB and artwork-order reading-region cases still require their separate fullscreen hierarchy."
+      "reason": "Library, IGDB credentials and artwork order cover the original 2560×1440 cases at text scales 1 and 1.4, plus 720p checks. Each page has one vertical reading region, semantic headings, one-pixel rules wider than 300px, contained text and enabled controls fully reachable after focus. Metadata child pages also retain their source typography and controller return focus."
     },
     {
       "id": "FullscreenSettingsTests.Default_sort_setting_is_shared_by_desktop_and_controller_controls",
@@ -24586,22 +24601,78 @@
     {
       "id": "ManualMetadataSyncTests.Desktop_enter_starts_one_shared_operation_and_fullscreen_reports_progress_and_completion",
       "source": "tests/Winnow.Ui.Tests/ManualMetadataSyncTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/metadata-settings.spec.ts",
+          "case": "desktop Enter and fullscreen A share one metadata operation across navigation progress completion and late callbacks"
+        },
+        {
+          "file": "tests/parity-metadata-settings.test.tsx",
+          "case": "shares busy state between both buttons, refuses rapid activation and survives unmounting all settings"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/OperationsTests.cs",
+          "case": "MetadataResultsSurviveHttpAndLateProgressCannotReplaceCompletion"
+        }
+      ],
+      "reason": "Actual Enter and controller A share one operation across presentations. Component checks render both controls together and require polite shared status, disabled activation and one request. Real HTTP checks retain the terminal result and reject late progress callbacks."
     },
     {
       "id": "ManualMetadataSyncTests.Controller_sync_retains_state_when_settings_close_and_reopen",
       "source": "tests/Winnow.Ui.Tests/ManualMetadataSyncTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/metadata-settings.spec.ts",
+          "case": "controller starts a single sync that keeps its live progress when settings close and reopen"
+        },
+        {
+          "file": "tests/metadata-sync.test.ts",
+          "case": "keeps running without subscribers and gives a reopened screen the current progress and result"
+        }
+      ],
+      "reason": "A starts one operation; Down reaches IGDB from the busy action. Leaving settings for Home and reopening keeps current progress and busy state. Completion is visible and actionable after switching to desktop."
     },
     {
       "id": "ManualMetadataSyncTests.Failure_guidance_is_shared_and_controller_can_retry",
       "source": "tests/Winnow.Ui.Tests/ManualMetadataSyncTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/metadata-settings.spec.ts",
+          "case": "shares guidance and controller retry starts one fresh successful operation"
+        },
+        {
+          "file": "tests/parity-metadata-settings.test.tsx",
+          "case": "shares actionable outcome %s and enables retry on either surface"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/OperationsTests.cs",
+          "case": "MetadataResultsSurviveHttpAndLateProgressCannotReplaceCompletion"
+        }
+      ],
+      "reason": "The three original metadata outcomes retain their credential, retry and reopen guidance on both surfaces. Controller retry creates one fresh successful operation. HTTP tests verify the enum values sent to Electron."
     },
     {
       "id": "ManualMetadataSyncTests.Unexpected_failure_is_actionable_and_does_not_leave_sync_disabled",
       "source": "tests/Winnow.Ui.Tests/ManualMetadataSyncTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/metadata-sync.test.ts",
+          "case": "retains the accepted identity after an interrupted start and hides private exception details"
+        },
+        {
+          "file": "tests/electron/metadata-settings.spec.ts",
+          "case": "an uncertain native response retains the accepted metadata identity for controller retry"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/OperationsTests.cs",
+          "case": "FailedMetadataHidesPrivateDetailsAndANewIdentityCanRetry"
+        }
+      ],
+      "reason": "Transport and service failures expose only actionable guidance and release the busy state. An uncertain accepted request reuses its identity; an explicitly failed service operation allows a new identity. Both paths successfully retry without revealing private diagnostics."
     },
     {
       "id": "MergeDormancyTests.Visible_merge_covers_follow_the_display_toggle_without_reloading",

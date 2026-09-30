@@ -124,6 +124,9 @@ Launching uses an operation UUID; retry the same logical operation with the same
 avoid dispatching it twice. Operation IDs are bounded, temporary deduplication records,
 not an indefinite exactly-once guarantee across backend restarts. Long-running operations
 return status identifiers and can continue while a frontend disconnects.
+Metadata sync results distinguish completion, missing credentials, partial failure and a
+failed library refresh. Once an operation finishes, later progress callbacks cannot replace
+its terminal message or result.
 
 An accepted journal PUT also finishes if its frontend disconnects. Graceful backend shutdown
 drains the request before disposing its repositories. After a lost response, read the note

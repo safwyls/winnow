@@ -1,0 +1,84 @@
+{
+  "ManualMetadataSyncTests.Desktop_enter_starts_one_shared_operation_and_fullscreen_reports_progress_and_completion": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/metadata-settings.spec.ts",
+        "case": "desktop Enter and fullscreen A share one metadata operation across navigation progress completion and late callbacks"
+      },
+      {
+        "file": "tests/parity-metadata-settings.test.tsx",
+        "case": "shares busy state between both buttons, refuses rapid activation and survives unmounting all settings"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/OperationsTests.cs",
+        "case": "MetadataResultsSurviveHttpAndLateProgressCannotReplaceCompletion"
+      }
+    ],
+    "reason": "Actual Enter and controller A share one operation across presentations. Component checks render both controls together and require polite shared status, disabled activation and one request. Real HTTP checks retain the terminal result and reject late progress callbacks."
+  },
+  "ManualMetadataSyncTests.Controller_sync_retains_state_when_settings_close_and_reopen": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/metadata-settings.spec.ts",
+        "case": "controller starts a single sync that keeps its live progress when settings close and reopen"
+      },
+      {
+        "file": "tests/metadata-sync.test.ts",
+        "case": "keeps running without subscribers and gives a reopened screen the current progress and result"
+      }
+    ],
+    "reason": "A starts one operation; Down reaches IGDB from the busy action. Leaving settings for Home and reopening keeps current progress and busy state. Completion is visible and actionable after switching to desktop."
+  },
+  "ManualMetadataSyncTests.Failure_guidance_is_shared_and_controller_can_retry": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/metadata-settings.spec.ts",
+        "case": "shares guidance and controller retry starts one fresh successful operation"
+      },
+      {
+        "file": "tests/parity-metadata-settings.test.tsx",
+        "case": "shares actionable outcome %s and enables retry on either surface"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/OperationsTests.cs",
+        "case": "MetadataResultsSurviveHttpAndLateProgressCannotReplaceCompletion"
+      }
+    ],
+    "reason": "The three original metadata outcomes retain their credential, retry and reopen guidance on both surfaces. Controller retry creates one fresh successful operation. HTTP tests verify the enum values sent to Electron."
+  },
+  "ManualMetadataSyncTests.Unexpected_failure_is_actionable_and_does_not_leave_sync_disabled": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/metadata-sync.test.ts",
+        "case": "retains the accepted identity after an interrupted start and hides private exception details"
+      },
+      {
+        "file": "tests/electron/metadata-settings.spec.ts",
+        "case": "an uncertain native response retains the accepted metadata identity for controller retry"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/OperationsTests.cs",
+        "case": "FailedMetadataHidesPrivateDetailsAndANewIdentityCanRetry"
+      }
+    ],
+    "reason": "Transport and service failures expose only actionable guidance and release the busy state. An uncertain accepted request reuses its identity; an explicitly failed service operation allows a new identity. Both paths successfully retry without revealing private diagnostics."
+  },
+  "ArtworkOrderViewModelTests.Move_commands_persist_and_reload_order_and_refuse_endpoints": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-settings.test.tsx",
+        "case": "%s persists and reloads source order, refuses endpoints and migrates the provider id"
+      },
+      {
+        "file": "tests/electron/metadata-settings.spec.ts",
+        "case": "metadata child pages retain hierarchy reading bounds controller return and saved order"
+      }
+    ],
+    "reason": "Desktop and fullscreen refuse endpoint moves, save SteamGridDB above Steam, reconstruct the UI from persisted preferences, and move it back. Native controller input persists the backend preference and retains focus on the moved source. The legacy provider ID maps to the plugin ID."
+  }
+}

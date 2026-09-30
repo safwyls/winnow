@@ -5,6 +5,7 @@ import type { IgdbConnection, Mode } from '../api/types'
 import { useSetupBusy } from './settingsState'
 import { Notice } from './shared'
 import './igdb-settings.css'
+import { useFullscreenSettingsEntry } from './FullscreenSettingRows'
 
 const fallback =
   ' Credentials from environment variables or configuration will be used when no saved pair is available.'
@@ -18,10 +19,20 @@ export const igdbSavedStatus = (snapshot: IgdbConnection) =>
         ? 'IGDB credentials are supplied by environment variables or configuration. A saved pair takes priority.'
         : 'Add your Twitch application credentials to fetch IGDB game details.'
 
-export function IgdbConnectionPanel({ mode = 'desktop' }: { mode?: Mode }) {
+export function IgdbConnectionPanel({
+  mode = 'desktop',
+  sectioned = false,
+}: {
+  mode?: Mode
+  sectioned?: boolean
+}) {
   const query = useApiQuery<IgdbConnection>('connections.igdb.get')
+  const entry = useFullscreenSettingsEntry(
+    sectioned && (!!query.data || query.isError),
+    query.isError ? 'retry' : 'credentials',
+  )
   return (
-    <>
+    <section ref={entry} className="igdb-connection-panel">
       {query.error && (
         <>
           <Notice error={new Error('Could not read IGDB settings. Try loading them again.')} />
@@ -36,12 +47,20 @@ export function IgdbConnectionPanel({ mode = 'desktop' }: { mode?: Mode }) {
         </>
       )}
       {!query.data && !query.error && <p role="status">Loading IGDB settings…</p>}
-      {query.data && <IgdbForm snapshot={query.data} mode={mode} key={mode} />}
-    </>
+      {query.data && <IgdbForm snapshot={query.data} mode={mode} sectioned={sectioned} key={mode} />}
+    </section>
   )
 }
 
-export function IgdbForm({ snapshot, mode = 'desktop' }: { snapshot: IgdbConnection; mode?: Mode }) {
+export function IgdbForm({
+  snapshot,
+  mode = 'desktop',
+  sectioned = false,
+}: {
+  snapshot: IgdbConnection
+  mode?: Mode
+  sectioned?: boolean
+}) {
   const [clientId, setClientId] = useState(snapshot.clientId)
   const [secret, setSecret] = useState('')
   const [message, setMessage] = useState('')
@@ -156,6 +175,12 @@ export function IgdbForm({ snapshot, mode = 'desktop' }: { snapshot: IgdbConnect
       >
         Get IGDB credentials
       </button>
+      {sectioned && (
+        <>
+          <hr className="fullscreen-information-rule" />
+          <h2 className="fullscreen-information-heading">Credentials</h2>
+        </>
+      )}
       <label className="field" htmlFor={`${id}-client`}>
         Client ID
         <input
@@ -187,6 +212,7 @@ export function IgdbForm({ snapshot, mode = 'desktop' }: { snapshot: IgdbConnect
       <p className="igdb-storage-help">
         The secret is stored securely on this device. Changes take effect immediately.
       </p>
+      {sectioned && <hr className="fullscreen-information-rule" />}
       <div className="form-actions">
         <button ref={saveButton} disabled={command.isPending}>
           Save credentials

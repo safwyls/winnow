@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { request } from '../api/client'
 import { useApiQuery, useCommand } from '../api/hooks'
@@ -29,15 +29,19 @@ export function usePresentationPreferences() {
   const values = Object.fromEntries((query.data ?? []).map((row) => [row.preference, row.value]))
   const set = (preference: string, value: string) => {
     setError(null)
-    void command
+    return command
       .mutateAsync({ route: 'preferences.presentation.put', params: { preference }, body: { value } })
-      .then(() =>
+      .then(() => {
         client.setQueryData<PresentationPreferenceValue[]>(
           ['api', 'preferences.presentation.get', undefined],
           (rows) => [...(rows ?? []).filter((row) => row.preference !== preference), { preference, value }],
-        ),
-      )
-      .catch(setError)
+        )
+        return true
+      })
+      .catch((error) => {
+        setError(error)
+        return false
+      })
   }
   return { values, set, pending: command.isPending, error: error || query.error, loaded: !!query.data }
 }
@@ -550,9 +554,15 @@ export function AccountVisibility({
   )
 }
 
-export function ArtworkSourcePreferences() {
+export const artworkSourceExplanation =
+  'Try sources from top to bottom. Your saved background always comes first. Standard Steam heroes and covers remain fallbacks.'
+export function ArtworkSourcePreferences({ mode = 'desktop' }: { mode?: Mode } = {}) {
   const preferences = usePresentationPreferences()
   const sources = useApiQuery<{ id: string; label: string }[]>('preferences.artworkSources')
+  const surface = useFullscreenSettingsEntry(mode === 'fullscreen' && preferences.loaded && sources.isSuccess)
+  const working = useRef(false)
+  const restore = useRef<{ id: string; direction: number; origin: Element } | null>(null)
+  const [status, setStatus] = useViewState('artwork:source-order:status', '')
   const available = sources.data ?? []
   const order = [
     ...new Set([
@@ -564,18 +574,61 @@ export function ArtworkSourcePreferences() {
       ...available.map((source) => source.id),
     ]),
   ].filter((id) => available.some((source) => source.id === id))
-  function move(index: number, delta: number) {
+  useLayoutEffect(() => {
+    if (preferences.pending || !restore.current) return
+    const target = restore.current
+    restore.current = null
+    if (
+      !surface.current ||
+      (document.activeElement !== document.body && document.activeElement !== target.origin)
+    )
+      return
+    const buttons = [...surface.current.querySelectorAll<HTMLButtonElement>('button[data-source-id]')].filter(
+      (button) => button.dataset.sourceId === target.id && !button.disabled,
+    )
+    const button =
+      buttons.find((button) => Number(button.dataset.direction) === target.direction) ?? buttons[0]
+    button?.focus({ preventScroll: true })
+    button?.scrollIntoView?.({ block: 'nearest' })
+  }, [preferences.pending, order.join(','), status])
+  async function move(index: number, delta: number) {
+    if (
+      working.current ||
+      !preferences.loaded ||
+      preferences.pending ||
+      index + delta < 0 ||
+      index + delta >= order.length
+    )
+      return
+    working.current = true
+    const active = document.activeElement
+    if (active && surface.current?.contains(active))
+      restore.current = { id: order[index], direction: delta, origin: active }
+    setStatus('')
     const next = [...order]
     ;[next[index], next[index + delta]] = [next[index + delta], next[index]]
-    preferences.set('ArtworkSourceOrder', next.join(','))
+    const saved = await preferences.set('ArtworkSourceOrder', next.join(','))
+    setStatus(
+      saved
+        ? 'Artwork source order saved.'
+        : "Could not save artwork source order. Check that Winnow's data folder is writable, then try again.",
+    )
+    working.current = false
   }
   return (
-    <section className="feature-panel">
-      <h2>Background artwork sources</h2>
-      <p>
-        Try sources from top to bottom. Your saved background always comes first. Standard Steam heroes and
-        covers remain fallbacks.
-      </p>
+    <section
+      ref={surface}
+      className={mode === 'fullscreen' ? 'fullscreen-artwork-order' : 'feature-panel'}
+      aria-label={mode === 'desktop' ? 'Artwork source order' : undefined}
+    >
+      {mode === 'desktop' && <h2>Artwork source order</h2>}
+      <p>{artworkSourceExplanation}</p>
+      {mode === 'fullscreen' && (
+        <>
+          <hr className="fullscreen-information-rule" />
+          <h2 className="fullscreen-information-heading">Sources · preferred first</h2>
+        </>
+      )}
       <ol className="artwork-source-order">
         {order.map((id, index) => {
           const label = available.find((source) => source.id === id)!.label
@@ -584,15 +637,19 @@ export function ArtworkSourcePreferences() {
               <span>{label}</span>
               <div className="form-actions">
                 <button
-                  disabled={index === 0 || preferences.pending}
+                  disabled={index === 0 || !preferences.loaded || preferences.pending}
                   aria-label={`Move ${label} up`}
+                  data-source-id={id}
+                  data-direction={-1}
                   onClick={() => move(index, -1)}
                 >
                   Move up
                 </button>
                 <button
-                  disabled={index === order.length - 1 || preferences.pending}
+                  disabled={index === order.length - 1 || !preferences.loaded || preferences.pending}
                   aria-label={`Move ${label} down`}
+                  data-source-id={id}
+                  data-direction={1}
                   onClick={() => move(index, 1)}
                 >
                   Move down
@@ -602,7 +659,10 @@ export function ArtworkSourcePreferences() {
           )
         })}
       </ol>
-      <Notice error={sources.error || preferences.error} />
+      <p role="status" aria-live="polite" aria-atomic="true">
+        {status}
+      </p>
+      <Notice error={sources.error || (!preferences.loaded && preferences.error)} />
     </section>
   )
 }

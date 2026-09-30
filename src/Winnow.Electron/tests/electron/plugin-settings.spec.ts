@@ -74,7 +74,9 @@ async function launch(mode: 'desktop' | 'fullscreen', plugins = [artwork, xbox])
   })
   try {
     const page = await application.firstWindow()
-    await expect(page.getByRole('button', { name: 'Winnow home', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Winnow home', exact: true })).toBeVisible({
+      timeout: 45000,
+    })
     if (await page.getByRole('dialog', { name: 'Winnow setup', exact: true }).count())
       await page.getByRole('button', { name: 'Skip setup', exact: true }).click()
     const tap = await controller(page)

@@ -35,6 +35,9 @@ import { FullscreenLibrarySettings } from './FullscreenLibrarySettings'
 import { LibraryTools } from './LibraryTools'
 import { ControllerGuide } from './ControllerGuide'
 import { FullscreenSettingsAction } from './FullscreenSettingRows'
+import { FullscreenMetadataChild, FullscreenMetadataSettings } from './FullscreenMetadataSettings'
+import { MetadataSyncSettings } from './MetadataSyncSettings'
+import { useMetadataSync } from './metadata-sync'
 
 export function Settings({
   mode = 'desktop',
@@ -54,9 +57,12 @@ export function Settings({
   const tab = savedTab === 'Connections' ? 'Platforms' : savedTab === 'Providers' ? 'Plugins' : savedTab
   const parentTab = ['Spending', 'Recommendations', 'Library tools'].includes(tab)
     ? 'Library'
-    : tab === 'Operations'
-      ? 'Application'
-      : tab
+    : ['IGDB metadata', 'Artwork source order'].includes(tab)
+      ? 'Metadata & artwork'
+      : tab === 'Operations'
+        ? 'Application'
+        : tab
+  const metadataChild = mode === 'fullscreen' && (tab === 'IGDB metadata' || tab === 'Artwork source order')
   const page = useRef<HTMLElement>(null)
   const previousTab = useRef(tab)
   useEffect(() => {
@@ -65,8 +71,11 @@ export function Settings({
     if (mode !== 'fullscreen' || previous === tab) return
     const timer = setTimeout(() => {
       if (page.current?.closest('[inert]')) return
-      const target =
-        parentTab !== tab
+      const target = metadataChild
+        ? page.current?.querySelector<HTMLButtonElement>(
+            '[data-settings-child-reading] button:not(:disabled):not([data-settings-child-back])',
+          )
+        : parentTab !== tab
           ? page.current?.querySelector<HTMLButtonElement>('[data-settings-child-back]')
           : [
               ...(page.current?.querySelectorAll<HTMLButtonElement>('.fullscreen-settings-content button') ??
@@ -75,7 +84,7 @@ export function Settings({
       target?.focus()
     }, 0)
     return () => clearTimeout(timer)
-  }, [mode, tab, parentTab])
+  }, [mode, tab, parentTab, metadataChild])
   const sections =
     mode === 'fullscreen'
       ? ['Appearance', 'Controller', 'Library', 'Platforms', 'Metadata & artwork', 'Plugins', 'Application']
@@ -93,11 +102,12 @@ export function Settings({
   const stores = useApiQuery<StoreConnections>('connections.get')
   const preferences = useApiQuery<LibraryPreferences>('preferences.library.get')
   const operations = useApiQuery<BackendOperation[]>('operations.get')
+  const metadataSync = useMetadataSync()
   const command = useCommand()
   return (
     <section
       ref={page}
-      className={`feature-page settings-page mode-${mode}${mode === 'fullscreen' && tab === 'Controller' ? ' fullscreen-controller-page' : ''}`}
+      className={`feature-page settings-page mode-${mode}${mode === 'fullscreen' && tab === 'Controller' ? ' fullscreen-controller-page' : ''}${metadataChild ? ' fullscreen-settings-child' : ''}`}
       onKeyDown={(event) => {
         // A portal's Escape belongs to its own layer even though React bubbles through this page.
         if (
@@ -113,37 +123,43 @@ export function Settings({
         }
       }}
     >
-      <header className="feature-heading">
-        <div>
-          {mode === 'fullscreen' ? (
-            <h1>Make yourself comfortable</h1>
-          ) : (
-            <>
-              <p className="eyebrow">A PLACE FOR EVERYTHING</p>
-              <h1>Make yourself at home.</h1>
-              <p>Your library stays on this computer. Connections enrich what is already yours.</p>
-            </>
-          )}
-        </div>
-      </header>
-      <nav className="tabs" aria-label="Settings section">
-        {sections.map((name) => (
-          <button
-            key={name}
-            data-controller-tab
-            aria-pressed={(mode === 'fullscreen' ? parentTab : tab) === name}
-            onClick={(event) => {
-              setTab(name)
-              if (mode === 'fullscreen' && name === 'Controller')
-                event.currentTarget.focus({ preventScroll: true })
-            }}
-            onFocus={(event) => event.currentTarget.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })}
-          >
-            {name}
-          </button>
-        ))}
-      </nav>
-      {mode === 'fullscreen' && parentTab !== tab && (
+      {!metadataChild && (
+        <header className="feature-heading">
+          <div>
+            {mode === 'fullscreen' ? (
+              <h1>Make yourself comfortable</h1>
+            ) : (
+              <>
+                <p className="eyebrow">A PLACE FOR EVERYTHING</p>
+                <h1>Make yourself at home.</h1>
+                <p>Your library stays on this computer. Connections enrich what is already yours.</p>
+              </>
+            )}
+          </div>
+        </header>
+      )}
+      {!metadataChild && (
+        <nav className="tabs" aria-label="Settings section">
+          {sections.map((name) => (
+            <button
+              key={name}
+              data-controller-tab
+              aria-pressed={(mode === 'fullscreen' ? parentTab : tab) === name}
+              onClick={(event) => {
+                setTab(name)
+                if (mode === 'fullscreen' && name === 'Controller')
+                  event.currentTarget.focus({ preventScroll: true })
+              }}
+              onFocus={(event) =>
+                event.currentTarget.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+              }
+            >
+              {name}
+            </button>
+          ))}
+        </nav>
+      )}
+      {mode === 'fullscreen' && parentTab !== tab && !metadataChild && (
         <button data-settings-child-back onClick={() => setTab(parentTab)}>
           Back to {parentTab}
         </button>
@@ -170,15 +186,28 @@ export function Settings({
           <Notice error={command.error} />
         </div>
       )}
-      {tab === 'Metadata & artwork' && (
-        <>
-          <section className="feature-panel">
-            <h2>IGDB</h2>
-            <p>Descriptions, game identity, and artwork from IGDB.</p>
-            <IgdbConnectionPanel mode={mode} />
-          </section>
-          <ArtworkSourcePreferences />
-        </>
+      {tab === 'Metadata & artwork' &&
+        (mode === 'fullscreen' ? (
+          <div className="fullscreen-appearance-layout">
+            <FullscreenMetadataSettings onOpen={setTab} />
+            <FullscreenSettingsPreview section="Metadata & artwork" />
+          </div>
+        ) : (
+          <>
+            <MetadataSyncSettings />
+            <ArtworkSourcePreferences />
+            <section className="feature-panel">
+              <h2>IGDB metadata</h2>
+              <p>Descriptions, game identity, and artwork from IGDB.</p>
+              <IgdbConnectionPanel mode={mode} />
+            </section>
+          </>
+        ))}
+      {metadataChild && (
+        <FullscreenMetadataChild
+          title={tab as 'IGDB metadata' | 'Artwork source order'}
+          onBack={() => setTab('Metadata & artwork')}
+        />
       )}
       {tab === 'Plugins' && <PluginSettings mode={mode} />}
       {tab === 'Library' &&
@@ -239,14 +268,17 @@ export function Settings({
               <p>These operations continue while you browse.</p>
             </div>
             <button
-              disabled={command.isPending}
-              onClick={() =>
-                command.mutate({ route: 'operations.sync', body: { operationId: createClientId() } })
-              }
+              disabled={metadataSync.busy}
+              onClick={() => {
+                void metadataSync.operation.sync()
+              }}
             >
               <RefreshCw size={16} /> Refresh library metadata
             </button>
           </div>
+          <p role="status" aria-live="polite" aria-atomic="true">
+            {metadataSync.status}
+          </p>
           <Notice error={operations.error || command.error} />
           {operations.data?.length ? (
             operations.data.map((operation) => (

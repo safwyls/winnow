@@ -32,7 +32,9 @@ for (const [mode, scale] of [
       const page = await application.firstWindow(),
         errors: string[] = []
       page.on('pageerror', (error) => errors.push(error.message))
-      await expect(page.getByRole('button', { name: 'Winnow home', exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Winnow home', exact: true })).toBeVisible({
+        timeout: 45000,
+      })
       await application.evaluate(({ BrowserWindow }, mode) => {
         const window = BrowserWindow.getAllWindows()[0]!
         window.setFullScreen(false)

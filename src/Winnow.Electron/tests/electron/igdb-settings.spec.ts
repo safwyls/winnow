@@ -94,6 +94,8 @@ for (const [mode, scale] of [
         .getByRole('navigation', { name: 'Settings section' })
         .getByRole('button', { name: 'Metadata & artwork', exact: true })
         .click()
+      if (mode === 'fullscreen')
+        await page.getByRole('button', { name: 'IGDB metadata', exact: true }).click()
       const form = page.getByRole('form', { name: 'IGDB credentials' })
       const client = form.getByLabel('Client ID', { exact: true }),
         secret = form.getByLabel('Client secret', { exact: true })
@@ -170,6 +172,8 @@ for (const [mode, scale] of [
         isReadable: false,
       })
       await secret.fill('departed-secret')
+      if (mode === 'fullscreen')
+        await page.getByRole('button', { name: 'Back to Metadata & artwork', exact: true }).click()
       await page
         .getByRole('navigation', { name: 'Settings section' })
         .getByRole('button', { name: 'Application', exact: true })
@@ -178,6 +182,8 @@ for (const [mode, scale] of [
         .getByRole('navigation', { name: 'Settings section' })
         .getByRole('button', { name: 'Metadata & artwork', exact: true })
         .click()
+      if (mode === 'fullscreen')
+        await page.getByRole('button', { name: 'IGDB metadata', exact: true }).click()
       await expect(secret).toHaveValue('')
       expect(errors).toEqual([])
     } finally {

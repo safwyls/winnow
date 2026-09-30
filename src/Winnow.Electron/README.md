@@ -33,6 +33,12 @@ reports saved, unreadable and externally configured credentials without revealin
 Saving protects the secret through the backend and queues metadata refresh; removal takes
 effect immediately and reports configuration fallback. Refused writes retain the masked
 draft, and leaving the form clears it. Fullscreen provides the controller text keyboard.
+**Sync metadata now** shares one operation and progress message across desktop, fullscreen
+and Operations. Leaving settings keeps it running. Completion explains missing credentials,
+partial updates or a library refresh failure; an interrupted response retains the accepted
+operation ID for retry. Fullscreen opens **IGDB metadata** and **Artwork source order** as
+separate reading pages. Back returns to the originating action, and moving an artwork
+source keeps controller focus on that source after its order is saved.
 Manual games in **Manage library** report
 validation and identifier conflicts beside their fields and ask before removing a named entry.
 

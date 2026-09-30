@@ -45,12 +45,20 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [metadata settings checkpoint](checkpoint-thirty-nine.md) records 3,139 passing
+component/live API cases, 138 backend HTTP cases, and 36 native regression cases. Seven
+final native checks verify corrected reading-page typography, rules and alignment.
+The full .NET Release suite passes 6,895 cases with two Linux-only skips on Windows.
+The complete 273-case native suite remains to be run together.
+
 The [tray/window checkpoint](checkpoint-thirty-eight.md) records 3,111 passing component/API
 cases across 153 files, with build and typecheck passing. All 44 focused native cases pass,
 including the new tray matrix, Library, startup, activation, journal, Settings and updates.
-The [fullscreen Library/Application checkpoint](checkpoint-thirty-seven.md) records the
-latest full native run: 247 passed and two Settings selector failures on `fb1640d8`. Both
-have passing follow-up evidence in checkpoint 38. The last entirely passing combined run,
+The latest full native run on `d5f2994d` passes 259 cases, with two initial-readiness
+timeouts and one Details fixture that measures before interface scale has reset. Its
+report and follow-up requirements are in checkpoint 38. Both earlier Settings selector
+failures from [checkpoint 37](checkpoint-thirty-seven.md) have passing follow-up evidence.
+The last entirely passing combined run,
 all 236 cases on `7c48c35b`, is in the [IGDB/startup checkpoint](checkpoint-thirty-five.md).
 All 133 backend HTTP cases also pass there, including credential protection and rollback.
 The migration inventory contains 1,124 ported, 559 retained backend, 17 framework-specific,

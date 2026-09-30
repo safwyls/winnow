@@ -89,7 +89,11 @@ public sealed class ConnectionOperations(IManualMetadataSyncService metadata, IO
     }
     private void Update(Entry entry, string message)
     {
-        lock (_gate) entry.Snapshot = entry.Snapshot with { Message = message, UpdatedAt = clock.GetUtcNow() };
+        lock (_gate)
+        {
+            if (entry.Snapshot.State != "running") return;
+            entry.Snapshot = entry.Snapshot with { Message = message, UpdatedAt = clock.GetUtcNow() };
+        }
         changes.Publish("operations.changed", entry.Snapshot.Id);
     }
     private void Finish(Entry entry, string state, string message, object? result = null)

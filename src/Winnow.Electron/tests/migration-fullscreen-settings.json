@@ -38,14 +38,18 @@
     "reason": "The fullscreen switch and desktop checkbox reflect each other's confirmed startup preference. Native A enables it; the desktop checkbox disables it; returning to fullscreen and reopening Application retain the saved false value."
   },
   "FullscreenSettingsHierarchyTests.Settings_groups_keep_text_within_their_reading_region_and_controls_reachable": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/electron/fullscreen-shared-settings.spec.ts",
         "case": "fullscreen Library and Application settings retain reading bounds and focus"
+      },
+      {
+        "file": "tests/electron/metadata-settings.spec.ts",
+        "case": "metadata child pages retain hierarchy reading bounds controller return and saved order"
       }
     ],
-    "reason": "Library passes both original 2560×1440 text-scale cases, with named sections, one-pixel rules wider than 300px, contained text and controls fully reachable after focus. Additional 720p Library/Application checks pass. The original IGDB and artwork-order reading-region cases still require their separate fullscreen hierarchy."
+    "reason": "Library, IGDB credentials and artwork order cover the original 2560×1440 cases at text scales 1 and 1.4, plus 720p checks. Each page has one vertical reading region, semantic headings, one-pixel rules wider than 300px, contained text and enabled controls fully reachable after focus. Metadata child pages also retain their source typography and controller return focus."
   },
   "FullscreenSettingsTests.Appearance_adjustment_stays_on_its_row_and_leaves_desktop_preferences_alone": {
     "status": "ported",
