@@ -199,14 +199,14 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details compo
           : undefined,
       'avalon',
     )
-    await screen.findByRole('heading', { name: 'Original game', exact: true })
+    await screen.findByRole('heading', { name: 'Original game' })
     if (mode === 'desktop') {
       fireEvent.click(await screen.findByText('Expansions & base game', { selector: 'summary' }))
       expect(await screen.findByRole('button', { name: 'Separate Expansion…' })).toBeTruthy()
     } else expect(screen.queryByText('Expansions & base game', { selector: 'summary' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Separate Edition…' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Separate Demo…' })).toBeNull()
-    fireEvent.click(screen.getByRole('tab', { name: 'Library', exact: true }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Library' }))
     expect(await screen.findByRole('button', { name: 'Separate Edition…' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Separate Demo…' })).toBeTruthy()
     expect(Boolean(screen.queryByRole('button', { name: 'Separate Expansion…' }))).toBe(mode === 'fullscreen')

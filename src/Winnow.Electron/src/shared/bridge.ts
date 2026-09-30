@@ -132,6 +132,7 @@ export interface WinnowBridge {
   presentationVisible?(): Promise<boolean>
   onPresentationVisibility?(callback: (visible: boolean) => void): () => void
   onFullscreen(callback: (value: boolean) => void): () => void
+  controllerBattery?(sample: import('./controller-status').ControllerSample | null): Promise<string | null>
   openExternal(url: string): Promise<LinkOpenResult>
   quit?(): Promise<void>
   restartBackend?(): Promise<void>

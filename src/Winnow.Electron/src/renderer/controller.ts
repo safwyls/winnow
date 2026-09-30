@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { ControllerInput, ControllerButton as B, type ControllerPadState } from '../shared/controller-input'
+import { selectedStandardController } from '../shared/controller-status'
 
 export type Direction = 'left' | 'right' | 'up' | 'down'
 type Rect = { left: number; top: number; width: number; height: number }
@@ -204,10 +205,7 @@ export function useController(actions: Actions) {
     window.addEventListener('pointerdown', mouse)
     const tick = (time: number) => {
       const action = latest.current
-      const pad =
-        Array.from(navigator.getGamepads?.() ?? []).find(
-          (pad): pad is Gamepad => !!pad?.connected && pad.mapping === 'standard',
-        ) ?? null
+      const pad = selectedStandardController(Array.from(navigator.getGamepads?.() ?? []))
       const active = document.visibilityState === 'visible' && document.hasFocus()
       const clicked = input.sample(pad as ControllerPadState | null, active, time)
       const dispatch = () => {

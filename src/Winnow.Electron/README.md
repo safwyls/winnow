@@ -61,7 +61,14 @@ or opens text entry. Right-stick scrolling keeps focus in place. Fullscreen Deta
 explicit focus rows: left/right moves tab focus, A selects, and triggers switch sections.
 Its Add to list action lives in More, and About supports directional reading from Back.
 Held controls are suppressed independently after reconnect or focus return. Device input
-uses Chromium's standard mapping; physical-device and battery validation remain open.
+uses Chromium's standard mapping. Fullscreen root pages and Details show a local clock
+and controller status. On Windows, a read-only main-process XInput helper supplies wired
+and known battery labels, caching battery reads for 30 seconds. The selected browser
+controller must uniquely match a native device's current controls; browser indexes are
+not native slots. Unknown, unsupported or ambiguous readings show only “Controller connected”.
+Disconnecting shows “Controller disconnected”. The helper closes when fullscreen detaches
+or the window hides; the clock releases its timer on detach. Physical-device validation
+remains open in TASK-381.40; automated native-boundary fixtures do not establish it.
 Reading links use the same validation before rendering and dispatch: valid HTTP and HTTPS
 destinations remain available, while invalid targets or empty labels produce no button.
 Desktop and controller settings share the saved reading destination. Browser fallback

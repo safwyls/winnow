@@ -45,6 +45,13 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [fullscreen status checkpoint](checkpoint-fifty-seven.md) records all 3,351 component/live
+API cases and 23 native controller/status/Details cases passing. It restores the local clock,
+connection and known Windows battery labels, centered navigation and external desktop restore.
+Three source methods gain complete evidence; 417 pending and 96 partial methods remain.
+Physical-device validation is still open. TASK-381.2 is the first implementation checkpoint
+in the user-reviewed Backlog queue; each subsequent task waits for a continuation prompt.
+
 The [Details structure checkpoint](checkpoint-fifty-six.md) records all 3,324 component/live
 API cases and 38 distinct native Details/gallery cases passing. Desktop relationships follow
 their source sections; rendered text, scrollbar clearance and inline screenshot/menu behavior

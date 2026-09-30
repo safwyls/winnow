@@ -81,6 +81,7 @@ import {
 import { revealShelfCover } from './avalon-row-motion'
 import { homePageStart, homeShelfPosition, initialGridPosition } from './avalon-navigation'
 import { AvalonFullscreenGrid, type AvalonGridHandle, type AvalonSavedGrid } from './avalon-fullscreen-grid'
+import { FullscreenStatus } from '../components/FullscreenStatus'
 import { useSystemReducedMotion } from '../useSystemReducedMotion'
 import { Details } from '../features/Details'
 import { AvalonSearch } from './avalon-search'
@@ -306,35 +307,38 @@ export function AvalonShell(context: ThemeContext) {
           </nav>
         )}
         <div className="avalon-utilities">
-          <UpdateCaption mode={context.mode} />
-          <button
-            aria-label="Search library"
-            title="Search library (Ctrl+K)"
-            onClick={() => {
-              if (context.openSearch) {
-                context.openSearch()
-                return
-              }
-              context.setPage(fullscreen ? 'search' : 'library')
-              if (!fullscreen)
-                setTimeout(
-                  () => document.querySelector<HTMLInputElement>('[data-library-search]')?.focus(),
-                  0,
-                )
-            }}
-          >
-            <Search size={18} />
-          </button>
-          <button aria-label="Theme Studio" title="Theme Studio" onClick={() => context.setPage('studio')}>
-            <Palette size={18} />
-          </button>
-          <button
-            aria-label={fullscreen ? 'Leave fullscreen' : 'Enter fullscreen'}
-            title="Fullscreen (F11)"
-            onClick={context.toggleFullscreen}
-          >
-            {fullscreen ? <X size={18} /> : <Expand size={18} />}
-          </button>
+          {fullscreen && <FullscreenStatus />}
+          <div className="avalon-utility-actions">
+            <UpdateCaption mode={context.mode} />
+            <button
+              aria-label="Search library"
+              title="Search library (Ctrl+K)"
+              onClick={() => {
+                if (context.openSearch) {
+                  context.openSearch()
+                  return
+                }
+                context.setPage(fullscreen ? 'search' : 'library')
+                if (!fullscreen)
+                  setTimeout(
+                    () => document.querySelector<HTMLInputElement>('[data-library-search]')?.focus(),
+                    0,
+                  )
+              }}
+            >
+              <Search size={18} />
+            </button>
+            <button aria-label="Theme Studio" title="Theme Studio" onClick={() => context.setPage('studio')}>
+              <Palette size={18} />
+            </button>
+            <button
+              aria-label={fullscreen ? 'Leave fullscreen' : 'Enter fullscreen'}
+              title="Fullscreen (F11)"
+              onClick={context.toggleFullscreen}
+            >
+              {fullscreen ? <X size={18} /> : <Expand size={18} />}
+            </button>
+          </div>
         </div>
       </header>
       {!fullscreen && (

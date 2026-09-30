@@ -114,6 +114,12 @@
     gap: 4px;
     margin-left: auto;
   }
+  .avalon-utility-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+  }
   .avalon-utilities button {
     border: 0;
     background: transparent;
@@ -794,7 +800,7 @@
   .avalon-shell.fullscreen .avalon-header {
     z-index: 2;
     display: grid;
-    grid-template-columns: minmax(130px, 1fr) auto minmax(130px, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     border: 0;
     padding: 0;
     background: transparent;
@@ -802,6 +808,7 @@
     min-height: calc(clamp(17px, 1.46vw, 28px) * 1.4 * 1.2 + 22px);
   }
   .avalon-shell.fullscreen .avalon-brand {
+    grid-column: 1;
     justify-self: start;
     font-size: calc(clamp(18px, 1.5vw, 28px) * var(--theme-text-scale, 1));
   }
@@ -810,8 +817,39 @@
     height: 36px;
   }
   .avalon-shell.fullscreen .avalon-navigation {
+    grid-column: 2;
     flex-direction: row;
     gap: 20px;
+  }
+  .avalon-shell.fullscreen .avalon-utilities {
+    grid-column: 3;
+    display: grid;
+    min-width: 0;
+    margin-left: 0;
+    justify-self: stretch;
+  }
+  .avalon-system-status {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: clamp(10px, 1.25vw, 24px);
+    min-width: 0;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: calc(clamp(14px, 1.25vw, 24px) * var(--theme-text-scale, 1));
+    line-height: 1.2;
+  }
+  .avalon-controller-status {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: right;
+  }
+  .avalon-clock {
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
   }
   .avalon-shell.fullscreen .avalon-navigation button {
     padding: 10px 0;
@@ -1132,7 +1170,7 @@
       display: none !important;
     }
     .avalon-shell.fullscreen .avalon-header {
-      grid-template-columns: auto 1fr auto;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
       gap: 12px;
     }
     .avalon-shell.fullscreen .avalon-brand strong {
@@ -1176,7 +1214,7 @@
       display: none;
     }
     .avalon-shell.fullscreen .avalon-header {
-      grid-template-columns: 1fr auto;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     }
     .avalon-home-hero h1,
     .avalon-home-hero > p {

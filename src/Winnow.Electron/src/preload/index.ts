@@ -40,6 +40,7 @@ const bridge: WinnowBridge = {
   presentationVisible: () => ipcRenderer.invoke('winnow:window:visible'),
   onPresentationVisibility: (callback) => subscribe<boolean>('winnow:window:visibility', callback),
   onFullscreen: (callback) => subscribe<boolean>('winnow:fullscreen:changed', callback),
+  controllerBattery: (sample) => ipcRenderer.invoke('winnow:controller:battery', sample),
   openExternal: (url) => ipcRenderer.invoke('winnow:external', url),
   quit: () => ipcRenderer.invoke('winnow:quit'),
   restartBackend: () => ipcRenderer.invoke('winnow:backend:restart'),

@@ -28,6 +28,8 @@ import { recentGames } from './jump-list'
 import { SnapshotRefresh } from '../shared/snapshot-refresh'
 import { FontCatalogue } from './fonts'
 import { inspectExecutable } from './executable-facts'
+import { WindowsControllerProbe, matchingControllerBattery } from './controller-battery'
+import { validateControllerSample } from '../shared/controller-status'
 import { frontendDataLocation } from './frontend-data-location'
 import { createBackendServiceLifecycle } from './backend-service'
 import { ApplicationUpdater } from './application-updater'
@@ -257,6 +259,7 @@ async function initialize(): Promise<void> {
   const rendererOrigin = developmentOrigin ? new URL(developmentOrigin).origin : 'winnow-app://app'
   const csp = contentSecurityPolicy(developmentOrigin)
   const fonts = new FontCatalogue((url) => trustedRendererUrl(url, developmentOrigin))
+  const controllerProbe = new WindowsControllerProbe()
   session.defaultSession.setPermissionRequestHandler((contents, permission, callback, details) =>
     callback(
       contents === window?.webContents &&
@@ -443,6 +446,15 @@ async function initialize(): Promise<void> {
   })
   handle('winnow:connection', () => transport!.connection())
   handle('winnow:fonts', () => fonts.read(window!.webContents))
+  handle('winnow:controller:battery', async (value: unknown) => {
+    if (value === null) {
+      controllerProbe.dispose()
+      return null
+    }
+    const sample = validateControllerSample(value)
+    if (!sample.id.includes('(XInput STANDARD GAMEPAD)')) return null
+    return matchingControllerBattery(sample, await controllerProbe.read())
+  })
   handle('winnow:window:appearance', (value) =>
     new WindowAppearanceController(window!, () => ({
       platform: process.platform,
@@ -746,8 +758,12 @@ async function initialize(): Promise<void> {
       rendererAcceptsActivation = false
     })
     window.on('enter-full-screen', () => emit('winnow:fullscreen:changed', true))
-    window.on('leave-full-screen', () => emit('winnow:fullscreen:changed', false))
+    window.on('leave-full-screen', () => {
+      controllerProbe.dispose()
+      emit('winnow:fullscreen:changed', false)
+    })
     const visibility = (visible: boolean) => {
+      if (!visible) controllerProbe.dispose()
       presentationVisible = visible
       emit('winnow:window:visibility', visible)
     }
@@ -768,6 +784,7 @@ async function initialize(): Promise<void> {
       if (!quitting && windowTray?.closing()) event.preventDefault()
     })
     window.on('closed', () => {
+      controllerProbe.dispose()
       window = undefined
     })
     windowTray?.prepare()
