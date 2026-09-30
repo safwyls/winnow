@@ -21,6 +21,12 @@ const reviewedBackendFiles = new Set([
   'src/Winnow.Enrich.Stores/StorefrontCache.cs',
   'src/Winnow.Enrich.Stores/ServiceCollectionExtensions.cs',
   'src/Winnow.Ingest.Gog/GogInstalledGameRegistry.cs',
+  'src/Winnow.Ingest.Gog/GalaxyDatabaseSnapshot.cs',
+  'src/Winnow.Ingest.Gog/GogLibrarySource.cs',
+  'src/Winnow.Ingest.Gog/Winnow.Ingest.Gog.csproj',
+  'src/Winnow.Ingest.Steam/SteamLibrarySource.cs',
+  'src/Winnow.Ingest.Steam/KeyValues1.cs',
+  'src/Winnow.Ingest.Steam/Winnow.Ingest.Steam.csproj',
   'src/Winnow.Monitor/LaunchIntents.cs',
 ])
 // Freeze the original contract list: deleting an old source test must never make

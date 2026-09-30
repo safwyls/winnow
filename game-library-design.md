@@ -877,6 +877,7 @@ choice while a save is pending, then reconciles with the committed result on eit
 | `Winnow.Api.Contracts` / `Winnow.Api.Client` | Versioned contracts and typed external transport | Reference backend implementations |
 | `Winnow.Presentation` / `Winnow.Diagnostics` | Shared presentation policies and bounded logging | Reference database or provider implementations |
 | `Winnow.App` | Desktop/fullscreen API client. Assembly name `Winnow` | Reference database, ingest, enrichment, monitor, resolver or plugin-host implementations |
+| `Winnow.Electron` | Desktop/fullscreen API client; main owns transport and embedded sign-in, preload exposes named operations | Import native or backend implementations into the renderer; put repository or provider logic in sign-in hosts |
 
 Built-in provider HTTP clients share linked transport infrastructure in `src/Shared`; this
 creates no dependency between enrichment modules or IO dependency in Core. Requests buffer

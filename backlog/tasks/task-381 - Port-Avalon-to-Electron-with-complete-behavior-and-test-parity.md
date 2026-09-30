@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 04:18'
+updated_date: '2026-09-30 04:45'
 labels: []
 dependencies: []
 priority: high
@@ -110,6 +110,8 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 41. Restore desktop startup and every fullscreen entry/return preparation against DesktopStartupTests and FullscreenStartupTests: a Ground loading surface, original dragon/wordmark and copy, first-painted-frame 1.8s circuit plus 180ms fade, preference-aware reduced motion, library/primary-feed/layout readiness, retry, caption and Back availability, hidden preparation, cancellation and shared in-flight loads. Animate contours with an OffscreenCanvas worker so UI publication cannot pause rendering; keep tests explicit about worker versus compositor ownership. Preserve setup isolation and page retention. Validate controlled timing plus real Electron frames and both-mode layouts before mapping source methods.
 
 42. Complete the four LoadingDragon source contracts: preserve phase across theme/size updates in the canvas worker, verify all15closed contours and seam geometry across101phases, controlled disable/detach clocks, and native dark/light88/100px rendering. Then audit and migrate remaining application activation/architecture contracts against their actual Electron boundaries. Keep native/component/.NET verification sequential and record desktop/fullscreen evidence.
+
+43. Audit the ten original architecture boundary methods: retain the seven shared .NET core/recommend/ingest rules only after checking current backend composition and focused original tests; add Electron source and bundled dependency guards for renderer and embedded sign-in hosts, including adversarial boundary fixtures. Then extract the bounded native activation queue, preserve FIFO and Show coalescing, reject malformed structured payloads without dispatch, and test real profile isolation and early handoff. Keep any Int64 transport limitation explicit until end-to-end behavior is implemented and tested.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -218,4 +220,8 @@ Plan41 focused startup verification passes 83 component cases and four native wo
 Checkpoint27 startup implementation committed as277ac1aa. The full208native run passed198, with one list-suite beforeAll failure and nine cases not run (17.2m). Its saved accessibility snapshot proves setup was open and correctly hid Home; the old fixture waited for Home before skipping setup. The ordering is corrected, with original list behavior assertions intact, and all ten list workflows are running twice. A combined208pass is not claimed. The animation follow-up is now integrated but not yet verified; the running list checks still use the preceding built startup milestone.
 
 Plan42 dragon rendering: all four original source methods now have complete evidence. All2861 component/liveAPI cases in142files pass without skips (48.72s); build/typecheck and11controlled renderer cases pass. Six native drawing cases pass (7.0s), including15contours at101phases and the full dark/light88/100px matrix; four integrated startup workflows also pass with the new worker. A readback fixture now selects a consistent canvas backend without weakening exact seam hashes, and the final worker background/capture is corrected and inspected. All20list repeat checks pass (1.8m). Full214native verification is running. Inventory1044ported552retained15framework714pending110partial. Evidence checkpoint-twenty-eight.md; no AC checked.
+
+Checkpoint28 complete: all214native Electron cases pass in one18.0minute run with clean completion, built from3125b61a. The report is copied to .tmp/dragon-native-full/results.json; component/liveAPI2861/142 and earlier build/typecheck remain passing. Subsequent architecture and activation work is separate: all31focused cases now pass after adding the fixture font loader; its new build and native workflows are next. All acceptance criteria remain unchecked.
+
+Plan 43 verification: all 2,882 component/live API cases in 144 files pass without skips (48.48s), with build and final typecheck passing. All ten original architecture checks pass against a fresh .NET build. Four new native activation workflows pass together (26.8s): early background restoration, FIFO/coalescing, rejection without dispatch, bounded recovery, profile isolation/restart and second-process exit before database creation. A fixture top-level readiness deadlock was corrected; no production startup deadlock was found. Inventory: 1,053 ported, 559 retained backend, 17 framework-specific, 696 pending, 110 partial. Int64 activation IDs, packaged/shortcut launches and listener startup remain outstanding. Evidence: checkpoint-twenty-nine.md. No acceptance criteria checked.
 <!-- SECTION:NOTES:END -->

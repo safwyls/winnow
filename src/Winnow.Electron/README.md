@@ -41,6 +41,12 @@ taking navigation back. Progress, cancellation and retry share one state across 
 An interrupted response retains its operation identity for retry. Setup pauses for a
 handoff and **Resume setup** returns to the same saved step.
 
+Each data directory owns one Electron session. Additional launches restore its window
+and deliver requests in order. Before the renderer is ready, the queue holds up to 64
+requests and coalesces adjacent duplicates; after readiness, repeated requests each
+dispatch. Malformed structured activations do not restore the window or enter the queue.
+Separate library directories remain independent, including their backend and browser profile.
+
 Avalon reads existing authored Winnow JSON palettes from the library's `themes` folder,
 including their fonts and opening preferences. Theme Studio provides reload, diagnostics,
 folder access and safe export; saved file edits update the active palette automatically.

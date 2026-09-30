@@ -39,7 +39,14 @@ import {
 } from './update-resume'
 import type { ApplicationUpdateAction, ApplicationUpdateSnapshot } from '../shared/bridge'
 import type { ApiRequest, ApplicationActivation, BackendEvent, ConnectionState } from '../shared/bridge'
-import { quoteArgument, readActivation, validateActivationArguments, validatedActivation } from './activation'
+import {
+  pluginInstallLink,
+  quoteArgument,
+  readActivation,
+  validateActivationArguments,
+  validatedActivation,
+} from './activation'
+import { ActivationQueue } from './activation-queue'
 import { BackendTransport } from './transport'
 import { importArtworkFile } from './artwork-import'
 import { cancelSteamWindow, captureSteamPages, signInToSteam } from './steam-auth'
@@ -130,15 +137,18 @@ const sessionAppearance = captureAppearance ? new SessionAppearance(captureAppea
 let quitting = false
 let tray: Tray | undefined
 let rendererAcceptsActivation = false
-const pendingActivations: ApplicationActivation[] = [
-  readActivation(process.argv.slice(app.isPackaged ? 1 : 2)),
-].filter((value) => value.kind !== 'show')
+const pendingActivations = new ActivationQueue()
+const initialActivation = readActivation(process.argv.slice(app.isPackaged ? 1 : 2))
+if (initialActivation.kind !== 'show') pendingActivations.enqueue(initialActivation)
+let showRequested = false
 let showPrimary = () => {}
-function activatePrimary(activation: ApplicationActivation) {
+function activatePrimary(activation: ApplicationActivation | null) {
+  if (!activation) return
+  const deliver = rendererAcceptsActivation && window && !window.isDestroyed()
+  if (!deliver && !pendingActivations.enqueue(activation)) return
+  showRequested = true
   showPrimary()
-  if (rendererAcceptsActivation && window && !window.isDestroyed())
-    window.webContents.send('winnow:activation', activation)
-  else if (pendingActivations.length < 64) pendingActivations.push(activation)
+  if (deliver) window!.webContents.send('winnow:activation', activation)
 }
 const ownsInstance = startupArgumentError
   ? true
@@ -152,7 +162,7 @@ app.on('second-instance', (_event, argv, _cwd, additionalData) =>
 )
 app.on('open-url', (event, url) => {
   event.preventDefault()
-  activatePrimary(readActivation([url]))
+  activatePrimary(pluginInstallLink(url))
 })
 
 function emit(
@@ -452,7 +462,7 @@ async function initialize(): Promise<void> {
   )
   handle('winnow:activation:pending', () => {
     rendererAcceptsActivation = true
-    return pendingActivations.splice(0)
+    return pendingActivations.drain()
   })
   ipcMain.handle(
     'winnow:artwork',
@@ -802,6 +812,7 @@ async function initialize(): Promise<void> {
     window?.show()
     window?.restore()
     window?.focus()
+    showRequested = false
   }
   try {
     tray = new Tray(
@@ -824,6 +835,7 @@ async function initialize(): Promise<void> {
   app.on('activate', () => {
     showPrimary()
   })
+  if (showRequested) showPrimary()
   transport.start()
   // Starting a companion is independent of renderer readiness, so connection failures remain visible.
   if (!(await backendResponds(() => discoverBackend(dataDirectory)))) {

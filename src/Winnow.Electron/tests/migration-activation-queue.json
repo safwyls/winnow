@@ -1,0 +1,83 @@
+{
+  "SingleInstanceActivationTests.Plugin_requests_round_trip_and_queue_with_other_actions": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activation-queue.test.ts",
+        "case": "keeps mixed plugin fullscreen game and show launches in FIFO order"
+      },
+      {
+        "file": "tests/electron/activation.spec.ts",
+        "case": "early handoff restores a background window and queues real second-process launches in order"
+      }
+    ],
+    "reason": "Typed provider/release fields survive real second-process delivery, preserve ordering with fullscreen/game/show requests, and are retained until the renderer drains the queue."
+  },
+  "SingleInstanceActivationTests.Oversized_or_empty_plugin_frame_is_rejected_without_waiting_for_payload": {
+    "status": "framework-specific",
+    "reason": "The retired custom named-pipe protocol used a three-byte command/length header and an acknowledgement byte. Electron owns its single-instance transport and delivers complete structured messages; Winnow no longer reads frame headers or waits for a declared payload. Replacement input-boundary checks reject empty or oversized structured plugin fields without dispatch in parity-activation.test.ts and the native activation suite."
+  },
+  "SingleInstanceActivationTests.Listener_accepts_next_launch_while_previous_client_keeps_its_handle_open": {
+    "status": "framework-specific",
+    "reason": "The retired protocol exposed a client pipe handle that could remain open after acknowledgement. Electron owns and closes its single-instance transport; no application listener or client stream remains to hold open. Consecutive real Electron launches and repeated ready-session delivery are tested natively."
+  },
+  "SingleInstanceActivationTests.Invalid_payload_is_rejected_without_dispatch": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activation.test.ts",
+        "case": "validates structured second-instance messages without interpreting them as arguments"
+      },
+      {
+        "file": "tests/electron/activation.spec.ts",
+        "case": "native dispatch rejects malformed payloads without showing the window and bounds then recovers its queue"
+      }
+    ],
+    "reason": "Invalid command kinds, missing fields, nonpositive/fractional/unsafe numeric IDs, and malformed plugin fields return no activation. Native event dispatch verifies that malformed messages do not restore a hidden window and do not enter its queue; a subsequent valid request still succeeds."
+  },
+  "SingleInstanceActivationTests.Startup_queue_is_bounded_and_recovers_after_handler_is_ready": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activation-queue.test.ts",
+        "case": "admits sixty-four distinct requests and recovers after the renderer drains them"
+      },
+      {
+        "file": "tests/electron/activation.spec.ts",
+        "case": "native dispatch rejects malformed payloads without showing the window and bounds then recovers its queue"
+      }
+    ],
+    "reason": "The original 64 accepted/65th refused boundary runs against the production queue and integrated native dispatcher. The complete ordered queue drains at readiness and later requests dispatch successfully."
+  },
+  "SingleInstanceActivationTests.Shell_arguments_allow_only_one_typed_command": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activation.test.ts",
+        "case": "limits Jump List actions to a single valid local ownership ID or fullscreen"
+      }
+    ],
+    "reason": "Preserves the source accepted fullscreen/game commands and its full rejection matrix: missing ID, zero, negative, store URI, Int64 overflow, unknown command and duplicate commands. The separate typed-queue contract remains partial for valid IDs above JavaScript's safe integer range."
+  },
+  "SingleInstanceActivationTests.Launches_queue_until_ready_and_repeated_requests_reach_the_same_session": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/parity-activation-queue.test.ts", "case": "coalesces only adjacent identical" },
+      {
+        "file": "tests/electron/activation.spec.ts",
+        "case": "early handoff restores a background window and queues real second-process launches in order"
+      }
+    ],
+    "reason": "Consecutive identical requests coalesce before renderer readiness. Two later real launches dispatch twice to the same session, including a profile path with a trailing separator, while its backend process ID and epoch remain unchanged."
+  },
+  "SingleInstanceActivationTests.Other_directories_and_stopped_sessions_do_not_activate": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/activation.spec.ts",
+        "case": "profile locks isolate active libraries and a stopped profile can become primary again"
+      }
+    ],
+    "reason": "Two live isolated libraries have distinct backend processes and Chromium profiles; requests reach only their named owner. After one frontend/backend pair closes, the same profile starts a new primary and receives requests without activating the other library."
+  }
+}

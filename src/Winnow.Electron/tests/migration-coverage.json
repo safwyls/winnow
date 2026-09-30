@@ -12,12 +12,12 @@
   "SingleInstanceActivationTests.Typed_requests_preserve_order_until_ready_including_cold_start": {
     "status": "partial",
     "tests": [{"file":"tests/app.test.tsx","case":"delivers startup activations before a newer event received during the pending handshake"}],
-    "reason": "The composed renderer preserves startup/event ordering and waits for setup. The original full queue matrix and native process readiness sequences need further migration."
+    "reason": "The renderer preserves startup/event ordering and waits for setup. Production queue and native handoff checks now cover mixed FIFO ordering, coalescing and readiness. The original long.MaxValue ownership ID remains unsupported beyond JavaScript's safe integer range, so this contract is still partial."
   },
   "SingleInstanceActivationTests.Second_process_activates_owner_and_exits_before_database_initialization": {
     "status": "partial",
     "tests": [{"file":"tests/electron/parity.spec.ts","case":"a second process delivers fullscreen and starts plugin installation in the same library session"}],
-    "reason": "Rendered Electron exercises real second-process handoff and unchanged backend process/epoch for fullscreen and immediate named plugin installation. Other original process launch variants remain to be migrated."
+    "reason": "Native activation.spec.ts additionally verifies show/fullscreen/game/plugin launches against an owner without a backend: all secondary processes exit without creating a database, and an invalid installation URI exits 2 without dispatch. Packaged executable and Windows shortcut variants still need disposable-machine validation, so this source method remains partial."
   },
   "GameLinkRouterTests.Store_conversion_rejects_noncanonical_addresses": {
     "status": "ported",

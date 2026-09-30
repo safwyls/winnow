@@ -16,13 +16,20 @@ describe('native activation arguments', () => {
     expect(validatedActivation({ kind: 'game', ownershipId: 42 })).toEqual({ kind: 'game', ownershipId: 42 })
     for (const value of [
       null,
+      [],
+      { kind: 'unknown' },
+      { kind: 'game', ownershipId: 0 },
+      { kind: 'game', ownershipId: 1.5 },
+      { kind: 'game', ownershipId: Number.MAX_SAFE_INTEGER + 1 },
+      { kind: 'plugin', pluginId: 'x'.repeat(65535), releaseTag: 'v1.2.3' },
+      { kind: 'plugin', pluginId: 'xbox', releaseTag: 'v1.2.3' + 'x'.repeat(65535) },
       '--jump-list-fullscreen',
       { kind: 'game', ownershipId: -1 },
       { kind: 'game', ownershipId: '42' },
       { kind: 'plugin', pluginId: 'xbox&url=https://evil.test', releaseTag: 'v1.2.3' },
       { kind: 'plugin', pluginId: 'xbox', releaseTag: 'v1.2.3 --data-dir C:\\other' },
     ])
-      expect(validatedActivation(value)).toEqual({ kind: 'show' })
+      expect(validatedActivation(value)).toBeNull()
   })
   it('validates URI launch arguments before accepting a data directory', () => {
     const uri = 'winnow://plugins/install?id=xbox&release=v0.2.0'
@@ -78,6 +85,10 @@ describe('native activation arguments', () => {
     expect(readActivation(['--jump-list-fullscreen'])).toEqual({ kind: 'fullscreen' })
     for (const args of [
       ['--jump-list-game', '0'],
+      ['--jump-list-game'],
+      ['--jump-list-game', 'steam://run/42'],
+      ['--jump-list-game', '9223372036854775808'],
+      ['--jump-list-unknown'],
       ['--jump-list-game', '-1'],
       ['--jump-list-game', '9007199254740992'],
       ['--jump-list-game', '42', '--jump-list-fullscreen'],

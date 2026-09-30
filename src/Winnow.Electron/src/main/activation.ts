@@ -10,8 +10,8 @@ export function validateActivationArguments(args: string[]): void {
 }
 
 /** Electron's structured second-instance payload is still an input boundary. */
-export function validatedActivation(value: unknown): ApplicationActivation {
-  if (!value || typeof value !== 'object') return { kind: 'show' }
+export function validatedActivation(value: unknown): ApplicationActivation | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const input = value as Record<string, unknown>
   if (input.kind === 'show' || input.kind === 'fullscreen') return { kind: input.kind }
   if (
@@ -21,13 +21,15 @@ export function validatedActivation(value: unknown): ApplicationActivation {
     input.ownershipId > 0
   )
     return { kind: 'game', ownershipId: input.ownershipId }
-  if (input.kind === 'plugin' && typeof input.pluginId === 'string' && typeof input.releaseTag === 'string')
-    return (
-      pluginInstallLink(`winnow://plugins/install?id=${input.pluginId}&release=${input.releaseTag}`) ?? {
-        kind: 'show',
-      }
-    )
-  return { kind: 'show' }
+  if (
+    input.kind === 'plugin' &&
+    typeof input.pluginId === 'string' &&
+    input.pluginId.length <= 32 &&
+    typeof input.releaseTag === 'string' &&
+    input.releaseTag.length <= 80
+  )
+    return pluginInstallLink(`winnow://plugins/install?id=${input.pluginId}&release=${input.releaseTag}`)
+  return null
 }
 
 export function pluginInstallLink(value: string): Extract<ApplicationActivation, { kind: 'plugin' }> | null {

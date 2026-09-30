@@ -35,7 +35,10 @@ a fresh circuit. Native visibility and startup readiness remain as recorded in
   light-color matrix and this case; the app itself gets both colors from its active theme.
 - The preceding list-suite setup correction passes all ten native list workflows twice
   in 1.8 minutes, with their persistence, keyboard, focus and deletion assertions intact.
-  The complete expanded 214-case native suite is running; no combined pass is claimed yet.
+  The complete expanded native suite passes all 214 cases in one 18.0-minute run with
+  clean completion: `.tmp/dragon-native-full.log` and its copied `results.json`.
+  This run used commit `3125b61a`; the subsequent activation and architecture changes
+  were not part of its built application.
 
 All four original LoadingDragon methods now have ported evidence. Inventory:
 1,044 ported, 552 retained backend, 15 framework-specific, 714 pending and 110 partial.

@@ -1,11 +1,11 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 714,
+    "pending": 696,
     "partial": 110,
-    "ported": 1044,
-    "retained-backend": 552,
-    "framework-specific": 15
+    "ported": 1053,
+    "retained-backend": 559,
+    "framework-specific": 17
   },
   "tests": [
     {
@@ -2226,52 +2226,122 @@
     {
       "id": "ArchitectureBoundaryTests.Winnow_Core_references_nothing_but_the_framework",
       "source": "tests/Winnow.Tests/Enforcement/ArchitectureBoundaryTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "Electron uses the independent backend. Its unchanged domain assembly remains BCL-only; the original compiled-assembly check passes against a fresh build.",
+      "implementation": [
+        "src/Winnow.Core/Winnow.Core.csproj",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "ArchitectureBoundaryTests.Winnow_Recommend_references_only_Winnow_Core",
       "source": "tests/Winnow.Tests/Enforcement/ArchitectureBoundaryTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "Scoring remains in the shared backend module, whose only Winnow reference is Core. The original compiled reference guard still exercises the active implementation.",
+      "implementation": [
+        "src/Winnow.Recommend/Winnow.Recommend.csproj",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "ArchitectureBoundaryTests.The_embedded_sign_in_host_references_only_Winnow_Core",
       "source": "tests/Winnow.Tests/Enforcement/ArchitectureBoundaryTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-architecture.test.ts",
+          "case": "embedded sign-in hosts compile against frontend contracts without backend repository or transport implementations"
+        }
+      ],
+      "reason": "Both Electron sign-in hosts are bundled independently and their complete dependency graphs exclude backend implementations, SQLite and the injected API transport implementation. They consume frontend types and callbacks; native browser and security helpers replace Avalonia browser hosting."
     },
     {
       "id": "ArchitectureBoundaryTests.An_ingest_module_references_no_repository_that_writes_identity",
       "source": "tests/Winnow.Tests/Enforcement/ArchitectureBoundaryTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The backend still composes the same three read-only ingest assemblies. The original compiled-type guard checks that none references an identity-writing repository.",
+      "implementation": [
+        "src/Winnow.Ingest.Steam/Winnow.Ingest.Steam.csproj",
+        "src/Winnow.Ingest.Epic/Winnow.Ingest.Epic.csproj",
+        "src/Winnow.Ingest.Gog/Winnow.Ingest.Gog.csproj",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "ArchitectureBoundaryTests.Every_ingest_module_emits_the_candidate_contract",
       "source": "tests/Winnow.Tests/Enforcement/ArchitectureBoundaryTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The Steam, Epic and GOG sources remain registered in the backend and emit CandidateOwnership. The original assembly metadata assertion passes unchanged.",
+      "implementation": [
+        "src/Winnow.Ingest.Steam/SteamLibrarySource.cs",
+        "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+        "src/Winnow.Ingest.Gog/GogLibrarySource.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "ArchitectureBoundaryTests.No_ingest_module_writes_to_a_store_owned_file",
       "source": "tests/Winnow.Tests/Enforcement/ArchitectureBoundaryTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "All launcher readers remain backend-owned. The original whole-source write guard passes; its reviewed GOG exception copies the database and WAL to a private temporary directory and cleans up only that private copy.",
+      "implementation": [
+        "src/Winnow.Ingest.Steam/SteamLibrarySource.cs",
+        "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+        "src/Winnow.Ingest.Gog/GogLibrarySource.cs",
+        "src/Winnow.Ingest.Gog/GalaxyDatabaseSnapshot.cs"
+      ]
     },
     {
       "id": "ArchitectureBoundaryTests.Steam_ingest_parses_key_values_with_ValveKeyValue",
       "source": "tests/Winnow.Tests/Enforcement/ArchitectureBoundaryTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "Steam ingest still references ValveKeyValue and its KeyValues1 adapter uses the library parser. The original compiled assembly-reference check passes.",
+      "implementation": [
+        "src/Winnow.Ingest.Steam/Winnow.Ingest.Steam.csproj",
+        "src/Winnow.Ingest.Steam/KeyValues1.cs"
+      ]
     },
     {
       "id": "ArchitectureBoundaryTests.No_module_declares_a_hand_rolled_key_value_parser",
       "source": "tests/Winnow.Tests/Enforcement/ArchitectureBoundaryTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "Parsing remains in the shared backend; Electron calls snapshots and commands. The original scan of compiled Winnow assemblies still excludes hand-written VDF, ACF and KeyValues parsers.",
+      "implementation": [
+        "src/Winnow.Ingest.Steam/KeyValues1.cs",
+        "src/Winnow.Ingest.Steam/Winnow.Ingest.Steam.csproj"
+      ]
     },
     {
       "id": "ArchitectureBoundaryTests.No_view_or_view_model_names_an_ingest_or_enrichment_type",
       "source": "tests/Winnow.Tests/Enforcement/ArchitectureBoundaryTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-architecture.test.ts",
+          "case": "views and their shared types cannot import native or backend implementations"
+        },
+        {
+          "file": "tests/parity-architecture.test.ts",
+          "case": "rejects the forbidden dependency in"
+        }
+      ],
+      "reason": "An AST scan includes imports, exports, type signatures, dynamic literal imports, require calls and escaped module names across every renderer/shared source. Adversarial fixtures verify rejection while comments and ordinary documentation strings are ignored."
     },
     {
       "id": "ArchitectureBoundaryTests.No_view_model_holds_an_ingest_or_enrichment_dependency",
       "source": "tests/Winnow.Tests/Enforcement/ArchitectureBoundaryTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-architecture.test.ts",
+          "case": "the compiled renderer and drawing worker dependency graphs stay in presentation and shared contracts"
+        },
+        {
+          "file": "tests/parity-architecture.test.ts",
+          "case": "views and their shared types cannot import native or backend implementations"
+        }
+      ],
+      "reason": "The actual renderer and worker are bundled in memory and their transitive dependency graphs exclude backend/native implementations. The accompanying AST scan includes erased TypeScript imports and signature types, so removing types during compilation cannot hide a forbidden dependency."
     },
     {
       "id": "AutomationNameReachabilityTests.Every_accessible_name_sits_on_an_element_that_reaches_the_control_view",
@@ -13111,7 +13181,18 @@
     {
       "id": "SingleInstanceActivationTests.Plugin_requests_round_trip_and_queue_with_other_actions",
       "source": "tests/Winnow.Tests/SingleInstanceActivationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-activation-queue.test.ts",
+          "case": "keeps mixed plugin fullscreen game and show launches in FIFO order"
+        },
+        {
+          "file": "tests/electron/activation.spec.ts",
+          "case": "early handoff restores a background window and queues real second-process launches in order"
+        }
+      ],
+      "reason": "Typed provider/release fields survive real second-process delivery, preserve ordering with fullscreen/game/show requests, and are retained until the renderer drains the queue."
     },
     {
       "id": "SingleInstanceActivationTests.Uri_arguments_are_validated_before_accepting_other_startup_options",
@@ -13128,12 +13209,14 @@
     {
       "id": "SingleInstanceActivationTests.Oversized_or_empty_plugin_frame_is_rejected_without_waiting_for_payload",
       "source": "tests/Winnow.Tests/SingleInstanceActivationTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "The retired custom named-pipe protocol used a three-byte command/length header and an acknowledgement byte. Electron owns its single-instance transport and delivers complete structured messages; Winnow no longer reads frame headers or waits for a declared payload. Replacement input-boundary checks reject empty or oversized structured plugin fields without dispatch in parity-activation.test.ts and the native activation suite."
     },
     {
       "id": "SingleInstanceActivationTests.Listener_accepts_next_launch_while_previous_client_keeps_its_handle_open",
       "source": "tests/Winnow.Tests/SingleInstanceActivationTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "The retired protocol exposed a client pipe handle that could remain open after acknowledgement. Electron owns and closes its single-instance transport; no application listener or client stream remains to hold open. Consecutive real Electron launches and repeated ready-session delivery are tested natively."
     },
     {
       "id": "SingleInstanceActivationTests.Typed_requests_preserve_order_until_ready_including_cold_start",
@@ -13145,22 +13228,51 @@
           "case": "delivers startup activations before a newer event received during the pending handshake"
         }
       ],
-      "reason": "The composed renderer preserves startup/event ordering and waits for setup. The original full queue matrix and native process readiness sequences need further migration."
+      "reason": "The renderer preserves startup/event ordering and waits for setup. Production queue and native handoff checks now cover mixed FIFO ordering, coalescing and readiness. The original long.MaxValue ownership ID remains unsupported beyond JavaScript's safe integer range, so this contract is still partial."
     },
     {
       "id": "SingleInstanceActivationTests.Invalid_payload_is_rejected_without_dispatch",
       "source": "tests/Winnow.Tests/SingleInstanceActivationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-activation.test.ts",
+          "case": "validates structured second-instance messages without interpreting them as arguments"
+        },
+        {
+          "file": "tests/electron/activation.spec.ts",
+          "case": "native dispatch rejects malformed payloads without showing the window and bounds then recovers its queue"
+        }
+      ],
+      "reason": "Invalid command kinds, missing fields, nonpositive/fractional/unsafe numeric IDs, and malformed plugin fields return no activation. Native event dispatch verifies that malformed messages do not restore a hidden window and do not enter its queue; a subsequent valid request still succeeds."
     },
     {
       "id": "SingleInstanceActivationTests.Startup_queue_is_bounded_and_recovers_after_handler_is_ready",
       "source": "tests/Winnow.Tests/SingleInstanceActivationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-activation-queue.test.ts",
+          "case": "admits sixty-four distinct requests and recovers after the renderer drains them"
+        },
+        {
+          "file": "tests/electron/activation.spec.ts",
+          "case": "native dispatch rejects malformed payloads without showing the window and bounds then recovers its queue"
+        }
+      ],
+      "reason": "The original 64 accepted/65th refused boundary runs against the production queue and integrated native dispatcher. The complete ordered queue drains at readiness and later requests dispatch successfully."
     },
     {
       "id": "SingleInstanceActivationTests.Shell_arguments_allow_only_one_typed_command",
       "source": "tests/Winnow.Tests/SingleInstanceActivationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-activation.test.ts",
+          "case": "limits Jump List actions to a single valid local ownership ID or fullscreen"
+        }
+      ],
+      "reason": "Preserves the source accepted fullscreen/game commands and its full rejection matrix: missing ID, zero, negative, store URI, Int64 overflow, unknown command and duplicate commands. The separate typed-queue contract remains partial for valid IDs above JavaScript's safe integer range."
     },
     {
       "id": "SingleInstanceActivationTests.Second_process_activates_owner_and_exits_before_database_initialization",
@@ -13172,12 +13284,23 @@
           "case": "a second process delivers fullscreen and starts plugin installation in the same library session"
         }
       ],
-      "reason": "Rendered Electron exercises real second-process handoff and unchanged backend process/epoch for fullscreen and immediate named plugin installation. Other original process launch variants remain to be migrated."
+      "reason": "Native activation.spec.ts additionally verifies show/fullscreen/game/plugin launches against an owner without a backend: all secondary processes exit without creating a database, and an invalid installation URI exits 2 without dispatch. Packaged executable and Windows shortcut variants still need disposable-machine validation, so this source method remains partial."
     },
     {
       "id": "SingleInstanceActivationTests.Launches_queue_until_ready_and_repeated_requests_reach_the_same_session",
       "source": "tests/Winnow.Tests/SingleInstanceActivationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-activation-queue.test.ts",
+          "case": "coalesces only adjacent identical"
+        },
+        {
+          "file": "tests/electron/activation.spec.ts",
+          "case": "early handoff restores a background window and queues real second-process launches in order"
+        }
+      ],
+      "reason": "Consecutive identical requests coalesce before renderer readiness. Two later real launches dispatch twice to the same session, including a profile path with a trailing separator, while its backend process ID and epoch remain unchanged."
     },
     {
       "id": "SingleInstanceActivationTests.Connection_waits_for_listener_startup",
@@ -13187,7 +13310,14 @@
     {
       "id": "SingleInstanceActivationTests.Other_directories_and_stopped_sessions_do_not_activate",
       "source": "tests/Winnow.Tests/SingleInstanceActivationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/activation.spec.ts",
+          "case": "profile locks isolate active libraries and a stopped profile can become primary again"
+        }
+      ],
+      "reason": "Two live isolated libraries have distinct backend processes and Chromium profiles; requests reach only their named owner. After one frontend/backend pair closes, the same profile starts a new primary and receives requests without activating the other library."
     },
     {
       "id": "SingleInstanceGuardTests.A_first_copy_acquires_and_a_second_copy_on_the_same_directory_is_refused",
