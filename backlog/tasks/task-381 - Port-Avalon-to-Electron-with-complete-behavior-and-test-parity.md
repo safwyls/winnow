@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 00:19'
+updated_date: '2026-09-30 01:24'
 labels: []
 dependencies: []
 priority: high
@@ -98,6 +98,8 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 36. After the action-panel checkpoint, migrate the original two-shelf exposure fixture at1920x1080and1280x720: no surfacing before Home mounts, only its visible shelf, cumulative second-shelf surfacing through RT, and retained LT/RT hints. Then port cover ownership/lifetime contracts with bounded shared image work, cancellation after the last consumer, late-result disposal, transient retry and display-width buckets; verify desktop and fullscreen independently before marking those source methods ported.
 
 37. After the artwork checkpoint, port the original plugin-settings interaction and view-model contracts. Preserve separate desktop and fullscreen navigation, loaded runtime summaries, archive/install diagnostics, generated fields, collapsed advanced values, required-field reveal, busy locking and secret clearing. Close device sign-in cancellation races and preserve keyboard/controller focus. Validate the source Xbox/artwork-provider fixtures on both surfaces and map methods only after equivalent assertions pass.
+
+38. Migrate original website plugin-installation flow: start a validated activation immediately, share serialized progress and retry state across desktop/fullscreen navigation, preserve request identity on uncertain transport, cancel with retry, refresh newly installed providers, and open settings only while the installation owns the visible flow. Verify original PluginInstallViewModel and interaction fixtures through component and real Electron input tests, audit mappings, and retain the complete regression gate.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -182,4 +184,10 @@ Checkpoint twenty-one passes all170native cases with clean completion in6.6m; fu
 Plan 36 now implements the original two-shelf exposure matrix and a shared artwork lease/cache path. All 2,680 component/live API cases pass across 134 files in 44.40 seconds; build/typecheck passes. Six native artwork cases pass on both surfaces, and the expanded 178-case native suite is running. Native and component tests cover first measured width, warm pixels, Fit/Fill, dormancy, bounded admission, last-consumer cancellation, late-response rejection, shutdown and retry after reattachment. Inventory: 949 ported, 540 retained backend, 13 framework-specific, 796 pending and 137 partial. Evidence: checkpoint-twenty-two.md. No acceptance criteria checked.
 
 Checkpoint 22 complete: 2680 component/live API cases across 134 files and all 178 native Electron cases passed (7.2 minutes); build/typecheck pass. Inspected desktop/fullscreen artwork probes and settled two-shelf fullscreen captures at 1280x720 and 1920x1080. Inventory: 949 ported, 540 retained backend, 13 framework-specific, 796 pending, 137 partial. All acceptance criteria remain unchecked; continuing Plan 37 plugin settings.
+
+Plan 37 implementation now has lazy runtime plugin tabs, ordinary-draft retention and acknowledgement, secret clearing, advanced validation, safe help destinations, shared busy locks, cancellation of late device challenges, source polling/expiry rules, and single-action service restart. Native checks found and fixed lost save focus and fullscreen Down routing. Fullscreen plugin type now matches source 28px tabs, 64px title, 24px inputs and 72px input height. 94 focused component cases pass; expanded ten-case native verification is in progress. No acceptance criteria checked.
+
+Plan 37 verification: 2734 component/live API cases in 135 files pass without skips; build and typecheck pass. All ten native plugin cases and four added tab-label containment matrices pass. Both full 188-case runs passed 187: the first exposed keyboard input while a merge radio was still disabled; the second input trace confirms Chromium suppressed a relationship click on a disabled target during refresh. Native fixtures now await radio availability and retry only a trace-proven suppressed pointer action; affected workflows are repeating with original persistence and focus assertions. Inventory 989 ported, 540 retained backend, 13 framework-specific, 761 pending, 132 partial. Plan 38 shared installation controller has eight passing unit cases but is not integrated yet. All AC remain unchecked.
+
+Checkpoint 23 focused corrections pass all 24 native Library/Details/merge cases across three consecutive runs in 1.2 minutes. The native trace proves the relationship failure was suppressed input on a disabled target; an enabled click that fails still fails the fixture. All 188 cases have passing coverage across the full runs and corrected repeat, but no combined 188-case pass is claimed. Evidence and visual inspection are recorded in checkpoint-twenty-three.md; source migration remains incomplete. Continuing the shared website installation flow under plan 38.
 <!-- SECTION:NOTES:END -->

@@ -243,6 +243,8 @@ export interface PluginSnapshot {
   canConfigure: boolean
   hasAccount: boolean
   accountConnected: boolean
+  websiteUrl?: string | null
+  accountHosts?: string[] | null
 }
 export interface BackendOperation {
   id: string

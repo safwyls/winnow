@@ -113,7 +113,7 @@ describe.each(['desktop', 'fullscreen'])('%s update presentation parity', (mode)
     expect(screen.queryByRole('button', { name: 'Download update' })).toBeNull()
     await waitFor(() => expect(updateAction).toHaveBeenCalledWith('manual-download', undefined))
   })
-  it('confirms a provider restart and reports a failure without pretending success', async () => {
+  it('starts a provider restart and reports a friendly failure without pretending success', async () => {
     const { wrapper, restartBackend } = fixture()
     restartBackend.mockRejectedValue(new Error('Backend did not reconnect'))
     render(
@@ -122,10 +122,12 @@ describe.each(['desktop', 'fullscreen'])('%s update presentation parity', (mode)
       </div>,
       { wrapper },
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Restart library service…' }))
-    expect(restartBackend).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Restart library service' }))
-    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('Backend did not reconnect'))
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toContain(
+        'Could not restart the library service. Try again.',
+      ),
+    )
     expect(restartBackend).toHaveBeenCalledOnce()
   })
 })

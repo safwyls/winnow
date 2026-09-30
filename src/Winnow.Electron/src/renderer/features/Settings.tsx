@@ -10,7 +10,6 @@ import type {
   IgdbConnection,
   LibraryPreferences,
   Mode,
-  PluginSnapshot,
   StoreConnections,
 } from '../api/types'
 import { Empty, Notice } from './shared'
@@ -22,13 +21,13 @@ import {
   ArtworkSourcePreferences,
   FullscreenPreferences,
   LibraryPresentationPreferences,
-  OfficialPluginInstall,
 } from './SettingsPreferences'
 import { useSetupBusy, useSetupPreferenceError } from './settingsState'
 import { AccountStatistics, SteamPageImport } from './Accounts'
 import { SteamCapture, SteamCaptureReview } from './SteamCapture'
 import type { SteamCaptureResult } from '../../shared/bridge'
-import { BackendRestart } from './BackendRestart'
+import { PluginSettings } from './PluginSettings'
+export { PluginCard } from './PluginSettings'
 import { SteamConnectionPanel } from './SteamConnectionPanel'
 import { steamCapturePermissionExplanation, steamConnectionState } from './steamConnection'
 import { NativeEpicAccount } from './EpicAccount'
@@ -38,10 +37,9 @@ import { useSteamModal } from './SteamModals'
 
 export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
   const [savedTab, setTab] = useViewState(`${mode}:settings:tab`, 'Platforms')
-  const tab = savedTab === 'Connections' ? 'Platforms' : savedTab
+  const tab = savedTab === 'Connections' ? 'Platforms' : savedTab === 'Providers' ? 'Plugins' : savedTab
   const stores = useApiQuery<StoreConnections>('connections.get')
   const igdb = useApiQuery<IgdbConnection>('connections.igdb.get')
-  const plugins = useApiQuery<PluginSnapshot[]>('plugins.get')
   const preferences = useApiQuery<LibraryPreferences>('preferences.library.get')
   const operations = useApiQuery<BackendOperation[]>('operations.get')
   const command = useCommand()
@@ -58,15 +56,21 @@ export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
         {[
           'Platforms',
           'Metadata & artwork',
-          'Providers',
+          'Plugins',
+          'Application',
           'Library',
           'Appearance',
-          'Application',
           'Spending',
           'Recommendations',
           'Operations',
         ].map((name) => (
-          <button key={name} aria-pressed={tab === name} onClick={() => setTab(name)}>
+          <button
+            key={name}
+            data-controller-tab
+            aria-pressed={tab === name}
+            onClick={() => setTab(name)}
+            onFocus={(event) => event.currentTarget.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })}
+          >
             {name}
           </button>
         ))}
@@ -103,23 +107,7 @@ export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
           <ArtworkSourcePreferences />
         </>
       )}
-      {tab === 'Providers' && (
-        <>
-          <p className="muted">
-            Provider plugins add library sources and metadata. Frontend themes are managed in the theme
-            studio.
-          </p>
-          <Notice error={plugins.error} />
-          <div className="feature-grid">
-            {plugins.data?.map((plugin) => (
-              <PluginCard key={`${mode}:${plugin.id}`} plugin={plugin} />
-            ))}
-          </div>
-          {plugins.data?.length === 0 && <Empty>No provider plugins are installed.</Empty>}
-          <OfficialPluginInstall />
-          <BackendRestart />
-        </>
-      )}
+      {tab === 'Plugins' && <PluginSettings mode={mode} />}
       {tab === 'Library' && (
         <>
           <section className="feature-panel">
@@ -549,9 +537,7 @@ export function SteamAccount({
                 />
                 Also capture purchase history and licences
               </label>
-              <p className="muted">
-                {steamCapturePermissionExplanation}
-              </p>
+              <p className="muted">{steamCapturePermissionExplanation}</p>
               <div className="form-actions">
                 <button disabled={pending} onClick={() => void signIn()}>
                   Continue to Steam
@@ -739,155 +725,6 @@ export function LibraryPreferenceForm({ initial }: { initial: LibraryPreferences
   )
 }
 
-export function PluginCard({ plugin }: { plugin: PluginSnapshot }) {
-  const [values, setValues] = useState<Record<string, string>>({})
-  const [message, setMessage] = useState('')
-  const [advanced, setAdvanced] = useState(false)
-  const command = useCommand()
-  async function save() {
-    await command.mutateAsync({
-      route: 'plugins.settings',
-      params: { pluginId: plugin.id },
-      body: {
-        values: {
-          ...Object.fromEntries(
-            plugin.settings
-              .filter((setting) => !setting.isSecret)
-              .map((setting) => [setting.key, setting.value ?? '']),
-          ),
-          ...values,
-        },
-      },
-    })
-    setValues({})
-    setMessage('Provider settings saved.')
-  }
-  return (
-    <section className="feature-panel plugin-card">
-      <header className="feature-heading">
-        <div>
-          <h2>{plugin.name}</h2>
-          <small>
-            v{plugin.version} · {plugin.capabilities}
-          </small>
-        </div>
-        <label className="check-field">
-          <input
-            type="checkbox"
-            checked={plugin.enabled}
-            disabled={command.isPending || !plugin.canConfigure}
-            onChange={(event) =>
-              command.mutate({
-                route: 'plugins.enabled',
-                params: { pluginId: plugin.id },
-                body: { enabled: event.target.checked },
-              })
-            }
-          />
-          Enabled
-        </label>
-      </header>
-      <p>{plugin.description}</p>
-      <p className="muted">
-        {plugin.status}
-        {plugin.restartRequired ? ' · Restart the backend to apply this change.' : ''}
-      </p>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault()
-          void save().catch(() => {})
-        }}
-      >
-        {plugin.settings.some((setting) => setting.isAdvanced) && (
-          <button
-            type="button"
-            aria-expanded={advanced}
-            aria-label={`${advanced ? 'Hide' : 'Show'} advanced settings: ${plugin.name}`}
-            onClick={() => setAdvanced(!advanced)}
-          >
-            {advanced ? 'Hide' : 'Show'} advanced settings
-          </button>
-        )}
-        {plugin.settings
-          .filter((setting) => advanced || !setting.isAdvanced)
-          .map((setting) => (
-            <label className={setting.isBoolean ? 'check-field' : 'field'} key={setting.key}>
-              {setting.isBoolean ? (
-                <>
-                  <input
-                    type="checkbox"
-                    disabled={!plugin.canConfigure || command.isPending}
-                    checked={(values[setting.key] ?? setting.value) === 'true'}
-                    onChange={(event) =>
-                      setValues({ ...values, [setting.key]: String(event.target.checked) })
-                    }
-                  />
-                  {setting.label}
-                </>
-              ) : (
-                <>
-                  {setting.label}
-                  <input
-                    type={setting.isSecret ? 'password' : 'text'}
-                    disabled={!plugin.canConfigure || command.isPending}
-                    autoComplete="off"
-                    value={values[setting.key] ?? (setting.isSecret ? '' : (setting.value ?? ''))}
-                    placeholder={setting.hasStoredSecret ? 'Saved secret — leave blank to keep' : undefined}
-                    required={setting.isRequired && !setting.hasStoredSecret}
-                    onChange={(event) => {
-                      const next = { ...values, [setting.key]: event.target.value }
-                      if (setting.isSecret && !event.target.value) delete next[setting.key]
-                      setValues(next)
-                    }}
-                  />
-                </>
-              )}
-              {setting.description && <small>{setting.description}</small>}
-              {setting.setupUrl?.startsWith('https://') && (
-                <button type="button" onClick={() => void openExternal(setting.setupUrl!)}>
-                  Get {setting.label}
-                </button>
-              )}
-              {setting.isSecret && setting.hasStoredSecret && (
-                <button
-                  type="button"
-                  disabled={command.isPending || !plugin.canConfigure}
-                  onClick={() => {
-                    const next = { ...values }
-                    delete next[setting.key]
-                    setValues(next)
-                    command.mutate({
-                      route: 'plugins.removeSecret',
-                      params: { pluginId: plugin.id, key: setting.key },
-                    })
-                  }}
-                >
-                  Remove saved {setting.label}
-                </button>
-              )}
-            </label>
-          ))}
-        <div className="form-actions">
-          {plugin.canConfigure && plugin.settings.length > 0 && (
-            <button disabled={command.isPending} aria-label={`Save ${plugin.name} settings`}>
-              Save provider settings
-            </button>
-          )}
-          <button
-            type="button"
-            disabled={command.isPending || !plugin.enabled || !plugin.isLoaded}
-            onClick={() => command.mutate({ route: 'plugins.refresh', params: { pluginId: plugin.id } })}
-          >
-            Refresh provider
-          </button>
-        </div>
-      </form>
-      <Notice error={command.error} message={message} />
-      {plugin.hasAccount && <PluginAccount plugin={plugin} />}
-    </section>
-  )
-}
-
 interface Challenge {
   attemptId: string
   verificationUrl: string
@@ -1042,123 +879,6 @@ function LegacyEpicAccount({
       ) : (
         <button disabled={pending} onClick={() => void begin()}>
           {label}
-        </button>
-      )}
-      <Notice error={error} message={message} />
-    </div>
-  )
-}
-
-function PluginAccount({ plugin }: { plugin: PluginSnapshot }) {
-  const [challenge, setChallenge] = useState<Challenge | null>(null)
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState<unknown>(null)
-  const [pending, setPending] = useState(false)
-  const clientId = useRef(createClientId()).current
-  const client = useQueryClient()
-  useEffect(() => {
-    if (!challenge) return
-    let stopped = false
-    let timer: ReturnType<typeof setTimeout>
-    async function poll() {
-      if (new Date(challenge!.expiresAt).getTime() <= Date.now()) {
-        setMessage('This sign-in expired. Start again to get a new code.')
-        setChallenge(null)
-        return
-      }
-      try {
-        const result = await request<{ state: number; message: string }>(
-          'plugins.poll',
-          { pluginId: plugin.id },
-          { clientId, attemptId: challenge!.attemptId },
-        )
-        if (stopped) return
-        setMessage(result.message)
-        if (result.state >= 2) {
-          setChallenge(null)
-          void client.invalidateQueries({ queryKey: ['api'] })
-          return
-        }
-        timer = setTimeout(
-          () => void poll(),
-          Math.max(1000, challenge!.pollIntervalSeconds * 1000 * (result.state === 1 ? 2 : 1)),
-        )
-      } catch (failure) {
-        if (!stopped) {
-          setError(failure)
-          setChallenge(null)
-        }
-      }
-    }
-    timer = setTimeout(() => void poll(), Math.max(1000, challenge.pollIntervalSeconds * 1000))
-    return () => {
-      stopped = true
-      clearTimeout(timer)
-      void request(
-        'plugins.cancel',
-        { pluginId: plugin.id },
-        { clientId, attemptId: challenge.attemptId },
-      ).catch(() => {})
-    }
-  }, [challenge, client, clientId, plugin.id])
-  async function begin() {
-    setPending(true)
-    setError(null)
-    try {
-      const result = await request<{ challenge: Challenge | null }>(
-        'plugins.signIn',
-        { pluginId: plugin.id },
-        { clientId },
-      )
-      setChallenge(result.challenge)
-      if (!result.challenge) setMessage('The provider could not start sign-in.')
-    } catch (failure) {
-      setError(failure)
-    } finally {
-      setPending(false)
-    }
-  }
-  async function signOut() {
-    setPending(true)
-    setError(null)
-    try {
-      await request('plugins.signOut', { pluginId: plugin.id })
-      await client.invalidateQueries({ queryKey: ['api'] })
-    } catch (failure) {
-      setError(failure)
-    } finally {
-      setPending(false)
-    }
-  }
-  return (
-    <div className="plugin-account">
-      {plugin.accountConnected ? (
-        <>
-          <p>
-            <Check size={16} /> Account connected
-          </p>
-          <button disabled={pending} onClick={() => void signOut()}>
-            Sign out
-          </button>
-        </>
-      ) : challenge ? (
-        <div className="conflict-panel">
-          <p>Enter this code on the provider's sign-in page:</p>
-          <strong className="device-code">{challenge.userCode}</strong>
-          <div className="form-actions">
-            <button
-              onClick={() => {
-                void openExternal(challenge.verificationUrl)
-              }}
-            >
-              Open sign-in page
-            </button>
-            <button onClick={() => setChallenge(null)}>Cancel sign-in</button>
-          </div>
-        </div>
-      ) : (
-        <button disabled={pending} onClick={() => void begin()}>
-          Connect account
         </button>
       )}
       <Notice error={error} message={message} />

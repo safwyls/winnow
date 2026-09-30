@@ -26,6 +26,14 @@ scope, purchase import and sign-in consent in separate dialogs. IGDB and artwork
 preferences live under **Metadata & artwork**. Manual games in **Manage library** report
 validation and identifier conflicts beside their fields and ask before removing a named entry.
 
+**Plugins** gives every runtime-loaded provider its own tab, followed by **Manage plugins**.
+Overflow arrows scroll the tabs without changing the selection. Ordinary drafts survive
+navigation; secret replacements clear on departure or successful save. Advanced fields
+keep their values when collapsed, and required fields reveal themselves before saving.
+Device sign-in shows the provider's code and verification address only after you start it.
+Leaving or canceling stops that attempt. Pending writes and installations prevent a service
+restart; a completed restart reconnects and reloads the plugin catalogue.
+
 Avalon reads existing authored Winnow JSON palettes from the library's `themes` folder,
 including their fonts and opening preferences. Theme Studio provides reload, diagnostics,
 folder access and safe export; saved file edits update the active palette automatically.

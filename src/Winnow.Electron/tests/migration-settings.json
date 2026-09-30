@@ -132,60 +132,6 @@
     ],
     "reason": "Fullscreen fields use the same explicit-save API and masked inputs. Controller on-screen keyboard behavior is a separate integration requirement."
   },
-  "PluginSettingsInteractionTests.Advanced_settings_start_collapsed_support_input_and_preserve_hidden_values_on_save": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-settings.test.tsx",
-        "case": "starts advanced settings collapsed and preserves hidden values and stored secrets"
-      }
-    ],
-    "reason": "Collapsed disclosure, input, preserving hidden fields and clearing secret drafts after save are covered on both surfaces. Physical controller focus order and keyboard entry remain separate."
-  },
-  "PluginSettingsInteractionTests.Desktop_generated_fields_mask_secrets_save_and_clear_drafts_on_navigation": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-settings.test.tsx",
-        "case": "starts advanced settings collapsed and preserves hidden values and stored secrets"
-      },
-      {
-        "file": "tests/parity-settings.test.tsx",
-        "case": "removes saved secrets explicitly and never replaces them with an empty save"
-      }
-    ],
-    "reason": "Generated fields mask secrets, preserve unsent stored values, save and remove explicitly. Plugin-tab navigation clears fields through unmounting but does not yet have a dedicated test."
-  },
-  "PluginSettingsInteractionTests.Desktop_and_fullscreen_share_restart_state_and_generated_field_removal": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-settings.test.tsx",
-        "case": "removes saved secrets explicitly and never replaces them with an empty save"
-      }
-    ],
-    "reason": "Secret removal is covered on both surfaces and cards render backend restart state. Library-service restart itself needs native lifecycle coverage."
-  },
-  "PluginSettingsInteractionTests.Artwork_order_accepts_any_number_of_named_plugin_sources": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-settings.test.tsx",
-        "case": "orders available artwork sources and saves the backend-compatible format"
-      }
-    ],
-    "reason": "Available source ordering and migration of the old SteamGridDB id are tested. A larger generated set of named providers is not yet asserted."
-  },
-  "PluginSettingsInteractionTests.Zip_installation_help_and_archive_errors_are_visible_on_both_surfaces": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-settings.test.tsx",
-        "case": "requests only a named official package and keeps its install operation visible"
-      }
-    ],
-    "reason": "Official package installation and status are covered; manual ZIP guidance is present. A failed archive snapshot needs a specific migrated rendering assertion."
-  },
   "FullscreenSettingsTests.Reset_opens_confirmation_without_mutating_preferences": {
     "status": "ported",
     "tests": [

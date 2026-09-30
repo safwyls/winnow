@@ -291,7 +291,7 @@ describe.each(['desktop', 'fullscreen'] as const)('%s settings parity', (mode) =
       { wrapper },
     )
     fireEvent.click(screen.getByRole('button', { name: 'Show advanced settings: Xbox' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Remove saved Advanced secret' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove saved Xbox Advanced secret' }))
     await waitFor(() =>
       expect(request).toHaveBeenCalledWith({
         route: 'plugins.removeSecret',

@@ -342,6 +342,12 @@ viewport also scrolls as a fallback for packages that have not adopted this layo
 
 The built-in Library fills its content pane and scrolls its results and index separately.
 Library tools fill the same available width across all tabs on desktop and fullscreen.
+Plugin forms fill the available desktop width up to 1100px with a 24px inset. Fullscreen
+uses a separate 1320px reading column, 64px titles, 32px field labels, 24px input text and
+72px input targets before text scaling. Its 28px plugin tabs scroll horizontally and stay
+above the form while it scrolls. Desktop arrow keys select a tab; fullscreen arrows move
+focus and A selects. LT/RT continues to switch the outer Settings sections. Secret drafts
+belong to the mounted form, while ordinary drafts and the selected tab survive navigation.
 Actions that navigate to game details use `View game`; launching remains a separate action.
 Shared artwork fills the size assigned by its parent; set a height or aspect ratio on the
 `Artwork` frame. Loading, missing artwork, and the decoded image all occupy that same frame.

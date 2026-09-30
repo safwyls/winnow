@@ -466,7 +466,13 @@ export function ArtworkSourcePreferences() {
 
 export function OfficialPluginInstall({
   initialRequest,
-}: { initialRequest?: { pluginId: string; releaseTag: string } } = {}) {
+  showManualHelp = true,
+  onBusyChange,
+}: {
+  initialRequest?: { pluginId: string; releaseTag: string }
+  showManualHelp?: boolean
+  onBusyChange?: (busy: boolean) => void
+} = {}) {
   const [pluginId, setPluginId] = useState(initialRequest?.pluginId ?? 'steamgriddb')
   const [releaseTag, setReleaseTag] = useState(initialRequest?.releaseTag ?? '')
   const [operationId, setOperationId] = useState<string | null>(null)
@@ -504,18 +510,23 @@ export function OfficialPluginInstall({
     }
   }
   const active = operation.data && ['Queued', 'Running', 'queued', 'running'].includes(operation.data.state)
+  useEffect(() => {
+    onBusyChange?.(!!active || command.isPending)
+  }, [active, command.isPending, onBusyChange])
   return (
     <section className="feature-panel">
       <h2>Install an official provider</h2>
       <p>
         Choose an official provider and its published release tag. Packages are verified before installation.
       </p>
-      <p className="muted">
-        You can also place a plugin ZIP or unpacked plugin in the plugins folder. ZIPs unpack when the library
-        service restarts. Manually added plugins need enabling and another service restart. Only enable
-        plugins from authors you trust: plugins run with Winnow’s access to this device.
-      </p>
-      {window.winnow.openDataFolder && (
+      {showManualHelp && (
+        <p className="muted">
+          You can also place a plugin ZIP or unpacked plugin in the plugins folder. ZIPs unpack when the
+          library service restarts. Manually added plugins need enabling and another service restart. Only
+          enable plugins from authors you trust: plugins run with Winnow’s access to this device.
+        </p>
+      )}
+      {showManualHelp && window.winnow.openDataFolder && (
         <button onClick={() => void window.winnow.openDataFolder!('plugins').catch(setError)}>
           Open plugins folder
         </button>

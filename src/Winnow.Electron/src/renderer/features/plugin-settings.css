@@ -1,0 +1,117 @@
+.plugin-settings {
+  min-width: 0;
+}
+.settings-page:has(.plugin-settings) {
+  margin-left: 0;
+  padding: 24px;
+  width: 100%;
+}
+.plugin-card,
+.plugin-settings .feature-panel {
+  max-width: 1100px;
+  width: 100%;
+}
+.plugin-card .feature-heading {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.plugin-tab-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg);
+}
+.plugin-tab-bar > button {
+  flex: 0 0 auto;
+  padding: 10px;
+}
+.plugin-tabs.tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.plugin-tabs.tabs button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.plugin-tabs::-webkit-scrollbar {
+  display: none;
+}
+.plugin-management p,
+.plugin-verification-url {
+  overflow-wrap: anywhere;
+}
+.plugin-management h3 {
+  margin-top: 24px;
+}
+.plugin-card form > button {
+  margin-bottom: 16px;
+}
+.plugin-card .plugin-account {
+  margin-top: 24px;
+}
+.mode-fullscreen.settings-page:has(.plugin-settings) {
+  max-width: none;
+}
+.mode-fullscreen .plugin-card {
+  max-width: 1320px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+.mode-fullscreen .plugin-card h2 {
+  font-size: calc(64px * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+}
+.mode-fullscreen .plugin-card :is(p, .check-field, input, button) {
+  font-size: calc(24px * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+}
+.mode-fullscreen .plugin-card small {
+  font-size: calc(22px * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+}
+.mode-fullscreen .plugin-card .field {
+  font-size: calc(32px * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+}
+.mode-fullscreen .plugin-card input:not([type='checkbox']) {
+  min-height: 72px;
+}
+.mode-fullscreen .plugin-card button {
+  min-height: 64px;
+}
+.mode-fullscreen .plugin-tabs.tabs {
+  gap: 16px;
+}
+.mode-fullscreen .plugin-tabs button {
+  font-size: calc(28px * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+  min-height: 64px;
+  padding: 12px 24px;
+}
+.mode-fullscreen .plugin-tab-bar {
+  gap: 12px;
+}
+.mode-fullscreen .plugin-settings .feature-panel:not(.plugin-card) p {
+  font-size: calc(24px * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+}
+.mode-fullscreen .plugin-settings h3 {
+  font-size: calc(32px * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+}
+.mode-fullscreen .plugin-activation .check-field {
+  min-height: 72px;
+}
+.mode-fullscreen .plugin-card input[type='checkbox'] {
+  min-width: 24px;
+  min-height: 24px;
+}
+.mode-fullscreen.settings-page > .tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+.mode-fullscreen.settings-page > .tabs button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}

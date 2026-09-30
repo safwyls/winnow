@@ -45,11 +45,14 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [artwork and feed checkpoint](checkpoint-twenty-two.md) records the latest
-complete Electron checks: 2,680 passing component/API cases across 134 files and 178
-passing native cases, with build and typecheck passing. The migration inventory contains
-949 ported, 540 retained backend, 13 framework-specific, 796 pending and 137 partial
-methods. The migration gate remains incomplete. The [Library and metadata checkpoint](checkpoint-ten.md)
+The [plugin settings checkpoint](checkpoint-twenty-three.md) records 2,734 passing
+component/API cases across 135 files, with build and typecheck passing. Both expanded
+188-case native runs passed 187 cases and exposed different merge input races; the
+checkpoint records their corrections and focused verification. The latest complete native
+pass remains the 178-case [artwork and feed checkpoint](checkpoint-twenty-two.md).
+The migration inventory contains 989 ported, 540 retained backend, 13 framework-specific,
+761 pending and 132 partial methods. The migration gate remains incomplete.
+The [Library and metadata checkpoint](checkpoint-ten.md)
 records the latest full .NET pass: 6,839 passed and two Linux-only skips across 13 assemblies,
 including all 896 Avalonia UI cases. The table below preserves earlier measured checkpoints.
 

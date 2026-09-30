@@ -131,6 +131,27 @@ async function manual(title: string) {
     },
   })
 }
+async function openRelationship() {
+  const button = page.getByRole('button', { name: 'Create a relationship' })
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await expect(button).toBeEnabled()
+    const start = await page.evaluate(
+      () => (window as unknown as { relationshipInputTrace: unknown[] }).relationshipInputTrace.length,
+    )
+    await button.click()
+    const events = await page.evaluate(async (start) => {
+      await new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done())))
+      return (window as unknown as { relationshipInputTrace: { event: string; disabled: boolean }[] })
+        .relationshipInputTrace.slice(start)
+    }, start)
+    if (await page.getByRole('combobox', { name: 'Main game', exact: true }).count()) return
+    // A refresh can disable the target after Playwright's actionability check. Retry
+    // only when native input confirms that Chromium suppressed the click entirely.
+    expect(events.some((event) => event.event === 'click')).toBe(false)
+    expect(events.some((event) => event.event === 'pointerdown' && event.disabled)).toBe(true)
+  }
+  await expect(page.getByRole('combobox', { name: 'Main game', exact: true })).toBeVisible()
+}
 async function controller() {
   await page.evaluate(() => {
     const state = { pressed: [] as number[] }
@@ -166,7 +187,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await surface(mode)
     await (await libraryAction(page, 'Manage library')).click()
     await page.getByRole('button', { name: 'Identity review', exact: true }).click()
-    await page.getByRole('button', { name: 'Create a relationship' }).click()
+    await openRelationship()
     await page.getByRole('combobox', { name: 'Main game', exact: true }).selectOption(String(parent.workId))
     await page.getByLabel('Find games to include').fill(`Parity ${mode}`)
     await page.getByRole('checkbox', { name: child.title, exact: true }).check()
@@ -188,7 +209,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     const restored = await api<LibraryResponse>({ route: 'library.get' })
     expect(restored.games.find((game) => game.workId === parent.workId)?.entries).toHaveLength(1)
     expect(restored.games.find((game) => game.workId === child.workId)?.entries).toHaveLength(1)
-    await page.getByRole('button', { name: 'Create a relationship' }).click()
+    await openRelationship()
     await page.getByLabel('Find games to include').fill(child.title)
     await expect(page.getByRole('checkbox', { name: child.title, exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Cancel relationship' }).click()
@@ -393,6 +414,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await expect(radio).toBeEnabled()
       await rows.nth(1).locator('.merge-cover').click()
       await expect(radio).toBeChecked()
+      await expect(rows.first().getByRole('radio')).toBeEnabled()
       await rows.first().getByRole('radio').press('Space')
       await expect(rows.first().getByRole('radio')).toBeChecked()
       await rows.nth(1).getByRole('checkbox').uncheck()

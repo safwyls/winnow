@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 796,
-    "partial": 137,
-    "ported": 949,
+    "pending": 761,
+    "partial": 132,
+    "ported": 989,
     "retained-backend": 540,
     "framework-specific": 13
   },
@@ -11941,32 +11941,94 @@
     {
       "id": "PluginAccountSettingsTests.Sign_in_waits_for_user_and_poll_interval_then_connects_and_signs_out",
       "source": "tests/Winnow.Tests/PluginAccountSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "waits the original five seconds, adds five seconds on SlowDown and cancels exactly once at expiry"
+        },
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "shows an accessible device code and URL, locks fields, cancels on navigation and signs out after connection"
+        },
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} plugin device sign-in exposes code and URL, cancels on departure and publishes connected state"
+        }
+      ],
+      "reason": "Arrival makes no sign-in request and opening the verification page is explicit. Controlled time checks the original five-second interval; component/native cases connect, clear the challenge, avoid cancellation after success and sign out while retaining imported games."
     },
     {
       "id": "PluginAccountSettingsTests.Slow_down_increases_interval_and_expiry_clears_pending_attempt",
       "source": "tests/Winnow.Tests/PluginAccountSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "waits the original five seconds, adds five seconds on SlowDown and cancels exactly once at expiry"
+        }
+      ],
+      "reason": "The original 5, 10 and 15 second SlowDown sequence runs with controlled time. Expiry clears code and URL, leaves the account disconnected and cancels the attempt once without displaying provider text."
     },
     {
       "id": "PluginAccountSettingsTests.Leaving_settings_cancels_pending_sign_in_and_ignores_provider_error_text",
       "source": "tests/Winnow.Tests/PluginAccountSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "does not start sign-in on arrival and cancels a challenge issued after departure"
+        },
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "Cancel during provider preparation clears a late code and private provider errors stay hidden"
+        },
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "shows an accessible device code and URL, locks fields, cancels on navigation and signs out after connection"
+        },
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} plugin device sign-in exposes code and URL, cancels on departure and publishes connected state"
+        }
+      ],
+      "reason": "Leaving cancels both issued and late-issued attempts; no late code or poll is published. Provider private-device-token exceptions remain hidden behind friendly recovery copy."
     },
     {
       "id": "PluginAccountSettingsTests.Cancelling_while_provider_prepares_challenge_never_displays_late_code",
       "source": "tests/Winnow.Tests/PluginAccountSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "Cancel during provider preparation clears a late code and private provider errors stay hidden"
+        }
+      ],
+      "reason": "Cancel is usable while preparation is pending. Releasing that response displays no code, makes no poll and cancels the newly issued attempt exactly once."
     },
     {
       "id": "PluginAccountSettingsTests.Undeclared_or_unsafe_verification_addresses_are_never_displayed_or_opened",
       "source": "tests/Winnow.Tests/PluginAccountSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "never displays or opens an unsafe or undeclared verification address: %s"
+        }
+      ],
+      "reason": "The original five undeclared, suffix-host, HTTP, credentialed and nondefault-port URLs are neither displayed nor opened; each issued attempt is canceled without polling."
     },
     {
       "id": "PluginAccountSettingsTests.Boolean_setting_round_trips_and_new_drafts_survive_a_slow_reload",
       "source": "tests/Winnow.Tests/PluginAccountSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "round-trips boolean values and preserves a new checkbox draft through a slow reload"
+        }
+      ],
+      "reason": "The boolean begins false, saves true, then retains a new false draft through a held reload containing true, on both presentation paths."
     },
     {
       "id": "PluginFeedServiceTests.Loaded_feed_sees_only_eligible_games_and_collapsed_game_facts",
@@ -12315,57 +12377,162 @@
     {
       "id": "PluginSettingsViewModelTests.ServiceRestartReloadsPluginStateAndDisablesRepeatAction",
       "source": "tests/Winnow.Tests/PluginSettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "restarts once, reloads runtime state and keeps cards with a friendly retry after failure"
+        },
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} plugin forms preserve source sizing, advanced drafts, masked keyboard input and save focus"
+        }
+      ],
+      "reason": "One action starts the service restart, locks repeat submission, refreshes runtime snapshots and publishes completion. Native keyboard and controller cases restart and reconnect the real disposable backend through production IPC."
     },
     {
       "id": "PluginSettingsViewModelTests.ServiceRestartFailureKeepsPluginsAndOffersRetry",
       "source": "tests/Winnow.Tests/PluginSettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "restarts once, reloads runtime state and keeps cards with a friendly retry after failure"
+        }
+      ],
+      "reason": "A private restart exception yields a friendly Try again message; existing plugin tabs and cards survive and the action becomes available again."
     },
     {
       "id": "PluginSettingsViewModelTests.Plugin_help_links_use_the_shared_destination_instead_of_the_OS_dispatcher",
       "source": "tests/Winnow.Tests/PluginSettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "offers only plain HTTPS manifest help through the shared destination: %s"
+        }
+      ],
+      "reason": "The field action uses the shared named openExternal bridge, which owns the reading destination; the renderer never dispatches an OS URI directly."
     },
     {
       "id": "PluginSettingsViewModelTests.Collapsed_advanced_settings_preserve_values_and_secret_drafts_when_saving",
       "source": "tests/Winnow.Tests/PluginSettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "preserves collapsed advanced values and secret replacements, then clears secrets after saving"
+        },
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} plugin forms preserve source sizing, advanced drafts, masked keyboard input and save focus"
+        }
+      ],
+      "reason": "Collapsed advanced ordinary values remain in saves, blank secrets are omitted, replacements survive collapse and clear after saving. Native cases also clear an advanced override and save the empty value."
     },
     {
       "id": "PluginSettingsViewModelTests.Invalid_required_advanced_field_is_revealed_before_saving",
       "source": "tests/Winnow.Tests/PluginSettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "reveals a missing required advanced value before any save and masks private storage failures"
+        }
+      ],
+      "reason": "A missing required advanced value expands and focuses its field and gives a friendly validation message before any backend write."
     },
     {
       "id": "PluginSettingsViewModelTests.Secrets_are_never_loaded_and_blank_drafts_preserve_saved_values",
       "source": "tests/Winnow.Tests/PluginSettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "retains ordinary drafts through tab switches and slow reloads while secrets clear on departure"
+        },
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "preserves collapsed advanced values and secret replacements, then clears secrets after saving"
+        },
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "removes saved secrets explicitly and refresh requires an enabled loaded configurable plugin"
+        }
+      ],
+      "reason": "Stored secret values never enter the input, blank drafts do not replace them, explicit removal uses the secret endpoint, and navigation or successful save clears replacement drafts."
     },
     {
       "id": "PluginSettingsViewModelTests.Enablement_waits_for_restart_and_refresh_requires_an_enabled_loaded_plugin",
       "source": "tests/Winnow.Tests/PluginSettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "separates runtime names, unloaded diagnostics and ZIP help, retaining tabs until restart"
+        },
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "removes saved secrets explicitly and refresh requires an enabled loaded configurable plugin"
+        },
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} plugin forms preserve source sizing, advanced drafts, masked keyboard input and save focus"
+        }
+      ],
+      "reason": "Enablement does not change runtime tab membership until restart. Refresh is available only for enabled, loaded, configurable plugins; native disable and refusal cases use production IPC."
     },
     {
       "id": "PluginSettingsViewModelTests.Invalid_fields_and_storage_failures_do_not_disclose_secrets_or_leave_busy_controls",
       "source": "tests/Winnow.Tests/PluginSettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "reveals a missing required advanced value before any save and masks private storage failures"
+        },
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "locks competing writes and account actions during save and never restores a departed secret"
+        }
+      ],
+      "reason": "Validation precedes writes and storage exceptions never display private details. Failure releases busy controls; departure clears the secret even when the old save is still pending."
     },
     {
       "id": "PluginSettingsViewModelTests.Busy_save_disables_other_operations_and_clear_during_save_does_not_restore_secret",
       "source": "tests/Winnow.Tests/PluginSettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "locks competing writes and account actions during save and never restores a departed secret"
+        }
+      ],
+      "reason": "A held save disables fields, activation, refresh, removal and account actions. Leaving the plugin clears its secret and completing the pending save cannot restore it. Restart stays blocked until the write settles."
     },
     {
       "id": "PluginSettingsViewModelTests.Manifest_links_only_offer_plain_https_web_destinations",
       "source": "tests/Winnow.Tests/PluginSettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "offers only plain HTTPS manifest help through the shared destination: %s"
+        }
+      ],
+      "reason": "The original HTTPS, file, credentialed-HTTPS and JavaScript matrix runs on both surfaces and verifies bridge dispatch only for the allowed destination."
     },
     {
       "id": "PluginSettingsViewModelTests.A_slow_status_reload_does_not_overwrite_newly_typed_drafts",
       "source": "tests/Winnow.Tests/PluginSettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "retains ordinary drafts through tab switches and slow reloads while secrets clear on departure"
+        }
+      ],
+      "reason": "A held catalog refresh resolves after typing the original fr and just-entered-secret drafts; both survive the late snapshot, while departure still clears the secret."
     },
     {
       "id": "PluginSyncIntegrationTests.Shipped_steamgriddb_package_loads_through_the_public_sdk_without_an_app_reference",
@@ -23435,156 +23602,334 @@
     {
       "id": "PluginSettingsInteractionTests.Manage_plugins_restart_supports_keyboard_and_controller",
       "source": "tests/Winnow.Ui.Tests/PluginSettingsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "restarts once, reloads runtime state and keeps cards with a friendly retry after failure"
+        },
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} plugin forms preserve source sizing, advanced drafts, masked keyboard input and save focus"
+        }
+      ],
+      "reason": "Desktop Enter and fullscreen A invoke the single restart action, observe it disabled, then wait for real backend reconnection and fresh plugin reads."
     },
     {
       "id": "PluginSettingsInteractionTests.Advanced_settings_start_collapsed_support_input_and_preserve_hidden_values_on_save",
       "source": "tests/Winnow.Ui.Tests/PluginSettingsInteractionTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/parity-settings.test.tsx",
-          "case": "starts advanced settings collapsed and preserves hidden values and stored secrets"
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "preserves collapsed advanced values and secret replacements, then clears secrets after saving"
+        },
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} plugin forms preserve source sizing, advanced drafts, masked keyboard input and save focus"
         }
       ],
-      "reason": "Collapsed disclosure, input, preserving hidden fields and clearing secret drafts after save are covered on both surfaces. Physical controller focus order and keyboard entry remain separate."
+      "reason": "Both native surfaces skip hidden fields, route Tab/Down from disclosure to Save, expand text entry and masked secrets, retain collapsed replacements, save an empty override, and reset disclosure after departure. Fullscreen A/B opens and closes the real keyboard."
     },
     {
       "id": "PluginSettingsInteractionTests.Account_settings_support_boolean_input_and_cancel_sign_in_when_leaving",
       "source": "tests/Winnow.Ui.Tests/PluginSettingsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "round-trips boolean values and preserves a new checkbox draft through a slow reload"
+        },
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} plugin forms preserve source sizing, advanced drafts, masked keyboard input and save focus"
+        },
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} plugin device sign-in exposes code and URL, cancels on departure and publishes connected state"
+        }
+      ],
+      "reason": "Desktop Space and fullscreen A toggle the generated boolean. The named device code and verification URL render, lock editing, and cancel when leaving the plugin."
     },
     {
       "id": "PluginSettingsInteractionTests.Account_connection_and_sign_out_update_both_surfaces",
       "source": "tests/Winnow.Ui.Tests/PluginSettingsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "shows an accessible device code and URL, locks fields, cancels on navigation and signs out after connection"
+        },
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} plugin device sign-in exposes code and URL, cancels on departure and publishes connected state"
+        }
+      ],
+      "reason": "Both native surfaces publish connected state after polling and return to the available sign-in action after sign-out, preserving the imported-games message."
     },
     {
       "id": "PluginSettingsInteractionTests.Desktop_cards_fill_the_pane_and_activation_switch_handles_keyboard_and_save_failure",
       "source": "tests/Winnow.Ui.Tests/PluginSettingsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} plugin forms preserve source sizing, advanced drafts, masked keyboard input and save focus"
+        }
+      ],
+      "reason": "Desktop card geometry follows the available settings pane, stays 24px from its left edge and caps at 1100px in a 3456px window. Keyboard activation persists, failed activation reverts to the saved state and private error details are hidden."
     },
     {
       "id": "PluginSettingsInteractionTests.Fullscreen_activation_switch_handles_controller_accept",
       "source": "tests/Winnow.Ui.Tests/PluginSettingsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} plugin forms preserve source sizing, advanced drafts, masked keyboard input and save focus"
+        }
+      ],
+      "reason": "Controller A changes the native activation input, keeps the loaded tab during the pending restart and disables Refresh. A failed activation leaves the persisted state visible."
     },
     {
       "id": "PluginSettingsInteractionTests.Desktop_lazy_tab_loads_plugins_on_first_open_and_refreshes_when_reopened",
       "source": "tests/Winnow.Ui.Tests/PluginSettingsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "loads lazily on first opening, refreshes on return and preserves the selected runtime tab"
+        }
+      ],
+      "reason": "Desktop Settings makes zero plugin reads before Plugins opens, reads on first entry and refreshes on return while retaining the selected runtime tab."
     },
     {
       "id": "PluginSettingsInteractionTests.Fullscreen_loads_plugins_without_desktop_preloading",
       "source": "tests/Winnow.Ui.Tests/PluginSettingsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "loads lazily on first opening, refreshes on return and preserves the selected runtime tab"
+        },
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} plugin forms preserve source sizing, advanced drafts, masked keyboard input and save focus"
+        }
+      ],
+      "reason": "Fullscreen Plugins loads independently on its first entry; the native window starts directly with fullscreen state and does not preload plugins through desktop Settings."
     },
     {
       "id": "PluginSettingsInteractionTests.Loaded_plugins_show_runtime_names_and_versions_on_both_surfaces",
       "source": "tests/Winnow.Ui.Tests/PluginSettingsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "separates runtime names, unloaded diagnostics and ZIP help, retaining tabs until restart"
+        },
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "starts empty catalogs in Manage plugins with an explicit runtime empty state"
+        },
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} plugin forms preserve source sizing, advanced drafts, masked keyboard input and save focus"
+        }
+      ],
+      "reason": "Loaded summaries use runtime names and versions, exclude unloaded/invalid packages and expose an explicit no-loaded-plugins state. Pending enablement does not remove a runtime tab."
     },
     {
       "id": "PluginSettingsInteractionTests.Zip_installation_help_and_archive_errors_are_visible_on_both_surfaces",
       "source": "tests/Winnow.Ui.Tests/PluginSettingsInteractionTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/parity-settings.test.tsx",
-          "case": "requests only a named official package and keeps its install operation visible"
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "separates runtime names, unloaded diagnostics and ZIP help, retaining tabs until restart"
+        },
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} twelve plugin tabs preserve selection and keyboard navigation at ${width}x${height} text ${scale}"
         }
       ],
-      "reason": "Official package installation and status are covered; manual ZIP guidance is present. A failed archive snapshot needs a specific migrated rendering assertion."
+      "reason": "Manage plugins shows ZIP installation/restart/trust guidance and malformed package diagnostics. Invalid packages cannot be configured; both native modes keep unloaded and broken packages reachable."
     },
     {
       "id": "PluginSettingsInteractionTests.Desktop_tabs_separate_plugin_controls_from_metadata_and_fit_the_minimum_window",
       "source": "tests/Winnow.Ui.Tests/PluginSettingsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "loads lazily on first opening, refreshes on return and preserves the selected runtime tab"
+        },
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} plugin forms preserve source sizing, advanced drafts, masked keyboard input and save focus"
+        }
+      ],
+      "reason": "Plugins is a separate section from Metadata & artwork. Native checks bound all section buttons at the original 1040x688 shell size, then open the named generated plugin fields."
     },
     {
       "id": "PluginSettingsInteractionTests.Fullscreen_triggers_navigate_between_metadata_plugins_and_application",
       "source": "tests/Winnow.Ui.Tests/PluginSettingsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} plugin forms preserve source sizing, advanced drafts, masked keyboard input and save focus"
+        }
+      ],
+      "reason": "Native LT/RT moves between Metadata & artwork, Plugins and Application while the plugin tab strip retains its own controller selection behavior."
     },
     {
       "id": "PluginSettingsInteractionTests.Fullscreen_overflowing_tabs_scroll_the_focused_section_into_view",
       "source": "tests/Winnow.Ui.Tests/PluginSettingsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} plugin forms preserve source sizing, advanced drafts, masked keyboard input and save focus"
+        }
+      ],
+      "reason": "At the original 1000x800 shell size, focusing Application scrolls the outer section strip until the complete button lies within the viewport."
     },
     {
       "id": "PluginSettingsInteractionTests.Artwork_order_accepts_any_number_of_named_plugin_sources",
       "source": "tests/Winnow.Ui.Tests/PluginSettingsInteractionTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/parity-settings.test.tsx",
-          "case": "orders available artwork sources and saves the backend-compatible format"
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "orders three named artwork providers with working move boundaries"
         }
       ],
-      "reason": "Available source ordering and migration of the old SteamGridDB id are tested. A larger generated set of named providers is not yet asserted."
+      "reason": "Three named plugin artwork sources render by label, move through saved source IDs and correctly disable first/last move boundaries on both surfaces."
     },
     {
       "id": "PluginSettingsInteractionTests.Desktop_generated_fields_mask_secrets_save_and_clear_drafts_on_navigation",
       "source": "tests/Winnow.Ui.Tests/PluginSettingsInteractionTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/parity-settings.test.tsx",
-          "case": "starts advanced settings collapsed and preserves hidden values and stored secrets"
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "retains ordinary drafts through tab switches and slow reloads while secrets clear on departure"
         },
         {
-          "file": "tests/parity-settings.test.tsx",
-          "case": "removes saved secrets explicitly and never replaces them with an empty save"
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} plugin forms preserve source sizing, advanced drafts, masked keyboard input and save focus"
         }
       ],
-      "reason": "Generated fields mask secrets, preserve unsent stored values, save and remove explicitly. Plugin-tab navigation clears fields through unmounting but does not yet have a dedicated test."
+      "reason": "Native generated fields mask secrets, clear successful saves and discard unsaved secrets on tab departure; ordinary drafts survive. Component coverage also checks late reloads and input detachment."
     },
     {
       "id": "PluginSettingsInteractionTests.Fullscreen_generated_editor_uses_controller_text_entry_and_preserves_focus_after_save",
       "source": "tests/Winnow.Ui.Tests/PluginSettingsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} plugin forms preserve source sizing, advanced drafts, masked keyboard input and save focus"
+        }
+      ],
+      "reason": "Controller A opens the real masked keyboard, four characters display only bullets, Done restores the field, and Save restores its own focus after the asynchronous write. Departure resets secret and disclosure state."
     },
     {
       "id": "PluginSettingsInteractionTests.Desktop_and_fullscreen_share_restart_state_and_generated_field_removal",
       "source": "tests/Winnow.Ui.Tests/PluginSettingsInteractionTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/parity-settings.test.tsx",
-          "case": "removes saved secrets explicitly and never replaces them with an empty save"
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "removes saved secrets explicitly and refresh requires an enabled loaded configurable plugin"
+        },
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} plugin forms preserve source sizing, advanced drafts, masked keyboard input and save focus"
         }
       ],
-      "reason": "Secret removal is covered on both surfaces and cards render backend restart state. Library-service restart itself needs native lifecycle coverage."
+      "reason": "Both native modes change persisted enablement, display the pending-restart state, disable Refresh and explicitly remove the saved secret. The removal action then remains present but disabled after the authoritative snapshot."
     },
     {
       "id": "PluginTabsTests.Fullscreen_resizing_keeps_the_selected_tab_visible_and_removes_unused_arrows",
       "source": "tests/Winnow.Ui.Tests/PluginTabsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} resize alone hides unused tab arrows and keeps the selected tab visible when narrowed again"
+        }
+      ],
+      "reason": "The two-provider fullscreen strip runs at 900px, widens to 3000px without changing catalog or selection, hides unused arrows, then narrows and keeps Manage plugins fully visible."
     },
     {
       "id": "PluginTabsTests.Fullscreen_plugin_tabs_preserve_drafts_and_controller_navigation",
       "source": "tests/Winnow.Ui.Tests/PluginTabsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} twelve plugin tabs preserve selection and keyboard navigation at ${width}x${height} text ${scale}"
+        }
+      ],
+      "reason": "The original 12 loaded providers plus disabled/broken packages run at 1280x720/1x and 1920x1080/1.4x. Arrow scrolling does not select, A selects, switching retains only ordinary drafts, and Down enters activation."
     },
     {
       "id": "PluginTabsTests.Desktop_plugin_tabs_scroll_select_and_keep_management_reachable",
       "source": "tests/Winnow.Ui.Tests/PluginTabsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} twelve plugin tabs preserve selection and keyboard navigation at ${width}x${height} text ${scale}"
+        }
+      ],
+      "reason": "The original 13-tab catalog runs at 700x700 and 1280x820. Enter scrolls without selecting, Left/Right and Home/End select, edge arrows disable, and Manage keeps unloaded diagnostics reachable."
     },
     {
       "id": "PluginTabsTests.Desktop_arrows_disappear_when_tabs_fit_after_resize",
       "source": "tests/Winnow.Ui.Tests/PluginTabsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} resize alone hides unused tab arrows and keeps the selected tab visible when narrowed again"
+        }
+      ],
+      "reason": "A narrow whole-app window provides a roughly 400px plugin pane; widening to 1600px removes the arrows without changing selection, then narrowing preserves selected-tab visibility. This replaces the original standalone 460px view with its actual hosted pane."
     },
     {
       "id": "PluginTabsTests.Desktop_catalog_removal_keeps_surviving_selection_and_falls_back_for_removed_plugin",
       "source": "tests/Winnow.Ui.Tests/PluginTabsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "keeps surviving selections through catalog removals and falls back only when the selected plugin leaves"
+        }
+      ],
+      "reason": "Removing a different plugin retains the selected runtime tab. Removing the selected plugin falls back to Manage and removes the vanished tab from the DOM."
     },
     {
       "id": "PluginTabsTests.Selection_survives_refresh_and_tab_switches_preserve_only_nonsecret_drafts",
       "source": "tests/Winnow.Ui.Tests/PluginTabsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "retains ordinary drafts through tab switches and slow reloads while secrets clear on departure"
+        },
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "keeps surviving selections through catalog removals and falls back only when the selected plugin leaves"
+        },
+        {
+          "file": "tests/electron/plugin-settings.spec.ts",
+          "case": "${mode} twelve plugin tabs preserve selection and keyboard navigation at ${width}x${height} text ${scale}"
+        }
+      ],
+      "reason": "Selection survives catalog refresh, ordinary drafts survive tab switches, secrets clear on departure and a removed selected plugin falls back to Manage."
     },
     {
       "id": "ProseMeasureTests.Desktop_prose_keeps_its_measure_and_left_edge_across_reading_surfaces",
