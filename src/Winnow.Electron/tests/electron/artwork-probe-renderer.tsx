@@ -11,6 +11,8 @@ import {
   type ArtworkKey,
 } from '../../src/renderer/components/artwork-images'
 import { AvalonCover, avalon } from '../../src/renderer/themes/avalon'
+import { MergeQueue } from '../../src/renderer/features/parity-merge'
+import { mergeFixture } from '../parity-merge-fixtures'
 import { DEFAULT_PROFILE, selectThemeProfile, type ThemeContext } from '../../src/shared/theme'
 import type { WinnowBridge } from '../../src/shared/bridge'
 
@@ -28,6 +30,8 @@ const encoded = canvas.toDataURL('image/png')
 const client = new QueryClient({ defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } } })
 const cache = artworkImages(client)
 const key: ArtworkKey = ['artwork-image', 'fixture', 'portrait', 480, 'fixture']
+const review = mergeFixture()
+type Presentation = { width: number; workId: number; feed: boolean; merge: boolean }
 const probe = {
   requests: [] as { width: number; requestId?: string }[],
   cancels: [] as string[],
@@ -35,6 +39,16 @@ const probe = {
   hold: false,
   release: () => {},
   warmSource: '',
+  dimmed: true,
+  configure: (_options: Partial<Presentation>) => {},
+  dim(value: boolean) {
+    probe.dimmed = value
+    document.documentElement.dataset.dimDormant = String(value)
+    client.setQueryData(
+      ['api', 'preferences.presentation.get', undefined],
+      [{ preference: 'DimDormantCovers', value: String(value) }],
+    )
+  },
   state: () => ({ live: cache.liveSlots, pending: cache.pendingCount, decoded: cache.decodedCount }),
 }
 Object.assign(window, { artworkProbe: probe })
@@ -45,7 +59,9 @@ window.winnow = {
     data:
       input.route === 'artworkState'
         ? { revision: 'fixture', current: { previewKey: { provider: 'fixture', id: 'portrait' } } }
-        : [],
+        : input.route === 'preferences.presentation.get'
+          ? [{ preference: 'DimDormantCovers', value: String(probe.dimmed) }]
+          : [],
   }),
   artwork: async (_provider, _id, width = 600, requestId) => {
     probe.requests.push({ width, requestId })
@@ -69,13 +85,20 @@ window.addEventListener('pagehide', () => {
 })
 
 function Fixture() {
+  const [presentation, setPresentation] = useState<Presentation>({
+    width: 400,
+    workId: 1,
+    feed: false,
+    merge: false,
+  })
+  probe.configure = (options) => setPresentation((previous) => ({ ...previous, ...options }))
   const [mode, setMode] = useState<'desktop' | 'fullscreen'>('desktop')
   const [visible, setVisible] = useState(false),
     [warm, setWarm] = useState(false)
   const [recent, setRecent] = useState(false),
     [selected, setSelected] = useState(false)
   const game = {
-    workId: 1,
+    workId: presentation.workId,
     title: 'Hollow Knight',
     bucket: 'stale',
     playtimeMinutes: 200,
@@ -145,9 +168,17 @@ function Fixture() {
         </button>
         <button onClick={() => setSelected(!selected)}>Change selection</button>
       </div>
-      <div style={{ width: 400, height: 600 }}>
-        {visible && <AvalonCover context={context} game={game} selected={selected} />}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 30 }}>
+        <div data-wall style={{ width: presentation.width, height: presentation.width * 1.5 }}>
+          {visible && <AvalonCover context={context} game={game} selected={selected} />}
+        </div>
+        {presentation.feed && (
+          <div data-feed style={{ width: 108, height: 162 }}>
+            <AvalonCover context={context} game={{ ...game, workId: 1 }} reason="A forgotten favorite" />
+          </div>
+        )}
       </div>
+      {presentation.merge && <MergeQueue review={review} mode={mode} onReview={() => {}} />}
     </div>
   )
 }

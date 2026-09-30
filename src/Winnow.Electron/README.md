@@ -24,6 +24,10 @@ in place. Hover previews stay inside the window and close when their tile is reb
 Escape keeps them closed until the pointer leaves the card. Fullscreen retains its
 separate hero actions.
 
+Cover images remain visible while a larger size loads. Shrinking a realized tile keeps its
+best decoded image, and recycling one tile leaves other surfaces showing that game intact.
+Dormancy changes reuse the same pixels on desktop, fullscreen and desktop merge thumbnails.
+
 Desktop **Merges** opens directly from the rail. Its label and tooltip stay present when
 the queue is empty. Details returns to the same member, and Escape returns to Library.
 Up/Down moves the row cursor, Space chooses the header, S or Enter accepts the group and

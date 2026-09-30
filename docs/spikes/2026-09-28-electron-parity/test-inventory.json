@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 509,
+    "pending": 497,
     "partial": 101,
-    "ported": 1180,
+    "ported": 1192,
     "retained-backend": 625,
     "framework-specific": 20
   },
@@ -1400,62 +1400,162 @@
     {
       "id": "CoverPresenterTests.Enabling_dimming_during_the_initial_decode_requests_the_floor_too",
       "source": "tests/Winnow.Tests/CoverPresenterTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/artwork-lifetime.spec.ts",
+          "case": "desktop merge thumbnails toggle dormancy during decoding and after a warm hit without another image request"
+        }
+      ],
+      "reason": "The same mid-decode preference change enables the dormant appearance on actual merge thumbnails. Chromium composes that appearance with a CSS filter over one decoded image, so no second floor bitmap is needed. All thumbnails become ready, preserve their sources through toggles and release their leases."
     },
     {
       "id": "CoverPresenterTests.Merge_thumbnails_request_the_floor_only_when_dimming_is_enabled",
       "source": "tests/Winnow.Tests/CoverPresenterTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/artwork-lifetime.spec.ts",
+          "case": "desktop merge thumbnails toggle dormancy during decoding and after a warm hit without another image request"
+        }
+      ],
+      "reason": "A warm merge thumbnail reuses its existing pixels; disabled dimming computes to no filter, enabling it restores the dormant treatment, and neither state duplicates image requests. Detach leaves zero live leases and reattach uses the same warm 160px bucket. Fullscreen merge review has text/member sheets rather than this desktop thumbnail surface."
     },
     {
       "id": "CoverPresenterTests.Recycling_the_wall_tile_leaves_the_feed_cards_art_alone",
       "source": "tests/Winnow.Tests/CoverPresenterTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/artwork.test.tsx",
+          "case": "recycling a wall leaves the feed image alive and releasing both leaves only the memory cache"
+        },
+        {
+          "file": "tests/electron/artwork-lifetime.spec.ts",
+          "case": "wall keeps its ready pixels during an upgrade while the feed retains its own image"
+        }
+      ],
+      "reason": "The original 148px wall and 108px feed share one 160px image. Recycling or detaching the wall clears only its source; the feed remains ready with the same image. Both native presentation paths verify independent visible ownership."
     },
     {
       "id": "CoverPresenterTests.A_smaller_request_from_another_surface_does_not_shrink_the_walls_art",
       "source": "tests/Winnow.Tests/CoverPresenterTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/artwork.test.tsx",
+          "case": "a smaller feed request cannot change the wall image or its larger size bucket"
+        }
+      ],
+      "reason": "The source 300px wall and 108px feed request separate 320px and 160px buckets. Their distinct decoded image sources remain independent, with two live slots until unmount."
     },
     {
       "id": "CoverPresenterTests.A_small_result_arriving_after_a_large_one_never_downgrades_the_surface",
       "source": "tests/Winnow.Tests/CoverPresenterTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/artwork.test.tsx",
+          "case": "a late small result and a later density shrink cannot downgrade a realized larger image"
+        },
+        {
+          "file": "tests/electron/artwork-lifetime.spec.ts",
+          "case": "wall keeps its ready pixels during an upgrade while the feed retains its own image"
+        }
+      ],
+      "reason": "A 320px result wins before a deferred 160px result; the canceled small result cannot publish or cache its bytes. Later shrinking preserves the larger ready source without another backend read. Native desktop/fullscreen frames keep the existing image visible throughout a pending upgrade."
     },
     {
       "id": "CoverPresenterTests.A_load_that_lands_after_recycling_cannot_paint_the_next_game",
       "source": "tests/Winnow.Tests/CoverPresenterTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/artwork.test.tsx",
+          "case": "an old game response arriving after recycling cannot paint or cache into its replacement"
+        }
+      ],
+      "reason": "Rebinding a pending 160px request to another game cancels its request ID. A late old response creates no object URL and leaves the replacement loading until its own response arrives."
     },
     {
       "id": "CoverPresenterTests.A_memory_hit_applies_without_waiting_and_is_not_asked_for_twice",
       "source": "tests/Winnow.Tests/CoverPresenterTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/artwork.test.tsx",
+          "case": "reuses valid cached bytes on remount but waits for the new image element to load"
+        },
+        {
+          "file": "tests/electron/artwork-lifetime.spec.ts",
+          "case": "first layout uses warm display pixels and fit, dormancy and selection preserve the image"
+        }
+      ],
+      "reason": "The warm image source attaches synchronously on remount with no second state or image read. Chromium's new element still reports its own load event; native first-layout tests confirm the warmed 480px source, retained element and zero duplicate requests through fit, selection, dimming and reattachment."
     },
     {
       "id": "CoverPresenterTests.Releasing_a_surface_drops_its_lease_so_the_memory_cache_is_the_only_owner",
       "source": "tests/Winnow.Tests/CoverPresenterTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/artwork.test.tsx",
+          "case": "recycling a wall leaves the feed image alive and releasing both leaves only the memory cache"
+        },
+        {
+          "file": "tests/electron/artwork-lifetime.spec.ts",
+          "case": "wall keeps its ready pixels during an upgrade while the feed retains its own image"
+        }
+      ],
+      "reason": "Releasing one of two shared consumers leaves one live slot. Releasing the last clears its DOM source and leaves zero live slots while the bounded memory cache retains warm pixels. Native desktop and fullscreen also assert the one-to-zero ownership sequence."
     },
     {
       "id": "CoverPresenterTests.A_dimming_wall_asks_for_both_layers",
       "source": "tests/Winnow.Tests/CoverPresenterTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/artwork-lifetime.spec.ts",
+          "case": "dormancy changes during initial decoding reuse one vivid image and never request a floor bitmap"
+        }
+      ],
+      "reason": "The dormant visual treatment is composed by Chromium over one vivid decode. Both native cover surfaces show a non-none dormant filter and a ready source, without allocating Avalonia's separate floor layer. This preserves the source's visible dimming contract with the renderer's own mechanism."
     },
     {
       "id": "CoverPresenterTests.A_wall_with_dimming_off_asks_for_the_vivid_layer_only",
       "source": "tests/Winnow.Tests/CoverPresenterTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/artwork-lifetime.spec.ts",
+          "case": "dormancy changes during initial decoding reuse one vivid image and never request a floor bitmap"
+        }
+      ],
+      "reason": "Both native surfaces start with dimming disabled, exactly one vivid request and no computed filter. Toggling after decode keeps that same ready source; no hidden floor image is fetched."
     },
     {
       "id": "CoverPresenterTests.Turning_dimming_on_asks_for_the_floor_at_the_width_on_screen",
       "source": "tests/Winnow.Tests/CoverPresenterTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/artwork-lifetime.spec.ts",
+          "case": "dormancy changes during initial decoding reuse one vivid image and never request a floor bitmap"
+        }
+      ],
+      "reason": "Enabling dimming on already-ready desktop/fullscreen covers immediately applies the dormant filter while preserving the visible 480px source and ready state. CSS composition avoids another decode and never blanks the cover."
     },
     {
       "id": "CoverPresenterTests.Turning_dimming_off_does_not_ask_again",
       "source": "tests/Winnow.Tests/CoverPresenterTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/artwork-lifetime.spec.ts",
+          "case": "dormancy changes during initial decoding reuse one vivid image and never request a floor bitmap"
+        }
+      ],
+      "reason": "Disabling dimming computes to no filter, retains the same ready image and leaves the request count at one on desktop and fullscreen."
     },
     {
       "id": "CoverSelectionPolicyTests.User_art_survives_pin_and_provider_availability",

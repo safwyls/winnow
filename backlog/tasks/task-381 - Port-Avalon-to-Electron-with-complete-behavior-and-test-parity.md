@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 14:14'
+updated_date: '2026-09-30 14:26'
 labels: []
 dependencies: []
 priority: high
@@ -166,6 +166,8 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 60. Restore the shared desktop sort-button/menu pattern in Library and Merges, including selected indicators, bounded placement, keyboard selection, Escape/outside dismissal and focus restoration; keep fullscreen pickers separate. Centralize static Merges screen copy and add an AST guard matching the original markup contract. Migrate affected sort-control tests and add real native menu interaction/geometry checks on both desktop locations, plus fullscreen regression. Re-run appropriate integrated checks and map the final two MergesSurfaceTests methods only after evidence passes.
 
 61. Complete CoverPresenter source contracts: keep ready cover pixels visible during size upgrades, avoid shrinking a realized surface, isolate concurrent wall/feed and recycled identities, and prove lease release. Preserve CSS dormancy on desktop/fullscreen covers and merge thumbnails without additional bitmap decodes, including toggles during initial loading. Add source-fixture component tests and native image/geometry checks, map only fully evidenced methods, update documentation, run focused and complete Electron regression checks, and commit the verified milestone.
+
+62. Audit original DetailsModalStructureTests and DetailsModalScaleTests against the current visual specification and Electron implementation. Restore remaining prose measure, exact bounds and management-menu ordering where needed. Add native geometry/focus/scroll and semantic ownership checks across desktop and fullscreen, using original window-size fixtures. Classify only assertions tied solely to obsolete Avalonia conversion/resource mechanisms. Keep any broader fullscreen or controller contracts pending until their complete assertions have equivalent evidence.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -330,4 +332,6 @@ Plan 58 verified: final build/typecheck, all 3177 component/live API cases (157 
 Plan 59 verified: build/typecheck, all 3184 component/live API cases (157 files, 50.58s) and all 35 native cases (2.4m) pass. Native matrix includes all 22 Avalon layouts, seven real merge workflows and six surface probes. Desktop Merges has a dedicated plain rail entry with original tooltip, no count and full opacity, stable Details return cursor and Escape back to Library. Fullscreen navigation remains independent. Seven-key desktop behavior includes exact one-act S/Enter/D checks, promotion and clamped Up/Down; Home/End, other keys and modified shortcuts stay with controls. A new app test initially raced fullscreen preparation; existing readiness helper fixes it and all 51 app cases pass. Three source methods completed; inventory 1178 ported, 625 retained backend, 20 framework-specific, 511 pending, 101 partial. Evidence checkpoint-forty-five.md. All AC remain unchecked.
 
 Plan 60 verified: build/typecheck and all 3190 component/live API cases pass in 158 files without skips (51.16s). All 17 final native merge/menu cases pass (51.6s). Earlier affected stages passed 22 Avalon layouts and 20 Library/browse/fullscreen workflows. Updated select helpers and input-only assertions for the shared sort button. Native sequencing exposed a queued scroll dismissing the newly opened menu; anchor-position comparison fixes the actual race. Menu geometry, focus, selected dot and bounds pass at 80/100/140 percent scale; enlarged capture inspected. Static merge markup now binds centralized copy. Two source methods completed; inventory 1180 ported, 625 retained backend, 20 framework-specific, 509 pending, 101 partial. Evidence checkpoint-forty-six.md. All AC stay unchecked; continuing recorded plan 61 cover presentation.
+
+Plan 61 verified: all 49 focused artwork/cache cases, build/typecheck, all 64 native artwork/gallery/cover/feed cases (1.2m), and all 3195 component/live API cases in 158 files without skips (49.94s) pass. Ready pixels survive upgrades and failed upgrades; smaller/later results cannot downgrade a surface. Recycled identities cannot paint late images and independent feed consumers keep their pixels. CSS dormancy toggles during/after decoding use one vivid image on both surfaces; desktop merge thumbnails share the same warm-cache and lease guarantees. Eight native frames remain ready during a held upgrade. Initial source fixtures reproduced two bugs and a test cleanup timeout, all fixed. Twelve source methods complete; inventory 1192 ported, 625 retained backend, 20 framework-specific, 497 pending, 101 partial. Evidence checkpoint-forty-seven.md. All task AC stay unchecked.
 <!-- SECTION:NOTES:END -->

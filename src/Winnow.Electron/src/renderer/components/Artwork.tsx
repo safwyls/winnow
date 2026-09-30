@@ -35,9 +35,10 @@ export function Artwork({
   const view = `${workId}:${hero}`
   const [width, setWidth] = useState(0)
   const [measureRetry, setMeasureRetry] = useState(0)
+  const [upgradeFailed, setUpgradeFailed] = useState(false)
   const [snapshot, setSnapshot] = useState<{
-    signature: string
-    view: string
+    key: ArtworkKey
+    identity: string
     asset: OwnedArtwork | null
     lease: ArtworkLease<OwnedArtwork>
   } | null>(null)
@@ -52,7 +53,8 @@ export function Artwork({
     const measure = () => {
       const pixels = node.getBoundingClientRect().width * (window.devicePixelRatio || 1)
       if (pixels > 0) setWidth(artworkWidth(pixels))
-      if (node.dataset.state === 'error') setMeasureRetry((value) => value + 1)
+      if (node.dataset.state === 'error' || node.dataset.retry === 'true')
+        setMeasureRetry((value) => value + 1)
     }
     measure()
     const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(measure)
@@ -98,22 +100,38 @@ export function Artwork({
     },
   })
   const key = state.data?.selection?.current?.previewKey
+  const identity = key ? JSON.stringify([view, key.provider, key.id, state.data!.selection!.revision]) : ''
+  // A realized surface keeps its best size; recycling starts from the new surface's measured width.
+  const requestWidth = Math.max(
+    width,
+    snapshot?.identity === identity && snapshot.asset && snapshot.asset !== failure ? snapshot.key[3] : 0,
+  )
   const imageKey: ArtworkKey | null =
-    key && width ? ['artwork-image', key.provider, key.id, width, state.data!.selection!.revision] : null
+    key && requestWidth
+      ? ['artwork-image', key.provider, key.id, requestWidth, state.data!.selection!.revision]
+      : null
   const signature = imageKey ? JSON.stringify(imageKey) : ''
   useLayoutEffect(() => {
+    setUpgradeFailed(false)
+    setSnapshot((previous) => (previous?.identity === identity ? previous : null))
     if (!imageKey) {
-      setSnapshot(null)
       return
     }
     const lease = cache.acquire(signature, (signal) => loadArtworkImage(client, imageKey, signal))
     leases.current.add(lease)
     let active = true,
       published = false
+    const retained = snapshot?.identity === identity && snapshot.asset !== failure ? snapshot.asset : null
     const publish = (asset: OwnedArtwork | null) => {
       if (!active) return
       published = true
-      setSnapshot({ signature, view, asset, lease })
+      if (!asset && retained) {
+        lease.release()
+        leases.current.delete(lease)
+        setUpgradeFailed(true)
+        return
+      }
+      setSnapshot({ key: imageKey, identity, asset, lease })
       setFailure(null)
     }
     if (lease.current) publish(lease.current)
@@ -125,7 +143,7 @@ export function Artwork({
         leases.current.delete(lease)
       }
     }
-  }, [cache, client, signature, state.data?.read, view, measureRetry])
+  }, [cache, client, signature, state.data?.read, identity, view, measureRetry])
   useLayoutEffect(
     () => () => {
       if (snapshot) {
@@ -135,8 +153,8 @@ export function Artwork({
     },
     [snapshot],
   )
-  const current = snapshot?.signature === signature && snapshot?.view === view
-  const asset = current ? snapshot.asset : null
+  const current = Boolean(identity && snapshot?.identity === identity)
+  const asset = current ? snapshot!.asset : null
   const failed = Boolean(asset && failure === asset)
   const ready = Boolean(asset && loaded?.view === view && loaded.source === asset.source)
   const loading =
@@ -147,6 +165,7 @@ export function Artwork({
       className={`artwork ${className}`}
       aria-hidden="true"
       data-loading={loading || undefined}
+      data-retry={upgradeFailed || undefined}
       data-state={
         loading
           ? 'loading'
@@ -168,7 +187,7 @@ export function Artwork({
           onError={() => {
             setFailure(asset)
             setLoaded(null)
-            client.removeQueries({ queryKey: imageKey!, exact: true })
+            client.removeQueries({ queryKey: snapshot!.key, exact: true })
           }}
         />
       )}

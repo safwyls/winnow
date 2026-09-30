@@ -88,9 +88,15 @@ export function SortMenu({
     const hide = () => close()
     const scroll = (event: Event) => {
       if (menu.current?.contains(event.target as Node)) return
-      const bounds = trigger.current?.getBoundingClientRect(), previous = anchor.current
+      const bounds = trigger.current?.getBoundingClientRect(),
+        previous = anchor.current
       // A scroll queued before the opening click must not dismiss the newly placed menu.
-      if (bounds && previous && (Math.abs(bounds.top - previous.top) > 0.5 || Math.abs(bounds.left - previous.left) > 0.5)) close(true)
+      if (
+        bounds &&
+        previous &&
+        (Math.abs(bounds.top - previous.top) > 0.5 || Math.abs(bounds.left - previous.left) > 0.5)
+      )
+        close(true)
     }
     document.addEventListener('pointerdown', outside)
     document.addEventListener('focusin', outside)

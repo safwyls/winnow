@@ -11,7 +11,11 @@ const options = [
   { value: 'title', label: 'Title' },
 ]
 it('keeps a portalled menu within the owning dialog focus boundary', () => {
-  render(<div role="dialog" aria-label="Tools"><SortMenu value="title" options={options} onChange={() => {}} /></div>)
+  render(
+    <div role="dialog" aria-label="Tools">
+      <SortMenu value="title" options={options} onChange={() => {}} />
+    </div>,
+  )
   fireEvent.click(screen.getByRole('button', { name: 'Sort · Title' }))
   const menu = screen.getByRole('menu')
   expect(menu.closest('[role="dialog"]')).toBe(screen.getByRole('dialog'))
@@ -107,7 +111,11 @@ it('ignores a queued scroll at the opening position but closes when its anchor m
   fireEvent.scroll(document)
   expect(screen.queryByRole('menu')).not.toBeNull()
   const bounds = trigger.getBoundingClientRect()
-  vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({ ...bounds, top: bounds.top - 20, left: bounds.left })
+  vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({
+    ...bounds,
+    top: bounds.top - 20,
+    left: bounds.left,
+  })
   fireEvent.scroll(document)
   expect(screen.queryByRole('menu')).toBeNull()
   expect(document.activeElement).toBe(trigger)

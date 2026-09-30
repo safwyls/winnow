@@ -45,6 +45,11 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [cover presentation checkpoint](checkpoint-forty-seven.md) records all 3,195
+component/live API cases and 64 native artwork, gallery, cover and feed cases passing.
+Ready pixels survive size upgrades and recycled surfaces remain independent. Twelve
+source methods gain complete evidence; 497 pending and 101 partial methods remain.
+
 The [shared sort checkpoint](checkpoint-forty-six.md) records all 3,190 component/live API
 cases and all 17 final native merge/menu cases passing. Desktop Library and Merges share
 the original compact menu; a queued-scroll race is fixed. Two more source methods are
