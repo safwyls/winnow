@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 14:48'
+updated_date: '2026-09-30 15:00'
 labels: []
 dependencies: []
 priority: high
@@ -170,6 +170,8 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 62. Audit original DetailsModalStructureTests and DetailsModalScaleTests against the current visual specification and Electron implementation. Restore remaining prose measure, exact bounds and management-menu ordering where needed. Add native geometry/focus/scroll and semantic ownership checks across desktop and fullscreen, using original window-size fixtures. Classify only assertions tied solely to obsolete Avalonia conversion/resource mechanisms. Keep any broader fullscreen or controller contracts pending until their complete assertions have equivalent evidence.
 
 63. Audit the remaining outbound-link and Steam harvest script contracts against current production Electron routing and capture. Port exact URI/identifier fixtures and execute capture scripts against sanitized original page fixtures, including script failures and paginator completion. Preserve the independent native sign-in surface and test both entry paths; record source mechanism changes precisely rather than claiming blanket class coverage.
+
+64. Complete the remaining LinkDestinationTests with source-equivalent shared-preference and production Library-to-Details-to-router coverage. Exercise the original reference targets and in-app/browser/store preference matrix, fallback feedback and focus, on desktop and fullscreen. Use isolated fake network responses and OS dispatch recorders with the real backend, and preserve game action authority. Then run the combined native suite at a frozen milestone while auditing remaining controller and fullscreen contracts.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -338,4 +340,6 @@ Plan 60 verified: build/typecheck and all 3190 component/live API cases pass in 
 Plan 61 verified: all 49 focused artwork/cache cases, build/typecheck, all 64 native artwork/gallery/cover/feed cases (1.2m), and all 3195 component/live API cases in 158 files without skips (49.94s) pass. Ready pixels survive upgrades and failed upgrades; smaller/later results cannot downgrade a surface. Recycled identities cannot paint late images and independent feed consumers keep their pixels. CSS dormancy toggles during/after decoding use one vivid image on both surfaces; desktop merge thumbnails share the same warm-cache and lease guarantees. Eight native frames remain ready during a held upgrade. Initial source fixtures reproduced two bugs and a test cleanup timeout, all fixed. Twelve source methods complete; inventory 1192 ported, 625 retained backend, 20 framework-specific, 497 pending, 101 partial. Evidence checkpoint-forty-seven.md. All task AC stay unchecked.
 
 Plan 62 verified: final build/typecheck and all 3201 component/live API cases in 158 files pass without skips (49.74s). All 35 affected native cases passed (2.3m); visual review then corrected desktop-sized fullscreen footer text, and all 15 final native Details cases pass (50.2s). Exact original width/height matrices, populated/empty prose measure, persistent polite refresh feedback, focus return and colors are measured. Technical facts are directly visible and the maintenance order is preserved. Initial stale disclosure/copy assertions and a desktop-only reception assertion applied to fullscreen were corrected. Seven source methods gain behavioral evidence, three CLR converter assertions are explicitly classified; inventory1199ported625retained23framework487pending101partial. Checkpoint-forty-eight.md records evidence. All AC remain unchecked. Continuing recorded plan63 outbound links and Steam harvest scripts.
+
+Plan63 verified: build/typecheck, all247focused cases and all3241component/liveAPI cases in158files pass without skips50.27s. Shared renderer/main reading validation restores HTTP destinations, omits unsafe targets and empty labels, and normalizes dispatch. Steam script errors now return failed probes; pagination requests fresh documents in the same private session. Initial native20/22 passed; two interceptor Cookie-header assumptions were replaced by direct private-session/cookie-jar checks, while actual cache headers remain asserted. All7final native browser/account cases pass20.5s; all15Details cases passed in the first group. Eighteen source methods completed; inventory1217ported625retained23framework469pending101partial. Evidence checkpoint-forty-nine.md. All AC remain unchecked.
 <!-- SECTION:NOTES:END -->

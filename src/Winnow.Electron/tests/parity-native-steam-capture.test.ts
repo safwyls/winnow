@@ -80,6 +80,93 @@ async function capture(browser: Browser, options = {}) {
 }
 
 describe('bounded Steam account capture using sanitized real-page fixtures', () => {
+  it.each(['licenses', 'history'] as const)(
+    'recognizes the original signed-in %s fixture and refuses its login form',
+    async (kind) => {
+      const browser = new Browser(() => ({
+        fixture: kind === 'licenses' ? 'licenses-page1' : 'purchase-history',
+        identity: steamId,
+      }))
+      await browser.loadURL(`https://store.steampowered.com/account/${kind}/`)
+      expect(browser.document.querySelector('#account_pulldown')).not.toBeNull()
+      const before = await browser.webContents.executeJavaScript(steamCaptureScript(kind, 'probe'))
+      expect(before.rows).toBe(kind === 'licenses' ? 14 : 13)
+      expect(before.steamId).toBe(steamId)
+      const password = browser.document.createElement('input')
+      password.type = 'password'
+      browser.document.body.append(password)
+      expect(await browser.webContents.executeJavaScript(steamCaptureScript(kind, 'probe'))).toBeNull()
+    },
+  )
+  it('counts real history rows without the obsolete transactions id and clicks the actual load-more control', async () => {
+    const browser = new Browser(() => ({ fixture: 'purchase-history', identity: steamId }))
+    await browser.loadURL('https://store.steampowered.com/account/history/')
+    expect(browser.document.getElementById('store_transactions')).toBeNull()
+    expect(
+      browser.document.querySelectorAll('table.wallet_history_table tbody tr.wallet_table_row'),
+    ).toHaveLength(13)
+    const more = browser.document.querySelector<HTMLButtonElement>('#load_more_button')!
+    const click = vi.fn()
+    more.onclick = click
+    expect(await browser.webContents.executeJavaScript(steamCaptureScript('history', 'probe'))).toMatchObject(
+      { rows: 13, hasMore: true },
+    )
+    expect(await browser.webContents.executeJavaScript(steamCaptureScript('history', 'more'))).toBe(true)
+    expect(click).toHaveBeenCalledOnce()
+  })
+  it('keeps each captured licence table header once and the final paginator exhausted', async () => {
+    const browser = new Browser((url) => ({
+      fixture: url.includes('/history/')
+        ? 'purchase-history-exhausted'
+        : url.includes('?')
+          ? 'licenses-final-page'
+          : 'licenses-page1',
+      identity: steamId,
+      mutate: (doc) => {
+        for (const span of doc.querySelectorAll('.license_paginator_ctn span'))
+          span.textContent = url.includes('?')
+            ? 'Showing licenses 101-200 of 200'
+            : 'Showing licenses 1-100 of 200'
+      },
+    }))
+    const result = await capture(browser)
+    expect(result.captureOutcome).toBe('captured')
+    const pages = [result.pages!.licensesHtml!, ...result.pages!.additionalLicensesHtml].map((html) =>
+      new DOMParser().parseFromString(html, 'text/html'),
+    )
+    expect(pages).toHaveLength(2)
+    for (const [index, page] of pages.entries()) {
+      expect(page.querySelectorAll('table.account_table')).toHaveLength(1)
+      expect(page.querySelectorAll('table.account_table th.license_date_col')).toHaveLength(1)
+      expect(page.querySelectorAll('table.account_table td.license_date_col')).toHaveLength(
+        index === 0 ? 14 : 3,
+      )
+      expect(page.querySelector('#load_more_button')).toBeNull()
+    }
+    expect(pages[0].querySelector('a.license_paginator_next')).not.toBeNull()
+    expect(pages[1].querySelector('a.license_paginator_next')).toBeNull()
+    expect(pages[1].querySelector('.license_paginator_ctn')!.textContent).toContain('101-200 of 200')
+    expect(result.licensesTruncated).toBe(false)
+    expect(browser.loaded[1]).toContain('/account/licenses/?')
+  })
+  describe.each(['licenses', 'history'] as const)('%s script isolation', (kind) => {
+    it.each(['probe', 'capture', 'more'] as const)(
+      'answers instead of throwing when the page fails during %s',
+      async (action) => {
+        const browser = new Browser(() => ({
+          fixture: kind === 'licenses' ? 'licenses-page1' : 'purchase-history',
+          identity: steamId,
+        }))
+        await browser.loadURL(`https://store.steampowered.com/account/${kind}/`)
+        browser.document.querySelector = () => {
+          throw Error('page changed during read')
+        }
+        await expect(
+          browser.webContents.executeJavaScript(steamCaptureScript(kind, action)),
+        ).resolves.toBeNull()
+      },
+    )
+  })
   it('defaults to a fifteen minute account session before returning no-session without pages', async () => {
     const browser = new Browser()
     browser.loadURL = async () => {

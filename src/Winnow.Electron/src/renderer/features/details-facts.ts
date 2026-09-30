@@ -1,5 +1,6 @@
 import type { GameDetails, UpdateEvent } from '../api/types'
 import { dateLabel } from '../api/client'
+import { readableWebUrl } from '../../shared/external-links'
 
 export interface AcquisitionInput {
   acquiredAt?: string | null
@@ -93,13 +94,7 @@ export function updateHeadline(event: Pick<UpdateEvent, 'title' | 'buildId' | 'k
 }
 
 export function updatePageUrl(value?: string | null): string | null {
-  if (!value || /[\u0000-\u0020\u007f]/.test(value)) return null
-  try {
-    const url = new URL(value)
-    return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password ? url.href : null
-  } catch {
-    return null
-  }
+  return readableWebUrl(value)
 }
 
 export interface RefetchResult {

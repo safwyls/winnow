@@ -1745,7 +1745,11 @@ whose `Text` is bound and which sets no `AutomationProperties.Name` at all.
 
 The folder goes through the launcher's directory entry point as a path, never a `file:` URI.
 
-**Every outbound target is built by `GameLink.Create` and nothing else.** Five schemes are
+**Validate every outbound target before rendering and dispatch.** Avalonia uses
+`GameLink.Create`; Electron shares its reading-link policy in `shared/external-links.ts`
+between the renderer and main process. Electron dispatches Play, Install and other game
+actions through named backend commands bound to library ownership, while reading links
+may open web pages or native store browsing. Five schemes are
 allowed — `https`, `http`, `steam`, `com.epicgames.launcher` and `goggalaxy`, the three
 launcher protocols plus the web — and everything else is refused, including the ones that look
 harmless: `file:`, `javascript:`, `data:`, anything relative, anything carrying a control

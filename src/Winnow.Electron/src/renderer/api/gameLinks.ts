@@ -1,5 +1,6 @@
 import { storeLabel } from './client'
 import type { LibraryGame, UpdateEvent, Workspace } from './types'
+import { createGameLink, readableWebUrl } from '../../shared/external-links'
 
 export interface GameLink {
   label: string
@@ -7,21 +8,7 @@ export interface GameLink {
   detail?: string
 }
 
-function webLink(value?: string | null): string | undefined {
-  if (!value || value.length > 4096 || /[\u0000-\u0020]/.test(value)) return
-  try {
-    const url = new URL(value)
-    if (
-      url.protocol === 'https:' &&
-      !url.username &&
-      !url.password &&
-      !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
-    )
-      return url.href
-  } catch {
-    // Missing or malformed provider URLs do not offer a destination.
-  }
-}
+const webLink = readableWebUrl
 
 export function gameLinks(game: LibraryGame, workspace: Workspace, events: UpdateEvent[] = []): GameLink[] {
   const links: GameLink[] = []
@@ -76,5 +63,10 @@ export function gameLinks(game: LibraryGame, workspace: Workspace, events: Updat
   // IGDB short links use base 36; /games/ takes a slug, not a decimal game ID.
   if (typeof igdbId === 'number' && Number.isSafeInteger(igdbId) && igdbId > 0)
     links.push({ label: 'IGDB', url: `https://www.igdb.com/g/${igdbId.toString(36)}` })
-  return links.filter((link, index) => links.findIndex((other) => other.url === link.url) === index)
+  return links
+    .flatMap((link) => {
+      const validated = createGameLink(link.label, link.url, link.detail)
+      return validated ? [validated] : []
+    })
+    .filter((link, index, all) => all.findIndex((other) => other.url === link.url) === index)
 }

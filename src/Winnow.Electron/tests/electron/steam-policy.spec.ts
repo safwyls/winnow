@@ -72,6 +72,16 @@ for (const mode of ['desktop', 'fullscreen'])
       expect(result.pages.additionalLicensesHtml[0]).toContain('Fixture two')
       expect(result.pages.historyHtml).toContain('Fixture history')
       expect(JSON.stringify(result)).not.toContain('private-fixture-token')
+      const loads = await instance.evaluate(() => (globalThis as any).steamPolicyTest.state.accountRequests)
+      for (const address of [
+        'https://store.steampowered.com/account/licenses/',
+        'https://store.steampowered.com/account/licenses?offset=1',
+        'https://store.steampowered.com/account/history/',
+      ]) {
+        const request = loads.find((value: { url: string }) => value.url === address)
+        expect(request).toMatchObject({ url: address, cache: 'no-cache, no-store', hasSession: true })
+      }
+      expect(JSON.stringify(result)).not.toContain('winnow-fixture-session')
       expect(await instance.evaluate(() => (globalThis as any).steamPolicyTest.state.forbidden)).toEqual([])
     } finally {
       await instance.close()

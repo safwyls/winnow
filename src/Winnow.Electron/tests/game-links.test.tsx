@@ -6,6 +6,8 @@ import { gameLinks } from '../src/renderer/api/gameLinks'
 import { Details, GameLinks } from '../src/renderer/features/Details'
 import type { LibraryGame, Workspace } from '../src/renderer/api/types'
 import type { ApiRequest } from '../src/shared/bridge'
+import { createGameLink, validateExternalUrl } from '../src/shared/external-links'
+import { routeLink } from '../src/main/link-routing'
 
 vi.mock('../src/renderer/components/Artwork', () => ({ Artwork: () => null }))
 afterEach(cleanup)
@@ -44,6 +46,87 @@ const expected = [
 ]
 
 describe('game destinations', () => {
+  it.each([
+    'file:///C:/Windows/System32/cmd.exe',
+    'javascript:alert(1)',
+    'data:text/html;base64,PHNjcmlwdD4=',
+    'vbscript:msgbox(1)',
+    'ms-msdt:/id',
+    'ftp://example.com/x',
+    '/patch-notes',
+    '../notes',
+    'store.steampowered.com/app/440',
+    '',
+    '   ',
+    null,
+    'https://example.com/a\nSet-Cookie: x=1',
+    'https://example.com/a\rb',
+    'https://example.com/a\0b',
+    'https://example.com/a\tb',
+  ])('rejects the original unsafe or relative target before rendering: %s', (url) => {
+    expect(createGameLink('Open', url)).toBeNull()
+    expect(() => validateExternalUrl(url)).toThrow()
+    render(<GameLinks links={[{ label: 'Open', url: url as string }]} />)
+    expect(screen.queryByRole('button')).toBeNull()
+    expect(screen.queryByRole('navigation')).toBeNull()
+  })
+  it.each(['', '   '])('omits an outbound button with an empty label: %s', (label) => {
+    expect(createGameLink(label, 'https://example.com')).toBeNull()
+    render(<GameLinks links={[{ label, url: 'https://example.com' }]} />)
+    expect(screen.queryByRole('button')).toBeNull()
+  })
+  it.each([
+    'https://store.steampowered.com/app/440/Team_Fortress_2/',
+    'HTTP://EXAMPLE.COM:80/patch-notes',
+    'https://example.com/a/../notes',
+  ])('dispatches the URL parser result rather than the supplied spelling: %s', async (url) => {
+    const expected = new URL(url).href
+    const link = createGameLink('Open', url)!
+    expect(link.url).toBe(expected)
+    const external = vi.fn().mockResolvedValue(true)
+    expect(await routeLink(link.url, 'browser', { external, inApp: vi.fn(), hasSteam: () => false })).toEqual(
+      { opened: true },
+    )
+    expect(external).toHaveBeenCalledExactlyOnceWith(expected)
+  })
+  it.each([
+    ['440', true],
+    ['2686630', true],
+    ['', false],
+    ['   ', false],
+    ['44a', false],
+    ['44/../x', false],
+    ['-440', false],
+  ])('uses the original Steam identifier fixture %s only when valid=%s', (providerId, valid) => {
+    const links = gameLinks(game, {
+      ...workspace,
+      works: [],
+      externalIds: [{ releaseId: 2, provider: 'steam', providerId: String(providerId) }],
+    })
+    expect(links.some((link) => link.label === 'Store page')).toBe(valid)
+    if (valid)
+      expect(links.find((link) => link.label === 'Store page')!.url).toBe(
+        `https://store.steampowered.com/app/${providerId}/`,
+      )
+  })
+  it.each(['http://example.com/patch-notes', 'https://example.com/patch-notes'])(
+    'keeps the supplied web destination available in game links: %s',
+    (url) => {
+      const gog = { ...game, entries: [{ ...game.entries[0], store: 'gog' }] }
+      const facts = {
+        ...workspace,
+        works: [],
+        externalIds: [{ releaseId: 2, provider: 'gog', providerId: '123' }],
+        storefronts: { 'gog:123': { storeUrl: url } },
+      }
+      expect(gameLinks(gog, facts).find((link) => link.label === 'GOG store page')?.url).toBe(url)
+      expect(
+        gameLinks(gog, { ...facts, storefronts: {} }, [
+          { id: 1, releaseId: 2, kind: 'announcement', occurredAt: '2026-01-01', url },
+        ]).find((link) => link.label === 'Latest patch notes')?.url,
+      ).toBe(url)
+    },
+  )
   it.each([
     [1942, '1hy'],
     [233, '6h'],

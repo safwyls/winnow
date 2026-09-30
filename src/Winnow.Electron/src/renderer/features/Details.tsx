@@ -27,12 +27,17 @@ import { AddToListButton, orderedLists } from './parity-list-prompt'
 import { DetailsRelationships } from './parity-details-identity'
 import { AvalonDetailsLayout } from './details-layout'
 import { noActionSentence } from '../../shared/game-actions'
+import { createGameLink } from '../../shared/external-links'
 
 const detailScrollPositions = new WeakMap<QueryClient, Map<string, number>>()
 const editorSections = new Set(['Metadata', 'Game match', 'Artwork'])
 
 export function GameLinks({ links }: { links: GameLink[] }) {
   const [error, setError] = useState<unknown>(null)
+  const destinations = links.flatMap((link) => {
+    const validated = createGameLink(link.label, link.url, link.detail)
+    return validated ? [validated] : []
+  })
   async function open(url: string) {
     setError(null)
     try {
@@ -43,12 +48,12 @@ export function GameLinks({ links }: { links: GameLink[] }) {
       )
     }
   }
-  if (!links.length) return null
+  if (!destinations.length) return null
   return (
     <section className="feature-panel game-links">
       <h2>Explore the game</h2>
       <nav aria-label="Game links">
-        {links.map((link) => (
+        {destinations.map((link) => (
           <button key={link.url} title={link.url} onClick={() => void open(link.url)}>
             <span>
               {link.label}

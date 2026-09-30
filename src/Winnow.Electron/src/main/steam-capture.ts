@@ -22,6 +22,7 @@ interface PageSnapshot {
 /** Every invocation checks its own document before reading any account content. */
 export function steamCaptureScript(kind: PageKind, action: 'probe' | 'capture' | 'more'): string {
   return `(() => {
+    try {
     if (location.origin !== 'https://store.steampowered.com' || location.pathname.replace(/^\\/+|\\/+$/g, '').toLowerCase() !== 'account/${kind}') return null;
     if (document.querySelector('input[type="password"]')) return null;
     const kind = ${JSON.stringify(kind)}, action = ${JSON.stringify(action)};
@@ -64,6 +65,7 @@ export function steamCaptureScript(kind: PageKind, action: 'probe' | 'capture' |
     }
     value.html = '<!doctype html><html><body>' + root.innerHTML + '</body></html>';
     return value;
+    } catch { return null; }
   })()`
 }
 
@@ -133,7 +135,9 @@ export async function captureSteamAccountPages(
   const visit = async (url: string, kind: PageKind) => {
     check()
     if (steamCapturePage(url) !== kind) throw new Error('Steam offered an unexpected page; it was not read.')
-    await bounded(browser.loadURL(url))
+    await bounded(
+      browser.loadURL(url, { extraHeaders: 'Cache-Control: no-cache, no-store\nPragma: no-cache' }),
+    )
     while (browser.webContents.isLoading() || steamCapturePage(browser.webContents.getURL()) !== kind)
       await pause()
     const pageGeneration = generation,

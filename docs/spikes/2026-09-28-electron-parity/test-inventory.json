@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 487,
+    "pending": 469,
     "partial": 101,
-    "ported": 1199,
+    "ported": 1217,
     "retained-backend": 625,
     "framework-specific": 23
   },
@@ -2713,42 +2713,106 @@
     {
       "id": "OutboundLinkTests.The_five_allowed_schemes_survive",
       "source": "tests/Winnow.Tests/Enforcement/OutboundLinkTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/game-links.test.tsx",
+          "case": "keeps the supplied web destination available in game links: %s"
+        },
+        {
+          "file": "tests/parity-link-policy.test.ts",
+          "case": "routes %s / %s / %s / %s to %s with fallback %s"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+          "case": "Store_actions_keep_the_measured_launcher_URI_and_action_kind"
+        }
+      ],
+      "reason": "The five protocol families remain functional. HTTP/HTTPS reading and native store browsing use the validated main-process router; Steam, Epic and GOG launch/install URIs are dispatched by named backend ownership actions. The renderer cannot use an arbitrary reading link to launch a game. Backend parity checks verify exact encoded launcher targets and action kinds."
     },
     {
       "id": "OutboundLinkTests.A_scheme_that_is_not_on_the_list_is_refused",
       "source": "tests/Winnow.Tests/Enforcement/OutboundLinkTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/game-links.test.tsx",
+          "case": "rejects the original unsafe or relative target before rendering: %s"
+        }
+      ],
+      "reason": "All original unsafe-scheme, relative/absent-target and control-character fixtures are tested against the shared policy and the actual GameLinks component. Invalid destinations produce neither buttons nor an empty navigation region; main-process validation also refuses them."
     },
     {
       "id": "OutboundLinkTests.A_target_that_is_not_an_absolute_uri_is_refused",
       "source": "tests/Winnow.Tests/Enforcement/OutboundLinkTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/game-links.test.tsx",
+          "case": "rejects the original unsafe or relative target before rendering: %s"
+        }
+      ],
+      "reason": "All original unsafe-scheme, relative/absent-target and control-character fixtures are tested against the shared policy and the actual GameLinks component. Invalid destinations produce neither buttons nor an empty navigation region; main-process validation also refuses them."
     },
     {
       "id": "OutboundLinkTests.A_target_carrying_a_control_character_is_refused",
       "source": "tests/Winnow.Tests/Enforcement/OutboundLinkTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/game-links.test.tsx",
+          "case": "rejects the original unsafe or relative target before rendering: %s"
+        }
+      ],
+      "reason": "All original unsafe-scheme, relative/absent-target and control-character fixtures are tested against the shared policy and the actual GameLinks component. Invalid destinations produce neither buttons nor an empty navigation region; main-process validation also refuses them."
     },
     {
       "id": "OutboundLinkTests.A_link_with_no_label_is_refused",
       "source": "tests/Winnow.Tests/Enforcement/OutboundLinkTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/game-links.test.tsx",
+          "case": "omits an outbound button with an empty label: %s"
+        }
+      ],
+      "reason": "Empty and whitespace-only labels create no destination and render no button."
     },
     {
       "id": "OutboundLinkTests.The_target_that_leaves_is_one_the_framework_parsed_and_re_emitted",
       "source": "tests/Winnow.Tests/Enforcement/OutboundLinkTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/game-links.test.tsx",
+          "case": "dispatches the URL parser result rather than the supplied spelling: %s"
+        }
+      ],
+      "reason": "The source Steam URL plus deliberately noncanonical HTTP and path spellings are parsed by URL. The dispatch adapter receives exactly the re-emitted href, not the supplied spelling."
     },
     {
       "id": "OutboundLinkTests.Epic_percent_escapes_survive_the_round_trip",
       "source": "tests/Winnow.Tests/Enforcement/OutboundLinkTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+          "case": "Store_actions_keep_the_measured_launcher_URI_and_action_kind"
+        }
+      ],
+      "reason": "Both Epic launch and install commands reach the production action dispatcher with the complete namespace%3Acatalog%3Aartifact target intact. Native game actions belong to this backend boundary, not the renderer's reading-link router."
     },
     {
       "id": "OutboundLinkTests.An_appid_is_digits_or_it_is_not_an_appid",
       "source": "tests/Winnow.Tests/Enforcement/OutboundLinkTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/game-links.test.tsx",
+          "case": "uses the original Steam identifier fixture %s only when valid=%s"
+        }
+      ],
+      "reason": "Every source identifier fixture is exercised by production game-link construction. Valid app IDs produce the exact Steam store target; blanks, letters, traversal and negative forms produce no Steam links."
     },
     {
       "id": "ReducedMotionCoverageTests.Every_AXAML_motion_surface_is_in_the_reduced_motion_inventory",
@@ -15313,22 +15377,50 @@
     {
       "id": "SteamHarvestScriptsTests.The_walk_replaces_the_paginator_it_followed",
       "source": "tests/Winnow.Tests/SteamAccount/SteamHarvestScriptsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "keeps each captured licence table header once and the final paginator exhausted"
+        }
+      ],
+      "reason": "Electron captures each licence document separately instead of merging live DOMs. The final document has only its own exhausted paginator, no stale next link, and the aggregate reports complete after contiguous ranges. This preserves the source parser-completion contract without mutating Steam's page."
     },
     {
       "id": "SteamHarvestScriptsTests.The_walk_merges_rows_into_the_table_the_parser_recognises",
       "source": "tests/Winnow.Tests/SteamAccount/SteamHarvestScriptsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "keeps each captured licence table header once and the final paginator exhausted"
+        }
+      ],
+      "reason": "Each captured document retains one recognizable account table and one header, with the original page's 14 and 3 acquisition cells preserved. The API receives the ordered page collection; it never injects a second header or another page's rows into a live Steam table."
     },
     {
       "id": "SteamHarvestScriptsTests.The_walk_asks_steam_for_its_own_next_page",
       "source": "tests/Winnow.Tests/SteamAccount/SteamHarvestScriptsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "Both native account surfaces follow the precise page-supplied offset URL in the same private Chromium session, whose fixture cookie remains available to every account load. The actual requests carry no-cache/no-store headers. The protocol fixture verifies the session cookie jar, not an on-wire Cookie header; no real Steam session or external network is used."
     },
     {
       "id": "SteamHarvestScriptsTests.Every_script_answers_rather_than_throwing_into_the_page",
       "source": "tests/Winnow.Tests/SteamAccount/SteamHarvestScriptsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "answers instead of throwing when the page fails during %s"
+        }
+      ],
+      "reason": "All six generated combinations of licences/history and probe/capture/more execute independently. A throwing page API returns null instead of rejecting into the page. Electron performs chunking and pagination in its host rather than installing persistent page-global helper scripts."
     },
     {
       "id": "SteamPageHarvesterAvailabilityTests.A_console_less_host_is_told_so_rather_than_left_waiting",
@@ -17000,32 +17092,78 @@
     {
       "id": "SteamHarvestScriptSelectorTests.The_row_counter_no_longer_looks_for_an_id_that_is_not_on_the_page",
       "source": "tests/Winnow.Tests/SteamHarvestScriptSelectorTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts real history rows without the obsolete transactions id and clicks the actual load-more control"
+        }
+      ],
+      "reason": "The production script executes against the original sanitized purchase-history fixture. The obsolete transactions ID is absent, all 13 actual wallet rows are counted, the real load-more control is detected, and its handler runs exactly once."
     },
     {
       "id": "SteamHarvestScriptSelectorTests.The_row_counter_uses_the_selectors_the_real_history_page_carries",
       "source": "tests/Winnow.Tests/SteamHarvestScriptSelectorTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts real history rows without the obsolete transactions id and clicks the actual load-more control"
+        }
+      ],
+      "reason": "The production script executes against the original sanitized purchase-history fixture. The obsolete transactions ID is absent, all 13 actual wallet rows are counted, the real load-more control is detected, and its handler runs exactly once."
     },
     {
       "id": "SteamHarvestScriptSelectorTests.The_history_fixture_carries_the_ids_and_classes_the_scripts_target",
       "source": "tests/Winnow.Tests/SteamHarvestScriptSelectorTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "counts real history rows without the obsolete transactions id and clicks the actual load-more control"
+        }
+      ],
+      "reason": "The production script executes against the original sanitized purchase-history fixture. The obsolete transactions ID is absent, all 13 actual wallet rows are counted, the real load-more control is detected, and its handler runs exactly once."
     },
     {
       "id": "SteamHarvestScriptSelectorTests.The_signed_in_probe_targets_a_marker_both_real_pages_carry",
       "source": "tests/Winnow.Tests/SteamHarvestScriptSelectorTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "recognizes the original signed-in %s fixture and refuses its login form"
+        }
+      ],
+      "reason": "Both original pages still contain the signed-in account marker and yield a recognized probe with the fake fixture identity. Adding a password field refuses capture. Electron verifies the intended account path and recognizable account table rather than relying on the global header marker alone."
     },
     {
       "id": "SteamHarvestScriptSelectorTests.The_licences_page_is_paginated_and_the_scripts_know_how_to_see_it",
       "source": "tests/Winnow.Tests/SteamHarvestScriptSelectorTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "keeps each captured licence table header once and the final paginator exhausted"
+        },
+        {
+          "file": "tests/electron/steam-policy.spec.ts",
+          "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+        }
+      ],
+      "reason": "The actual capture follows the page-supplied license paginator, preserves the first page's continuation marker and the final page's exhausted range, and never treats licences as load-more history. Native desktop/fullscreen verification includes normalized paths and the exact second-page URL."
     },
     {
       "id": "SteamHarvestScriptSelectorTests.Every_script_is_a_self_contained_expression_that_catches_its_own_errors",
       "source": "tests/Winnow.Tests/SteamHarvestScriptSelectorTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-native-steam-capture.test.ts",
+          "case": "answers instead of throwing when the page fails during %s"
+        }
+      ],
+      "reason": "All six generated combinations of licences/history and probe/capture/more execute independently. A throwing page API returns null instead of rejecting into the page. Electron performs chunking and pagination in its host rather than installing persistent page-global helper scripts."
     },
     {
       "id": "SteamInstallRefreshTests.Stable_install_and_uninstall_refresh_manifest_only_ownership_without_erasing_history",

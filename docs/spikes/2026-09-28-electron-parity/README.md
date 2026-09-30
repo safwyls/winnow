@@ -45,6 +45,13 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [link and capture checkpoint](checkpoint-forty-nine.md) records all 3,241 component/live
+API cases and seven final native browser/account cases passing. The affected Details matrix
+also passes. Shared link validation preserves HTTP destinations and omits invalid buttons;
+Steam scripts contain page failures and pagination requests fresh documents in the same
+private session. Eighteen source methods gain complete evidence; 469 pending and 101 partial
+methods remain.
+
 The [Details structure checkpoint](checkpoint-forty-eight.md) records all 3,201 component/live
 API cases and all 15 final native Details cases passing. The affected 35-case native group
 also passed before the final fullscreen typography adjustment. Refetch feedback stays outside

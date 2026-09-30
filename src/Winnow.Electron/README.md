@@ -48,6 +48,10 @@ Desktop About keeps its 410px reading measure and the card follows the original 
 caps. Technical facts are visible directly in Library. Refetch metadata closes More and
 reports progress and completion in a persistent footer outside the reading area; fullscreen
 uses its own text scale. Refreshing keeps the selected section and returns focus to More.
+Reading links use the same validation before rendering and dispatch: valid HTTP and HTTPS
+destinations remain available, while invalid targets or empty labels produce no button.
+Steam account capture follows the page's own paginator in the private sign-in session and
+requests fresh documents. Page-script errors leave capture failures for the host to report.
 Updates counts correlated patches per release, using the largest count for linked editions.
 Mark as read preserves confirmed partial saves and retries only the remaining unread releases;
 Show it again restores their flags. The Activity timeline keeps acknowledged history in

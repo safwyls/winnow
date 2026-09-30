@@ -11,7 +11,12 @@ if (!directory || !isAbsolute(directory) || !directory.includes('winnow-electron
 mkdirSync(directory, { recursive: true })
 app.setPath('userData', directory)
 app.setPath('sessionData', join(directory, 'chromium'))
-const state = { external: [] as string[], requests: [] as string[], forbidden: [] as string[] }
+const state = {
+  external: [] as string[],
+  requests: [] as string[],
+  forbidden: [] as string[],
+  accountRequests: [] as { url: string; cache: string | null; hasSession: boolean }[],
+}
 const links = `<h1>Steam policy fixture</h1><a target="_blank" href="https://help.steampowered.com/en/">Valve help</a>
 <a target="_blank" href="https://example.com/support">External help</a>
 <a target="_blank" href="winnow-app://app/index.html">Application URL</a>
@@ -25,12 +30,32 @@ app.whenReady().then(async () => {
   })
   await owner.loadURL('data:text/html,<h1>Steam policy fixture owner</h1>')
   const profile = session.fromPartition('steam-policy-fixture')
+  await profile.cookies.set({
+    url: 'https://store.steampowered.com/',
+    name: 'winnow-fixture-session',
+    value: 'test-only',
+    secure: true,
+    httpOnly: true,
+  })
   profile.setPermissionRequestHandler((_c, _p, callback) => callback(false))
   profile.setPermissionCheckHandler(() => false)
   for (const scheme of ['https', 'http'])
-    profile.protocol.handle(scheme, (request) => {
+    profile.protocol.handle(scheme, async (request) => {
       const url = new URL(request.url)
       state.requests.push(request.url)
+      if (url.hostname === 'store.steampowered.com' && url.pathname.startsWith('/account/'))
+        state.accountRequests.push({
+          url: request.url,
+          cache: request.headers.get('cache-control'),
+          hasSession:
+            browser.webContents.session === profile &&
+            (
+              await browser.webContents.session.cookies.get({
+                url: request.url,
+                name: 'winnow-fixture-session',
+              })
+            ).some((cookie) => cookie.value === 'test-only'),
+        })
       if (!['store.steampowered.com', 'help.steampowered.com'].includes(url.hostname)) {
         state.forbidden.push(request.url)
         return new Response('No external network', { status: 403 })
