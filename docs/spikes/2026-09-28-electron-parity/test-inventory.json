@@ -1,11 +1,11 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 497,
+    "pending": 487,
     "partial": 101,
-    "ported": 1192,
+    "ported": 1199,
     "retained-backend": 625,
-    "framework-specific": 20
+    "framework-specific": 23
   },
   "tests": [
     {
@@ -2127,7 +2127,7 @@
           "case": "stays quiet initially and refreshes snapshots only after a write"
         },
         {
-          "case": "keeps refetch outcome %s in the More menu across close and reopen",
+          "case": "keeps refetch outcome %s in the Details footer across More close and reopen",
           "file": "tests/parity-action-controls.test.tsx"
         }
       ],
@@ -2143,7 +2143,7 @@
           "case": "with no invented percentage and supports the wire enum"
         },
         {
-          "case": "keeps refetch outcome %s in the More menu across close and reopen",
+          "case": "keeps refetch outcome %s in the Details footer across More close and reopen",
           "file": "tests/parity-action-controls.test.tsx"
         }
       ],
@@ -2159,7 +2159,7 @@
           "case": "stays quiet initially and refreshes snapshots only after a write"
         },
         {
-          "case": "keeps refetch outcome %s in the More menu across close and reopen",
+          "case": "keeps refetch outcome %s in the Details footer across More close and reopen",
           "file": "tests/parity-action-controls.test.tsx"
         }
       ],
@@ -2175,7 +2175,7 @@
           "case": "keeps a carried success visible when refreshed details reconstruct the control"
         },
         {
-          "case": "keeps refetch outcome %s in the More menu across close and reopen",
+          "case": "keeps refetch outcome %s in the Details footer across More close and reopen",
           "file": "tests/parity-action-controls.test.tsx"
         }
       ],
@@ -2232,12 +2232,26 @@
     {
       "id": "DetailsModalScaleTests.The_card_takes_half_the_window_between_the_width_it_has_today_and_the_ceiling",
       "source": "tests/Winnow.Tests/DetailsModalScaleTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/details-layout.spec.ts",
+          "case": "desktop Details preserves all original width and height caps and the 410px prose measure"
+        }
+      ],
+      "reason": "Native Electron is resized through the ten exact source widths from 1200 to 7680. Each rendered card is measured against the original half-width/floor/ceiling formula, within Chromium's subpixel rounding."
     },
     {
       "id": "DetailsModalScaleTests.The_card_takes_two_thirds_of_the_window_height_and_never_less_than_it_has_today",
       "source": "tests/Winnow.Tests/DetailsModalScaleTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/details-layout.spec.ts",
+          "case": "desktop Details preserves all original width and height caps and the 410px prose measure"
+        }
+      ],
+      "reason": "All six original heights from 640 to 2160 are exercised. Actual card height equals the 0.667 viewport cap with its 720px floor, further constrained by the original 40px top/bottom margins when the available viewport is shorter."
     },
     {
       "id": "DetailsModalScaleTests.The_width_floor_stays_above_the_cards_own_minimum",
@@ -2247,17 +2261,20 @@
     {
       "id": "DetailsModalScaleTests.A_window_with_no_measured_size_yields_the_shipped_cap",
       "source": "tests/Winnow.Tests/DetailsModalScaleTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "This assertion feeds zero, negative, NaN and infinity into Avalonia's ScaledLength binding converter before window layout. Electron has no scalar measurement binding or unmeasured-window callback: Chromium resolves viewport units when a native window attaches. Finite rendered geometry and the shipped cap floors are verified with the complete original real-window matrix; invalid CLR converter inputs have no corresponding UI input."
     },
     {
       "id": "DetailsModalScaleTests.A_value_that_is_not_a_length_yields_the_shipped_cap",
       "source": "tests/Winnow.Tests/DetailsModalScaleTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "The original assertion calls IValueConverter.Convert with null and a CLR target type. Electron uses CSS viewport lengths with no boxed-object conversion interface. Browser layout at the actual source window sizes is checked separately."
     },
     {
       "id": "DetailsModalScaleTests.The_card_is_never_resized_back_into_the_window",
       "source": "tests/Winnow.Tests/DetailsModalScaleTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "This asserts that Avalonia IValueConverter.ConvertBack throws NotSupportedException. CSS size constraints have no reverse binding method. The native geometry matrix confirms that opening and laying out the Details card leaves the explicitly requested viewport dimensions intact."
     },
     {
       "id": "DiagnosticLoggingTests.Startup_fault_is_persisted_without_a_host_even_when_its_normal_sink_is_open",
@@ -2594,7 +2611,18 @@
     {
       "id": "DetailsModalStructureTests.The_refetch_status_is_a_bound_text_live_region",
       "source": "tests/Winnow.Tests/Enforcement/DetailsModalStructureTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "keeps a polite refetch footer outside the reading area while More closes and %s arrives"
+        },
+        {
+          "file": "tests/electron/details-layout.spec.ts",
+          "case": "refetch feedback in a persistent polite footer"
+        }
+      ],
+      "reason": "Desktop and fullscreen update the same text-bearing polite status node, without an aria-label override. Native tests hold the real IPC request, close/reopen More, scroll the reading area, and complete success/refusal without changing the selected tab. The footer stays outside that scroll area and retains focus on More."
     },
     {
       "id": "DetailsModalStructureTests.The_panel_still_has_exactly_one_popup",
@@ -2604,7 +2632,14 @@
     {
       "id": "DetailsModalStructureTests.The_menu_carries_five_rows_in_the_settled_order",
       "source": "tests/Winnow.Tests/Enforcement/DetailsModalStructureTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "keeps technical facts visible in Library and the five maintenance actions in their settled order"
+        }
+      ],
+      "reason": "Both surfaces locate actual rendered controls and verify Open install folder, Refetch metadata, Wrong game?, Edit details and Hide in the source order. As in the original assertion, additional outbound/artwork actions are allowed."
     },
     {
       "id": "DetailsModalStructureTests.Every_bounded_scroll_region_clears_its_own_bar",
@@ -2619,7 +2654,14 @@
     {
       "id": "DetailsModalStructureTests.The_scaling_resources_carry_the_measured_numbers",
       "source": "tests/Winnow.Tests/Enforcement/DetailsModalStructureTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/details-layout.spec.ts",
+          "case": "desktop Details preserves all original width and height caps and the 410px prose measure"
+        }
+      ],
+      "reason": "Actual Chromium layout covers every original width and height fixture: the width cap is half the viewport with an 860px floor and 1582px ceiling; the height cap is 0.667 of the viewport with a 720px floor. Available space retains the 40px outer margins. Screenshots remain in the separate gallery; these caps belong only to the Details card."
     },
     {
       "id": "DetailsModalStructureTests.The_strip_stays_and_the_hero_is_gone",
@@ -2629,12 +2671,34 @@
     {
       "id": "DetailsModalStructureTests.The_prose_runs_take_the_reading_measure",
       "source": "tests/Winnow.Tests/Enforcement/DetailsModalStructureTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/details-layout.spec.ts",
+          "case": "desktop Details preserves all original width and height caps and the 410px prose measure"
+        },
+        {
+          "file": "tests/electron/details-layout.spec.ts",
+          "case": "desktop Details placeholder keeps the same prose measure and primary ink"
+        }
+      ],
+      "reason": "Native layout checks both populated About prose and the absent-description placeholder at the source's 410px measure, with primary text ink. Fullscreen retains its separate wider reading layout."
     },
     {
       "id": "DetailsModalStructureTests.Reception_precedes_about_and_technical_facts_are_not_disclosed",
       "source": "tests/Winnow.Tests/Enforcement/DetailsModalStructureTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-action-controls.test.tsx",
+          "case": "renders attributed reception and lifecycle evidence in the original reading surfaces"
+        },
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "keeps technical facts visible in Library and the five maintenance actions in their settled order"
+        }
+      ],
+      "reason": "The desktop DOM puts compact reception ahead of About. Installation paths and external identifiers appear directly in Library, without a details disclosure, on both surfaces. Fullscreen reception stays in its dedicated About reading page, as specified for that independent composition."
     },
     {
       "id": "InteractiveControlNameTests.List_and_filter_names_follow_counts_and_list_renames",

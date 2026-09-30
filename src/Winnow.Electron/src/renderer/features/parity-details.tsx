@@ -428,7 +428,15 @@ export function AcquisitionSummary({
   )
 }
 
-export function LibraryFacts({ game, details }: { game?: LibraryGame; details?: GameDetails }) {
+export function LibraryFacts({
+  game,
+  details,
+  showTechnicalFacts = false,
+}: {
+  game?: LibraryGame
+  details?: GameDetails
+  showTechnicalFacts?: boolean
+}) {
   const facts = details as DetailFacts | undefined
   const workspace = useWorkspace()
   const command = useCommand()
@@ -436,30 +444,44 @@ export function LibraryFacts({ game, details }: { game?: LibraryGame; details?: 
     <>
       <section className="feature-panel">
         <h2>Your library records</h2>
-        {facts?.ownerships?.map((entry) => (
-          <article className="metadata-row" key={entry.id}>
-            <div>
-              <h3>{storeLabel(entry.store)}</h3>
-              <AcquisitionSummary ownerships={[entry]} />
-              <details>
-                <summary>Installation & identifiers</summary>
-                <p>{entry.installPath ?? 'Installation path not recorded'}</p>
-                <InstallFolderButton
-                  ownershipId={entry.id}
-                  installed={game?.entries.find((copy) => copy.ownershipId === entry.id)?.installed}
-                  installPath={entry.installPath}
-                />
-                {workspace.data?.externalIds
-                  .filter((id) => id.releaseId === entry.releaseId)
-                  .map((id) => (
-                    <p key={`${id.provider}:${id.providerId}`}>
-                      {id.provider}: {id.providerId}
-                    </p>
-                  ))}
-              </details>
-            </div>
-          </article>
-        ))}
+        {facts?.ownerships?.map((entry) => {
+          const technicalFacts = (
+            <>
+              <p>{entry.installPath ?? 'Installation path not recorded'}</p>
+              <InstallFolderButton
+                ownershipId={entry.id}
+                installed={game?.entries.find((copy) => copy.ownershipId === entry.id)?.installed}
+                installPath={entry.installPath}
+              />
+              {workspace.data?.externalIds
+                .filter((id) => id.releaseId === entry.releaseId)
+                .map((id) => (
+                  <p key={`${id.provider}:${id.providerId}`}>
+                    {id.provider}: {id.providerId}
+                  </p>
+                ))}
+            </>
+          )
+          return (
+            <article className="metadata-row" key={entry.id}>
+              <div>
+                <h3>{storeLabel(entry.store)}</h3>
+                <AcquisitionSummary ownerships={[entry]} />
+                {showTechnicalFacts ? (
+                  <section aria-label="Technical facts">
+                    <h4>Technical facts</h4>
+                    {technicalFacts}
+                  </section>
+                ) : (
+                  <details>
+                    <summary>Installation & identifiers</summary>
+                    {technicalFacts}
+                  </details>
+                )}
+              </div>
+            </article>
+          )
+        })}
         {!facts?.ownerships?.length && <Empty>No acquisition records available.</Empty>}
         {game?.bucket === 'derelict' && (
           <button

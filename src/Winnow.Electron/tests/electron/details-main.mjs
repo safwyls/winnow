@@ -4,6 +4,19 @@ globalThis.fetch = async (input, init) => {
   const url = new URL(input instanceof Request ? input.url : input)
   if (
     url.hostname === '127.0.0.1' &&
+    init?.method === 'POST' &&
+    /^\/api\/v1\/games\/\d+\/refetch$/.test(url.pathname) &&
+    globalThis.__detailsHoldRefetch
+  ) {
+    return new Promise((resolve) => {
+      globalThis.__detailsFinishRefetch = (outcome) => {
+        globalThis.__detailsFinishRefetch = undefined
+        resolve(Response.json({ outcome }))
+      }
+    })
+  }
+  if (
+    url.hostname === '127.0.0.1' &&
     (!init?.method || init.method === 'GET') &&
     globalThis.__detailsHero &&
     /^\/api\/v1\/works\/\d+\/backdrop$/.test(url.pathname)
@@ -28,10 +41,11 @@ globalThis.fetch = async (input, init) => {
       games: body.games.map((game) => ({
         ...game,
         title: `${game.title}: The Definitive Collector's Edition — A Journey Beyond the Forgotten Kingdom`,
-        summary:
-          'Explore a changing world, meet its people, and find your own way through a forgotten kingdom. '.repeat(
-            60,
-          ),
+        summary: globalThis.__detailsPlaceholder
+          ? null
+          : 'Explore a changing world, meet its people, and find your own way through a forgotten kingdom. '.repeat(
+              60,
+            ),
         publisher: 'A Studio with a Long but Readable Name',
       })),
     })

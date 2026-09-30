@@ -45,6 +45,13 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [Details structure checkpoint](checkpoint-forty-eight.md) records all 3,201 component/live
+API cases and all 15 final native Details cases passing. The affected 35-case native group
+also passed before the final fullscreen typography adjustment. Refetch feedback stays outside
+the reading area, desktop caps and prose match the original measurements, and technical facts
+remain visible. Seven methods gain behavioral evidence and three retired CLR converter
+assertions receive explicit classifications; 487 pending and 101 partial methods remain.
+
 The [cover presentation checkpoint](checkpoint-forty-seven.md) records all 3,195
 component/live API cases and 64 native artwork, gallery, cover and feed cases passing.
 Ready pixels survive size upgrades and recycled surfaces remain independent. Twelve

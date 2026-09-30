@@ -18,7 +18,7 @@
     max-width: none;
     max-height: none;
     padding: 0;
-    height: min(calc(100dvh - 80px), max(720px, 66.6667dvh));
+    height: min(calc(100dvh - 80px), max(720px, 66.7dvh));
     overflow: hidden;
     border: 1px solid var(--line);
     border-radius: 12px;
@@ -196,6 +196,19 @@
     color: var(--accent-foreground, var(--accent));
     justify-content: start;
   }
+  .avalon-details.desktop .game-summary {
+    max-width: 410px;
+  }
+  .detail-refetch-status {
+    flex: 0 0 auto;
+    margin: 0 28px;
+    padding: 10px 0;
+    color: var(--muted);
+    font-size: calc(12px * var(--detail-scale, 1));
+  }
+  .detail-refetch-status[data-problem='true'] {
+    color: var(--avalon-amber-foreground, var(--avalon-amber));
+  }
   .avalon-details .detail-text-link:focus-visible {
     outline: 0;
     text-decoration: underline;
@@ -311,6 +324,10 @@
     font-size: calc(clamp(36px, 3.333vw, 64px) * var(--theme-text-scale, 1));
   }
   .avalon-shell .avalon-details.fullscreen .detail-support {
+    font-size: calc(clamp(15px, 1.146vw, 22px) * var(--detail-scale));
+  }
+  .avalon-shell .avalon-details.fullscreen .detail-refetch-status {
+    margin-inline: 0;
     font-size: calc(clamp(15px, 1.146vw, 22px) * var(--detail-scale));
   }
   .avalon-shell .avalon-details.fullscreen .avalon-details-actions {

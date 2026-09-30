@@ -174,7 +174,7 @@ test('fullscreen action opens a child editor once and right-click respects the r
   await more.click()
   await page
     .getByRole('dialog', { name: 'More game actions', exact: true })
-    .getByRole('button', { name: 'Edit metadata…', exact: true })
+    .getByRole('button', { name: 'Edit details', exact: true })
     .click()
   await expect(page.locator('.avalon-actions-panel')).toHaveCount(0)
   await expect(page.getByRole('dialog')).toHaveCount(1)

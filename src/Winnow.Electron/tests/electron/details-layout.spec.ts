@@ -97,7 +97,7 @@ for (const [width, height] of [
     await details.getByRole('tab', { name: 'Overview', exact: true }).click()
     await expect.poll(() => reading.evaluate((node) => node.scrollTop)).toBe(200)
     await details.getByRole('button', { name: 'More', exact: true }).click()
-    await details.getByRole('button', { name: 'Edit metadata…', exact: true }).click()
+    await details.getByRole('button', { name: 'Edit details', exact: true }).click()
     await expect(page.locator('.metadata-dialog').getByLabel('Name', { exact: true })).toBeFocused()
     await page.keyboard.press('Escape')
     await expect(details.getByRole('tab', { name: 'Overview', exact: true })).toHaveAttribute(
@@ -234,4 +234,165 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       })
       .click()
   })
+test('desktop Details preserves all original width and height caps and the 410px prose measure', async () => {
+  test.setTimeout(60000)
+  await surface('desktop', 1920, 1080)
+  await fillLibrarySearch(page, '')
+  await page.locator('.avalon-cover').first().click()
+  const details = page.locator('.avalon-details.desktop')
+  await details.getByRole('tab', { name: 'Overview', exact: true }).click()
+  const sizes = [
+    ...[1200, 1280, 1600, 1720, 1920, 2560, 3164, 3440, 3840, 7680].map((width) => [width, 1080]),
+    ...[640, 820, 900, 1080, 1440, 2160].map((height) => [1920, height]),
+  ]
+  for (const [width, height] of sizes) {
+    await application.evaluate(
+      ({ BrowserWindow }, [width, height]) => {
+        BrowserWindow.getAllWindows()[0]!.setContentSize(width, height)
+      },
+      [width, height],
+    )
+    await expect.poll(() => page.evaluate(() => [innerWidth, innerHeight])).toEqual([width, height])
+    const expectedWidth = Math.min(width - 80, Math.max(860, Math.min(1582, width / 2)))
+    const expectedHeight = Math.min(height - 80, Math.max(720, height * 0.667))
+    await expect
+      .poll(
+        async () => {
+          const bounds = await details.boundingBox()
+          return (
+            Math.abs(bounds!.width - expectedWidth) < 0.05 && Math.abs(bounds!.height - expectedHeight) < 0.05
+          )
+        },
+        { message: `${width}×${height} retains the original measured cap` },
+      )
+      .toBe(true)
+    const box = (await details.boundingBox())!
+    expect(box.x).toBeGreaterThanOrEqual(39.99)
+    expect(box.y).toBeGreaterThanOrEqual(39.99)
+    const prose = details.locator('.game-summary')
+    await expect(prose).toHaveCSS('max-width', '410px')
+    expect((await prose.boundingBox())!.width).toBeLessThanOrEqual(410)
+    expect(await prose.evaluate((node) => getComputedStyle(node).color)).toBe(
+      await details.evaluate((node) => getComputedStyle(node).color),
+    )
+    const reading = details.locator('.avalon-details-reading')
+    await expect(reading).toHaveCSS('overflow-y', 'auto')
+    await expect(reading).toHaveCSS('scrollbar-gutter', 'stable')
+    expect(
+      await reading.evaluate((node) => parseFloat(getComputedStyle(node).paddingRight)),
+    ).toBeGreaterThanOrEqual(20)
+  }
+  await details.getByRole('button', { name: 'Close game details', exact: true }).click()
+})
+
+test('desktop Details placeholder keeps the same prose measure and primary ink', async () => {
+  await application.evaluate(() => {
+    ;(globalThis as unknown as { __detailsPlaceholder: boolean }).__detailsPlaceholder = true
+  })
+  try {
+    await page.reload()
+    await expect(page.locator('.avalon-cover').first()).toBeVisible()
+    await surface('desktop', 1200, 640)
+    await page.locator('.avalon-cover').first().click()
+    const details = page.locator('.avalon-details.desktop')
+    const prose = details.locator('.game-summary')
+    await expect(prose).toHaveCSS('max-width', '410px')
+    expect(await prose.textContent()).not.toContain('Explore a changing world')
+    expect(await prose.evaluate((node) => getComputedStyle(node).color)).toBe(
+      await details.evaluate((node) => getComputedStyle(node).color),
+    )
+    await details.getByRole('button', { name: 'Close game details', exact: true }).click()
+  } finally {
+    await application.evaluate(() => {
+      ;(globalThis as unknown as { __detailsPlaceholder: boolean }).__detailsPlaceholder = false
+    })
+    await page.reload()
+    await expect(page.locator('.avalon-cover').first()).toBeVisible()
+  }
+})
+
+for (const mode of ['desktop', 'fullscreen'] as const)
+  for (const outcome of ['Updated', 'Unreachable'] as const)
+    test(`${mode} Details keeps ${outcome} refetch feedback in a persistent polite footer`, async ({}, info) => {
+      await surface(mode, 1920, 1080)
+      await fillLibrarySearch(page, '')
+      await application.evaluate(() => {
+        ;(globalThis as unknown as { __detailsHoldRefetch: boolean }).__detailsHoldRefetch = true
+      })
+      try {
+        await page
+          .locator('.avalon-cover')
+          .nth(outcome === 'Updated' ? 0 : 1)
+          .click()
+        const details = page.locator('.avalon-details')
+        await details.getByRole('tab', { name: 'Library', exact: true }).click()
+        const more = details.getByRole('button', { name: 'More', exact: true })
+        const header = (await details.locator('.avalon-details-header').boundingBox())!
+        await more.click()
+        await page.getByRole('button', { name: 'Refetch metadata', exact: true }).click()
+        const status = details.locator('.detail-refetch-status')
+        await expect(status).toHaveText('Refetching…')
+        await expect(status).toHaveAttribute('role', 'status')
+        await expect(status).toHaveAttribute('aria-live', 'polite')
+        await expect(status).not.toHaveAttribute('aria-label')
+        expect(
+          await status.evaluate((node) => parseFloat(getComputedStyle(node).fontSize)),
+        ).toBeGreaterThanOrEqual(mode === 'fullscreen' ? 22 : 12)
+        await expect(page.locator('.avalon-details-menu,.avalon-actions-body')).toHaveCount(0)
+        await expect(more).toBeFocused()
+        expect(await status.evaluate((node) => !!node.closest('.avalon-details-reading'))).toBe(false)
+        const footer = (await status.boundingBox())!
+        await details.locator('.avalon-details-reading').evaluate((node) => {
+          node.scrollTop = node.scrollHeight
+        })
+        expect((await status.boundingBox())!.y).toBe(footer.y)
+        await more.click()
+        await expect(page.getByRole('button', { name: 'Refetch metadata', exact: true })).toBeDisabled()
+        await page.keyboard.press('Escape')
+        await expect(more).toBeFocused()
+        await application.evaluate(({}, outcome) => {
+          const target = globalThis as unknown as { __detailsFinishRefetch?: (outcome: string) => void }
+          if (!target.__detailsFinishRefetch) throw Error('No held refetch request')
+          target.__detailsFinishRefetch(outcome)
+        }, outcome)
+        await expect(status).toHaveText(
+          outcome === 'Updated' ? 'Metadata updated.' : 'A source could not be reached.',
+        )
+        await expect(details.getByRole('tab', { name: 'Library', exact: true })).toHaveAttribute(
+          'aria-selected',
+          'true',
+        )
+        expect((await details.locator('.avalon-details-header').boundingBox())!.y).toBe(header.y)
+        expect(
+          await status.evaluate((node) => {
+            const reference = document.createElement('span')
+            reference.style.color =
+              node.getAttribute('data-problem') === 'true'
+                ? 'var(--avalon-amber-foreground,var(--avalon-amber))'
+                : 'var(--muted)'
+            node.parentElement!.append(reference)
+            const matches = getComputedStyle(reference).color === getComputedStyle(node).color
+            reference.remove()
+            return matches
+          }),
+        ).toBe(true)
+        await page.screenshot({ path: info.outputPath(`${mode}-${outcome}-footer.png`) })
+        await page
+          .getByRole('button', {
+            name: mode === 'desktop' ? 'Close game details' : 'B · Back to Library',
+            exact: true,
+          })
+          .click()
+      } finally {
+        await application.evaluate(() => {
+          const target = globalThis as unknown as {
+            __detailsHoldRefetch: boolean
+            __detailsFinishRefetch?: (outcome: string) => void
+          }
+          target.__detailsFinishRefetch?.('Unreachable')
+          target.__detailsHoldRefetch = false
+        })
+      }
+    })
+
 test('Details emits no uncaught renderer errors', () => expect(errors).toEqual([]))

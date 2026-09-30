@@ -17,7 +17,13 @@ import { Artwork } from '../components/Artwork'
 import { EntryActions, GameLinks, HideGame, ListMembership } from './Details'
 import { IgdbMatch, LibraryFacts, Screenshots, UpdateSignals } from './parity-details'
 import { MetadataDialog } from './metadata-dialog'
-import { ReceptionLine, MetadataRefresh, LifecycleEvidence } from './details-presentation'
+import {
+  ReceptionLine,
+  MetadataRefreshButton,
+  MetadataRefreshStatus,
+  useMetadataRefresh,
+  LifecycleEvidence,
+} from './details-presentation'
 import { DetailsRelationships } from './parity-details-identity'
 import { AddToListButton } from './parity-list-prompt'
 import { ActivityTimeline } from './activity-timeline'
@@ -76,6 +82,7 @@ export function AvalonDetailsLayout({
     workspace = useWorkspace(),
     details = useDetails(workId)
   const preferences = useApiQuery<{ promptAfterPlay: boolean }>('journal.preferences.get')
+  const refresh = useMetadataRefresh(workId)
   const game = detailsGame(workId, library.data?.games ?? [], workspace.data)
   const provisionalTitle = workspace.data?.works.find((work) => work.id === game?.workId)?.nameIsProvisional
   const [section, setSection] = useState<string>('Overview')
@@ -398,7 +405,7 @@ export function AvalonDetailsLayout({
           <Achievements game={game} details={details.data} />
         </section>
         <ListMembership workId={workId} mode={mode} />
-        <LibraryFacts game={game} details={details.data} />
+        <LibraryFacts game={game} details={details.data} showTechnicalFacts />
         {game && <DetailsRelationships game={game} mode={mode} />}
         {game && workspace.data && (
           <GameLinks links={gameLinks(game, workspace.data, details.data?.events)} />
@@ -483,6 +490,7 @@ export function AvalonDetailsLayout({
                     : setTool(next)
               }
               workId={workId}
+              refresh={refresh}
               gameTitle={game?.title ?? 'this game'}
               onHidden={onClose}
               links={links}
@@ -551,6 +559,7 @@ export function AvalonDetailsLayout({
       >
         {panel}
       </div>
+      <MetadataRefreshStatus state={refresh} className="detail-refetch-status" polite />
       {editing != null && <JournalEditor sessionId={editing} onClose={() => setEditing(null)} />}
       {metadataOpen && (
         <MetadataDialog
@@ -641,6 +650,7 @@ function MoreActions({
   buttonRef,
   onChoose,
   workId,
+  refresh,
   gameTitle,
   onHidden,
   links,
@@ -654,6 +664,7 @@ function MoreActions({
   buttonRef: React.RefObject<HTMLButtonElement | null>
   onChoose(tool: Tool): void
   workId: number
+  refresh: ReturnType<typeof useMetadataRefresh>
   gameTitle: string
   onHidden?(): void
   links: GameLink[]
@@ -689,10 +700,16 @@ function MoreActions({
       <GameLinks links={links} />
       {management}
       {folder}
-      <MetadataRefresh workId={workId} />
+      <MetadataRefreshButton
+        state={refresh}
+        onInvoked={() => {
+          setOpen(false)
+          buttonRef.current?.focus({ preventScroll: true })
+        }}
+      />
       {tools.map((tool) => {
         const label =
-          tool === 'Game match' ? 'Wrong game?' : tool === 'Metadata' ? 'Edit metadata…' : 'Artwork…'
+          tool === 'Game match' ? 'Wrong game?' : tool === 'Metadata' ? 'Edit details' : 'Artwork…'
         const choose = () => {
           skipRestore.current = true
           setOpen(false)

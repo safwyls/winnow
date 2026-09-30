@@ -40,7 +40,7 @@ export function ReceptionLine({
 }
 
 /** A completed write refreshes details in place, keeping the chosen section and its confirmation. */
-export function MetadataRefresh({ workId }: { workId: number }) {
+export function useMetadataRefresh(workId: number) {
   const client = useQueryClient()
   const [status, setStatus] = useViewState<ReturnType<typeof refetchStatus> | null>(
     `details:${workId}:refetch`,
@@ -71,20 +71,60 @@ export function MetadataRefresh({ workId }: { workId: number }) {
       if (!active.signal.aborted) setPending(false)
     }
   }
+  return { pending, status, refresh }
+}
+
+type MetadataRefreshState = ReturnType<typeof useMetadataRefresh>
+
+export function MetadataRefreshButton({
+  state,
+  onInvoked,
+}: {
+  state: MetadataRefreshState
+  onInvoked?(): void
+}) {
+  return (
+    <button
+      disabled={state.pending}
+      title="Re-ask IGDB and the Steam store about this game"
+      onClick={() => {
+        void state.refresh()
+        onInvoked?.()
+      }}
+    >
+      <RefreshCw size={16} aria-hidden="true" /> Refetch metadata
+    </button>
+  )
+}
+
+export function MetadataRefreshStatus({
+  state,
+  className,
+  polite = false,
+}: {
+  state: MetadataRefreshState
+  className?: string
+  polite?: boolean
+}) {
+  if (!state.pending && !state.status) return null
+  return (
+    <p
+      className={className}
+      role={polite || !state.status?.problem ? 'status' : 'alert'}
+      aria-live={polite ? 'polite' : undefined}
+      data-problem={(!state.pending && state.status?.problem) || undefined}
+    >
+      {state.pending ? 'Refetching…' : state.status!.message}
+    </p>
+  )
+}
+
+export function MetadataRefresh({ workId }: { workId: number }) {
+  const state = useMetadataRefresh(workId)
   return (
     <div className="metadata-refetch">
-      <button
-        disabled={pending}
-        title="Re-ask IGDB and the Steam store about this game"
-        onClick={() => void refresh()}
-      >
-        <RefreshCw size={16} aria-hidden="true" /> Refetch metadata
-      </button>
-      {pending ? (
-        <p role="status">Refetching…</p>
-      ) : (
-        status && <p role={status.problem ? 'alert' : 'status'}>{status.message}</p>
-      )}
+      <MetadataRefreshButton state={state} />
+      <MetadataRefreshStatus state={state} />
     </div>
   )
 }

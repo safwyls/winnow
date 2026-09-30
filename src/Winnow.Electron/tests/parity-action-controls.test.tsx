@@ -232,6 +232,11 @@ describe.each(['desktop', 'fullscreen'] as const)('original game actions in %s d
         'Delisted · 90% confidence. Steam confirms the listing was removed. Kept out of Derelict by your choice.',
       ),
     ).toBeTruthy()
+    if (mode === 'desktop') {
+      const reception = screen.getAllByLabelText('Reception')[0]
+      const about = screen.getByRole('heading', { name: 'About' })
+      expect(reception.compareDocumentPosition(about) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0)
+    }
     if (mode === 'fullscreen') fireEvent.click(screen.getByRole('button', { name: 'Read more →' }))
     expect(screen.getAllByLabelText('Reception').at(-1)!.textContent).toBe(
       'IGDB USERS 83 / 10 ratings · IGDB CRITICS 91 / 5 critic scores · STEAM 96% / 200 reviews',
@@ -240,31 +245,34 @@ describe.each(['desktop', 'fullscreen'] as const)('original game actions in %s d
       screen.getAllByLabelText(/Overwhelmingly Positive on Steam: 96% positive, from 200 reviews./),
     ).toHaveLength(mode === 'desktop' ? 2 : 1)
   })
-  it.each([0, 1])('keeps refetch outcome %s in the More menu across close and reopen', async (outcome) => {
-    const { request } = mount(
-      <Details presentation="avalon" workId={1} mode={mode} />,
-      [entry],
-      workspace,
-      {},
-      outcome,
-    )
-    const more = await screen.findByRole('button', { name: 'More' })
-    fireEvent.click(more)
-    expect(screen.queryByText(/Metadata updated\.|Checked\. Nothing new/)).toBeNull()
-    const reads = request.mock.calls.filter(([input]) => input.route === 'game.details').length
-    fireEvent.click(screen.getByRole('button', { name: 'Refetch metadata' }))
-    await screen.findByText(outcome === 0 ? 'Metadata updated.' : 'Checked. Nothing new from the sources.')
-    await waitFor(() =>
-      expect(request.mock.calls.filter(([input]) => input.route === 'game.details')).toHaveLength(
-        reads + (outcome === 0 ? 1 : 0),
-      ),
-    )
-    fireEvent.click(more)
-    fireEvent.click(more)
-    expect(
-      screen.getByText(outcome === 0 ? 'Metadata updated.' : 'Checked. Nothing new from the sources.'),
-    ).toBeTruthy()
-  })
+  it.each([0, 1])(
+    'keeps refetch outcome %s in the Details footer across More close and reopen',
+    async (outcome) => {
+      const { request } = mount(
+        <Details presentation="avalon" workId={1} mode={mode} />,
+        [entry],
+        workspace,
+        {},
+        outcome,
+      )
+      const more = await screen.findByRole('button', { name: 'More' })
+      fireEvent.click(more)
+      expect(screen.queryByText(/Metadata updated\.|Checked\. Nothing new/)).toBeNull()
+      const reads = request.mock.calls.filter(([input]) => input.route === 'game.details').length
+      fireEvent.click(screen.getByRole('button', { name: 'Refetch metadata' }))
+      await screen.findByText(outcome === 0 ? 'Metadata updated.' : 'Checked. Nothing new from the sources.')
+      await waitFor(() =>
+        expect(request.mock.calls.filter(([input]) => input.route === 'game.details')).toHaveLength(
+          reads + (outcome === 0 ? 1 : 0),
+        ),
+      )
+      fireEvent.click(more)
+      fireEvent.click(more)
+      expect(
+        screen.getByText(outcome === 0 ? 'Metadata updated.' : 'Checked. Nothing new from the sources.'),
+      ).toBeTruthy()
+    },
+  )
 })
 
 it('keeps the unknown installation state out of both the action and chip', () => {

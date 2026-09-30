@@ -1200,7 +1200,7 @@ describe('integrated frontend', () => {
       expect(screen.getAllByRole('tab')).toHaveLength(fullscreenMode ? 4 : 5)
       fireEvent.click(screen.getByRole('button', { name: 'More' }))
       expect(screen.getByRole('button', { name: 'Artwork…' })).toBeDefined()
-      expect(screen.getByRole('button', { name: 'Edit metadata…' })).toBeDefined()
+      expect(screen.getByRole('button', { name: 'Edit details' })).toBeDefined()
       fireEvent.keyDown(screen.getByRole('button', { name: 'Wrong game?' }), { key: 'Escape' })
       fireEvent.click(
         screen.getByRole('button', { name: fullscreenMode ? 'B · Back to For you' : 'Close game details' }),

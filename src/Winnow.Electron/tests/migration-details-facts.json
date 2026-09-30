@@ -351,7 +351,7 @@
         "case": "stays quiet initially and refreshes snapshots only after a write"
       },
       {
-        "case": "keeps refetch outcome %s in the More menu across close and reopen",
+        "case": "keeps refetch outcome %s in the Details footer across More close and reopen",
         "file": "tests/parity-action-controls.test.tsx"
       }
     ],
@@ -365,7 +365,7 @@
         "case": "with no invented percentage and supports the wire enum"
       },
       {
-        "case": "keeps refetch outcome %s in the More menu across close and reopen",
+        "case": "keeps refetch outcome %s in the Details footer across More close and reopen",
         "file": "tests/parity-action-controls.test.tsx"
       }
     ],
@@ -379,7 +379,7 @@
         "case": "stays quiet initially and refreshes snapshots only after a write"
       },
       {
-        "case": "keeps refetch outcome %s in the More menu across close and reopen",
+        "case": "keeps refetch outcome %s in the Details footer across More close and reopen",
         "file": "tests/parity-action-controls.test.tsx"
       }
     ],
@@ -393,7 +393,7 @@
         "case": "keeps a carried success visible when refreshed details reconstruct the control"
       },
       {
-        "case": "keeps refetch outcome %s in the More menu across close and reopen",
+        "case": "keeps refetch outcome %s in the Details footer across More close and reopen",
         "file": "tests/parity-action-controls.test.tsx"
       }
     ],

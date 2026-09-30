@@ -159,11 +159,84 @@ afterEach(() => {
     'igdb:1:operation',
     'draft:metadata-fields:1',
     'metadata-fields:1:sending',
+    'details:1:refetch',
   ])
     clearViewState(key)
 })
 
 describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details composition', (mode) => {
+  it('keeps technical facts visible in Library and the five maintenance actions in their settled order', async () => {
+    setup(mode, undefined, 'avalon')
+    await screen.findByRole('heading', { name: 'Original game', level: 1 })
+    fireEvent.click(screen.getByRole('tab', { name: 'Library' }))
+    const technical = await screen.findByRole('region', { name: 'Technical facts' })
+    expect(technical.closest('details')).toBeNull()
+    expect(within(technical).getByText('C:\\Games\\Original')).toBeTruthy()
+    expect(within(technical).getByText('steam: 480')).toBeTruthy()
+    expect(within(technical).getByRole('button', { name: 'Open install folder' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('tab', { name: 'Overview' }))
+    expect(screen.queryByRole('region', { name: 'Technical facts' })).toBeNull()
+    expect(document.querySelector('.avalon-details-actions')!.textContent).not.toContain('Refetch metadata')
+    fireEvent.click(screen.getByRole('button', { name: 'More' }))
+    const menu = document.querySelector('.avalon-details-menu,.avalon-actions-body')!
+    const actions = [...menu.querySelectorAll('button')].map((node) => node.textContent!.trim())
+    const order = [
+      'Open install folder',
+      'Refetch metadata',
+      'Wrong game?',
+      'Edit details',
+      mode === 'fullscreen' ? 'Hide game…' : 'Hide game',
+    ]
+    const indices = order.map((label) => actions.findIndex((text) => text.startsWith(label)))
+    expect(
+      indices.every((index) => index >= 0),
+      JSON.stringify(actions),
+    ).toBe(true)
+    expect(indices).toEqual([...indices].sort((a, b) => a - b))
+    expect(document.querySelectorAll('.avalon-details-menu,.avalon-actions-body')).toHaveLength(1)
+  })
+  it.each(['Updated', 'Unreachable'])(
+    'keeps a polite refetch footer outside the reading area while More closes and %s arrives',
+    async (outcome) => {
+      let finish!: (result: unknown) => void
+      const { request } = setup(
+        mode,
+        (input) =>
+          input.route === 'game.refetch'
+            ? new Promise((resolve) => {
+                finish = resolve
+              })
+            : undefined,
+        'avalon',
+      )
+      await screen.findByRole('heading', { name: 'Original game', level: 1 })
+      expect(document.querySelector('.detail-refetch-status')).toBeNull()
+      fireEvent.click(screen.getByRole('tab', { name: 'Library' }))
+      const more = screen.getByRole('button', { name: 'More' })
+      fireEvent.click(more)
+      fireEvent.click(screen.getByRole('button', { name: 'Refetch metadata' }))
+      const status = await screen.findByText('Refetching…')
+      expect(status.getAttribute('role')).toBe('status')
+      expect(status.getAttribute('aria-live')).toBe('polite')
+      expect(status.hasAttribute('aria-label')).toBe(false)
+      expect(status.closest('.avalon-details-reading,.avalon-details-menu,.avalon-actions-body')).toBeNull()
+      expect(more.getAttribute('aria-expanded')).toBe('false')
+      fireEvent.click(more)
+      expect((screen.getByRole('button', { name: 'Refetch metadata' }) as HTMLButtonElement).disabled).toBe(
+        true,
+      )
+      fireEvent.keyDown(screen.getByRole('button', { name: 'Refetch metadata' }), { key: 'Escape' })
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Refetch metadata' })).toBeNull())
+      finish({ ok: true, status: 200, data: { outcome } })
+      const result = await screen.findByText(
+        outcome === 'Updated' ? 'Metadata updated.' : 'A source could not be reached.',
+      )
+      expect(result).toBe(status)
+      expect(result.getAttribute('data-problem')).toBe(outcome === 'Updated' ? null : 'true')
+      expect(screen.getByRole('tab', { name: 'Library' }).getAttribute('aria-selected')).toBe('true')
+      expect(request.mock.calls.filter(([input]) => input.route === 'game.refetch')).toHaveLength(1)
+    },
+  )
   it('lists source update headlines newest first and offers only supported reader pages', async () => {
     const events = [
       {
@@ -364,7 +437,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details compo
     expect(document.querySelectorAll('.avalon-history-figures strong')[1]?.textContent).toMatch(/^1y /)
     expect(screen.getByText('Steam · Installed')).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: 'Library' }))
-    fireEvent.click(screen.getByText('Installation & identifiers'))
+    expect(screen.getByRole('region', { name: 'Technical facts' }).closest('details')).toBeNull()
     expect(screen.getByText(facts.ownerships[0].installPath)).toBeTruthy()
   })
   it('keeps a metadata-poor provisional game readable and installable without inventing a session or folder', async () => {
@@ -614,7 +687,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details compo
     await screen.findByRole('heading', { name: 'Grouped game', level: 1 })
     expect(screen.queryByRole('heading', { name: 'Game details' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'More' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Edit metadata…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit details' }))
     if (mode === 'fullscreen') fireEvent.click(await screen.findByRole('button', { name: 'Name · IGDB' }))
     await screen.findByRole('textbox', { name: 'Name' })
     expect(
@@ -672,7 +745,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details compo
       document.querySelector('.avalon-details-menu button, .avalon-actions-body button'),
     )
     expect(document.activeElement?.textContent).toBe('View in Steam')
-    fireEvent.click(screen.getByRole('button', { name: 'Edit metadata…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit details' }))
     if (mode === 'fullscreen') fireEvent.click(await screen.findByRole('button', { name: 'Name · IGDB' }))
     const input = await screen.findByRole('textbox', { name: 'Name' })
     await waitFor(() =>
@@ -693,7 +766,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details compo
     expect(screen.getByRole('tab', { name: 'Library' }).getAttribute('aria-selected')).toBe('true')
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'More' })))
     fireEvent.click(screen.getByRole('button', { name: 'More' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Edit metadata…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit details' }))
     if (mode === 'fullscreen') fireEvent.click(await screen.findByRole('button', { name: 'Name · IGDB' }))
     expect(((await screen.findByRole('textbox', { name: 'Name' })) as HTMLInputElement).value).toBe(
       mode === 'desktop' ? 'Unfinished title' : 'Original game',

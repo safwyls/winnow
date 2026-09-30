@@ -52,7 +52,7 @@ async function editor(mode: 'desktop' | 'fullscreen', width: number, height: num
   )
   await page.locator('.avalon-cover').first().click()
   await page.locator('.avalon-details').getByRole('button', { name: 'More', exact: true }).click()
-  await page.getByRole('button', { name: 'Edit metadata…', exact: true }).click()
+  await page.getByRole('button', { name: 'Edit details', exact: true }).click()
   await expect(page.locator('.metadata-dialog')).toBeVisible()
   return page.locator('.metadata-dialog')
 }

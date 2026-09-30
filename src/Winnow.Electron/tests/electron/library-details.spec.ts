@@ -238,7 +238,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await selectCollection(page, list.id)
     await page.getByRole('button', { name: `View ${game.title}`, exact: true }).click()
     await page.getByRole('button', { name: 'More', exact: true }).click()
-    await page.getByRole('button', { name: 'Edit metadata…', exact: true }).click()
+    await page.getByRole('button', { name: 'Edit details', exact: true }).click()
     await page.getByLabel('Name', { exact: true }).fill('An unfinished title')
     if (mode === 'fullscreen') {
       await page.locator('.metadata-dialog').getByRole('button', { name: 'Back', exact: true }).click()
@@ -247,7 +247,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await selectCollection(page, list.id)
       await page.getByRole('button', { name: `View ${game.title}`, exact: true }).click()
       await page.getByRole('button', { name: 'More', exact: true }).click()
-      await page.getByRole('button', { name: 'Edit metadata…', exact: true }).click()
+      await page.getByRole('button', { name: 'Edit details', exact: true }).click()
       await page
         .locator('.metadata-field-menu')
         .getByRole('button', { name: /^Release year ·/ })
