@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 11:28'
+updated_date: '2026-09-30 12:13'
 labels: []
 dependencies: []
 priority: high
@@ -148,6 +148,12 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 54. Restore source cover-tile interactions in Electron. Add the fixed32pixel Play or Install target and40pixel folded Details target, preserve single-click Details and the existing hover preview, and keep store words, playtime, dormancy and expansion marks clear of the action targets at the108,148and200pixel density cases. Separate hover, keyboard action focus and selection so pointer release outside or recycled identity never activates a different game or leaves stale controls. Assess desktop and fullscreen independently, preserve the controller collection behavior, and verify the original17 CardDetailsInteractionTests contracts through component and native pointer/keyboard tests. Keep this source package separate from the verified metadata milestone until its own validation passes.
 
 53 follow-up. Full Release regression exposed a legacy multi-selection fixture deleting its database before outstanding UI reads release their connections. Track only that fixture connection factory, stop new work during teardown and await its active connections before deleting temporary files. Prove the drain with a held connection, rerun the affected UI suite and repeat the full Release regression without changing any selection assertions.
+
+53 full-suite follow-up: the first spending-dashboard fixture failed with database is locked while its startup dialog still covered the visible Home tiles. After the current run completes, require accessible Home readiness before fixture writes and give the fixture SQLite connection a bounded busy timeout, consistent with other native fixtures. Seed the transaction rows atomically and rerun the complete dashboard matrix without weakening its measured proportions or typography.
+
+53 rating-cap fixture follow-up: the full run records an ArrowLeft sent while Content age limit is disabled; the expectation then remains at Adults only instead of18+. The helper waits for enabled only after each press, leaving its first press unsynchronized. After the run completes, require enabled before every directional press and rerun the three original rating-cap workflows with their persistence/count/focus assertions unchanged.
+
+55. Restore the original unread accessible copy on desktop and fullscreen: retain badge eligibility and correlated update counts, announce singular/plural counts only on badged games, keep Patched navigation counts and feed reason/status accessible. Verify the eight UnreadAccessibleCopyTests contracts through component, native and retained backend evidence. Preserve the separate fullscreen presentation and existing acknowledgement policy.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -296,4 +302,8 @@ Plan52 verified: all3111 component/liveAPI cases pass across153files without ski
 Checkpoint38 complete native run on d5f2994d: 259 passed, three failed, no skips or flaky cases, 27.6 minutes. Report copied to .tmp/tray-complete-native/results.json. Plugin settings and update flags time out at initial readiness after15seconds; their fixtures now allow the production45second first-attachment budget. Details measures before interface scale resets from1.2; its assertions now wait for both applied scale values without relaxing title-height or reading bounds. Plan53 build and120 focused renderer cases pass. Five new backend regressions reproduced late callbacks replacing terminal messages; the running-state guard is now applied and full backend verification is running. No acceptance criteria checked.
 
 Plan53 verified: all3139 component/liveAPI cases pass across155files without skips51.65s; build/typecheck and138backendHTTP cases pass. Concurrent Electron/.NET repeat hit three timeouts; unchanged Electron suite passes when run alone, exact contention cause unconfirmed. Full.NET Release passes6895 across13assemblies with2Linux-only skips, including899AvaloniaUI cases. First.NET run exposed a LibraryMultiSelection fixture deletion racing an open connection; scoped drain and3controlled ownership cases fix cleanup. All36native regression cases pass5.3m, plus7final typography/IGDB cases1.3m; captures inspected. Six contracts completed; inventory1130ported559retained17framework628pending101partial. Evidence checkpoint-thirty-nine.md. Full273native run is next; cover-tile source work remains separate. All AC remain unchecked.
+
+Checkpoint39 complete native run:271passed2failed0skipped0flaky in29.6m. JSON preserved at.tmp/metadata-complete-native/results.json. All11new metadata cases and all13tray cases passed. Account-dashboard direct fixture DELETE hit database locked while startup still covered visible tiles; readiness and bounded atomic SQLite seeding are now corrected. Rating-cap first ArrowLeft failed with a briefly disabled row; helper now waits for enabled and matching value before each press. Both original assertion matrices will rerun. Production bundle wasc42471b5; six artwork probes compiled the in-progress Plan54 cover source, so this is not one complete frozen source snapshot. Plan54 focused verification is now running. No AC checked.
+
+Plan54 verified: all3154 component/liveAPI cases pass across156files without skips52.73s; final build/typecheck and inventory audit pass. Original26CardDetails cases pass with captures. Native73regression passed64 and exposed9cover failures: double two-pixel lift and synthetic mouse-enter on reattachment. Fixed both without weakening assertions; all20final native cover cases pass20.8s. Original108/148/200geometry,12immediate presses,recycling,focus,fullrectangleDetails and real desktop/fullscreen routing verified; captures inspected. All13dashboard/rating follow-ups from checkpoint39 also pass. Seventeen methods completed; inventory1147ported559retained17framework611pending101partial. Evidence checkpoint-forty.md. Plan55 unread accessibility is next. All AC remain unchecked.
 <!-- SECTION:NOTES:END -->

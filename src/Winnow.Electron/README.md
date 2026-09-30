@@ -8,6 +8,12 @@ fullscreen uses a hero and a directional recommendation shelf. Theme Studio also
 floating covers and artwork portals, and **Catalogue**, with a reading desk and index.
 All compositions use the public theme interface available to installed themes.
 
+Avalon's desktop covers reveal a compact Play or Install action and a folded Details
+corner on hover or keyboard focus. Clicking the cover still opens Details. Selection
+keeps its border without pinning the action dock open; recycled tiles release outgoing
+focus and pending feedback. Store words and compact playtime/idle figures share the
+Library scrim. Fullscreen keeps its separate directional cover and Details action path.
+
 Avalon's desktop Details opens over the retained library with five sections and a fixed
 header. Fullscreen Details uses the original cinematic layout, two screenshot previews and
 separate About and Play history reading pages. More contains the shared metadata, matching,

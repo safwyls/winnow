@@ -62,5 +62,16 @@ IGDB and artwork-order pages. The contract list remains frozen at
 
 Six source methods now have complete evidence. Inventory: 1,130 ported, 559 retained
 backend, 17 framework-specific, 628 pending and 101 partial out of 2,435 methods. The
-complete 273-case native suite has not yet passed together. The broader migration acceptance criteria remain
+complete 273-case native run passed 271 and failed two in 29.6 minutes, with no skips or
+flaky retries: `.tmp/metadata-complete-native/results.json`. The first spending-dashboard
+fixture wrote while the backend held a database lock; its Home covers were visible behind
+the startup dialog. The fullscreen rating-cap fixture's first ArrowLeft did not move the
+value, and the failure log shows a briefly disabled row. Its helper did not wait for enabled
+state before that first press. Both fixtures have targeted synchronization follow-ups;
+their original behavior assertions remain. All 13 dashboard/rating cases pass in the
+checkpoint 40 native regression. All preceding checkpoint 38 failures pass.
+
+The production app bundle in that run is `c42471b5`; the six artwork probes compiled the
+in-progress cover component separately, so the run is not verification of one complete
+source snapshot. The broader migration acceptance criteria remain
 unchecked; cover-tile action work is a separate package.

@@ -31,7 +31,7 @@ test.beforeAll(async () => {
   })
   page = await application.firstWindow()
   page.on('pageerror', (error) => errors.push(error.message))
-  await expect(page.locator('.avalon-cover').first()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Winnow home', exact: true })).toBeVisible({ timeout: 45000 })
 })
 test.afterAll(async () => closeFixture(application, directory))
 async function fixture(value: AccountStats | null) {
@@ -111,6 +111,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await fixture(null)
       const database = new DatabaseSync(join(directory, 'winnow.db'))
       try {
+        database.exec('PRAGMA busy_timeout=5000; BEGIN IMMEDIATE')
         database.exec('DELETE FROM account_transactions')
         const insert = database.prepare(
           "INSERT INTO account_transactions(source,account_ref,kind,transaction_type_raw,item_names_json,item_count,total_cents,currency_symbol,refunded,captured_at) VALUES('steam','10001',?,?,?,?,?,?,?,?)",
@@ -133,6 +134,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
             refunded,
             '2026-09-29 12:00:00',
           )
+        database.exec('COMMIT')
       } finally {
         database.close()
       }

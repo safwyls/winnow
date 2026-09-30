@@ -37,7 +37,7 @@ import { AddToListButton, orderedLists } from '../features/parity-list-prompt'
 import { LiveListActions } from '../features/parity-live-actions'
 import { ListOrderActions } from '../features/parity-list-actions'
 import { libraryDefaultSort, useAvalonLists } from './avalon-list-state'
-import { useLibraryProjection, type ExpansionMark } from '../features/parity-library-projection'
+import { useLibraryProjection } from '../features/parity-library-projection'
 import '../features/parity-library-projection.css'
 import { usePresentationPreferences } from '../features/SettingsPreferences'
 import { DisplayPreferences } from '../features/DisplayPreferences'
@@ -64,6 +64,7 @@ import {
   MAXIMUM_TILE_WIDTH,
 } from './avalon-library-chrome'
 import { useAvalonPreview } from './avalon-preview'
+import { AvalonCoverWorkspace, AvalonDesktopCover, type AvalonCoverProps } from './avalon-desktop-cover'
 import './avalon.css'
 import { useAvalonAppearance } from './avalon-appearance'
 import { FeedFeedback, FeedHistory, FeedLaunch, FeedReason, useAvalonFeed } from './avalon-feed'
@@ -359,10 +360,12 @@ export function AvalonShell(context: ThemeContext) {
           })
         }}
       >
-        <FactsContext.Provider value={facts}>
-          {detailsModal ? background.current : context.children}
-          {detailsModal && context.children}
-        </FactsContext.Provider>
+        <AvalonCoverWorkspace.Provider value={workspace.data}>
+          <FactsContext.Provider value={facts}>
+            {detailsModal ? background.current : context.children}
+            {detailsModal && context.children}
+          </FactsContext.Provider>
+        </AvalonCoverWorkspace.Provider>
       </main>
       <footer className="avalon-footer">
         <span>
@@ -382,7 +385,28 @@ export function AvalonShell(context: ThemeContext) {
   )
 }
 
-export function AvalonCover({
+export function AvalonCover(props: AvalonCoverProps) {
+  const facts = useContext(FactsContext).get(props.game.workId)
+  const workspace = useContext(AvalonCoverWorkspace)
+  if (props.context.mode === 'fullscreen') return <AvalonFullscreenCover {...props} />
+  const { game, context } = props
+  const dim = themeSettingValues(avalon, context.profile).dimCovers
+  const { saturation, brightness, hue } = dormancy(game.lastPlayedAt)
+  const style = {
+    '--avalon-dormancy': dim
+      ? `saturate(${saturation}) hue-rotate(${hue}deg) brightness(${brightness})`
+      : 'none',
+  } as CSSProperties
+  const patched =
+    facts?.unread ??
+    (game.bucket === 'stale_but_patched' && (game.playtimeMinutes > 0 || !!game.lastPlayedAt))
+  // A reused grid slot must release the outgoing tile's press, focus and preview.
+  return (
+    <AvalonDesktopCover key={game.workId} {...props} patched={patched} style={style} workspace={workspace} />
+  )
+}
+
+function AvalonFullscreenCover({
   context,
   game,
   reason,
@@ -392,17 +416,7 @@ export function AvalonCover({
   onClick,
   onContextMenu,
   expansion,
-}: {
-  context: ThemeContext
-  game: LibraryGame
-  reason?: string
-  selected?: boolean
-  onFocus?: () => void
-  onKeyDown?: (event: KeyboardEvent<HTMLButtonElement>) => void
-  onClick?: (event: MouseEvent<HTMLButtonElement>) => void
-  onContextMenu?: (event: MouseEvent<HTMLButtonElement>) => void
-  expansion?: ExpansionMark
-}) {
+}: AvalonCoverProps) {
   const facts = useContext(FactsContext).get(game.workId)
   const hover = useAvalonPreview(context, game, reason)
   const { Artwork } = context.components
@@ -1255,440 +1269,448 @@ export function AvalonLibrary(context: ThemeContext) {
   )
   const { Artwork } = context.components
   return (
-    <FactsContext.Provider value={facts}>
-      <div className="avalon-library" data-list-id={listId} data-filters-open={filtersOpen || undefined}>
-        <header className="avalon-page-heading">
-          <h1>
-            {fullscreen && !tools
-              ? (listState.list?.name ??
-                (collection === 'installed'
-                  ? 'Installed games'
-                  : bucket === 'all'
-                    ? 'Your library'
-                    : libraryBucketLabel(bucket)))
-              : 'Library'}
-          </h1>
-          {fullscreen && !tools ? (
-            <div className="avalon-fullscreen-library-summary">
-              <span className="avalon-results-count" aria-live="polite">
-                {games.length.toLocaleString()} {games.length === 1 ? 'game' : 'games'}
-              </span>
-              <span>
-                ·{' '}
-                {
-                  (
-                    {
-                      dormant: 'Dormant longest',
-                      title: 'Name A–Z',
-                      'title-desc': 'Name Z–A',
-                      recent: 'Last played',
-                      time: 'Playtime high to low',
-                      'time-low': 'Playtime low to high',
-                      'list-order': 'List order',
-                    } as Record<string, string>
-                  )[sort]
+    <AvalonCoverWorkspace.Provider value={workspace.data}>
+      <FactsContext.Provider value={facts}>
+        <div className="avalon-library" data-list-id={listId} data-filters-open={filtersOpen || undefined}>
+          <header className="avalon-page-heading">
+            <h1>
+              {fullscreen && !tools
+                ? (listState.list?.name ??
+                  (collection === 'installed'
+                    ? 'Installed games'
+                    : bucket === 'all'
+                      ? 'Your library'
+                      : libraryBucketLabel(bucket)))
+                : 'Library'}
+            </h1>
+            {fullscreen && !tools ? (
+              <div className="avalon-fullscreen-library-summary">
+                <span className="avalon-results-count" aria-live="polite">
+                  {games.length.toLocaleString()} {games.length === 1 ? 'game' : 'games'}
+                </span>
+                <span>
+                  ·{' '}
+                  {
+                    (
+                      {
+                        dormant: 'Dormant longest',
+                        title: 'Name A–Z',
+                        'title-desc': 'Name Z–A',
+                        recent: 'Last played',
+                        time: 'Playtime high to low',
+                        'time-low': 'Playtime low to high',
+                        'list-order': 'List order',
+                      } as Record<string, string>
+                    )[sort]
+                  }
+                </span>
+              </div>
+            ) : (
+              <button
+                ref={manageButton}
+                aria-expanded={tools}
+                onClick={() => {
+                  if (!tools) {
+                    const offset = scroll.current?.scrollTop ?? libraryScroll.get(prefix) ?? 0
+                    toolsReturn.current = { workId: selected, offset }
+                    libraryScroll.set(prefix, offset)
+                  }
+                  setTools(!tools)
+                }}
+              >
+                <Settings2 size={16} />
+                {tools ? 'Close tools' : 'Manage library'}
+              </button>
+            )}
+          </header>
+          {tools ? (
+            <div
+              ref={toolsPanel}
+              className="avalon-library-tools"
+              onKeyDown={(event) => {
+                if (
+                  event.key === 'Escape' &&
+                  !event.defaultPrevented &&
+                  !(event.target as HTMLElement).closest('[role="dialog"], [role="alertdialog"]')
+                ) {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  setTools(false)
                 }
-              </span>
-            </div>
-          ) : (
-            <button
-              ref={manageButton}
-              aria-expanded={tools}
-              onClick={() => {
-                if (!tools) {
-                  const offset = scroll.current?.scrollTop ?? libraryScroll.get(prefix) ?? 0
-                  toolsReturn.current = { workId: selected, offset }
-                  libraryScroll.set(prefix, offset)
-                }
-                setTools(!tools)
               }}
             >
-              <Settings2 size={16} />
-              {tools ? 'Close tools' : 'Manage library'}
-            </button>
-          )}
-        </header>
-        {tools ? (
-          <div
-            ref={toolsPanel}
-            className="avalon-library-tools"
-            onKeyDown={(event) => {
-              if (
-                event.key === 'Escape' &&
-                !event.defaultPrevented &&
-                !(event.target as HTMLElement).closest('[role="dialog"], [role="alertdialog"]')
-              ) {
-                event.preventDefault()
-                event.stopPropagation()
-                setTools(false)
-              }
-            }}
-          >
-            <LibraryTools mode={context.mode} onOpenGame={context.openGame} />
-          </div>
-        ) : (
-          <>
-            {fullscreen && (
-              <Collections
-                context={{ ...context, games: libraryGames }}
-                fullscreenTools={
-                  <div className="avalon-fullscreen-library-actions">
-                    <button aria-pressed={listId !== 'all'} onClick={() => setPanel('lists')}>
-                      My lists
-                    </button>
-                    <button aria-expanded={filtersOpen} onClick={() => setFiltersOpen(true)}>
-                      Filter &amp; sort
-                    </button>
-                    <button
-                      data-controller-context
-                      aria-expanded={panel === 'options'}
-                      onClick={() => setPanel('options')}
-                    >
-                      More
-                    </button>
-                  </div>
-                }
-              />
-            )}
-            {!fullscreen && toolbar}
-            <div className="avalon-library-browse">
-              {!fullscreen && browseActions}
-              {!fullscreen && (
-                <p className="avalon-results-count" aria-live="polite">
-                  {games.length.toLocaleString()} {games.length === 1 ? 'game' : 'games'}
-                  {query && ` matching “${query}”`}
-                </p>
-              )}
-              {listMode && games.length > 0 && !context.loading && (
-                <LibraryColumnHeaders sort={sort} change={setSort} width={size.width} />
-              )}
-              <div
-                className="avalon-library-results"
-                inert={fullscreen && (filtersOpen || panel !== null) ? true : undefined}
-              >
-                <div
-                  ref={scroll}
-                  className="avalon-library-scroll"
-                  onKeyDownCapture={(event) => {
-                    if (
-                      (event.target as HTMLElement).closest('[data-avalon-game]') &&
-                      [
-                        'ArrowLeft',
-                        'ArrowRight',
-                        'ArrowUp',
-                        'ArrowDown',
-                        'Home',
-                        'End',
-                        'PageUp',
-                        'PageDown',
-                      ].includes(event.key)
-                    )
-                      setSelection([])
-                  }}
-                  onScroll={() => {
-                    if (scroll.current) libraryScroll.set(prefix, scroll.current.scrollTop)
-                  }}
-                >
-                  {context.loading ? (
-                    <p role="status">Preparing your library…</p>
-                  ) : !games.length ? (
-                    <div className="avalon-empty">
-                      <h2>
-                        {libraryGames.length ? 'No games match these filters.' : 'Your library starts here.'}
-                      </h2>
-                      <p>
-                        {libraryGames.length
-                          ? query.trim()
-                            ? `No titles match “${query.trim()}”.`
-                            : 'No titles match these filters. Drop one to widen the cut.'
-                          : 'Connect a store in Settings, or add a game with Manage library.'}
-                      </p>
-                      {!libraryGames.length && (
-                        <button onClick={() => context.setPage('settings')}>Open settings</button>
-                      )}
+              <LibraryTools mode={context.mode} onOpenGame={context.openGame} />
+            </div>
+          ) : (
+            <>
+              {fullscreen && (
+                <Collections
+                  context={{ ...context, games: libraryGames }}
+                  fullscreenTools={
+                    <div className="avalon-fullscreen-library-actions">
+                      <button aria-pressed={listId !== 'all'} onClick={() => setPanel('lists')}>
+                        My lists
+                      </button>
+                      <button aria-expanded={filtersOpen} onClick={() => setFiltersOpen(true)}>
+                        Filter &amp; sort
+                      </button>
+                      <button
+                        data-controller-context
+                        aria-expanded={panel === 'options'}
+                        onClick={() => setPanel('options')}
+                      >
+                        More
+                      </button>
                     </div>
-                  ) : fullscreen ? (
-                    <AvalonFullscreenGrid
-                      games={games}
-                      columns={columns}
-                      gap={grid.gap}
-                      prefix={prefix}
-                      collection={collection}
-                      controls={gridControls}
-                      selected={selected}
-                      onSelected={setSelected}
-                      reducedMotion={context.profile.appearance.reducedMotion || systemReducedMotion}
-                      onKeyDown={key}
-                      onTopBoundary={() =>
-                        document
-                          .querySelector<HTMLButtonElement>(
-                            '.avalon-buckets [aria-pressed="true"], .avalon-buckets button',
-                          )
-                          ?.focus()
-                      }
-                    >
-                      {(game, index, handlers) => (
-                        <AvalonCover
-                          key={game.workId}
-                          context={context}
-                          game={game}
-                          expansion={projected.marks.get(game.workId)}
-                          selected={
-                            selection.length ? selection.includes(game.workId) : selected === game.workId
-                          }
-                          onClick={(event) => selectGame(event, game, index)}
-                          onContextMenu={(event) => contextGame(event, game)}
-                          onFocus={handlers.onFocus}
-                          onKeyDown={handlers.onKeyDown}
-                        />
-                      )}
-                    </AvalonFullscreenGrid>
-                  ) : (
-                    <div
-                      className="avalon-wall"
-                      style={{
-                        height: listMode
-                          ? virtual.getTotalSize()
-                          : coverWallExtent(games.length, columns, grid.coverHeight, grid.gap),
-                        position: 'relative',
-                      }}
-                    >
-                      {virtual.getVirtualItems().map((row) => (
-                        <div
-                          key={row.key}
-                          className={listMode ? 'avalon-record-row' : 'avalon-grid-row'}
-                          style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            transform: `translateY(${row.start}px)`,
-                            gridTemplateColumns: listMode
-                              ? '1fr'
-                              : `repeat(${columns}, ${grid.coverWidth}px)`,
-                            gridAutoRows: listMode ? undefined : grid.coverHeight,
-                            gap: grid.gap,
-                            paddingBottom:
-                              listMode || (row.index + 1) * columns >= games.length ? 0 : grid.gap,
-                          }}
-                        >
-                          {games.slice(row.index * columns, (row.index + 1) * columns).map((game, index) =>
-                            listMode ? (
-                              <button
-                                className="avalon-record"
-                                key={game.workId}
-                                data-avalon-game={game.workId}
-                                data-work-id={game.workId}
-                                aria-label={`View ${game.title}${ownershipDescription(game)}${projected.marks.has(game.workId) ? `. ${projected.marks.get(game.workId)!.text}` : ''}`}
-                                aria-pressed={
-                                  selection.length
-                                    ? selection.includes(game.workId)
-                                    : selected === game.workId
-                                }
-                                onClick={(event) => selectGame(event, game, row.index * columns + index)}
-                                onContextMenu={(event) => contextGame(event, game)}
-                                onFocus={() => setSelected(game.workId)}
-                                onKeyDown={(event) => key(event, row.index * columns + index)}
-                              >
-                                <Artwork workId={game.workId} />
-                                <strong className="avalon-record-title">
-                                  {game.title}
-                                  {projected.marks.has(game.workId) && (
-                                    <small title={projected.marks.get(game.workId)!.text}>
-                                      +{projected.marks.get(game.workId)!.count}
-                                    </small>
-                                  )}
-                                </strong>
-                                <span>
-                                  {ownershipStores(game)
-                                    .map((store) => store.label)
-                                    .join(' / ')}
-                                </span>
-                                <span>{libraryBucketLabel(game.bucket)}</span>
-                                <span>{libraryPlaytime(game.playtimeMinutes)}</span>
-                                <span>{libraryIdle(game.lastPlayedAt)}</span>
-                              </button>
-                            ) : (
-                              <AvalonCover
-                                key={game.workId}
-                                context={context}
-                                game={game}
-                                expansion={projected.marks.get(game.workId)}
-                                selected={
-                                  selection.length
-                                    ? selection.includes(game.workId)
-                                    : selected === game.workId
-                                }
-                                onClick={(event) => selectGame(event, game, row.index * columns + index)}
-                                onContextMenu={(event) => contextGame(event, game)}
-                                onFocus={() => setSelected(game.workId)}
-                                onKeyDown={(event) => key(event, row.index * columns + index)}
-                              />
-                            ),
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-              {!fullscreen && !context.loading && (
-                <AvalonBrowseSpine
-                  games={games}
-                  sort={sort}
-                  scroll={scroll}
-                  jump={(index) => virtual.scrollToIndex(Math.floor(index / columns), { align: 'start' })}
+                  }
                 />
               )}
-            </div>
-            {fullscreen && (
-              <AvalonLibraryPanel kind={panel} close={() => setPanel(null)} restoreFocus={restoreBrowseFocus}>
-                {panel === 'lists' ? (
-                  <>
-                    {orderedLists(library.data?.lists ?? []).map((list) => {
-                      const count = libraryGames.filter((game) =>
-                        list.isLive
-                          ? matchesAvalonRules(game, list.filter ?? {}, facts.get(game.workId))
-                          : game.entries.some((entry) => list.releaseIds.includes(entry.releaseId)),
-                      ).length
-                      return (
+              {!fullscreen && toolbar}
+              <div className="avalon-library-browse">
+                {!fullscreen && browseActions}
+                {!fullscreen && (
+                  <p className="avalon-results-count" aria-live="polite">
+                    {games.length.toLocaleString()} {games.length === 1 ? 'game' : 'games'}
+                    {query && ` matching “${query}”`}
+                  </p>
+                )}
+                {listMode && games.length > 0 && !context.loading && (
+                  <LibraryColumnHeaders sort={sort} change={setSort} width={size.width} />
+                )}
+                <div
+                  className="avalon-library-results"
+                  inert={fullscreen && (filtersOpen || panel !== null) ? true : undefined}
+                >
+                  <div
+                    ref={scroll}
+                    className="avalon-library-scroll"
+                    onKeyDownCapture={(event) => {
+                      if (
+                        (event.target as HTMLElement).closest('[data-avalon-game]') &&
+                        [
+                          'ArrowLeft',
+                          'ArrowRight',
+                          'ArrowUp',
+                          'ArrowDown',
+                          'Home',
+                          'End',
+                          'PageUp',
+                          'PageDown',
+                        ].includes(event.key)
+                      )
+                        setSelection([])
+                    }}
+                    onScroll={() => {
+                      if (scroll.current) libraryScroll.set(prefix, scroll.current.scrollTop)
+                    }}
+                  >
+                    {context.loading ? (
+                      <p role="status">Preparing your library…</p>
+                    ) : !games.length ? (
+                      <div className="avalon-empty">
+                        <h2>
+                          {libraryGames.length
+                            ? 'No games match these filters.'
+                            : 'Your library starts here.'}
+                        </h2>
+                        <p>
+                          {libraryGames.length
+                            ? query.trim()
+                              ? `No titles match “${query.trim()}”.`
+                              : 'No titles match these filters. Drop one to widen the cut.'
+                            : 'Connect a store in Settings, or add a game with Manage library.'}
+                        </p>
+                        {!libraryGames.length && (
+                          <button onClick={() => context.setPage('settings')}>Open settings</button>
+                        )}
+                      </div>
+                    ) : fullscreen ? (
+                      <AvalonFullscreenGrid
+                        games={games}
+                        columns={columns}
+                        gap={grid.gap}
+                        prefix={prefix}
+                        collection={collection}
+                        controls={gridControls}
+                        selected={selected}
+                        onSelected={setSelected}
+                        reducedMotion={context.profile.appearance.reducedMotion || systemReducedMotion}
+                        onKeyDown={key}
+                        onTopBoundary={() =>
+                          document
+                            .querySelector<HTMLButtonElement>(
+                              '.avalon-buckets [aria-pressed="true"], .avalon-buckets button',
+                            )
+                            ?.focus()
+                        }
+                      >
+                        {(game, index, handlers) => (
+                          <AvalonCover
+                            key={game.workId}
+                            context={context}
+                            game={game}
+                            expansion={projected.marks.get(game.workId)}
+                            selected={
+                              selection.length ? selection.includes(game.workId) : selected === game.workId
+                            }
+                            onClick={(event) => selectGame(event, game, index)}
+                            onContextMenu={(event) => contextGame(event, game)}
+                            onFocus={handlers.onFocus}
+                            onKeyDown={handlers.onKeyDown}
+                          />
+                        )}
+                      </AvalonFullscreenGrid>
+                    ) : (
+                      <div
+                        className="avalon-wall"
+                        style={{
+                          height: listMode
+                            ? virtual.getTotalSize()
+                            : coverWallExtent(games.length, columns, grid.coverHeight, grid.gap),
+                          position: 'relative',
+                        }}
+                      >
+                        {virtual.getVirtualItems().map((row) => (
+                          <div
+                            key={row.key}
+                            className={listMode ? 'avalon-record-row' : 'avalon-grid-row'}
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              transform: `translateY(${row.start}px)`,
+                              gridTemplateColumns: listMode
+                                ? '1fr'
+                                : `repeat(${columns}, ${grid.coverWidth}px)`,
+                              gridAutoRows: listMode ? undefined : grid.coverHeight,
+                              gap: grid.gap,
+                              paddingBottom:
+                                listMode || (row.index + 1) * columns >= games.length ? 0 : grid.gap,
+                            }}
+                          >
+                            {games.slice(row.index * columns, (row.index + 1) * columns).map((game, index) =>
+                              listMode ? (
+                                <button
+                                  className="avalon-record"
+                                  key={game.workId}
+                                  data-avalon-game={game.workId}
+                                  data-work-id={game.workId}
+                                  aria-label={`View ${game.title}${ownershipDescription(game)}${projected.marks.has(game.workId) ? `. ${projected.marks.get(game.workId)!.text}` : ''}`}
+                                  aria-pressed={
+                                    selection.length
+                                      ? selection.includes(game.workId)
+                                      : selected === game.workId
+                                  }
+                                  onClick={(event) => selectGame(event, game, row.index * columns + index)}
+                                  onContextMenu={(event) => contextGame(event, game)}
+                                  onFocus={() => setSelected(game.workId)}
+                                  onKeyDown={(event) => key(event, row.index * columns + index)}
+                                >
+                                  <Artwork workId={game.workId} />
+                                  <strong className="avalon-record-title">
+                                    {game.title}
+                                    {projected.marks.has(game.workId) && (
+                                      <small title={projected.marks.get(game.workId)!.text}>
+                                        +{projected.marks.get(game.workId)!.count}
+                                      </small>
+                                    )}
+                                  </strong>
+                                  <span>
+                                    {ownershipStores(game)
+                                      .map((store) => store.label)
+                                      .join(' / ')}
+                                  </span>
+                                  <span>{libraryBucketLabel(game.bucket)}</span>
+                                  <span>{libraryPlaytime(game.playtimeMinutes)}</span>
+                                  <span>{libraryIdle(game.lastPlayedAt)}</span>
+                                </button>
+                              ) : (
+                                <AvalonCover
+                                  key={game.workId}
+                                  context={context}
+                                  game={game}
+                                  expansion={projected.marks.get(game.workId)}
+                                  selected={
+                                    selection.length
+                                      ? selection.includes(game.workId)
+                                      : selected === game.workId
+                                  }
+                                  onClick={(event) => selectGame(event, game, row.index * columns + index)}
+                                  onContextMenu={(event) => contextGame(event, game)}
+                                  onFocus={() => setSelected(game.workId)}
+                                  onKeyDown={(event) => key(event, row.index * columns + index)}
+                                />
+                              ),
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {!fullscreen && !context.loading && (
+                  <AvalonBrowseSpine
+                    games={games}
+                    sort={sort}
+                    scroll={scroll}
+                    jump={(index) => virtual.scrollToIndex(Math.floor(index / columns), { align: 'start' })}
+                  />
+                )}
+              </div>
+              {fullscreen && (
+                <AvalonLibraryPanel
+                  kind={panel}
+                  close={() => setPanel(null)}
+                  restoreFocus={restoreBrowseFocus}
+                >
+                  {panel === 'lists' ? (
+                    <>
+                      {orderedLists(library.data?.lists ?? []).map((list) => {
+                        const count = libraryGames.filter((game) =>
+                          list.isLive
+                            ? matchesAvalonRules(game, list.filter ?? {}, facts.get(game.workId))
+                            : game.entries.some((entry) => list.releaseIds.includes(entry.releaseId)),
+                        ).length
+                        return (
+                          <button
+                            key={list.id}
+                            data-avalon-list={list.id}
+                            aria-pressed={listId === String(list.id)}
+                            onClick={() => {
+                              if (listId !== String(list.id)) listState.selectList(String(list.id))
+                              setPanel(null)
+                            }}
+                          >
+                            {list.name} · {count.toLocaleString()} games{list.isLive ? ' · Live list' : ''}
+                          </button>
+                        )
+                      })}
+                      {!library.data?.lists.length && (
+                        <p>No lists yet. Create a list to keep games together.</p>
+                      )}
+                      <CreateListButton mode={context.mode} onClosed={() => setPanel(null)} />
+                    </>
+                  ) : (
+                    <>
+                      <AvalonAction label="My lists" icon={List} onChoose={() => setPanel('lists')} />
+                      <AvalonAction
+                        label="Filter & sort"
+                        icon={Settings2}
+                        onChoose={() => {
+                          setPanel(null)
+                          setFiltersOpen(true)
+                        }}
+                      />
+                      <AvalonAction
+                        label="Search"
+                        icon={Search}
+                        onChoose={() => {
+                          setPanel(null)
+                          if (context.openSearch) context.openSearch()
+                          else context.setPage('search')
+                        }}
+                      />
+                      <CreateListButton mode={context.mode} onClosed={() => setPanel(null)} />
+                      <AvalonAction
+                        label="Manage library"
+                        icon={Settings2}
+                        onChoose={() => {
+                          toolsReturn.current = { workId: selected, offset: scroll.current?.scrollTop ?? 0 }
+                          setPanel(null)
+                          setTools(true)
+                        }}
+                      />
+                      {listState.list && (
                         <button
-                          key={list.id}
-                          data-avalon-list={list.id}
-                          aria-pressed={listId === String(list.id)}
                           onClick={() => {
-                            if (listId !== String(list.id)) listState.selectList(String(list.id))
+                            listState.selectList('all')
                             setPanel(null)
                           }}
                         >
-                          {list.name} · {count.toLocaleString()} games{list.isLive ? ' · Live list' : ''}
+                          Close list
                         </button>
-                      )
-                    })}
-                    {!library.data?.lists.length && (
-                      <p>No lists yet. Create a list to keep games together.</p>
-                    )}
-                    <CreateListButton mode={context.mode} onClosed={() => setPanel(null)} />
-                  </>
-                ) : (
-                  <>
-                    <AvalonAction label="My lists" icon={List} onChoose={() => setPanel('lists')} />
-                    <AvalonAction
-                      label="Filter & sort"
-                      icon={Settings2}
-                      onChoose={() => {
-                        setPanel(null)
-                        setFiltersOpen(true)
-                      }}
-                    />
-                    <AvalonAction
-                      label="Search"
-                      icon={Search}
-                      onChoose={() => {
-                        setPanel(null)
-                        if (context.openSearch) context.openSearch()
-                        else context.setPage('search')
-                      }}
-                    />
-                    <CreateListButton mode={context.mode} onClosed={() => setPanel(null)} />
-                    <AvalonAction
-                      label="Manage library"
-                      icon={Settings2}
-                      onChoose={() => {
-                        toolsReturn.current = { workId: selected, offset: scroll.current?.scrollTop ?? 0 }
-                        setPanel(null)
-                        setTools(true)
-                      }}
-                    />
-                    {listState.list && (
-                      <button
-                        onClick={() => {
-                          listState.selectList('all')
-                          setPanel(null)
-                        }}
-                      >
-                        Close list
-                      </button>
-                    )}
-                    {listState.list && (
-                      <ListEditor
-                        key={listState.list.id}
-                        list={listState.list}
-                        actionsOnly
-                        onClosed={() => setPanel(null)}
-                      />
-                    )}
-                    {listState.list && !listState.list.isLive && sort !== 'list-order' && (
-                      <button
-                        onClick={() => {
-                          setSort('list-order')
-                          setPanel(null)
-                        }}
-                      >
-                        Show list order
-                      </button>
-                    )}
-                    {browseActions}
-                    <details>
-                      <summary>Current search and sort</summary>
-                      {toolbar}
-                    </details>
-                  </>
-                )}
-              </AvalonLibraryPanel>
-            )}
-            {filtersOpen && (
-              <AvalonFilterPanel
-                filter={{
-                  ...rules,
-                  ...(store === 'all' ? {} : { stores: [store] }),
-                  ...(fullscreen && bucket === 'installed' ? { installed: true } : {}),
-                }}
-                browse={
-                  fullscreen
-                    ? {
-                        sort,
-                        bucket: bucket === 'installed' ? 'all' : bucket,
-                        manual: Boolean(listState.list && !listState.list.isLive),
-                      }
-                    : undefined
-                }
-                allGames={libraryGames}
-                optionOrder={filterOrder}
-                games={avalonFilter(libraryGames, library.data?.lists ?? [], {
-                  query,
-                  bucket: fullscreen ? 'all' : bucket,
-                  store: 'all',
-                  listId: listState.list?.isLive ? 'all' : listId,
-                  sort,
-                })}
-                facts={facts}
-                workspace={workspace.data as AvalonWorkspace | undefined}
-                fullscreen={fullscreen}
-                apply={(next, browse) => {
-                  setStore('all')
-                  if (browse) {
-                    setSort(browse.sort)
-                    listState.setBucket(browse.bucket)
-                    setRules(next)
-                    return
+                      )}
+                      {listState.list && (
+                        <ListEditor
+                          key={listState.list.id}
+                          list={listState.list}
+                          actionsOnly
+                          onClosed={() => setPanel(null)}
+                        />
+                      )}
+                      {listState.list && !listState.list.isLive && sort !== 'list-order' && (
+                        <button
+                          onClick={() => {
+                            setSort('list-order')
+                            setPanel(null)
+                          }}
+                        >
+                          Show list order
+                        </button>
+                      )}
+                      {browseActions}
+                      <details>
+                        <summary>Current search and sort</summary>
+                        {toolbar}
+                      </details>
+                    </>
+                  )}
+                </AvalonLibraryPanel>
+              )}
+              {filtersOpen && (
+                <AvalonFilterPanel
+                  filter={{
+                    ...rules,
+                    ...(store === 'all' ? {} : { stores: [store] }),
+                    ...(fullscreen && bucket === 'installed' ? { installed: true } : {}),
+                  }}
+                  browse={
+                    fullscreen
+                      ? {
+                          sort,
+                          bucket: bucket === 'installed' ? 'all' : bucket,
+                          manual: Boolean(listState.list && !listState.list.isLive),
+                        }
+                      : undefined
                   }
-                  setRules({
-                    ...next,
-                    ...(rules.buckets ? { buckets: rules.buckets } : {}),
-                    ...(rules.hasUnread != null ? { hasUnread: rules.hasUnread } : {}),
-                  })
-                }}
-                close={() => {
-                  setFiltersOpen(false)
-                  if (fullscreen) restoreBrowseFocus()
-                }}
-              />
-            )}
-          </>
-        )}
-      </div>
-    </FactsContext.Provider>
+                  allGames={libraryGames}
+                  optionOrder={filterOrder}
+                  games={avalonFilter(libraryGames, library.data?.lists ?? [], {
+                    query,
+                    bucket: fullscreen ? 'all' : bucket,
+                    store: 'all',
+                    listId: listState.list?.isLive ? 'all' : listId,
+                    sort,
+                  })}
+                  facts={facts}
+                  workspace={workspace.data as AvalonWorkspace | undefined}
+                  fullscreen={fullscreen}
+                  apply={(next, browse) => {
+                    setStore('all')
+                    if (browse) {
+                      setSort(browse.sort)
+                      listState.setBucket(browse.bucket)
+                      setRules(next)
+                      return
+                    }
+                    setRules({
+                      ...next,
+                      ...(rules.buckets ? { buckets: rules.buckets } : {}),
+                      ...(rules.hasUnread != null ? { hasUnread: rules.hasUnread } : {}),
+                    })
+                  }}
+                  close={() => {
+                    setFiltersOpen(false)
+                    if (fullscreen) restoreBrowseFocus()
+                  }}
+                />
+              )}
+            </>
+          )}
+        </div>
+      </FactsContext.Provider>
+    </AvalonCoverWorkspace.Provider>
   )
 }
 

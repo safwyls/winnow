@@ -212,7 +212,9 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
       [4, '133h played', 'GOG'],
     ] as const) {
       const tile = document.querySelector(`[data-avalon-game="${index}"]`)!
-      expect(tile.textContent).toContain(text)
+      expect(tile.textContent).toContain(
+        mode === 'desktop' ? (text === '— played' ? 'never opened' : text.replace(' played', '')) : text,
+      )
       expect(tile.querySelector('.avalon-store-chips')?.textContent).toBe(store)
       expect(tile.querySelector('.avalon-store-initials')).toBeNull()
     }
@@ -246,7 +248,7 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
       </AvalonShell>
     ))
     expect(libraryRole('button', { name: 'View Prey. Owned on Steam, Epic' }).textContent).toContain(
-      '5h played',
+      mode === 'desktop' ? '5h · idle 10d' : '5h played',
     )
     if (mode === 'desktop') fireEvent.click(libraryRole('button', { name: 'Started1' }))
     else {
@@ -285,7 +287,7 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
       [...grouped.querySelectorAll('.avalon-store-initials > span')].map((mark) => mark.textContent),
     ).toEqual(['S', 'E'])
     expect(grouped.querySelector('.avalon-store-initials')?.getAttribute('aria-hidden')).toBe('true')
-    expect(grouped.textContent).toContain('6h played')
+    expect(grouped.textContent).toContain(mode === 'desktop' ? '6h' : '6h played')
     const single = libraryRole('button', { name: 'View Dishonored' })
     expect(single.querySelector('.avalon-store-initials')).toBeNull()
     expect(single.querySelector('.avalon-store-chips')?.textContent).toBe('STEAM')
@@ -355,7 +357,7 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
     const brightness = (element: HTMLElement) =>
       Number(/brightness\(([\d.]+)\)/.exec(element.style.getPropertyValue('--avalon-dormancy'))![1])
     expect(brightness(recent)).toBeGreaterThan(brightness(old))
-    expect(recent.textContent).toContain('5h played')
+    expect(recent.textContent).toContain(mode === 'desktop' ? '5h · idle 2d' : '5h played')
     expect(grouped.entries.map((entry) => [entry.playtimeMinutes, entry.lastPlayedAt])).toEqual([
       [300, primary.lastPlayedAt],
       [10, grouped.lastPlayedAt],
@@ -590,9 +592,7 @@ it('appending deferred shelves retains the current cover element and keyboard fo
   expect(libraryRole('button', { name: 'View Library game 1' })).toBe(first)
   expect(document.activeElement).toBe(first)
   fireEvent.keyDown(first, { key: 'ArrowDown' })
-  expect(libraryRole('button', { name: 'Show Deferred shelf' }).getAttribute('aria-current')).toBe(
-    'true',
-  )
+  expect(libraryRole('button', { name: 'Show Deferred shelf' }).getAttribute('aria-current')).toBe('true')
 })
 
 it('retains each Home overflow page while carrying only the current visible column', () => {
@@ -804,6 +804,10 @@ it('marks linked releases as read without swallowing pushes newer than the displ
   const ctx = context('desktop')
   ctx.games = [game(1, { bucket: 'active', playtimeMinutes: 60 })]
   fixtures.workspace = {
+    works: [],
+    externalIds: [],
+    pluginActions: {},
+    epicLaunchKeys: {},
     buckets: [
       {
         resolvedWorkId: 1,

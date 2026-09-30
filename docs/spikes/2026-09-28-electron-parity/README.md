@@ -45,11 +45,19 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [cover tile checkpoint](checkpoint-forty.md) records 3,154 passing component/live API
+cases and all 20 final native cover checks. The first native regression exposed and then
+verified fixes for double hover movement and stationary-pointer reattachment. All dashboard
+and rating-cap follow-ups from checkpoint 39 pass. Seventeen more source methods have
+complete migration evidence; the inventory still has 611 pending and 101 partial methods.
+
 The [metadata settings checkpoint](checkpoint-thirty-nine.md) records 3,139 passing
 component/live API cases, 138 backend HTTP cases, and 36 native regression cases. Seven
 final native checks verify corrected reading-page typography, rules and alignment.
 The full .NET Release suite passes 6,895 cases with two Linux-only skips on Windows.
-The complete 273-case native suite remains to be run together.
+The complete 273-case native run passed 271 and failed two: a fixture database lock
+and a rating-cap input sent around a pending save. Targeted follow-ups pass in checkpoint 40;
+checkpoint 39 records the failure evidence and the run's source-provenance limitation.
 
 The [tray/window checkpoint](checkpoint-thirty-eight.md) records 3,111 passing component/API
 cases across 153 files, with build and typecheck passing. All 44 focused native cases pass,

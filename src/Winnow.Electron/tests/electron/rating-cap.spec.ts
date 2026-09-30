@@ -147,6 +147,8 @@ for (const [mode, scale] of [
             (await api<LibraryPreferences>(page, { route: 'preferences.library.get' })).maturityCap!,
           )
           while (current !== index) {
+            await expect(control).toBeEnabled()
+            await expectCap(current)
             await control.press(index < current ? 'ArrowLeft' : 'ArrowRight')
             current += index < current ? -1 : 1
             await expectCap(current)

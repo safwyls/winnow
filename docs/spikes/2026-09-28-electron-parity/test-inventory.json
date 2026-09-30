@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 628,
+    "pending": 611,
     "partial": 101,
-    "ported": 1130,
+    "ported": 1147,
     "retained-backend": 559,
     "framework-specific": 17
   },
@@ -20927,87 +20927,242 @@
     {
       "id": "CardDetailsInteractionTests.Incomplete_click_or_recycled_press_does_not_open_details",
       "source": "tests/Winnow.Ui.Tests/CardDetailsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "release outside cancels both cover and action activation and never restores stale hover"
+        },
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "recycled presses and keyboard action focus cannot transfer to an incoming identity"
+        }
+      ],
+      "reason": "Real mouse-down/release-outside and identity replacement between press and release never open Details or launch an outgoing copy."
     },
     {
       "id": "CardDetailsInteractionTests.Hover_border_preserves_selection_and_clears_when_the_tile_is_recycled",
       "source": "tests/Winnow.Ui.Tests/CardDetailsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "hover ring preserves selection, keyboard Tab reveals actions and pointer exit does not pin them"
+        },
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "recycled presses and keyboard action focus cannot transfer to an incoming identity"
+        },
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "fixed action targets and inside ring retain their geometry"
+        }
+      ],
+      "reason": "Pointer, selection and keyboard focus independently control the inside two-pixel ring. Geometry and non-intercepting hit behavior are measured at all original widths. Recycling releases outgoing focus and controls."
     },
     {
       "id": "CardDetailsInteractionTests.Reduced_motion_snaps_every_animated_tile_state",
       "source": "tests/Winnow.Ui.Tests/CardDetailsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "expansion marks yield to Play and reduced motion snaps all cover transitions"
+        }
+      ],
+      "reason": "Every descendant and the tile itself have zero transition duration under the saved reduced-motion preference, including artwork, fallback title, scrim, expansion marks and both controls."
     },
     {
       "id": "CardDetailsInteractionTests.Hover_reveals_fixed_compact_actions",
       "source": "tests/Winnow.Ui.Tests/CardDetailsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "fixed action targets and inside ring retain their geometry"
+        }
+      ],
+      "reason": "At 108, 148 and 200 pixels, real pointer entry reveals unchanged 32-pixel primary and 40-pixel Details targets, with original tooltips and geometry relative to the cover."
     },
     {
       "id": "CardDetailsInteractionTests.Hover_stats_and_store_chips_do_not_overlap",
       "source": "tests/Winnow.Ui.Tests/CardDetailsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "store words and compact stats never overlap"
+        }
+      ],
+      "reason": "The full original five width/store/playtime combinations preserve complete store words, compact playtime and idle, contained scrim height and a shared chip/action bottom edge."
     },
     {
       "id": "CardDetailsInteractionTests.Keyboard_focus_reveals_the_action_dock",
       "source": "tests/Winnow.Ui.Tests/CardDetailsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "hover ring preserves selection, keyboard Tab reveals actions and pointer exit does not pin them"
+        }
+      ],
+      "reason": "Actual Tab reaches the cover, primary and Details buttons and reveals their dock; leaving the tile releases it."
     },
     {
       "id": "CardDetailsInteractionTests.Pointer_click_then_exit_does_not_pin_the_reveal",
       "source": "tests/Winnow.Ui.Tests/CardDetailsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "hover ring preserves selection, keyboard Tab reveals actions and pointer exit does not pin them"
+        }
+      ],
+      "reason": "A real primary click followed by pointer exit hides the dock despite retained pointer focus; selection remains an independent ring signal."
     },
     {
       "id": "CardDetailsInteractionTests.First_press_hits_the_action_revealed_by_that_pointer_move",
       "source": "tests/Winnow.Ui.Tests/CardDetailsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "the first pointer move exposes a live action target on all twelve immediate presses"
+        }
+      ],
+      "reason": "All twelve original move/down/up sequences dispatch exactly once to the primary action and never to Details."
     },
     {
       "id": "CardDetailsInteractionTests.Captured_button_dragged_outside_does_not_restore_hover",
       "source": "tests/Winnow.Ui.Tests/CardDetailsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "release outside cancels both cover and action activation and never restores stale hover"
+        }
+      ],
+      "reason": "Dragging each cover/action press outside before release cancels activation and leaves both action hit areas hidden."
     },
     {
       "id": "CardDetailsInteractionTests.Rebind_and_detach_clear_outgoing_hover_and_action_hit_targets",
       "source": "tests/Winnow.Ui.Tests/CardDetailsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "detachment clears outgoing controls and a stationary pointer can reveal the reattached tile"
+        },
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "recycled presses and keyboard action focus cannot transfer to an incoming identity"
+        },
+        {
+          "file": "tests/parity-cover-tiles.test.tsx",
+          "case": "recycling releases outgoing %s state and late work cannot affect the incoming tile"
+        }
+      ],
+      "reason": "Detachment and identity replacement clear focus, reveal and pending feedback. The next pointer move restores controls and late failures from the outgoing identity cannot alter the replacement."
     },
     {
       "id": "CardDetailsInteractionTests.Keyboard_focused_action_does_not_transfer_to_rebound_tile",
       "source": "tests/Winnow.Ui.Tests/CardDetailsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "recycled presses and keyboard action focus cannot transfer to an incoming identity"
+        }
+      ],
+      "reason": "Tab focuses Details; replacing its work identity removes that focus and keeps incoming controls hidden until a fresh pointer move."
     },
     {
       "id": "CardDetailsInteractionTests.Off_disk_copy_uses_the_install_glyph_and_name",
       "source": "tests/Winnow.Ui.Tests/CardDetailsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "repeated primary clicks and Space belong to the button, while an off-disk copy offers Install"
+        },
+        {
+          "file": "tests/parity-cover-tiles.test.tsx",
+          "case": "keeps the off-disk Install label and glyph with single store %s"
+        }
+      ],
+      "reason": "Reachable off-disk copies expose the Install name, download glyph and store-specific tooltip; activation routes only through the existing ownership action."
     },
     {
       "id": "CardDetailsInteractionTests.Unread_badge_sits_in_the_top_left_corner",
       "source": "tests/Winnow.Ui.Tests/CardDetailsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "fixed action targets and inside ring retain their geometry"
+        }
+      ],
+      "reason": "The unread dot is measured eight pixels from both top and left, separate from the Details corner, at original widths and 200 pixels."
     },
     {
       "id": "CardDetailsInteractionTests.Grouped_expansion_mark_yields_the_bottom_right_corner_to_the_primary_action",
       "source": "tests/Winnow.Ui.Tests/CardDetailsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "expansion marks yield to Play and reduced motion snaps all cover transitions"
+        }
+      ],
+      "reason": "The resting expansion mark fades out when the primary target appears and returns after pointer exit."
     },
     {
       "id": "CardDetailsInteractionTests.Details_icon_owns_its_hit_area_and_opens_after_each_reopen",
       "source": "tests/Winnow.Ui.Tests/CardDetailsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "the entire Details hit area owns repeated opens and cover activation"
+        },
+        {
+          "file": "tests/electron/cover-actions-app.spec.ts",
+          "case": "desktop cover controls dispatch through the production bridge and reopen the real Details modal"
+        }
+      ],
+      "reason": "At 108 and 148 pixels, every sampled point in the original 40-pixel rectangle resolves to Details across three activations. The integrated production shell also opens/closes the real Details modal three times."
     },
     {
       "id": "CardDetailsInteractionTests.Repeated_primary_clicks_and_keyboard_activation_belong_to_the_button",
       "source": "tests/Winnow.Ui.Tests/CardDetailsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "repeated primary clicks and Space belong to the button, while an off-disk copy offers Install"
+        },
+        {
+          "file": "tests/parity-cover-tiles.test.tsx",
+          "case": "refuses duplicate launches while pending and enables actionable retry in strict mode %s"
+        }
+      ],
+      "reason": "Two native pointer clicks and Space produce three primary invocations without opening Details. Pending requests refuse duplicates, expose sanitized failure guidance and allow retry."
     },
     {
       "id": "CardDetailsInteractionTests.Single_click_opens_details_but_icon_press_only_runs_its_action",
       "source": "tests/Winnow.Ui.Tests/CardDetailsInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-cover-tiles.test.tsx",
+          "case": "keeps single cover activation, Details and the reachable primary action independent"
+        },
+        {
+          "file": "tests/electron/cover-actions-app.spec.ts",
+          "case": "desktop cover controls dispatch through the production bridge and reopen the real Details modal"
+        }
+      ],
+      "reason": "The actual desktop shell dispatches primary actions through its preload/API path without opening Details, while the folded corner and cover each open the retained modal. Fullscreen keeps and verifies its separate cover/Details launch path."
     },
     {
       "id": "CollectionExplanationTests.Built_in_collections_expose_explanations_on_desktop_and_fullscreen",

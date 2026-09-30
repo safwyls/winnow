@@ -459,7 +459,7 @@ describe('integrated frontend', () => {
       fireEvent.keyDown(grouped, { key: 'ArrowRight' })
       expect(grouped.getAttribute('data-selected')).toBe('true')
       expect(grouped.querySelector('.avalon-unread')).not.toBeNull()
-      expect(grouped.textContent).toContain('6h played')
+      expect(grouped.textContent).toContain(mode === 'desktop' ? '6h' : '6h played')
       fireEvent.click(grouped)
       const heading = await screen.findByRole('heading', { name: 'Prey', level: 1 })
       const details = within(heading.closest('.avalon-details') as HTMLElement)
