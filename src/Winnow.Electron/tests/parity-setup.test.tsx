@@ -151,7 +151,9 @@ describe.each(['desktop', 'fullscreen'] as const)('%s setup parity', (mode) => {
     )
     expect(request.mock.calls.some(([input]) => input.route === 'setup.put')).toBe(false)
     finish({ ok: true, status: 200, data: 0 })
-    await screen.findByText('IGDB credentials saved.')
+    await screen.findByText(
+      'Credentials saved. Metadata refresh queued. IGDB will check them when fetching details.',
+    )
     expect((screen.getByLabelText('Client secret') as HTMLInputElement).value).toBe('')
     await waitFor(() =>
       expect((screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement).disabled).toBe(false),

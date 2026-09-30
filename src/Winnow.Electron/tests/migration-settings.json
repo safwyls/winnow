@@ -113,24 +113,28 @@
     "reason": "Secret-bearing controls remount when presentation changes and never persist the discarded draft."
   },
   "IgdbSettingsInteractionTests.Desktop_binds_masked_input_and_reports_missing_fields_without_exposing_secret": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-setup.test.tsx",
-        "case": "waits for an explicit credential save and does not save again on Continue"
+        "file": "tests/parity-igdb-settings.test.tsx",
+        "case": "rejects missing fields locally without writing: %j"
+      },
+      {
+        "file": "tests/electron/igdb-settings.spec.ts",
+        "case": "IGDB settings preserve protected credentials masked drafts controller input and save focus at text"
       }
     ],
-    "reason": "Masked input, explicit save and clearing after save are covered. The missing-field response and every remove-credentials outcome need migrated assertions."
+    "reason": "Both forms bind masked inputs, reject incomplete fields without writing and acknowledge accepted saves. Native desktop checks verify actual protected storage, clear the secret after save and removal, and discard the draft on departure and return."
   },
   "IgdbSettingsInteractionTests.Fullscreen_controller_opens_masked_editor_and_keeps_shared_values": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-setup.test.tsx",
-        "case": "waits for an explicit credential save and does not save again on Continue"
+        "file": "tests/electron/igdb-settings.spec.ts",
+        "case": "IGDB settings preserve protected credentials masked drafts controller input and save focus at text"
       }
     ],
-    "reason": "Fullscreen fields use the same explicit-save API and masked inputs. Controller on-screen keyboard behavior is a separate integration requirement."
+    "reason": "Real fullscreen Chromium at 100% and 140% text uses controller A to open the masked editor and save the shared credential pair. Tests verify the production backend state, empty secret after save/removal/departure, original feedback, retained action focus and complete feedback visibility."
   },
   "FullscreenSettingsTests.Reset_opens_confirmation_without_mutating_preferences": {
     "status": "ported",

@@ -28,7 +28,12 @@ and B returns. Desktop retains unsaved drafts across dialog navigation.
 Settings groups Steam, Epic and GOG under **Platforms**, with one card at a time, attention
 markers and title counts from the whole library. Steam keeps credential guidance, account
 scope, purchase import and sign-in consent in separate dialogs. IGDB and artwork source
-preferences live under **Metadata & artwork**. Manual games in **Manage library** report
+preferences live under **Metadata & artwork**. The shared IGDB form in Settings and setup
+reports saved, unreadable and externally configured credentials without revealing a secret.
+Saving protects the secret through the backend and queues metadata refresh; removal takes
+effect immediately and reports configuration fallback. Refused writes retain the masked
+draft, and leaving the form clears it. Fullscreen provides the controller text keyboard.
+Manual games in **Manage library** report
 validation and identifier conflicts beside their fields and ask before removing a named entry.
 
 **Plugins** gives every runtime-loaded provider its own tab, followed by **Manage plugins**.
@@ -54,6 +59,11 @@ Separate library directories remain independent, including their backend and bro
 Shell activation IDs above JavaScript's safe integer range travel as canonical decimal
 strings. The backend selects their current primary action, preserving the exact ownership
 ID and the ordinary operation retry rules.
+
+The first backend attachment allows 45 seconds for discovery and the event handshake before
+initial snapshot requests fail. Preparation remains visible while those requests wait.
+After a successful connection, requests during a disconnect wait up to 12 seconds for
+reconnection. Canceling a queued request prevents it from being sent later.
 
 Avalon reads existing authored Winnow JSON palettes from the library's `themes` folder,
 including their fonts and opening preferences. Theme Studio provides reload, diagnostics,

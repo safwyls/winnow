@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 07:07'
+updated_date: '2026-09-30 07:47'
 labels: []
 dependencies: []
 priority: high
@@ -132,6 +132,10 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 48b. Investigate the full native profile-restart failure before certifying the journal milestone. Require fixture shutdown to observe its authenticated backend process exiting, and clean up a launched Electron process if readiness fails. Repeat the unchanged activation behavior assertions against the frozen journal build, then update native density interactions for the Display preferences popover and verify rating-cap behavior on both surfaces.
 
 48c. Direct MainWindow.axaml inspection resolves the Display placement ambiguity: Density is a per-session command-bar control beside the persisted Display flyout. Keep Density inline, preserve its existing native tests, and restore the flyout Cover art Fit/Fill, dormancy, non-game, cap, expansion and journal controls in source order with source explanations. Verify the cap placement independently from Density.
+
+49. Restore the exact IGDB credential Settings/setup contracts on desktop and fullscreen: saved/readable/configuration states, protected save and token invalidation, missing-field and protection refusal, removal fallback, legacy migration, sanitized read/write failure and setup-link refusal. Extract a shared frontend form, preserve ordinary drafts on refusal and clear secrets only after accepted changes, and verify production HTTP with injected test protectors and transactional failure fixtures. Continue broader fullscreen Settings control typography and controller semantics as a separate source audit. The full231native suite runs against frozen9b0d17d3 while the new source work remains unbuilt.
+
+49a. The frozen231native run exposed a real cold-start boundary: the spine fixture database was created07:14:19UTC and backend start logged07:14:31UTC, while transport.ready rejects after12seconds despite a45second startup connection policy. Add controlled delayed-first-connection transport and actual Electron tests before changing this timeout. Preserve the12second bound for reconnects after a successful attachment, cancellation and no-write-before-handshake. After the active frozen run ends, align startup-specific fixture expectations with the documented startup bound and rerun failures without weakening interaction assertions. IGDB source changes remain unbuilt and separate.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -260,4 +264,8 @@ Plan47 verified: all2966 component/liveAPI cases in146files pass without skips51
 Checkpoint33 full.NET Release regression passes6869 cases across13assemblies, including896AvaloniaUI, with2Linux-only skips onWindows and no failures. Evidence .tmp/journal-regression.log and13TRX in .tmp/journal-regression-results. Journal package verified; combined228native run remains outstanding. Rating-cap implementation is separate and has not been built or tested yet. All AC remain unchecked.
 
 Plan48 verified: all3009 component/liveAPI cases in147files pass without skips52.38s; build/typecheck and121backendHTTP cases pass. All33native rating/layout/library checks pass2.8m, followed by3final rating workflows38.6s after a stronger assertion exposed and fixed save-time controller focus loss. Desktop Density remains inline beside the restored Display popover; fullscreen uses Content age limit. Final captures inspected. Initial full228journal run passed227 with one startup timeout plus worker teardown failure; hardened fixture cleanup and all24activation repeats pass, root cause of initial timeout unconfirmed. Twelve source contracts ported; inventory1094ported559retained17framework657pending108partial. Evidence checkpoint-thirty-four.md. All AC remain unchecked.
+
+Plan 49 focused verification: 129 renderer/transport/setup cases and 12 new real backend HTTP credential cases pass; build and typecheck pass. Controlled startup tests first reproduced the 12-second initial request cutoff, then passed with a 45-second first-attachment deadline while reconnect remains 12 seconds. Frozen 9b0d17d3 full native run finished 225 passed, two failed and four blocked in 20.8 minutes: browse-spine cold preparation and Epic fullscreen fixture navigation. Their report is retained in .tmp/rating-cap-complete-native; separate native follow-up is running. No AC checked.
+
+Plan49 verified: all3051 component/liveAPI cases in149files pass without skips52.56s; build/typecheck and133backendHTTP cases pass. New12credential HTTP cases verify protection, legacy migration, sanitized failures and complete transaction rollback. Final3native IGDB workflows pass29.4s on desktop/fullscreen and140percent text; source typography, secret lifecycle, save focus and feedback containment inspected. Real slow first attachments pass both modes; all8activation,5browse-spine and2Epic native workflows pass in focused follow-up. The earlier Epic navigation failure remains unexplained, with its original report retained. Thirteen source contracts completed; inventory1107ported559retained17framework646pending106partial. Evidence checkpoint-thirty-five.md. Full236native run is next; all AC remain unchecked.
 <!-- SECTION:NOTES:END -->

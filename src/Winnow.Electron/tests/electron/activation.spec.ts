@@ -41,7 +41,7 @@ async function launch(
       .toBe(true)
     const page = await application.firstWindow()
     await expect
-      .poll(() => page.evaluate(async () => (await window.winnow.connection()).connected))
+      .poll(() => page.evaluate(async () => (await window.winnow.connection()).connected), { timeout: 45000 })
       .toBe(true)
     return application
   } catch (failure) {

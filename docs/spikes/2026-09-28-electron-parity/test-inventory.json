@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 657,
-    "partial": 108,
-    "ported": 1094,
+    "pending": 646,
+    "partial": 106,
+    "ported": 1107,
     "retained-backend": 559,
     "framework-specific": 17
   },
@@ -8111,57 +8111,170 @@
     {
       "id": "IgdbSettingsTests.Setup_page_uses_the_shared_link_destination",
       "source": "tests/Winnow.Tests/IgdbSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-settings.test.tsx",
+          "case": "uses the shared Twitch setup destination and handles %s"
+        }
+      ],
+      "reason": "Both desktop and fullscreen use the named external-link bridge for the exact shared Twitch setup destination."
     },
     {
       "id": "IgdbSettingsTests.Save_protects_secret_clears_tokens_and_is_read_by_existing_source",
       "source": "tests/Winnow.Tests/IgdbSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-settings.test.tsx",
+          "case": "acknowledges an accepted save with normalized identity clear secret and queued metadata refresh"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IgdbSettingsParityTests.cs",
+          "case": "Accepted_save_protects_the_secret_clears_every_token_and_notifies_the_existing_refresh_source"
+        }
+      ],
+      "reason": "Real HTTP and SQLite verify protection, token invalidation, normalized values and the existing credential reader; both forms clear the secret and report queued metadata refresh."
     },
     {
       "id": "IgdbSettingsTests.Missing_field_does_not_write",
       "source": "tests/Winnow.Tests/IgdbSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-settings.test.tsx",
+          "case": "rejects missing fields locally without writing: %j"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IgdbSettingsParityTests.cs",
+          "case": "Missing_fields_do_not_write_or_notify"
+        }
+      ],
+      "reason": "Both forms reject either missing field and focus it without a write; the production endpoint independently refuses incomplete credentials without notifications."
     },
     {
       "id": "IgdbSettingsTests.Protection_refusal_preserves_previous_values",
       "source": "tests/Winnow.Tests/IgdbSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-settings.test.tsx",
+          "case": "preserves the saved pair and masked draft when protection is refused"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IgdbSettingsParityTests.cs",
+          "case": "Protection_refusal_preserves_the_previous_identity_and_cached_tokens"
+        }
+      ],
+      "reason": "The production backend retains the previous identity and cached tokens; both forms explain the storage refusal while retaining the masked draft."
     },
     {
       "id": "IgdbSettingsTests.Remove_clears_saved_pair_legacy_and_tokens_and_explains_fallback",
       "source": "tests/Winnow.Tests/IgdbSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-settings.test.tsx",
+          "case": "removes accepted credentials immediately and explains remaining configuration: %s"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IgdbSettingsParityTests.cs",
+          "case": "Removal_clears_saved_legacy_and_token_rows_and_reports_configuration_fallback"
+        }
+      ],
+      "reason": "Both configuration states are covered through real HTTP and both forms; removal clears all saved/legacy/token rows and fields, and explains immediate effect and fallback."
     },
     {
       "id": "IgdbSettingsTests.Configuration_load_does_not_copy_external_credentials_into_fields",
       "source": "tests/Winnow.Tests/IgdbSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-settings.test.tsx",
+          "case": "loads the credential state %j without copying or revealing a secret"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IgdbSettingsParityTests.cs",
+          "case": "Configuration_credentials_are_reported_without_copying_their_identity_or_secret_to_the_frontend"
+        }
+      ],
+      "reason": "Production redacted snapshots report external configuration without copying credentials. Both presentation paths start with an empty secret and preserve the snapshot identity."
     },
     {
       "id": "IgdbSettingsTests.Load_migrates_legacy_credentials_using_existing_source_without_exposing_secret",
       "source": "tests/Winnow.Tests/IgdbSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-settings.test.tsx",
+          "case": "loads the credential state %j without copying or revealing a secret"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IgdbSettingsParityTests.cs",
+          "case": "Reading_legacy_credentials_uses_the_runtime_migration_without_exposing_the_secret"
+        }
+      ],
+      "reason": "The real GET invokes the existing legacy migration, protects and empties the old plaintext row, and returns only the readable state and client ID."
     },
     {
       "id": "IgdbSettingsTests.Unreadable_protected_secret_is_reported_without_showing_it",
       "source": "tests/Winnow.Tests/IgdbSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-settings.test.tsx",
+          "case": "explains configuration fallback beside an unreadable saved pair"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IgdbSettingsParityTests.cs",
+          "case": "An_unreadable_protected_value_remains_saved_but_is_never_returned"
+        }
+      ],
+      "reason": "An unreadable protected value remains saved in the production snapshot but never reaches the renderer; both forms prompt for replacement and explain any configured fallback."
     },
     {
       "id": "IgdbSettingsTests.Failed_mutations_roll_back_all_rows_and_never_show_exception_details",
       "source": "tests/Winnow.Tests/IgdbSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-settings.test.tsx",
+          "case": "keeps failed credential mutation drafts and hides exception details, remove %s"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IgdbSettingsParityTests.cs",
+          "case": "Failed_mutations_roll_back_every_row_and_return_no_exception_details"
+        }
+      ],
+      "reason": "Both failed save and removal roll back every existing SQLite row under a controlled mid-transaction failure. The HTTP response and both forms omit exception details, retain drafts and permit retry."
     },
     {
       "id": "IgdbSettingsTests.Read_failure_is_actionable_and_does_not_escape_command",
       "source": "tests/Winnow.Tests/IgdbSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-settings.test.tsx",
+          "case": "makes failed reads actionable without exposing service exception details"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IgdbSettingsParityTests.cs",
+          "case": "A_failed_read_is_sanitized_and_can_be_retried"
+        }
+      ],
+      "reason": "A controlled storage read failure returns a sanitized HTTP error. Both presentation paths show an actionable retry that restores the saved state."
     },
     {
       "id": "IgdbSettingsTests.Setup_opens_Twitch_applications_and_handles_refusal",
       "source": "tests/Winnow.Tests/IgdbSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-igdb-settings.test.tsx",
+          "case": "uses the shared Twitch setup destination and handles %s"
+        }
+      ],
+      "reason": "Both forms cover successful dispatch, refusal and exceptions at the shared external-link bridge, with the original manual destination hint and no exception details."
     },
     {
       "id": "InstallActionRefreshTests.Reload_updates_open_Epic_actions_without_losing_store_page_or_editor_draft",
@@ -23822,26 +23935,30 @@
     {
       "id": "IgdbSettingsInteractionTests.Desktop_binds_masked_input_and_reports_missing_fields_without_exposing_secret",
       "source": "tests/Winnow.Ui.Tests/IgdbSettingsInteractionTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/parity-setup.test.tsx",
-          "case": "waits for an explicit credential save and does not save again on Continue"
+          "file": "tests/parity-igdb-settings.test.tsx",
+          "case": "rejects missing fields locally without writing: %j"
+        },
+        {
+          "file": "tests/electron/igdb-settings.spec.ts",
+          "case": "IGDB settings preserve protected credentials masked drafts controller input and save focus at text"
         }
       ],
-      "reason": "Masked input, explicit save and clearing after save are covered. The missing-field response and every remove-credentials outcome need migrated assertions."
+      "reason": "Both forms bind masked inputs, reject incomplete fields without writing and acknowledge accepted saves. Native desktop checks verify actual protected storage, clear the secret after save and removal, and discard the draft on departure and return."
     },
     {
       "id": "IgdbSettingsInteractionTests.Fullscreen_controller_opens_masked_editor_and_keeps_shared_values",
       "source": "tests/Winnow.Ui.Tests/IgdbSettingsInteractionTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/parity-setup.test.tsx",
-          "case": "waits for an explicit credential save and does not save again on Continue"
+          "file": "tests/electron/igdb-settings.spec.ts",
+          "case": "IGDB settings preserve protected credentials masked drafts controller input and save focus at text"
         }
       ],
-      "reason": "Fullscreen fields use the same explicit-save API and masked inputs. Controller on-screen keyboard behavior is a separate integration requirement."
+      "reason": "Real fullscreen Chromium at 100% and 140% text uses controller A to open the masked editor and save the shared credential pair. Tests verify the production backend state, empty secret after save/removal/departure, original feedback, retained action focus and complete feedback visibility."
     },
     {
       "id": "IgdbSettingsInteractionTests.Presentation_switches_clear_unsaved_secret",

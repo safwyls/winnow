@@ -3,8 +3,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as Dialog from '@radix-ui/react-dialog'
 import { request } from '../api/client'
 import { useApiQuery } from '../api/hooks'
-import type { IgdbConnection, LibraryPreferences, Mode, StoreConnections } from '../api/types'
-import { EpicConnectionCard, IgdbForm, LibraryPreferenceForm, SteamConnectionCard } from './Settings'
+import type { LibraryPreferences, Mode, StoreConnections } from '../api/types'
+import { EpicConnectionCard, LibraryPreferenceForm, SteamConnectionCard } from './Settings'
+import { IgdbConnectionPanel } from './IgdbSettings'
 import { RatingCapPreference } from './RatingCap'
 import { ApplicationPreferences, LibraryPresentationPreferences } from './SettingsPreferences'
 import { SetupBusyContext, SetupErrorContext } from './settingsState'
@@ -198,7 +199,7 @@ export function Setup({
                 {safeStep === 0 && (
                   <p className="setup-welcome">Your games. One library. Something worth coming back to.</p>
                 )}
-                {safeStep === 1 && <SetupIgdb />}
+                {safeStep === 1 && <SetupIgdb mode={mode} />}
                 {safeStep === 2 && <SetupSteam mode={mode} />}
                 {safeStep === 3 && <SetupEpic mode={mode} />}
                 {safeStep === 4 && (
@@ -255,12 +256,10 @@ export function Setup({
   )
 }
 
-function SetupIgdb() {
-  const igdb = useApiQuery<IgdbConnection>('connections.igdb.get')
+function SetupIgdb({ mode }: { mode: Mode }) {
   return (
     <>
-      <Notice error={igdb.error} />
-      {igdb.data && <IgdbForm snapshot={igdb.data} />}
+      <IgdbConnectionPanel mode={mode} />
       <p className="muted">
         Saved IGDB credentials take effect immediately. Metadata fills in in the background. Continue does not
         save unsaved credentials.

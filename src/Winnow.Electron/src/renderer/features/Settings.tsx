@@ -4,14 +4,7 @@ import { Check, RefreshCw } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { createClientId, dateLabel, request, openExternal } from '../api/client'
 import { useApiQuery, useCommand, useLibrary } from '../api/hooks'
-import type {
-  BackendOperation,
-  FeedVerdict,
-  IgdbConnection,
-  LibraryPreferences,
-  Mode,
-  StoreConnections,
-} from '../api/types'
+import type { BackendOperation, FeedVerdict, LibraryPreferences, Mode, StoreConnections } from '../api/types'
 import { Empty, Notice } from './shared'
 import { readEpicCallback, type EpicChallenge } from '../api/auth'
 import { useViewState } from '../viewState'
@@ -34,6 +27,8 @@ import { NativeEpicAccount } from './EpicAccount'
 import { SteamAccountOperation, useSteamAccountBusy } from './SteamAccountOperation'
 import { Platforms } from './Platforms'
 import { RatingCapPreference, useLibraryPreferenceChange } from './RatingCap'
+import { IgdbConnectionPanel } from './IgdbSettings'
+export { IgdbForm } from './IgdbSettings'
 import { useSteamModal } from './SteamModals'
 
 export function Settings({
@@ -46,7 +41,6 @@ export function Settings({
   const [savedTab, setTab] = useViewState(`${mode}:settings:tab`, 'Platforms')
   const tab = savedTab === 'Connections' ? 'Platforms' : savedTab === 'Providers' ? 'Plugins' : savedTab
   const stores = useApiQuery<StoreConnections>('connections.get')
-  const igdb = useApiQuery<IgdbConnection>('connections.igdb.get')
   const preferences = useApiQuery<LibraryPreferences>('preferences.library.get')
   const operations = useApiQuery<BackendOperation[]>('operations.get')
   const command = useCommand()
@@ -108,8 +102,7 @@ export function Settings({
           <section className="feature-panel">
             <h2>IGDB</h2>
             <p>Descriptions, game identity, and artwork from IGDB.</p>
-            <Notice error={igdb.error} />
-            {igdb.data && <IgdbForm snapshot={igdb.data} key={mode} />}
+            <IgdbConnectionPanel mode={mode} />
           </section>
           <ArtworkSourcePreferences />
         </>
@@ -580,89 +573,6 @@ export function SteamAccount({
         />
       )}
     </div>
-  )
-}
-
-export function IgdbForm({ snapshot }: { snapshot: IgdbConnection }) {
-  const [clientId, setClientId] = useState(snapshot.clientId)
-  const [secret, setSecret] = useState('')
-  const [message, setMessage] = useState('')
-  const command = useCommand<number | boolean>()
-  useSetupBusy(command.isPending)
-  async function save() {
-    const result = await command.mutateAsync({
-      route: 'connections.igdb.put',
-      body: { clientId, clientSecret: secret },
-    })
-    setSecret('')
-    setMessage(
-      result === 0
-        ? 'IGDB credentials saved.'
-        : result === 1
-          ? 'Enter both a client ID and a client secret.'
-          : 'This computer could not protect the credentials. They were not saved.',
-    )
-  }
-  return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault()
-        void save().catch(() => {})
-      }}
-    >
-      <p>
-        {snapshot.hasSavedCredentials
-          ? 'Saved credentials are available.'
-          : snapshot.hasConfigurationCredentials
-            ? 'Credentials are supplied by backend configuration.'
-            : 'Add a Twitch application to connect IGDB.'}
-      </p>
-      <label className="field">
-        Client ID
-        <input
-          autoComplete="off"
-          value={clientId}
-          onChange={(event) => setClientId(event.target.value)}
-          required
-          maxLength={512}
-        />
-      </label>
-      <label className="field">
-        Client secret
-        <input
-          type="password"
-          autoComplete="off"
-          value={secret}
-          onChange={(event) => setSecret(event.target.value)}
-          required
-          maxLength={4096}
-        />
-      </label>
-      <div className="form-actions">
-        <button disabled={command.isPending}>Save credentials</button>
-        <button
-          type="button"
-          onClick={() => {
-            void openExternal('https://dev.twitch.tv/console/apps')
-          }}
-        >
-          Twitch developer console
-        </button>
-        {snapshot.hasSavedCredentials && (
-          <button
-            type="button"
-            disabled={command.isPending}
-            onClick={() => {
-              command.mutate({ route: 'connections.igdb.delete' })
-              setMessage('')
-            }}
-          >
-            Remove saved credentials
-          </button>
-        )}
-      </div>
-      <Notice error={command.error} message={message} />
-    </form>
   )
 }
 

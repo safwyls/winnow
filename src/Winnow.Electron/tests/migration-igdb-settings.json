@@ -1,0 +1,148 @@
+{
+  "IgdbSettingsTests.Setup_page_uses_the_shared_link_destination": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-settings.test.tsx",
+        "case": "uses the shared Twitch setup destination and handles %s"
+      }
+    ],
+    "reason": "Both desktop and fullscreen use the named external-link bridge for the exact shared Twitch setup destination."
+  },
+  "IgdbSettingsTests.Save_protects_secret_clears_tokens_and_is_read_by_existing_source": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-settings.test.tsx",
+        "case": "acknowledges an accepted save with normalized identity clear secret and queued metadata refresh"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/IgdbSettingsParityTests.cs",
+        "case": "Accepted_save_protects_the_secret_clears_every_token_and_notifies_the_existing_refresh_source"
+      }
+    ],
+    "reason": "Real HTTP and SQLite verify protection, token invalidation, normalized values and the existing credential reader; both forms clear the secret and report queued metadata refresh."
+  },
+  "IgdbSettingsTests.Missing_field_does_not_write": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-settings.test.tsx",
+        "case": "rejects missing fields locally without writing: %j"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/IgdbSettingsParityTests.cs",
+        "case": "Missing_fields_do_not_write_or_notify"
+      }
+    ],
+    "reason": "Both forms reject either missing field and focus it without a write; the production endpoint independently refuses incomplete credentials without notifications."
+  },
+  "IgdbSettingsTests.Protection_refusal_preserves_previous_values": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-settings.test.tsx",
+        "case": "preserves the saved pair and masked draft when protection is refused"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/IgdbSettingsParityTests.cs",
+        "case": "Protection_refusal_preserves_the_previous_identity_and_cached_tokens"
+      }
+    ],
+    "reason": "The production backend retains the previous identity and cached tokens; both forms explain the storage refusal while retaining the masked draft."
+  },
+  "IgdbSettingsTests.Remove_clears_saved_pair_legacy_and_tokens_and_explains_fallback": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-settings.test.tsx",
+        "case": "removes accepted credentials immediately and explains remaining configuration: %s"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/IgdbSettingsParityTests.cs",
+        "case": "Removal_clears_saved_legacy_and_token_rows_and_reports_configuration_fallback"
+      }
+    ],
+    "reason": "Both configuration states are covered through real HTTP and both forms; removal clears all saved/legacy/token rows and fields, and explains immediate effect and fallback."
+  },
+  "IgdbSettingsTests.Configuration_load_does_not_copy_external_credentials_into_fields": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-settings.test.tsx",
+        "case": "loads the credential state %j without copying or revealing a secret"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/IgdbSettingsParityTests.cs",
+        "case": "Configuration_credentials_are_reported_without_copying_their_identity_or_secret_to_the_frontend"
+      }
+    ],
+    "reason": "Production redacted snapshots report external configuration without copying credentials. Both presentation paths start with an empty secret and preserve the snapshot identity."
+  },
+  "IgdbSettingsTests.Load_migrates_legacy_credentials_using_existing_source_without_exposing_secret": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-settings.test.tsx",
+        "case": "loads the credential state %j without copying or revealing a secret"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/IgdbSettingsParityTests.cs",
+        "case": "Reading_legacy_credentials_uses_the_runtime_migration_without_exposing_the_secret"
+      }
+    ],
+    "reason": "The real GET invokes the existing legacy migration, protects and empties the old plaintext row, and returns only the readable state and client ID."
+  },
+  "IgdbSettingsTests.Unreadable_protected_secret_is_reported_without_showing_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-settings.test.tsx",
+        "case": "explains configuration fallback beside an unreadable saved pair"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/IgdbSettingsParityTests.cs",
+        "case": "An_unreadable_protected_value_remains_saved_but_is_never_returned"
+      }
+    ],
+    "reason": "An unreadable protected value remains saved in the production snapshot but never reaches the renderer; both forms prompt for replacement and explain any configured fallback."
+  },
+  "IgdbSettingsTests.Failed_mutations_roll_back_all_rows_and_never_show_exception_details": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-settings.test.tsx",
+        "case": "keeps failed credential mutation drafts and hides exception details, remove %s"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/IgdbSettingsParityTests.cs",
+        "case": "Failed_mutations_roll_back_every_row_and_return_no_exception_details"
+      }
+    ],
+    "reason": "Both failed save and removal roll back every existing SQLite row under a controlled mid-transaction failure. The HTTP response and both forms omit exception details, retain drafts and permit retry."
+  },
+  "IgdbSettingsTests.Read_failure_is_actionable_and_does_not_escape_command": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-settings.test.tsx",
+        "case": "makes failed reads actionable without exposing service exception details"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/IgdbSettingsParityTests.cs",
+        "case": "A_failed_read_is_sanitized_and_can_be_retried"
+      }
+    ],
+    "reason": "A controlled storage read failure returns a sanitized HTTP error. Both presentation paths show an actionable retry that restores the saved state."
+  },
+  "IgdbSettingsTests.Setup_opens_Twitch_applications_and_handles_refusal": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-settings.test.tsx",
+        "case": "uses the shared Twitch setup destination and handles %s"
+      }
+    ],
+    "reason": "Both forms cover successful dispatch, refusal and exceptions at the shared external-link bridge, with the original manual destination hint and no exception details."
+  }
+}

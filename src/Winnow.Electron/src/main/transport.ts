@@ -193,7 +193,9 @@ export class BackendTransport {
     }
   }
   private async ready(requestSignal?: AbortSignal): Promise<Discovery> {
-    const signal = requestSignal ? AbortSignal.any([this.lifetime.signal, requestSignal]) : this.lifetime.signal
+    const signal = requestSignal
+      ? AbortSignal.any([this.lifetime.signal, requestSignal])
+      : this.lifetime.signal
     signal.throwIfAborted()
     this.start()
     if (!this.active || !this.state.connected)
@@ -210,11 +212,15 @@ export class BackendTransport {
           signal.removeEventListener('abort', aborted)
           reject(signal.reason)
         }
-        const timer = setTimeout(() => {
-          this.waiters.delete(ready)
-          signal.removeEventListener('abort', aborted)
-          reject(new Error('The backend is unavailable. Your edits have not been sent.'))
-        }, 12000)
+        // Initial reads share the advertised cold-start window; reconnects stay bounded more tightly.
+        const timer = setTimeout(
+          () => {
+            this.waiters.delete(ready)
+            signal.removeEventListener('abort', aborted)
+            reject(new Error('The backend is unavailable. Your edits have not been sent.'))
+          },
+          this.hasConnected ? 12000 : 45000,
+        )
         this.waiters.add(ready)
         signal.addEventListener('abort', aborted, { once: true })
         if (signal.aborted) aborted()
@@ -306,7 +312,11 @@ export class BackendTransport {
         },
         body: route.body,
         redirect: 'error',
-        signal: AbortSignal.any([this.lifetime.signal, AbortSignal.timeout(120000), ...(requestSignal ? [requestSignal] : [])]),
+        signal: AbortSignal.any([
+          this.lifetime.signal,
+          AbortSignal.timeout(120000),
+          ...(requestSignal ? [requestSignal] : []),
+        ]),
       })
       if (response.status === 401) this.attempt?.abort()
       const responseText = await response.text()
@@ -352,26 +362,59 @@ export class BackendTransport {
     if (!validArtworkImport(input) || !bytes.length || bytes.length > artworkFileLimit)
       return { ok: false, status: 400, message: 'Choose a non-empty image no larger than 16 MiB.' }
     let connection: Discovery
-    try { connection = await this.ready() }
-    catch { return { ok: false, status: 503, message: 'The backend is unavailable. Reconnect before trying again.' } }
+    try {
+      connection = await this.ready()
+    } catch {
+      return { ok: false, status: 503, message: 'The backend is unavailable. Reconnect before trying again.' }
+    }
     try {
       const query = new URLSearchParams({ revision: input.revision })
-      const response = await this.fetcher(new URL(`/api/v1/works/${input.workId}/artwork/${input.slot}/image?${query}`, connection.address), {
-        method: 'POST', headers: { Authorization: `Bearer ${connection.token}`, 'Content-Type': 'application/octet-stream', Accept: 'application/json' },
-        body: new Uint8Array(bytes).buffer, redirect: 'error', signal: AbortSignal.any([this.lifetime.signal, AbortSignal.timeout(120000)]),
-      })
+      const response = await this.fetcher(
+        new URL(`/api/v1/works/${input.workId}/artwork/${input.slot}/image?${query}`, connection.address),
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${connection.token}`,
+            'Content-Type': 'application/octet-stream',
+            Accept: 'application/json',
+          },
+          body: new Uint8Array(bytes).buffer,
+          redirect: 'error',
+          signal: AbortSignal.any([this.lifetime.signal, AbortSignal.timeout(120000)]),
+        },
+      )
       if (response.status === 401) this.attempt?.abort()
       const text = (await response.text()).replaceAll(connection.token, '[redacted]')
       if (text.length > 1024 * 1024) throw new Error('Response too large')
       const data = text ? JSON.parse(text) : undefined
-      if (!response.ok) return { ok: false, status: response.status, data, message: String(data?.detail ?? data?.title ?? `Backend returned ${response.status}`).slice(0, 1000) }
-      if (typeof data?.success !== 'boolean' || typeof data?.message !== 'string') throw new Error('Invalid artwork response')
+      if (!response.ok)
+        return {
+          ok: false,
+          status: response.status,
+          data,
+          message: String(data?.detail ?? data?.title ?? `Backend returned ${response.status}`).slice(
+            0,
+            1000,
+          ),
+        }
+      if (typeof data?.success !== 'boolean' || typeof data?.message !== 'string')
+        throw new Error('Invalid artwork response')
       return { ok: true, status: response.status, data }
     } catch {
-      return { ok: false, status: 0, message: 'The response was lost. The image may have been saved. Refresh current artwork before trying again.' }
+      return {
+        ok: false,
+        status: 0,
+        message:
+          'The response was lost. The image may have been saved. Refresh current artwork before trying again.',
+      }
     }
   }
-  async artwork(provider: string, id: string, width = 1280, requestSignal?: AbortSignal): Promise<string | null> {
+  async artwork(
+    provider: string,
+    id: string,
+    width = 1280,
+    requestSignal?: AbortSignal,
+  ): Promise<string | null> {
     if (
       typeof provider !== 'string' ||
       !/^[a-zA-Z0-9:.-]{1,80}$/.test(provider) ||
@@ -390,7 +433,11 @@ export class BackendTransport {
       const response = await this.fetcher(new URL(`/api/v1/artwork/image?${query}`, connection.address), {
         headers: { Authorization: `Bearer ${connection.token}` },
         redirect: 'error',
-        signal: AbortSignal.any([this.lifetime.signal, AbortSignal.timeout(30000), ...(requestSignal ? [requestSignal] : [])]),
+        signal: AbortSignal.any([
+          this.lifetime.signal,
+          AbortSignal.timeout(30000),
+          ...(requestSignal ? [requestSignal] : []),
+        ]),
       })
       if (!response.ok || response.headers.get('content-type')?.split(';')[0] !== 'image/png') return null
       const bytes = await response.arrayBuffer()

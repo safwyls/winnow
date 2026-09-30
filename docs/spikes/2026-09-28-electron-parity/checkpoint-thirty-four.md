@@ -44,6 +44,15 @@ fullscreen controller input cover this behavior.
   All 24 activation repeats pass against that frozen journal build. The original startup
   timeout has not reproduced and its cause remains unconfirmed; a combined 231-case pass
   is not yet claimed. Details are in checkpoint 33.
+- The subsequent full 231-case run against `9b0d17d3` passed 225, failed two and blocked
+  four after a shared setup failure, in 20.8 minutes. Report and log:
+  `.tmp/rating-cap-complete-native/results.json` and `.tmp/rating-cap-complete-native.log`.
+  The browse-spine setup captured failed library preparation; its backend started about
+  13 seconds after launch, exceeding the transport's 12-second initial request wait.
+  Controlled tests subsequently reproduced that mismatch with the advertised 45-second
+  startup policy. The separate Epic fullscreen sign-in failure waited for its fixture
+  document during navigation; this report does not establish its cause. Follow-up fixes
+  and verification belong to checkpoint 35.
 
 Eleven RatingCapPreference methods and the desktop shared Fit/Fill selector contract now
 have named replacement evidence. Inventory: 1,094 ported, 559 retained backend,
