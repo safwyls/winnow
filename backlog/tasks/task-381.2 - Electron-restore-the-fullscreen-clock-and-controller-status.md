@@ -1,11 +1,11 @@
 ---
 id: TASK-381.2
 title: 'Electron: restore the fullscreen clock and controller status'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:44'
-updated_date: '2026-09-30 19:23'
+updated_date: '2026-09-30 19:24'
 labels:
   - electron
   - parity
@@ -51,7 +51,7 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [x] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -65,3 +65,9 @@ Review boundary: work on this task only after the user prompts continuation from
 <!-- SECTION:NOTES:BEGIN -->
 Implemented fullscreen root/Details local clock, primary-ink controller status and centered navigation. The trusted-main Windows helper reads system XInput, caches battery for 30 seconds, uniquely matches the selected browser controller and omits unknown/unsupported/ambiguous readings. Cleanup and stale replies are covered. Desktop retains its header. Build/typecheck and 3351 component/live API cases across 164 files pass with no skips (59.03s). All 23 focused native controller/status/Details cases pass without retries or skips (1.7m); all 7 status cases additionally pass after explicit renderer preference-settlement waits (23.2s). Inspected fullscreen Library/Details and restored desktop screenshots. Only the three assigned source contracts moved to ported: inventory now 1267 ported, 625 retained, 30 framework-specific, 417 pending and 96 partial. The complete migration gate remains correctly failing for 513 unresolved methods. Physical validation stays in TASK-381.40. Removed two invalid Testing Library exact options without changing exact-name assertion semantics. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-fifty-seven.md. Preparing the milestone commit; no next task started.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Completed in milestone 9b47da85 (Restore Electron fullscreen clock and controller status). Fullscreen root pages and Details have the original live clock, connection status and known Windows battery labels, with centered navigation and desktop restoration. Build/typecheck, all 3351 component/live API tests and 23 distinct native regressions pass; the seven status cases also pass with explicit saved-scale settlement. The three assigned source contracts are ported. Evidence and screenshots are recorded in docs/spikes/2026-09-28-electron-parity/checkpoint-fifty-seven.md. Physical validation remains TASK-381.40. Paused at this task boundary for user review; TASK-381.3 remains queued.
+<!-- SECTION:FINAL_SUMMARY:END -->

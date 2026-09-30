@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 18:51'
+updated_date: '2026-09-30 19:25'
 labels: []
 dependencies: []
 priority: high
@@ -38,7 +38,7 @@ Review workflow: execute exactly one child task after each user continuation pro
 
 The split at d4b14152 assigns all 516 unresolved source contracts exactly once (420 pending, 96 partial). Counts below are source-method evidence scopes, not estimates of effort or proof that features are absent. Inspect existing implementations before making changes. The 35 feature/test tasks are followed by five delivery/validation gates.
 
-TASK-381.1 completes the breakdown checkpoint. Next implementation task: TASK-381.2, fullscreen clock and controller status.
+TASK-381.1 completed the breakdown and TASK-381.2 completed fullscreen clock/controller status in 9b47da85. Paused for user review. Next implementation task after an explicit continuation prompt: TASK-381.3, fullscreen lifecycle and navigation.
 
 | Order | Task | Scope | Unresolved contracts at split |
 | --- | --- | --- | --- |
@@ -270,4 +270,6 @@ Checkpoint 55 completes plan 69. Desktop Details preserves expansion disclosure 
 Checkpoint 56: restored desktop expansion/base-game ownership in Overview, with editions/variants in Library; fullscreen retains all relationships in Library. Added native section ownership, default-palette text contrast, scrollbar clearance, inline screenshot and single action-menu checks. Build/typecheck passes. All 3,324 component/live API cases pass across 162 files in 54.22s. Two native batches pass 18 and 23 cases (38 distinct, no skips/retries), with screenshot inspection. Seven DetailsModalStructure methods now have complete evidence. Seven PlayAxisSeries methods receive explicit retired Avalonia projection dispositions: frozen source cf45d9f has no PlayAxis/Axis binding in either active view and source enforcement requires ActivityTracker. Original .NET tests remain untouched; active timeline coverage is separate. Inventory now 1,264 ported, 625 retained backend, 30 framework-specific, 420 pending and 96 partial of 2,435. See docs/spikes/2026-09-28-electron-parity/checkpoint-fifty-six.md. Full parity, a fresh complete native aggregate, and primary release/CI cutover remain incomplete. User requested a progress estimate after 30 hours; reported candidly that no reliable ETA is available and inventory classification is not a completion percentage.
 
 User-directed review cadence established on 2026-09-30. TASK-381.1 splits the remaining work into TASK-381.2 through TASK-381.41: 35 bounded feature/test tasks plus Windows packaging, Linux packaging, release/CI cutover, physical-device validation and complete regression gates. CLI readback verified all 516 pending/partial source methods assigned exactly once, all source paths preserved, no speculative queued plans, valid acyclic dependency references and a stop/wait-for-user requirement on every task. No application code or inventory dispositions changed. Stop after the breakdown checkpoint; TASK-381.2 is next only when the user prompts continuation.
+
+Review checkpoint: TASK-381.2 completed in 9b47da85 with fullscreen clock/controller status, all 3351 component/live API tests and 23 distinct native regressions passing. Three source contracts are now ported; 417 pending plus 96 partial remain. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-fifty-seven.md. No parent acceptance criterion is complete. Stopped for user review as requested. Next eligible task is TASK-381.3, Electron: finish fullscreen lifecycle and navigation; do not start it until the user prompts continuation.
 <!-- SECTION:NOTES:END -->
