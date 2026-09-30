@@ -1,11 +1,11 @@
 ---
 id: TASK-381.3
 title: 'Electron: finish fullscreen lifecycle and navigation'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:44'
-updated_date: '2026-09-30 21:40'
+updated_date: '2026-09-30 21:41'
 labels:
   - electron
   - parity
@@ -73,7 +73,7 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [x] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -91,3 +91,9 @@ Verification: production build/typecheck pass; all 3358 component/live API cases
 
 Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-fifty-eight.md, .tmp/fullscreen-lifecycle-integration-final.log, .tmp/fullscreen-lifecycle-native-final.log and .tmp/fullscreen-lifecycle-native-summary.json. Per-method mapping: tests/migration-fullscreen-lifecycle.json. Exactly the 17 assigned contracts change disposition; inventory is 1284 ported, 625 retained backend, 30 framework-specific, 403 pending and 93 partial. migration:report passes; test:migration remains correctly failing for 496 unresolved methods. No .NET implementation changed; the full .NET/native aggregate and physical-controller/display validation remain queued. Stop after this milestone for user review; do not begin TASK-381.4 without continuation.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Completed in f9e22fc3. Preserved fullscreen entry/exit, cursor ownership, stable local sections, exact return focus, shared appearance and independent presentation state. All 3358 component/live API cases and 87 distinct native cases pass; build/typecheck, formatting and migration report pass. All 17 assigned source methods now have equivalent executed evidence; 496 unresolved methods remain elsewhere. See checkpoint-fifty-eight.md for visual evidence and device limitations. Paused for user review; TASK-381.4 has not started.
+<!-- SECTION:FINAL_SUMMARY:END -->

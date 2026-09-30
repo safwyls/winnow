@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 19:25'
+updated_date: '2026-09-30 21:41'
 labels: []
 dependencies: []
 priority: high
@@ -38,7 +38,7 @@ Review workflow: execute exactly one child task after each user continuation pro
 
 The split at d4b14152 assigns all 516 unresolved source contracts exactly once (420 pending, 96 partial). Counts below are source-method evidence scopes, not estimates of effort or proof that features are absent. Inspect existing implementations before making changes. The 35 feature/test tasks are followed by five delivery/validation gates.
 
-TASK-381.1 completed the breakdown and TASK-381.2 completed fullscreen clock/controller status in 9b47da85. Paused for user review. Next implementation task after an explicit continuation prompt: TASK-381.3, fullscreen lifecycle and navigation.
+TASK-381.1 completed the breakdown, TASK-381.2 completed fullscreen clock/controller status in 9b47da85, and TASK-381.3 completed fullscreen lifecycle/navigation in f9e22fc3. Paused for user review. Next implementation task after an explicit continuation prompt: TASK-381.4, fullscreen sizing and rendering behavior.
 
 | Order | Task | Scope | Unresolved contracts at split |
 | --- | --- | --- | --- |
@@ -272,4 +272,6 @@ Checkpoint 56: restored desktop expansion/base-game ownership in Overview, with 
 User-directed review cadence established on 2026-09-30. TASK-381.1 splits the remaining work into TASK-381.2 through TASK-381.41: 35 bounded feature/test tasks plus Windows packaging, Linux packaging, release/CI cutover, physical-device validation and complete regression gates. CLI readback verified all 516 pending/partial source methods assigned exactly once, all source paths preserved, no speculative queued plans, valid acyclic dependency references and a stop/wait-for-user requirement on every task. No application code or inventory dispositions changed. Stop after the breakdown checkpoint; TASK-381.2 is next only when the user prompts continuation.
 
 Review checkpoint: TASK-381.2 completed in 9b47da85 with fullscreen clock/controller status, all 3351 component/live API tests and 23 distinct native regressions passing. Three source contracts are now ported; 417 pending plus 96 partial remain. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-fifty-seven.md. No parent acceptance criterion is complete. Stopped for user review as requested. Next eligible task is TASK-381.3, Electron: finish fullscreen lifecycle and navigation; do not start it until the user prompts continuation.
+
+Review checkpoint: TASK-381.3 completed in f9e22fc3. All 3358 component/live API cases and 87 distinct relevant native cases pass. Startup entry, cursor ownership, section hints and stable geometry, native restoration, quick-menu return focus and independent presentation state have equivalent executed coverage for all 17 assigned source contracts. Inventory: 1284 ported, 625 retained backend, 30 framework-specific, 403 pending and 93 partial; 496 unresolved. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-fifty-eight.md. No parent acceptance criterion is complete. Stopped for user review; next is TASK-381.4 only after an explicit continuation prompt.
 <!-- SECTION:NOTES:END -->
