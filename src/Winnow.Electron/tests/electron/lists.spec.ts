@@ -26,8 +26,8 @@ test.beforeAll(async () => {
   })
   page = await application.firstWindow()
   page.on('pageerror', (error) => errors.push(error.message))
-  await expect(page.getByRole('button', { name: 'Winnow home' })).toBeVisible()
   await page.getByRole('button', { name: 'Skip setup', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Winnow home' })).toBeVisible()
   for (const title of ['Hades', 'Celeste', 'Tunic'])
     entries.push(await api<ManualGame>({ route: 'manual.create', body: { title } }))
   await api({

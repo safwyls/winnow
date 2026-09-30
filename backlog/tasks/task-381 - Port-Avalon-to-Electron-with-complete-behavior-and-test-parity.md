@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 03:55'
+updated_date: '2026-09-30 04:18'
 labels: []
 dependencies: []
 priority: high
@@ -214,4 +214,8 @@ Plan 40: 108 focused updater cases and all 2810 component/live API cases across 
 Checkpoint26: complete native204/204passes in one10.1minute run with clean completion, including the prior Epic and feed fixes. Component/liveAPI2810/138passes without skips43.74s; build/typecheck and108focused updater cases pass. Final enlarged fullscreen captions and recovery inspected. Source inventory1023ported552retained15framework735pending110partial. Evidence checkpoint-twenty-six.md records transport/cache/shutdown fixtures and actual installer/hardware limitations. All acceptance criteria remain unchecked. Plan41 startup implementation is underway.
 
 Plan41 focused startup verification passes 83 component cases and four native workflows (46.0s), including cold background launch, restoration during pending reads, worker rendering while the UI is blocked, controller Back/Retry, reduced motion, enlarged fullscreen text and page retention. All2850 component/liveAPI cases in141files pass without skips (48.86s); build/typecheck pass. Two readiness races and native window visibility were fixed; the background fixture now keeps the real resource root for its tray icon. Inventory1040ported552retained15framework718pending110partial. The complete208native suite is running. No acceptance criteria checked.
+
+Checkpoint27 startup implementation committed as277ac1aa. The full208native run passed198, with one list-suite beforeAll failure and nine cases not run (17.2m). Its saved accessibility snapshot proves setup was open and correctly hid Home; the old fixture waited for Home before skipping setup. The ordering is corrected, with original list behavior assertions intact, and all ten list workflows are running twice. A combined208pass is not claimed. The animation follow-up is now integrated but not yet verified; the running list checks still use the preceding built startup milestone.
+
+Plan42 dragon rendering: all four original source methods now have complete evidence. All2861 component/liveAPI cases in142files pass without skips (48.72s); build/typecheck and11controlled renderer cases pass. Six native drawing cases pass (7.0s), including15contours at101phases and the full dark/light88/100px matrix; four integrated startup workflows also pass with the new worker. A readback fixture now selects a consistent canvas backend without weakening exact seam hashes, and the final worker background/capture is corrected and inspected. All20list repeat checks pass (1.8m). Full214native verification is running. Inventory1044ported552retained15framework714pending110partial. Evidence checkpoint-twenty-eight.md; no AC checked.
 <!-- SECTION:NOTES:END -->

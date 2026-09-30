@@ -37,7 +37,13 @@ restoration during a read starts the visible animation.
   drawing; it does not measure monitor scanout during the blockage.
 - Desktop and enlarged fullscreen failure captures were inspected. Both cover the client
   viewport; the enlarged fullscreen actions remain reachable inside the scrollable surface.
-- The expanded complete native run is still pending at this checkpoint's preparation.
+- The expanded 208-case native run passed 198 cases in 17.2 minutes. The list suite's
+  shared setup failed and nine cases did not run: `.tmp/startup-native-full.log` and its
+  copied `results.json`. The saved accessibility snapshot shows setup correctly hiding
+  Home; that fixture waited for Home before clicking Skip setup. Its ordering is now
+  corrected without changing list assertions. All ten list cases then passed twice
+  in 1.8 minutes: `.tmp/startup-native-lists.log` and its copied `results.json`.
+  A combined 208-case pass is not claimed.
 
 Initial native tests exposed early reveal after cancelled reads, paint ordering and the
 native/Chromium visibility distinction. Those production paths now have regression tests.

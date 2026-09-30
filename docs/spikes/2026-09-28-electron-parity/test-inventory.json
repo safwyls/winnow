@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 718,
+    "pending": 714,
     "partial": 110,
-    "ported": 1040,
+    "ported": 1044,
     "retained-backend": 552,
     "framework-specific": 15
   },
@@ -23826,22 +23826,66 @@
     {
       "id": "LoadingDragonTests.Every_closed_contour_has_a_full_circuit_and_continuous_trail_at_the_seam",
       "source": "tests/Winnow.Ui.Tests/LoadingDragonTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/dragon.spec.ts",
+          "case": "all fifteen native contours retain a thirteen percent trail and exact head across 101 phases"
+        }
+      ],
+      "reason": "The shipped thirteen SVG paths produce fifteen closed native SVG contours. All 101 phase samples independently expand and clip the Canvas dash pattern, check total trail length, and compare the actual head with native getPointAtLength within the original 0.1-unit tolerance."
     },
     {
       "id": "LoadingDragonTests.Trace_moves_with_frame_time_and_stops_on_disable_and_detach",
       "source": "tests/Winnow.Ui.Tests/LoadingDragonTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-dragon-renderer.test.ts",
+          "case": "keeps one frame callback and advances a full circuit from rendered time"
+        },
+        {
+          "file": "tests/parity-dragon-renderer.test.ts",
+          "case": "disable and detach stop queued drawing, and a restarted presentation owns a fresh clock"
+        },
+        {
+          "file": "tests/electron/dragon.spec.ts",
+          "case": "worker theme and size changes retain progress and disabling or detaching releases the clock"
+        }
+      ],
+      "reason": "Controlled 0/450/1800/2250ms samples assert phase and elapsed progression with one callback; stop removes callbacks and restart resets progress. Native React detach and tracing disable terminate the actual worker, clear progress attributes and release its canvas, with no late frame publication."
     },
     {
       "id": "LoadingDragonTests.Compositor_draws_continuous_circuits_and_keeps_progress_across_theme_changes",
       "source": "tests/Winnow.Ui.Tests/LoadingDragonTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-dragon-renderer.test.ts",
+          "case": "color and size changes retain the completed circuit and frame count"
+        },
+        {
+          "file": "tests/electron/dragon.spec.ts",
+          "case": "worker theme and size changes retain progress and disabling or detaching releases the clock"
+        },
+        {
+          "file": "tests/electron/startup.spec.ts",
+          "case": "startup preserves readiness retry reentry and worker rendering with reduced motion"
+        }
+      ],
+      "reason": "The production canvas worker updates colors and size without resetting its rendered elapsed time or frame count. Real native drawing crosses a full circuit; separate integrated checks block the renderer for 600ms while worker frames keep advancing. Tracing disable/re-enable and detach reset the owned lifetime."
     },
     {
       "id": "LoadingDragonTests.Trace_renders_theme_colors_at_different_positions",
       "source": "tests/Winnow.Ui.Tests/LoadingDragonTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/dragon.spec.ts",
+          "case": "native drawing retains ink and glow across nine positions with light"
+        }
+      ],
+      "reason": "The original dark/light and 88/100px matrix renders all nine phase samples through the production draw function with native Path2D and Canvas. Pixel checks retain both ink and glow, all eight intermediate images differ, and the endpoint exactly repeats the first image. The readback-only fixture selects a stable CPU drawing backend; the separate worker test exercises ordinary OffscreenCanvas rendering."
     },
     {
       "id": "ManualEntryFormTests.Saving_on_each_surface_corrects_tracked_ids_or_explains_why_the_form_stays_open",

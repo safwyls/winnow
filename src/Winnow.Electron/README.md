@@ -219,6 +219,8 @@ UI-thread work. Desktop respects system reduced motion and fullscreen uses its s
 preference. Reduced motion and hidden preparation skip the animation delay, while retaining
 data readiness. A failed preparation offers Try again; fullscreen also keeps Back to desktop
 available. Reentry shares an unfinished read and refreshes completed reads without losing the page.
+Theme colors and mark size update within the same animation circuit; hiding or detaching the
+presentation releases its worker and canvas.
 
 Complete Avalonia parity has not yet been established. The [migration inventory](../../docs/spikes/2026-09-28-electron-parity/test-inventory.json)
 tracks original presentation contracts individually; unported and partially verified tests
