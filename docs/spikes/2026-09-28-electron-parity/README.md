@@ -45,6 +45,12 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [dedicated Merges checkpoint](checkpoint-forty-five.md) records all 35 native cases
+passing, including the complete 22-case Avalon layout matrix. Desktop gains its direct
+rail destination, Details return cursor and original keyboard scope; fullscreen keeps its
+own path. Three more source methods have equivalent evidence. The inventory has 511
+pending and 101 partial methods, so complete migration is still open.
+
 The [merge surface checkpoint](checkpoint-forty-four.md) records all 20 native regression
 cases passing. Answers identify their game group on both surfaces; desktop row feedback
 retains the original timing and fixed geometry. Nine methods gain behavioral evidence and

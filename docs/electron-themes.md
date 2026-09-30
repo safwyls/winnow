@@ -401,7 +401,10 @@ Each optional screen is a React component receiving the same `ThemeContext`:
 | `components.GamePreview` | Game information flyout around a theme-owned trigger; takes `game`, `children`, optional `reason`, `disabled`, and `className`. |
 | `components.PortalSurface?` | Reusable fixed-plane reveal with optional cached artwork, shape/activity options, cursor origin and full-view expansion. Older API-1 hosts may omit it. |
 
-A definition can replace `Shell`, `Discover`, `Library`, `Search`, `Details`, `Journal`, and `Settings`.
+A definition can replace `Shell`, `Discover`, `Library`, `Search`, `Details`, `Journal`,
+`Merges`, and `Settings`. The `merges` page and optional `Merges` component expose the
+dedicated desktop review screen; omitted components use the host implementation.
+Avalon's desktop rail opens it directly. Fullscreen keeps review under Library tools.
 `Search` is optional within API 1. Themes that omit it keep the existing Library search route.
 Optional `defaults` supplies partial `appearance` and `layout` maps for the first explicit
 selection. They pass the same validation as profiles. Saved design choices, startup hydration,

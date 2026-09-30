@@ -1609,16 +1609,87 @@ it('desktop keyboard promotion keeps the cursor and row movement asks the viewpo
   expect(
     (screen.getByRole('radio', { name: 'Make Bastion (GOG) the main game' }) as HTMLInputElement).checked,
   ).toBe(true)
-  fireEvent.keyDown(rows[1]!, { key: 'End' })
+  for (let index = 1; index < rows.length; index++)
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' })
   expect(document.activeElement).toBe(rows.at(-1))
   fireEvent.keyDown(rows.at(-1)!, { key: 'ArrowDown' })
   expect(document.activeElement).toBe(rows.at(-1))
-  fireEvent.keyDown(rows.at(-1)!, { key: 'Home' })
+  for (let index = rows.length - 1; index > 0; index--)
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowUp' })
   expect(document.activeElement).toBe(rows[0])
   const calls = follow.mock.calls.length
   rows[1]!.focus()
   expect(follow).toHaveBeenCalledTimes(calls)
 })
+
+it('desktop leaves unrelated keys and modified shortcuts to their focused control without writing an answer', async () => {
+  const { request } = setup('desktop')
+  await screen.findByRole('article', { name: 'Bastion proposal' })
+  const row = screen.getByRole('button', { name: 'Choose Bastion (Steam)' })
+  row.focus()
+  for (const key of [
+    'Home',
+    'End',
+    'ArrowLeft',
+    'ArrowRight',
+    'PageUp',
+    'PageDown',
+    'Tab',
+    'Delete',
+    'Backspace',
+    'a',
+    'r',
+    'Escape',
+  ]) {
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
+    fireEvent(row, event)
+    expect(event.defaultPrevented).toBe(false)
+    expect(document.activeElement).toBe(row)
+  }
+  for (const modifier of ['ctrlKey', 'metaKey', 'altKey']) {
+    for (const key of ['s', 'd', 'Enter', ' ', 'ArrowDown']) {
+      const event = new KeyboardEvent('keydown', { key, [modifier]: true, bubbles: true, cancelable: true })
+      fireEvent(row, event)
+      expect(event.defaultPrevented).toBe(false)
+    }
+  }
+  const control = screen.getByRole('combobox', { name: 'Sort proposals' })
+  control.focus()
+  for (const key of ['s', 'd', 'Enter', ' ', 'ArrowDown']) {
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
+    fireEvent(control, event)
+    expect(event.defaultPrevented).toBe(false)
+  }
+  expect(
+    request.mock.calls.filter(
+      ([input]) => input.route === 'identity.link' || input.route === 'identity.dismiss',
+    ),
+  ).toHaveLength(0)
+})
+
+it.each(['s', 'S', 'Enter', 'd', 'D'])(
+  'desktop %s answers the focused card exactly once with the current header',
+  async (key) => {
+    const { request } = setup('desktop')
+    await screen.findByRole('article', { name: 'Bastion proposal' })
+    const row = screen.getByRole('button', { name: 'Choose Bastion (GOG)' })
+    row.focus()
+    fireEvent.keyDown(row, { key: ' ' })
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
+    fireEvent(row, event)
+    expect(event.defaultPrevented).toBe(true)
+    const route = key.toLowerCase() === 'd' ? 'identity.dismiss' : 'identity.link'
+    await waitFor(() => expect(request.mock.calls.filter(([input]) => input.route === route)).toHaveLength(1))
+    const body = request.mock.calls.find(([input]) => input.route === route)![0].body
+    if (route === 'identity.link') expect(body).toMatchObject({ parentWorkId: 2, childWorkIds: [1] })
+    else expect(body).toMatchObject({ candidateIds: [10] })
+    expect(
+      request.mock.calls.filter(
+        ([input]) => input.route === (route === 'identity.link' ? 'identity.dismiss' : 'identity.link'),
+      ),
+    ).toHaveLength(0)
+  },
+)
 
 it('desktop starts its keyboard cursor on the first pending row and an empty queue has no action target', async () => {
   const { client, request, review } = setup('desktop')
@@ -1649,7 +1720,8 @@ it('desktop answers successive focused cards, falls back from the final card, an
   fireEvent.keyDown(queue, { key: 's' })
   await screen.findByRole('article', { name: 'The Stanley Parable saved group' })
   await waitFor(() => expect(document.activeElement).toBe(rows[2]))
-  fireEvent.keyDown(document.activeElement!, { key: 'End' })
+  for (let index = 2; index < rows.length; index++)
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' })
   expect(document.activeElement).toBe(rows.at(-1))
   fireEvent.keyDown(document.activeElement!, { key: 'd' })
   await waitFor(() => expect(screen.queryByRole('article', { name: 'Prey proposal' })).toBeNull())

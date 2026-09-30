@@ -472,6 +472,9 @@ export function MergeQueue({
       onKeyDown={(event) => {
         if (
           mode !== 'desktop' ||
+          event.ctrlKey ||
+          event.metaKey ||
+          event.altKey ||
           !(event.target instanceof HTMLElement) ||
           (event.target !== root.current && !event.target.hasAttribute('data-merge-row'))
         )
@@ -487,19 +490,13 @@ export function MergeQueue({
           else void link([card])
           return
         }
-        if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return
+        if (!['ArrowUp', 'ArrowDown'].includes(event.key)) return
         const rows = Array.from(root.current?.querySelectorAll<HTMLButtonElement>('[data-merge-row]') ?? [])
         const current = rows.findIndex((row) => row.dataset.mergeRow === cursor)
         if (current < 0) return
         event.preventDefault()
         const next =
-          rows[
-            event.key === 'Home'
-              ? 0
-              : event.key === 'End'
-                ? rows.length - 1
-                : Math.max(0, Math.min(rows.length - 1, current + (event.key === 'ArrowDown' ? 1 : -1)))
-          ]
+          rows[Math.max(0, Math.min(rows.length - 1, current + (event.key === 'ArrowDown' ? 1 : -1)))]
         next?.focus()
         next?.scrollIntoView?.({ block: 'nearest' })
       }}

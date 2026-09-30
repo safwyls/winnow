@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 514,
+    "pending": 511,
     "partial": 101,
-    "ported": 1175,
+    "ported": 1178,
     "retained-backend": 625,
     "framework-specific": 20
   },
@@ -11983,7 +11983,7 @@
           "case": "retains current group choices across detail navigation, and arrows walk visible rows without wrapping"
         }
       ],
-      "reason": "Space promotes the focused member without moving its cursor. Arrow/Home/End navigation clamps and calls scrollIntoView; direct DOM focus does not echo a scroll request."
+      "reason": "Space promotes the focused member without moving its cursor. Up/Down row navigation clamps and calls scrollIntoView; direct DOM focus does not echo a scroll request."
     },
     {
       "id": "MergeQueueViewModelTests.Moving_focus_on_an_empty_queue_returns_nothing",
@@ -12011,7 +12011,7 @@
           "case": "retains current group choices across detail navigation, and arrows walk visible rows without wrapping"
         }
       ],
-      "reason": "Space promotes the focused member without moving its cursor. Arrow/Home/End navigation clamps and calls scrollIntoView; direct DOM focus does not echo a scroll request."
+      "reason": "Space promotes the focused member without moving its cursor. Up/Down row navigation clamps and calls scrollIntoView; direct DOM focus does not echo a scroll request."
     },
     {
       "id": "MergeQueueViewModelTests.Answering_the_focused_card_moves_the_cursor_to_the_card_that_took_its_place",
@@ -12043,7 +12043,7 @@
           "case": "retains current group choices across detail navigation, and arrows walk visible rows without wrapping"
         }
       ],
-      "reason": "Space promotes the focused member without moving its cursor. Arrow/Home/End navigation clamps and calls scrollIntoView; direct DOM focus does not echo a scroll request."
+      "reason": "Space promotes the focused member without moving its cursor. Up/Down row navigation clamps and calls scrollIntoView; direct DOM focus does not echo a scroll request."
     },
     {
       "id": "MergeQueueViewModelTests.A_base_game_and_its_packs_are_one_card",
@@ -12466,7 +12466,18 @@
     {
       "id": "MergesSurfaceTests.The_rail_row_binds_its_label_and_carries_no_count_and_no_opacity",
       "source": "tests/Winnow.Tests/MergesSurfaceTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/app.test.tsx",
+          "case": "desktop Merges is a dedicated screen with no rail count and Escape returns to Library even when its queue is empty"
+        },
+        {
+          "file": "tests/electron/merge-contracts.spec.ts",
+          "case": "dedicated desktop Merges keeps its rail identity and Details cursor then Escape returns to Library"
+        }
+      ],
+      "reason": "The dedicated desktop rail destination retains its plain label and original explanatory tooltip, contains no count and computes to full opacity. Empty-queue application coverage preserves that identity; native routing checks Details return focus and Escape back to Library. Fullscreen retains its separate Library-tools path."
     },
     {
       "id": "MergesSurfaceTests.The_dock_binds_the_queue_and_its_one_undo",
@@ -12487,12 +12498,50 @@
     {
       "id": "MergesSurfaceTests.The_merge_queue_answers_seven_keys_and_nothing_else",
       "source": "tests/Winnow.Tests/MergesSurfaceTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "desktop leaves unrelated keys and modified shortcuts to their focused control without writing an answer"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "desktop keyboard promotion keeps the cursor and row movement asks the viewport to follow"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "answers the focused card exactly once with the current header"
+        },
+        {
+          "file": "tests/electron/merge-contracts.spec.ts",
+          "case": "dedicated desktop Merges keeps its rail identity and Details cursor then Escape returns to Library"
+        }
+      ],
+      "reason": "Desktop owns Up/Down, Space, S/Enter and D only while the queue or a member has focus. The host owns Escape back to Library. Home/End and unrelated keys remain unhandled, modified shortcuts never write decisions and focused input controls keep their keys. Fullscreen sheet-local Home/End navigation is independent."
     },
     {
       "id": "MergesSurfaceTests.Each_key_does_the_one_thing_the_screen_says_it_does",
       "source": "tests/Winnow.Tests/MergesSurfaceTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "desktop keyboard promotion keeps the cursor and row movement asks the viewport to follow"
+        },
+        {
+          "file": "tests/parity-merge.test.tsx",
+          "case": "answers the focused card exactly once with the current header"
+        },
+        {
+          "file": "tests/electron/merge-surface.spec.ts",
+          "case": "row pointer and keyboard cursor keep promotion details and inclusion independent"
+        },
+        {
+          "file": "tests/electron/merge-contracts.spec.ts",
+          "case": "dedicated desktop Merges keeps its rail identity and Details cursor then Escape returns to Library"
+        }
+      ],
+      "reason": "Up/Down clamps the row cursor, Space promotes without writing, S and Enter dispatch exactly one link using the current parent, and D dispatches exactly one dismissal for that card. Handled answers suppress default activation. Real Escape navigates once without changing candidates or history."
     },
     {
       "id": "MergesSurfaceTests.The_toolbar_and_chip_styles_are_defined_once_in_controls",

@@ -303,7 +303,7 @@
         "case": "retains current group choices across detail navigation, and arrows walk visible rows without wrapping"
       }
     ],
-    "reason": "Space promotes the focused member without moving its cursor. Arrow/Home/End navigation clamps and calls scrollIntoView; direct DOM focus does not echo a scroll request."
+    "reason": "Space promotes the focused member without moving its cursor. Up/Down row navigation clamps and calls scrollIntoView; direct DOM focus does not echo a scroll request."
   },
   "MergeQueueViewModelTests.Answering_the_focused_card_moves_the_cursor_to_the_card_that_took_its_place": {
     "status": "ported",

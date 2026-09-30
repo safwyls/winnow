@@ -9,6 +9,7 @@ import { DEFAULT_PROFILE, selectThemeProfile } from '../src/shared/theme'
 import { afterglow } from '../src/renderer/themes/afterglow'
 import { AVALON_PALETTES } from '../src/renderer/themes/avalon-palettes'
 import { clearViewState } from '../src/renderer/viewState'
+import { mergeFixture } from './parity-merge-fixtures'
 
 // Native startup tests exercise the worker; routing tests supply its completed-circuit signal.
 vi.mock('../src/renderer/startup/LoadingDragon', () => ({
@@ -188,6 +189,41 @@ function mountAfterglow() {
   return mount()
 }
 describe('integrated frontend', () => {
+  it('desktop Merges is a dedicated screen with no rail count and Escape returns to Library even when its queue is empty', async () => {
+    const original = window.winnow.request
+    const review = mergeFixture()
+    window.winnow.request = vi.fn(async (input) =>
+      input.route === 'identity.get' ? { ok: true, status: 200, data: review } : original(input),
+    ) as WinnowBridge['request']
+    const client = mount()
+    const merges = await screen.findByRole('button', { name: 'Merges' })
+    expect(merges.textContent).toBe('Merges')
+    expect(merges.title).toBe('Entries that might be one game, and what you have rolled up')
+    expect(merges.querySelector('small')).toBeNull()
+    fireEvent.click(merges)
+    await screen.findByRole('article', { name: 'Bastion proposal' })
+    expect(screen.getByRole('heading', { name: 'Merges', level: 1 })).toBeTruthy()
+    expect(merges.getAttribute('aria-current')).toBe('page')
+    expect(screen.queryByRole('navigation', { name: 'Library tools' })).toBeNull()
+    act(() => client.setQueryData(['api', 'identity.get', undefined], { ...review, candidates: [] }))
+    await screen.findByText('nothing waiting')
+    expect(merges.textContent).toBe('Merges')
+    expect(merges.style.opacity).toBe('')
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Sort proposals' }), { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Merges', level: 1 })).toBeNull())
+    expect(
+      within(screen.getByRole('navigation', { name: 'Main navigation' }))
+        .getByRole('button', { name: 'Library' })
+        .getAttribute('aria-current'),
+    ).toBe('page')
+    await changeSurface(true)
+    expect(
+      within(screen.getByRole('navigation', { name: 'Main navigation' })).queryByRole('button', {
+        name: 'Merges',
+      }),
+    ).toBeNull()
+  })
+
   it.each([false, true])(
     'initial fullscreen waits for saved motion preference %s before tracing',
     async (reduced) => {

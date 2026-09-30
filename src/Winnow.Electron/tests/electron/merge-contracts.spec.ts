@@ -56,6 +56,54 @@ async function surface(mode: 'desktop' | 'fullscreen') {
   await (await libraryAction(page, 'Manage library')).click()
   await page.getByRole('button', { name: 'Identity review', exact: true }).click()
 }
+test('dedicated desktop Merges keeps its rail identity and Details cursor then Escape returns to Library', async ({}, info) => {
+  await app.evaluate(({ BrowserWindow }) => {
+    const window = BrowserWindow.getAllWindows()[0]!
+    window.setFullScreen(false)
+    window.setContentSize(1280, 800)
+    window.webContents.send('winnow:fullscreen:changed', false)
+  })
+  const rail = page.getByRole('navigation', { name: 'Main navigation' })
+  const destination = rail.getByRole('button', { name: 'Merges', exact: true })
+  await expect(destination).toHaveText('Merges')
+  await expect(destination).toHaveAttribute(
+    'title',
+    'Entries that might be one game, and what you have rolled up',
+  )
+  await expect(destination).toHaveCSS('opacity', '1')
+  await expect(destination.locator('small')).toHaveCount(0)
+  await destination.click()
+  await expect(page.getByRole('heading', { name: 'Merges', exact: true, level: 1 })).toBeVisible()
+  await expect(destination).toHaveAttribute('aria-current', 'page')
+  await expect(page.getByRole('navigation', { name: 'Library tools', exact: true })).toHaveCount(0)
+  const row = page.locator('[data-merge-row]').first()
+  await expect(row).toBeEnabled()
+  const cursor = await row.getAttribute('data-merge-row')
+  const before = await api<MergeReview>({ route: 'identity.get' })
+  await row.focus()
+  for (const key of ['Home', 'End', 'ArrowLeft', 'ArrowRight', 'r']) {
+    await page.keyboard.press(key)
+    await expect(row).toBeFocused()
+  }
+  await row
+    .locator('..')
+    .getByRole('button', { name: /^Details for / })
+    .click()
+  await expect(page.locator('.avalon-details')).toBeVisible()
+  await page.getByRole('button', { name: 'Close game details', exact: true }).click()
+  await expect(destination).toHaveAttribute('aria-current', 'page')
+  await expect(page.locator(`[data-merge-row="${cursor}"]`)).toBeFocused()
+  await page.screenshot({ path: info.outputPath('merges-desktop-page.png') })
+  await page.keyboard.press('Escape')
+  await expect(rail.getByRole('button', { name: 'Library', exact: true })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+  await expect(page.getByRole('heading', { name: 'Merges', exact: true, level: 1 })).toHaveCount(0)
+  const after = await api<MergeReview>({ route: 'identity.get' })
+  expect(after.history).toEqual(before.history)
+  expect(after.candidates).toEqual(before.candidates)
+})
 for (const mode of ['desktop', 'fullscreen'] as const) {
   test(`${mode} keeps a real answered slot through separation and opens keyboard sort actions`, async ({}, info) => {
     await surface(mode)

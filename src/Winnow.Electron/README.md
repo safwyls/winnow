@@ -24,6 +24,12 @@ in place. Hover previews stay inside the window and close when their tile is reb
 Escape keeps them closed until the pointer leaves the card. Fullscreen retains its
 separate hero actions.
 
+Desktop **Merges** opens directly from the rail. Its label and tooltip stay present when
+the queue is empty. Details returns to the same member, and Escape returns to Library.
+Up/Down moves the row cursor, Space chooses the header, S or Enter accepts the group and
+D keeps its games separate. Other keys remain with the focused control. Fullscreen
+continues through Manage library → Identity review with its member and confirmation sheets.
+
 Avalon's desktop Details opens over the retained library with five sections and a fixed
 header. Fullscreen Details uses the original cinematic layout, two screenshot previews and
 separate About and Play history reading pages. More contains the shared metadata, matching,

@@ -20,6 +20,7 @@ import {
   Compass,
   Expand,
   Grid2X2,
+  GitMerge,
   List,
   Palette,
   Search,
@@ -92,6 +93,11 @@ const destinations = [
   { id: 'library', label: 'Library', Icon: Grid2X2 },
   { id: 'journal', label: 'Activity', Icon: BookOpen },
   { id: 'settings', label: 'Settings', Icon: Settings2 },
+] as const
+const desktopDestinations = [
+  destinations[0],
+  { id: 'merges', label: 'Merges', Icon: GitMerge },
+  ...destinations.slice(1).filter((item) => item.id !== 'settings'),
 ] as const
 const stateKey = (context: ThemeContext) => `avalon:library:${context.mode}`
 const FactsContext = createContext<AvalonFactMap>(new Map())
@@ -330,18 +336,21 @@ export function AvalonShell(context: ThemeContext) {
               <span>games in your library</span>
             </div>
             <nav className="avalon-navigation" aria-label="Main navigation">
-              {destinations
-                .filter((item) => item.id !== 'settings')
-                .map(({ id, label, Icon }) => (
-                  <button
-                    key={id}
-                    aria-current={shellPage === id ? 'page' : undefined}
-                    onClick={() => context.setPage(id)}
-                  >
-                    <Icon size={17} />
-                    {label}
-                  </button>
-                ))}
+              {desktopDestinations.map(({ id, label, Icon }) => (
+                <button
+                  key={id}
+                  aria-current={shellPage === id ? 'page' : undefined}
+                  title={
+                    id === 'merges'
+                      ? 'Entries that might be one game, and what you have rolled up'
+                      : undefined
+                  }
+                  onClick={() => context.setPage(id)}
+                >
+                  <Icon size={17} />
+                  {label}
+                </button>
+              ))}
             </nav>
             <Collections context={{ ...context, page: shellPage, games: projected.games }} />
             <p className="avalon-rail-note">Your library has unread mail.</p>

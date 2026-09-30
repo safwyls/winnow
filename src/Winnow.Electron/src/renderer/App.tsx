@@ -35,6 +35,7 @@ import { PortalSurface } from './components/portal-effects'
 import { normalizeArtworkEffects } from '../shared/artworkEffects'
 import { RefreshQueue, refreshJournalSnapshot, refreshSnapshots, shouldRefreshArtwork } from './refresh'
 import { navigatePosition, returnFromSearch, type NavigationPosition } from './search-navigation'
+import { Merges } from './features/Merges'
 import { StartupPresentation, useStartupPreparation } from './startup/StartupPresentation'
 import { primarySnapshotVersions, waitForPrimarySnapshots } from './startup/readiness'
 
@@ -326,7 +327,10 @@ export function App() {
       if (event.key === 'Escape' && controllerScope() === document) {
         if (position.page === 'details') navigate(position.previous)
         else if (position.page === 'search') closeSearch()
-        else if (mode === 'fullscreen') {
+        else if (position.page === 'merges') {
+          event.preventDefault()
+          navigate('library')
+        } else if (mode === 'fullscreen') {
           quickMenuAtRoot.current = ['discover', 'library', 'journal', 'settings'].includes(position.page)
           setQuickMenu(true)
         }
@@ -444,6 +448,7 @@ export function App() {
     if (page === 'discover') return <AvalonDiscover {...context} />
     if (page === 'library' || page === 'search') return <AvalonLibrary {...context} />
     if (page === 'journal') return <Journal mode={mode} onOpenGame={openGame} />
+    if (page === 'merges') return <Merges mode={mode} onOpenGame={openGame} />
     if (page === 'settings')
       return (
         <Settings
@@ -581,6 +586,7 @@ export function App() {
     search: 'Search',
     details: 'Details',
     journal: 'Journal',
+    merges: 'Merges',
     settings: 'Settings',
     studio: null,
   } as const
