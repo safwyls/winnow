@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useCommand, useWorkspace } from '../api/hooks'
-import type { LibraryGame, Mode } from '../api/types'
+import type { LibraryGame, Mode, Workspace } from '../api/types'
 import { Notice } from './shared'
 
 interface Link {
@@ -12,12 +12,33 @@ interface Link {
   relationLabel?: string | null
   retractedAt?: string | null
 }
-export function DetailsRelationships({ game, mode }: { game: LibraryGame; mode: Mode }) {
-  const workspace = useWorkspace()
+type RelationshipScope = 'all' | 'expansions' | 'editions'
+
+export function detailsRelationships(
+  game: LibraryGame,
+  workspace: Workspace | undefined,
+  scope: RelationshipScope,
+) {
   const workIds = new Set([game.workId, ...game.entries.map((entry) => entry.workId)])
-  const links = ((workspace.data?.identityLinks ?? []) as Link[]).filter(
-    (link) => !link.retractedAt && (workIds.has(link.parentWorkId) || workIds.has(link.childWorkId)),
+  return ((workspace?.identityLinks ?? []) as Link[]).filter(
+    (link) =>
+      !link.retractedAt &&
+      (workIds.has(link.parentWorkId) || workIds.has(link.childWorkId)) &&
+      (scope === 'all' || (link.kind === 'expansion_of') === (scope === 'expansions')),
   )
+}
+
+export function DetailsRelationships({
+  game,
+  mode,
+  scope = 'all',
+}: {
+  game: LibraryGame
+  mode: Mode
+  scope?: RelationshipScope
+}) {
+  const workspace = useWorkspace()
+  const links = detailsRelationships(game, workspace.data, scope)
   const works = (workspace.data?.works ?? []) as { id: number; name?: string; title?: string }[]
   const name = (id: number) => {
     const work = works.find((work) => work.id === id)
@@ -26,7 +47,7 @@ export function DetailsRelationships({ game, mode }: { game: LibraryGame; mode: 
   if (!links.length) return null
   return (
     <section className="feature-panel">
-      <h2>Related games & editions</h2>
+      <h2>{scope === 'expansions' ? 'Expansions & base game' : 'Related games & editions'}</h2>
       {links.map((link) => (
         <Relationship
           key={link.id}

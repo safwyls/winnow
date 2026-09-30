@@ -3,6 +3,7 @@ import { mkdtemp } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
 import { closeFixture } from './fixture-cleanup'
+import { expectReadableDetails, expectReadingGutter } from './details-readability'
 
 let application: ElectronApplication, page: Page, directory: string
 const errors: string[] = []
@@ -162,7 +163,8 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
   test(`${mode} expansion-end separation keeps the safe choice and writes the child identity only after confirmation`, async () => {
     await surface(mode, { longTitle: false, child: true })
     const detail = await details(true)
-    await detail.getByRole('tab', { name: 'Library', exact: true }).click()
+    if (mode === 'fullscreen') await detail.getByRole('tab', { name: 'Library', exact: true }).click()
+    else await detail.locator('.detail-expansions summary').click()
     await detail.getByRole('button', { name: 'Separate Expansion…', exact: true }).click()
     const confirmation = page.getByRole('dialog', { name: 'Separate Expansion from Base game?', exact: true })
     await expect(confirmation.getByRole('button', { name: 'Keep relationship' })).toBeFocused()
@@ -269,6 +271,8 @@ for (const section of ['Updates', 'Journal', 'Library'])
         await expect(page.locator('body')).toHaveCSS('zoom', String(ui))
         await expect(page.locator('html')).toHaveCSS('--fullscreen-text-scale', String(text))
         const reading = detail.locator('.avalon-details-reading')
+        await expectReadingGutter(reading)
+        await expectReadableDetails(detail)
         const geometry = await reading.evaluate((node) => {
           const bounds = node.getBoundingClientRect(),
             width = node.clientWidth

@@ -1,11 +1,11 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 434,
+    "pending": 420,
     "partial": 96,
-    "ported": 1257,
+    "ported": 1264,
     "retained-backend": 625,
-    "framework-specific": 23
+    "framework-specific": 30
   },
   "tests": [
     {
@@ -1941,37 +1941,44 @@
     {
       "id": "PlayAxisSeriesTests.No_release_year_means_no_axis",
       "source": "tests/Winnow.Tests/DetailsModalAdditionsTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "Retired Avalonia PlayAxis projection, already absent from every desktop/fullscreen view at frozen source cf45d9f1127243a987d3cf6e664a32fc767ecb67. This checks the unused control's release-year gate. DetailsModalStructureTests explicitly forbids PlayAxis and requires ActivityTracker; no view binds Axis. Electron ports the active ActivityTimelineSeries, whose missing-evidence behavior is tested independently. This legacy math test is preserved in the .NET suite, not claimed as an Electron test."
     },
     {
       "id": "PlayAxisSeriesTests.One_month_end_reading_is_not_a_measured_month",
       "source": "tests/Winnow.Tests/DetailsModalAdditionsTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "Tests CanDraw on the retired Avalonia PlayAxis projection, already unbound in both presentation paths at frozen source cf45d9f1127243a987d3cf6e664a32fc767ecb67. The active ActivityTracker's evidence/duration rules are ported in parity-activity-timeline.test.tsx. The legacy test remains in the .NET suite; adding an unused Electron projection would not preserve any active UI behavior."
     },
     {
       "id": "PlayAxisSeriesTests.Live_snapshots_are_never_differenced_into_months",
       "source": "tests/Winnow.Tests/DetailsModalAdditionsTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "Tests the retired PlayAxis CanDraw gate for arbitrary snapshot timestamps. No desktop or fullscreen view references PlayAxis or binds Axis at frozen source cf45d9f1127243a987d3cf6e664a32fc767ecb67; source enforcement forbids that control in Details. The active ActivityTracker's measured monthly coverage is separately ported and tested. This unused Avalonia projection test remains in the .NET suite."
     },
     {
       "id": "PlayAxisSeriesTests.The_floor_point_is_an_amount_with_no_shape",
       "source": "tests/Winnow.Tests/DetailsModalAdditionsTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "Tests the unmeasured floor and three bars of an unused PlayAxis rendering model. Frozen source cf45d9f1127243a987d3cf6e664a32fc767ecb67 has its control definition and compatibility view-model calculations but no view binding. The active ActivityTracker baseline/known-zero rules are independently ported in parity-activity-timeline.test.tsx. The legacy .NET test remains unchanged."
     },
     {
       "id": "PlayAxisSeriesTests.The_axis_runs_from_the_release_year_to_today",
       "source": "tests/Winnow.Tests/DetailsModalAdditionsTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "Tests release-year/stop fractions specific to the retired PlayAxis rendering model. Both source presentation paths already use ActivityTracker instead at frozen source cf45d9f1127243a987d3cf6e664a32fc767ecb67, with no Axis binding. Electron preserves the active tracker's timeline behavior rather than reviving the obsolete axis. The original test remains in the .NET suite."
     },
     {
       "id": "PlayAxisSeriesTests.Marks_are_placed_on_the_whole_axis_and_capped",
       "source": "tests/Winnow.Tests/DetailsModalAdditionsTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "Tests capped markers for the retired Avalonia PlayAxis. No source view instantiates that control at frozen source cf45d9f1127243a987d3cf6e664a32fc767ecb67; Details enforcement expressly forbids it. The active ActivityTracker has independently ported clustered update marks and accessible selection tests. This obsolete marker-layout test remains in the .NET suite and is not counted as ported."
     },
     {
       "id": "PlayAxisSeriesTests.A_series_that_starts_before_the_stated_release_year_extends_the_axis",
       "source": "tests/Winnow.Tests/DetailsModalAdditionsTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "Tests the start-date extent of the already retired PlayAxis rendering model. Frozen source cf45d9f1127243a987d3cf6e664a32fc767ecb67 has no desktop/fullscreen view binding to it. Electron ports the displayed ActivityTracker and its earlier-play evidence rules separately. The legacy projection test is retained in .NET, not represented as an executed Electron equivalent."
     },
     {
       "id": "GameReceptionViewModelTests.No_rows_means_no_line",
@@ -2596,17 +2603,54 @@
     {
       "id": "DetailsModalStructureTests.Tabs_keep_their_stable_order_and_own_their_content",
       "source": "tests/Winnow.Tests/Enforcement/DetailsModalStructureTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/details-desktop.spec.ts",
+          "case": "desktop populated five-tab Details preserves the source"
+        },
+        {
+          "file": "tests/parity-details.test.tsx",
+          "case": "partitions expansions from linked editions while retaining each surface relationship actions"
+        }
+      ],
+      "reason": "Native populated desktop fixtures assert the five original tabs in order, one retained reading viewport, and exclusive ownership of expansions, activity, updates, journal and owned copies. The shared projection test covers expansion, same-game and variant links, excluding retracted/unrelated links. Fullscreen intentionally keeps expansions in Library, per its separate source composition."
     },
     {
       "id": "DetailsModalStructureTests.The_activity_tracker_replaces_the_ambiguous_gap_rail_heading",
       "source": "tests/Winnow.Tests/Enforcement/DetailsModalStructureTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/details-desktop.spec.ts",
+          "case": "desktop populated five-tab Details preserves the source"
+        },
+        {
+          "file": "tests/electron/details-contracts.spec.ts",
+          "case": "fullscreen history initially focuses Lifetime and controller Right selects the original observed session"
+        },
+        {
+          "file": "tests/parity-activity-timeline.test.tsx",
+          "case": "gives lifetime months equal width and accessible selectable labels"
+        }
+      ],
+      "reason": "Desktop renders the active lifetime/tracked ActivityTracker only in Activity; Updates retains its separate Updates heading. Fullscreen opens the same tracker through Play history. The retired PlayAxis and GapRail controls have no Electron rendering path."
     },
     {
       "id": "DetailsModalStructureTests.No_run_in_the_modal_takes_the_ink_below_the_floor",
       "source": "tests/Winnow.Tests/Enforcement/DetailsModalStructureTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/details-desktop.spec.ts",
+          "case": "desktop populated five-tab Details preserves the source"
+        },
+        {
+          "file": "tests/electron/details-contracts.spec.ts",
+          "case": "action graph at both source scale boundaries"
+        }
+      ],
+      "reason": "Native checks inspect actual visible text nodes throughout all five populated desktop tabs and empty/populated fullscreen Updates, Journal and Library at both original scale boundaries. Enabled text cannot use the resolved faint token and must retain 4.5:1 contrast against its composited flat-card background. Disabled controls are exempt as in the source. These checks cover the default palette; the existing separate theme matrix covers palette and artwork compositing policies."
     },
     {
       "id": "DetailsModalStructureTests.The_refetch_status_is_a_bound_text_live_region",
@@ -2627,7 +2671,14 @@
     {
       "id": "DetailsModalStructureTests.The_panel_still_has_exactly_one_popup",
       "source": "tests/Winnow.Tests/Enforcement/DetailsModalStructureTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/details-desktop.spec.ts",
+          "case": "desktop screenshots stay inline with a cleared scrollbar and only More opens the action popup"
+        }
+      ],
+      "reason": "Reception hover and the screenshot strip stay inside the Details modal. Opening More creates exactly one action menu, retains one Details dialog and one native window, and Escape removes the menu. A deliberate screenshot click opens the separately specified gallery dialog and returns to the original inline thumbnail without creating a hero preview."
     },
     {
       "id": "DetailsModalStructureTests.The_menu_carries_five_rows_in_the_settled_order",
@@ -2644,12 +2695,34 @@
     {
       "id": "DetailsModalStructureTests.Every_bounded_scroll_region_clears_its_own_bar",
       "source": "tests/Winnow.Tests/Enforcement/DetailsModalStructureTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/details-desktop.spec.ts",
+          "case": "desktop populated five-tab Details preserves the source"
+        },
+        {
+          "file": "tests/electron/details-desktop.spec.ts",
+          "case": "desktop screenshots stay inline with a cleared scrollbar and only More opens the action popup"
+        },
+        {
+          "file": "tests/electron/details-contracts.spec.ts",
+          "case": "action graph at both source scale boundaries"
+        }
+      ],
+      "reason": "All desktop reading sections and fullscreen empty/populated sections retain a stable scrollbar gutter, at least 10px of trailing padding and no horizontal overflow. Native screenshot-strip geometry checks the final keyboard-focused thumbnail above the horizontal scrollbar clearance and inside the visible right edge."
     },
     {
       "id": "DetailsModalStructureTests.The_card_is_capped_against_the_window_and_not_by_a_number_in_the_file",
       "source": "tests/Winnow.Tests/Enforcement/DetailsModalStructureTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/details-layout.spec.ts",
+          "case": "desktop Details preserves all original width and height caps and the 410px prose measure"
+        }
+      ],
+      "reason": "Actual Chromium geometry follows the original half-window width with 860px floor/1582px ceiling, 0.667-window height with 720px floor, and 40px available-space margins across the complete original window matrix. CSS viewport constraints replace Avalonia converters without imposing a fixed card size."
     },
     {
       "id": "DetailsModalStructureTests.The_scaling_resources_carry_the_measured_numbers",
@@ -2666,7 +2739,18 @@
     {
       "id": "DetailsModalStructureTests.The_strip_stays_and_the_hero_is_gone",
       "source": "tests/Winnow.Tests/Enforcement/DetailsModalStructureTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/details-desktop.spec.ts",
+          "case": "desktop screenshots stay inline with a cleared scrollbar and only More opens the action popup"
+        },
+        {
+          "file": "tests/electron/gallery.spec.ts",
+          "case": "gallery keeps wheel input, full image geometry, keyboard focus and origin return"
+        }
+      ],
+      "reason": "The eight original populated thumbnails are named keyboard-focusable buttons in Overview with a visible focus mark. Choosing one opens the bounded gallery and restores focus to that thumbnail; the inline image count stays eight, with no expanded selected-image hero. Cinematic background art is a separate concern."
     },
     {
       "id": "DetailsModalStructureTests.The_prose_runs_take_the_reading_measure",

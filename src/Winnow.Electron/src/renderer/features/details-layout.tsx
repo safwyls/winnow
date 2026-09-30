@@ -24,7 +24,7 @@ import {
   useMetadataRefresh,
   LifecycleEvidence,
 } from './details-presentation'
-import { DetailsRelationships } from './parity-details-identity'
+import { DetailsRelationships, detailsRelationships } from './parity-details-identity'
 import { AddToListButton, AddToListDialog } from './parity-list-prompt'
 import { ActivityTimeline } from './activity-timeline'
 import { SteamReportedActivity } from './activity-steam'
@@ -119,16 +119,7 @@ export function AvalonDetailsLayout({
   const primary = primaryEntry(game?.entries ?? [], workspace.data) ?? game?.entries[0]
   const ownerships = (details.data?.ownerships ?? []) as { id: number; installPath?: string | null }[]
   const links = game && workspace.data ? gameLinks(game, workspace.data, details.data?.events) : []
-  const relatedIds = new Set([workId, ...(game?.entries.map((entry) => entry.workId) ?? [])])
-  const hasRelationships = (
-    (workspace.data?.identityLinks ?? []) as {
-      retractedAt?: string | null
-      parentWorkId: number
-      childWorkId: number
-    }[]
-  ).some(
-    (link) => !link.retractedAt && (relatedIds.has(link.parentWorkId) || relatedIds.has(link.childWorkId)),
-  )
+  const hasExpansions = game && detailsRelationships(game, workspace.data, 'expansions').length > 0
   const sessions = Object.values(details.data?.sessions ?? {})
     .flat()
     .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
@@ -359,14 +350,14 @@ export function AvalonDetailsLayout({
       )}
       <Screenshots details={details.data} {...(fullscreen ? { previewCount: 2 } : {})} />
       {!fullscreen && <ReceptionLine ratings={details.data?.ratings} />}
-      {!fullscreen && game && hasRelationships && (
+      {!fullscreen && game && hasExpansions && (
         <details
           className="detail-expansions"
           open={relationshipsExpanded}
           onToggle={(event) => setRelationshipsExpanded(event.currentTarget.open)}
         >
-          <summary>Related games & expansions</summary>
-          <DetailsRelationships game={game} mode={mode} />
+          <summary>Expansions & base game</summary>
+          <DetailsRelationships game={game} mode={mode} scope="expansions" />
         </details>
       )}
     </section>
@@ -479,7 +470,7 @@ export function AvalonDetailsLayout({
         </section>
         <ListMembership workId={workId} mode={mode} />
         <LibraryFacts game={game} details={details.data} showTechnicalFacts />
-        {game && <DetailsRelationships game={game} mode={mode} />}
+        {game && <DetailsRelationships game={game} mode={mode} scope={fullscreen ? 'all' : 'editions'} />}
         {game && workspace.data && (
           <GameLinks links={gameLinks(game, workspace.data, details.data?.events)} />
         )}

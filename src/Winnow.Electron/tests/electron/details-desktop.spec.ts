@@ -10,6 +10,7 @@ import { mkdtemp } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
 import { closeFixture } from './fixture-cleanup'
+import { expectReadableDetails, expectReadingGutter } from './details-readability'
 
 let application: ElectronApplication, page: Page, directory: string
 const errors: string[] = []
@@ -90,6 +91,13 @@ for (const [width, height] of [
     const initialHeader = await header.boundingBox()
     await contained(details, page.locator('body'))
     const names = ['Overview', 'Activity', 'Updates, 12 unread updates', 'Journal', 'Library']
+    expect(await details.getByRole('tab').allTextContents()).toEqual([
+      'Overview',
+      'Activity',
+      'Updates',
+      'Journal',
+      'Library',
+    ])
     for (const [index, name] of names.entries()) {
       const tab = details.getByRole('tab', { name, exact: true })
       await tab.click()
@@ -105,6 +113,19 @@ for (const [width, height] of [
           reading.getByRole('heading', { name: 'The Astral Cartographers: Distant Shores 3', exact: true }),
         ).toBeVisible()
       }
+      await expect(reading.locator('.details-relationship')).toHaveCount(name === 'Overview' ? 3 : 0)
+      await expect(reading.locator('.activity-tracker')).toHaveCount(name === 'Activity' ? 1 : 0)
+      await expect(reading.getByRole('heading', { name: 'Updates', exact: true })).toHaveCount(
+        name.startsWith('Updates') ? 1 : 0,
+      )
+      await expect(reading.getByRole('heading', { name: 'Journal', exact: true })).toHaveCount(
+        name === 'Journal' ? 1 : 0,
+      )
+      await expect(reading.getByRole('heading', { name: 'Owned copies', exact: true })).toHaveCount(
+        name === 'Library' ? 1 : 0,
+      )
+      await expectReadingGutter(reading)
+      await expectReadableDetails(details)
       await reading.evaluate((node) => {
         node.scrollTop = node.scrollHeight
       })
@@ -190,4 +211,51 @@ test('desktop original long title, publisher and three stores keep all header ac
   }
   expect((await details.locator('.avalon-details-reading').boundingBox())!.height).toBeGreaterThanOrEqual(80)
   await page.screenshot({ path: info.outputPath('long-header.png') })
+})
+
+test('desktop screenshots stay inline with a cleared scrollbar and only More opens the action popup', async () => {
+  const details = await surface(1200, 640)
+  const reading = details.locator('.avalon-details-reading')
+  const strip = reading.locator('.screenshot-strip')
+  const shot = strip.getByRole('button', { name: 'Open screenshot 8 of 8', exact: true })
+  await shot.focus()
+  await expect(shot).toBeFocused()
+  const geometry = await strip.evaluate((node) => {
+    const shot = node.lastElementChild!
+    const bounds = node.getBoundingClientRect(),
+      image = shot.getBoundingClientRect()
+    const style = getComputedStyle(node),
+      focus = getComputedStyle(shot)
+    return {
+      padding: parseFloat(style.paddingBottom),
+      clientBottom: bounds.top + node.clientHeight,
+      imageBottom: image.bottom,
+      right: bounds.right,
+      imageRight: image.right,
+      outline: parseFloat(focus.outlineWidth),
+      shadow: focus.boxShadow,
+    }
+  })
+  expect(geometry.padding).toBeGreaterThanOrEqual(10)
+  expect(geometry.imageBottom).toBeLessThanOrEqual(geometry.clientBottom - 9)
+  expect(geometry.imageRight).toBeLessThanOrEqual(geometry.right + 1)
+  expect(geometry.outline > 0 || geometry.shadow !== 'none').toBe(true)
+  await expect(reading.locator('img')).toHaveCount(8)
+  await details.locator('.avalon-details-header .reception-line').hover()
+  await expect(page.getByRole('dialog')).toHaveCount(1)
+  await expect(details.locator('.avalon-details-menu')).toHaveCount(0)
+  await details.getByRole('button', { name: 'More', exact: true }).click()
+  await expect(details.locator('.avalon-details-menu')).toHaveCount(1)
+  await expect(page.getByRole('dialog')).toHaveCount(1)
+  expect(await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1)
+  await page.keyboard.press('Escape')
+  await shot.click()
+  const gallery = page.getByRole('dialog', { name: 'Screenshot 8 of 8', exact: true })
+  await expect(gallery).toBeVisible()
+  await expect(gallery.locator('img')).toHaveCount(1)
+  await gallery.getByRole('button', { name: 'Close screenshots', exact: true }).click()
+  await expect(shot).toBeFocused()
+  await expect(reading.locator('img')).toHaveCount(8)
+  await expect(details.locator('.avalon-details-menu')).toHaveCount(0)
+  await details.getByRole('button', { name: 'Close game details', exact: true }).click()
 })

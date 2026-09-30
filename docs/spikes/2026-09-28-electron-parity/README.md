@@ -45,6 +45,12 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [Details structure checkpoint](checkpoint-fifty-six.md) records all 3,324 component/live
+API cases and 38 distinct native Details/gallery cases passing. Desktop relationships follow
+their source sections; rendered text, scrollbar clearance and inline screenshot/menu behavior
+are checked. Seven structure contracts gain evidence, and seven already retired chart
+contracts receive a documented disposition. There are 420 pending and 96 partial methods.
+
 The [populated desktop Details checkpoint](checkpoint-fifty-five.md) records all 3,322
 component/live API cases and 43 native Details/controller cases passing. Desktop sections
 retain expanded relationships and exact scroll positions, and long titles and publishers

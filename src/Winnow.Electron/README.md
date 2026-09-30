@@ -49,8 +49,9 @@ the available reading height, preserve all image edges and scroll fully into vie
 Section navigation includes list-membership controls; toggling a list preserves its focus.
 Desktop About keeps its 410px reading measure and the card follows the original viewport
 caps. Long titles and publishers wrap. Each section keeps its scroll position, and expanded
-relationships remain open when returning to Overview. Technical facts are visible directly
-in Library. Refetch metadata closes More and
+relationships remain open when returning to Overview. Desktop expansion and base-game
+relationships live in Overview; linked editions and variants live in Library. Fullscreen
+keeps its relationships in Library. Technical facts are visible directly in Library. Refetch metadata closes More and
 reports progress and completion in a persistent footer outside the reading area; fullscreen
 uses its own text scale. Refreshing keeps the selected section and returns focus to More.
 

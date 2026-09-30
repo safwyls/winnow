@@ -165,6 +165,54 @@ afterEach(() => {
 })
 
 describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details composition', (mode) => {
+  it('partitions expansions from linked editions while retaining each surface relationship actions', async () => {
+    setup(
+      mode,
+      (input) =>
+        input.route === 'library.workspace'
+          ? {
+              ok: true,
+              status: 200,
+              data: {
+                ...workspace,
+                works: [
+                  ...workspace.works,
+                  { id: 2, name: 'Expansion' },
+                  { id: 3, name: 'Edition' },
+                  { id: 4, name: 'Demo' },
+                ],
+                identityLinks: [
+                  { id: 20, childWorkId: 2, parentWorkId: 1, kind: 'expansion_of' },
+                  { id: 30, childWorkId: 3, parentWorkId: 1, kind: 'same_game' },
+                  { id: 40, childWorkId: 4, parentWorkId: 1, kind: 'variant_of' },
+                  {
+                    id: 50,
+                    childWorkId: 5,
+                    parentWorkId: 1,
+                    kind: 'expansion_of',
+                    retractedAt: '2026-09-01T00:00:00Z',
+                  },
+                  { id: 60, childWorkId: 6, parentWorkId: 7, kind: 'expansion_of' },
+                ],
+              },
+            }
+          : undefined,
+      'avalon',
+    )
+    await screen.findByRole('heading', { name: 'Original game', exact: true })
+    if (mode === 'desktop') {
+      fireEvent.click(await screen.findByText('Expansions & base game', { selector: 'summary' }))
+      expect(await screen.findByRole('button', { name: 'Separate Expansion…' })).toBeTruthy()
+    } else expect(screen.queryByText('Expansions & base game', { selector: 'summary' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Separate Edition…' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Separate Demo…' })).toBeNull()
+    fireEvent.click(screen.getByRole('tab', { name: 'Library', exact: true }))
+    expect(await screen.findByRole('button', { name: 'Separate Edition…' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Separate Demo…' })).toBeTruthy()
+    expect(Boolean(screen.queryByRole('button', { name: 'Separate Expansion…' }))).toBe(mode === 'fullscreen')
+    expect(screen.queryByRole('button', { name: 'Separate Game 5…' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Separate Game 6…' })).toBeNull()
+  })
   it('keeps technical facts visible in Library and the five maintenance actions in their settled order', async () => {
     setup(mode, undefined, 'avalon')
     await screen.findByRole('heading', { name: 'Original game', level: 1 })
