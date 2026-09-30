@@ -44,6 +44,9 @@ Avalon's desktop Details opens over the retained library with five sections and 
 header. Fullscreen Details uses the original cinematic layout, two screenshot previews and
 separate About and Play history reading pages. More contains the shared metadata, matching,
 artwork and browsing actions. Closing restores the originating game and library position.
+Fullscreen artwork fills the window behind the safe margins. Its screenshot previews use
+the available reading height, preserve all image edges and scroll fully into view on focus.
+Section navigation includes list-membership controls; toggling a list preserves its focus.
 Desktop About keeps its 410px reading measure and the card follows the original viewport
 caps. Technical facts are visible directly in Library. Refetch metadata closes More and
 reports progress and completion in a persistent footer outside the reading area; fullscreen

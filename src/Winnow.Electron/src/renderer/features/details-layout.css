@@ -290,6 +290,9 @@
     border-bottom: 1px solid var(--line);
     padding: 16px 0;
   }
+  .avalon-details .details-relationship > div:first-child {
+    flex-basis: min(100%, 24em);
+  }
   .avalon-details .timeline-entry {
     grid-template-columns: minmax(100px, auto) minmax(0, 1fr) auto;
   }
@@ -306,6 +309,11 @@
     --detail-scale: calc(var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
     height: 100%;
     font-size: calc(clamp(16px, 1.25vw, 24px) * var(--detail-scale));
+  }
+  .avalon-shell .avalon-details.fullscreen .avalon-detail-backdrop {
+    position: fixed;
+    width: auto;
+    height: auto;
   }
   .avalon-shell .avalon-details.fullscreen .avalon-details-header {
     padding: 0 0 12px;

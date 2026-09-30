@@ -1,4 +1,4 @@
-import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react'
+import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type Ref } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -57,6 +57,45 @@ export function Screenshots({ details, previewCount }: { details?: GameDetails; 
           : [],
     )
   const shots = [...new Map(keys.map((key) => [`${key.provider}:${key.id}`, key])).values()]
+  useLayoutEffect(() => {
+    const node = strip.current
+    const reading = node?.closest<HTMLElement>('.avalon-details-reading')
+    const about = node?.closest<HTMLElement>('.avalon-about')
+    if (!previewCount || !node || !reading || !about) return
+    let frame = 0
+    function measure() {
+      const bounds = reading!.getBoundingClientRect()
+      if (!reading!.clientHeight || !bounds.height) return
+      const scale = bounds.height / reading!.clientHeight
+      const style = getComputedStyle(reading!)
+      const viewport = reading!.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)
+      const prefix = (node!.getBoundingClientRect().top - about!.getBoundingClientRect().top) / scale
+      const below = [...node!.parentElement!.children]
+        .filter(
+          (child) =>
+            child !== node && node!.compareDocumentPosition(child) & Node.DOCUMENT_POSITION_FOLLOWING,
+        )
+        .reduce((height, child) => height + child.getBoundingClientRect().height / scale, 0)
+      // Keep the full image focusable in the reading viewport, even when large text must scroll.
+      const minimum = Math.min(180, Math.max(100 / scale + 4, viewport - 8))
+      const height = Math.max(minimum, viewport - prefix - below - 48) - 4
+      node!.style.setProperty('--screenshot-preview-height', `${height}px`)
+      const active = document.activeElement as HTMLElement | null
+      if (active && node!.contains(active)) active.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    }
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(measure)
+    })
+    observer.observe(reading)
+    observer.observe(about)
+    return () => {
+      observer.disconnect()
+      cancelAnimationFrame(frame)
+    }
+  }, [previewCount, shots.length])
   useEffect(() => {
     const node = strip.current
     if (!node) return

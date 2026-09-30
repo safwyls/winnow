@@ -34,9 +34,22 @@ test.afterEach(async ({}, info) => {
   if (info.status !== info.expectedStatus) await page.screenshot({ path: info.outputPath('failure.png') })
   expect(errors).toEqual([])
 })
-async function surface(mode: 'desktop' | 'fullscreen', options = { longTitle: false, child: false }) {
+async function surface(
+  mode: 'desktop' | 'fullscreen',
+  options: { longTitle?: boolean; child?: boolean; rich?: boolean; populated?: boolean } = {},
+) {
   await application.evaluate(({}, options) => {
-    Object.assign((globalThis as any).detailsContractsFixture, { ...options, revision: 'Before', writes: [] })
+    Object.assign((globalThis as any).detailsContractsFixture, {
+      longTitle: false,
+      child: false,
+      rich: false,
+      populated: true,
+      ...options,
+      revision: 'Before',
+      writes: [],
+      members: [],
+      listRevision: 0,
+    })
     Object.assign(globalThis, { __galleryCount: 2 })
   }, options)
   await page.reload()
@@ -49,6 +62,20 @@ async function surface(mode: 'desktop' | 'fullscreen', options = { longTitle: fa
     window.webContents.send('winnow:fullscreen:changed', mode === 'fullscreen')
   }, mode)
   await expect(page.locator('.avalon-shell')).toHaveClass(new RegExp(mode))
+  await page.evaluate(async () => {
+    for (const [preference, value] of [
+      ['FullscreenTextScale', '1'],
+      ['FullscreenInterfaceScale', '1'],
+      ['FullscreenSafeMargin', '3'],
+    ] as const) {
+      const result = await window.winnow.request({
+        route: 'preferences.presentation.put',
+        params: { preference },
+        body: { value },
+      })
+      if (!result.ok) throw Error(result.message)
+    }
+  })
   await page
     .getByRole('navigation', { name: 'Main navigation' })
     .getByRole('button', { name: 'Library', exact: true })
@@ -204,3 +231,137 @@ test('a pending desktop journal prompt appears on fullscreen attachment and Back
   await expect(page.locator('.session-prompt')).toHaveCount(0)
   expect(await application.evaluate(() => (globalThis as any).detailsContractsFixture.writes)).toEqual([])
 })
+
+for (const section of ['Updates', 'Journal', 'Library'])
+  for (const populated of [false, true]) {
+    test(`fullscreen ${section} preserves the original ${populated ? 'populated' : 'empty'} action graph at both source scale boundaries`, async ({}, info) => {
+      await surface('fullscreen', { rich: true, populated })
+      const detail = await details()
+      await detail.getByRole('tab', { name: section, exact: true }).click()
+      if (section === 'Journal')
+        await expect(detail.locator('.timeline-entry')).toHaveCount(populated ? 4 : 0)
+      if (section === 'Updates') await expect(detail.locator('.update-row')).toHaveCount(populated ? 4 : 0)
+      if (section === 'Library' && populated) await expect(detail.getByRole('checkbox')).toHaveCount(1)
+      for (const [width, height, text, ui] of [
+        [2560, 1440, 1, 1],
+        [1280, 720, 1.4, 1.2],
+      ]) {
+        await application.evaluate(
+          ({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0]!.setContentSize(size[0], size[1]),
+          [width, height],
+        )
+        await page.evaluate(
+          async ({ text, ui }) => {
+            for (const [preference, value] of [
+              ['FullscreenTextScale', text],
+              ['FullscreenInterfaceScale', ui],
+            ]) {
+              const result = await window.winnow.request({
+                route: 'preferences.presentation.put',
+                params: { preference },
+                body: { value: String(value) },
+              })
+              if (!result.ok) throw Error(result.message)
+            }
+          },
+          { text, ui },
+        )
+        await expect(page.locator('body')).toHaveCSS('zoom', String(ui))
+        await expect(page.locator('html')).toHaveCSS('--fullscreen-text-scale', String(text))
+        const reading = detail.locator('.avalon-details-reading')
+        const geometry = await reading.evaluate((node) => {
+          const bounds = node.getBoundingClientRect(),
+            width = node.clientWidth
+          return {
+            height: bounds.height,
+            overflow: [...node.querySelectorAll<HTMLElement>('p,h2,h3,span,label,button')]
+              .filter((element) => element.getBoundingClientRect().height > 0)
+              .filter((element) => {
+                const box = element.getBoundingClientRect()
+                return (
+                  box.left < bounds.left - 1 ||
+                  box.right > bounds.right + 1 ||
+                  element.scrollWidth > element.clientWidth + 1
+                )
+              })
+              .map((element) => ({
+                text: element.textContent,
+                width: element.clientWidth,
+                scroll: element.scrollWidth,
+              })),
+          }
+        })
+        expect(geometry.height).toBeGreaterThan(100)
+        expect(geometry.overflow).toEqual([])
+        const actions = reading.locator(
+          'button:visible:enabled, input[type="checkbox"]:visible:enabled, a[href]:visible',
+        )
+        const count = await actions.count()
+        for (let index = 0; index < count; index++)
+          await actions
+            .nth(index)
+            .evaluate((node, index) => node.setAttribute('data-contract-action', String(index)), index)
+        const visited = new Set<string>()
+        await detail.getByRole('tab', { name: 'Overview', exact: true }).focus()
+        for (let step = 0; step <= count; step++) {
+          await controller(13)
+          const focus = await reading.evaluate((node) => {
+            const active = document.activeElement as HTMLElement,
+              viewport = node.getBoundingClientRect(),
+              box = active.getBoundingClientRect()
+            return {
+              id: active.getAttribute('data-contract-action'),
+              top: box.top - viewport.top,
+              bottom: box.bottom - viewport.top,
+              height: box.height,
+              viewport: viewport.height,
+            }
+          })
+          if (focus.id === null) continue
+          visited.add(focus.id)
+          expect(focus.top).toBeLessThan(focus.viewport)
+          expect(focus.bottom).toBeGreaterThan(0)
+          if (focus.height <= focus.viewport) {
+            expect(focus.top).toBeGreaterThanOrEqual(-1)
+            expect(focus.bottom).toBeLessThanOrEqual(focus.viewport + 1)
+          }
+        }
+        expect(visited.size).toBe(count)
+        if (section === 'Journal' && !populated)
+          await expect(
+            reading.getByText('No notes yet. After you play, Winnow will ask how it went.', { exact: true }),
+          ).toBeVisible()
+        if (populated)
+          expect(
+            await reading.locator('.timeline-entry,.update-row,.avalon-copy').evaluateAll(
+              (nodes, scale) =>
+                nodes.some((node) => {
+                  // Chromium snaps a one-CSS-pixel rule at fractional interface zoom.
+                  const pixels = parseFloat(getComputedStyle(node).borderBottomWidth) * scale
+                  return pixels >= 0.99 && pixels <= scale + 0.01
+                }),
+              ui,
+            ),
+          ).toBe(true)
+        if (section === 'Library' && populated) {
+          const membership = reading.getByRole('checkbox')
+          const originalMembership = await membership.elementHandle()
+          for (const selected of [true, false]) {
+            await membership.focus()
+            await controller(0)
+            if (selected) await expect(membership).toBeChecked()
+            else await expect(membership).not.toBeChecked()
+            await expect(reading.getByText('Saving list changes…', { exact: true })).toHaveCount(0)
+            await expect(membership).toBeFocused()
+            expect(await membership.evaluate((node, original) => node === original, originalMembership)).toBe(
+              true,
+            )
+            await expect(membership).toHaveAccessibleName(
+              `${selected ? 'Remove from' : 'Add to'} Long adventures to revisit after finishing the mountain expedition with friends`,
+            )
+          }
+        }
+        await page.screenshot({ path: info.outputPath(`${section}-${populated}-${width}.png`) })
+      }
+    })
+  }

@@ -260,13 +260,15 @@ export function AvalonDetailsLayout({
       body.current?.scrollBy({ top: event.key === 'ArrowUp' ? -160 : 160, behavior: 'instant' })
       return
     }
-    if (target.matches('input,textarea,select')) return
+    if (target.matches('textarea,select,input:not([type="checkbox"]):not([type="radio"])')) return
     const visible = (element: HTMLElement) =>
       !element.matches(':disabled') &&
       !element.closest('[hidden],[inert],[aria-hidden="true"]') &&
       element.getBoundingClientRect().height > 0
     const row = (selector: string) =>
       [...root.current!.querySelectorAll<HTMLElement>(selector)].filter(visible)
+    const bodyActions =
+      '.avalon-details-reading :is(button,a[href],input[type="checkbox"],input[type="radio"],select,summary)'
     const rows = [
       row('.avalon-details-actions button'),
       row('.avalon-details-tabs [role="tab"], .avalon-details-back-row button'),
@@ -279,15 +281,11 @@ export function AvalonDetailsLayout({
         : reading === 'History'
           ? [
               row('.activity-tracker [aria-label="Play history range"] button'),
-              ...row(
-                '.avalon-details-reading button, .avalon-details-reading a[href], .avalon-details-reading summary',
-              )
+              ...row(bodyActions)
                 .filter((element) => !element.closest('[aria-label="Play history range"]'))
                 .map((element) => [element]),
             ]
-          : row('.avalon-details-reading button, .avalon-details-reading a[href]').map((element) => [
-              element,
-            ])),
+          : row(bodyActions).map((element) => [element])),
     ].filter((entries) => entries.length)
     const rowIndex = rows.findIndex((entries) => entries.includes(target))
     if (rowIndex < 0) return

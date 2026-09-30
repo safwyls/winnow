@@ -75,7 +75,7 @@ function Relationship({
     }
   }
   return (
-    <article className="metadata-row">
+    <article className="metadata-row details-relationship">
       <div>
         <h3>{child}</h3>
         <p>

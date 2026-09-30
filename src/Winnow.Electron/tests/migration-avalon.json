@@ -1754,14 +1754,14 @@
     "reason": "Long title and publisher fit the bounded desktop modal and leave readable content at1200×640. Three-store facts, an enabled primary launch action and exact icon containment still need the original populated fixture matrix."
   },
   "FullscreenDetailsTests.Detail_sections_wrap_content_and_keep_controller_actions_reachable": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/electron/details-layout.spec.ts",
-        "case": "fullscreen Details at ${width}×${height} and text ${scale}, interface ${uiScale} keeps cinematic identity and reading reachable"
+        "file": "tests/electron/details-contracts.spec.ts",
+        "case": "fullscreen ${section} preserves the original ${populated ? 'populated' : 'empty'} action graph at both source scale boundaries"
       }
     ],
-    "reason": "Production fullscreen has original four sections, BodyFont,28/72 Overview, two screenshots and reading height over100px at1280×720 including140%text/120%interface and at2560×1440. About navigation and focus return pass. The original rich/empty Updates/Journal/Library action graph and every directional-controller target are not fully covered."
+    "reason": "All six populated/empty Updates, Journal and Library fixtures preserve the original long titles, notes, ratings and list name at 2560x1440 and 1280x720 with 140% text and 120% interface. Native controller Down reaches every visible action, including membership checkboxes, within the reading viewport; list toggles retain the same focused node and use revision-checked requests. Text wraps inside the reading region, separators remain visible and empty Journal retains the exact source copy."
   },
   "FullscreenDetailsTests.Overview_previews_only_the_latest_saved_note_and_omits_missing_content": {
     "status": "ported",
@@ -1778,13 +1778,17 @@
     "reason": "Both original notes-present and notes-absent snapshots verify latest-only note preview, no older/empty-journal/reception/screenshot placeholders, the exact missing-description copy, Journal/Latest note headings and the Open journal action selecting Journal. The separate original reading page test also proves complete older notes remain available there."
   },
   "FullscreenDetailsTests.Cinematic_details_lease_saved_landscape_across_the_canvas_and_release_on_close": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/electron/details-layout.spec.ts",
-        "case": "fullscreen Details at ${width}×${height} and text ${scale}, interface ${uiScale} keeps cinematic identity and reading reachable"
+        "file": "tests/electron/details-cinematic.spec.ts",
+        "case": "cinematic Details preserves ${userBackground ? 'saved' : 'automatic'} landscape, ${longTitle ? 'long' : 'short'} title, journal ${hasJournal} and interface ${uiScale}"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/BackdropArtworkTests.cs",
+        "case": "Candidate_endpoint_preserves_grouped_choices_source_order_and_portrait_fallback_without_fetching_images"
       }
     ],
-    "reason": "Native rendering verifies bounded two-line BodyFont titles, separate fullscreen composition and successful return atsmall/large sizes including combined text/interface scale. Saved versus automatic hero image selection, full-canvas pixel veils and every original image lease/release matrix remain unverified for this new Details composition."
+    "reason": "The original six saved/automatic artwork, long-title, journal and interface-scale combinations render the original 1600x900 geometric landscape through production artwork IPC. Native checks cover full-window backdrop bounds, cinematic veils, initial Play focus, 28/72 columns, rules, 60px bold metrics, both complete screenshot edges, request resolution through 4K, a single Details image snapshot, reading and focus at 720p with enlarged text, full About copy and disposal of decoded backdrop URLs on departure. The production HTTP selection test independently verifies saved-background precedence and Steam fallback; Avalonia bitmap lease handles are replaced by renderer image ownership and URL disposal."
   }
 }

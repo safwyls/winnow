@@ -45,6 +45,12 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [fullscreen Details checkpoint](checkpoint-fifty-four.md) records all 3,322 component/live
+API cases and 45 native Details/artwork/gallery cases passing. It closes the original rich/empty
+section and cinematic-artwork matrices, including controller membership focus, full-window
+backgrounds, complete screenshot edges and adaptive reading height. Two source methods gain
+complete evidence; 434 pending and 98 partial methods remain.
+
 The [Details interaction checkpoint](checkpoint-fifty-three.md) records all 3,322 component/live
 API cases and 19 native Details/controller cases passing. History range input, child-end
 confirmation and slow-launch focus restoration are covered alongside achievements, refreshed

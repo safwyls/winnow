@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 17:13'
+updated_date: '2026-09-30 17:48'
 labels: []
 dependencies: []
 priority: high
@@ -180,6 +180,8 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 67. Complete the remaining Details interaction contracts: single-copy achievements, controller history selection, original very-long title geometry, reload with local section/editor retention, pending journal prompts and expansion-end ungrouping. Check slow-launch chooser focus restoration and align desktop/fullscreen behavior. Preserve exact original fixtures and update only fully verified mappings; then continue the remaining inventory and native/release gates.
 
 68. Finish the two remaining FullscreenDetails partial contracts with the original rich/empty Updates, Journal and Library fixture matrix at 2560x1440 and 1280x720 with 140% text/120% interface, all directional targets and stable list toggling. Then preserve all six cinematic saved/automatic landscape, journal, title and interface-scale cases, including preview edges/resolution, full-canvas veils, metrics and artwork lifetime. Keep desktop behavior consistent and verify affected native/component suites before updating those mappings.
+
+69. Complete the two remaining desktop GameDetailsTabInteraction contracts with the original populated three-store, twelve-update, six-list, three-note and three-expansion fixture at 1200x640 and 1280x820. Verify every section bottom, fixed header, retained scroll/expanded relationships, then the long title/publisher with all primary, list, More and Close actions and icons contained. Preserve fullscreen behavior and run source-equivalent native checks before updating those mappings.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -358,4 +360,6 @@ Checkpoint 51: enabled desktop controller dispatch, preserved original mapping/d
 Plan 66 complete. Shared LaunchFeedback preserves watcher-specific ownership, 90s waiting/3s confirmation/7s refusal, early observations, duplicate and stale responses, disposal, and uncertain operation IDs. Fullscreen Details now has the original per-copy launch chooser; desktop retains owned-copy actions. Corrected fullscreen paragraph inheritance and kept unavailable action text outside its hero to preserve 720p reading space at 140% text/120% interface. Build passes; 3,321 component/live API tests (162 files, no skips), 34 native launch/Details/controller tests (no retries/skips), and 2 production backend HTTP URI/intent/event tests pass. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-fifty-two.md. Eight source methods gain complete mappings; 439 pending and 101 partial remain. No acceptance criterion is checked; primary packaging/CI cutover remains open.
 
 Plan 67 complete. Fullscreen history initially focuses Lifetime and groups range controls for Right/Accept, including delayed data arrival; About retains Back-first scrolling. Child-end confirmation puts Keep first and uses vertical fullscreen choices. Slow copy-launch focus now restores after the opener re-enables, with a reproduced pre-fix failure and passing regression. Native checks establish single-copy 5/20 achievements, Before/After reload preserving Journal and an unsaved editor, the original ten-repeat title, and pending shared prompt attachment/Back dismissal. Build, 3,322 component/live API tests (162 files), and 19 native Details/controller cases pass; no skips/retries. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-fifty-three.md. Six source methods gain complete evidence; 434 pending and 100 partial remain. Child-end native test records the HTTP callback as the original recorded its delegate; it does not claim new database persistence evidence. All task AC remain unchecked.
+
+Checkpoint 54 completes plan 68: fullscreen Details now includes membership checkboxes in directional rows, wraps long relationship actions, fills the window with its cinematic backdrop and sizes screenshot previews to the reading viewport while preserving complete edges and focus. The original rich/empty section and six cinematic fixture matrices pass. Build passes; all 3322 component/live-API cases pass in 162 files; native batches pass 45 Details/artwork/gallery cases and 25 Details/controller cases (55 distinct, zero skips/retries). Six cinematic cases also pass with production Steam hero sizing hints. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-fifty-four.md and referenced .tmp logs/reports. Two partial contracts become ported; inventory is 1255 ported, 625 retained backend, 23 framework-specific, 434 pending and 98 partial. Overall completion criteria, full native aggregate and release cutover remain open. Next is recorded plan 69 for the remaining populated desktop Details contracts.
 <!-- SECTION:NOTES:END -->
