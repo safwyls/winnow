@@ -1,7 +1,7 @@
 .plugin-settings {
   min-width: 0;
 }
-.settings-page:has(.plugin-settings) {
+.settings-page:not(.mode-fullscreen):has(.plugin-settings) {
   margin-left: 0;
   padding: 24px;
   width: 100%;
@@ -59,6 +59,9 @@
 .mode-fullscreen.settings-page:has(.plugin-settings) {
   max-width: none;
 }
+.mode-fullscreen.settings-page > .plugin-settings {
+  padding: 24px;
+}
 .mode-fullscreen .plugin-card {
   max-width: 1320px;
   background: transparent;
@@ -108,11 +111,11 @@
   min-width: 24px;
   min-height: 24px;
 }
-.mode-fullscreen.settings-page > .tabs {
+.mode-fullscreen.settings-page > .fullscreen-section-navigation > .tabs {
   flex-wrap: nowrap;
   overflow-x: auto;
 }
-.mode-fullscreen.settings-page > .tabs button {
+.mode-fullscreen.settings-page > .fullscreen-section-navigation > .tabs button {
   flex-shrink: 0;
   white-space: nowrap;
 }

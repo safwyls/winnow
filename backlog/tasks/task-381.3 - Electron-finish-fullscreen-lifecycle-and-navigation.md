@@ -1,10 +1,11 @@
 ---
 id: TASK-381.3
 title: 'Electron: finish fullscreen lifecycle and navigation'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:44'
+updated_date: '2026-09-30 21:40'
 labels:
   - electron
   - parity
@@ -64,13 +65,29 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Entry button, F11, external restore, window states and cursor ownership preserve the original desktop/fullscreen transition contracts, including startup without a library context.
-- [ ] #2 Root navigation, quick menu, local section hints, theme switching and context disposal preserve selection and return focus without leaking state between surfaces.
-- [ ] #3 All 17 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
-- [ ] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+- [x] #1 Entry button, F11, external restore, window states and cursor ownership preserve the original desktop/fullscreen transition contracts, including startup without a library context.
+- [x] #2 Root navigation, quick menu, local section hints, theme switching and context disposal preserve selection and return focus without leaking state between surfaces.
+- [x] #3 All 17 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Preserve the existing per-surface navigation/store and shared API/theme architecture; audit all 17 original assertion scopes and test runtime ownership/cleanup rather than reproducing Avalonia DI types. 2. Close demonstrated interaction gaps: clear controller cursor ownership on presentation switches, expose fullscreen entry while data is preparing, and render non-focusable LT/RT hints outside local section strips with stable selected/focused geometry. Keep desktop compositions unchanged. 3. Exercise real Electron transitions from normal/maximized windows, repeated root/nested controller menus, minimum-size search keyboard, delayed return preparation, origin focus/backdrops, ultrawide sizing and all original palette/size/scale matrices. Fix only failures within this task. 4. Verify shared theme/dormancy preferences, independent surface filters and released component/event/query subscriptions with retained shared cache. Run focused and complete component/API checks plus relevant native regressions; map only the 17 assigned contracts with exact evidence, update documentation, commit and pause before TASK-381.4.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Desktop and fullscreen verified separately. Preparation supports entry before library context; cursor ownership clears on mode changes; native normal/maximized restoration, repeated root/nested quick menus, delayed desktop readiness, independent filters/lists/journal state, shared appearance and subscription disposal preserve their original contracts. LT/RT glyphs remain beside stable-width section labels; selected sections use neutral underlines, focus uses accent, and Details retains its unread count without shifting tabs. Settings entry selectors follow the new wrapper, compact Controller-guide spacing keeps all ten mappings bounded, plugin content retains its inset, and fullscreen fallback titles scale once and truncate within covers.
+
+Verification: production build/typecheck pass; all 3358 component/live API cases in 164 files pass without skips (56.66s). Across the recorded native batches, all 87 distinct relevant cases have a passing latest executed result; the final 33-case repair/regression batch passes in 349.46s with no skips or retries. Native tests use temporary --data-dir, sample fixtures and --no-sync. Inspected desktop Details/plugin layouts and fullscreen section hints, compact Controller guide and long-title layout. Changed files pass formatting and git diff --check.
+
+Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-fifty-eight.md, .tmp/fullscreen-lifecycle-integration-final.log, .tmp/fullscreen-lifecycle-native-final.log and .tmp/fullscreen-lifecycle-native-summary.json. Per-method mapping: tests/migration-fullscreen-lifecycle.json. Exactly the 17 assigned contracts change disposition; inventory is 1284 ported, 625 retained backend, 30 framework-specific, 403 pending and 93 partial. migration:report passes; test:migration remains correctly failing for 496 unresolved methods. No .NET implementation changed; the full .NET/native aggregate and physical-controller/display validation remain queued. Stop after this milestone for user review; do not begin TASK-381.4 without continuation.
+<!-- SECTION:NOTES:END -->

@@ -1,3 +1,4 @@
+import { SectionLabel } from '../components/SectionNavigation'
 import {
   useEffect,
   useId,
@@ -618,7 +619,11 @@ export function AvalonDetailsLayout({
               }
               onClick={() => change(name)}
             >
-              {name}
+              {fullscreen ? (
+                <SectionLabel>{name === 'Updates' && unread ? `Updates ${unread}` : name}</SectionLabel>
+              ) : (
+                name
+              )}
               {name === 'Updates' && unread > 0 && <i className="avalon-details-unread" aria-hidden="true" />}
             </button>
           ))}

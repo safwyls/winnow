@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Journal } from '../src/renderer/features/Journal'
 import { journalPeriod } from '../src/renderer/api/journalPeriod'
@@ -12,10 +12,45 @@ afterEach(() => {
   vi.useRealTimers()
   vi.unstubAllEnvs()
   for (const mode of ['desktop', 'fullscreen'])
-    for (const field of ['days', 'bounds', 'section', 'editing']) clearViewState(`${mode}:journal:${field}`)
+    for (const field of ['days', 'bounds', 'section', 'editing', 'panel', 'week', 'work', 'selected'])
+      clearViewState(`${mode}:journal:${field}`)
 })
 
 describe('Journal whole-second periods', () => {
+  it('keeps desktop and fullscreen journal sections and periods independent over a shared library cache', async () => {
+    const request = vi.fn(async ({ route }: ApiRequest) => ({
+      ok: true,
+      status: 200,
+      data:
+        route === 'library.get'
+          ? { games: [], lists: [] }
+          : route === 'activity.query'
+            ? { rows: [], next: null }
+            : { recordedSeconds: 0, gamesPlayedCount: 0, startedSessionCount: 0, medianSessionSeconds: null },
+    }))
+    Object.defineProperty(window, 'winnow', { value: { request }, configurable: true })
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const { container } = render(
+      <QueryClientProvider client={client}>
+        <Journal mode="desktop" />
+        <Journal mode="fullscreen" />
+      </QueryClientProvider>,
+    )
+    const desktop = within(container.querySelector('.mode-desktop') as HTMLElement),
+      fullscreen = within(container.querySelector('.mode-fullscreen') as HTMLElement)
+    await waitFor(() => expect(client.getQueryData(['api', 'library.get'])).toBeDefined())
+    fireEvent.change(desktop.getByLabelText('Time period'), { target: { value: '7' } })
+    fireEvent.change(fullscreen.getByLabelText('Time period'), { target: { value: '90' } })
+    expect((desktop.getByLabelText('Time period') as HTMLSelectElement).value).toBe('7')
+    expect((fullscreen.getByLabelText('Time period') as HTMLSelectElement).value).toBe('90')
+    fireEvent.click(desktop.getByRole('button', { name: 'Library summary' }))
+    expect(desktop.getByRole('button', { name: 'Library summary' }).getAttribute('aria-pressed')).toBe('true')
+    expect(fullscreen.getByRole('button', { name: 'History' }).getAttribute('aria-pressed')).toBe('true')
+    const library = client.getQueryData(['api', 'library.get'])
+    cleanup()
+    expect(client.getQueryData(['api', 'library.get'])).toBe(library)
+    client.clear()
+  })
   it('removes fractional seconds without moving the end forward and preserves local-day semantics over DST', () => {
     vi.stubEnv('TZ', 'America/Los_Angeles')
     const now = new Date('2026-11-03T20:30:15.987Z')

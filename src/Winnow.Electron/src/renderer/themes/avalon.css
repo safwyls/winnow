@@ -866,6 +866,9 @@
     position: static;
     overflow: auto;
   }
+  .avalon-shell.fullscreen .avalon-content:has(.journal-page) {
+    scrollbar-gutter: stable;
+  }
   .avalon-shell.fullscreen .screen-details {
     position: static;
     height: 100%;
@@ -1030,6 +1033,16 @@
   .avalon-shell.fullscreen .avalon-cover-caption {
     display: none;
   }
+  .avalon-shell.fullscreen .avalon-cover-fallback {
+    top: auto;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    font-size: calc(clamp(16px, 1.25vw, 24px) * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+    line-height: 1.2;
+  }
   .avalon-shelf-navigation {
     grid-column: 2;
     grid-row: 2;
@@ -1094,7 +1107,12 @@
     border-radius: 0;
   }
   .avalon-shell.fullscreen .avalon-buckets button[aria-pressed='true'] {
-    border-bottom-color: var(--accent);
+    border-bottom-color: var(--muted);
+    font-weight: 700;
+  }
+  .avalon-shell.fullscreen .avalon-buckets button:focus {
+    outline: none;
+    border-bottom-color: var(--accent-foreground, var(--accent));
   }
   .avalon-shell.fullscreen .avalon-list-picker {
     flex-direction: row;

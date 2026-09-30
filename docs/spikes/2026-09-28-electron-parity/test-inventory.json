@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 417,
-    "partial": 96,
-    "ported": 1267,
+    "pending": 403,
+    "partial": 93,
+    "ported": 1284,
     "retained-backend": 625,
     "framework-specific": 30
   },
@@ -23989,13 +23989,24 @@
     {
       "id": "FullscreenContextLifetimeTests.Disposal_releases_each_independent_presentation_model_and_preserves_borrowed_shared_models",
       "source": "tests/Winnow.Ui.Tests/FullscreenContextLifetimeTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/app.test.tsx",
+          "case": "disposal releases presentation subscriptions while preserving borrowed library %s and feed %s"
+        }
+      ],
+      "reason": "All three original borrowing combinations run against mounted Electron presentations. Each owned query observer and event/fullscreen subscription detaches; borrowed library/feed observers and snapshots survive and the cache can still refresh. Electron uses shared raw API snapshots plus per-surface view state instead of Avalonia DI model instances."
     },
     {
       "id": "FullscreenContextTests.Runtime_factory_isolates_library_state_but_shares_the_persisted_theme",
       "source": "tests/Winnow.Ui.Tests/FullscreenContextTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
+        {
+          "file": "tests/app.test.tsx",
+          "case": "shares persisted appearance and dormancy while keeping fullscreen motion and sizing independent on reentry"
+        },
         {
           "file": "tests/app.test.tsx",
           "case": "imports the original palette once and shares it between desktop and fullscreen"
@@ -24003,9 +24014,29 @@
         {
           "file": "tests/avalon-migration.test.tsx",
           "case": "imports the original %s palette through the public Theme preference"
+        },
+        {
+          "file": "tests/avalon-migration.test.tsx",
+          "case": "persists imported typography and explicit per-palette edits through a runtime restart"
+        },
+        {
+          "file": "tests/features-journal-period.test.tsx",
+          "case": "keeps desktop and fullscreen journal sections and periods independent over a shared library cache"
+        },
+        {
+          "file": "tests/electron/fullscreen-lifecycle.spec.ts",
+          "case": "quick menu and fullscreen browse retain independent desktop filters and refresh behind preparation on return"
+        },
+        {
+          "file": "tests/electron/fullscreen-lifecycle.spec.ts",
+          "case": "all original palette changes preserve controller root cycling and loaded shelves at ${width}x${height}"
+        },
+        {
+          "file": "tests/parity-library-default-sort.test.tsx",
+          "case": "keeps selected lists, live rules and restored sort independent between desktop and fullscreen"
         }
       ],
-      "reason": "Both modes share the imported theme; existing Electron profiles win and legacy fullscreen.theme is ignored. Original full composition invariants include independent journal/list instances, dormancy synchronization, reduced motion, ultrawide persistence and backdrop gradients, not all covered here. Electron appearance changes persist in the frontend profile instead of overwriting Avalonia settings."
+      "reason": "Equivalent runtime ownership is per-surface Library/list/filter and Journal state over a borrowed QueryClient. Composed and native tests preserve desktop filters, independently selected journal periods/sections, shared persisted theme/dormancy, ignored legacy fullscreen keys, fullscreen-only motion and persisted .7 sizing/ultrawide settings on reentry. All nine palette changes update the backdrop ground/gradient and retain loaded navigation. DOM/CSS token inheritance replaces Avalonia brush-resource objects; frontend appearance profiles preserve user theme edits."
     },
     {
       "id": "FullscreenCoverPaddingTests.Padding_uses_each_artwork_edge_and_clears_when_released",
@@ -24444,7 +24475,14 @@
     {
       "id": "FullscreenInteractionTests.Hover_does_not_underline_actions_but_selected_sections_keep_a_neutral_underline",
       "source": "tests/Winnow.Ui.Tests/FullscreenInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/fullscreen-lifecycle.spec.ts",
+          "case": "hover leaves actions clear while selection stays neutral and focus uses the accent"
+        }
+      ],
+      "reason": "At the original 1920x1080 size, hover remains over Screen margins while controller Down moves focus. Its underline is transparent, selected Appearance retains the neutral token, and the focused action uses the distinct accent token."
     },
     {
       "id": "FullscreenInteractionTests.Main_navigation_stays_centered_with_varying_controller_status_and_clock",
@@ -24469,42 +24507,102 @@
     {
       "id": "FullscreenInteractionTests.Details_backdrop_fills_canvas_and_back_header_restores_its_origin",
       "source": "tests/Winnow.Ui.Tests/FullscreenInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/fullscreen-lifecycle.spec.ts",
+          "case": "Details keeps unread badge tab geometry and restores Library backdrop origin at ${width}x${height} text ${scale}"
+        }
+      ],
+      "reason": "At 1920x1080 and 2560x1440, opening a selected Library game hides root navigation, shows Back to Library, fills the entire viewport with the Details backdrop, and controller Back restores the Library navigation and exact game focus."
     },
     {
       "id": "FullscreenInteractionTests.Controller_hides_cursor_until_mouse_moves_and_exit_restores_it",
       "source": "tests/Winnow.Ui.Tests/FullscreenInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/fullscreen-lifecycle.spec.ts",
+          "case": "controller cursor ownership restores the hovered input and releases on fullscreen exit"
+        },
+        {
+          "file": "tests/parity-controller-dispatch.test.tsx",
+          "case": "releases cursor ownership on surface changes and unmount while mouse movement restores it"
+        }
+      ],
+      "reason": "Native Electron checks fullscreen cursor ownership, mouse release, exit release and a hovered desktop text-input cursor. Controlled polling also tests both mode transitions and unmount cleanup without leaving a frame loop."
     },
     {
       "id": "FullscreenInteractionTests.Ultrawide_fit_expands_canvas_without_stretching_type_and_restores_reference_layout",
       "source": "tests/Winnow.Ui.Tests/FullscreenInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/fullscreen-lifecycle.spec.ts",
+          "case": "ultrawide fit expands and restores content without changing typography"
+        }
+      ],
+      "reason": "Replays 2560x1080 and 3440x1440: enabling fit increases the usable content width without changing type at a fixed viewport, resize expands it, and disabling fit restores the reference-aspect bound. Responsive CSS replaces the original .85-scaled Avalonia Viewbox; the geometry invariant is measured in rendered client pixels."
     },
     {
       "id": "FullscreenInteractionTests.Fullscreen_hosts_a_separate_interface_and_search_keyboard_at_minimum_window_size",
       "source": "tests/Winnow.Ui.Tests/FullscreenInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/fullscreen-lifecycle.spec.ts",
+          "case": "minimum 1200x688 fullscreen uses its own search page and bounded controller keyboard"
+        }
+      ],
+      "reason": "At the original 1200x688 size, controller View opens the independent fullscreen Search page, desktop chrome is absent, Y opens a fully bounded keyboard, and B closes it and restores the search field."
     },
     {
       "id": "FullscreenInteractionTests.Fullscreen_restores_each_window_state_and_desktop_visibility",
       "source": "tests/Winnow.Ui.Tests/FullscreenInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/fullscreen-lifecycle.spec.ts",
+          "case": "restores native window state maximized ${maximized} and desktop visibility"
+        }
+      ],
+      "reason": "Real BrowserWindow fullscreen entry preserves normal bounds and restores both original normal and maximized states. F11 and external native fullscreen exit are exercised separately; only the active desktop/fullscreen shell is visible."
     },
     {
       "id": "FullscreenInteractionTests.Entry_button_and_F11_toggle_without_a_library_context",
       "source": "tests/Winnow.Ui.Tests/FullscreenInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/fullscreen-lifecycle.spec.ts",
+          "case": "entry button and F11 toggle before library context is available"
+        }
+      ],
+      "reason": "Primary API reads are held before any library context exists. The accessible startup entry button enters native fullscreen, F11 toggles back and in again, and releasing data completes preparation. Electron startup composition owns the entry control; normal desktop already exposes its fullscreen utility."
     },
     {
       "id": "FullscreenInteractionTests.Controller_quick_menu_and_browse_navigation_leave_desktop_state_untouched",
       "source": "tests/Winnow.Ui.Tests/FullscreenInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/fullscreen-lifecycle.spec.ts",
+          "case": "quick menu and fullscreen browse retain independent desktop filters and refresh behind preparation on return"
+        }
+      ],
+      "reason": "Desktop search and sort survive fullscreen collection/filter and quick-menu navigation. Returning to fullscreen retains its selected collection while refreshing preparation independently."
     },
     {
       "id": "FullscreenInteractionTests.Returning_to_desktop_covers_refresh_until_the_feed_is_ready",
       "source": "tests/Winnow.Ui.Tests/FullscreenInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/fullscreen-lifecycle.spec.ts",
+          "case": "quick menu and fullscreen browse retain independent desktop filters and refresh behind preparation on return"
+        }
+      ],
+      "reason": "Held primary/feed reads on return leave desktop content inert behind Preparing your library. Releasing the real API transport gate reveals the preserved desktop search and sort only after readiness."
     },
     {
       "id": "FullscreenInteractionTests.External_restore_hides_tv_and_controller_status_omits_unknown_battery",
@@ -24529,7 +24627,14 @@
     {
       "id": "FullscreenInteractionTests.Main_screens_render_at_reference_and_smaller_size",
       "source": "tests/Winnow.Ui.Tests/FullscreenInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/fullscreen-lifecycle.spec.ts",
+          "case": "main pages retain bounded controller focus at reference and smaller sizes with idempotent text scaling"
+        }
+      ],
+      "reason": "All four root pages use controller shoulder navigation at 1920x1080 with bounded content-button focus and visible cover outlines. Details and the search keyboard are captured, then Home/Library/Settings are checked at 1280x720. Visible fallback title sizing grows by 1.4, remains within the original 24-34 logical-pixel range after viewport normalization, and repeated updates do not compound. Screenshots accompany the source-sized states."
     },
     {
       "id": "FullscreenLibraryOptionsTests.Options_and_tools_return_to_the_same_game_and_viewport_deep_in_a_large_library",
@@ -24550,12 +24655,26 @@
     {
       "id": "FullscreenNavigationLayoutTests.Details_tabs_keep_geometry_with_unread_update_badge",
       "source": "tests/Winnow.Ui.Tests/FullscreenNavigationLayoutTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/fullscreen-lifecycle.spec.ts",
+          "case": "Details keeps unread badge tab geometry and restores Library backdrop origin at ${width}x${height} text ${scale}"
+        }
+      ],
+      "reason": "At the original 2560x1440 and text scales 1/1.4, a real seeded one-unread-update game renders Updates 1 plus its pip; four controller RT changes leave every tab rectangle unchanged. The 1920x1080 source interaction fixture is also covered."
     },
     {
       "id": "FullscreenNavigationLayoutTests.Selection_and_focus_keep_every_tab_and_trigger_stationary",
       "source": "tests/Winnow.Ui.Tests/FullscreenNavigationLayoutTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/fullscreen-lifecycle.spec.ts",
+          "case": "local section labels and trigger hints stay stationary and visible at ${width}x${height} text ${scale}"
+        }
+      ],
+      "reason": "At 2560x1440 and .7/1/1.4 text scales, selection/focus across the production Library, Activity and seven Settings labels (including Metadata & artwork) preserves exact tab/trigger rectangles and bold selected labels. These production strips replace the original synthetic five-label strip, exercising the same width-reservation invariant plus section-specific content changes."
     },
     {
       "id": "FullscreenPlatformParityTests.Api_key_draft_is_masked_local_and_erased_on_close",
@@ -24600,14 +24719,14 @@
     {
       "id": "FullscreenQuickMenuTests.Repeated_start_keeps_one_menu_and_returns_to_the_original_focus",
       "source": "tests/Winnow.Ui.Tests/FullscreenQuickMenuTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/parity-native-keyboard-integration.test.tsx",
-          "case": "preserves the nested editor, hides Settings, and restores the original focus on Resume"
+          "file": "tests/electron/fullscreen-lifecycle.spec.ts",
+          "case": "repeated controller Menu preserves one menu and exact origin with nested ${nested}"
         }
       ],
-      "reason": "The menu restores the captured invoking focus and preserves an unsaved editor. Repeated controller Menu presses are handled by the shell and need its integration evidence."
+      "reason": "Root and nested filter-editor origins each run two complete cycles. Five extra Menu presses keep one dialog and its exact focused item. Controller B and controller Resume restore the captured original control. The nested Radix editor exercises the same modal-stack ownership as the source nested game-actions dialog."
     },
     {
       "id": "FullscreenQuickMenuTests.Nested_menu_preserves_the_editor_and_quit_requires_confirmation",
@@ -24963,7 +25082,14 @@
     {
       "id": "FullscreenSectionHintTests.Trigger_hints_remain_visible_around_sections_when_navigating",
       "source": "tests/Winnow.Ui.Tests/FullscreenSectionHintTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/fullscreen-lifecycle.spec.ts",
+          "case": "local section labels and trigger hints stay stationary and visible at ${width}x${height} text ${scale}"
+        }
+      ],
+      "reason": "Library, Activity and Settings retain two visible, non-focusable LT/RT SVG glyphs outside the scrolling section strip before and after controller RT. Replays the original 1920x1080 1/1.4 matrix and adds 2560x1440 at .7/1/1.4; native bounds and screenshots establish glyph rendering and containment."
     },
     {
       "id": "FullscreenSettingsHierarchyTests.Settings_groups_keep_text_within_their_reading_region_and_controls_reachable",
@@ -25285,14 +25411,14 @@
     {
       "id": "FullscreenThemeNavigationTests.Returning_home_after_each_theme_change_keeps_loaded_shelves_navigable",
       "source": "tests/Winnow.Ui.Tests/FullscreenThemeNavigationTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/app.test.tsx",
-          "case": "returns from each original palette change with the loaded fullscreen shelf still navigable"
+          "file": "tests/electron/fullscreen-lifecycle.spec.ts",
+          "case": "all original palette changes preserve controller root cycling and loaded shelves at ${width}x${height}"
         }
       ],
-      "reason": "Composed App goes through Theme Studio for all nine original palettes and returns to the loaded Home shelf with left/right focus navigation. Original gamepad page cycling and the 3840x2160/1.4-text/2-percent-margin combination remain unverified."
+      "reason": "Replays all nine original palettes at 1280x720 and 3840x2160 with 1.4 text and 2% safe margins. Controller LB enters Settings and RB returns Home after each palette; Right changes the loaded cover focus and Left restores the exact first cover. The backdrop gradient tracks the selected palette ground."
     },
     {
       "id": "FullscreenToolsHierarchyTests.Journal_groups_keep_the_editor_and_rating_actions_reachable",

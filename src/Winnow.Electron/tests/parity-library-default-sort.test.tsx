@@ -7,14 +7,24 @@ import {
   usePresentationPreferences,
 } from '../src/renderer/features/SettingsPreferences'
 import { libraryDefaultSort, useAvalonLists } from '../src/renderer/themes/avalon-list-state'
-import type { Mode } from '../src/renderer/api/types'
+import type { GameList, Mode } from '../src/renderer/api/types'
 import type { ApiRequest } from '../src/shared/bridge'
 import { clearViewState } from '../src/renderer/viewState'
 
 afterEach(() => {
   cleanup()
   for (const mode of ['desktop', 'fullscreen'])
-    for (const key of ['sort', 'default-sort', 'sort-before-list'])
+    for (const key of [
+      'sort',
+      'default-sort',
+      'sort-before-list',
+      'list',
+      'list-base',
+      'query',
+      'bucket',
+      'rules',
+      'filters-open',
+    ])
       clearViewState(`avalon:library:${mode}:${key}`)
 })
 
@@ -29,6 +39,61 @@ function CurrentLibraryOrder({ mode }: { mode: Mode }) {
     </>
   )
 }
+
+it('keeps selected lists, live rules and restored sort independent between desktop and fullscreen', () => {
+  const lists: GameList[] = [
+    { id: 1, name: 'Weekend', isLive: false, releaseIds: [1], revision: 'manual' },
+    {
+      id: 2,
+      name: 'Unplayed',
+      isLive: true,
+      releaseIds: [],
+      revision: 'live',
+      filter: { search: 'Hollow', buckets: ['never_played'] },
+    },
+  ]
+  const original = structuredClone(lists)
+  function State({ mode }: { mode: Mode }) {
+    const state = useAvalonLists(mode, lists, true, 'title')
+    return (
+      <>
+        <button onClick={() => state.selectList(mode === 'desktop' ? '1' : '2')}>{mode} select</button>
+        <button onClick={() => state.selectList('all')}>{mode} leave</button>
+        <output aria-label={mode}>
+          {JSON.stringify({
+            list: state.listId,
+            query: state.query,
+            bucket: state.bucket,
+            sort: state.savedSort ?? 'title',
+          })}
+        </output>
+      </>
+    )
+  }
+  const mount = () =>
+    render(
+      <>
+        <State mode="desktop" />
+        <State mode="fullscreen" />
+      </>,
+    )
+  mount()
+  const current = (mode: Mode) => JSON.parse(screen.getByLabelText(mode).textContent!)
+  fireEvent.click(screen.getByText('desktop select'))
+  fireEvent.click(screen.getByText('fullscreen select'))
+  expect(current('desktop')).toEqual({ list: '1', query: '', bucket: 'all', sort: 'list-order' })
+  expect(current('fullscreen')).toEqual({ list: '2', query: 'Hollow', bucket: 'never_played', sort: 'title' })
+  cleanup()
+  mount()
+  expect(current('desktop').list).toBe('1')
+  expect(current('fullscreen').list).toBe('2')
+  fireEvent.click(screen.getByText('fullscreen leave'))
+  expect(current('desktop').list).toBe('1')
+  expect(current('fullscreen')).toEqual({ list: 'all', query: '', bucket: 'all', sort: 'title' })
+  fireEvent.click(screen.getByText('desktop leave'))
+  expect(current('desktop').sort).toBe('title')
+  expect(lists).toEqual(original)
+})
 
 describe.each(['desktop', 'fullscreen'] as const)('saved default in %s', (mode) => {
   it.each([

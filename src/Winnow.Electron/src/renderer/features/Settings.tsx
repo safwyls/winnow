@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { SectionLabel, SectionNavigation } from '../components/SectionNavigation'
 import { Check, RefreshCw } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { createClientId, dateLabel, request, openExternal } from '../api/client'
@@ -139,25 +140,27 @@ export function Settings({
         </header>
       )}
       {!metadataChild && (
-        <nav className="tabs" aria-label="Settings section">
-          {sections.map((name) => (
-            <button
-              key={name}
-              data-controller-tab
-              aria-pressed={(mode === 'fullscreen' ? parentTab : tab) === name}
-              onClick={(event) => {
-                setTab(name)
-                if (mode === 'fullscreen' && name === 'Controller')
-                  event.currentTarget.focus({ preventScroll: true })
-              }}
-              onFocus={(event) =>
-                event.currentTarget.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
-              }
-            >
-              {name}
-            </button>
-          ))}
-        </nav>
+        <SectionNavigation fullscreen={mode === 'fullscreen'}>
+          <nav className="tabs" aria-label="Settings section">
+            {sections.map((name) => (
+              <button
+                key={name}
+                data-controller-tab
+                aria-pressed={(mode === 'fullscreen' ? parentTab : tab) === name}
+                onClick={(event) => {
+                  setTab(name)
+                  if (mode === 'fullscreen' && name === 'Controller')
+                    event.currentTarget.focus({ preventScroll: true })
+                }}
+                onFocus={(event) =>
+                  event.currentTarget.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+                }
+              >
+                {mode === 'fullscreen' ? <SectionLabel>{name}</SectionLabel> : name}
+              </button>
+            ))}
+          </nav>
+        </SectionNavigation>
       )}
       {mode === 'fullscreen' && parentTab !== tab && !metadataChild && (
         <button data-settings-child-back onClick={() => setTab(parentTab)}>

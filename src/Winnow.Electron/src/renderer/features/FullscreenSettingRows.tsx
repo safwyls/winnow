@@ -11,7 +11,7 @@ export function useFullscreenSettingsEntry(ready: boolean, entryKey?: string) {
       if (
         active === document.body ||
         active?.id === 'main-content' ||
-        active?.closest('.settings-page > .tabs')
+        active?.closest('.settings-page [aria-label="Settings section"]')
       )
         surface.current
           ?.querySelector<HTMLButtonElement>('button:not(:disabled)')

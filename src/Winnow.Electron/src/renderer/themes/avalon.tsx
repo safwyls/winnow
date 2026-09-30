@@ -82,6 +82,7 @@ import { revealShelfCover } from './avalon-row-motion'
 import { homePageStart, homeShelfPosition, initialGridPosition } from './avalon-navigation'
 import { AvalonFullscreenGrid, type AvalonGridHandle, type AvalonSavedGrid } from './avalon-fullscreen-grid'
 import { FullscreenStatus } from '../components/FullscreenStatus'
+import { SectionLabel, SectionNavigation } from '../components/SectionNavigation'
 import { useSystemReducedMotion } from '../useSystemReducedMotion'
 import { Details } from '../features/Details'
 import { AvalonSearch } from './avalon-search'
@@ -134,43 +135,57 @@ function Collections({ context, fullscreenTools }: { context: ThemeContext; full
   return (
     <div className="avalon-collections">
       <span className="avalon-label">Collections</span>
-      <div className="avalon-buckets" role="group" aria-label="Library collections">
-        {buckets.map((id) => (
-          <button
-            key={id}
-            aria-label={
-              id === 'stale_but_patched'
-                ? `Patched, ${context.games.filter((game) => matchesBucket(game, id)).length.toLocaleString()} games with unread updates`
-                : undefined
-            }
-            data-controller-tab={context.mode === 'fullscreen' || undefined}
-            aria-pressed={context.page === 'library' && activeBucket === id && listId === 'all'}
-            data-filter-rule={
-              (context.page === 'library' &&
-                list?.isLive &&
-                (id === 'installed' ? filter.installed === true : filter.buckets?.includes(id))) ||
-              undefined
-            }
-            onClick={() => {
-              selectBucket(id)
-              setTools(false)
-              context.setPage('library')
-            }}
-          >
-            <span>
-              {id === 'stale_but_patched' && <i className="avalon-patch-pip" />}
-              {id === 'all'
-                ? 'All games'
-                : id === 'installed'
-                  ? 'Installed'
-                  : id === 'stale_but_patched'
-                    ? 'Patched'
-                    : libraryBucketLabel(id)}
-            </span>
-            <small>{context.games.filter((game) => matchesBucket(game, id)).length.toLocaleString()}</small>
-          </button>
-        ))}
-      </div>
+      <SectionNavigation fullscreen={context.mode === 'fullscreen'}>
+        <div className="avalon-buckets" role="group" aria-label="Library collections">
+          {buckets.map((id) => (
+            <button
+              key={id}
+              aria-label={
+                id === 'stale_but_patched'
+                  ? `Patched, ${context.games.filter((game) => matchesBucket(game, id)).length.toLocaleString()} games with unread updates`
+                  : undefined
+              }
+              data-controller-tab={context.mode === 'fullscreen' || undefined}
+              aria-pressed={context.page === 'library' && activeBucket === id && listId === 'all'}
+              data-filter-rule={
+                (context.page === 'library' &&
+                  list?.isLive &&
+                  (id === 'installed' ? filter.installed === true : filter.buckets?.includes(id))) ||
+                undefined
+              }
+              onClick={() => {
+                selectBucket(id)
+                setTools(false)
+                context.setPage('library')
+              }}
+            >
+              <span>
+                {id === 'stale_but_patched' && <i className="avalon-patch-pip" />}
+                {context.mode === 'fullscreen' ? (
+                  <SectionLabel>
+                    {id === 'all'
+                      ? 'All games'
+                      : id === 'installed'
+                        ? 'Installed'
+                        : id === 'stale_but_patched'
+                          ? 'Patched'
+                          : libraryBucketLabel(id)}
+                  </SectionLabel>
+                ) : id === 'all' ? (
+                  'All games'
+                ) : id === 'installed' ? (
+                  'Installed'
+                ) : id === 'stale_but_patched' ? (
+                  'Patched'
+                ) : (
+                  libraryBucketLabel(id)
+                )}
+              </span>
+              <small>{context.games.filter((game) => matchesBucket(game, id)).length.toLocaleString()}</small>
+            </button>
+          ))}
+        </div>
+      </SectionNavigation>
       {fullscreenTools ?? (
         <>
           {context.mode === 'desktop' ? (

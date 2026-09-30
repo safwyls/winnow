@@ -132,7 +132,7 @@ export function StartupPresentation({
               : 'Preparing your library…'}
         </p>
         {failed && <button onClick={preparation.retry}>Try again</button>}
-        {mode === 'fullscreen' && <button onClick={exit}>Back to desktop</button>}
+        <button onClick={exit}>{mode === 'fullscreen' ? 'Back to desktop' : 'Enter fullscreen'}</button>
       </div>
     </div>
   )

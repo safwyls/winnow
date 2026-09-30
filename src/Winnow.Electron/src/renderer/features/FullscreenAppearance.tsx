@@ -39,7 +39,7 @@ export function FullscreenAppearance({ themeControls }: { themeControls?: ReactN
       if (
         active === document.body ||
         active?.id === 'main-content' ||
-        active?.closest('.settings-page > .tabs')
+        active?.closest('.settings-page [aria-label="Settings section"]')
       )
         surface.current
           ?.querySelector<HTMLButtonElement>('[data-fullscreen-settings-initial]')

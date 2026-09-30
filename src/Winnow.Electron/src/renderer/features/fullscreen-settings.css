@@ -96,19 +96,23 @@
   border-bottom-color: var(--accent-foreground, var(--accent));
   color: var(--accent-foreground, var(--accent));
 }
-.settings-page.mode-fullscreen > .tabs button {
+.settings-page.mode-fullscreen > .fullscreen-section-navigation > .tabs button {
   border: 0;
   border-bottom: 3px solid transparent;
   border-radius: 0;
   background: transparent;
   color: var(--text);
 }
-.settings-page.mode-fullscreen > .tabs button[aria-pressed='true'] {
+.settings-page.mode-fullscreen > .fullscreen-section-navigation > .tabs button[aria-pressed='true'] {
   border-bottom-color: var(--muted);
   font-weight: 700;
 }
-.settings-page.mode-fullscreen > .tabs button:focus,
-:root[data-controller='true'] .settings-page.mode-fullscreen > .tabs button:focus {
+.settings-page.mode-fullscreen > .fullscreen-section-navigation > .tabs button:focus,
+:root[data-controller='true']
+  .settings-page.mode-fullscreen
+  > .fullscreen-section-navigation
+  > .tabs
+  button:focus {
   outline: none;
   border-bottom-color: var(--accent-foreground, var(--accent));
   color: var(--accent-foreground, var(--accent));
@@ -202,9 +206,6 @@
   flex-shrink: 0;
   margin-bottom: 24px;
 }
-.settings-page.mode-fullscreen > .tabs {
-  flex-shrink: 0;
-}
 .settings-page.mode-fullscreen.fullscreen-controller-page {
   height: 100%;
   min-height: 0;
@@ -291,4 +292,8 @@
   height: 100%;
   width: 100%;
   object-fit: var(--cover-art-fit, contain);
+}
+
+.settings-page.mode-fullscreen > .fullscreen-section-navigation {
+  flex-shrink: 0;
 }

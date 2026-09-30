@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useId, useRef, useState } from 'react'
+import { SectionLabel, SectionNavigation } from '../components/SectionNavigation'
 import * as Dialog from '@radix-ui/react-dialog'
 import { BookOpen, X } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -454,19 +455,25 @@ export function Journal({
           </label>
         )}
       </header>
-      <nav className="tabs" aria-label="Activity pages">
-        <button aria-pressed={panel === 'history'} onClick={() => setPanel('history')}>
-          History
-        </button>
-        <button aria-pressed={panel === 'summary'} onClick={() => setPanel('summary')}>
-          Library summary
-        </button>
-        {library.data?.games.some((game) => game.entries.some((entry) => entry.store === 'steam')) && (
-          <button aria-pressed={panel === 'steam'} onClick={() => setPanel('steam')}>
-            Steam-reported activity
+      <SectionNavigation fullscreen={mode === 'fullscreen'}>
+        <nav className="tabs" aria-label="Activity pages">
+          <button data-controller-tab aria-pressed={panel === 'history'} onClick={() => setPanel('history')}>
+            {mode === 'fullscreen' ? <SectionLabel>History</SectionLabel> : 'History'}
           </button>
-        )}
-      </nav>
+          <button data-controller-tab aria-pressed={panel === 'summary'} onClick={() => setPanel('summary')}>
+            {mode === 'fullscreen' ? <SectionLabel>Library summary</SectionLabel> : 'Library summary'}
+          </button>
+          {library.data?.games.some((game) => game.entries.some((entry) => entry.store === 'steam')) && (
+            <button data-controller-tab aria-pressed={panel === 'steam'} onClick={() => setPanel('steam')}>
+              {mode === 'fullscreen' ? (
+                <SectionLabel>Steam-reported activity</SectionLabel>
+              ) : (
+                'Steam-reported activity'
+              )}
+            </button>
+          )}
+        </nav>
+      </SectionNavigation>
       {panel === 'summary' ? (
         <GameplayDashboard mode={mode} onOpenGame={onOpenGame} />
       ) : panel === 'steam' ? (

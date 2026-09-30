@@ -330,13 +330,22 @@ and a recommendation filmstrip. Gamepad API navigation supports directional move
 page and tab switching, actions, a quick menu and an on-screen keyboard. Physical-controller
 and TV-distance validation remain outstanding.
 
+Fullscreen Library, Activity and Settings keep LT/RT glyphs beside their local sections.
+Bold selection reserves its width, so changing sections keeps the strip stationary; selected
+sections use a neutral underline and focused actions use the accent. Repeated controller Menu
+presses retain one quick menu and return to the original control on Back or Resume. Cursor
+ownership clears on presentation changes and returns to the mouse when it moves. Native
+fullscreen exit restores the previous normal or maximized window. Visible fallback cover
+titles honor fullscreen text size without compounding repeated preference updates.
+
 Startup, fullscreen entry and return to desktop keep the library covered while the library,
 primary recommendations and layout settle. The dragon traces its contours for a complete
 1.8-second circuit before a 180ms reveal; an OffscreenCanvas worker keeps it moving during
 UI-thread work. Desktop respects system reduced motion and fullscreen uses its saved motion
 preference. Reduced motion and hidden preparation skip the animation delay, while retaining
-data readiness. A failed preparation offers Try again; fullscreen also keeps Back to desktop
-available. Reentry shares an unfinished read and refreshes completed reads without losing the page.
+data readiness. A failed preparation offers Try again. Enter fullscreen and Back to desktop
+remain available during preparation, even before a library context exists. Reentry shares an
+unfinished read and refreshes completed reads without losing the page.
 Theme colors and mark size update within the same animation circuit; hiding or detaching the
 presentation releases its worker and canvas.
 

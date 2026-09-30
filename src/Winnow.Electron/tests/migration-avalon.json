@@ -329,30 +329,6 @@
     "status": "framework-specific",
     "reason": "This method only asserts Avalonia logical-tree Border counts and Border parent/child types in XAML templates. DOM/CSS replaces that hierarchy; the separately inventoried pixel-boundary behavior test remains pending."
   },
-  "FullscreenThemeNavigationTests.Returning_home_after_each_theme_change_keeps_loaded_shelves_navigable": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/app.test.tsx",
-        "case": "returns from each original palette change with the loaded fullscreen shelf still navigable"
-      }
-    ],
-    "reason": "Composed App goes through Theme Studio for all nine original palettes and returns to the loaded Home shelf with left/right focus navigation. Original gamepad page cycling and the 3840x2160/1.4-text/2-percent-margin combination remain unverified."
-  },
-  "FullscreenContextTests.Runtime_factory_isolates_library_state_but_shares_the_persisted_theme": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/app.test.tsx",
-        "case": "imports the original palette once and shares it between desktop and fullscreen"
-      },
-      {
-        "file": "tests/avalon-migration.test.tsx",
-        "case": "imports the original %s palette through the public Theme preference"
-      }
-    ],
-    "reason": "Both modes share the imported theme; existing Electron profiles win and legacy fullscreen.theme is ignored. Original full composition invariants include independent journal/list instances, dormancy synchronization, reduced motion, ultrawide persistence and backdrop gradients, not all covered here. Electron appearance changes persist in the frontend profile instead of overwriting Avalonia settings."
-  },
   "ThemeTypographyTests.Invalid_font_names_report_their_field": {
     "status": "ported",
     "tests": [

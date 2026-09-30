@@ -354,6 +354,11 @@
   .avalon-shell .avalon-details.fullscreen .avalon-details-tabs button {
     padding: 10px 14px;
   }
+  .avalon-shell .avalon-details.fullscreen .avalon-details-tabs button[aria-selected='true'] {
+    font-weight: 700;
+    color: var(--text);
+    border-bottom-color: var(--muted);
+  }
   .avalon-shell .avalon-details.fullscreen .avalon-details-tabs button:focus {
     background: var(--raised);
     box-shadow: none;

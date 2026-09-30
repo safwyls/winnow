@@ -111,16 +111,6 @@
     ],
     "reason": "All named arrow keys are implemented in an inverted-T CSS grid and exercised for behavior. Headless DOM tests do not establish rendered bounds or space-bar proportions at desktop and television resolutions."
   },
-  "FullscreenQuickMenuTests.Repeated_start_keeps_one_menu_and_returns_to_the_original_focus": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-native-keyboard-integration.test.tsx",
-        "case": "preserves the nested editor, hides Settings, and restores the original focus on Resume"
-      }
-    ],
-    "reason": "The menu restores the captured invoking focus and preserves an unsaved editor. Repeated controller Menu presses are handled by the shell and need its integration evidence."
-  },
   "FullscreenQuickMenuTests.Nested_menu_preserves_the_editor_and_quit_requires_confirmation": {
     "status": "ported",
     "tests": [

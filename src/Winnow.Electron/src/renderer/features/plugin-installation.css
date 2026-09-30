@@ -23,7 +23,8 @@
 .mode-fullscreen .plugin-installation-page progress {
   height: 6px;
 }
-.mode-fullscreen.settings-page:has(.plugin-installation-page, .plugin-installed-page) > :is(header, nav) {
+.mode-fullscreen.settings-page:has(.plugin-installation-page, .plugin-installed-page)
+  > :is(header, .fullscreen-section-navigation) {
   display: none;
 }
 .mode-fullscreen .plugin-installed-page > :is(p, button) {

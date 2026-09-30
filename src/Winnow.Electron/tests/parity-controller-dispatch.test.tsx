@@ -41,6 +41,39 @@ function tap(...buttons: number[]) {
   held = []
   frame()
 }
+
+it('releases cursor ownership on surface changes and unmount while mouse movement restores it', () => {
+  const actions = callbacks()
+  const view = render(
+    <Harness actions={actions}>
+      <button>First</button>
+    </Harness>,
+  )
+  frame()
+  tap(13)
+  expect(document.documentElement.dataset.controller).toBe('true')
+  act(() => window.dispatchEvent(new Event('pointermove')))
+  expect(document.documentElement.dataset.controller).toBeUndefined()
+  tap(13)
+  view.rerender(
+    <Harness actions={actions} surface="fullscreen">
+      <button>First</button>
+    </Harness>,
+  )
+  expect(document.documentElement.dataset.controller).toBeUndefined()
+  tap(13)
+  expect(document.documentElement.dataset.controller).toBe('true')
+  view.rerender(
+    <Harness actions={actions} surface="desktop">
+      <button>First</button>
+    </Harness>,
+  )
+  expect(document.documentElement.dataset.controller).toBeUndefined()
+  tap(13)
+  view.unmount()
+  expect(document.documentElement.dataset.controller).toBeUndefined()
+  expect(frames.size).toBe(0)
+})
 beforeEach(() => {
   frames = new Map()
   nextFrame = 0

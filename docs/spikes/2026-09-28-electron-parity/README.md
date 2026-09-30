@@ -45,6 +45,13 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [fullscreen lifecycle checkpoint](checkpoint-fifty-eight.md) records all 3,358 component/live
+API cases and 87 distinct native lifecycle, navigation and affected-page cases passing. Startup entry,
+cursor ownership, stable section hints and return focus preserve the separate presentation paths.
+All 17 assigned source methods gain complete replacement evidence; 403 pending and 93 partial
+methods remain. Physical-device validation and the complete migration gate are still open.
+TASK-381.3 ends at the next user review boundary before TASK-381.4 can begin.
+
 The [fullscreen status checkpoint](checkpoint-fifty-seven.md) records all 3,351 component/live
 API cases and 23 native controller/status/Details cases passing. It restores the local clock,
 connection and known Windows battery labels, centered navigation and external desktop restore.

@@ -192,6 +192,9 @@ export function useController(actions: Actions) {
   const latest = useRef(actions)
   latest.current = actions
   useEffect(() => {
+    delete document.documentElement.dataset.controller
+  }, [actions.surface])
+  useEffect(() => {
     const input = new ControllerInput()
     let frame = 0
     const mouse = () => delete document.documentElement.dataset.controller

@@ -2,7 +2,7 @@
 import React from 'react'
 import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest'
 import { act, cleanup, configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, QueryObserver } from '@tanstack/react-query'
 import type { ApplicationActivation, WinnowBridge } from '../src/shared/bridge'
 import { App } from '../src/renderer/App'
 import { DEFAULT_PROFILE, selectThemeProfile } from '../src/shared/theme'
@@ -212,6 +212,112 @@ function mountAfterglow() {
   return mount()
 }
 describe('integrated frontend', () => {
+  it('shares persisted appearance and dormancy while keeping fullscreen motion and sizing independent on reentry', async () => {
+    const original = window.winnow.request
+    const values: Record<string, string> = {
+      Theme: 'bottle-green',
+      DimDormantCovers: 'false',
+      FullscreenReducedMotion: 'true',
+      FullscreenFitUltrawide: 'true',
+      FullscreenTextScale: '.7',
+      'fullscreen.theme': 'rose-pine',
+      'fullscreen.dim-covers': 'true',
+    }
+    window.winnow.request = vi.fn(async (input) =>
+      input.route === 'preferences.presentation.get'
+        ? {
+            ok: true,
+            status: 200,
+            data: Object.entries(values).map(([preference, value]) => ({ preference, value })),
+          }
+        : original(input),
+    ) as WinnowBridge['request']
+    mount()
+    await screen.findByRole('button', { name: 'Winnow home' })
+    const root = document.documentElement
+    await waitFor(() => expect(root.dataset.dimDormant).toBe('false'))
+    const ground = root.style.getPropertyValue('--bg')
+    expect(ground).not.toBe('')
+    expect(root.classList.contains('reduced-motion')).toBe(false)
+    await changeSurface(true)
+    expect(root.dataset.fitUltrawide).toBe('true')
+    expect(root.style.getPropertyValue('--fullscreen-text-scale')).toBe('0.7')
+    expect(root.classList.contains('reduced-motion')).toBe(true)
+    expect(root.style.getPropertyValue('--bg')).toBe(ground)
+    expect(root.dataset.dimDormant).toBe('false')
+    await changeSurface(false)
+    expect(root.style.getPropertyValue('--fullscreen-text-scale')).toBe('1')
+    expect(root.classList.contains('reduced-motion')).toBe(false)
+    values.DimDormantCovers = 'true'
+    await changeSurface(true)
+    await waitFor(() => expect(root.dataset.dimDormant).toBe('true'))
+    expect(root.classList.contains('reduced-motion')).toBe(true)
+    expect(root.style.getPropertyValue('--fullscreen-text-scale')).toBe('0.7')
+    expect(root.style.getPropertyValue('--bg')).toBe(ground)
+    await changeSurface(false)
+    expect(root.dataset.dimDormant).toBe('true')
+  })
+  it.each([
+    [false, true],
+    [true, false],
+    [false, false],
+  ])(
+    'disposal releases presentation subscriptions while preserving borrowed library %s and feed %s',
+    async (shareLibrary, shareFeed) => {
+      const eventStops: ReturnType<typeof vi.fn>[] = [],
+        connectionStops: ReturnType<typeof vi.fn>[] = [],
+        stopFullscreen = vi.fn()
+      window.winnow.onEvent = () => {
+        const stop = vi.fn()
+        eventStops.push(stop)
+        return stop
+      }
+      window.winnow.onConnection = () => {
+        const stop = vi.fn()
+        connectionStops.push(stop)
+        return stop
+      }
+      window.winnow.onFullscreen = (value) => {
+        fullscreen = value
+        return stopFullscreen
+      }
+      const client = mount()
+      await screen.findByRole('button', { name: 'Winnow home' })
+      await changeSurface(true)
+      const borrowers: (() => void)[] = []
+      for (const [route, shared] of [
+        ['library.get', shareLibrary],
+        ['feed.get', shareFeed],
+      ] as const) {
+        if (shared)
+          borrowers.push(
+            new QueryObserver(client, { queryKey: ['api', route], enabled: false }).subscribe(() => {}),
+          )
+      }
+      const libraryBefore = client.getQueryData(['api', 'library.get'])
+      const feedBefore = client.getQueryData(['api', 'feed.get'])
+      expect(libraryBefore).toBeDefined()
+      expect(feedBefore).toBeDefined()
+      cleanup()
+      for (const stop of [...eventStops, ...connectionStops]) expect(stop).toHaveBeenCalledOnce()
+      expect(stopFullscreen).toHaveBeenCalledOnce()
+      expect(client.getQueryData(['api', 'library.get'])).toBe(libraryBefore)
+      expect(client.getQueryData(['api', 'feed.get'])).toBe(feedBefore)
+      for (const query of client.getQueryCache().getAll()) {
+        const expected =
+          (query.queryKey[1] === 'library.get' && shareLibrary) ||
+          (query.queryKey[1] === 'feed.get' && shareFeed)
+            ? 1
+            : 0
+        expect(query.getObserversCount(), JSON.stringify(query.queryKey)).toBe(expected)
+      }
+      const refreshed = { ...(libraryBefore as object), revision: 'after-disposal' }
+      client.setQueryData(['api', 'library.get'], refreshed)
+      expect(client.getQueryData(['api', 'library.get'])).toEqual(refreshed)
+      borrowers.forEach((stop) => stop())
+      client.clear()
+    },
+  )
   it('desktop Merges is a dedicated screen with no rail count and Escape returns to Library even when its queue is empty', async () => {
     const original = window.winnow.request
     const review = mergeFixture()
@@ -543,9 +649,7 @@ describe('integrated frontend', () => {
       expect(await details.findByRole('heading', { name: 'Epic update notes' })).toBeTruthy()
       expect(details.getByRole('heading', { name: 'Build epic-update' })).toBeTruthy()
       fireEvent.click(details.getByRole('tab', { name: 'Library' }))
-      const copies = document.querySelectorAll(
-        '.avalon-details-reading .entry-actions',
-      )
+      const copies = document.querySelectorAll('.avalon-details-reading .entry-actions')
       expect(copies).toHaveLength(2)
       expect([...copies].map((copy) => copy.querySelector('strong')?.textContent)).toEqual([
         'Steam',
