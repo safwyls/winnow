@@ -1,11 +1,11 @@
 ---
 id: TASK-381.3
 title: 'Electron: finish fullscreen lifecycle and navigation'
-status: Done
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:44'
-updated_date: '2026-09-30 21:41'
+updated_date: '2026-09-30 22:11'
 labels:
   - electron
   - parity
@@ -73,13 +73,15 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [x] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
 1. Preserve the existing per-surface navigation/store and shared API/theme architecture; audit all 17 original assertion scopes and test runtime ownership/cleanup rather than reproducing Avalonia DI types. 2. Close demonstrated interaction gaps: clear controller cursor ownership on presentation switches, expose fullscreen entry while data is preparing, and render non-focusable LT/RT hints outside local section strips with stable selected/focused geometry. Keep desktop compositions unchanged. 3. Exercise real Electron transitions from normal/maximized windows, repeated root/nested controller menus, minimum-size search keyboard, delayed return preparation, origin focus/backdrops, ultrawide sizing and all original palette/size/scale matrices. Fix only failures within this task. 4. Verify shared theme/dormancy preferences, independent surface filters and released component/event/query subscriptions with retained shared cache. Run focused and complete component/API checks plus relevant native regressions; map only the 17 assigned contracts with exact evidence, update documentation, commit and pause before TASK-381.4.
+
+Review correction: restore visible non-focusable LB/RB glyphs flanking the fullscreen root menu, assert their presence and bounds at reference/minimum sizes and maximum safe margins, and verify centered navigation and desktop/Details absence. Commit this correction before the user-authorized continuation to TASK-381.4.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -90,6 +92,8 @@ Desktop and fullscreen verified separately. Preparation supports entry before li
 Verification: production build/typecheck pass; all 3358 component/live API cases in 164 files pass without skips (56.66s). Across the recorded native batches, all 87 distinct relevant cases have a passing latest executed result; the final 33-case repair/regression batch passes in 349.46s with no skips or retries. Native tests use temporary --data-dir, sample fixtures and --no-sync. Inspected desktop Details/plugin layouts and fullscreen section hints, compact Controller guide and long-title layout. Changed files pass formatting and git diff --check.
 
 Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-fifty-eight.md, .tmp/fullscreen-lifecycle-integration-final.log, .tmp/fullscreen-lifecycle-native-final.log and .tmp/fullscreen-lifecycle-native-summary.json. Per-method mapping: tests/migration-fullscreen-lifecycle.json. Exactly the 17 assigned contracts change disposition; inventory is 1284 ported, 625 retained backend, 30 framework-specific, 403 pending and 93 partial. migration:report passes; test:migration remains correctly failing for 496 unresolved methods. No .NET implementation changed; the full .NET/native aggregate and physical-controller/display validation remain queued. Stop after this milestone for user review; do not begin TASK-381.4 without continuation.
+
+User review found missing main-menu LB/RB glyphs. Restored the original bundled Kenney glyphs around fullscreen root navigation without changing desktop or Details. Four added native cases assert rendered paths, non-focusable behavior, left/right placement, centering, page cycling and absence on desktop/Details, including 1200x688 and 1280x720 with 140% text and 10% margins. Build/typecheck, 120 affected component cases and all 17 focused native cases pass. Screenshots inspected; evidence .tmp/root-bumper-native/ and checkpoint-fifty-eight.md. User authorized fixing this omission then continuing to TASK-381.4.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

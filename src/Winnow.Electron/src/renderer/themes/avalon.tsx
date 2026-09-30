@@ -82,7 +82,7 @@ import { revealShelfCover } from './avalon-row-motion'
 import { homePageStart, homeShelfPosition, initialGridPosition } from './avalon-navigation'
 import { AvalonFullscreenGrid, type AvalonGridHandle, type AvalonSavedGrid } from './avalon-fullscreen-grid'
 import { FullscreenStatus } from '../components/FullscreenStatus'
-import { SectionLabel, SectionNavigation } from '../components/SectionNavigation'
+import { RootBumper, SectionLabel, SectionNavigation } from '../components/SectionNavigation'
 import { useSystemReducedMotion } from '../useSystemReducedMotion'
 import { Details } from '../features/Details'
 import { AvalonSearch } from './avalon-search'
@@ -310,6 +310,7 @@ export function AvalonShell(context: ThemeContext) {
         )}
         {fullscreen && context.page !== 'details' && (
           <nav className="avalon-navigation" aria-label="Main navigation">
+            <RootBumper button="LB" />
             {destinations.map(({ id, label }) => (
               <button
                 key={id}
@@ -319,6 +320,7 @@ export function AvalonShell(context: ThemeContext) {
                 {label}
               </button>
             ))}
+            <RootBumper button="RB" />
           </nav>
         )}
         <div className="avalon-utilities">

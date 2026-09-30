@@ -24632,6 +24632,10 @@
         {
           "file": "tests/electron/fullscreen-lifecycle.spec.ts",
           "case": "main pages retain bounded controller focus at reference and smaller sizes with idempotent text scaling"
+        },
+        {
+          "file": "tests/electron/fullscreen-lifecycle.spec.ts",
+          "case": "root bumper glyphs flank centered navigation through every page at ${width}x${height} text ${scale}"
         }
       ],
       "reason": "All four root pages use controller shoulder navigation at 1920x1080 with bounded content-button focus and visible cover outlines. Details and the search keyboard are captured, then Home/Library/Settings are checked at 1280x720. Visible fallback title sizing grows by 1.4, remains within the original 24-34 logical-pixel range after viewport normalization, and repeated updates do not compound. Screenshots accompany the source-sized states."

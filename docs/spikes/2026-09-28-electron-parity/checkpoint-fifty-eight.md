@@ -7,6 +7,7 @@ controller cursor ownership; subsequent mouse movement restores the hovered cont
 cursor. Existing native window-state restoration and independent navigation state are
 exercised through the production main/preload boundary.
 
+The fullscreen root menu shows non-focusable LB/RB glyphs on either side of its choices.
 Library, Activity and Settings show non-focusable LT/RT glyphs beside their local sections.
 Labels reserve their bold width before selection. Activity reserves its scrollbar gutter,
 and Plugins keeps its form padding inside the content so the Settings strip stays still.
@@ -69,6 +70,13 @@ source's 1920-wide logical canvas. Per-method explanations are recorded in
 - Inspected desktop Details and plugin layouts, fullscreen Library/Settings section hints,
   the 1280×720 Controller guide at maximum text/margins, and the small Library's long-title
   truncation. All changed Electron files pass Prettier; `git diff --check` passes.
+- The review correction for root LB/RB hints passes **120 affected component cases** and
+  **17 native header/navigation cases**, including four added root-glyph fixtures at
+  1200×688, 1280×720, 1920×1080 and 2560×1440. The small fixtures use 140% text and 10%
+  margins. Assertions check rendered SVG paths, flanking positions, centered navigation,
+  non-focusable hints, page cycling and absence from desktop and Details. Build/typecheck
+  passes; screenshots were inspected. Evidence: `.tmp/root-bumper-{build,components,native}.log`
+  and `.tmp/root-bumper-native/`. The inventory dispositions are unchanged.
 
 ## Remaining validation
 

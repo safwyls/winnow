@@ -281,6 +281,60 @@ test('minimum 1200x688 fullscreen uses its own search page and bounded controlle
   await expect(field).toBeFocused()
 })
 
+for (const [width, height, scale, margin] of [
+  [1920, 1080, 1, 5],
+  [1280, 720, 1.4, 10],
+  [1200, 688, 1.4, 10],
+  [2560, 1440, 1.4, 5],
+])
+  test(`root bumper glyphs flank centered navigation through every page at ${width}x${height} text ${scale}`, async ({}, info) => {
+    await expect(page.locator('[data-root-bumper]')).toHaveCount(0)
+    await fullscreen(width, height, scale)
+    await preference('FullscreenSafeMargin', String(margin))
+    const navigation = page.getByRole('navigation', { name: 'Main navigation' })
+    const hints = navigation.locator('[data-root-bumper]')
+    for (const name of ['For you', 'Library', 'Activity', 'Settings']) {
+      await expect(navigation.getByRole('button', { name, exact: true })).toHaveAttribute(
+        'aria-current',
+        'page',
+      )
+      await expect(hints).toHaveCount(2)
+      for (const hint of await hints.all()) {
+        await fits(hint)
+        await expect(hint).toHaveAttribute('aria-hidden', 'true')
+        expect(await hint.evaluate((node) => (node as HTMLElement).tabIndex)).toBe(-1)
+        await expect(hint.locator('path')).toBeVisible()
+      }
+      const geometry = await navigation.evaluate((node) => {
+        const box = node.getBoundingClientRect()
+        const first = node.firstElementChild!,
+          last = node.lastElementChild!
+        const buttons = [...node.querySelectorAll('button')]
+        return {
+          center: box.x + box.width / 2,
+          left: first.getAttribute('data-root-bumper'),
+          right: last.getAttribute('data-root-bumper'),
+          flanks:
+            first.getBoundingClientRect().right <= buttons[0].getBoundingClientRect().left &&
+            last.getBoundingClientRect().left >= buttons.at(-1)!.getBoundingClientRect().right,
+        }
+      })
+      expect(geometry.center).toBeCloseTo(width / 2, 0)
+      expect(geometry).toMatchObject({ left: 'LB', right: 'RB', flanks: true })
+      await page.screenshot({ path: info.outputPath(`root-bumpers-${name}.png`) })
+      await tap(5)
+    }
+    await tap(4)
+    await expect(navigation.getByRole('button', { name: 'Settings', exact: true })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    await root('Library')
+    await page.locator('.avalon-cover').first().click()
+    await expect(page.locator('.avalon-details.fullscreen')).toBeVisible()
+    await expect(page.locator('[data-root-bumper]')).toHaveCount(0)
+  })
+
 for (const [width, height, scale] of [
   [2560, 1440, 0.7],
   [2560, 1440, 1],

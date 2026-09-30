@@ -330,7 +330,8 @@ and a recommendation filmstrip. Gamepad API navigation supports directional move
 page and tab switching, actions, a quick menu and an on-screen keyboard. Physical-controller
 and TV-distance validation remain outstanding.
 
-Fullscreen Library, Activity and Settings keep LT/RT glyphs beside their local sections.
+Fullscreen keeps LB/RB glyphs on either side of the centered main menu. Library, Activity
+and Settings keep LT/RT glyphs beside their local sections.
 Bold selection reserves its width, so changing sections keeps the strip stationary; selected
 sections use a neutral underline and focused actions use the accent. Repeated controller Menu
 presses retain one quick menu and return to the original control on Back or Resume. Cursor
