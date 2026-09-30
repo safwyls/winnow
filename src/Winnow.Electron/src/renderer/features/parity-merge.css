@@ -3,6 +3,14 @@
     display: grid;
     gap: 16px;
   }
+  /* Queue geometry stays still while rows are reviewed or answered. */
+  .merge-queue button,
+  .merge-queue .artwork {
+    transition: none;
+  }
+  .merge-queue button:active:not(:disabled) {
+    transform: none;
+  }
   .merge-controls {
     display: flex;
     align-items: end;
@@ -190,6 +198,10 @@
     border-radius: 4px;
     background: color-mix(in srgb, var(--raised) 40%, transparent);
     color: var(--muted);
+    transition: color 120ms ease;
+  }
+  .merge-reason[data-row-detail='true'] {
+    color: var(--text);
   }
   .merge-confidence {
     background: var(--raised);
@@ -290,7 +302,8 @@
   .mode-fullscreen .merge-card {
     padding: 0;
   }
-  .reduced-motion .merge-row {
+  .reduced-motion .merge-row,
+  .reduced-motion .merge-reason {
     transition: none;
   }
   .merge-undo {

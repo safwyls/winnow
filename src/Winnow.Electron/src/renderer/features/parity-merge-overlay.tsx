@@ -3,6 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { mergeAnswer, mergeMemberLabels, mergeTitle, type MergeCard } from './parity-merge-model'
 import { mergeIdle, mergePlaytime } from './parity-merge-facts'
 import { storeLabel } from '../api/client'
+import { mergeActionCopy, mergeActionNames } from './parity-merge-copy'
 
 function move(event: KeyboardEvent<HTMLDivElement>) {
   if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return
@@ -186,19 +187,35 @@ export function MergeMemberSheet({
                   </button>
                 ))}
                 {card.actId ? (
-                  <button disabled={disabled} onClick={() => finish(onSeparate)}>
-                    Separate again
+                  <button
+                    disabled={disabled}
+                    aria-label={mergeActionNames(card).separate}
+                    title={mergeActionCopy.separateTip}
+                    onClick={() => finish(onSeparate)}
+                  >
+                    {mergeActionCopy.separate}
                   </button>
                 ) : (
                   <>
                     <button data-controller-context disabled={!answerable} onClick={onSelect}>
                       {card.selected ? 'Remove from selection' : 'Select for grouping'}
                     </button>
-                    <button data-controller-play disabled={!answerable} onClick={() => setConfirm(true)}>
-                      Same game
+                    <button
+                      data-controller-play
+                      disabled={!answerable}
+                      aria-label={mergeActionNames(card).same}
+                      title={mergeActionCopy.sameTip}
+                      onClick={() => setConfirm(true)}
+                    >
+                      {mergeActionCopy.same}
                     </button>
-                    <button disabled={disabled} onClick={() => finish(onDismiss)}>
-                      Different games
+                    <button
+                      disabled={disabled}
+                      aria-label={mergeActionNames(card).different}
+                      title={mergeActionCopy.differentTip}
+                      onClick={() => finish(onDismiss)}
+                    >
+                      {mergeActionCopy.different}
                     </button>
                     <button disabled={disabled} onClick={() => finish(onReview)}>
                       {card.kind === 'same_game' ? 'Same game…' : 'Review relationship…'}

@@ -45,6 +45,12 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [merge surface checkpoint](checkpoint-forty-four.md) records all 20 native regression
+cases passing. Answers identify their game group on both surfaces; desktop row feedback
+retains the original timing and fixed geometry. Nine methods gain behavioral evidence and
+three Avalonia-only guards receive explicit classifications. The inventory has 514 pending
+and 101 partial methods; dedicated merge navigation and other source contracts remain open.
+
 The [recommendation card checkpoint](checkpoint-forty-three.md) records all 3,170
 component/live API cases and 47 final native cases passing. Desktop cards restore the
 original feedback strip, cover actions, caption slots and receipts; previews stay bounded

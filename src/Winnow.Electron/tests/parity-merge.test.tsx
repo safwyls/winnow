@@ -211,7 +211,9 @@ for (const mode of ['desktop', 'fullscreen'] as const)
     }
     async function answer(title: string, action: string, saved = false) {
       const card = await open(title, saved)
-      const button = within(card).getByRole('button', { name: action }) as HTMLButtonElement
+      const button = within(card).getByRole('button', {
+        name: new RegExp(`^${action}: `),
+      }) as HTMLButtonElement
       // Publishing a saved card can precede the mutation's final busy-state reset.
       // Do not send the next synthetic click while the preceding answer still disables actions.
       await waitFor(() => expect(button.disabled).toBe(false))
@@ -219,6 +221,104 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       if (mode === 'fullscreen' && action === 'Same game')
         fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
     }
+    it('names every answer with its members and header and keeps one named undo after saving', async () => {
+      const { request } = setup(mode)
+      const card = await open('Bastion')
+      const same = within(card).getByRole('button', {
+        name: 'Same game: Bastion (Steam), Bastion (GOG), under Bastion',
+      })
+      const different = within(card).getByRole('button', {
+        name: 'Different games: Bastion (Steam), Bastion (GOG)',
+      })
+      expect(same.textContent).toBe('Same game')
+      expect(same.title).toBe('Nest the other rows under the header (S)')
+      expect(different.textContent).toBe('Different games')
+      expect(different.title).toBe('Leave them separate, not asked again (D)')
+      expect(card.textContent).not.toMatch(/retract|merge records|cancel/i)
+      fireEvent.click(same)
+      if (mode === 'fullscreen') fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+      const saved = await open('Bastion', true)
+      const separate = within(saved).getByRole('button', { name: 'Separate again: Bastion' })
+      expect(separate.textContent).toBe('Separate again')
+      expect(separate.title).toBe('Undo this roll-up. Nothing was deleted.')
+      expect(saved.textContent).not.toMatch(/retract|merge records|cancel/i)
+      if (mode === 'fullscreen') fireEvent.click(screen.getByRole('button', { name: 'Back to proposals' }))
+      const dock = screen.getByRole('status', { name: 'Review undo' })
+      expect(within(dock).getAllByRole('button')).toHaveLength(2)
+      expect(within(dock).getByRole('button', { name: 'Undo review decisions' }).title).toBe(
+        'Put it back the way it was',
+      )
+      expect(within(dock).getByRole('button', { name: 'Dismiss review undo' }).title).toBe('Dismiss')
+      expect(dock.querySelector('strong')?.textContent).toBeTruthy()
+      expect(dock.querySelector('.merge-dock-note')?.textContent).toMatch(/nothing was deleted/i)
+      expect(dock.textContent).not.toMatch(/retract|merge records|cancel/i)
+      await waitFor(() =>
+        expect(
+          (within(dock).getByRole('button', { name: 'Undo review decisions' }) as HTMLButtonElement).disabled,
+        ).toBe(false),
+      )
+      fireEvent.click(within(dock).getByRole('button', { name: 'Undo review decisions' }))
+      await screen.findByRole('article', { name: 'Bastion proposal' })
+      expect(request.mock.calls.filter(([input]) => input.route === 'identity.link')).toHaveLength(1)
+      expect(request.mock.calls.filter(([input]) => input.route === 'identity.undo')).toHaveLength(1)
+    })
+
+    it('answer names follow exclusions and promotion while the negative answer still identifies every member', async () => {
+      setup(mode)
+      let card = await open('Bastion')
+      if (mode === 'desktop')
+        fireEvent.click(within(card).getByRole('checkbox', { name: 'Include Bastion (GOG)' }))
+      else {
+        fireEvent.click(within(card).getByRole('button', { name: 'Bastion (GOG) · Included' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Leave out' }))
+        card = screen.getByRole('dialog')
+      }
+      expect(
+        (
+          within(card).getByRole('button', {
+            name: 'Same game: Bastion (Steam), under Bastion',
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(true)
+      expect(
+        within(card).getByRole('button', { name: 'Different games: Bastion (Steam), Bastion (GOG)' }),
+      ).toBeTruthy()
+      if (mode === 'desktop')
+        fireEvent.click(within(card).getByRole('radio', { name: 'Make Bastion (GOG) the main game' }))
+      else {
+        fireEvent.click(within(card).getByRole('button', { name: 'Bastion (GOG) · Left out' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Make header' }))
+        card = screen.getByRole('dialog')
+      }
+      expect(
+        (
+          within(card).getByRole('button', {
+            name: 'Same game: Bastion (Steam), Bastion (GOG), under Bastion',
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(false)
+    })
+
+    it('every kind control selects only its own section and clearing restores the complete queue', async () => {
+      setup(mode)
+      await screen.findByRole('article', { name: 'Bastion proposal' })
+      for (const label of ['Across stores', 'Editions', 'Expansions', 'Parts', 'Test builds']) {
+        kind(label)
+        expect(screen.getAllByRole('region').map((region) => region.getAttribute('aria-label'))).toEqual([
+          label,
+        ])
+        if (mode === 'desktop')
+          expect(screen.getByRole('button', { name: label }).getAttribute('aria-pressed')).toBe('true')
+        else {
+          expect(screen.queryByRole('dialog')).toBeNull()
+          expect(screen.getByRole('button', { name: `Kind · ${label}` })).toBeTruthy()
+        }
+      }
+      kind('All proposals')
+      expect(screen.getAllByRole('region')).toHaveLength(5)
+      expect(screen.getAllByRole('article')).toHaveLength(2)
+    })
+
     it('shows five ordered empty sections before the first review arrives without inventing loaded proposals', async () => {
       let release!: (value: unknown) => void
       setup(mode, (input, review) =>
@@ -1060,7 +1160,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
         )
       })
       const card = await open('Bastion')
-      const action = within(card).getByRole('button', { name: 'Same game' })
+      const action = within(card).getByRole('button', { name: /^Same game: / })
       fireEvent.click(action)
       if (mode === 'fullscreen') {
         const confirm = screen.getByRole('button', { name: 'Continue' })
@@ -1069,8 +1169,8 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       } else fireEvent.click(action)
       await screen.findByRole('article', { name: 'Bastion saved group' })
       const saved = await open('Bastion', true)
-      expect(within(saved).queryByRole('button', { name: 'Same game' })).toBeNull()
-      expect(within(saved).queryByRole('button', { name: 'Different games' })).toBeNull()
+      expect(within(saved).queryByRole('button', { name: /^Same game: / })).toBeNull()
+      expect(within(saved).queryByRole('button', { name: /^Different games: / })).toBeNull()
       expect(request.mock.calls.filter(([input]) => input.route === 'identity.link')).toHaveLength(1)
       expect(request.mock.calls.filter(([input]) => input.route === 'identity.dismiss')).toHaveLength(0)
       if (mode === 'desktop')
@@ -1260,14 +1360,14 @@ for (const mode of ['desktop', 'fullscreen'] as const)
         fireEvent.click(within(card).getByRole('button', { name: 'Bastion (GOG) · Included' }))
         fireEvent.click(screen.getByRole('button', { name: 'Leave out' }))
       }
-      expect((within(card).getByRole('button', { name: 'Same game' }) as HTMLButtonElement).disabled).toBe(
+      expect((within(card).getByRole('button', { name: /^Same game: / }) as HTMLButtonElement).disabled).toBe(
         true,
       )
       expect(request.mock.calls.some(([input]) => input.route === 'identity.link')).toBe(false)
       if (mode === 'fullscreen') fireEvent.click(screen.getByRole('button', { name: 'Back to proposals' }))
       await promoteSecond('Bastion')
       card = await open('Bastion')
-      expect((within(card).getByRole('button', { name: 'Same game' }) as HTMLButtonElement).disabled).toBe(
+      expect((within(card).getByRole('button', { name: /^Same game: / }) as HTMLButtonElement).disabled).toBe(
         false,
       )
       if (mode === 'desktop')
@@ -1588,11 +1688,11 @@ it('fullscreen Escape traverses member and confirmation layers before returning 
   fireEvent.click(screen.getByRole('button', { name: 'Bastion (GOG) · Included' }))
   expect(screen.getByRole('button', { name: 'Open game' })).toBe(document.activeElement)
   fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
-  expect(screen.getByRole('button', { name: 'Same game' })).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', { name: 'Same game' }))
+  expect(screen.getByRole('button', { name: /^Same game: / })).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: /^Same game: / }))
   expect(screen.getByRole('dialog', { name: 'Group these entries?' })).toBeTruthy()
   fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
-  expect(screen.getByRole('button', { name: 'Same game' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: /^Same game: / })).toBeTruthy()
   fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
   await waitFor(() => expect(document.activeElement).toBe(proposal))
   expect(screen.queryByRole('dialog')).toBeNull()
@@ -1609,7 +1709,7 @@ it('expires the undo dock after seven seconds and lets Dismiss close it early wi
   expect(request.mock.calls.length).toBe(oldCalls)
   fireEvent.click(
     within(screen.getByRole('article', { name: 'Prey 2006 proposal' })).getByRole('button', {
-      name: 'Different games',
+      name: /^Different games: /,
     }),
   )
   await screen.findByText('Left 1 group alone.')

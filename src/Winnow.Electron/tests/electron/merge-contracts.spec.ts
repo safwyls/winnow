@@ -74,7 +74,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       .evaluateAll((cards) => cards.map((card) => card.getAttribute('aria-label')))
     if (mode === 'fullscreen') await card.getByRole('button').click()
     await (mode === 'desktop' ? card : page.getByRole('dialog'))
-      .getByRole('button', { name: 'Same game', exact: true })
+      .getByRole('button', { name: /^Same game: / })
       .click()
     if (mode === 'fullscreen') await page.getByRole('button', { name: 'Continue', exact: true }).click()
     const saved = queue.getByRole('article', { name: `${title} saved group`, exact: true })
@@ -95,7 +95,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     )
     if (mode === 'fullscreen') await saved.getByRole('button').click()
     await (mode === 'desktop' ? saved : page.getByRole('dialog'))
-      .getByRole('button', { name: 'Separate again', exact: true })
+      .getByRole('button', { name: /^Separate again: / })
       .click()
     await expect(card).toBeVisible()
     expect(

@@ -10,6 +10,7 @@ import { dormancy } from '../themes/avalon-data'
 import { mergeIdle, mergePlaytime, mergeRollup, mergeRowDetail, mergeRowMark } from './parity-merge-facts'
 import { MergeBatchConfirmation, MergeMemberSheet, MergeOptionsSheet } from './parity-merge-overlay'
 import { refreshIdentityReview } from './parity-merge-query'
+import { mergeActionCopy, mergeActionNames } from './parity-merge-copy'
 import {
   buildMergeCards,
   exactMergeCards,
@@ -666,6 +667,13 @@ export function MergeQueue({
                           <span className="merge-confidence" data-confidence={card.confidence}>
                             {card.confidence}
                           </span>
+                          {card.rows.some((row) => row.unread && card.included.includes(row.workId)) && (
+                            <span
+                              className="merge-unread"
+                              aria-label={mergeActionCopy.unreadTip}
+                              title={mergeActionCopy.unreadTip}
+                            />
+                          )}
                           <label className="checkbox">
                             <input
                               type="checkbox"
@@ -703,8 +711,13 @@ export function MergeQueue({
                             </select>
                           </label>
                         )}
-                        <button disabled={blocked} onClick={() => void reverse(card.actId)}>
-                          Separate again
+                        <button
+                          disabled={blocked}
+                          aria-label={mergeActionNames(card).separate}
+                          title={mergeActionCopy.separateTip}
+                          onClick={() => void reverse(card.actId)}
+                        >
+                          {mergeActionCopy.separate}
                         </button>
                       </div>
                     ) : (
@@ -783,8 +796,8 @@ export function MergeQueue({
                               {row.unread && (
                                 <span
                                   className="merge-unread"
-                                  aria-label="Patched since you played"
-                                  title="Patched since you played"
+                                  aria-label={mergeActionCopy.unreadTip}
+                                  title={mergeActionCopy.unreadTip}
                                 />
                               )}
                               {onOpenGame && (
@@ -811,7 +824,7 @@ export function MergeQueue({
                             </div>
                           ))}
                         </div>
-                        <p className="merge-reason">
+                        <p className="merge-reason" data-row-detail={hovered?.card === card.key}>
                           {hovered?.card === card.key
                             ? (() => {
                                 const row = card.rows.find((member) => member.workId === hovered.work)!
@@ -824,12 +837,19 @@ export function MergeQueue({
                           <button
                             className="primary"
                             disabled={blocked || !mergeAnswer(card).childWorkIds.length}
+                            aria-label={mergeActionNames(card).same}
+                            title={mergeActionCopy.sameTip}
                             onClick={() => void link([card])}
                           >
-                            Same game
+                            {mergeActionCopy.same}
                           </button>
-                          <button disabled={blocked} onClick={() => void dismiss(card)}>
-                            Different games
+                          <button
+                            disabled={blocked}
+                            aria-label={mergeActionNames(card).different}
+                            title={mergeActionCopy.differentTip}
+                            onClick={() => void dismiss(card)}
+                          >
+                            {mergeActionCopy.different}
                           </button>
                           <button
                             disabled={blocked}
@@ -922,10 +942,15 @@ export function MergeQueue({
             <strong>{mergeDock(undo).title}</strong>
             <span className="merge-dock-note">{mergeDock(undo).note}</span>
           </span>
-          <button disabled={blocked} onClick={() => void reverse()}>
+          <button disabled={blocked} title={mergeActionCopy.undoTip} onClick={() => void reverse()}>
             Undo review decisions
           </button>
-          <button aria-label="Dismiss review undo" disabled={busy} onClick={() => setUndo(null)}>
+          <button
+            aria-label="Dismiss review undo"
+            title={mergeActionCopy.dismissTip}
+            disabled={busy}
+            onClick={() => setUndo(null)}
+          >
             Dismiss
           </button>
         </aside>

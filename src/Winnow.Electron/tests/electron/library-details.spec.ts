@@ -141,8 +141,9 @@ async function openRelationship() {
     await button.click()
     const events = await page.evaluate(async (start) => {
       await new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done())))
-      return (window as unknown as { relationshipInputTrace: { event: string; disabled: boolean }[] })
-        .relationshipInputTrace.slice(start)
+      return (
+        window as unknown as { relationshipInputTrace: { event: string; disabled: boolean }[] }
+      ).relationshipInputTrace.slice(start)
     }, start)
     if (await page.getByRole('combobox', { name: 'Main game', exact: true }).count()) return
     // A refresh can disable the target after Playwright's actionability check. Retry
@@ -418,7 +419,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await rows.first().getByRole('radio').press('Space')
       await expect(rows.first().getByRole('radio')).toBeChecked()
       await rows.nth(1).getByRole('checkbox').uncheck()
-      await expect(card.getByRole('button', { name: 'Same game', exact: true })).toBeDisabled()
+      await expect(card.getByRole('button', { name: /^Same game: / })).toBeDisabled()
       await rows.nth(1).getByRole('checkbox').check()
       const cover = rows.first().locator('.merge-cover')
       await api({
@@ -470,7 +471,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
         await page.getByRole('button', { name: / · Header$/ }).click()
         await expect(page.getByRole('button', { name: 'Make header', exact: true })).toHaveCount(0)
         await page.keyboard.press('Escape')
-        await expect(page.getByRole('button', { name: 'Same game', exact: true })).toBeVisible()
+        await expect(page.getByRole('button', { name: /^Same game: / })).toBeVisible()
         await page.keyboard.press('Escape')
         await expect(button).toBeFocused()
       }
@@ -482,7 +483,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await tap(2)
       await expect(page.getByRole('dialog', { name: 'Group these entries?', exact: true })).toBeVisible()
       await tap(1)
-      await expect(page.getByRole('button', { name: 'Same game', exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: /^Same game: / })).toBeVisible()
       await tap(1)
       await expect(card.getByRole('button')).toBeFocused()
       await page.evaluate(() =>
