@@ -91,6 +91,7 @@ export function AvalonDetailsLayout({
   const [reading, setReading] = useState<Reading | null>(null),
     [tool, setTool] = useState<Tool | null>(null)
   const [expanded, setExpanded] = useState(false)
+  const [relationshipsExpanded, setRelationshipsExpanded] = useState(false)
   const [matchNote, setMatchNote] = useState('')
   const [artworkOpen, setArtworkOpen] = useState(false)
   const [metadataOpen, setMetadataOpen] = useState(false)
@@ -143,7 +144,7 @@ export function AvalonDetailsLayout({
     const remember = () => positions.current.set(region, node.scrollTop)
     node.addEventListener('scroll', remember)
     return () => {
-      remember()
+      // The next region's shorter DOM can already have clamped scrollTop during cleanup.
       node.removeEventListener('scroll', remember)
     }
   }, [region])
@@ -359,7 +360,11 @@ export function AvalonDetailsLayout({
       <Screenshots details={details.data} {...(fullscreen ? { previewCount: 2 } : {})} />
       {!fullscreen && <ReceptionLine ratings={details.data?.ratings} />}
       {!fullscreen && game && hasRelationships && (
-        <details className="detail-expansions">
+        <details
+          className="detail-expansions"
+          open={relationshipsExpanded}
+          onToggle={(event) => setRelationshipsExpanded(event.currentTarget.open)}
+        >
           <summary>Related games & expansions</summary>
           <DetailsRelationships game={game} mode={mode} />
         </details>

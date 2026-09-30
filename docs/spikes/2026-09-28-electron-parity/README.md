@@ -45,6 +45,12 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [populated desktop Details checkpoint](checkpoint-fifty-five.md) records all 3,322
+component/live API cases and 43 native Details/controller cases passing. Desktop sections
+retain expanded relationships and exact scroll positions, and long titles and publishers
+wrap with the source typography. Two source methods gain complete evidence;
+434 pending and 96 partial methods remain.
+
 The [fullscreen Details checkpoint](checkpoint-fifty-four.md) records all 3,322 component/live
 API cases and 45 native Details/artwork/gallery cases passing. It closes the original rich/empty
 section and cinematic-artwork matrices, including controller membership focus, full-window

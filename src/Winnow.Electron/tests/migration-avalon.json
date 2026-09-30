@@ -1734,24 +1734,24 @@
     "reason": "The third Search result moves Up to Go to results and Down to the identical first-row column without scrolling or animating. Verified through the real Search component and native Electron keyboard handling."
   },
   "GameDetailsTabInteractionTests.Populated_tabs_keep_the_header_pinned_and_all_content_reachable": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/electron/details-layout.spec.ts",
-        "case": "desktop Details at ${width}×${height} retains the header, bounded reading and modal origin"
+        "file": "tests/electron/details-desktop.spec.ts",
+        "case": "desktop populated five-tab Details preserves the source ${width}x${height} header, bottom content and scroll"
       }
     ],
-    "reason": "Real desktop modal geometry at1200×640 and2560×1440 verifies the original width cap,82×123 cover, pinned header, five sections, bounded long-summary scrolling, retained offsets and tool/modal focus return. The original rich all-five-tab bottom-content traversal at1280×820, including expanded relationships, is not yet reproduced."
+    "reason": "Both original 1200x640 and 1280x820 windows use the populated three-store, twelve-update, six-list, three-note and three-expansion fixture with reception and eight screenshots. Native input traverses all five tabs, expands Overview relationships, reaches each last visible control, preserves the header and restores each exact scroll offset on return. Expansion disclosure state survives tab changes and More remains reachable."
   },
   "GameDetailsTabInteractionTests.Long_title_publisher_and_three_store_header_keep_actions_inside_the_card": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/electron/details-layout.spec.ts",
-        "case": "desktop Details at ${width}×${height} retains the header, bounded reading and modal origin"
+        "file": "tests/electron/details-desktop.spec.ts",
+        "case": "desktop original long title, publisher and three stores keep all header actions and glyphs inside the card"
       }
     ],
-    "reason": "Long title and publisher fit the bounded desktop modal and leave readable content at1200×640. Three-store facts, an enabled primary launch action and exact icon containment still need the original populated fixture matrix."
+    "reason": "The original long title and publisher, Steam/GOG/Epic copies and reception fixture render at 1200x640. All enabled Play, Add to list, More and Close buttons, plus both named action glyphs, stay inside the header; at least 80px of reading height remains. The complete title wraps with the original 26px type and 30px line height instead of being truncated."
   },
   "FullscreenDetailsTests.Detail_sections_wrap_content_and_keep_controller_actions_reachable": {
     "status": "ported",

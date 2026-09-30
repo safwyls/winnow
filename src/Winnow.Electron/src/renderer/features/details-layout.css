@@ -66,9 +66,10 @@
   }
   .avalon-details.desktop h1 {
     padding-right: 22px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-size: calc(26px * var(--detail-scale));
+    line-height: calc(30px * var(--detail-scale));
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
   .avalon-details h2 {
     font: 600 calc(12px * var(--detail-scale)) / 1.4 var(--font-body);
@@ -87,11 +88,6 @@
   }
   .avalon-details-identity > .detail-support {
     margin-top: 6px;
-  }
-  .avalon-details.desktop .avalon-details-identity > .detail-support {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   .avalon-details .reception-line.compact {
     margin-top: 6px;

@@ -48,7 +48,9 @@ Fullscreen artwork fills the window behind the safe margins. Its screenshot prev
 the available reading height, preserve all image edges and scroll fully into view on focus.
 Section navigation includes list-membership controls; toggling a list preserves its focus.
 Desktop About keeps its 410px reading measure and the card follows the original viewport
-caps. Technical facts are visible directly in Library. Refetch metadata closes More and
+caps. Long titles and publishers wrap. Each section keeps its scroll position, and expanded
+relationships remain open when returning to Overview. Technical facts are visible directly
+in Library. Refetch metadata closes More and
 reports progress and completion in a persistent footer outside the reading area; fullscreen
 uses its own text scale. Refreshing keeps the selected section and returns focus to More.
 
