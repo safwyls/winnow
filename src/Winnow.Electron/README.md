@@ -18,6 +18,12 @@ and no duplicate count for store copies. The Patched collection announces its ga
 and meaning. Recommendations expose their reason at the cover's focus stop and announce
 feedback only after it is saved.
 
+Desktop recommendations keep feedback in a 48px strip inside the portrait cover, with
+the title and reason below it. A saved verdict preserves the card's size and offers Undo
+in place. Hover previews stay inside the window and close when their tile is rebound;
+Escape keeps them closed until the pointer leaves the card. Fullscreen retains its
+separate hero actions.
+
 Avalon's desktop Details opens over the retained library with five sections and a fixed
 header. Fullscreen Details uses the original cinematic layout, two screenshot previews and
 separate About and Play history reading pages. More contains the shared metadata, matching,

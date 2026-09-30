@@ -6,6 +6,7 @@ import type { ThemeContext } from '../src/shared/theme'
 import { DEFAULT_PROFILE, selectThemeProfile } from '../src/shared/theme'
 import type { FeedVerdict, LibraryGame } from '../src/renderer/api/types'
 import { avalon, AvalonDiscover } from '../src/renderer/themes/avalon'
+import { AvalonCoverWorkspace } from '../src/renderer/themes/avalon-desktop-cover'
 import { clearViewState } from '../src/renderer/viewState'
 import { splitReason, verdictStatus } from '../src/renderer/themes/avalon-feed'
 
@@ -126,13 +127,33 @@ function mount(mode: ThemeContext['mode'], configure?: (context: ThemeContext) =
   configure?.(context)
   const tree = () => (
     <QueryClientProvider client={client}>
-      <AvalonDiscover {...context} />
+      <AvalonCoverWorkspace.Provider
+        value={{
+          preferences: { showNonGameEntries: false, showExplicitContent: false, maturityCap: 'all' },
+          works: [],
+          externalIds: context.games.flatMap((game) =>
+            game.entries.map((entry) => ({
+              releaseId: entry.releaseId,
+              provider: entry.store,
+              providerId: String(entry.releaseId),
+            })),
+          ),
+          pluginActions: {},
+          epicLaunchKeys: {},
+        }}
+      >
+        <AvalonDiscover {...context} />
+      </AvalonCoverWorkspace.Provider>
     </QueryClientProvider>
   )
   const rendered = render(tree())
   return { request, context, client, update: () => rendered.rerender(tree()) }
 }
+function revealDesktopActions() {
+  for (const card of document.querySelectorAll('.avalon-feed-card')) fireEvent.mouseMove(card)
+}
 async function click(name: string | RegExp, index = 0) {
+  act(revealDesktopActions)
   await act(async () => {
     fireEvent.click(screen.getAllByRole('button', { name })[index])
     await vi.advanceTimersByTimeAsync(1)
@@ -182,6 +203,22 @@ describe.each(['desktop', 'fullscreen'] as const)('feed feedback in %s', (mode) 
     expect(screen.getByRole('status').textContent).toContain('Off the feed.')
     await click('Undo')
     expect(screen.queryByRole('status')).toBeNull()
+  })
+  it('keeps desktop recommendation captions and membership tooltips separate from fullscreen hero actions', async () => {
+    const { context } = mount(mode)
+    await tick(10)
+    const captions = document.querySelectorAll('.avalon-feed-card-caption')
+    expect(captions).toHaveLength(mode === 'desktop' ? 5 : 0)
+    if (mode === 'desktop') {
+      expect(captions[0].textContent).toBe('Game 1Reason for Game 1.')
+      expect(document.querySelectorAll('.avalon-feed-launch')).toHaveLength(0)
+      expect(document.querySelector('.avalon-shelf-label')?.getAttribute('title')).toBe(
+        context.feed!.shelves[0].blurb,
+      )
+    } else {
+      expect(document.querySelectorAll('.avalon-feed-launch')).toHaveLength(1)
+      expect(document.querySelector('.avalon-home-hero h1')?.textContent).toBe('Game 1')
+    }
   })
   it('opens response history from an empty feed and returns to the same empty surface', async () => {
     mount(mode, (context) => {
@@ -295,22 +332,27 @@ describe.each(['desktop', 'fullscreen'] as const)('feed feedback in %s', (mode) 
       context.actions.launch = launch
     })
     await tick(10)
-    const play = screen.getByRole('button', { name: 'Play Game 1' })
+    act(revealDesktopActions)
+    const play = screen.getByRole('button', { name: mode === 'desktop' ? /^Play$/ : 'Play Game 1' })
     await act(async () => {
       fireEvent.click(play)
       fireEvent.click(play)
     })
     expect(launch).toHaveBeenCalledTimes(1)
     expect(launch).toHaveBeenCalledWith(1)
-    expect((play as HTMLButtonElement).disabled).toBe(true)
+    if (mode === 'desktop') expect(play.getAttribute('aria-disabled')).toBe('true')
+    else expect((play as HTMLButtonElement).disabled).toBe(true)
     await act(async () => reject(Error('Launcher unavailable')))
-    expect(screen.getByRole('alert').textContent).toBe('Launcher unavailable')
-    await click('Play Game 1')
+    expect(screen.getByRole('alert').textContent).toBe(
+      mode === 'desktop' ? 'Play could not finish. Try again.' : 'Launcher unavailable',
+    )
+    await click(mode === 'desktop' ? /^Play$/ : 'Play Game 1')
     expect(launch).toHaveBeenCalledTimes(2)
     expect(screen.queryByRole('alert')).toBeNull()
     if (mode === 'fullscreen')
       await act(async () => screen.getByRole('button', { name: 'View Game 2' }).focus())
-    expect(screen.getByRole('button', { name: 'Install Game 2' })).toBeDefined()
+    if (mode === 'desktop') expect(screen.getAllByRole('button', { name: /^Install$/ })).toHaveLength(4)
+    else expect(screen.getByRole('button', { name: 'Install Game 2' })).toBeDefined()
   })
   it('shows build, quiet, and failure states and retains good cards after a failed reload', async () => {
     const { context, update } = mount(mode, (context) => {
@@ -378,6 +420,7 @@ describe.each(['desktop', 'fullscreen'] as const)('feed feedback in %s', (mode) 
   })
   it('holds a focused undo and the hovered cover before replacing only that card', async () => {
     const refill = withReplacement()
+    act(revealDesktopActions)
     const response = screen.getAllByRole('button', { name: 'Not interested' })[0]
     await act(async () => {
       response.focus()

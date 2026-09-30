@@ -68,6 +68,7 @@ import { AvalonCoverWorkspace, AvalonDesktopCover, type AvalonCoverProps } from 
 import './avalon.css'
 import { useAvalonAppearance } from './avalon-appearance'
 import { FeedFeedback, FeedHistory, FeedLaunch, FeedReason, useAvalonFeed } from './avalon-feed'
+import { AvalonFeedCard } from './avalon-feed-card'
 import type { FeedDeckShelf, FeedRow } from './avalon-feed-model'
 import {
   AvalonDesktopShelf,
@@ -651,7 +652,15 @@ export function AvalonDiscover(context: ThemeContext) {
       </div>
     )
   function card(current: FeedDeckShelf, entry: FeedRow, index: number) {
-    const cover = (
+    const cover = !fullscreen ? (
+      <AvalonFeedCard
+        context={context}
+        deck={deck}
+        shelf={current}
+        row={entry}
+        onKeyDown={(event) => key(event, index, current)}
+      />
+    ) : (
       <AvalonCover
         context={context}
         game={entry.game}
@@ -708,7 +717,7 @@ export function AvalonDiscover(context: ThemeContext) {
         {shelves.map((current) => (
           <section className="avalon-shelf" key={current.id}>
             <header>
-              <div className="avalon-shelf-label">
+              <div className="avalon-shelf-label" title={current.blurb}>
                 <h2>{current.title}</h2>
                 <span className="avalon-shelf-count" aria-label={`${current.rows.length} games`}>
                   {current.rows.length.toLocaleString()}
@@ -720,14 +729,6 @@ export function AvalonDiscover(context: ThemeContext) {
               {current.rows.map((entry, index) => (
                 <div key={entry.game.workId} {...handlers(entry, 'card')}>
                   {card(current, entry, index)}
-                  <FeedLaunch context={context} row={entry} />
-                  <FeedFeedback deck={deck} shelf={current} row={entry} />
-                  <AddToListButton
-                    games={[entry.game]}
-                    mode={context.mode}
-                    origin="feed"
-                    label={`Add ${entry.game.title} to list…`}
-                  />
                 </div>
               ))}
             </AvalonDesktopShelf>

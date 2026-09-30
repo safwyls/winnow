@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 538,
+    "pending": 526,
     "partial": 101,
-    "ported": 1154,
+    "ported": 1166,
     "retained-backend": 625,
     "framework-specific": 17
   },
@@ -22234,62 +22234,158 @@
     {
       "id": "FeedCardActionTests.Hover_lifts_the_complete_feed_cover_without_separating_its_chrome",
       "source": "tests/Winnow.Ui.Tests/FeedCardActionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/feed-cards.spec.ts",
+          "case": "hover lifts the complete feed cover once and keeps its chrome aligned"
+        }
+      ],
+      "reason": "Native geometry verifies a two-pixel reserved margin and one two-pixel lift, zero inner-cover movement, aligned ring and face, inset Details fold and an exact scrim/action-strip seam."
     },
     {
       "id": "FeedCardActionTests.Shared_cover_scales_and_launch_and_details_have_independent_hit_targets",
       "source": "tests/Winnow.Ui.Tests/FeedCardActionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/feed-cards.spec.ts",
+          "case": "shared feed cover and independent launch details caption targets scale at"
+        }
+      ],
+      "reason": "The 180/240px source matrix checks 2:3 resizing, primary-action bounds, independent launch and Details dispatch, cover and caption clicks and hidden pointer targets on exit."
     },
     {
       "id": "FeedCardActionTests.Feed_action_pointer_press_has_no_border_but_keyboard_focus_does",
       "source": "tests/Winnow.Ui.Tests/FeedCardActionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/feed-cards.spec.ts",
+          "case": "feed action pointer press has no border while keyboard focus uses Volt"
+        }
+      ],
+      "reason": "Real pointer down/up on Add to list retains a transparent border; keyboard focus on the same action uses the calibrated Volt foreground."
     },
     {
       "id": "FeedCardActionTests.Preview_stays_inside_window_for_partially_visible_edge_tiles",
       "source": "tests/Winnow.Ui.Tests/FeedCardActionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/feed-cards.spec.ts",
+          "case": "preview remains within the client area for edge tile at"
+        }
+      ],
+      "reason": "The original three edge positions run in a 900x400 client area. Measured preview bounds, including a long summary, retain the specified eight-pixel inset."
     },
     {
       "id": "FeedCardActionTests.Built_in_shelf_headers_explain_their_membership_in_tooltips",
       "source": "tests/Winnow.Ui.Tests/FeedCardActionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-feed-ui.test.tsx",
+          "case": "keeps desktop recommendation captions and membership tooltips separate from fullscreen hero actions"
+        },
+        {
+          "file": "tests/electron/feed.spec.ts",
+          "case": "saves a dated receipt, holds Undo, and retains history after navigation"
+        }
+      ],
+      "reason": "The component check verifies the declared shelf explanation, and the native production feed checks every rendered desktop shelf header against its displayed membership blurb. Fullscreen retains its separate hero actions and both modes preserve feedback/history behavior."
     },
     {
       "id": "FeedCardActionTests.Portrait_card_actions_are_accessible_without_moving_the_card",
       "source": "tests/Winnow.Ui.Tests/FeedCardActionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/feed-cards.spec.ts",
+          "case": "portrait actions stay measured named and keyboard reachable at"
+        }
+      ],
+      "reason": "Both original card widths verify stable card geometry, no keyboard lift, named tooltips, separate 36px aligned targets, source semantic icon colors, keyboard reachability and fixed title/reason dimensions."
     },
     {
       "id": "FeedCardActionTests.Pointer_actions_do_not_open_details_and_feedback_keeps_undo",
       "source": "tests/Winnow.Ui.Tests/FeedCardActionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/feed-cards.spec.ts",
+          "case": "leaves Details closed and retains fixed geometry through receipt and Undo"
+        }
+      ],
+      "reason": "All three source actions are clicked independently. Add opens the shared list prompt; each verdict retains a fixed-size receipt and Undo, reverses the exact verdict and never opens Details."
     },
     {
       "id": "FeedCardActionTests.Card_art_activation_opens_full_details_directly",
       "source": "tests/Winnow.Ui.Tests/FeedCardActionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/feed-cards.spec.ts",
+          "case": "activation opens Details directly and closes the preview"
+        }
+      ],
+      "reason": "Pointer, Enter and Space each open Details exactly once and close the quick preview."
     },
     {
       "id": "FeedCardActionTests.Quick_details_closes_when_card_is_rebound_or_detached",
       "source": "tests/Winnow.Ui.Tests/FeedCardActionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/feed-cards.spec.ts",
+          "case": "releases the open preview and its in-flight request"
+        }
+      ],
+      "reason": "Same-work rebind, another work and detach all remove the preview, release its independent artwork and cancel the pending named-bridge request. A late result cannot revive it."
     },
     {
       "id": "FeedCardActionTests.Escape_closes_quick_details_and_returns_focus_to_the_card",
       "source": "tests/Winnow.Ui.Tests/FeedCardActionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/feed-cards.spec.ts",
+          "case": "Escape closes the preview while card focus stays put"
+        },
+        {
+          "file": "tests/parity-feed-ui.test.tsx",
+          "case": "holds a focused undo and the hovered cover before replacing only that card"
+        }
+      ],
+      "reason": "Escape closes quick details without transferring focus; explicit navigation to the outside action still works. Shared feed UI tests separately retain focused and hovered countdown holds."
     },
     {
       "id": "FeedCardActionTests.Hover_preview_opens_immediately_and_closes_on_exit_even_over_the_preview",
       "source": "tests/Winnow.Ui.Tests/FeedCardActionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/feed-cards.spec.ts",
+          "case": "preview opens without delay or focus and exits even over bubble"
+        },
+        {
+          "file": "tests/parity-feed-ui.test.tsx",
+          "case": "holds a focused undo and the hovered cover before replacing only that card"
+        }
+      ],
+      "reason": "The preview opens on the first pointer movement without taking focus, has no buttons or duplicated recommendation reason, and closes on outside or bubble exit. Both exits cancel pending metadata and release artwork."
     },
     {
       "id": "FeedCardActionTests.Hovering_another_card_replaces_the_preview_without_a_click",
       "source": "tests/Winnow.Ui.Tests/FeedCardActionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/feed-cards.spec.ts",
+          "case": "hovering another card replaces the preview without a click"
+        }
+      ],
+      "reason": "Two real rendered cards replace the single preview on hover without dispatching Details."
     },
     {
       "id": "FeedCardBackdropTests.Released_card_ignores_late_pixels_and_reacquires_on_attach",

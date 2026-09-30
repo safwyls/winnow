@@ -1118,11 +1118,11 @@ describe.each(['desktop', 'fullscreen'] as const)('list prompts in %s', (mode) =
             : ok({ id: 90, name: 'Rainy evenings', isLive: false, releaseIds: [100], revision: 'new' })
           : undefined
       const view = setup(mode, origin)
-      if (origin === 'library')
+      if (origin === 'library' || (origin === 'feed' && mode === 'desktop'))
         act(() => document.querySelector<HTMLButtonElement>('[data-avalon-game="1"]')!.focus())
       fireEvent.click(
         libraryRole('button', {
-          name: origin === 'feed' && mode === 'desktop' ? 'Add Alpha to list…' : 'Add to list…',
+          name: origin === 'feed' && mode === 'desktop' ? 'Add to list' : 'Add to list…',
         }),
       )
       const dialog = libraryRole('dialog')
@@ -1260,12 +1260,15 @@ describe.each(['desktop', 'fullscreen'] as const)('original manual list contract
           <Fixture mode={mode} origin={origin} />
         </QueryClientProvider>,
       )
-      const add = () =>
+      const add = () => {
+        if (origin === 'feed' && mode === 'desktop')
+          act(() => document.querySelector<HTMLButtonElement>('[data-avalon-game="1"]')!.focus())
         fireEvent.click(
           libraryRole('button', {
-            name: origin === 'feed' && mode === 'desktop' ? 'Add Hades to list…' : 'Add to list…',
+            name: origin === 'feed' && mode === 'desktop' ? 'Add to list' : 'Add to list…',
           }),
         )
+      }
       add()
       expect(libraryRole('heading', { name: 'Add Hades to a list' })).toBeTruthy()
       expect(

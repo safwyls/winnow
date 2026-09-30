@@ -45,6 +45,12 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [recommendation card checkpoint](checkpoint-forty-three.md) records all 3,170
+component/live API cases and 47 final native cases passing. Desktop cards restore the
+original feedback strip, cover actions, caption slots and receipts; previews stay bounded
+and retain the accessible reason. All 12 original card methods gain Electron evidence.
+The inventory has 526 pending and 101 partial methods, so migration remains incomplete.
+
 The [complete native and backend audit checkpoint](checkpoint-forty-two.md) records all
 295 native cases passing on frozen source at `147997eb`. Another 65 source methods retain
 their unchanged production backend tests; all 101 corresponding Release cases passed.

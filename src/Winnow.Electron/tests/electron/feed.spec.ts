@@ -54,6 +54,14 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       .getByRole('navigation', { name: 'Main navigation' })
       .getByRole('button', { name: 'For you', exact: true })
       .click()
+    if (mode === 'desktop') {
+      for (const header of await page.locator('.avalon-shelf > header').all()) {
+        await expect(header.locator('.avalon-shelf-label')).toHaveAttribute(
+          'title',
+          await header.locator('p').innerText(),
+        )
+      }
+    }
     const feed = await api<FeedSnapshot>({ route: 'feed.get' })
     const shelf = feed.shelves.find((shelf) => shelf.supportsFeedback && shelf.items.length > 0)!
     expect(shelf).toBeTruthy()
@@ -77,6 +85,10 @@ for (const mode of ['desktop', 'fullscreen'] as const)
     await expect(cover).toBeVisible()
     await expect(cover).toHaveAccessibleDescription(shelf.items[0]!.reason)
     await expect(scope.getByRole('status')).toHaveCount(0)
+    if (mode === 'desktop') {
+      await expect(scope.locator('.avalon-shelf-label')).toHaveAttribute('title', shelf.blurb)
+      await cover.focus()
+    }
     await scope.getByRole('button', { name: 'Not now', exact: true }).first().click()
     const undo = scope.getByRole('button', { name: 'Undo', exact: true }).first()
     await expect(undo).toBeFocused()
@@ -97,6 +109,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
     await expect(dialog.getByText(/Undone on/).first()).toBeVisible()
     await dialog.getByRole('button', { name: 'Back to the feed' }).click()
     await expect(cover).toBeVisible()
+    if (mode === 'desktop') await cover.focus()
     await expect(scope.getByRole('button', { name: 'Not now', exact: true }).first()).toBeVisible()
     await expect(scope.getByRole('status')).toHaveCount(0)
     await page

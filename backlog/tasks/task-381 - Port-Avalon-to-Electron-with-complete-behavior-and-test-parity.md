@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 12:54'
+updated_date: '2026-09-30 13:10'
 labels: []
 dependencies: []
 priority: high
@@ -314,4 +314,6 @@ Plan54 verified: all3154 component/liveAPI cases pass across156files without ski
 Plan55 verified: all3168 component/liveAPI cases pass across156files without skips52.22s; build/typecheck and inventory audit pass. All33native cases pass1.6m, including exact1/3/1234/missing update-count names, eligibility, duplicate editions, feed accessible descriptions and silent/saved/Undo status on both surfaces, plus fullscreen controller collections and cover regressions. Original8UnreadAccessibleCopyTests outcomes confirmed passed in checkpoint39TRX. Seven methods ported and one retained backend; inventory1154ported560retained17framework603pending101partial. Evidence checkpoint-forty-one.md. The complete frozen-source native suite is next; Plan56 feed-card work stays in scratch files until it completes. All AC remain unchecked.
 
 Checkpoint 42: the complete native Electron suite passes all 295 cases with zero skipped, flaky or failed outcomes in 29.71 minutes on frozen source and bundles at 147997eb. Prepared follow-on work stayed exclusively under ignored .tmp paths until completion. Evidence: .tmp/unread-complete-native/results.json and log. Plan 57 audits 65 additional original methods against actual unchanged backend implementations and production registrations; all 101 corresponding cases passed in checkpoint 39 Release TRX. Mixed view-model, displayed-cover wrapper and retired capture-policy assertions remain pending. Inventory: 1154 ported, 625 retained backend, 17 framework-specific, 538 pending, 101 partial. Checkpoint-forty-two.md records provenance and exclusions. All task AC remain unchecked. Continuing plan 56 recommendation-card composition and exact native source matrices.
+
+Plan 56 verified: final build/typecheck and all 3170 component/live API cases pass across 156 files without skips (51.84s). All 47 final native cases pass (37.1s): 23 new recommendation-card cases, 20 cover regressions and four production feed cases across both surfaces. Original Avalonia FeedCardActionTests passes all 22 cases with source captures. Desktop restores the 48px feedback strip, single cover lift, independent targets, fixed captions/receipts and bounded cancellable previews; fullscreen retains separate hero actions. Visual review corrected the receipt date and primary-action remnant before final checks. Earlier 66/69 native run included 22 passing layout cases; three probe issues were corrected without relaxing layout contracts. Twelve source methods ported; inventory 1166 ported, 625 retained backend, 17 framework-specific, 526 pending, 101 partial. Evidence checkpoint-forty-three.md. All task AC remain unchecked.
 <!-- SECTION:NOTES:END -->

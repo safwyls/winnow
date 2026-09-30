@@ -31,6 +31,7 @@ export function AddToListButton({
   origin = 'library',
   label,
   icon,
+  iconOnly = false,
   onClosed,
 }: {
   games: LibraryGame[]
@@ -38,6 +39,7 @@ export function AddToListButton({
   origin?: string
   label?: string
   icon?: ReactNode
+  iconOnly?: boolean
   onClosed?(): void
 }) {
   const [open, setOpen] = useState(false)
@@ -50,9 +52,14 @@ export function AddToListButton({
       }}
     >
       <Dialog.Trigger asChild>
-        <button disabled={!games.length} onClick={(event) => event.stopPropagation()}>
+        <button
+          disabled={!games.length}
+          aria-label={iconOnly ? (label ?? 'Add to list') : undefined}
+          title={iconOnly ? (label ?? 'Add to list') : undefined}
+          onClick={(event) => event.stopPropagation()}
+        >
           {icon}
-          {label ?? (games.length > 1 ? `Add ${games.length} to list…` : 'Add to list…')}
+          {!iconOnly && (label ?? (games.length > 1 ? `Add ${games.length} to list…` : 'Add to list…'))}
         </button>
       </Dialog.Trigger>
       {open && (
