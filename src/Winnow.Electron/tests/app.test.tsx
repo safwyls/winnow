@@ -54,6 +54,14 @@ const game = {
 }
 let fullscreen: (value: boolean) => void = () => {}
 beforeEach(() => {
+  clearViewState('setup:suspended')
+  for (const mode of ['desktop', 'fullscreen']) {
+    clearViewState(`${mode}:settings:tab`)
+    clearViewState(`${mode}:plugins:installation`)
+    clearViewState(`${mode}:plugins:installation-follow`)
+    clearViewState(`${mode}:plugins:installed`)
+    clearViewState(`${mode}:plugins:selected`)
+  }
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
   vi.stubGlobal(
     'ResizeObserver',
@@ -903,21 +911,19 @@ describe('integrated frontend', () => {
       ])
       mount()
       await screen.findByRole('button', { name: 'Winnow home' })
-      expect(screen.queryByRole('dialog', { name: 'Review provider installation' })).toBeNull()
+      expect(screen.queryByRole('region', { name: 'Plugin installation' })).toBeNull()
       await act(async () => {
         complete({ step: 4 })
       })
-      const installer = await screen.findByRole('dialog', { name: 'Review provider installation' })
+      await screen.findByRole('region', { name: 'Plugin installation' })
       expect(screen.queryByRole('heading', { name: 'Your GOG library' })).toBeNull()
       expect(
-        vi
-          .mocked(window.winnow.request)
-          .mock.calls.some(([value]) => value.route === 'plugins.official.install'),
-      ).toBe(false)
+        vi.mocked(window.winnow.request).mock.calls.some(([value]) => value.route === 'operations.plugin'),
+      ).toBe(true)
       expect(vi.mocked(window.winnow.request).mock.calls.some(([value]) => value.route === 'setup.put')).toBe(
         false,
       )
-      fireEvent.click(within(installer).getByRole('button', { name: /^Close$/ }))
+      fireEvent.click(screen.getByRole('button', { name: 'Resume setup' }))
       await screen.findByRole('heading', { name: 'Your GOG library' })
       expect(document.querySelector(`.setup-dialog.mode-${mode}`)).not.toBeNull()
       expect(vi.mocked(window.winnow.request).mock.calls.some(([value]) => value.route === 'setup.put')).toBe(
@@ -926,6 +932,16 @@ describe('integrated frontend', () => {
     },
   )
   it('delivers startup activations before a newer event received during the pending handshake', async () => {
+    const original = window.winnow.request
+    let finish!: (value: unknown) => void
+    const installing = new Promise((resolve) => {
+      finish = resolve
+    })
+    window.winnow.request = vi.fn(async (value) =>
+      value.route === 'operations.plugin'
+        ? { ok: true, status: 200, data: await installing }
+        : original(value),
+    ) as WinnowBridge['request']
     let complete!: (value: ApplicationActivation[]) => void
     let receive!: (value: ApplicationActivation) => void
     window.winnow.takeActivations = vi.fn(
@@ -943,9 +959,9 @@ describe('integrated frontend', () => {
     act(() => receive({ kind: 'fullscreen' }))
     expect(window.winnow.setFullscreen).not.toHaveBeenCalled()
     await act(async () => complete([{ kind: 'plugin', pluginId: 'psn', releaseTag: 'v1.2.3' }]))
-    const installer = await screen.findByRole('dialog', { name: 'Review provider installation' })
+    await screen.findByRole('region', { name: 'Plugin installation' })
     expect(window.winnow.setFullscreen).not.toHaveBeenCalled()
-    fireEvent.click(within(installer).getByRole('button', { name: /^Close$/ }))
+    await act(async () => finish({ state: 'failed' }))
     await waitFor(() => expect(window.winnow.setFullscreen).toHaveBeenCalledWith(true))
   })
   it.each(['desktop', 'fullscreen'] as const)(
@@ -964,17 +980,14 @@ describe('integrated frontend', () => {
       mount()
       await screen.findByRole('heading', { name: 'Welcome to Winnow' })
       act(() => receive({ kind: 'plugin', pluginId: 'xbox', releaseTag: 'v1.2.3' }))
-      const installer = await screen.findByRole('dialog', { name: 'Review provider installation' })
+      await screen.findByRole('region', { name: 'Plugin installation' })
       expect(screen.queryByRole('heading', { name: 'Welcome to Winnow' })).toBeNull()
-      fireEvent.click(within(installer).getByRole('button', { name: /^Close$/ }))
+      fireEvent.click(screen.getByRole('button', { name: 'Resume setup' }))
       await screen.findByRole('heading', { name: 'Welcome to Winnow' })
-      expect(
-        vi
-          .mocked(window.winnow.request)
-          .mock.calls.some(
-            ([value]) => value.route === 'setup.put' || value.route === 'plugins.official.install',
-          ),
-      ).toBe(false)
+      expect(document.querySelector('.plugin-installation-page')).toBeNull()
+      expect(vi.mocked(window.winnow.request).mock.calls.some(([value]) => value.route === 'setup.put')).toBe(
+        false,
+      )
     },
   )
   it('imports the original palette once and shares it between desktop and fullscreen', async () => {

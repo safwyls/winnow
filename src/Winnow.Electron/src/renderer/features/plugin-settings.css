@@ -67,6 +67,7 @@
 }
 .mode-fullscreen .plugin-card h2 {
   font-size: calc(64px * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+  line-height: 1.2;
 }
 .mode-fullscreen .plugin-card :is(p, .check-field, input, button) {
   font-size: calc(24px * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));

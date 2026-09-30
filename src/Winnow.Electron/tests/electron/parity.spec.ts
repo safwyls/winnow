@@ -21,7 +21,13 @@ test.beforeAll(async () => {
   ) as Record<string, string>
   application = await electron.launch({
     executablePath: electronPath as unknown as string,
-    args: [resolve('.'), '--data-dir', directory, '--seed-sample', '--no-sync'],
+    args: [
+      resolve('tests/electron/plugin-install-main.mjs'),
+      '--data-dir',
+      directory,
+      '--seed-sample',
+      '--no-sync',
+    ],
     env: environment,
     chromiumSandbox: true,
     timeout: 60000,
@@ -218,7 +224,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
   })
 }
 
-test('a second process delivers fullscreen and reviewed plugin activation to the same library session', async () => {
+test('a second process delivers fullscreen and starts plugin installation in the same library session', async () => {
   const before = JSON.parse(await readFile(join(directory, 'backend/endpoint.json'), 'utf8'))
   const secondary = async (args: string[]) => {
     const child = spawn(electronPath as unknown as string, [resolve('.'), '--data-dir', directory, ...args], {
@@ -245,11 +251,16 @@ test('a second process delivers fullscreen and reviewed plugin activation to the
   await secondary(['--jump-list-fullscreen'])
   await expect(page.locator('.avalon-shell.fullscreen')).toBeVisible()
   await secondary(['--uri', 'winnow://plugins/install?id=xbox&release=v1.2.3'])
-  const dialog = page.getByRole('dialog', { name: 'Review provider installation' })
-  await expect(dialog).toBeVisible()
-  await expect(dialog.getByRole('button', { name: 'Install provider', exact: true })).toBeVisible()
-  await expect(dialog.getByLabel('Release tag')).toHaveValue('v1.2.3')
-  await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+  const installation = page.getByRole('region', { name: 'Plugin installation' })
+  await expect(installation).toBeVisible()
+  await expect(installation.getByRole('status')).toHaveText('The download failed. Try again.')
+  const starts = await application.evaluate(
+    () =>
+      (globalThis as unknown as { __pluginInstallFixture: { starts: { request: unknown }[] } })
+        .__pluginInstallFixture.starts,
+  )
+  expect(starts.map((value) => value.request)).toEqual([{ pluginId: 'xbox', releaseTag: 'v1.2.3' }])
+  await installation.getByRole('button', { name: 'Back', exact: true }).click()
   const after = JSON.parse(await readFile(join(directory, 'backend/endpoint.json'), 'utf8'))
   expect({ processId: after.processId, epoch: after.epoch }).toEqual({
     processId: before.processId,

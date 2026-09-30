@@ -191,7 +191,7 @@
         "case": "setup keeps navigation visible, traps consent, resumes provider handoff and restores replay focus"
       }
     ],
-    "reason": "Both App presentations begin with Welcome visible, suspend it for a provider handoff without saving completion or installing, and resume Welcome on close. Native checks additionally preserve a later saved cursor through the same handoff."
+    "reason": "Both App presentations suspend Welcome without saving completion, begin the validated provider installation immediately and keep shell navigation available. Resume setup returns to the same saved step. Native checks also preserve a later cursor through this handoff, using an intercepted package operation and the real isolated backend."
   },
   "StoresViewModelTests.A_panel_composed_without_the_import_draws_no_purchase_section": {
     "status": "ported",

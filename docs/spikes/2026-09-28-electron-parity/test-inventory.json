@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 761,
+    "pending": 758,
     "partial": 132,
-    "ported": 989,
+    "ported": 992,
     "retained-backend": 540,
     "framework-specific": 13
   },
@@ -12282,12 +12282,34 @@
     {
       "id": "PluginInstallViewModelTests.Browser_request_waits_for_manual_retry_instead_of_being_dropped",
       "source": "tests/Winnow.Tests/PluginInstallViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-installation.test.ts",
+          "case": "Browser_request_waits_for_manual_retry_instead_of_being_dropped"
+        },
+        {
+          "file": "tests/electron/plugin-installation.spec.ts",
+          "case": "${mode} a browser request waits for a manual retry and then installs its own provider"
+        }
+      ],
+      "reason": "Website requests serialize behind a manual retry; each completed provider opens its own settings. Native desktop and fullscreen tests exercise the shared controller through production main, preload and renderer with isolated package responses."
     },
     {
       "id": "PluginInstallViewModelTests.Cancellation_clears_busy_state_and_offers_retry",
       "source": "tests/Winnow.Tests/PluginInstallViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-installation.test.ts",
+          "case": "Cancellation_clears_busy_state_and_offers_retry"
+        },
+        {
+          "file": "tests/electron/plugin-installation.spec.ts",
+          "case": "${mode} cancellation clears progress, offers retry and unlocks backend restart"
+        }
+      ],
+      "reason": "Cancellation reaches the backend operation, clears busy state and progress, publishes the source retry message and unlocks service restart on both surfaces. Late operation acceptance retains cancellation identity."
     },
     {
       "id": "PluginMergeSuggestionTests.Imported_console_entry_gets_one_suggestion_without_linking_or_replacing_source_records",
@@ -12874,10 +12896,10 @@
       "tests": [
         {
           "file": "tests/electron/parity.spec.ts",
-          "case": "a second process delivers fullscreen and reviewed plugin activation to the same library session"
+          "case": "a second process delivers fullscreen and starts plugin installation in the same library session"
         }
       ],
-      "reason": "Rendered Electron exercises real second-process handoff and unchanged backend process/epoch for fullscreen and plugin review. Other original process launch variants remain to be migrated."
+      "reason": "Rendered Electron exercises real second-process handoff and unchanged backend process/epoch for fullscreen and immediate named plugin installation. Other original process launch variants remain to be migrated."
     },
     {
       "id": "SingleInstanceActivationTests.Launches_queue_until_ready_and_repeated_requests_reach_the_same_session",
@@ -20794,7 +20816,7 @@
           "case": "setup keeps navigation visible, traps consent, resumes provider handoff and restores replay focus"
         }
       ],
-      "reason": "Both App presentations begin with Welcome visible, suspend it for a provider handoff without saving completion or installing, and resume Welcome on close. Native checks additionally preserve a later saved cursor through the same handoff."
+      "reason": "Both App presentations suspend Welcome without saving completion, begin the validated provider installation immediately and keep shell navigation available. Resume setup returns to the same saved step. Native checks also preserve a later cursor through this handoff, using an intercepted package operation and the real isolated backend."
     },
     {
       "id": "FirstRunSetupShellTests.New_install_opens_setup_after_startup_in_the_selected_presentation",
@@ -23592,7 +23614,14 @@
     {
       "id": "PluginInstallInteractionTests.Installation_reports_progress_retries_from_input_and_opens_settings",
       "source": "tests/Winnow.Ui.Tests/PluginInstallInteractionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/plugin-installation.spec.ts",
+          "case": "${mode} website installation reports progress, retries from native input and opens settings for outcome ${outcome}"
+        }
+      ],
+      "reason": "All four original mode/outcome combinations exercise live polite progress, failure, native Enter/controller A retry, successful plugin settings, version and field visibility, and absence of Retry after completion. Only newly installed packages refresh. Fullscreen uses the source dedicated progress and installed-provider pages. Package transport is intercepted; package verification remains in the shared backend tests."
     },
     {
       "id": "PluginLibrarySourcePresentationTests.Grouped_history_retains_its_source_explanation_on_both_surfaces",

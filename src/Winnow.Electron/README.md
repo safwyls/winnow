@@ -34,6 +34,13 @@ Device sign-in shows the provider's code and verification address only after you
 Leaving or canceling stops that attempt. Pending writes and installations prevent a service
 restart; a completed restart reconnects and reloads the plugin catalogue.
 
+Website **Install in Winnow** links start the named package immediately. Desktop shows
+progress in Plugins settings; fullscreen opens a separate progress page and, on success,
+the provider's settings page. Leaving either flow keeps the operation running without
+taking navigation back. Progress, cancellation and retry share one state across surfaces.
+An interrupted response retains its operation identity for retry. Setup pauses for a
+handoff and **Resume setup** returns to the same saved step.
+
 Avalon reads existing authored Winnow JSON palettes from the library's `themes` folder,
 including their fonts and opening preferences. Theme Studio provides reload, diagnostics,
 folder access and safe export; saved file edits update the active palette automatically.

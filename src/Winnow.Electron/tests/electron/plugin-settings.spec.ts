@@ -77,6 +77,7 @@ async function launch(mode: 'desktop' | 'fullscreen', plugins = [artwork, xbox])
     await expect(page.getByRole('button', { name: 'Winnow home', exact: true })).toBeVisible()
     if (await page.getByRole('dialog', { name: 'Winnow setup', exact: true }).count())
       await page.getByRole('button', { name: 'Skip setup', exact: true }).click()
+    const tap = await controller(page)
     await application.evaluate(({ BrowserWindow }, mode) => {
       const window = BrowserWindow.getAllWindows()[0]
       window.setFullScreen(false)
@@ -84,10 +85,18 @@ async function launch(mode: 'desktop' | 'fullscreen', plugins = [artwork, xbox])
       window.webContents.send('winnow:fullscreen:changed', mode === 'fullscreen')
     }, mode)
     await expect(page.locator('.avalon-shell')).toHaveClass(new RegExp(mode))
-    const tap = await controller(page)
     await page.getByRole('button', { name: 'Settings', exact: true }).click()
     return { application, page, tap, directory }
   } catch (error) {
+    console.error(
+      'PLUGIN_STARTUP_DIALOGS',
+      await (
+        await application.firstWindow()
+      )
+        .locator('[role="dialog"]')
+        .allTextContents()
+        .catch(() => []),
+    )
     await closeFixture(application, directory)
     throw error
   }

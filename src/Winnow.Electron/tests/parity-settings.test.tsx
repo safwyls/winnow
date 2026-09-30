@@ -81,7 +81,7 @@ const plugin: PluginSnapshot = {
 }
 
 describe.each(['desktop', 'fullscreen'] as const)('%s settings parity', (mode) => {
-  it('prefills an official install link without installing before explicit confirmation', async () => {
+  it('prefills a manual official package form and submits its named request on input', async () => {
     const { request, wrapper } = fixture((input) =>
       input.route === 'operations.detail' ? { state: 'Queued', message: 'Queued' } : {},
     )
@@ -209,7 +209,14 @@ describe.each(['desktop', 'fullscreen'] as const)('%s settings parity', (mode) =
 
   it('requests only a named official package and keeps its install operation visible', async () => {
     const { request, wrapper } = fixture((input) =>
-      input.route === 'operations.detail' ? { state: 'Succeeded', message: 'SteamGridDB installed.' } : null,
+      input.route === 'operations.plugin'
+        ? {
+            state: 'completed',
+            pluginResult: { pluginId: 'steamgriddb', outcome: 1, message: 'SteamGridDB installed.' },
+          }
+        : input.route === 'plugins.get'
+          ? [{ ...plugin, id: 'steamgriddb' }]
+          : null,
     )
     render(<OfficialPluginInstall />, { wrapper })
     fireEvent.change(screen.getByLabelText('Release tag'), { target: { value: 'v1.2.3' } })

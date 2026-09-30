@@ -45,13 +45,12 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [plugin settings checkpoint](checkpoint-twenty-three.md) records 2,734 passing
-component/API cases across 135 files, with build and typecheck passing. Both expanded
-188-case native runs passed 187 cases and exposed different merge input races; the
-checkpoint records their corrections and focused verification. The latest complete native
-pass remains the 178-case [artwork and feed checkpoint](checkpoint-twenty-two.md).
-The migration inventory contains 989 ported, 540 retained backend, 13 framework-specific,
-761 pending and 132 partial methods. The migration gate remains incomplete.
+The [website installation checkpoint](checkpoint-twenty-four.md) records 2,742 passing
+component/API cases across 136 files, with build and typecheck passing. All 198 native cases
+pass in one complete run in 9.2 minutes, including the earlier merge input corrections and
+the expanded plugin installation, settings and setup checks.
+The migration inventory contains 992 ported, 540 retained backend, 13 framework-specific,
+758 pending and 132 partial methods. The migration gate remains incomplete.
 The [Library and metadata checkpoint](checkpoint-ten.md)
 records the latest full .NET pass: 6,839 passed and two Linux-only skips across 13 assemblies,
 including all 896 Avalonia UI cases. The table below preserves earlier measured checkpoints.

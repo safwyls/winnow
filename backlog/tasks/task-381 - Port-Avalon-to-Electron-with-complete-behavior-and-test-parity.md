@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 01:24'
+updated_date: '2026-09-30 01:59'
 labels: []
 dependencies: []
 priority: high
@@ -100,6 +100,8 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 37. After the artwork checkpoint, port the original plugin-settings interaction and view-model contracts. Preserve separate desktop and fullscreen navigation, loaded runtime summaries, archive/install diagnostics, generated fields, collapsed advanced values, required-field reveal, busy locking and secret clearing. Close device sign-in cancellation races and preserve keyboard/controller focus. Validate the source Xbox/artwork-provider fixtures on both surfaces and map methods only after equivalent assertions pass.
 
 38. Migrate original website plugin-installation flow: start a validated activation immediately, share serialized progress and retry state across desktop/fullscreen navigation, preserve request identity on uncertain transport, cancel with retry, refresh newly installed providers, and open settings only while the installation owns the visible flow. Verify original PluginInstallViewModel and interaction fixtures through component and real Electron input tests, audit mappings, and retain the complete regression gate.
+
+39. Audit the remaining Epic sign-in contracts against the production challenge and token endpoints. Add source-equivalent HTTP tests for grant fields, state, consent, safe diagnostics, persistence and refusal, then verify native-to-manual continuation on both surfaces. Preserve cancellation and single-use identity; keep any remaining prompt-registration differences explicit until equivalent behavior is demonstrated.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -190,4 +192,8 @@ Plan 37 implementation now has lazy runtime plugin tabs, ordinary-draft retentio
 Plan 37 verification: 2734 component/live API cases in 135 files pass without skips; build and typecheck pass. All ten native plugin cases and four added tab-label containment matrices pass. Both full 188-case runs passed 187: the first exposed keyboard input while a merge radio was still disabled; the second input trace confirms Chromium suppressed a relationship click on a disabled target during refresh. Native fixtures now await radio availability and retry only a trace-proven suppressed pointer action; affected workflows are repeating with original persistence and focus assertions. Inventory 989 ported, 540 retained backend, 13 framework-specific, 761 pending, 132 partial. Plan 38 shared installation controller has eight passing unit cases but is not integrated yet. All AC remain unchecked.
 
 Checkpoint 23 focused corrections pass all 24 native Library/Details/merge cases across three consecutive runs in 1.2 minutes. The native trace proves the relationship failure was suppressed input on a disabled target; an enabled click that fails still fails the fixture. All 188 cases have passing coverage across the full runs and corrected repeat, but no combined 188-case pass is claimed. Evidence and visual inspection are recorded in checkpoint-twenty-three.md; source migration remains incomplete. Continuing the shared website installation flow under plan 38.
+
+Plan 38 focused native verification passes all 22 installation/settings/setup cases. The source fullscreen installed-provider page now displays its fields without the general Settings header; Resume setup clears suspended installation presentation. Complete component/live API verification passes 2742 cases in 136 files with no skips in 55.26s; build/typecheck passes. The full 198 native suite is running. Inventory 992 ported, 540 retained backend, 13 framework-specific, 758 pending and 132 partial. No acceptance criteria checked.
+
+Checkpoint 24 complete: all 198 native Electron cases pass in one run with clean completion in 9.2 minutes, including the previous merge input corrections. All 2742 component/live API cases and build/typecheck pass. Captures inspected; evidence in checkpoint-twenty-four.md. Inventory 992 ported, 540 retained backend, 13 framework-specific, 758 pending, 132 partial. Plan 39 Epic HTTP and fallback tests are under development and are not included in this checkpoint. All AC remain unchecked.
 <!-- SECTION:NOTES:END -->

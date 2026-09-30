@@ -30,6 +30,12 @@ opens the app, installs and enables a new package, then opens its settings. Desk
 fullscreen show progress, the result and a retry action on failure. Complete any required
 account connection or API-key setup there. SteamGridDB already ships with Winnow.
 
+Electron keeps desktop progress in Plugins settings and uses a separate fullscreen
+installation page. Leaving the page keeps installation running. Its result remains in
+Plugins settings; fullscreen exposes **Plugin installation** under **Manage plugins**.
+Completion opens the provider's settings only while the installation flow is still active.
+If setup was open, **Resume setup** returns to its saved step without marking it complete.
+
 Windows installers and Linux packages register the `winnow:` browser handoff. Update Winnow
 if the browser cannot open it. Portable installations can use the ZIP download below or
 register their executable as the handler. Browsers may ask permission to open an external app.

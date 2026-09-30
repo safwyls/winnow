@@ -10,6 +10,8 @@ import { OfficialPluginInstall } from './SettingsPreferences'
 import { PluginAccount } from './PluginAccount'
 import { pluginInstallationNote, pluginSecretNote, pluginWebUrl } from './plugin-policy'
 import './plugin-settings.css'
+import { PluginInstallStatus } from './PluginInstallStatus'
+import { usePluginInstallation } from './plugin-installation'
 
 const manage = '@manage'
 export function PluginSettings({ mode }: { mode: Mode }) {
@@ -22,6 +24,58 @@ export function PluginSettings({ mode }: { mode: Mode }) {
     refetchOnMount: 'always',
   })
   const [saved, setSaved] = useViewState<string | null>(`${mode}:plugins:selected`, null)
+  const installation = usePluginInstallation()
+  const [installationPage, setInstallationPage] = useViewState(`${mode}:plugins:installation`, false)
+  const [followInstallation, setFollowInstallation] = useViewState(
+    `${mode}:plugins:installation-follow`,
+    false,
+  )
+  const [installedPage, setInstalledPage] = useViewState<string | null>(`${mode}:plugins:installed`, null)
+  const closeInstallation = () => {
+    setInstallationPage(false)
+    setFollowInstallation(false)
+    setInstalledPage(null)
+  }
+  useEffect(() => {
+    const plugin = installation.completedPlugin
+    if (!followInstallation || installation.busy || !plugin) return
+    setSaved(plugin.isLoaded ? plugin.id : manage)
+    if (mode === 'fullscreen') setInstalledPage(plugin.id)
+    setInstallationPage(false)
+    setFollowInstallation(false)
+  }, [
+    installation.completedPlugin,
+    installation.busy,
+    followInstallation,
+    setSaved,
+    setInstallationPage,
+    setFollowInstallation,
+    mode,
+    setInstalledPage,
+  ])
+  useEffect(() => {
+    if ((!installationPage && !installedPage) || mode !== 'fullscreen') return
+    const back = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return
+      if (event.target instanceof Element && event.target.closest('[role="dialog"], [role="alertdialog"]'))
+        return
+      event.preventDefault()
+      event.stopPropagation()
+      setInstallationPage(false)
+      setFollowInstallation(false)
+      setInstalledPage(null)
+    }
+    window.addEventListener('keydown', back, true)
+    return () => window.removeEventListener('keydown', back, true)
+  }, [installationPage, installedPage, mode, setInstallationPage, setFollowInstallation, setInstalledPage])
+  useLayoutEffect(() => {
+    if (mode !== 'fullscreen' || !installedPage) return
+    document
+      .querySelector<HTMLElement>(
+        '.plugin-installed-page input:not(:disabled), .plugin-installed-page button:not(:disabled)',
+      )
+      ?.focus()
+  }, [installedPage, mode])
   const loaded = [...(plugins.data ?? [])]
     .filter((plugin) => plugin.isLoaded)
     .sort((left, right) => left.name.localeCompare(right.name))
@@ -31,13 +85,31 @@ export function PluginSettings({ mode }: { mode: Mode }) {
     if (plugins.data && saved !== selected) setSaved(selected)
   }, [plugins.data, saved, selected, setSaved])
   const [folderError, setFolderError] = useState('')
-  const [installing, setInstalling] = useState(false)
   const writing = useIsMutating({ mutationKey: ['plugin-write'] }) > 0
   const activeInstallation = operations.data?.some(
     (operation) =>
       operation.kind === 'plugin-install' && ['queued', 'running'].includes(operation.state.toLowerCase()),
   )
   const panelId = useId()
+  const installed = plugins.data?.find((plugin) => plugin.id === installedPage)
+  if (mode === 'fullscreen' && installedPage && installed)
+    return (
+      <section className="plugin-settings plugin-installed-page">
+        <p role="status" aria-live="polite">
+          {installation.status}
+        </p>
+        <PluginCard plugin={installed} mode={mode} />
+        <button data-controller-back onClick={closeInstallation}>
+          Back
+        </button>
+      </section>
+    )
+  if (mode === 'fullscreen' && installationPage && installation.request)
+    return (
+      <section className="plugin-settings">
+        <PluginInstallStatus back={closeInstallation} />
+      </section>
+    )
   return (
     <section className="plugin-settings" aria-label="Plugins">
       <PluginTabs
@@ -57,10 +129,26 @@ export function PluginSettings({ mode }: { mode: Mode }) {
       )}
       {plugins.isPending && <p role="status">Reading plugins…</p>}
       <div role="tabpanel" id={panelId} aria-labelledby={`${panelId}-${selected}`}>
+        {mode === 'desktop' && <PluginInstallStatus />}
+        {mode === 'fullscreen' && installation.completedPlugin?.id === selected && (
+          <p role="status" aria-live="polite">
+            {installation.status}
+          </p>
+        )}
         {selected === manage ? (
           <>
             <section className="feature-panel plugin-management">
               <h2>Manage plugins</h2>
+              {mode === 'fullscreen' && installation.request && (
+                <button
+                  onClick={() => {
+                    setFollowInstallation(installation.busy)
+                    setInstallationPage(true)
+                  }}
+                >
+                  Plugin installation
+                </button>
+              )}
               <p>{pluginInstallationNote}</p>
               <button
                 disabled={!window.winnow.openDataFolder}
@@ -91,8 +179,8 @@ export function PluginSettings({ mode }: { mode: Mode }) {
                 <p>No plugins are loaded in this session.</p>
               )}
             </section>
-            <BackendRestart disabled={writing || installing || activeInstallation} />
-            <OfficialPluginInstall showManualHelp={false} onBusyChange={setInstalling} />
+            <BackendRestart disabled={writing || activeInstallation || installation.busy} />
+            <OfficialPluginInstall mode={mode} showStatus={false} showManualHelp={false} />
             {(plugins.data ?? [])
               .filter((plugin) => !plugin.isLoaded)
               .map((plugin) => (

@@ -16,8 +16,8 @@
   },
   "SingleInstanceActivationTests.Second_process_activates_owner_and_exits_before_database_initialization": {
     "status": "partial",
-    "tests": [{"file":"tests/electron/parity.spec.ts","case":"a second process delivers fullscreen and reviewed plugin activation to the same library session"}],
-    "reason": "Rendered Electron exercises real second-process handoff and unchanged backend process/epoch for fullscreen and plugin review. Other original process launch variants remain to be migrated."
+    "tests": [{"file":"tests/electron/parity.spec.ts","case":"a second process delivers fullscreen and starts plugin installation in the same library session"}],
+    "reason": "Rendered Electron exercises real second-process handoff and unchanged backend process/epoch for fullscreen and immediate named plugin installation. Other original process launch variants remain to be migrated."
   },
   "GameLinkRouterTests.Store_conversion_rejects_noncanonical_addresses": {
     "status": "ported",

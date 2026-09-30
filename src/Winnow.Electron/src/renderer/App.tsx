@@ -3,7 +3,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import { MotionConfig } from 'motion/react'
 import { AlertCircle, ArrowLeft, RotateCcw, WifiOff } from 'lucide-react'
 import type { ApplicationActivation, ConnectionState } from '../shared/bridge'
-import * as Dialog from '@radix-ui/react-dialog'
 import type { ThemeContext, ThemePage } from '../shared/theme'
 import { useLibrary, useFeed, useWorkspace, useApiQuery } from './api/hooks'
 import { ApiError, primaryAction, request } from './api/client'
@@ -18,7 +17,8 @@ import { LinkNotifications } from './features/LinkNotifications'
 import { QuickMenu, OnScreenKeyboard } from './features/ControllerOverlays'
 import { controllerScope, useController } from './controller'
 import type { PresentationPreferenceValue } from './features/SettingsPreferences'
-import { OfficialPluginInstall } from './features/SettingsPreferences'
+import { pluginInstallation } from './features/plugin-installation'
+import { useViewState } from './viewState'
 import { avalon, AvalonShell, AvalonDiscover, AvalonLibrary } from './themes/avalon'
 import { afterglow, AfterglowShell, AfterglowDiscover, AfterglowLibrary } from './themes/afterglow'
 import { catalogue } from './themes/catalogue'
@@ -58,10 +58,12 @@ export function App() {
   const quickMenuAtRoot = useRef(true)
   const [keyboardInput, setKeyboardInput] = useState<HTMLInputElement | HTMLTextAreaElement | null>(null)
   const [activations, setActivations] = useState<ApplicationActivation[]>([])
-  const [installRequest, setInstallRequest] = useState<Extract<
-    ApplicationActivation,
-    { kind: 'plugin' }
-  > | null>(null)
+  const [activationInFlight, setActivationInFlight] = useState(false)
+  const [setupSuspended, setSetupSuspended] = useViewState('setup:suspended', false)
+  const [settingsTab, setSettingsTab] = useViewState(`${mode}:settings:tab`, 'Platforms')
+  const [, setInstallationPage] = useViewState(`${mode}:plugins:installation`, false)
+  const [, setFollowInstallation] = useViewState(`${mode}:plugins:installation-follow`, false)
+  const [, setInstalledPluginPage] = useViewState<string | null>(`${mode}:plugins:installed`, null)
   const handledActivations = useRef(new WeakSet<object>())
   useEffect(() => {
     let alive = true
@@ -133,6 +135,13 @@ export function App() {
   ])
   const launchAttempts = useRef(new Map<number, { operationId: string; action: string }>())
   const position = positions[mode]
+  useEffect(() => {
+    if (position.page !== 'settings' || !['Plugins', 'Providers'].includes(settingsTab)) {
+      setInstallationPage(false)
+      setFollowInstallation(false)
+      setInstalledPluginPage(null)
+    }
+  }, [position.page, settingsTab, setInstallationPage, setFollowInstallation, setInstalledPluginPage])
   const detailOwners = useRef<Partial<Record<typeof mode, { workId: number; ids: number[] }>>>({})
   const navigate = useCallback(
     (page: ThemePage) => setPositions((all) => ({ ...all, [mode]: navigatePosition(all[mode], page) })),
@@ -430,14 +439,25 @@ export function App() {
   }
   const activationContext = useRef(context)
   activationContext.current = context
+  const showPluginInstallation = useRef(() => {})
+  showPluginInstallation.current = () => {
+    setSetupSuspended(true)
+    setSettingsTab('Plugins')
+    setInstallationPage(true)
+    setFollowInstallation(true)
+    setInstalledPluginPage(null)
+    navigate('settings')
+  }
   useEffect(() => {
     const activation = activations[0]
     if (
       !activation ||
       setupProgress.isPending ||
       setupProgress.isError ||
-      (activation.kind !== 'plugin' && (typeof setupProgress.data?.step === 'number' || setupOpen)) ||
-      installRequest ||
+      (activation.kind !== 'plugin' &&
+        !setupSuspended &&
+        (typeof setupProgress.data?.step === 'number' || setupOpen)) ||
+      activationInFlight ||
       (activation.kind === 'game' && (library.isPending || !workspace.data))
     )
       return
@@ -456,17 +476,29 @@ export function App() {
         .catch((error) =>
           setNotice(error instanceof Error ? error.message : 'This game could not be started.'),
         )
-    } else if (activation.kind === 'plugin') setInstallRequest(activation)
+    } else if (activation.kind === 'plugin') {
+      setActivationInFlight(true)
+      void pluginInstallation(client)
+        .install(activation, {
+          started: () => showPluginInstallation.current(),
+        })
+        .finally(() => setActivationInFlight(false))
+    }
   }, [
     activations,
     setupProgress.isPending,
     setupProgress.isError,
     setupProgress.data?.step,
     setupOpen,
-    installRequest,
+    activationInFlight,
+    setupSuspended,
     library.isPending,
     workspace.data,
     mode,
+    client,
+    navigate,
+    setSettingsTab,
+    setInstallationPage,
   ])
   const screenNames = {
     discover: 'Discover',
@@ -495,6 +527,21 @@ export function App() {
           Skip to content
         </a>
         <div className="host-status">
+          {setupSuspended && typeof setupProgress.data?.step === 'number' && (
+            <div className="status-banner">
+              Setup is paused. Your place is saved.
+              <button
+                onClick={() => {
+                  setInstallationPage(false)
+                  setFollowInstallation(false)
+                  setInstalledPluginPage(null)
+                  setSetupSuspended(false)
+                }}
+              >
+                Resume setup
+              </button>
+            </div>
+          )}
           {!connection.connected && (
             <div className="connection-banner" role="status">
               <WifiOff size={16} />
@@ -549,7 +596,7 @@ export function App() {
         </div>
         <Setup
           mode={mode}
-          suspended={!!installRequest}
+          suspended={setupSuspended}
           onOpenChange={setSetupOpen}
           appearance={
             <label className="field">
@@ -571,32 +618,6 @@ export function App() {
         <SessionNotifications mode={mode} suspended={setupOpen} />
         {!setupOpen && <UpdateStatus />}
         <LinkNotifications />
-        <Dialog.Root
-          open={!!installRequest}
-          onOpenChange={(open) => {
-            if (!open) setInstallRequest(null)
-          }}
-        >
-          <Dialog.Portal>
-            <Dialog.Overlay className="dialog-overlay" />
-            <Dialog.Content className={`dialog-content mode-${mode}`}>
-              <Dialog.Title>Review provider installation</Dialog.Title>
-              <Dialog.Description>
-                The link selected this official provider. Review it before installing code that runs on this
-                computer.
-              </Dialog.Description>
-              {installRequest && (
-                <OfficialPluginInstall
-                  key={`${installRequest.pluginId}:${installRequest.releaseTag}`}
-                  initialRequest={installRequest}
-                />
-              )}
-              <Dialog.Close asChild>
-                <button>Close</button>
-              </Dialog.Close>
-            </Dialog.Content>
-          </Dialog.Portal>
-        </Dialog.Root>
         {quickMenu && (
           <QuickMenu
             atRoot={quickMenuAtRoot.current}

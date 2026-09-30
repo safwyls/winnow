@@ -41,7 +41,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     const directory = await mkdtemp(join(resolve('../..', '.tmp'), `winnow-setup-${mode}-`))
     const application = await electron.launch({
       executablePath: electronPath as unknown as string,
-      args: [resolve('.'), '--data-dir', directory, '--no-sync'],
+      args: [resolve('tests/electron/plugin-install-main.mjs'), '--data-dir', directory, '--no-sync'],
       env: Object.fromEntries(
         Object.entries(process.env).filter(
           ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
@@ -118,14 +118,14 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
               releaseTag: 'v1.2.3',
             }),
           )
-          const install = page.getByRole('dialog', { name: 'Review provider installation' })
+          const install = page.getByRole('region', { name: 'Plugin installation' })
           await expect(install).toBeVisible()
           await expect(wizard).toHaveCount(0)
           const progress = await page.evaluate(() =>
             window.winnow.request<{ step: number | null }>({ route: 'setup.get' }),
           )
           expect(progress.ok && progress.data?.step).toBe(4)
-          await install.getByRole('button', { name: 'Close', exact: true }).click()
+          await page.getByRole('button', { name: 'Resume setup', exact: true }).click()
           await expect(wizard.getByRole('heading', { name: 'Your GOG library' })).toBeVisible()
         }
         await page.screenshot({ path: info.outputPath(`setup-${mode}-${step}.png`) })

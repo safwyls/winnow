@@ -348,6 +348,9 @@ uses a separate 1320px reading column, 64px titles, 32px field labels, 24px inpu
 above the form while it scrolls. Desktop arrow keys select a tab; fullscreen arrows move
 focus and A selects. LT/RT continues to switch the outer Settings sections. Secret drafts
 belong to the mounted form, while ordinary drafts and the selected tab survive navigation.
+Website plugin installation uses a dedicated fullscreen progress page, followed by the
+installed provider's settings and a Back action. The general Settings header and tabs are
+absent on these two pages so the provider's fields fit the original reading column.
 Actions that navigate to game details use `View game`; launching remains a separate action.
 Shared artwork fills the size assigned by its parent; set a height or aspect ratio on the
 `Artwork` frame. Loading, missing artwork, and the decoded image all occupy that same frame.

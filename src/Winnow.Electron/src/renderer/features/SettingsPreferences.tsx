@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { createClientId, request } from '../api/client'
+import { request } from '../api/client'
 import { useApiQuery, useCommand } from '../api/hooks'
 import type { Mode, StoreConnections } from '../api/types'
 import { Notice } from './shared'
 import { ApplicationUpdates } from './Updates'
 import { useSetupBusy, useSetupPreferenceError } from './settingsState'
 import { parseExpansionGrouping } from './parity-library-grain'
+import { usePluginInstallation } from './plugin-installation'
+import { PluginInstallStatus } from './PluginInstallStatus'
+import { useViewState } from '../viewState'
 
 export interface PresentationPreferenceValue {
   preference: string
@@ -34,6 +37,7 @@ export function usePresentationPreferences() {
 }
 
 export function ApplicationPreferences({ setup = false }: { setup?: boolean }) {
+  const [, setSetupSuspended] = useViewState('setup:suspended', false)
   const preferences = usePresentationPreferences()
   const command = useCommand()
   const client = useQueryClient()
@@ -140,6 +144,7 @@ export function ApplicationPreferences({ setup = false }: { setup?: boolean }) {
                       problem:
                         'Could not save setup progress. Continue or Skip setup to try again. Your saved preferences are unchanged.',
                     }),
+                  onSettled: () => setSetupSuspended(false),
                 },
               )
             }
@@ -467,52 +472,39 @@ export function ArtworkSourcePreferences() {
 export function OfficialPluginInstall({
   initialRequest,
   showManualHelp = true,
+  showStatus = true,
+  mode = 'desktop',
   onBusyChange,
 }: {
   initialRequest?: { pluginId: string; releaseTag: string }
   showManualHelp?: boolean
+  showStatus?: boolean
+  mode?: Mode
   onBusyChange?: (busy: boolean) => void
 } = {}) {
   const [pluginId, setPluginId] = useState(initialRequest?.pluginId ?? 'steamgriddb')
   const [releaseTag, setReleaseTag] = useState(initialRequest?.releaseTag ?? '')
-  const [operationId, setOperationId] = useState<string | null>(null)
-  const command = useCommand()
-  const operation = useApiQuery<{ state: string; message: string }>(
-    'operations.detail',
-    { id: operationId ?? '' },
-    !!operationId,
-  )
-  useEffect(() => {
-    if (
-      !operationId ||
-      (operation.data && !['queued', 'running'].includes(operation.data.state.toLowerCase()))
-    )
-      return
-    const timer = setInterval(() => void operation.refetch(), 1500)
-    return () => clearInterval(timer)
-  }, [operationId, operation.data?.state, operation.refetch])
+  const state = usePluginInstallation()
+  const [, setInstallationPage] = useViewState(`${mode}:plugins:installation`, false)
+  const [, setFollowInstallation] = useViewState(`${mode}:plugins:installation-follow`, false)
+  const [, setInstalledPluginPage] = useViewState<string | null>(`${mode}:plugins:installed`, null)
   const [error, setError] = useState<unknown>(null)
-  const client = useQueryClient()
   async function install() {
     setError(null)
-    // Retain the operation identity after an uncertain response to avoid duplicate installs.
-    const id =
-      operation.data?.state.toLowerCase() === 'failed' ? createClientId() : (operationId ?? createClientId())
-    setOperationId(id)
-    try {
-      await command.mutateAsync({
-        route: 'operations.plugin',
-        body: { operationId: id, request: { pluginId, releaseTag } },
-      })
-      await client.invalidateQueries({ queryKey: ['api', 'operations.detail'] })
-    } catch (failure) {
-      setError(failure)
-    }
+    await state.installation.install(
+      { pluginId, releaseTag },
+      {
+        started: () => {
+          setFollowInstallation(true)
+          setInstallationPage(true)
+          setInstalledPluginPage(null)
+        },
+      },
+    )
   }
-  const active = operation.data && ['Queued', 'Running', 'queued', 'running'].includes(operation.data.state)
   useEffect(() => {
-    onBusyChange?.(!!active || command.isPending)
-  }, [active, command.isPending, onBusyChange])
+    onBusyChange?.(state.busy)
+  }, [state.busy, onBusyChange])
   return (
     <section className="feature-panel">
       <h2>Install an official provider</h2>
@@ -541,10 +533,9 @@ export function OfficialPluginInstall({
           Provider
           <select
             value={pluginId}
-            disabled={!!active || command.isPending}
+            disabled={state.busy}
             onChange={(event) => {
               setPluginId(event.target.value)
-              setOperationId(null)
             }}
           >
             <option value="steamgriddb">SteamGridDB</option>
@@ -560,30 +551,16 @@ export function OfficialPluginInstall({
             pattern="v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?"
             maxLength={80}
             value={releaseTag}
-            disabled={!!active || command.isPending}
+            disabled={state.busy}
             onChange={(event) => {
               setReleaseTag(event.target.value)
-              setOperationId(null)
             }}
           />
         </label>
-        <button disabled={!!active || command.isPending || !releaseTag.trim()}>
-          {error ? 'Retry installation' : 'Install provider'}
-        </button>
-        {active && (
-          <button
-            type="button"
-            onClick={() =>
-              void request('operations.cancel', { id: operationId! })
-                .then(() => client.invalidateQueries({ queryKey: ['api'] }))
-                .catch(setError)
-            }
-          >
-            Cancel installation
-          </button>
-        )}
+        <button disabled={state.busy || !releaseTag.trim()}>Install provider</button>
       </form>
-      <Notice error={error} message={operation.data?.message} />
+      <Notice error={error} />
+      {showStatus && <PluginInstallStatus />}
     </section>
   )
 }
