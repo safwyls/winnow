@@ -20,6 +20,13 @@ that could not be persisted explicitly says that it lasts for this run only. Can
 unavailable, missing-session, rejected-code, rejected-client and network outcomes have
 different messages. Cancellation does not automatically open another prompt.
 
+An unavailable embedded host, unusable capture or missing session selects the manual form
+with the same backend attempt. Opening the external browser still requires the user's
+action. A cancelled attempt clears its masked address; starting again obtains a fresh state.
+Provider token or client rejection ends that attempt instead of offering the fallback.
+Consent retains its paragraph breaks. Fullscreen uses the original 64px platform title,
+28px reading and action text, and 64/72px action/input targets before text scaling.
+
 ## Provider boundary
 
 The provider uses a sandboxed document with context isolation and no application preload.
@@ -68,6 +75,9 @@ capture routes and a social-provider return in desktop and fullscreen. It verifi
 exists before the page's first script, is absent from frames and social pages, and does not
 expose the application bridge or Node. The redirect never reaches the loopback fixture handler.
 See [dated evidence](spikes/2026-09-28-electron-parity/epic-sign-in.md).
+The [HTTP and continuation checkpoint](spikes/2026-09-28-electron-parity/checkpoint-twenty-five.md)
+adds real backend grant, state, persistence and trace-redaction tests, plus full-app native
+manual continuation, cancellation and enlarged fullscreen reading checks.
 
 These fixture runs do not establish compatibility with Epic's current live login page,
 multi-factor authentication or every social provider. Physical controller and OS-keyboard

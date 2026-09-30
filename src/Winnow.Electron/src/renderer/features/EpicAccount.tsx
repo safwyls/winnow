@@ -165,7 +165,7 @@ export function NativeEpicAccount({
     >
       {preparation ? (
         <div className="editor-form" aria-busy={pending}>
-          <p>{preparation.consentNotice}</p>
+          <p className="epic-consent">{preparation.consentNotice}</p>
           <label className="check-field">
             <input
               type="checkbox"

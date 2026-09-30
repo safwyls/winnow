@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 01:59'
+updated_date: '2026-09-30 02:28'
 labels: []
 dependencies: []
 priority: high
@@ -102,6 +102,10 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 38. Migrate original website plugin-installation flow: start a validated activation immediately, share serialized progress and retry state across desktop/fullscreen navigation, preserve request identity on uncertain transport, cancel with retry, refresh newly installed providers, and open settings only while the installation owns the visible flow. Verify original PluginInstallViewModel and interaction fixtures through component and real Electron input tests, audit mappings, and retain the complete regression gate.
 
 39. Audit the remaining Epic sign-in contracts against the production challenge and token endpoints. Add source-equivalent HTTP tests for grant fields, state, consent, safe diagnostics, persistence and refusal, then verify native-to-manual continuation on both surfaces. Preserve cancellation and single-use identity; keep any remaining prompt-registration differences explicit until equivalent behavior is demonstrated.
+
+39a. The new native Epic capture shows desktop-sized text on the fullscreen connection form. Restore the original 64px platform title, 28px body/action text and 64/72px controls, preserve consent paragraph breaks, and verify scrolling and masked input at normal and enlarged text sizes. Record this visual correction with the Epic HTTP/fallback evidence.
+
+40. Complete remaining application-update contracts with exact version/channel/platform matrices, bounded manual release pagination, installer-cache cleanup and cancellation/disposal ownership. Exercise real download verification through an isolated transport and test both desktop/fullscreen update status, progress, explicit restart and recovery guidance. Keep native installer execution confined to fixture callbacks and retain packaging/device validation limits.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -196,4 +200,8 @@ Checkpoint 23 focused corrections pass all 24 native Library/Details/merge cases
 Plan 38 focused native verification passes all 22 installation/settings/setup cases. The source fullscreen installed-provider page now displays its fields without the general Settings header; Resume setup clears suspended installation presentation. Complete component/live API verification passes 2742 cases in 136 files with no skips in 55.26s; build/typecheck passes. The full 198 native suite is running. Inventory 992 ported, 540 retained backend, 13 framework-specific, 758 pending and 132 partial. No acceptance criteria checked.
 
 Checkpoint 24 complete: all 198 native Electron cases pass in one run with clean completion in 9.2 minutes, including the previous merge input corrections. All 2742 component/live API cases and build/typecheck pass. Captures inspected; evidence in checkpoint-twenty-four.md. Inventory 992 ported, 540 retained backend, 13 framework-specific, 758 pending, 132 partial. Plan 39 Epic HTTP and fallback tests are under development and are not included in this checkpoint. All AC remain unchecked.
+
+Plan 39: all 105 backend tests pass, including 13 new Epic HTTP cases, plus 24 retained original Epic cases. Full component/API repeat passes 2756 cases in 136 files without skips (46.47s). The preceding run passed 2755 and exposed a Steam retry fixture that did not await shared busy-state release; all 98 affected cases now pass three repeats with unchanged import/no-recapture assertions. All three new native Epic workflows pass, including 140% fullscreen text and scroll-contained actions; captures inspected. Source typography red-before-fix and build/typecheck pass recorded. Full 201 native run is in progress. Inventory 1006 ported, 552 retained backend, 15 framework-specific, 735 pending and 127 partial.
+
+Checkpoint 25: 2756 component/API cases pass; 105 backend and 24 retained Epic cases pass. The full native run passed 200/201 in 9.9 minutes; the feed fixture reduced a request failure or empty snapshot to zero. After an explicit connection wait and separate full-result assertion, both viewport cases pass three repeats (six checks, 33.1s). The original error was not retained, so exact cause and a combined 201-case pass are not claimed. Epic desktop/fullscreen sign-in workflows and 140% text checks pass. Evidence recorded in checkpoint-twenty-five.md; all AC remain unchecked. Updater package continues separately.
 <!-- SECTION:NOTES:END -->

@@ -310,7 +310,7 @@ export function EpicConnectionCard({
   const [epicBusy, setEpicBusy] = useState(false)
   useSetupBusy(command.isPending || epicBusy)
   return (
-    <section className="feature-panel" aria-label="Epic connection">
+    <section className={`feature-panel epic-platform-card mode-${mode}`} aria-label="Epic connection">
       <h2>Epic Games</h2>
       <p
         className="connection-state"

@@ -222,6 +222,39 @@ describe.each(['desktop', 'fullscreen'])('%s Epic connection workflow', (mode) =
     expect(await screen.findByText(text)).toBeTruthy()
     expect(!!screen.queryByLabelText('Final sign-in address')).toBe([7, 8, 9].includes(failure))
   })
+  it.each([7, 8, 9])(
+    'continues embedded failure %s in the manual form without preparing another attempt',
+    async (failure) => {
+      const h = fixture(mode, { succeeded: false, failure, persisted: false, canRetryManually: true })
+      await consent()
+      fireEvent.click(screen.getByRole('button', { name: 'Open Epic sign-in window' }))
+      const input = await screen.findByLabelText<HTMLInputElement>('Final sign-in address')
+      expect(input.type).toBe('password')
+      expect(h.openEpicSignInInBrowser).not.toHaveBeenCalled()
+      expect(screen.queryByRole('button', { name: 'Open Epic sign-in window' })).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Continue in your browser' }))
+      await waitFor(() => expect(input.disabled).toBe(false))
+      expect(h.openEpicSignInInBrowser).toHaveBeenCalledExactlyOnceWith({
+        attemptId: preparation.attemptId,
+        consentGranted: true,
+      })
+      const callback = 'https://localhost/launcher/authorized?code=PRIVATE-MANUAL-CODE&state=expected'
+      fireEvent.change(input, { target: { value: callback } })
+      fireEvent.click(screen.getByRole('button', { name: 'Finish connecting' }))
+      await screen.findByText('Epic Games connected. Epic did not provide a display name.')
+      expect(h.completeEpicSignIn).toHaveBeenCalledExactlyOnceWith({
+        attemptId: preparation.attemptId,
+        consentGranted: true,
+        callback,
+      })
+      expect(h.prepareEpicSignIn).toHaveBeenCalledOnce()
+      expect(h.epicSignIn).toHaveBeenCalledOnce()
+      expect(h.cancelEpicSignIn).not.toHaveBeenCalled()
+      expect(h.request).not.toHaveBeenCalled()
+      expect(screen.queryByLabelText('Final sign-in address')).toBeNull()
+      expect(document.body.textContent).not.toContain('PRIVATE-MANUAL-CODE')
+    },
+  )
   it('opens the system-browser fallback explicitly and submits the masked final address through named IPC only', async () => {
     const h = fixture(mode)
     await consent()

@@ -1,11 +1,11 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 758,
-    "partial": 132,
-    "ported": 992,
-    "retained-backend": 540,
-    "framework-specific": 13
+    "pending": 735,
+    "partial": 127,
+    "ported": 1006,
+    "retained-backend": 552,
+    "framework-specific": 15
   },
   "tests": [
     {
@@ -3363,22 +3363,54 @@
     {
       "id": "EpicScanCompletenessTests.A_partial_scan_keeps_positive_facts_but_has_no_absence_authority",
       "source": "tests/Winnow.Tests/EpicScanCompletenessTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs",
+        "src/Winnow.Application/Services/LibrarySyncService.cs",
+        "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+        "src/Winnow.Ingest.Epic/EpicManifestReader.cs",
+        "src/Winnow.Ingest.Epic/EpicManifestStateReader.cs"
+      ],
+      "reason": "The shared backend registers the unchanged readers, scan gate and local/remote sync services. Original temporary-file/SQLite cases verify absence authority and re-reading under the gate for both sync paths; no frontend coordinator implements this behavior."
     },
     {
       "id": "EpicScanCompletenessTests.Missing_and_readable_empty_directories_have_different_authority",
       "source": "tests/Winnow.Tests/EpicScanCompletenessTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs",
+        "src/Winnow.Application/Services/LibrarySyncService.cs",
+        "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+        "src/Winnow.Ingest.Epic/EpicManifestReader.cs",
+        "src/Winnow.Ingest.Epic/EpicManifestStateReader.cs"
+      ],
+      "reason": "The shared backend registers the unchanged readers, scan gate and local/remote sync services. Original temporary-file/SQLite cases verify absence authority and re-reading under the gate for both sync paths; no frontend coordinator implements this behavior."
     },
     {
       "id": "EpicScanCompletenessTests.Incomplete_scans_preserve_a_prior_install_until_a_complete_scan_proves_absence",
       "source": "tests/Winnow.Tests/EpicScanCompletenessTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs",
+        "src/Winnow.Application/Services/LibrarySyncService.cs",
+        "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+        "src/Winnow.Ingest.Epic/EpicManifestReader.cs",
+        "src/Winnow.Ingest.Epic/EpicManifestStateReader.cs"
+      ],
+      "reason": "The shared backend registers the unchanged readers, scan gate and local/remote sync services. Original temporary-file/SQLite cases verify absence authority and re-reading under the gate for both sync paths; no frontend coordinator implements this behavior."
     },
     {
       "id": "EpicSyncInstallOrderingTests.A_queued_pass_rereads_Epic_after_the_gate_and_cannot_undo_completion",
       "source": "tests/Winnow.Tests/EpicSyncInstallOrderingTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs",
+        "src/Winnow.Application/Services/LibrarySyncService.cs",
+        "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+        "src/Winnow.Ingest.Epic/EpicManifestReader.cs",
+        "src/Winnow.Ingest.Epic/EpicManifestStateReader.cs"
+      ],
+      "reason": "The shared backend registers the unchanged readers, scan gate and local/remote sync services. Original temporary-file/SQLite cases verify absence authority and re-reading under the gate for both sync paths; no frontend coordinator implements this behavior."
     },
     {
       "id": "AuthCodeBodyTests.The_verbatim_no_session_body_is_no_session_not_no_code",
@@ -3828,67 +3860,106 @@
     {
       "id": "EpicInteractiveSignInTests.An_authorization_code_is_spent_on_the_authorization_code_grant",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-epic-native.test.ts",
           "case": "completes %s exactly once using the correct backend grant and main-owned state"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/EpicSignInParityTests.cs",
+          "case": "Captured_codes_use_exact_grant_fields_and_never_reach_urls_logs_or_results"
         }
       ],
-      "reason": "Native capture passes the correct code kind to the retained backend. The original assertion of the provider HTTP form is not repeated through a live backend in this Electron test."
+      "reason": "Native capture selects the grant once. The production authenticated HTTP endpoint and real token pipeline assert the exact provider form, eg1 token type and absence of the other grant field."
     },
     {
       "id": "EpicInteractiveSignInTests.An_exchange_code_is_spent_on_the_exchange_code_grant",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-epic-native.test.ts",
           "case": "completes %s exactly once using the correct backend grant and main-owned state"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/EpicSignInParityTests.cs",
+          "case": "Captured_codes_use_exact_grant_fields_and_never_reach_urls_logs_or_results"
         }
       ],
-      "reason": "Native capture passes the correct code kind to the retained backend. The original assertion of the provider HTTP form is not repeated through a live backend in this Electron test."
+      "reason": "Native capture selects the grant once. The production authenticated HTTP endpoint and real token pipeline assert the exact provider form, eg1 token type and absence of the other grant field."
     },
     {
       "id": "EpicInteractiveSignInTests.The_code_never_reaches_the_uri_or_the_log",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/EpicSignInParityTests.cs",
+          "case": "Captured_codes_use_exact_grant_fields_and_never_reach_urls_logs_or_results"
+        }
+      ],
+      "reason": "Both captured grant kinds run through the production HTTP coordinator, provider token pipeline and trace logger. Codes stay in the form body and never appear in provider URLs, logs or returned results."
     },
     {
       "id": "EpicInteractiveSignInTests.An_unavailable_prompt_falls_through_to_the_next",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-epic-native.test.ts",
-          "case": "keeps host initialization failures recoverable through an explicit manual fallback"
+          "case": "continues %s embedded capture through the same manual attempt and returns no captured code"
+        },
+        {
+          "file": "tests/parity-epic-settings.test.tsx",
+          "case": "continues embedded failure %s in the manual form without preparing another attempt"
+        },
+        {
+          "file": "tests/electron/epic-workflow.spec.ts",
+          "case": "${mode} Epic embedded failure continues in a masked manual form at text ${scale} and cancels without reopening a browser"
         }
       ],
-      "reason": "The native host offers a working manual path after failure; the original automatic registered prompt-chain invocation order is not reproduced."
+      "reason": "An unavailable/throwing embedded host, unusable capture or no session selects the manual form and retains its attempt. The Electron manual form replaces the console prompt; opening the external browser remains an explicit action. Tests complete that continuation and verify exactly one challenge and token submission. Cancellation and provider refusal do not advance to it."
     },
     {
       "id": "EpicInteractiveSignInTests.A_prompt_that_captures_nothing_falls_through_to_the_next",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-epic-native.test.ts",
-          "case": "keeps host initialization failures recoverable through an explicit manual fallback"
+          "case": "continues %s embedded capture through the same manual attempt and returns no captured code"
+        },
+        {
+          "file": "tests/parity-epic-settings.test.tsx",
+          "case": "continues embedded failure %s in the manual form without preparing another attempt"
+        },
+        {
+          "file": "tests/electron/epic-workflow.spec.ts",
+          "case": "${mode} Epic embedded failure continues in a masked manual form at text ${scale} and cancels without reopening a browser"
         }
       ],
-      "reason": "The native host offers a working manual path after failure; the original automatic registered prompt-chain invocation order is not reproduced."
+      "reason": "An unavailable/throwing embedded host, unusable capture or no session selects the manual form and retains its attempt. The Electron manual form replaces the console prompt; opening the external browser remains an explicit action. Tests complete that continuation and verify exactly one challenge and token submission. Cancellation and provider refusal do not advance to it."
     },
     {
       "id": "EpicInteractiveSignInTests.A_prompt_that_throws_falls_through_instead_of_taking_the_app_down",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-epic-native.test.ts",
-          "case": "keeps host initialization failures recoverable through an explicit manual fallback"
+          "case": "continues %s embedded capture through the same manual attempt and returns no captured code"
+        },
+        {
+          "file": "tests/parity-epic-settings.test.tsx",
+          "case": "continues embedded failure %s in the manual form without preparing another attempt"
+        },
+        {
+          "file": "tests/electron/epic-workflow.spec.ts",
+          "case": "${mode} Epic embedded failure continues in a masked manual form at text ${scale} and cancels without reopening a browser"
         }
       ],
-      "reason": "The native host offers a working manual path after failure; the original automatic registered prompt-chain invocation order is not reproduced."
+      "reason": "An unavailable/throwing embedded host, unusable capture or no session selects the manual form and retains its attempt. The Electron manual form replaces the console prompt; opening the external browser remains an explicit action. Tests complete that continuation and verify exactly one challenge and token submission. Cancellation and provider refusal do not advance to it."
     },
     {
       "id": "EpicInteractiveSignInTests.Cancelling_does_not_escalate_to_the_next_prompt",
@@ -3915,27 +3986,86 @@
     {
       "id": "EpicInteractiveSignInTests.A_rejected_code_reports_the_code_not_the_credentials",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/EpicSignInParityTests.cs",
+          "case": "Provider_refusals_preserve_specific_remedies_without_reflecting_codes"
+        },
+        {
+          "file": "tests/parity-epic-native.test.ts",
+          "case": "preserves backend refusal %s without offering another prompt or exposing its private payload"
+        }
+      ],
+      "reason": "The real provider pipeline distinguishes invalid_grant from invalid_client, and native main preserves the failure enum without exposing reflected codes or offering another prompt."
     },
     {
       "id": "EpicInteractiveSignInTests.The_request_carries_the_consent_notice_and_the_registered_redirect",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/EpicSignInParityTests.cs",
+          "case": "Each_challenge_carries_original_consent_cold_login_redirect_harvest_and_fresh_state"
+        },
+        {
+          "file": "tests/parity-epic-native.test.ts",
+          "case": "returns only canonical consent and attempt metadata before any provider navigation"
+        }
+      ],
+      "reason": "Production challenge HTTP responses retain the exact consent, registered redirect, cold authorize URL, separate harvest URL, all capture strategies and a distinct state on every authorize request. Native main exposes consent before any provider navigation."
     },
     {
       "id": "EpicInteractiveSignInTests.The_default_start_url_can_render_a_login_form",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/EpicSignInParityTests.cs",
+          "case": "Each_challenge_carries_original_consent_cold_login_redirect_harvest_and_fresh_state"
+        },
+        {
+          "file": "tests/parity-epic-native.test.ts",
+          "case": "returns only canonical consent and attempt metadata before any provider navigation"
+        }
+      ],
+      "reason": "Production challenge HTTP responses retain the exact consent, registered redirect, cold authorize URL, separate harvest URL, all capture strategies and a distinct state on every authorize request. Native main exposes consent before any provider navigation."
     },
     {
       "id": "EpicInteractiveSignInTests.Every_attempt_mints_its_own_state_and_sends_it_on_the_authorize_url",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/EpicSignInParityTests.cs",
+          "case": "Each_challenge_carries_original_consent_cold_login_redirect_harvest_and_fresh_state"
+        },
+        {
+          "file": "tests/parity-epic-native.test.ts",
+          "case": "returns only canonical consent and attempt metadata before any provider navigation"
+        }
+      ],
+      "reason": "Production challenge HTTP responses retain the exact consent, registered redirect, cold authorize URL, separate harvest URL, all capture strategies and a distinct state on every authorize request. Native main exposes consent before any provider navigation."
     },
     {
       "id": "EpicInteractiveSignInTests.The_state_binds_the_redirect_the_browser_is_watching_for",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/EpicSignInParityTests.cs",
+          "case": "Missing_or_mismatched_state_is_consumed_before_any_provider_request"
+        },
+        {
+          "file": "tests/parity-epic-native.test.ts",
+          "case": "refuses mismatched redirect state without permitting concurrently armed harvesting"
+        },
+        {
+          "file": "tests/parity-epic-native.test.ts",
+          "case": "harvests after missing state or a signed-in signal and bounds deliberate navigations"
+        }
+      ],
+      "reason": "The renderer cannot spend an injected redirect. Native state policy and production HTTP completion reject mismatched state before token exchange; missing redirect state uses the existing bounded harvest route, while missing completion state is refused."
     },
     {
       "id": "EpicInteractiveSignInTests.Epics_own_origins_are_trusted_and_the_social_providers_are_only_navigable",
@@ -3952,7 +4082,18 @@
     {
       "id": "EpicInteractiveSignInTests.Starting_on_the_code_endpoint_is_opt_out_and_still_carries_a_harvest_url",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/EpicSignInParityTests.cs",
+          "case": "Explicit_code_endpoint_opt_out_retains_harvest_without_requiring_unsent_state"
+        },
+        {
+          "file": "tests/parity-epic-native.test.ts",
+          "case": "supports the backend opt-out code endpoint with no state while retaining the correct grant"
+        }
+      ],
+      "reason": "Explicit backend opt-out starts and harvests at the same code endpoint without generating or requiring a state that was never sent. Native main can complete that declared request with the authorization grant."
     },
     {
       "id": "EpicInteractiveSignInTests.No_signed_in_account_is_reported_as_itself_not_as_a_broken_capture",
@@ -3969,42 +4110,102 @@
     {
       "id": "EpicInteractiveSignInTests.No_signed_in_account_still_falls_through_to_the_console_peer",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-epic-native.test.ts",
+          "case": "continues %s embedded capture through the same manual attempt and returns no captured code"
+        },
+        {
+          "file": "tests/parity-epic-settings.test.tsx",
+          "case": "continues embedded failure %s in the manual form without preparing another attempt"
+        },
+        {
+          "file": "tests/electron/epic-workflow.spec.ts",
+          "case": "${mode} Epic embedded failure continues in a masked manual form at text ${scale} and cancels without reopening a browser"
+        }
+      ],
+      "reason": "An unavailable/throwing embedded host, unusable capture or no session selects the manual form and retains its attempt. The Electron manual form replaces the console prompt; opening the external browser remains an explicit action. Tests complete that continuation and verify exactly one challenge and token submission. Cancellation and provider refusal do not advance to it."
     },
     {
       "id": "EpicInteractiveSignInTests.The_captured_result_never_prints_its_code",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-epic-native.test.ts",
+          "case": "continues %s embedded capture through the same manual attempt and returns no captured code"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/EpicSignInParityTests.cs",
+          "case": "Captured_codes_use_exact_grant_fields_and_never_reach_urls_logs_or_results"
+        }
+      ],
+      "reason": "Captured codes stay inside main and the provider form. Neither the native completion result nor the production API result contains the code; trace logging is also checked. Electron has no diagnostic captured-code record to stringify."
     },
     {
       "id": "BuiltInEpicCredentialTests.The_built_in_pair_makes_a_fresh_install_configured",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs",
+        "src/Winnow.Ingest.Epic/Web/ServiceCollectionExtensions.Web.cs",
+        "src/Winnow.Ingest.Epic/Web/Credentials/BuiltInEpicCredentialSource.cs",
+        "src/Winnow.Ingest.Epic/Web/Credentials/ChainedEpicCredentialProvider.cs",
+        "src/Winnow.Ingest.Epic/Web/Credentials/EpicClientCredentials.cs"
+      ],
+      "reason": "Production backend AddEpicWebApi retains the same credential source order, first-complete-pair selection and redacted credential type. The four unchanged original tests run against that composition."
     },
     {
       "id": "BuiltInEpicCredentialTests.A_user_supplied_pair_beats_the_built_in_one",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs",
+        "src/Winnow.Ingest.Epic/Web/ServiceCollectionExtensions.Web.cs",
+        "src/Winnow.Ingest.Epic/Web/Credentials/BuiltInEpicCredentialSource.cs",
+        "src/Winnow.Ingest.Epic/Web/Credentials/ChainedEpicCredentialProvider.cs",
+        "src/Winnow.Ingest.Epic/Web/Credentials/EpicClientCredentials.cs"
+      ],
+      "reason": "Production backend AddEpicWebApi retains the same credential source order, first-complete-pair selection and redacted credential type. The four unchanged original tests run against that composition."
     },
     {
       "id": "BuiltInEpicCredentialTests.The_built_in_source_is_registered_last",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs",
+        "src/Winnow.Ingest.Epic/Web/ServiceCollectionExtensions.Web.cs",
+        "src/Winnow.Ingest.Epic/Web/Credentials/BuiltInEpicCredentialSource.cs",
+        "src/Winnow.Ingest.Epic/Web/Credentials/ChainedEpicCredentialProvider.cs",
+        "src/Winnow.Ingest.Epic/Web/Credentials/EpicClientCredentials.cs"
+      ],
+      "reason": "Production backend AddEpicWebApi retains the same credential source order, first-complete-pair selection and redacted credential type. The four unchanged original tests run against that composition."
     },
     {
       "id": "BuiltInEpicCredentialTests.The_built_in_source_yields_a_complete_pair_that_redacts_itself",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs",
+        "src/Winnow.Ingest.Epic/Web/ServiceCollectionExtensions.Web.cs",
+        "src/Winnow.Ingest.Epic/Web/Credentials/BuiltInEpicCredentialSource.cs",
+        "src/Winnow.Ingest.Epic/Web/Credentials/ChainedEpicCredentialProvider.cs",
+        "src/Winnow.Ingest.Epic/Web/Credentials/EpicClientCredentials.cs"
+      ],
+      "reason": "Production backend AddEpicWebApi retains the same credential source order, first-complete-pair selection and redacted credential type. The four unchanged original tests run against that composition."
     },
     {
       "id": "InteractiveAuthPromptTests.The_browser_prompt_declines_when_no_avalonia_application_is_running",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "Avalonia application presence and WebView2 prompt availability are retired framework checks. Electron creates its browser inside the initialized main process; its real host-initialization failure and manual continuation are tested in parity-epic-native.test.ts."
     },
     {
       "id": "InteractiveAuthPromptTests.Probing_for_the_webview2_runtime_never_throws",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "Electron bundles Chromium and performs no WebView2 installation/version probe. The cached Microsoft runtime detection is specific to the retired Avalonia browser; Electron host initialization failures remain covered by the native controller tests."
     },
     {
       "id": "InteractiveAuthPromptTests.The_console_prompt_is_available_when_output_is_redirected",
@@ -4276,22 +4477,50 @@
     {
       "id": "EpicSourceMergeTests.The_API_half_cannot_clear_install_state_the_local_half_established",
       "source": "tests/Winnow.Tests/EpicWeb/EpicLibraryTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+        "src/Winnow.Ingest.Epic/Web/Model/EpicOwnedLibrary.cs",
+        "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+        "src/Winnow.Application/Services/LibrarySyncService.cs"
+      ],
+      "reason": "The production backend retains the same catalogue-ID projection and candidate union, including null API install opinions, local uninstall authority and API-only entitlements. The unchanged source tests exercise the retained implementation."
     },
     {
       "id": "EpicSourceMergeTests.A_local_uninstall_still_shows_through_the_merge",
       "source": "tests/Winnow.Tests/EpicWeb/EpicLibraryTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+        "src/Winnow.Ingest.Epic/Web/Model/EpicOwnedLibrary.cs",
+        "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+        "src/Winnow.Application/Services/LibrarySyncService.cs"
+      ],
+      "reason": "The production backend retains the same catalogue-ID projection and candidate union, including null API install opinions, local uninstall authority and API-only entitlements. The unchanged source tests exercise the retained implementation."
     },
     {
       "id": "EpicSourceMergeTests.A_title_only_the_API_owns_survives_the_union",
       "source": "tests/Winnow.Tests/EpicWeb/EpicLibraryTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+        "src/Winnow.Ingest.Epic/Web/Model/EpicOwnedLibrary.cs",
+        "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+        "src/Winnow.Application/Services/LibrarySyncService.cs"
+      ],
+      "reason": "The production backend retains the same catalogue-ID projection and candidate union, including null API install opinions, local uninstall authority and API-only entitlements. The unchanged source tests exercise the retained implementation."
     },
     {
       "id": "EpicSourceMergeTests.The_API_and_local_halves_key_on_the_same_catalog_item_id",
       "source": "tests/Winnow.Tests/EpicWeb/EpicLibraryTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+        "src/Winnow.Ingest.Epic/Web/Model/EpicOwnedLibrary.cs",
+        "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+        "src/Winnow.Application/Services/LibrarySyncService.cs"
+      ],
+      "reason": "The production backend retains the same catalogue-ID projection and candidate union, including null API install opinions, local uninstall authority and API-only entitlements. The unchanged source tests exercise the retained implementation."
     },
     {
       "id": "ExpansionLinkTests.An_expansion_link_moves_no_number_anywhere",

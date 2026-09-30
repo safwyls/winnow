@@ -81,6 +81,9 @@ for (const [width, height] of [
       const failures: string[] = []
       page.on('pageerror', (error) => failures.push(error.message))
       await expect(page.locator('.avalon-shell')).toBeVisible()
+      await expect
+        .poll(() => page.evaluate(() => window.winnow.connection()), { timeout: 45_000 })
+        .toMatchObject({ connected: true })
       await application.evaluate(
         ({ BrowserWindow }, { width, height }) => {
           const window = BrowserWindow.getAllWindows()[0]!
@@ -106,12 +109,9 @@ for (const [width, height] of [
           resource: 'feed',
         })
       }, feed)
-      expect(
-        await page.evaluate(async () => {
-          const result = await window.winnow.request<FeedSnapshot>({ route: 'feed.get' })
-          return result.ok ? result.data?.shelves.length : 0
-        }),
-      ).toBe(2)
+      const published = await page.evaluate(() => window.winnow.request<FeedSnapshot>({ route: 'feed.get' }))
+      expect(published).toMatchObject({ ok: true })
+      expect(published.data?.shelves).toHaveLength(2)
       const exposures = () => application!.evaluate(() => (globalThis as unknown as Host).__feedExposures)
       expect(await exposures()).toEqual([])
       await navigation.getByRole('button', { name: 'For you', exact: true }).click()

@@ -222,6 +222,53 @@ describe('Epic native attempt and credential lifecycle', () => {
     await controller.openManual(owner, options)
     expect(native.open).toHaveBeenCalledWith(challenge().request.startUrl)
   })
+  it.each(['unavailable', 'empty', 'no-session'])(
+    'continues %s embedded capture through the same manual attempt and returns no captured code',
+    async (cause) => {
+      if (cause === 'unavailable')
+        native.profile.mockImplementationOnce(() => {
+          throw Error('private browser initialization')
+        })
+      const { browser, result } = await open()
+      if (cause === 'empty')
+        browser.navigate('https://localhost/launcher/authorized?code=injected&state=wrong')
+      if (cause === 'no-session') {
+        native.script.mockResolvedValue({
+          body: '{"authorizationCode":null,"exchangeCode":null}',
+          source: 'session harvest',
+        })
+        browser.ready()
+        await tick()
+        browser.close()
+      }
+      expect(await result).toEqual({
+        succeeded: false,
+        persisted: false,
+        canRetryManually: true,
+        failure: cause === 'unavailable' ? 7 : cause === 'empty' ? 8 : 9,
+      })
+      expect(completions()).toEqual([])
+      expect(native.open).not.toHaveBeenCalled()
+      await controller.openManual(owner, options)
+      expect(native.open).toHaveBeenCalledExactlyOnceWith(challenge().request.startUrl)
+      const completed = await controller.completeManual(owner, {
+        ...options,
+        callback: 'https://localhost/launcher/authorized?code=PRIVATE-MANUAL-CODE&state=fixture-state',
+      })
+      expect(completed).toMatchObject({ succeeded: true, persisted: true, captureRoute: 'manual' })
+      expect(completions()).toHaveLength(1)
+      expect(completions()[0].body).toMatchObject({
+        attemptId: options.attemptId,
+        kind: 0,
+        code: 'PRIVATE-MANUAL-CODE',
+      })
+      expect(JSON.stringify(completed)).not.toContain('PRIVATE-MANUAL-CODE')
+      expect(request.mock.calls.filter(([value]) => value.route === 'connections.epic.signin')).toHaveLength(
+        1,
+      )
+      expect(native.open.mock.calls.flat().join(' ')).not.toContain('PRIVATE-MANUAL-CODE')
+    },
+  )
   it('supports the backend opt-out code endpoint with no state while retaining the correct grant', async () => {
     request.mockImplementation(async ({ route }) => ({
       ok: true,
@@ -452,6 +499,41 @@ describe('Epic native attempt and credential lifecycle', () => {
     browser.message('exchange', 'SECRET-CODE')
     expect(await result).toEqual({ succeeded: false, failure: 4, persisted: false })
   })
+  it.each([1, 2, 3, 4, 5])(
+    'preserves backend refusal %s without offering another prompt or exposing its private payload',
+    async (failure) => {
+      request.mockImplementation(async ({ route }) =>
+        route === 'connections.epic.complete'
+          ? {
+              ok: true,
+              status: 200,
+              data: {
+                succeeded: false,
+                persisted: false,
+                failure,
+                code: 'SECRET-CODE',
+                detail: 'SECRET-CODE',
+              },
+            }
+          : { ok: true, status: 200, data: challenge() },
+      )
+      const { browser, result } = await open()
+      browser.message('exchange', 'SECRET-CODE')
+      const returned = await result
+      expect(returned).toEqual({
+        succeeded: false,
+        persisted: false,
+        failure,
+        accountId: null,
+        displayName: null,
+        captureRoute: 'launcher bridge',
+      })
+      expect(JSON.stringify(returned)).not.toContain('SECRET-CODE')
+      expect(native.open).not.toHaveBeenCalled()
+      expect(browser.destroyed).toBe(true)
+      expect(completions()).toHaveLength(1)
+    },
+  )
   it('folds approved popups into the guarded view, opens external web help, and blocks application and launcher schemes', async () => {
     const { browser, result } = await open()
     expect(browser.popup({ url: 'https://accounts.google.com/login' })).toEqual({ action: 'deny' })
