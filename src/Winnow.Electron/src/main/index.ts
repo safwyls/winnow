@@ -121,6 +121,7 @@ protocol.registerSchemesAsPrivileged([
 ])
 app.enableSandbox()
 let window: BrowserWindow | undefined
+let presentationVisible = !process.argv.includes('--background')
 let transport: BackendTransport | undefined
 let updater: ApplicationUpdater | undefined
 let safeTheme = process.argv.includes('--safe-theme')
@@ -565,6 +566,7 @@ async function initialize(): Promise<void> {
     window!.setFullScreen(value)
   })
   handle('winnow:fullscreen:get', () => window?.isFullScreen() ?? false)
+  handle('winnow:window:visible', () => presentationVisible)
   handle('winnow:quit', () => {
     quitting = true
     app.quit()
@@ -700,6 +702,7 @@ async function initialize(): Promise<void> {
   })
   function createWindow(): void {
     rendererAcceptsActivation = false
+    presentationVisible = !process.argv.includes('--background')
     window = new BrowserWindow({
       width: 1440,
       height: 980,
@@ -731,6 +734,14 @@ async function initialize(): Promise<void> {
     })
     window.on('enter-full-screen', () => emit('winnow:fullscreen:changed', true))
     window.on('leave-full-screen', () => emit('winnow:fullscreen:changed', false))
+    const visibility = (visible: boolean) => {
+      presentationVisible = visible
+      emit('winnow:window:visibility', visible)
+    }
+    window.on('show', () => visibility(true))
+    window.on('hide', () => visibility(false))
+    window.on('minimize', () => visibility(false))
+    window.on('restore', () => visibility(window?.isVisible() ?? false))
     window.once('ready-to-show', () => {
       if (!process.argv.includes('--background') || !tray) window?.show()
     })
@@ -864,7 +875,10 @@ else if (startupArgumentError) {
     .catch((error) => {
       app.exit(reportStartupFailure(error, { directory: dataDirectory, surface: dialog.showErrorBox }))
     })
-const drainUpdates = quitDrain(() => updater?.dispose() ?? Promise.resolve(), () => app.quit())
+const drainUpdates = quitDrain(
+  () => updater?.dispose() ?? Promise.resolve(),
+  () => app.quit(),
+)
 app.on('before-quit', (event) => {
   quitting = true
   if (updater && drainUpdates(event)) return

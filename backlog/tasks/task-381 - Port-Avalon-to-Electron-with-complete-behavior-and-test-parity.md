@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 03:04'
+updated_date: '2026-09-30 03:55'
 labels: []
 dependencies: []
 priority: high
@@ -108,6 +108,8 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 40. Complete remaining application-update contracts with exact version/channel/platform matrices, bounded manual release pagination, installer-cache cleanup and cancellation/disposal ownership. Exercise real download verification through an isolated transport and test both desktop/fullscreen update status, progress, explicit restart and recovery guidance. Keep native installer execution confined to fixture callbacks and retain packaging/device validation limits.
 
 41. Restore desktop startup and every fullscreen entry/return preparation against DesktopStartupTests and FullscreenStartupTests: a Ground loading surface, original dragon/wordmark and copy, first-painted-frame 1.8s circuit plus 180ms fade, preference-aware reduced motion, library/primary-feed/layout readiness, retry, caption and Back availability, hidden preparation, cancellation and shared in-flight loads. Animate contours with an OffscreenCanvas worker so UI publication cannot pause rendering; keep tests explicit about worker versus compositor ownership. Preserve setup isolation and page retention. Validate controlled timing plus real Electron frames and both-mode layouts before mapping source methods.
+
+42. Complete the four LoadingDragon source contracts: preserve phase across theme/size updates in the canvas worker, verify all15closed contours and seam geometry across101phases, controlled disable/detach clocks, and native dark/light88/100px rendering. Then audit and migrate remaining application activation/architecture contracts against their actual Electron boundaries. Keep native/component/.NET verification sequential and record desktop/fullscreen evidence.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -210,4 +212,6 @@ Checkpoint 25: 2756 component/API cases pass; 105 backend and 24 retained Epic c
 Plan 40: 108 focused updater cases and all 2810 component/live API cases across 138 files pass without skips (43.74s); build/typecheck passes. Three native updater workflows pass (25.2s) on desktop and fullscreen at 100/140 percent text. Restored caption/progress slot, Quick menu action dismissal, release links, vertical controller traversal and polite recovery. Real NSIS/AppImage downloader fixtures verify bytes, cancellation/cleanup, remote/local beta cache discard, redirect refusal and re-verification before installer handoff. Native initial ESM import failure and fixture query/scale/cadence assumptions were corrected; a full non-integration run also exposed six missing optional-bridge guards, now corrected and covered by the complete pass. Inventory: 1023 ported, 552 retained backend, 15 framework-specific, 735 pending, 110 partial. Full 204 native suite is running; no acceptance criteria checked.
 
 Checkpoint26: complete native204/204passes in one10.1minute run with clean completion, including the prior Epic and feed fixes. Component/liveAPI2810/138passes without skips43.74s; build/typecheck and108focused updater cases pass. Final enlarged fullscreen captions and recovery inspected. Source inventory1023ported552retained15framework735pending110partial. Evidence checkpoint-twenty-six.md records transport/cache/shutdown fixtures and actual installer/hardware limitations. All acceptance criteria remain unchecked. Plan41 startup implementation is underway.
+
+Plan41 focused startup verification passes 83 component cases and four native workflows (46.0s), including cold background launch, restoration during pending reads, worker rendering while the UI is blocked, controller Back/Retry, reduced motion, enlarged fullscreen text and page retention. All2850 component/liveAPI cases in141files pass without skips (48.86s); build/typecheck pass. Two readiness races and native window visibility were fixed; the background fixture now keeps the real resource root for its tray icon. Inventory1040ported552retained15framework718pending110partial. The complete208native suite is running. No acceptance criteria checked.
 <!-- SECTION:NOTES:END -->

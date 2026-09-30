@@ -45,13 +45,15 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [updater checkpoint](checkpoint-twenty-six.md) records 2,810 passing component/API
-cases across 138 files, with build and typecheck passing. The complete native suite passes
+The [startup checkpoint](checkpoint-twenty-seven.md) records 2,850 passing component/API
+cases across 141 files, with build and typecheck passing. Four additional native startup
+workflows pass; the expanded 208-case native run is in progress.
+The [updater checkpoint](checkpoint-twenty-six.md) records the last complete native pass:
 all 204 cases in one run, including the preceding Epic workflows and corrected feed fixture.
 The [Epic sign-in checkpoint](checkpoint-twenty-five.md) also records all 105 backend tests
 and 24 retained Epic cases passing.
-The migration inventory contains 1,023 ported, 552 retained backend, 15 framework-specific,
-735 pending and 110 partial methods. The migration gate remains incomplete.
+The migration inventory contains 1,040 ported, 552 retained backend, 15 framework-specific,
+718 pending and 110 partial methods. The migration gate remains incomplete.
 The [Library and metadata checkpoint](checkpoint-ten.md)
 records the latest full .NET pass: 6,839 passed and two Linux-only skips across 13 assemblies,
 including all 896 Avalonia UI cases. The table below preserves earlier measured checkpoints.

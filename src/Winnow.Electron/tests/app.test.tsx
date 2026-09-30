@@ -10,6 +10,16 @@ import { afterglow } from '../src/renderer/themes/afterglow'
 import { AVALON_PALETTES } from '../src/renderer/themes/avalon-palettes'
 import { clearViewState } from '../src/renderer/viewState'
 
+// Native startup tests exercise the worker; routing tests supply its completed-circuit signal.
+vi.mock('../src/renderer/startup/LoadingDragon', () => ({
+  LoadingDragon: ({ tracing, onFrame }: { tracing: boolean; onFrame(elapsed: number): void }) => {
+    React.useEffect(() => {
+      if (tracing) onFrame(1800)
+    }, [tracing, onFrame])
+    return <span data-testid="startup-trace" data-tracing={tracing} />
+  },
+}))
+
 // Geometry and GPU lifetime have their own controlled-clock tests; this suite checks routes and data.
 vi.mock('../src/renderer/components/portal-effects', () => ({
   PortalSurface: ({ children, onExpanded }: { children: React.ReactNode; onExpanded?: () => void }) => {
@@ -149,6 +159,17 @@ afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })
+async function changeSurface(value: boolean) {
+  act(() => fullscreen(value))
+  await waitFor(() => expect(document.querySelector('.startup-presentation')).toBeNull())
+}
+function serveSnapshot(client: QueryClient, route: string) {
+  const data = client.getQueryData(['api', route]),
+    original = window.winnow.request
+  window.winnow.request = vi.fn(async (value) =>
+    value.route === route ? { ok: true, status: 200, data } : original(value),
+  ) as WinnowBridge['request']
+}
 function mount() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -167,6 +188,52 @@ function mountAfterglow() {
   return mount()
 }
 describe('integrated frontend', () => {
+  it.each([false, true])(
+    'initial fullscreen waits for saved motion preference %s before tracing',
+    async (reduced) => {
+      vi.mocked(window.winnow.isFullscreen).mockResolvedValue(true)
+      let releasePreference!: () => void, releaseFeed!: () => void
+      const preference = new Promise<void>((resolve) => {
+          releasePreference = resolve
+        }),
+        feed = new Promise<void>((resolve) => {
+          releaseFeed = resolve
+        }),
+        original = window.winnow.request
+      window.winnow.request = vi.fn(async (input) => {
+        if (input.route === 'preferences.presentation.get') {
+          await preference
+          return {
+            ok: true,
+            status: 200,
+            data: [
+              { preference: 'FullscreenReducedMotion', value: String(reduced) },
+              { preference: 'FullscreenTextScale', value: '1.4' },
+            ],
+          }
+        }
+        if (input.route === 'feed.get') await feed
+        return original(input)
+      }) as WinnowBridge['request']
+      mount()
+      await screen.findByRole('dialog', { name: 'Preparing fullscreen' })
+      await waitFor(() =>
+        expect(document.querySelector('.startup-presentation')?.getAttribute('data-phase')).toBe('loading'),
+      )
+      expect(screen.getByTestId('startup-trace').getAttribute('data-tracing')).toBe('false')
+      expect(screen.queryByRole('navigation', { name: 'Main navigation' })).toBeNull()
+      await act(async () => releasePreference())
+      await waitFor(() =>
+        expect(screen.getByTestId('startup-trace').getAttribute('data-tracing')).toBe(String(!reduced)),
+      )
+      expect(document.documentElement.style.getPropertyValue('--fullscreen-text-scale')).toBe('1.4')
+      expect(document.querySelector('.startup-presentation')?.getAttribute('data-phase')).toBe('loading')
+      await act(async () => releaseFeed())
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Preparing fullscreen' })).toBeNull())
+      expect(screen.queryByTestId('startup-trace')).toBeNull()
+      expect(screen.getByRole('navigation', { name: 'Main navigation' })).not.toBeNull()
+    },
+  )
   it.each(['cancel', 'success', 'failure'] as const)(
     'fullscreen nested Hide %s retains the origin and dispatches at most one write',
     async (outcome) => {
@@ -180,7 +247,7 @@ describe('integrated frontend', () => {
       )
       const client = mount()
       await screen.findByRole('navigation', { name: 'Main navigation' })
-      act(() => fullscreen(true))
+      await changeSurface(true)
       fireEvent.click(
         within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', {
           name: 'Library',
@@ -222,7 +289,7 @@ describe('integrated frontend', () => {
     vi.stubGlobal('PointerEvent', MouseEvent)
     const client = mount()
     await screen.findByRole('navigation', { name: 'Main navigation' })
-    act(() => fullscreen(true))
+    await changeSurface(true)
     fireEvent.click(
       within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', {
         name: 'Library',
@@ -249,7 +316,7 @@ describe('integrated frontend', () => {
     vi.stubGlobal('PointerEvent', MouseEvent)
     const client = mount()
     await screen.findByRole('navigation', { name: 'Main navigation' })
-    act(() => fullscreen(true))
+    await changeSurface(true)
     fireEvent.click(
       within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', {
         name: 'Library',
@@ -375,7 +442,7 @@ describe('integrated frontend', () => {
       }) as WinnowBridge['request']
       const client = mount()
       await screen.findByRole('navigation', { name: 'Main navigation' })
-      act(() => fullscreen(mode === 'fullscreen'))
+      await changeSurface(mode === 'fullscreen')
       fireEvent.click(
         within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', {
           name: 'Library',
@@ -464,7 +531,7 @@ describe('integrated frontend', () => {
       ) as WinnowBridge['request']
       const client = mount()
       await screen.findByRole('navigation', { name: 'Main navigation' })
-      act(() => fullscreen(mode === 'fullscreen'))
+      await changeSurface(mode === 'fullscreen')
       fireEvent.click(
         within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', {
           name: 'Library',
@@ -534,7 +601,7 @@ describe('integrated frontend', () => {
       ) as WinnowBridge['request']
       const client = mount()
       await screen.findByRole('navigation', { name: 'Main navigation' })
-      act(() => fullscreen(mode === 'fullscreen'))
+      await changeSurface(mode === 'fullscreen')
       fireEvent.click(
         within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', {
           name: 'Library',
@@ -562,7 +629,7 @@ describe('integrated frontend', () => {
       clearViewState(`${mode}:settings:tab`)
       const client = mount()
       await screen.findByRole('navigation', { name: 'Main navigation' })
-      act(() => fullscreen(mode === 'fullscreen'))
+      await changeSurface(mode === 'fullscreen')
       const navigation = () => within(screen.getByRole('navigation', { name: 'Main navigation' }))
       expect(navigation().getByRole('button', { name: 'For you' }).getAttribute('aria-current')).toBe('page')
       if (mode === 'desktop') {
@@ -617,7 +684,7 @@ describe('integrated frontend', () => {
     await waitFor(() =>
       expect(document.documentElement.style.getPropertyValue('--cover-art-fit')).toBe(expected),
     )
-    act(() => fullscreen(true))
+    await changeSurface(true)
     await waitFor(() => expect(document.documentElement.dataset.mode).toBe('fullscreen'))
     expect(document.documentElement.style.getPropertyValue('--cover-art-fit')).toBe(expected)
     client.clear()
@@ -642,7 +709,7 @@ describe('integrated frontend', () => {
     const client = mount()
     await screen.findByRole('navigation', { name: 'Main navigation' })
     await waitFor(() => expect(document.documentElement.dataset.dimDormant).toBe(expected))
-    act(() => fullscreen(true))
+    await changeSurface(true)
     await waitFor(() => expect(document.documentElement.dataset.mode).toBe('fullscreen'))
     expect(document.documentElement.dataset.dimDormant).toBe(expected)
     expect(
@@ -663,7 +730,7 @@ describe('integrated frontend', () => {
       ) as WinnowBridge['request']
       const client = mount()
       await screen.findByRole('navigation', { name: 'Main navigation' })
-      act(() => fullscreen(mode === 'fullscreen'))
+      await changeSurface(mode === 'fullscreen')
       const navigation = () => within(screen.getByRole('navigation', { name: 'Main navigation' }))
       expect(reads).not.toHaveBeenCalled()
       fireEvent.click(navigation().getByRole('button', { name: 'Activity' }))
@@ -699,7 +766,7 @@ describe('integrated frontend', () => {
       ) as WinnowBridge['request']
       const client = mount()
       await screen.findByRole('navigation', { name: 'Main navigation' })
-      act(() => fullscreen(fullscreenMode))
+      await changeSurface(fullscreenMode)
       fireEvent.click(
         within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', {
           name: 'Library',
@@ -742,7 +809,7 @@ describe('integrated frontend', () => {
       ) as WinnowBridge['request']
       const client = mount()
       await screen.findByRole('navigation', { name: 'Main navigation' })
-      act(() => fullscreen(fullscreenMode))
+      await changeSurface(fullscreenMode)
       fireEvent.click(
         within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', {
           name: 'Library',
@@ -800,11 +867,12 @@ describe('integrated frontend', () => {
       clearViewState(`avalon:search:fullscreen:${key}`)
     mount()
     await waitFor(() => expect(document.querySelector('.avalon-shell.desktop')).not.toBeNull())
+    await waitFor(() => expect(document.querySelector('.startup-presentation')).toBeNull())
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
     const desktop = await screen.findByRole('textbox', { name: 'Search games' })
     fireEvent.change(desktop, { target: { value: 'desktop query' } })
     expect(screen.queryByRole('heading', { name: 'Search' })).toBeNull()
-    act(() => fullscreen(true))
+    await changeSurface(true)
     await waitFor(() => expect(document.querySelector('.avalon-shell.fullscreen')).not.toBeNull())
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
     await screen.findByRole('heading', { name: 'Search' })
@@ -820,7 +888,7 @@ describe('integrated frontend', () => {
     fireEvent.keyDown(window, { key: 'Escape' })
     await waitFor(() => expect(document.querySelector('.screen-discover')).not.toBeNull())
     expect(window.winnow.setFullscreen).not.toHaveBeenCalled()
-    act(() => fullscreen(false))
+    await changeSurface(false)
     await waitFor(() =>
       expect((screen.getByRole('textbox', { name: 'Search games' }) as HTMLInputElement).value).toBe(
         'desktop query',
@@ -830,7 +898,7 @@ describe('integrated frontend', () => {
   it('keeps fullscreen Ctrl+K on Library for themes without a Search composition', async () => {
     mountAfterglow()
     await waitFor(() => expect(document.querySelector('.afterglow-shell.desktop')).not.toBeNull())
-    act(() => fullscreen(true))
+    await changeSurface(true)
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
     await screen.findByRole('textbox', { name: 'Search games' })
     expect(document.querySelector('.screen-library')).not.toBeNull()
@@ -879,7 +947,7 @@ describe('integrated frontend', () => {
     ) as WinnowBridge['request']
     mount()
     await screen.findByRole('button', { name: 'View A real API title' })
-    act(() => fullscreen(true))
+    await changeSurface(true)
     for (const palette of AVALON_PALETTES) {
       fireEvent.click(screen.getByRole('button', { name: 'Theme Studio' }))
       fireEvent.change(await screen.findByRole('combobox', { name: /^Avalon palette/ }), {
@@ -910,7 +978,9 @@ describe('integrated frontend', () => {
         { kind: 'plugin', pluginId: 'xbox', releaseTag: 'v1.2.3' },
       ])
       mount()
-      await screen.findByRole('button', { name: 'Winnow home' })
+      await screen.findByRole('dialog', {
+        name: mode === 'fullscreen' ? 'Preparing fullscreen' : 'Preparing your library',
+      })
       expect(screen.queryByRole('region', { name: 'Plugin installation' })).toBeNull()
       await act(async () => {
         complete({ step: 4 })
@@ -979,6 +1049,9 @@ describe('integrated frontend', () => {
       }
       mount()
       await screen.findByRole('heading', { name: 'Welcome to Winnow' })
+      expect(document.querySelector('.startup-presentation')).toBeNull()
+      expect(screen.queryByRole('navigation', { name: 'Main navigation' })).toBeNull()
+      expect(document.querySelector('.prepared-surfaces')?.closest('[aria-hidden="true"]')).not.toBeNull()
       act(() => receive({ kind: 'plugin', pluginId: 'xbox', releaseTag: 'v1.2.3' }))
       await screen.findByRole('region', { name: 'Plugin installation' })
       expect(screen.queryByRole('heading', { name: 'Welcome to Winnow' })).toBeNull()
@@ -1000,7 +1073,7 @@ describe('integrated frontend', () => {
     mount()
     await waitFor(() => expect(document.documentElement.style.getPropertyValue('--bg')).toBe('#070A10'))
     for (const fullscreenMode of [true, false]) {
-      act(() => fullscreen(fullscreenMode))
+      await changeSurface(fullscreenMode)
       await waitFor(() =>
         expect(
           document.querySelector(`.avalon-shell.${fullscreenMode ? 'fullscreen' : 'desktop'}`),
@@ -1036,7 +1109,8 @@ describe('integrated frontend', () => {
       }),
     )
     for (const fullscreenMode of [false, true]) {
-      act(() => fullscreen(fullscreenMode))
+      serveSnapshot(client, 'feed.get')
+      await changeSurface(fullscreenMode)
       await waitFor(() =>
         expect(
           document.querySelector(`.avalon-shell.${fullscreenMode ? 'fullscreen' : 'desktop'}`),
@@ -1076,8 +1150,9 @@ describe('integrated frontend', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: 'Theme Studio' }))
     fireEvent.click(await screen.findByRole('button', { name: /Rift.*Floating covers/i }))
+    serveSnapshot(client, 'library.get')
     for (const fullscreenMode of [false, true]) {
-      act(() => fullscreen(fullscreenMode))
+      await changeSurface(fullscreenMode)
       fireEvent.click(screen.getByRole('button', { name: 'Discover' }))
       await waitFor(() =>
         expect(document.querySelector('.rift-world-portal .winnow-portal-surface')).not.toBeNull(),
@@ -1105,7 +1180,7 @@ describe('integrated frontend', () => {
     await screen.findByRole('heading', { name: 'A real API title' })
     expect(screen.getByRole('button', { name: 'History', hidden: true })).toBeDefined()
     expect(screen.getByRole('button', { name: 'Artwork', hidden: true })).toBeDefined()
-    act(() => fullscreen(true))
+    await changeSurface(true)
     await waitFor(() => expect(document.querySelector('.rift-shell.fullscreen')).not.toBeNull())
     fireEvent.click(await screen.findByRole('button', { name: 'View game' }))
     await screen.findByRole('heading', { name: 'A real API title' })
@@ -1124,7 +1199,7 @@ describe('integrated frontend', () => {
     fireEvent.change(await screen.findByRole('textbox', { name: 'Search games' }), {
       target: { value: 'desktop filter' },
     })
-    act(() => fullscreen(true))
+    await changeSurface(true)
     await screen.findByRole('heading', { name: 'What draws you in?' })
     fireEvent.click(screen.getByRole('button', { name: 'Library' }))
     expect(((await screen.findByRole('textbox', { name: 'Search games' })) as HTMLInputElement).value).toBe(
@@ -1133,7 +1208,7 @@ describe('integrated frontend', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Search games' }), {
       target: { value: 'fullscreen filter' },
     })
-    act(() => fullscreen(false))
+    await changeSurface(false)
     await waitFor(() =>
       expect((screen.getByRole('textbox', { name: 'Search games' }) as HTMLInputElement).value).toBe(
         'desktop filter',

@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 735,
+    "pending": 718,
     "partial": 110,
-    "ported": 1023,
+    "ported": 1040,
     "retained-backend": 552,
     "framework-specific": 15
   },
@@ -20708,42 +20708,122 @@
     {
       "id": "DesktopStartupTests.Restoring_a_hidden_window_during_preparation_uses_one_animation_clock",
       "source": "tests/Winnow.Ui.Tests/DesktopStartupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/startup.spec.ts",
+          "case": "a cold background launch prepares with restoration during read"
+        },
+        {
+          "file": "tests/parity-startup-preparation.test.ts",
+          "case": "restoring during a hidden read keeps one trace clock"
+        }
+      ],
+      "reason": "Cold native background launch restores during the held primary read, then reveals with the worker. The controlled clock checks one owned preparation."
     },
     {
       "id": "DesktopStartupTests.Automatic_startup_stays_covered_until_delayed_primary_feed_finishes",
       "source": "tests/Winnow.Ui.Tests/DesktopStartupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/startup.spec.ts",
+          "case": "startup preserves readiness retry reentry and worker rendering with reduced motion"
+        },
+        {
+          "file": "tests/parity-startup-preparation.test.ts",
+          "case": "paints before loading and keeps two ready layout frames at reduced motion"
+        }
+      ],
+      "reason": "The real app remains covered for a held feed even after a full rendered circuit; releasing it permits reveal only after layout barriers."
     },
     {
       "id": "DesktopStartupTests.Setup_keeps_library_disabled_after_startup_reveal",
       "source": "tests/Winnow.Ui.Tests/DesktopStartupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/app.test.tsx",
+          "case": "Plugin_handoff_shows_installation_over_a_fresh_optional_setup"
+        }
+      ],
+      "reason": "Both integrated surfaces assert startup has finished while optional setup keeps main navigation inaccessible and its ancestor aria-hidden. Existing native setup tests exercise input confinement."
     },
     {
       "id": "DesktopStartupTests.Motion_setting_controls_full_circuit_hold_and_continuous_trace_through_reveal",
       "source": "tests/Winnow.Ui.Tests/DesktopStartupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-startup-preparation.test.ts",
+          "case": "paints before loading and keeps two ready layout frames at reduced motion"
+        },
+        {
+          "file": "tests/parity-startup-preparation.test.ts",
+          "case": "counts the full circuit from rendered worker frames and keeps tracing throughout the fade"
+        }
+      ],
+      "reason": "The desktop controlled-frame matrix asserts reduced motion skips the hold/fade; normal motion requires an actually rendered circuit and keeps tracing through intermediate fade opacity."
     },
     {
       "id": "DesktopStartupTests.Automatic_startup_waits_for_library_feed_and_real_layout_frames",
       "source": "tests/Winnow.Ui.Tests/DesktopStartupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-startup-preparation.test.ts",
+          "case": "paints before loading and keeps two ready layout frames at reduced motion"
+        },
+        {
+          "file": "tests/electron/startup.spec.ts",
+          "case": "startup preserves readiness retry reentry and worker rendering with reduced motion"
+        }
+      ],
+      "reason": "Primary query readiness, first actual native paint, held feed and two controlled post-load layout barriers are exercised together."
     },
     {
       "id": "DesktopStartupTests.Startup_covers_pending_work_and_failure_can_retry_without_disabling_caption",
       "source": "tests/Winnow.Ui.Tests/DesktopStartupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/startup.spec.ts",
+          "case": "startup preserves readiness retry reentry and worker rendering with reduced motion"
+        },
+        {
+          "file": "tests/parity-startup-preparation.test.ts",
+          "case": "failure stays covered and retry runs a fresh load"
+        }
+      ],
+      "reason": "The real desktop window remains enabled while library input is covered. An injected primary failure exposes retry, reloads, and preserves the selected Library page."
     },
     {
       "id": "DesktopStartupTests.Closing_cancels_pending_preparation_without_late_reveal",
       "source": "tests/Winnow.Ui.Tests/DesktopStartupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-startup-preparation.test.ts",
+          "case": "closing cancels pending preparation immediately and a late read cannot reveal"
+        }
+      ],
+      "reason": "Cancelling an owned pending preparation settles immediately; completing the shared read later cannot publish or reveal."
     },
     {
       "id": "DesktopStartupTests.Hidden_startup_does_not_wait_for_window_frames",
       "source": "tests/Winnow.Ui.Tests/DesktopStartupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/startup.spec.ts",
+          "case": "a cold background launch prepares with restoration during read"
+        },
+        {
+          "file": "tests/parity-startup-preparation.test.ts",
+          "case": "hidden preparation never waits for invisible window frames"
+        }
+      ],
+      "reason": "A real --background launch with the tray present completes data readiness while the native window remains hidden and without a tracing worker."
     },
     {
       "id": "DesktopTileFocusTests.Focus_restores_vivid_art_and_pointer_exit_preserves_only_keyboard_focus",
@@ -22730,47 +22810,146 @@
     {
       "id": "FullscreenStartupTests.Finishing_load_after_a_circuit_keeps_trace_running_through_the_fade",
       "source": "tests/Winnow.Ui.Tests/FullscreenStartupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-startup-preparation.test.ts",
+          "case": "counts the full circuit from rendered worker frames and keeps tracing throughout the fade"
+        },
+        {
+          "file": "tests/electron/startup.spec.ts",
+          "case": "startup preserves readiness retry reentry and worker rendering with reduced motion"
+        }
+      ],
+      "reason": "A completed rendered circuit does not stop trace publication while data is pending or during intermediate reveal opacity."
     },
     {
       "id": "FullscreenStartupTests.Leaving_before_attachment_cancels_first_paint_wait_without_loading",
       "source": "tests/Winnow.Ui.Tests/FullscreenStartupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-startup-preparation.test.ts",
+          "case": "leaving before attachment cancels without starting a read"
+        }
+      ],
+      "reason": "Cancelling before the first scheduled frame prevents the load callback, including when a queued frame subsequently arrives."
     },
     {
       "id": "FullscreenStartupTests.Saved_motion_preference_is_known_before_tracing_and_trace_continues_through_reveal",
       "source": "tests/Winnow.Ui.Tests/FullscreenStartupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/app.test.tsx",
+          "case": "initial fullscreen waits for saved motion preference"
+        },
+        {
+          "file": "tests/parity-startup-preparation.test.ts",
+          "case": "counts the full circuit from rendered worker frames and keeps tracing throughout the fade"
+        },
+        {
+          "file": "tests/electron/startup.spec.ts",
+          "case": "startup preserves readiness retry reentry and worker rendering with reduced motion"
+        }
+      ],
+      "reason": "Both delayed saved preference values are exercised through App; tracing stays off until hydration, 140% text is applied, and controlled/native checks cover circuit and reveal."
     },
     {
       "id": "FullscreenStartupTests.Preparation_paints_before_load_and_reveals_only_after_ready_frames",
       "source": "tests/Winnow.Ui.Tests/FullscreenStartupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-startup-preparation.test.ts",
+          "case": "paints before loading and keeps two ready layout frames at reduced motion"
+        },
+        {
+          "file": "tests/electron/startup.spec.ts",
+          "case": "startup preserves readiness retry reentry and worker rendering with reduced motion"
+        },
+        {
+          "file": "tests/parity-startup-surface.test.tsx",
+          "case": "blocks library shortcuts while preserving native fullscreen and close keys"
+        }
+      ],
+      "reason": "Native startup blocks Menu/Next/Play and allows controller Back and Space. The input boundary preserves F11/Alt-F4; readiness tests assert paint before reads and two layout barriers for both motion settings."
     },
     {
       "id": "FullscreenStartupTests.Warm_entry_refreshes_under_cover_and_preserves_the_page",
       "source": "tests/Winnow.Ui.Tests/FullscreenStartupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/startup.spec.ts",
+          "case": "startup preserves readiness retry reentry and worker rendering with reduced motion"
+        },
+        {
+          "file": "tests/parity-startup-preparation.test.ts",
+          "case": "reentry shares an unfinished read but refreshes a finished one"
+        }
+      ],
+      "reason": "Warm entry executes a fresh primary read under the cover after completed work, retains the Library page, and observes the normal/reduced timing policy."
     },
     {
       "id": "FullscreenStartupTests.Failure_stays_actionable_and_retry_loads_again",
       "source": "tests/Winnow.Ui.Tests/FullscreenStartupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/startup.spec.ts",
+          "case": "startup preserves readiness retry reentry and worker rendering with reduced motion"
+        },
+        {
+          "file": "tests/parity-startup-preparation.test.ts",
+          "case": "failure stays covered and retry runs a fresh load"
+        },
+        {
+          "file": "tests/parity-startup-surface.test.tsx",
+          "case": "fullscreen failure traps directional and tab focus between retry and back"
+        }
+      ],
+      "reason": "Real failed primary reads focus Retry; controller A and Enter perform a fresh successful load. Keyboard focus stays within Retry/Back."
     },
     {
       "id": "FullscreenStartupTests.Exit_and_reentry_share_inflight_load_without_a_stale_reveal",
       "source": "tests/Winnow.Ui.Tests/FullscreenStartupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/startup.spec.ts",
+          "case": "startup preserves readiness retry reentry and worker rendering with reduced motion"
+        },
+        {
+          "file": "tests/parity-startup-preparation.test.ts",
+          "case": "reentry shares an unfinished read but refreshes a finished one"
+        }
+      ],
+      "reason": "Native rapid exit/reentry holds a primary feed read and asserts no duplicate request. Controlled cancellation prevents an old presentation revealing a replacement surface."
     },
     {
       "id": "FullscreenStartupTests.Disposing_during_load_cannot_reveal_the_page",
       "source": "tests/Winnow.Ui.Tests/FullscreenStartupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-startup-preparation.test.ts",
+          "case": "closing cancels pending preparation immediately and a late read cannot reveal"
+        }
+      ],
+      "reason": "The shared presentation owner cancels immediately on unmount; late primary completion cannot publish ready state."
     },
     {
       "id": "FullscreenStartupTests.Real_render_frames_finish_initial_preparation",
       "source": "tests/Winnow.Ui.Tests/FullscreenStartupTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/startup.spec.ts",
+          "case": "startup preserves readiness retry reentry and worker rendering with reduced motion"
+        }
+      ],
+      "reason": "The shipped worker, Chromium layout/paint and real 180ms fade complete preparation in both normal and reduced modes. A 600ms blocked renderer still advances worker frames."
     },
     {
       "id": "FullscreenStutterDiagnosticsTests.Scheduled_render_frames_finish_the_row_transition",

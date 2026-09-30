@@ -117,6 +117,8 @@ export interface WinnowBridge {
   installTheme(): Promise<ThemePackage | null>
   setFullscreen(value: boolean): Promise<void>
   isFullscreen(): Promise<boolean>
+  presentationVisible?(): Promise<boolean>
+  onPresentationVisibility?(callback: (visible: boolean) => void): () => void
   onFullscreen(callback: (value: boolean) => void): () => void
   openExternal(url: string): Promise<LinkOpenResult>
   quit?(): Promise<void>

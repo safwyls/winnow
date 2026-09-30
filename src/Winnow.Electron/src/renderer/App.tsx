@@ -33,13 +33,16 @@ import { PortalSurface } from './components/portal-effects'
 import { normalizeArtworkEffects } from '../shared/artworkEffects'
 import { RefreshQueue, refreshJournalSnapshot, refreshSnapshots, shouldRefreshArtwork } from './refresh'
 import { navigatePosition, returnFromSearch, type NavigationPosition } from './search-navigation'
+import { StartupPresentation, useStartupPreparation } from './startup/StartupPresentation'
+import { primarySnapshotVersions, waitForPrimarySnapshots } from './startup/readiness'
 
 installThemeSDK()
 const builtins = [avalon, afterglow, rift, catalogue]
 export function App() {
-  const library = useLibrary(),
-    feed = useFeed(),
-    workspace = useWorkspace(),
+  const [readsStarted, setReadsStarted] = useState(false)
+  const library = useLibrary(readsStarted),
+    feed = useFeed(readsStarted),
+    workspace = useWorkspace(readsStarted),
     client = useQueryClient(),
     runtime = useThemeRuntime(builtins)
   const [connection, setConnection] = useState<ConnectionState>({
@@ -53,7 +56,7 @@ export function App() {
   })
   const [notice, setNotice] = useState('')
   const [setupOpen, setSetupOpen] = useState(false)
-  const setupProgress = useApiQuery<SetupProgress>('setup.get')
+  const setupProgress = useApiQuery<SetupProgress>('setup.get', undefined, readsStarted)
   const [quickMenu, setQuickMenu] = useState(false)
   const quickMenuAtRoot = useRef(true)
   const [keyboardInput, setKeyboardInput] = useState<HTMLInputElement | HTMLTextAreaElement | null>(null)
@@ -92,10 +95,51 @@ export function App() {
       stop?.()
     }
   }, [])
-  const presentation = useApiQuery<PresentationPreferenceValue[]>('preferences.presentation.get')
+  const presentation = useApiQuery<PresentationPreferenceValue[]>(
+    'preferences.presentation.get',
+    undefined,
+    readsStarted,
+  )
   const preferences = Object.fromEntries((presentation.data ?? []).map((row) => [row.preference, row.value]))
   const fullscreenMotion = mode === 'fullscreen' && preferences.FullscreenReducedMotion === 'true'
   const reducedMotion = runtime.profile.appearance.reducedMotion || fullscreenMotion
+  const [systemReducedMotion, setSystemReducedMotion] = useState(
+    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  )
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const change = () => setSystemReducedMotion(media.matches)
+    media.addEventListener('change', change)
+    return () => media.removeEventListener('change', change)
+  }, [])
+  const startup = useStartupPreparation(
+    mode,
+    async () => {
+      setReadsStarted(true)
+      const previous = primarySnapshotVersions(client)
+      await Promise.all([
+        library.refetch({ cancelRefetch: false }),
+        feed.refetch({ cancelRefetch: false }),
+        workspace.refetch({ cancelRefetch: false }),
+        presentation.refetch({ cancelRefetch: false }),
+        setupProgress.refetch({ cancelRefetch: false }),
+      ])
+      await waitForPrimarySnapshots(client, previous)
+    },
+    runtime.loading || (mode === 'fullscreen' && !presentation.isSuccess)
+      ? undefined
+      : mode === 'fullscreen'
+        ? fullscreenMotion
+        : reducedMotion || systemReducedMotion,
+  )
+  useEffect(() => {
+    if (startup.visible) return
+    const frame = requestAnimationFrame(() => {
+      if (controllerScope() === document)
+        document.getElementById('main-content')?.focus({ preventScroll: true })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [startup.visible])
   useEffect(() => {
     const clamp = (value: string | null | undefined, fallback: number, min: number, max: number) => {
       const number = value === null || value === undefined ? fallback : Number(value)
@@ -258,7 +302,7 @@ export function App() {
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return
-      if (setupOpen && event.key !== 'F11') return
+      if ((setupOpen || startup.visible) && event.key !== 'F11') return
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         if (controllerScope() !== document) return
         event.preventDefault()
@@ -284,7 +328,17 @@ export function App() {
     }
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
-  }, [mode, position, navigate, openSearch, closeSearch, toggleFullscreen, runtime.resetProfile, setupOpen])
+  }, [
+    mode,
+    position,
+    navigate,
+    openSearch,
+    closeSearch,
+    toggleFullscreen,
+    runtime.resetProfile,
+    setupOpen,
+    startup.visible,
+  ])
   useEffect(() => {
     if (mode !== 'fullscreen') return
     const back = (event: PointerEvent) => {
@@ -341,7 +395,7 @@ export function App() {
   useController({
     enabled: mode === 'fullscreen',
     menu: () => {
-      if (setupOpen || keyboardInput || quickMenu) return
+      if (setupOpen || startup.visible || keyboardInput || quickMenu) return
       if (mode !== 'fullscreen') {
         toggleFullscreen()
         return
@@ -352,17 +406,18 @@ export function App() {
       setQuickMenu(true)
     },
     search: () => {
-      if (setupOpen) return
+      if (setupOpen || startup.visible) return
       openSearch()
     },
     switchPage: (delta) => {
-      if (setupOpen) return
+      if (setupOpen || startup.visible) return
       const pages: ThemePage[] = ['discover', 'library', 'journal', 'settings']
       const index = pages.indexOf(position.page)
       if (index >= 0) navigate(pages[(index + delta + pages.length) % pages.length])
     },
     keyboard: setKeyboardInput,
     play: () => {
+      if (startup.visible) return
       if (controllerScope() !== document) return
       const workId = Number(
         document.activeElement?.closest('[data-work-id]')?.getAttribute('data-work-id') ?? position.workId,
@@ -452,6 +507,7 @@ export function App() {
     const activation = activations[0]
     if (
       !activation ||
+      (startup.visible && activation.kind !== 'fullscreen') ||
       setupProgress.isPending ||
       setupProgress.isError ||
       (activation.kind !== 'plugin' &&
@@ -486,6 +542,7 @@ export function App() {
     }
   }, [
     activations,
+    startup.visible,
     setupProgress.isPending,
     setupProgress.isError,
     setupProgress.data?.step,
@@ -523,80 +580,86 @@ export function App() {
         options={normalizeArtworkEffects(runtime.profile.appearance.artwork)}
         reducedMotion={reducedMotion}
       >
-        <a className="skip-link" href="#main-content">
-          Skip to content
-        </a>
-        <div className="host-status">
-          {setupSuspended && typeof setupProgress.data?.step === 'number' && (
-            <div className="status-banner">
-              Setup is paused. Your place is saved.
-              <button
-                onClick={() => {
-                  setInstallationPage(false)
-                  setFollowInstallation(false)
-                  setInstalledPluginPage(null)
-                  setSetupSuspended(false)
-                }}
-              >
-                Resume setup
-              </button>
-            </div>
-          )}
-          {!connection.connected && (
-            <div className="connection-banner" role="status">
-              <WifiOff size={16} />
-              <span>{connection.message}</span>
-              <button onClick={() => void client.invalidateQueries()}>Retry</button>
-            </div>
-          )}
-          {library.isError && (
-            <div className="error-banner" role="alert">
-              <AlertCircle size={16} />
-              {library.error.message}
-              <button onClick={() => void library.refetch()}>Try again</button>
-            </div>
-          )}
-          {feed.isError && position.page === 'discover' && (
-            <div className="error-banner" role="alert">
-              <AlertCircle size={16} />
-              Recommendations could not be loaded. {feed.error.message}
-              <button onClick={() => void feed.refetch()}>Retry recommendations</button>
-            </div>
-          )}
-          {(notice || runtime.notice) && (
-            <div className="status-banner" role="status">
-              {notice || runtime.notice}
-            </div>
-          )}
-        </div>
-        <div className="theme-viewport">
-          <ThemeBoundary
-            resetKey={runtime.theme.id}
-            onError={runtime.recoverTheme}
-            fallback={
-              <div className="theme-recovery">
-                <h1>Let’s get you back.</h1>
-                <p>The selected theme could not display this screen.</p>
+        <div
+          className="prepared-surfaces"
+          inert={startup.visible || undefined}
+          aria-hidden={startup.visible || undefined}
+        >
+          <a className="skip-link" href="#main-content">
+            Skip to content
+          </a>
+          <div className="host-status">
+            {setupSuspended && typeof setupProgress.data?.step === 'number' && (
+              <div className="status-banner">
+                Setup is paused. Your place is saved.
                 <button
-                  className="primary"
                   onClick={() => {
-                    runtime.resetProfile()
-                    setNotice('')
-                    navigate('discover')
+                    setInstallationPage(false)
+                    setFollowInstallation(false)
+                    setInstalledPluginPage(null)
+                    setSetupSuspended(false)
                   }}
                 >
-                  <RotateCcw size={18} />
-                  Restore Avalon
+                  Resume setup
                 </button>
               </div>
-            }
-          >
-            <Shell {...context}>{content}</Shell>
-          </ThemeBoundary>
+            )}
+            {!connection.connected && (
+              <div className="connection-banner" role="status">
+                <WifiOff size={16} />
+                <span>{connection.message}</span>
+                <button onClick={() => void client.invalidateQueries()}>Retry</button>
+              </div>
+            )}
+            {library.isError && (
+              <div className="error-banner" role="alert">
+                <AlertCircle size={16} />
+                {library.error.message}
+                <button onClick={() => void library.refetch()}>Try again</button>
+              </div>
+            )}
+            {feed.isError && position.page === 'discover' && (
+              <div className="error-banner" role="alert">
+                <AlertCircle size={16} />
+                Recommendations could not be loaded. {feed.error.message}
+                <button onClick={() => void feed.refetch()}>Retry recommendations</button>
+              </div>
+            )}
+            {(notice || runtime.notice) && (
+              <div className="status-banner" role="status">
+                {notice || runtime.notice}
+              </div>
+            )}
+          </div>
+          <div className="theme-viewport">
+            <ThemeBoundary
+              resetKey={runtime.theme.id}
+              onError={runtime.recoverTheme}
+              fallback={
+                <div className="theme-recovery">
+                  <h1>Let’s get you back.</h1>
+                  <p>The selected theme could not display this screen.</p>
+                  <button
+                    className="primary"
+                    onClick={() => {
+                      runtime.resetProfile()
+                      setNotice('')
+                      navigate('discover')
+                    }}
+                  >
+                    <RotateCcw size={18} />
+                    Restore Avalon
+                  </button>
+                </div>
+              }
+            >
+              {readsStarted && <Shell {...context}>{content}</Shell>}
+            </ThemeBoundary>
+          </div>
         </div>
         <Setup
           mode={mode}
-          suspended={setupSuspended}
+          suspended={setupSuspended || startup.visible}
           onOpenChange={setSetupOpen}
           appearance={
             <label className="field">
@@ -615,7 +678,7 @@ export function App() {
             </label>
           }
         />
-        <SessionNotifications mode={mode} suspended={setupOpen} />
+        {readsStarted && <SessionNotifications mode={mode} suspended={setupOpen || startup.visible} />}
         {!setupOpen && runtime.profile.themeId !== 'avalon' && <UpdateStatus />}
         <LinkNotifications />
         {quickMenu && (
@@ -629,6 +692,7 @@ export function App() {
         {keyboardInput && <OnScreenKeyboard input={keyboardInput} close={() => setKeyboardInput(null)} />}
         <button
           className="recovery-shortcut"
+          disabled={startup.visible}
           title="Restore default theme (Ctrl+Shift+T)"
           aria-label="Restore default theme"
           onClick={() => {
@@ -638,6 +702,7 @@ export function App() {
         >
           <RotateCcw size={14} />
         </button>
+        {startup.visible && <StartupPresentation mode={mode} preparation={startup} exit={toggleFullscreen} />}
       </ArtworkEffectsProvider>
     </MotionConfig>
   )

@@ -93,20 +93,22 @@ export function useApiQuery<T>(route: string, params?: Record<string, string | n
     staleTime: 30_000,
   })
 }
-export function useLibrary() {
+export function useLibrary(enabled = true) {
   return useQuery({
     queryKey: ['api', 'library.get'],
     queryFn: async ({ signal }) =>
       librarySchema.parse(await request('library.get', undefined, undefined, signal)) as LibraryResponse,
+    enabled,
     retry: false,
     staleTime: 30_000,
   })
 }
-export function useFeed() {
+export function useFeed(enabled = true) {
   const primary = useQuery({
     queryKey: ['api', 'feed.get'],
     queryFn: async ({ signal }) =>
       feedSchema.parse(await request('feed.get', undefined, undefined, signal)) as FeedSnapshot,
+    enabled,
     retry: false,
     staleTime: 60_000,
   })
@@ -141,9 +143,10 @@ export function useFeed() {
     data: primary.isFetching && settled.current ? settled.current : combined,
   }
 }
-export function useWorkspace() {
+export function useWorkspace(enabled = true) {
   return useQuery({
     queryKey: ['api', 'library.workspace', undefined],
+    enabled,
     queryFn: async ({ signal }) =>
       workspaceSchema.parse(
         await request('library.workspace', undefined, undefined, signal),

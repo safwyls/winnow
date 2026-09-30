@@ -212,6 +212,14 @@ and a recommendation filmstrip. Gamepad API navigation supports directional move
 page and tab switching, actions, a quick menu and an on-screen keyboard. Physical-controller
 and TV-distance validation remain outstanding.
 
+Startup, fullscreen entry and return to desktop keep the library covered while the library,
+primary recommendations and layout settle. The dragon traces its contours for a complete
+1.8-second circuit before a 180ms reveal; an OffscreenCanvas worker keeps it moving during
+UI-thread work. Desktop respects system reduced motion and fullscreen uses its saved motion
+preference. Reduced motion and hidden preparation skip the animation delay, while retaining
+data readiness. A failed preparation offers Try again; fullscreen also keeps Back to desktop
+available. Reentry shares an unfinished read and refreshes completed reads without losing the page.
+
 Complete Avalonia parity has not yet been established. The [migration inventory](../../docs/spikes/2026-09-28-electron-parity/test-inventory.json)
 tracks original presentation contracts individually; unported and partially verified tests
 remain visible and fail the completion gate. Provider connections and game actions depend on backend

@@ -778,8 +778,9 @@ fullscreen setting in fullscreen), a separate soft `Volt` glow trail traces ever
 contour of the dragon, including detached pieces and inner details. Each trail completes
 the full circumference on a repeating 1.8-second circuit and wraps continuously across
 its starting point. The existing vector remains legible beneath
-it; the glow indicates activity, not percentage progress. It runs on the compositor so
-UI-thread layout work cannot pause it. Data readiness does not restart or stop the trace:
+it; the glow indicates activity, not percentage progress. Drawing runs off the UI thread
+(Avalonia's compositor or Electron's canvas worker), so layout work cannot pause the trace.
+Data readiness does not restart or stop the trace:
 keep it moving through the fade, then stop when the presentation closes. Reduced motion
 keeps the mark still and skips the circuit wait and fade, while retaining data and layout
 readiness checks. Hidden desktop preparation does not wait for an invisible animation.
