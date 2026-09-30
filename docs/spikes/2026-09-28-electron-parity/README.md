@@ -45,6 +45,12 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [complete native and backend audit checkpoint](checkpoint-forty-two.md) records all
+295 native cases passing on frozen source at `147997eb`. Another 65 source methods retain
+their unchanged production backend tests; all 101 corresponding Release cases passed.
+The inventory now has 538 pending and 101 partial methods. This is still an incomplete
+migration despite the green covered suites.
+
 The [unread accessibility checkpoint](checkpoint-forty-one.md) records all 3,168
 component/live API cases and 33 native cases passing. Cover/list names retain exact patch
 counts, collection names explain their count, and feed reason/status checks cover both

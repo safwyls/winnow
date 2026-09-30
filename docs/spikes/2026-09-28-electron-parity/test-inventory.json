@@ -1,10 +1,10 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 603,
+    "pending": 538,
     "partial": 101,
     "ported": 1154,
-    "retained-backend": 560,
+    "retained-backend": 625,
     "framework-specific": 17
   },
   "tests": [
@@ -1224,27 +1224,62 @@
     {
       "id": "ArtworkBrowserServiceTests.Saving_retains_original_bytes_and_provenance_until_explicit_reset",
       "source": "tests/Winnow.Tests/ArtworkBrowserServiceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "This method exercises the unchanged Application-owned ArtworkBrowserService and its real bounded image pipeline, local retained bytes, provenance and SQLite choices. ArtworkApplication exposes the same service to Electron and BackendServiceRegistration registers its source pipeline. The separate method using Avalonia DisplayedArtworkBrowserService is excluded. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/ArtworkBrowserService.cs",
+        "src/Winnow.Application/Services/ArtworkSelectionService.cs",
+        "src/Winnow.Application/Services/ArtworkApplication.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "ArtworkBrowserServiceTests.Imports_validate_decode_and_preserve_saved_choice_when_input_is_invalid",
       "source": "tests/Winnow.Tests/ArtworkBrowserServiceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "This method exercises the unchanged Application-owned ArtworkBrowserService and its real bounded image pipeline, local retained bytes, provenance and SQLite choices. ArtworkApplication exposes the same service to Electron and BackendServiceRegistration registers its source pipeline. The separate method using Avalonia DisplayedArtworkBrowserService is excluded. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/ArtworkBrowserService.cs",
+        "src/Winnow.Application/Services/ArtworkSelectionService.cs",
+        "src/Winnow.Application/Services/ArtworkApplication.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "ArtworkBrowserServiceTests.Igdb_offers_cover_and_paged_landscapes_but_never_invents_icons",
       "source": "tests/Winnow.Tests/ArtworkBrowserServiceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "This method exercises the unchanged Application-owned ArtworkBrowserService and its real bounded image pipeline, local retained bytes, provenance and SQLite choices. ArtworkApplication exposes the same service to Electron and BackendServiceRegistration registers its source pipeline. The separate method using Avalonia DisplayedArtworkBrowserService is excluded. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/ArtworkBrowserService.cs",
+        "src/Winnow.Application/Services/ArtworkSelectionService.cs",
+        "src/Winnow.Application/Services/ArtworkApplication.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "ArtworkBrowserServiceTests.Igdb_game_cache_cannot_reintroduce_unsuitable_hero_images_filtered_from_observations",
       "source": "tests/Winnow.Tests/ArtworkBrowserServiceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "This method exercises the unchanged Application-owned ArtworkBrowserService and its real bounded image pipeline, local retained bytes, provenance and SQLite choices. ArtworkApplication exposes the same service to Electron and BackendServiceRegistration registers its source pipeline. The separate method using Avalonia DisplayedArtworkBrowserService is excluded. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/ArtworkBrowserService.cs",
+        "src/Winnow.Application/Services/ArtworkSelectionService.cs",
+        "src/Winnow.Application/Services/ArtworkApplication.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "ArtworkBrowserServiceTests.Steam_candidates_use_source_isolated_keys_and_browsing_never_changes_identity",
       "source": "tests/Winnow.Tests/ArtworkBrowserServiceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "This method exercises the unchanged Application-owned ArtworkBrowserService and its real bounded image pipeline, local retained bytes, provenance and SQLite choices. ArtworkApplication exposes the same service to Electron and BackendServiceRegistration registers its source pipeline. The separate method using Avalonia DisplayedArtworkBrowserService is excluded. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/ArtworkBrowserService.cs",
+        "src/Winnow.Application/Services/ArtworkSelectionService.cs",
+        "src/Winnow.Application/Services/ArtworkApplication.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "ArtworkOrderViewModelTests.Move_commands_persist_and_reload_order_and_refuse_endpoints",
@@ -2205,42 +2240,106 @@
     {
       "id": "EditionEvidenceTests.Coverage_report_distinguishes_eligible_unresolved_and_conflicting_native_pairs",
       "source": "tests/Winnow.Tests/EditionEvidenceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "All assertions exercise native store edition evidence, corroboration, freshness, conflict/refusal and transaction revalidation through unchanged Application services and SQLite repositories. BackendServiceRegistration composes the same acquirer and GamesDbIdentitySyncService for the production sync pipeline; no frontend or Avalonia object participates. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/ReleaseEditionEvidenceAcquirer.cs",
+        "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs",
+        "src/Winnow.Data/Repositories/ReleaseEditionEvidenceRepository.cs",
+        "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "EditionEvidenceTests.Exact_native_ids_supply_independent_idempotent_evidence_without_overwriting_legacy_release_fields",
       "source": "tests/Winnow.Tests/EditionEvidenceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "All assertions exercise native store edition evidence, corroboration, freshness, conflict/refusal and transaction revalidation through unchanged Application services and SQLite repositories. BackendServiceRegistration composes the same acquirer and GamesDbIdentitySyncService for the production sync pipeline; no frontend or Avalonia object participates. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/ReleaseEditionEvidenceAcquirer.cs",
+        "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs",
+        "src/Winnow.Data/Repositories/ReleaseEditionEvidenceRepository.cs",
+        "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "EditionEvidenceTests.Cms_requires_the_exact_native_triple",
       "source": "tests/Winnow.Tests/EditionEvidenceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "All assertions exercise native store edition evidence, corroboration, freshness, conflict/refusal and transaction revalidation through unchanged Application services and SQLite repositories. BackendServiceRegistration composes the same acquirer and GamesDbIdentitySyncService for the production sync pipeline; no frontend or Avalonia object participates. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/ReleaseEditionEvidenceAcquirer.cs",
+        "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs",
+        "src/Winnow.Data/Repositories/ReleaseEditionEvidenceRepository.cs",
+        "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "EditionEvidenceTests.Steam_metadata_route_cannot_fill_absent_or_ambiguous_epic_edition_evidence",
       "source": "tests/Winnow.Tests/EditionEvidenceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "All assertions exercise native store edition evidence, corroboration, freshness, conflict/refusal and transaction revalidation through unchanged Application services and SQLite repositories. BackendServiceRegistration composes the same acquirer and GamesDbIdentitySyncService for the production sync pipeline; no frontend or Avalonia object participates. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/ReleaseEditionEvidenceAcquirer.cs",
+        "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs",
+        "src/Winnow.Data/Repositories/ReleaseEditionEvidenceRepository.cs",
+        "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "EditionEvidenceTests.Conflicting_native_offer_and_page_cannot_qualify_and_an_unanswered_alias_is_not_a_negative",
       "source": "tests/Winnow.Tests/EditionEvidenceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "All assertions exercise native store edition evidence, corroboration, freshness, conflict/refusal and transaction revalidation through unchanged Application services and SQLite repositories. BackendServiceRegistration composes the same acquirer and GamesDbIdentitySyncService for the production sync pipeline; no frontend or Avalonia object participates. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/ReleaseEditionEvidenceAcquirer.cs",
+        "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs",
+        "src/Winnow.Data/Repositories/ReleaseEditionEvidenceRepository.cs",
+        "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "EditionEvidenceTests.Every_native_identifier_on_one_release_must_resolve_without_conflict",
       "source": "tests/Winnow.Tests/EditionEvidenceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "All assertions exercise native store edition evidence, corroboration, freshness, conflict/refusal and transaction revalidation through unchanged Application services and SQLite repositories. BackendServiceRegistration composes the same acquirer and GamesDbIdentitySyncService for the production sync pipeline; no frontend or Avalonia object participates. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/ReleaseEditionEvidenceAcquirer.cs",
+        "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs",
+        "src/Winnow.Data/Repositories/ReleaseEditionEvidenceRepository.cs",
+        "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "EditionEvidenceTests.Link_transaction_refuses_changed_sources_or_release_identity",
       "source": "tests/Winnow.Tests/EditionEvidenceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "All assertions exercise native store edition evidence, corroboration, freshness, conflict/refusal and transaction revalidation through unchanged Application services and SQLite repositories. BackendServiceRegistration composes the same acquirer and GamesDbIdentitySyncService for the production sync pipeline; no frontend or Avalonia object participates. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/ReleaseEditionEvidenceAcquirer.cs",
+        "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs",
+        "src/Winnow.Data/Repositories/ReleaseEditionEvidenceRepository.cs",
+        "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "EditionEvidenceTests.Expired_evidence_and_failed_current_release_validation_do_not_record_or_link",
       "source": "tests/Winnow.Tests/EditionEvidenceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "All assertions exercise native store edition evidence, corroboration, freshness, conflict/refusal and transaction revalidation through unchanged Application services and SQLite repositories. BackendServiceRegistration composes the same acquirer and GamesDbIdentitySyncService for the production sync pipeline; no frontend or Avalonia object participates. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/ReleaseEditionEvidenceAcquirer.cs",
+        "src/Winnow.Application/Services/GamesDbIdentitySyncService.cs",
+        "src/Winnow.Data/Repositories/ReleaseEditionEvidenceRepository.cs",
+        "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "ArchitectureBoundaryTests.Winnow_Core_references_nothing_but_the_framework",
@@ -4673,27 +4772,67 @@
     {
       "id": "ExpansionLinkTests.The_scan_proposes_the_base_and_its_packs_and_nothing_else",
       "source": "tests/Winnow.Tests/ExpansionLinkTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "This method exercises expansion scanning, persistent refusal or identity link transactions directly. LibraryExpansionScan is registered by the production soft-match extension and used by IdentityReviewApplication; identity and refusal repositories retain the same SQLite implementation. Methods in this source class that assert Library or Details view models remain unclassified by this audit. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Resolve/LibraryExpansionScan.cs",
+        "src/Winnow.Resolve/SoftMatchServiceCollectionExtensions.cs",
+        "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+        "src/Winnow.Data/Repositories/ExpansionRefusalRepository.cs",
+        "src/Winnow.Application/Identity/IdentityReviewApplication.cs"
+      ]
     },
     {
       "id": "ExpansionLinkTests.A_refused_pair_never_comes_back",
       "source": "tests/Winnow.Tests/ExpansionLinkTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "This method exercises expansion scanning, persistent refusal or identity link transactions directly. LibraryExpansionScan is registered by the production soft-match extension and used by IdentityReviewApplication; identity and refusal repositories retain the same SQLite implementation. Methods in this source class that assert Library or Details view models remain unclassified by this audit. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Resolve/LibraryExpansionScan.cs",
+        "src/Winnow.Resolve/SoftMatchServiceCollectionExtensions.cs",
+        "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+        "src/Winnow.Data/Repositories/ExpansionRefusalRepository.cs",
+        "src/Winnow.Application/Identity/IdentityReviewApplication.cs"
+      ]
     },
     {
       "id": "ExpansionLinkTests.A_grouped_pair_is_not_proposed_again",
       "source": "tests/Winnow.Tests/ExpansionLinkTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "This method exercises expansion scanning, persistent refusal or identity link transactions directly. LibraryExpansionScan is registered by the production soft-match extension and used by IdentityReviewApplication; identity and refusal repositories retain the same SQLite implementation. Methods in this source class that assert Library or Details view models remain unclassified by this audit. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Resolve/LibraryExpansionScan.cs",
+        "src/Winnow.Resolve/SoftMatchServiceCollectionExtensions.cs",
+        "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+        "src/Winnow.Data/Repositories/ExpansionRefusalRepository.cs",
+        "src/Winnow.Application/Identity/IdentityReviewApplication.cs"
+      ]
     },
     {
       "id": "ExpansionLinkTests.Group_ungroup_and_group_again_ends_where_grouping_once_ends",
       "source": "tests/Winnow.Tests/ExpansionLinkTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "This method exercises expansion scanning, persistent refusal or identity link transactions directly. LibraryExpansionScan is registered by the production soft-match extension and used by IdentityReviewApplication; identity and refusal repositories retain the same SQLite implementation. Methods in this source class that assert Library or Details view models remain unclassified by this audit. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Resolve/LibraryExpansionScan.cs",
+        "src/Winnow.Resolve/SoftMatchServiceCollectionExtensions.cs",
+        "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+        "src/Winnow.Data/Repositories/ExpansionRefusalRepository.cs",
+        "src/Winnow.Application/Identity/IdentityReviewApplication.cs"
+      ]
     },
     {
       "id": "ExpansionLinkTests.Ungrouping_one_pack_leaves_its_siblings_grouped",
       "source": "tests/Winnow.Tests/ExpansionLinkTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "This method exercises expansion scanning, persistent refusal or identity link transactions directly. LibraryExpansionScan is registered by the production soft-match extension and used by IdentityReviewApplication; identity and refusal repositories retain the same SQLite implementation. Methods in this source class that assert Library or Details view models remain unclassified by this audit. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Resolve/LibraryExpansionScan.cs",
+        "src/Winnow.Resolve/SoftMatchServiceCollectionExtensions.cs",
+        "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+        "src/Winnow.Data/Repositories/ExpansionRefusalRepository.cs",
+        "src/Winnow.Application/Identity/IdentityReviewApplication.cs"
+      ]
     },
     {
       "id": "ExpansionLinkTests.Re_parenting_a_base_game_keeps_its_expansions_expansions",
@@ -4703,7 +4842,15 @@
     {
       "id": "ExpansionLinkTests.A_pack_that_is_already_a_parent_is_refused",
       "source": "tests/Winnow.Tests/ExpansionLinkTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "This method exercises expansion scanning, persistent refusal or identity link transactions directly. LibraryExpansionScan is registered by the production soft-match extension and used by IdentityReviewApplication; identity and refusal repositories retain the same SQLite implementation. Methods in this source class that assert Library or Details view models remain unclassified by this audit. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Resolve/LibraryExpansionScan.cs",
+        "src/Winnow.Resolve/SoftMatchServiceCollectionExtensions.cs",
+        "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+        "src/Winnow.Data/Repositories/ExpansionRefusalRepository.cs",
+        "src/Winnow.Application/Identity/IdentityReviewApplication.cs"
+      ]
     },
     {
       "id": "FacetSyncServiceTests.Reads_genres_and_themes_out_of_the_cache_with_no_network",
@@ -7633,47 +7780,110 @@
     {
       "id": "IgdbIdLookupTests.An_id_IGDB_knows_comes_back_as_that_one_game",
       "source": "tests/Winnow.Tests/Igdb/IgdbIdLookupTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The test calls IgdbManualAssignment or the Application-owned IgdbAssignmentService directly, covering exact-ID results, invalid input, failure/cancellation and candidate shaping. BackendServiceRegistration registers these services for DetailsApplication; the legacy Winnow.App namespace does not imply an Avalonia dependency. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Enrich.Igdb/IgdbManualAssignment.cs",
+        "src/Winnow.Application/Services/IgdbAssignmentService.cs",
+        "src/Winnow.Application/Details/DetailsApplication.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "IgdbIdLookupTests.An_id_IGDB_has_no_record_for_is_null",
       "source": "tests/Winnow.Tests/Igdb/IgdbIdLookupTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The test calls IgdbManualAssignment or the Application-owned IgdbAssignmentService directly, covering exact-ID results, invalid input, failure/cancellation and candidate shaping. BackendServiceRegistration registers these services for DetailsApplication; the legacy Winnow.App namespace does not imply an Avalonia dependency. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Enrich.Igdb/IgdbManualAssignment.cs",
+        "src/Winnow.Application/Services/IgdbAssignmentService.cs",
+        "src/Winnow.Application/Details/DetailsApplication.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "IgdbIdLookupTests.An_id_the_client_answers_with_a_different_game_is_null",
       "source": "tests/Winnow.Tests/Igdb/IgdbIdLookupTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The test calls IgdbManualAssignment or the Application-owned IgdbAssignmentService directly, covering exact-ID results, invalid input, failure/cancellation and candidate shaping. BackendServiceRegistration registers these services for DetailsApplication; the legacy Winnow.App namespace does not imply an Avalonia dependency. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Enrich.Igdb/IgdbManualAssignment.cs",
+        "src/Winnow.Application/Services/IgdbAssignmentService.cs",
+        "src/Winnow.Application/Details/DetailsApplication.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "IgdbIdLookupTests.A_failed_lookup_is_null_rather_than_an_exception",
       "source": "tests/Winnow.Tests/Igdb/IgdbIdLookupTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The test calls IgdbManualAssignment or the Application-owned IgdbAssignmentService directly, covering exact-ID results, invalid input, failure/cancellation and candidate shaping. BackendServiceRegistration registers these services for DetailsApplication; the legacy Winnow.App namespace does not imply an Avalonia dependency. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Enrich.Igdb/IgdbManualAssignment.cs",
+        "src/Winnow.Application/Services/IgdbAssignmentService.cs",
+        "src/Winnow.Application/Details/DetailsApplication.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "IgdbIdLookupTests.Cancellation_on_the_callers_own_token_still_propagates",
       "source": "tests/Winnow.Tests/Igdb/IgdbIdLookupTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The test calls IgdbManualAssignment or the Application-owned IgdbAssignmentService directly, covering exact-ID results, invalid input, failure/cancellation and candidate shaping. BackendServiceRegistration registers these services for DetailsApplication; the legacy Winnow.App namespace does not imply an Avalonia dependency. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Enrich.Igdb/IgdbManualAssignment.cs",
+        "src/Winnow.Application/Services/IgdbAssignmentService.cs",
+        "src/Winnow.Application/Details/DetailsApplication.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "IgdbIdLookupTests.A_non_positive_id_never_reaches_the_client",
       "source": "tests/Winnow.Tests/Igdb/IgdbIdLookupTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The test calls IgdbManualAssignment or the Application-owned IgdbAssignmentService directly, covering exact-ID results, invalid input, failure/cancellation and candidate shaping. BackendServiceRegistration registers these services for DetailsApplication; the legacy Winnow.App namespace does not imply an Avalonia dependency. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Enrich.Igdb/IgdbManualAssignment.cs",
+        "src/Winnow.Application/Services/IgdbAssignmentService.cs",
+        "src/Winnow.Application/Details/DetailsApplication.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "IgdbIdLookupTests.The_id_lookup_rides_the_shared_game_query_not_the_title_search",
       "source": "tests/Winnow.Tests/Igdb/IgdbIdLookupTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The test calls IgdbManualAssignment or the Application-owned IgdbAssignmentService directly, covering exact-ID results, invalid input, failure/cancellation and candidate shaping. BackendServiceRegistration registers these services for DetailsApplication; the legacy Winnow.App namespace does not imply an Avalonia dependency. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Enrich.Igdb/IgdbManualAssignment.cs",
+        "src/Winnow.Application/Services/IgdbAssignmentService.cs",
+        "src/Winnow.Application/Details/DetailsApplication.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "IgdbIdLookupTests.The_App_seam_maps_a_hit_onto_a_candidate",
       "source": "tests/Winnow.Tests/Igdb/IgdbIdLookupTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The test calls IgdbManualAssignment or the Application-owned IgdbAssignmentService directly, covering exact-ID results, invalid input, failure/cancellation and candidate shaping. BackendServiceRegistration registers these services for DetailsApplication; the legacy Winnow.App namespace does not imply an Avalonia dependency. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Enrich.Igdb/IgdbManualAssignment.cs",
+        "src/Winnow.Application/Services/IgdbAssignmentService.cs",
+        "src/Winnow.Application/Details/DetailsApplication.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "IgdbIdLookupTests.The_App_seam_answers_null_for_a_miss_and_for_a_failure",
       "source": "tests/Winnow.Tests/Igdb/IgdbIdLookupTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The test calls IgdbManualAssignment or the Application-owned IgdbAssignmentService directly, covering exact-ID results, invalid input, failure/cancellation and candidate shaping. BackendServiceRegistration registers these services for DetailsApplication; the legacy Winnow.App namespace does not imply an Avalonia dependency. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Enrich.Igdb/IgdbManualAssignment.cs",
+        "src/Winnow.Application/Services/IgdbAssignmentService.cs",
+        "src/Winnow.Application/Details/DetailsApplication.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "IgdbRuntimeSettingsTests.Saving_activates_cached_absence_and_rotating_same_client_replaces_token",
@@ -10410,22 +10620,46 @@
     {
       "id": "LocalLibrarySyncContractTests.The_local_job_resolves_from_a_container_with_no_http_registrations",
       "source": "tests/Winnow.Tests/LocalLibrarySyncContractTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The tests inspect or resolve the unchanged local-only sync dependency closure and use the remote job as a positive control. SnapshotSchedulerService still accepts only ILocalLibrarySync, and production BackendServiceRegistration composes that exact service, scheduler and remote coordinator. The legacy App namespace belongs to Application-owned backend code. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/LibrarySyncService.cs",
+        "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "LocalLibrarySyncContractTests.No_type_in_the_local_jobs_constructor_closure_can_reach_the_network",
       "source": "tests/Winnow.Tests/LocalLibrarySyncContractTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The tests inspect or resolve the unchanged local-only sync dependency closure and use the remote job as a positive control. SnapshotSchedulerService still accepts only ILocalLibrarySync, and production BackendServiceRegistration composes that exact service, scheduler and remote coordinator. The legacy App namespace belongs to Application-owned backend code. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/LibrarySyncService.cs",
+        "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "LocalLibrarySyncContractTests.The_same_walk_does_find_the_network_in_the_remote_job",
       "source": "tests/Winnow.Tests/LocalLibrarySyncContractTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The tests inspect or resolve the unchanged local-only sync dependency closure and use the remote job as a positive control. SnapshotSchedulerService still accepts only ILocalLibrarySync, and production BackendServiceRegistration composes that exact service, scheduler and remote coordinator. The legacy App namespace belongs to Application-owned backend code. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/LibrarySyncService.cs",
+        "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "LocalLibrarySyncContractTests.The_snapshot_scheduler_takes_the_local_job_and_only_the_local_job",
       "source": "tests/Winnow.Tests/LocalLibrarySyncContractTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The tests inspect or resolve the unchanged local-only sync dependency closure and use the remote job as a positive control. SnapshotSchedulerService still accepts only ILocalLibrarySync, and production BackendServiceRegistration composes that exact service, scheduler and remote coordinator. The legacy App namespace belongs to Application-owned backend code. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/LibrarySyncService.cs",
+        "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "ManualGameFromExecutableTests.The_file_description_names_the_game",
@@ -13326,32 +13560,92 @@
     {
       "id": "ReleaseYearEvidenceTests.Existing_work_year_is_a_fallback_never_backfilled_as_edition_evidence",
       "source": "tests/Winnow.Tests/ReleaseYearEvidenceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The assertions exercise unchanged SQLite release-year evidence and identity projection, user-owned field precedence, soft-match provenance, the Steam JSON parser and ReceptionSyncService. The production backend registers the same evidence repository and reception worker. These tests contain no frontend view or view-model assertions. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Data/Repositories/ReleaseYearEvidenceRepository.cs",
+        "src/Winnow.Data/Repositories/ReleaseRepository.cs",
+        "src/Winnow.Application/Services/ReceptionSyncService.cs",
+        "src/Winnow.Enrich.Steam/SteamStoreClient.cs",
+        "src/Winnow.Enrich.Steam/Model/SteamStoreJson.cs",
+        "src/Winnow.Resolve/LibrarySoftMatchSweep.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "ReleaseYearEvidenceTests.Evidence_requires_current_exact_id_and_conflicting_listing_dates_do_not_pick_a_winner",
       "source": "tests/Winnow.Tests/ReleaseYearEvidenceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The assertions exercise unchanged SQLite release-year evidence and identity projection, user-owned field precedence, soft-match provenance, the Steam JSON parser and ReceptionSyncService. The production backend registers the same evidence repository and reception worker. These tests contain no frontend view or view-model assertions. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Data/Repositories/ReleaseYearEvidenceRepository.cs",
+        "src/Winnow.Data/Repositories/ReleaseRepository.cs",
+        "src/Winnow.Application/Services/ReceptionSyncService.cs",
+        "src/Winnow.Enrich.Steam/SteamStoreClient.cs",
+        "src/Winnow.Enrich.Steam/Model/SteamStoreJson.cs",
+        "src/Winnow.Resolve/LibrarySoftMatchSweep.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "ReleaseYearEvidenceTests.User_correction_and_cleared_year_win_without_changing_the_igdb_pin",
       "source": "tests/Winnow.Tests/ReleaseYearEvidenceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The assertions exercise unchanged SQLite release-year evidence and identity projection, user-owned field precedence, soft-match provenance, the Steam JSON parser and ReceptionSyncService. The production backend registers the same evidence repository and reception worker. These tests contain no frontend view or view-model assertions. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Data/Repositories/ReleaseYearEvidenceRepository.cs",
+        "src/Winnow.Data/Repositories/ReleaseRepository.cs",
+        "src/Winnow.Application/Services/ReceptionSyncService.cs",
+        "src/Winnow.Enrich.Steam/SteamStoreClient.cs",
+        "src/Winnow.Enrich.Steam/Model/SteamStoreJson.cs",
+        "src/Winnow.Resolve/LibrarySoftMatchSweep.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "ReleaseYearEvidenceTests.Sweep_compares_edition_dates_and_records_provenance_for_the_shared_review_queue",
       "source": "tests/Winnow.Tests/ReleaseYearEvidenceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The assertions exercise unchanged SQLite release-year evidence and identity projection, user-owned field precedence, soft-match provenance, the Steam JSON parser and ReceptionSyncService. The production backend registers the same evidence repository and reception worker. These tests contain no frontend view or view-model assertions. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Data/Repositories/ReleaseYearEvidenceRepository.cs",
+        "src/Winnow.Data/Repositories/ReleaseRepository.cs",
+        "src/Winnow.Application/Services/ReceptionSyncService.cs",
+        "src/Winnow.Enrich.Steam/SteamStoreClient.cs",
+        "src/Winnow.Enrich.Steam/Model/SteamStoreJson.cs",
+        "src/Winnow.Resolve/LibrarySoftMatchSweep.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "ReleaseYearEvidenceTests.Cached_exact_listing_projects_only_explicit_original_date_and_refresh_persists_it",
       "source": "tests/Winnow.Tests/ReleaseYearEvidenceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The assertions exercise unchanged SQLite release-year evidence and identity projection, user-owned field precedence, soft-match provenance, the Steam JSON parser and ReceptionSyncService. The production backend registers the same evidence repository and reception worker. These tests contain no frontend view or view-model assertions. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Data/Repositories/ReleaseYearEvidenceRepository.cs",
+        "src/Winnow.Data/Repositories/ReleaseRepository.cs",
+        "src/Winnow.Application/Services/ReceptionSyncService.cs",
+        "src/Winnow.Enrich.Steam/SteamStoreClient.cs",
+        "src/Winnow.Enrich.Steam/Model/SteamStoreJson.cs",
+        "src/Winnow.Resolve/LibrarySoftMatchSweep.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "ReleaseYearEvidenceTests.Missing_and_malformed_original_dates_do_not_become_edition_years",
       "source": "tests/Winnow.Tests/ReleaseYearEvidenceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The assertions exercise unchanged SQLite release-year evidence and identity projection, user-owned field precedence, soft-match provenance, the Steam JSON parser and ReceptionSyncService. The production backend registers the same evidence repository and reception worker. These tests contain no frontend view or view-model assertions. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Data/Repositories/ReleaseYearEvidenceRepository.cs",
+        "src/Winnow.Data/Repositories/ReleaseRepository.cs",
+        "src/Winnow.Application/Services/ReceptionSyncService.cs",
+        "src/Winnow.Enrich.Steam/SteamStoreClient.cs",
+        "src/Winnow.Enrich.Steam/Model/SteamStoreJson.cs",
+        "src/Winnow.Resolve/LibrarySoftMatchSweep.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "RemoteOwnershipInventoryTests.Only_complete_resolved_inventories_enable_filtering_including_the_empty_library",
@@ -14385,37 +14679,93 @@
     {
       "id": "SteamAccountPageTruncationTests.The_last_licences_page_is_complete_even_though_the_advertised_total_is_higher",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPageTruncationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "This method asserts the unchanged local HTML account-page parser. SteamAccountPageImportService calls SteamAccountPageReader in the production backend. Browser capture-session completeness methods in the same class are excluded because their old Core result policy is not the Electron capture implementation. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Ingest.Steam/AccountPages/SteamLicensesPageParser.cs",
+        "src/Winnow.Ingest.Steam/AccountPages/SteamPurchaseHistoryPageParser.cs",
+        "src/Winnow.Ingest.Steam/AccountPages/SteamAccountPageReader.cs",
+        "src/Winnow.Application/Services/SteamAccountPageImportService.cs",
+        "src/Winnow.Application/Services/SteamAccountPageImportRegistration.cs"
+      ]
     },
     {
       "id": "SteamAccountPageTruncationTests.A_page_with_a_next_link_is_still_truncated",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPageTruncationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "This method asserts the unchanged local HTML account-page parser. SteamAccountPageImportService calls SteamAccountPageReader in the production backend. Browser capture-session completeness methods in the same class are excluded because their old Core result policy is not the Electron capture implementation. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Ingest.Steam/AccountPages/SteamLicensesPageParser.cs",
+        "src/Winnow.Ingest.Steam/AccountPages/SteamPurchaseHistoryPageParser.cs",
+        "src/Winnow.Ingest.Steam/AccountPages/SteamAccountPageReader.cs",
+        "src/Winnow.Application/Services/SteamAccountPageImportService.cs",
+        "src/Winnow.Application/Services/SteamAccountPageImportRegistration.cs"
+      ]
     },
     {
       "id": "SteamAccountPageTruncationTests.The_count_mismatch_is_reported_as_a_fact_rather_than_a_verdict",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPageTruncationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "This method asserts the unchanged local HTML account-page parser. SteamAccountPageImportService calls SteamAccountPageReader in the production backend. Browser capture-session completeness methods in the same class are excluded because their old Core result policy is not the Electron capture implementation. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Ingest.Steam/AccountPages/SteamLicensesPageParser.cs",
+        "src/Winnow.Ingest.Steam/AccountPages/SteamPurchaseHistoryPageParser.cs",
+        "src/Winnow.Ingest.Steam/AccountPages/SteamAccountPageReader.cs",
+        "src/Winnow.Application/Services/SteamAccountPageImportService.cs",
+        "src/Winnow.Application/Services/SteamAccountPageImportRegistration.cs"
+      ]
     },
     {
       "id": "SteamAccountPageTruncationTests.A_page_with_no_paginator_at_all_reports_no_mismatch",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPageTruncationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "This method asserts the unchanged local HTML account-page parser. SteamAccountPageImportService calls SteamAccountPageReader in the production backend. Browser capture-session completeness methods in the same class are excluded because their old Core result policy is not the Electron capture implementation. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Ingest.Steam/AccountPages/SteamLicensesPageParser.cs",
+        "src/Winnow.Ingest.Steam/AccountPages/SteamPurchaseHistoryPageParser.cs",
+        "src/Winnow.Ingest.Steam/AccountPages/SteamAccountPageReader.cs",
+        "src/Winnow.Application/Services/SteamAccountPageImportService.cs",
+        "src/Winnow.Application/Services/SteamAccountPageImportRegistration.cs"
+      ]
     },
     {
       "id": "SteamAccountPageTruncationTests.A_hidden_load_more_control_means_the_history_is_complete",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPageTruncationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "This method asserts the unchanged local HTML account-page parser. SteamAccountPageImportService calls SteamAccountPageReader in the production backend. Browser capture-session completeness methods in the same class are excluded because their old Core result policy is not the Electron capture implementation. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Ingest.Steam/AccountPages/SteamLicensesPageParser.cs",
+        "src/Winnow.Ingest.Steam/AccountPages/SteamPurchaseHistoryPageParser.cs",
+        "src/Winnow.Ingest.Steam/AccountPages/SteamAccountPageReader.cs",
+        "src/Winnow.Application/Services/SteamAccountPageImportService.cs",
+        "src/Winnow.Application/Services/SteamAccountPageImportRegistration.cs"
+      ]
     },
     {
       "id": "SteamAccountPageTruncationTests.A_load_more_control_hidden_by_the_area_around_it_also_means_complete",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPageTruncationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "This method asserts the unchanged local HTML account-page parser. SteamAccountPageImportService calls SteamAccountPageReader in the production backend. Browser capture-session completeness methods in the same class are excluded because their old Core result policy is not the Electron capture implementation. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Ingest.Steam/AccountPages/SteamLicensesPageParser.cs",
+        "src/Winnow.Ingest.Steam/AccountPages/SteamPurchaseHistoryPageParser.cs",
+        "src/Winnow.Ingest.Steam/AccountPages/SteamAccountPageReader.cs",
+        "src/Winnow.Application/Services/SteamAccountPageImportService.cs",
+        "src/Winnow.Application/Services/SteamAccountPageImportRegistration.cs"
+      ]
     },
     {
       "id": "SteamAccountPageTruncationTests.A_visible_load_more_control_still_means_there_is_more",
       "source": "tests/Winnow.Tests/SteamAccount/SteamAccountPageTruncationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "This method asserts the unchanged local HTML account-page parser. SteamAccountPageImportService calls SteamAccountPageReader in the production backend. Browser capture-session completeness methods in the same class are excluded because their old Core result policy is not the Electron capture implementation. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Ingest.Steam/AccountPages/SteamLicensesPageParser.cs",
+        "src/Winnow.Ingest.Steam/AccountPages/SteamPurchaseHistoryPageParser.cs",
+        "src/Winnow.Ingest.Steam/AccountPages/SteamAccountPageReader.cs",
+        "src/Winnow.Application/Services/SteamAccountPageImportService.cs",
+        "src/Winnow.Application/Services/SteamAccountPageImportRegistration.cs"
+      ]
     },
     {
       "id": "SteamAccountPageTruncationTests.The_session_reports_completeness_from_what_it_watched_happen",
@@ -15504,12 +15854,30 @@
     {
       "id": "SteamAccountPageProvenanceTests.Zero_purchase_keeps_account_provenance_in_projection_and_export",
       "source": "tests/Winnow.Tests/SteamAccountPageProvenanceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The test exercises unchanged account-scoped import, persistent acquisition evidence, projection/export or migrations. Production ImportApplication and DetailsApplication use the same importer, acquisition reader and export service. Methods that also assert an Avalonia view model or the retired WebView capture identity guard are excluded. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamAccountPageImportService.cs",
+        "src/Winnow.Application/Services/AccountAcquisitionReader.cs",
+        "src/Winnow.Application/Services/AcquisitionExport.cs",
+        "src/Winnow.Application/Details/ImportServiceCollectionExtensions.cs",
+        "src/Winnow.Application/Details/DetailsServiceCollectionExtensions.cs",
+        "src/Winnow.Data/Repositories/AccountAcquisitionRepository.cs"
+      ]
     },
     {
       "id": "SteamAccountPageProvenanceTests.Identical_transactions_and_licenses_from_two_accounts_remain_distinct_after_restart",
       "source": "tests/Winnow.Tests/SteamAccountPageProvenanceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The test exercises unchanged account-scoped import, persistent acquisition evidence, projection/export or migrations. Production ImportApplication and DetailsApplication use the same importer, acquisition reader and export service. Methods that also assert an Avalonia view model or the retired WebView capture identity guard are excluded. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamAccountPageImportService.cs",
+        "src/Winnow.Application/Services/AccountAcquisitionReader.cs",
+        "src/Winnow.Application/Services/AcquisitionExport.cs",
+        "src/Winnow.Application/Details/ImportServiceCollectionExtensions.cs",
+        "src/Winnow.Application/Details/DetailsServiceCollectionExtensions.cs",
+        "src/Winnow.Data/Repositories/AccountAcquisitionRepository.cs"
+      ]
     },
     {
       "id": "SteamAccountPageProvenanceTests.Unknown_saved_pages_never_borrow_the_current_account_or_fill_its_projection",
@@ -15529,42 +15897,94 @@
     {
       "id": "SteamAccountPageProvenanceTests.Different_account_acquisitions_project_the_selected_evidence_and_withhold_aggregate_conflicts",
       "source": "tests/Winnow.Tests/SteamAccountPageProvenanceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The test exercises unchanged account-scoped import, persistent acquisition evidence, projection/export or migrations. Production ImportApplication and DetailsApplication use the same importer, acquisition reader and export service. Methods that also assert an Avalonia view model or the retired WebView capture identity guard are excluded. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamAccountPageImportService.cs",
+        "src/Winnow.Application/Services/AccountAcquisitionReader.cs",
+        "src/Winnow.Application/Services/AcquisitionExport.cs",
+        "src/Winnow.Application/Details/ImportServiceCollectionExtensions.cs",
+        "src/Winnow.Application/Details/DetailsServiceCollectionExtensions.cs",
+        "src/Winnow.Data/Repositories/AccountAcquisitionRepository.cs"
+      ]
     },
     {
       "id": "SteamAccountPageProvenanceTests.Selected_acquisition_scope_distinguishes_zero_missing_and_same_account_conflicts",
       "source": "tests/Winnow.Tests/SteamAccountPageProvenanceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The test exercises unchanged account-scoped import, persistent acquisition evidence, projection/export or migrations. Production ImportApplication and DetailsApplication use the same importer, acquisition reader and export service. Methods that also assert an Avalonia view model or the retired WebView capture identity guard are excluded. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamAccountPageImportService.cs",
+        "src/Winnow.Application/Services/AccountAcquisitionReader.cs",
+        "src/Winnow.Application/Services/AcquisitionExport.cs",
+        "src/Winnow.Application/Details/ImportServiceCollectionExtensions.cs",
+        "src/Winnow.Application/Details/DetailsServiceCollectionExtensions.cs",
+        "src/Winnow.Data/Repositories/AccountAcquisitionRepository.cs"
+      ]
     },
     {
       "id": "SteamAccountPageProvenanceTests.Migration_preserves_unknown_legacy_facts_and_scopes_future_deduplication",
       "source": "tests/Winnow.Tests/SteamAccountPageProvenanceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The test exercises unchanged account-scoped import, persistent acquisition evidence, projection/export or migrations. Production ImportApplication and DetailsApplication use the same importer, acquisition reader and export service. Methods that also assert an Avalonia view model or the retired WebView capture identity guard are excluded. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamAccountPageImportService.cs",
+        "src/Winnow.Application/Services/AccountAcquisitionReader.cs",
+        "src/Winnow.Application/Services/AcquisitionExport.cs",
+        "src/Winnow.Application/Details/ImportServiceCollectionExtensions.cs",
+        "src/Winnow.Application/Details/DetailsServiceCollectionExtensions.cs",
+        "src/Winnow.Data/Repositories/AccountAcquisitionRepository.cs"
+      ]
     },
     {
       "id": "SteamBrowserArtworkSourceTests.Browser_keys_fetch_the_requested_Steam_rendition",
       "source": "tests/Winnow.Tests/SteamBrowserArtworkSourceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "These tests exercise the unchanged Application-owned SteamBrowserArtworkSource directly with controlled HTTP and appinfo inputs. The source is registered as an ICoverSource in the production backend and enforces source-isolated rendition keys, a fixed icon host, retryable metadata failures and bounded downloads. No frontend image presenter participates. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamBrowserArtworkSource.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "SteamBrowserArtworkSourceTests.Icon_uses_validated_common_hash_on_the_fixed_Steam_host",
       "source": "tests/Winnow.Tests/SteamBrowserArtworkSourceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "These tests exercise the unchanged Application-owned SteamBrowserArtworkSource directly with controlled HTTP and appinfo inputs. The source is registered as an ICoverSource in the production backend and enforces source-isolated rendition keys, a fixed icon host, retryable metadata failures and bounded downloads. No frontend image presenter participates. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamBrowserArtworkSource.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "SteamBrowserArtworkSourceTests.Missing_icon_makes_no_download_and_unavailable_metadata_remains_retryable",
       "source": "tests/Winnow.Tests/SteamBrowserArtworkSourceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "These tests exercise the unchanged Application-owned SteamBrowserArtworkSource directly with controlled HTTP and appinfo inputs. The source is registered as an ICoverSource in the production backend and enforces source-isolated rendition keys, a fixed icon host, retryable metadata failures and bounded downloads. No frontend image presenter participates. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamBrowserArtworkSource.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "SteamBrowserArtworkSourceTests.Icon_downloads_enforce_the_shared_encoded_body_limit",
       "source": "tests/Winnow.Tests/SteamBrowserArtworkSourceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "These tests exercise the unchanged Application-owned SteamBrowserArtworkSource directly with controlled HTTP and appinfo inputs. The source is registered as an ICoverSource in the production backend and enforces source-isolated rendition keys, a fixed icon host, retryable metadata failures and bounded downloads. No frontend image presenter participates. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamBrowserArtworkSource.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "SteamBrowserArtworkSourceTests.Source_refuses_non_browser_and_malformed_keys",
       "source": "tests/Winnow.Tests/SteamBrowserArtworkSourceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "These tests exercise the unchanged Application-owned SteamBrowserArtworkSource directly with controlled HTTP and appinfo inputs. The source is registered as an ICoverSource in the production backend and enforces source-isolated rendition keys, a fixed icon host, retryable metadata failures and bounded downloads. No frontend image presenter participates. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamBrowserArtworkSource.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "SteamConnectionPanelTests.Nothing_connected_reads_as_no_connection",
@@ -19783,47 +20203,119 @@
     {
       "id": "SteamLibraryAssetLookupTests.Published_paths_preserve_rendition_order_and_share_the_appinfo_cache",
       "source": "tests/Winnow.Tests/Updates/SteamLibraryAssetLookupTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The original tests cover the shared appinfo HTTP/cache projection and Application-owned artwork lookup: rendition and locale ordering, seven-day TTL, bounded/deduplicated paths, malformed versus absent data and concurrent cache fill. The production backend registers SteamLibraryAssetLookup and the same update-signal client for SteamBrowserArtworkSource. No frontend image or control is used. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamLibraryAssetLookup.cs",
+        "src/Winnow.Application/Services/SteamBrowserArtworkSource.cs",
+        "src/Winnow.Enrich.Updates/SteamCmdBuildInfoClient.cs",
+        "src/Winnow.Enrich.Updates/Model/UpdateSignalJson.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "SteamLibraryAssetLookupTests.Missing_english_uses_other_locales_and_standard_hero_never_answers_high_resolution",
       "source": "tests/Winnow.Tests/Updates/SteamLibraryAssetLookupTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The original tests cover the shared appinfo HTTP/cache projection and Application-owned artwork lookup: rendition and locale ordering, seven-day TTL, bounded/deduplicated paths, malformed versus absent data and concurrent cache fill. The production backend registers SteamLibraryAssetLookup and the same update-signal client for SteamBrowserArtworkSource. No frontend image or control is used. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamLibraryAssetLookup.cs",
+        "src/Winnow.Application/Services/SteamBrowserArtworkSource.cs",
+        "src/Winnow.Enrich.Updates/SteamCmdBuildInfoClient.cs",
+        "src/Winnow.Enrich.Updates/Model/UpdateSignalJson.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "SteamLibraryAssetLookupTests.Artwork_reuses_recent_appinfo_but_refreshes_after_seven_days",
       "source": "tests/Winnow.Tests/Updates/SteamLibraryAssetLookupTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The original tests cover the shared appinfo HTTP/cache projection and Application-owned artwork lookup: rendition and locale ordering, seven-day TTL, bounded/deduplicated paths, malformed versus absent data and concurrent cache fill. The production backend registers SteamLibraryAssetLookup and the same update-signal client for SteamBrowserArtworkSource. No frontend image or control is used. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamLibraryAssetLookup.cs",
+        "src/Winnow.Application/Services/SteamBrowserArtworkSource.cs",
+        "src/Winnow.Enrich.Updates/SteamCmdBuildInfoClient.cs",
+        "src/Winnow.Enrich.Updates/Model/UpdateSignalJson.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "SteamLibraryAssetLookupTests.Malformed_optional_artwork_keeps_name_type_and_parent",
       "source": "tests/Winnow.Tests/Updates/SteamLibraryAssetLookupTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The original tests cover the shared appinfo HTTP/cache projection and Application-owned artwork lookup: rendition and locale ordering, seven-day TTL, bounded/deduplicated paths, malformed versus absent data and concurrent cache fill. The production backend registers SteamLibraryAssetLookup and the same update-signal client for SteamBrowserArtworkSource. No frontend image or control is used. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamLibraryAssetLookup.cs",
+        "src/Winnow.Application/Services/SteamBrowserArtworkSource.cs",
+        "src/Winnow.Enrich.Updates/SteamCmdBuildInfoClient.cs",
+        "src/Winnow.Enrich.Updates/Model/UpdateSignalJson.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "SteamLibraryAssetLookupTests.Unavailable_metadata_is_not_an_authoritative_absence_or_cached",
       "source": "tests/Winnow.Tests/Updates/SteamLibraryAssetLookupTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The original tests cover the shared appinfo HTTP/cache projection and Application-owned artwork lookup: rendition and locale ordering, seven-day TTL, bounded/deduplicated paths, malformed versus absent data and concurrent cache fill. The production backend registers SteamLibraryAssetLookup and the same update-signal client for SteamBrowserArtworkSource. No frontend image or control is used. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamLibraryAssetLookup.cs",
+        "src/Winnow.Application/Services/SteamBrowserArtworkSource.cs",
+        "src/Winnow.Enrich.Updates/SteamCmdBuildInfoClient.cs",
+        "src/Winnow.Enrich.Updates/Model/UpdateSignalJson.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "SteamLibraryAssetLookupTests.Candidate_count_is_bounded_after_deduplication",
       "source": "tests/Winnow.Tests/Updates/SteamLibraryAssetLookupTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The original tests cover the shared appinfo HTTP/cache projection and Application-owned artwork lookup: rendition and locale ordering, seven-day TTL, bounded/deduplicated paths, malformed versus absent data and concurrent cache fill. The production backend registers SteamLibraryAssetLookup and the same update-signal client for SteamBrowserArtworkSource. No frontend image or control is used. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamLibraryAssetLookup.cs",
+        "src/Winnow.Application/Services/SteamBrowserArtworkSource.cs",
+        "src/Winnow.Enrich.Updates/SteamCmdBuildInfoClient.cs",
+        "src/Winnow.Enrich.Updates/Model/UpdateSignalJson.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "SteamLibraryAssetLookupTests.Oversized_path_is_unavailable_without_discarding_name",
       "source": "tests/Winnow.Tests/Updates/SteamLibraryAssetLookupTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The original tests cover the shared appinfo HTTP/cache projection and Application-owned artwork lookup: rendition and locale ordering, seven-day TTL, bounded/deduplicated paths, malformed versus absent data and concurrent cache fill. The production backend registers SteamLibraryAssetLookup and the same update-signal client for SteamBrowserArtworkSource. No frontend image or control is used. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamLibraryAssetLookup.cs",
+        "src/Winnow.Application/Services/SteamBrowserArtworkSource.cs",
+        "src/Winnow.Enrich.Updates/SteamCmdBuildInfoClient.cs",
+        "src/Winnow.Enrich.Updates/Model/UpdateSignalJson.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "SteamLibraryAssetLookupTests.Absent_assets_remain_authoritative",
       "source": "tests/Winnow.Tests/Updates/SteamLibraryAssetLookupTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The original tests cover the shared appinfo HTTP/cache projection and Application-owned artwork lookup: rendition and locale ordering, seven-day TTL, bounded/deduplicated paths, malformed versus absent data and concurrent cache fill. The production backend registers SteamLibraryAssetLookup and the same update-signal client for SteamBrowserArtworkSource. No frontend image or control is used. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamLibraryAssetLookup.cs",
+        "src/Winnow.Application/Services/SteamBrowserArtworkSource.cs",
+        "src/Winnow.Enrich.Updates/SteamCmdBuildInfoClient.cs",
+        "src/Winnow.Enrich.Updates/Model/UpdateSignalJson.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "SteamLibraryAssetLookupTests.Concurrent_renditions_wait_for_the_same_apps_cache_fill",
       "source": "tests/Winnow.Tests/Updates/SteamLibraryAssetLookupTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The original tests cover the shared appinfo HTTP/cache projection and Application-owned artwork lookup: rendition and locale ordering, seven-day TTL, bounded/deduplicated paths, malformed versus absent data and concurrent cache fill. The production backend registers SteamLibraryAssetLookup and the same update-signal client for SteamBrowserArtworkSource. No frontend image or control is used. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamLibraryAssetLookup.cs",
+        "src/Winnow.Application/Services/SteamBrowserArtworkSource.cs",
+        "src/Winnow.Enrich.Updates/SteamCmdBuildInfoClient.cs",
+        "src/Winnow.Enrich.Updates/Model/UpdateSignalJson.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "UserSetNameTests.A_user_set_name_reaches_the_grid_tile",
@@ -19853,7 +20345,13 @@
     {
       "id": "UserSetNameTests.Demo_consolidation_still_reads_the_storefront_title_after_a_rename",
       "source": "tests/Winnow.Tests/UserSetNameTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The test changes the work name through WorkFieldSourceRepository and asserts LibraryQueryRepository demo consolidation still uses storefront evidence. Both unchanged repositories are registered in the production backend. The other methods assert retired view models and are deliberately excluded. The unchanged original cases passed in the complete Release run recorded at checkpoint 39; checkpoint 42 records the per-method TRX audit.",
+      "implementation": [
+        "src/Winnow.Data/Repositories/WorkFieldSourceRepository.cs",
+        "src/Winnow.Data/Repositories/LibraryQueryRepository.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ]
     },
     {
       "id": "UserSetNameTests.Handing_the_name_back_to_automatic_marks_it_provisional_again",

@@ -28,6 +28,14 @@ const reviewedBackendFiles = new Set([
   'src/Winnow.Ingest.Steam/KeyValues1.cs',
   'src/Winnow.Ingest.Steam/Winnow.Ingest.Steam.csproj',
   'src/Winnow.Monitor/LaunchIntents.cs',
+  'src/Winnow.Enrich.Igdb/IgdbManualAssignment.cs',
+  'src/Winnow.Enrich.Updates/SteamCmdBuildInfoClient.cs',
+  'src/Winnow.Enrich.Updates/Model/UpdateSignalJson.cs',
+  'src/Winnow.Ingest.Steam/AccountPages/SteamLicensesPageParser.cs',
+  'src/Winnow.Ingest.Steam/AccountPages/SteamPurchaseHistoryPageParser.cs',
+  'src/Winnow.Ingest.Steam/AccountPages/SteamAccountPageReader.cs',
+  'src/Winnow.Enrich.Steam/SteamStoreClient.cs',
+  'src/Winnow.Enrich.Steam/Model/SteamStoreJson.cs',
 ])
 // Freeze the original contract list: deleting an old source test must never make
 // the migration gate pass without an equivalent test or an explicit classification.

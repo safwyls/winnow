@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 12:24'
+updated_date: '2026-09-30 12:54'
 labels: []
 dependencies: []
 priority: high
@@ -312,4 +312,6 @@ Checkpoint39 complete native run:271passed2failed0skipped0flaky in29.6m. JSON pr
 Plan54 verified: all3154 component/liveAPI cases pass across156files without skips52.73s; final build/typecheck and inventory audit pass. Original26CardDetails cases pass with captures. Native73regression passed64 and exposed9cover failures: double two-pixel lift and synthetic mouse-enter on reattachment. Fixed both without weakening assertions; all20final native cover cases pass20.8s. Original108/148/200geometry,12immediate presses,recycling,focus,fullrectangleDetails and real desktop/fullscreen routing verified; captures inspected. All13dashboard/rating follow-ups from checkpoint39 also pass. Seventeen methods completed; inventory1147ported559retained17framework611pending101partial. Evidence checkpoint-forty.md. Plan55 unread accessibility is next. All AC remain unchecked.
 
 Plan55 verified: all3168 component/liveAPI cases pass across156files without skips52.22s; build/typecheck and inventory audit pass. All33native cases pass1.6m, including exact1/3/1234/missing update-count names, eligibility, duplicate editions, feed accessible descriptions and silent/saved/Undo status on both surfaces, plus fullscreen controller collections and cover regressions. Original8UnreadAccessibleCopyTests outcomes confirmed passed in checkpoint39TRX. Seven methods ported and one retained backend; inventory1154ported560retained17framework603pending101partial. Evidence checkpoint-forty-one.md. The complete frozen-source native suite is next; Plan56 feed-card work stays in scratch files until it completes. All AC remain unchecked.
+
+Checkpoint 42: the complete native Electron suite passes all 295 cases with zero skipped, flaky or failed outcomes in 29.71 minutes on frozen source and bundles at 147997eb. Prepared follow-on work stayed exclusively under ignored .tmp paths until completion. Evidence: .tmp/unread-complete-native/results.json and log. Plan 57 audits 65 additional original methods against actual unchanged backend implementations and production registrations; all 101 corresponding cases passed in checkpoint 39 Release TRX. Mixed view-model, displayed-cover wrapper and retired capture-policy assertions remain pending. Inventory: 1154 ported, 625 retained backend, 17 framework-specific, 538 pending, 101 partial. Checkpoint-forty-two.md records provenance and exclusions. All task AC remain unchecked. Continuing plan 56 recommendation-card composition and exact native source matrices.
 <!-- SECTION:NOTES:END -->
