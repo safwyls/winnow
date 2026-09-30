@@ -39,7 +39,8 @@ profile-scoped Jump Lists remain available.
 
 The original process-launch matrix is now ported, including the packaged apphost and
 Windows shortcut variants. Inventory: 1,056 ported, 559 retained backend,
-17 framework-specific, 695 pending and 108 partial. The current 222-case development
-native suite has not yet run together; the last complete development native pass remains
-214 cases. Installer/update recovery and other desktop platforms remain separate validation
+17 framework-specific, 695 pending and 108 partial. All 222 development native cases pass
+together in 19.1 minutes against the build from `2942b280`, with clean completion. Evidence:
+`.tmp/activation-complete-native.log` and its copied `results.json`. Subsequent update-flag
+changes are outside that frozen build. Installer/update recovery and other desktop platforms remain separate validation
 work. The overall frontend migration is incomplete.

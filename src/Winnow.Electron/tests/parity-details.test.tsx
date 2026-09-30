@@ -115,6 +115,34 @@ function setup(
   )
   return { request, artwork, client, view, close }
 }
+const flagEvents = [
+  { id: 30, releaseId: 100, occurredAt: '2026-09-24T00:00:00Z', kind: 'build_push', title: 'Patch one' },
+  { id: 32, releaseId: 100, occurredAt: '2026-09-25T00:00:00Z', kind: 'announcement', title: 'Notes one' },
+  { id: 31, releaseId: 200, occurredAt: '2026-09-22T00:00:00Z', kind: 'build_push', title: 'Patch two' },
+  { id: 33, releaseId: 200, occurredAt: '2026-09-23T00:00:00Z', kind: 'announcement', title: 'Notes two' },
+]
+function setupFlags(mode: Mode, handler?: (input: ApiRequest) => unknown) {
+  const acknowledgements: Record<string, string> = {}
+  return setup(mode, async (input) => {
+    const override = await handler?.(input)
+    if (override !== undefined) return override
+    let data: unknown
+    if (input.route === 'game.details')
+      data = { ...facts, events: flagEvents, acknowledgements: { ...acknowledgements } }
+    else if (input.route === 'updates.acknowledge') {
+      const releaseId = Number(input.params!.releaseId)
+      const through = flagEvents.find(
+        (event) => event.releaseId === releaseId && event.kind === 'build_push',
+      )!.occurredAt
+      acknowledgements[releaseId] = through
+      data = { result: 'Stored', acknowledgedThrough: through }
+    } else if (input.route === 'updates.restore') {
+      delete acknowledgements[Number(input.params!.releaseId)]
+      data = { result: 'Stored' }
+    } else return undefined
+    return { ok: true, status: 200, data }
+  })
+}
 afterEach(() => {
   cleanup()
   for (const key of [
@@ -1136,20 +1164,25 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s details parity', (mode) => {
     expect(request.mock.calls.filter(([input]) => input.route === 'metadata.art-upload')).toHaveLength(1)
   })
   it('acknowledges each captured update set and restores stored release watermarks', async () => {
-    const { request } = setup(mode)
-    fireEvent.click(await screen.findByRole('button', { name: 'Mark these updates read' }))
+    const { request } = setupFlags(mode)
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark as read' }))
     await screen.findByText('These update flags are marked read.')
     expect(request).toHaveBeenCalledWith({
       route: 'updates.acknowledge',
       params: { releaseId: 100 },
-      body: { observedEventIds: [30] },
+      body: { observedEventIds: [32, 30] },
     })
     expect(request).toHaveBeenCalledWith({
       route: 'updates.acknowledge',
       params: { releaseId: 200 },
-      body: { observedEventIds: [31] },
+      body: { observedEventIds: [33, 31] },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Restore update flags' }))
+    await waitFor(() =>
+      expect((screen.getByRole('button', { name: 'Show it again' }) as HTMLButtonElement).disabled).toBe(
+        false,
+      ),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Show it again' }))
     await waitFor(() =>
       expect(request).toHaveBeenCalledWith({
         route: 'updates.restore',
@@ -1212,46 +1245,46 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s details parity', (mode) => {
   })
   it('keeps a new patch out of a pending acknowledgement batch', async () => {
     let finish!: (value: unknown) => void
-    const { request, client } = setup(mode, (input) => {
+    const { request, client } = setupFlags(mode, (input) => {
       if (input.route === 'updates.acknowledge' && input.params?.releaseId === 100)
         return new Promise((resolve) => {
           finish = resolve
         })
     })
-    fireEvent.click(await screen.findByRole('button', { name: 'Mark these updates read' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark as read' }))
     await waitFor(() => expect(finish).toBeTypeOf('function'))
     client.setQueryData(['api', 'game.details', { workId: 1 }], {
       ...facts,
       events: [
-        ...facts.events,
+        ...flagEvents,
         {
           id: 99,
           releaseId: 200,
           occurredAt: '2026-09-29T00:00:00Z',
           title: 'Just arrived',
-          kind: 'build_change',
+          kind: 'build_push',
         },
       ],
     })
     await screen.findByText('Just arrived')
-    finish({ ok: true, status: 200, data: { result: 'Stored' } })
+    finish({ ok: true, status: 200, data: { result: 'Stored', acknowledgedThrough: '2026-09-24T00:00:00Z' } })
     await waitFor(() =>
       expect(request).toHaveBeenCalledWith({
         route: 'updates.acknowledge',
         params: { releaseId: 200 },
-        body: { observedEventIds: [31] },
+        body: { observedEventIds: [33, 31] },
       }),
     )
     expect(request.mock.calls.filter(([input]) => input.route === 'updates.acknowledge')).toHaveLength(2)
   })
   it('reports a declined update write without claiming that no flags needed changing', async () => {
-    setup(mode, (input) =>
+    setupFlags(mode, (input) =>
       input.route === 'updates.acknowledge'
         ? { ok: true, status: 200, data: { result: 'NotStored' } }
         : undefined,
     )
-    fireEvent.click(await screen.findByRole('button', { name: 'Mark these updates read' }))
-    await screen.findByText('Some update flags could not be saved. Check the refreshed flags and try again.')
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark as read' }))
+    await screen.findByText("Couldn't save that — nothing changed.")
     expect(screen.queryByText('No update flags needed changing.')).toBeNull()
     expect(screen.queryByText('These update flags are marked read.')).toBeNull()
   })

@@ -10,7 +10,7 @@ import { Artwork } from '../components/Artwork'
 import { Empty, Notice } from './shared'
 import './parity-details.css'
 import { acquisitionFacts, playtimeRecordLine, updateHeadline, updatePageUrl } from './details-facts'
-import { timelineUpdates } from './activity-timeline-model'
+import { updateFlagState } from './update-flags'
 import { ArtworkBrowserDialog, type ArtworkSlot } from './artwork-browser'
 import { InstallFolderButton } from './install-folder'
 
@@ -231,12 +231,27 @@ function ScreenshotImage({ asset, width }: { asset: { provider: string; id: stri
 
 export function UpdateSignals({ details, game }: { details?: GameDetails; game?: LibraryGame }) {
   const facts = details as DetailFacts | undefined
-  const command = useCommand<{ result: string }>()
+  const client = useQueryClient()
   const [busy, setBusy] = useViewState(`updates:${details?.workId}:sending`, false)
+  const sending = useRef(false)
+  const actionFocus = useRef<HTMLElement | null>(null)
   const [message, setMessage] = useState('')
   const [actionError, setActionError] = useState<unknown>(null)
   const [linkError, setLinkError] = useState<unknown>(null)
-  const events = timelineUpdates(
+  const notice = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (message || actionError || linkError) notice.current?.scrollIntoView?.({ block: 'nearest' })
+  }, [message, actionError, linkError])
+  useEffect(() => {
+    if (busy || !actionFocus.current) return
+    const origin = actionFocus.current
+    actionFocus.current = null
+    const section = notice.current?.parentElement
+    // Native disabled buttons lose focus. Restore within this action only if the user has not moved on.
+    if (section && (document.activeElement === origin || document.activeElement?.contains(section)))
+      section.querySelector<HTMLButtonElement>('.form-actions button')?.focus({ preventScroll: true })
+  }, [busy])
+  const flags = updateFlagState(
     [...(facts?.events ?? [])].sort(
       (a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt) || b.id - a.id,
     ),
@@ -244,37 +259,72 @@ export function UpdateSignals({ details, game }: { details?: GameDetails; game?:
     game?.lastPlayedAt,
     game?.playtimeMinutes ?? 0,
   )
+  const events = flags.rows
   const standing = Object.keys(facts?.acknowledgements ?? {}).map(Number)
+  const available = typeof window.winnow?.request === 'function'
   async function change(restore: boolean) {
-    if (busy) return
+    if (busy || sending.current || !available || !details) return
+    actionFocus.current =
+      document.activeElement instanceof HTMLElement &&
+      notice.current?.parentElement?.contains(document.activeElement)
+        ? document.activeElement
+        : null
+    sending.current = true
     setBusy(true)
     setMessage('')
     setActionError(null)
+    let stored = 0
+    let failed = 0
+    let uncertain = false
     try {
-      // Each release owns its watermark. Finish the captured observed set before reporting completion.
-      const releaseIds = restore ? standing : [...new Set(events.map((event) => event.releaseId))]
-      let stored = 0
-      let failed = 0
+      // Capture the entire batch before awaiting; incoming patches belong to the next operation.
+      const releaseIds = restore ? standing : flags.unreadReleases
       for (const releaseId of releaseIds) {
-        const result = await command.mutateAsync({
-          route: restore ? 'updates.restore' : 'updates.acknowledge',
-          params: { releaseId },
-          ...(restore
-            ? {}
-            : {
-                body: {
+        try {
+          const result = await request<{ result: string; acknowledgedThrough?: string | null }>(
+            restore ? 'updates.restore' : 'updates.acknowledge',
+            { releaseId },
+            restore
+              ? undefined
+              : {
                   observedEventIds: events
                     .filter((event) => event.releaseId === releaseId)
                     .map((event) => event.id),
                 },
-              }),
-        })
-        if (result.result === 'Stored') stored++
-        if (result.result === 'NotStored') failed++
+          )
+          const saved = restore
+            ? result.result === 'Stored' || result.result === 'NothingToDo'
+            : result.result === 'Stored' && !!result.acknowledgedThrough
+          if (!saved) {
+            failed++
+            continue
+          }
+          stored++
+          // Cancel older reads before publishing the confirmed watermark into the shared detail cache.
+          const queryKey = ['api', 'game.details', { workId: details.workId }]
+          await client.cancelQueries({ queryKey })
+          client.setQueryData<DetailFacts>(queryKey, (current) => {
+            const acknowledgements = { ...(current ?? facts)?.acknowledgements }
+            if (restore) delete acknowledgements[releaseId]
+            else acknowledgements[releaseId] = result.acknowledgedThrough!
+            return { ...(current ?? details), acknowledgements }
+          })
+        } catch {
+          failed++
+          uncertain = true
+        }
       }
       if (failed)
         setActionError(
-          new Error('Some update flags could not be saved. Check the refreshed flags and try again.'),
+          new Error(
+            restore
+              ? "Couldn't undo that just now."
+              : stored
+                ? "Couldn't mark every patch read. Try again."
+                : uncertain
+                  ? "Couldn't confirm that. Check the refreshed flags and try again."
+                  : "Couldn't save that — nothing changed.",
+          ),
         )
       else
         setMessage(
@@ -284,15 +334,17 @@ export function UpdateSignals({ details, game }: { details?: GameDetails; game?:
               : 'These update flags are marked read.'
             : 'No update flags needed changing.',
         )
-    } catch {
-      /* Completed release writes stay visible after the normal refresh. */
     } finally {
+      // A definite refusal changes nothing. A lost response must reconcile with the server.
+      if (stored || uncertain) await client.invalidateQueries({ queryKey: ['api'] })
+      sending.current = false
       setBusy(false)
     }
   }
   return (
     <section className="feature-panel">
       <h2>Updates</h2>
+      <p className="update-gap-caption">{flags.caption}</p>
       {!events.length ? (
         <Empty>No update signals recorded.</Empty>
       ) : (
@@ -336,18 +388,27 @@ export function UpdateSignals({ details, game }: { details?: GameDetails; game?:
         ))
       )}
       <div className="form-actions">
-        {!!events.length && (
+        {available && flags.unread > 0 && (
           <button className="acknowledge-updates" disabled={busy} onClick={() => void change(false)}>
-            {busy ? 'Updating flags…' : 'Mark these updates read'}
+            {busy ? 'Updating flags…' : 'Mark as read'}
           </button>
         )}
-        {!!standing.length && (
+        {available && !flags.unread && !!standing.length && (
           <button disabled={busy} onClick={() => void change(true)}>
-            Restore update flags
+            Show it again
           </button>
         )}
       </div>
-      <Notice error={command.error || actionError || linkError} message={message} />
+      {available && (flags.unread > 0 || standing.length > 0) && (
+        <p className="muted">
+          {flags.unread
+            ? 'Removes from Patched. A newer patch puts it back.'
+            : 'Marked read. A newer patch will flag it again.'}
+        </p>
+      )}
+      <div ref={notice} className="update-result">
+        <Notice error={actionError || linkError} message={message} />
+      </div>
     </section>
   )
 }

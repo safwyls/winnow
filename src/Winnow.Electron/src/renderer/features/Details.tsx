@@ -407,7 +407,7 @@ function SharedDetails({
                 </section>
               )}
               <Screenshots key={workId} details={details.data} />
-              <UpdateSignals details={details.data} />
+              <UpdateSignals details={details.data} game={game} />
             </>
           )}
           {tab === 'History' && (
@@ -420,7 +420,7 @@ function SharedDetails({
               {game && <SteamReportedActivity games={[game]} mode={mode} />}
             </>
           )}
-          {tab === 'Updates' && <UpdateSignals details={details.data} />}
+          {tab === 'Updates' && <UpdateSignals details={details.data} game={game} />}
           {tab === 'Journal' && (
             <section className="feature-panel">
               <h2>Your notes</h2>

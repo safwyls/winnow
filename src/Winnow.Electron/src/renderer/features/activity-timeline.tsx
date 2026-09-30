@@ -5,12 +5,12 @@ import { useViewState } from '../viewState'
 import {
   buildTimeline,
   timelineMarks,
-  timelineUpdates,
   type PlaytimeSnapshot,
   type TimelineSeries,
   type TimelineUpdate,
 } from './activity-timeline-model'
 import './activity.css'
+import { updateFlagState } from './update-flags'
 
 export function TimelinePlot({
   series,
@@ -132,12 +132,13 @@ export function ActivityTimeline({
   const series = buildTimeline(snapshots, sessions, acquired, entry.lastPlayedAt, now, tracked)
   const hasTracked =
     buildTimeline(snapshots, sessions, acquired, entry.lastPlayedAt, now, true).bars.length > 0
-  const updates = timelineUpdates(
+  const flags = updateFlagState(
     details.events.filter((event) => event.releaseId === entry.releaseId),
     (details.acknowledgements as Record<string, string> | undefined) ?? {},
     entry.lastPlayedAt,
     entry.playtimeMinutes,
   )
+  const updates = flags.rows
   const scope = `${entry.ownershipId}:${tracked}`
   return (
     <section className={`feature-panel activity-tracker mode-${mode}`} aria-label="Your play history">
@@ -208,13 +209,7 @@ export function ActivityTimeline({
         {selected?.scope === scope ? selected.text : series.summary}
       </p>
       <p className="muted">{series.coverageNote}</p>
-      <p>
-        {updates.some((update) => update.unread)
-          ? `${updates.filter((update) => update.unread).length} unread updates`
-          : updates.length
-            ? 'No unread updates'
-            : 'No updates recorded'}
-      </p>
+      <p>{flags.caption}</p>
       {!!series.bars.length && (
         <details>
           <summary>Recorded hours</summary>

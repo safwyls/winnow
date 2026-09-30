@@ -12,6 +12,11 @@ Avalon's desktop Details opens over the retained library with five sections and 
 header. Fullscreen Details uses the original cinematic layout, two screenshot previews and
 separate About and Play history reading pages. More contains the shared metadata, matching,
 artwork and browsing actions. Closing restores the originating game and library position.
+Updates counts correlated patches per release, using the largest count for linked editions.
+Mark as read preserves confirmed partial saves and retries only the remaining unread releases;
+Show it again restores their flags. The Activity timeline keeps acknowledged history in
+neutral ink and retains the selected range. Results remain visible without taking focus from
+a different control.
 Fullscreen More and Library options use a right-edge action panel with saved safe margins,
 independent scrolling and retained origin focus. Escape, B, right-click or the scrim closes
 it. Nested Hide starts on Cancel; a child editor returns directly to its originating page.

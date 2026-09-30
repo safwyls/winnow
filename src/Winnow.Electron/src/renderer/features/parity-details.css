@@ -1,4 +1,7 @@
 @layer components {
+  .update-result {
+    scroll-margin-block: 8px;
+  }
   .screenshot-strip {
     display: flex;
     gap: 12px;
