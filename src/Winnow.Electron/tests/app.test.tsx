@@ -11,6 +11,26 @@ import { AVALON_PALETTES } from '../src/renderer/themes/avalon-palettes'
 import { clearViewState } from '../src/renderer/viewState'
 import { mergeFixture } from './parity-merge-fixtures'
 
+// Route tests retain readiness gates but advance presentation frames deterministically.
+// Native startup and controlled preparation suites cover real frame scheduling and fade timing.
+vi.mock('../src/renderer/startup/preparation', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../src/renderer/startup/preparation')>()
+  return {
+    ...original,
+    createBrowserPreparationClock: () => {
+      let elapsed = 0
+      return {
+        hidden: () => false,
+        frame: async (signal: AbortSignal) => {
+          await new Promise<void>((resolve) => setTimeout(resolve, 0))
+          signal.throwIfAborted()
+          return (elapsed += 200)
+        },
+      }
+    },
+  }
+})
+
 // Native startup tests exercise the worker; routing tests supply its completed-circuit signal.
 vi.mock('../src/renderer/startup/LoadingDragon', () => ({
   LoadingDragon: ({ tracing, onFrame }: { tracing: boolean; onFrame(elapsed: number): void }) => {
@@ -521,7 +541,7 @@ describe('integrated frontend', () => {
       expect(details.getByRole('heading', { name: 'Build epic-update' })).toBeTruthy()
       fireEvent.click(details.getByRole('tab', { name: 'Library' }))
       const copies = document.querySelectorAll(
-        '.avalon-details .entry-actions:not(:has([data-controller-play]))',
+        '.avalon-details-reading .entry-actions',
       )
       expect(copies).toHaveLength(2)
       expect([...copies].map((copy) => copy.querySelector('strong')?.textContent)).toEqual([

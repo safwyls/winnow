@@ -1,0 +1,59 @@
+{
+  "GameLaunchTests.Collapsed_game_attributes_launch_and_status_to_the_copy_it_actually_plays": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/electron/launch-feedback.spec.ts", "case": "desktop Library tile uses the shared launch strip and survives switching to fullscreen" },
+      { "file": "tests/parity-launch-components.test.tsx", "case": "dispatches only the selected ownership and confirms only its watcher observation" },
+      { "file": "../../tests/Winnow.Backend.Tests/LaunchObservationParityTests.cs", "case": "Selected_copy_dispatches_its_URI_declares_only_its_intent_and_publishes_its_observation" }
+    ],
+    "reason": "The native grouped tile prefers the installed second copy; both Details presentations retain the grouped title and selected ownership. The real HTTP action service dispatches steam://run/20, declares only that ownership's intent before URI dispatch, suppresses duplicate starts, and publishes its watcher observation. Native fixture dispatch is recorded without starting a real game."
+  },
+  "GameLaunchTests.The_strip_resolves_when_the_watcher_sees_the_game": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/parity-launch-feedback.test.ts", "case": "resolves the matching watcher observation and dismisses confirmed running after three seconds" },
+      { "file": "tests/electron/launch-feedback.spec.ts", "case": "Details focuses without dispatch, launches the selected copy and resolves only its watcher signal" }
+    ],
+    "reason": "The shared production status consumes launch.observed events, preserves the source copy, and expires confirmed running after three seconds. Native tests exercise both presentation paths through the preload event bridge."
+  },
+  "GameLaunchTests.A_launch_that_never_starts_disappears_without_a_complaint": {
+    "status": "ported",
+    "tests": [{ "file": "tests/parity-launch-feedback.test.ts", "case": "silently clears an unobserved launch at the original ninety-second deadline" }],
+    "reason": "The production status expires a handed-off but unobserved launch silently at exactly ninety seconds; virtual time verifies both sides of the boundary."
+  },
+  "GameLaunchTests.A_refusal_is_the_only_thing_that_reads_as_a_problem": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/parity-launch-feedback.test.ts", "case": "uses the source refusal copy and expires the problem after seven seconds" },
+      { "file": "tests/electron/launch-feedback.spec.ts", "case": "primary launch refusal remains visible across a page change" }
+    ],
+    "reason": "The shared strip preserves the source refusal sentence, problem state and seven-second lifetime. Desktop and fullscreen native checks verify the ambient notice survives leaving Details and never captures pointer input."
+  },
+  "GameLaunchTests.Another_games_launch_does_not_resolve_this_ones_strip": {
+    "status": "ported",
+    "tests": [{ "file": "tests/parity-launch-feedback.test.ts", "case": "does not resolve the current strip for another ownership or an unconfirmed change event" }],
+    "reason": "Only an observed event with the selected ownership identity confirms the current launch; another ownership and a dispatch-only launch.changed event leave it waiting."
+  },
+  "GameLaunchTests.Disposing_the_strip_stops_it_listening": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/parity-launch-feedback.test.ts", "case": "disposal stops observations and timers from changing the retained strip" },
+      { "file": "tests/parity-launch-components.test.tsx", "case": "detaches backend observations and rejects late callbacks when the host is disposed" }
+    ],
+    "reason": "Disposal detaches the production event subscription, cancels the timer and invalidates in-flight callbacks. Retained state is no longer changed by watcher signals, matching the original lifetime contract."
+  },
+  "FullscreenDetailsTests.Version_chooser_does_not_launch_until_selected_and_uses_the_selected_copy_uri": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/electron/launch-feedback.spec.ts", "case": "Details focuses without dispatch, launches the selected copy and resolves only its watcher signal" },
+      { "file": "../../tests/Winnow.Backend.Tests/LaunchObservationParityTests.cs", "case": "Selected_copy_dispatches_its_URI_declares_only_its_intent_and_publishes_its_observation" },
+      { "file": "tests/parity-launch-components.test.tsx", "case": "detaches backend observations and rejects late callbacks when the host is disposed" }
+    ],
+    "reason": "Opening the real fullscreen chooser emits no action. Synthetic standard-controller Down and Accept select the second ownership; the paired backend HTTP test verifies its exact URI and launch intent. Disposed frontend callbacks cannot dispatch. Physical-controller validation remains separate."
+  },
+  "FullscreenDetailsTests.Opening_details_focuses_play_without_launching_and_triggers_own_local_sections": {
+    "status": "ported",
+    "tests": [{ "file": "tests/electron/launch-feedback.spec.ts", "case": "fullscreen controller triggers wrap local sections while opening Details never launches" }],
+    "reason": "The real fullscreen Details initially focuses Play without dispatching. Trigger input selects Overview to Updates to Overview to Library, and returning to desktop preserves its independent initial section. The earlier controller native matrix verifies initial More when no primary action exists."
+  }
+}

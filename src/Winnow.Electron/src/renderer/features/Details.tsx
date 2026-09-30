@@ -28,6 +28,7 @@ import { DetailsRelationships } from './parity-details-identity'
 import { AvalonDetailsLayout } from './details-layout'
 import { noActionSentence } from '../../shared/game-actions'
 import { createGameLink } from '../../shared/external-links'
+import { useLaunchFeedback } from './LaunchFeedback'
 
 const detailScrollPositions = new WeakMap<QueryClient, Map<string, number>>()
 const editorSections = new Set(['Metadata', 'Game match', 'Artwork'])
@@ -73,12 +74,15 @@ export function EntryActions({
   workspace,
   primaryOnly = false,
   managementOnly = false,
+  launchTitle,
 }: {
   entry: GameEntry
   workspace?: Workspace
   primaryOnly?: boolean
   managementOnly?: boolean
+  launchTitle?: string
 }) {
+  const feedback = useLaunchFeedback()
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState<unknown>(null)
@@ -95,11 +99,17 @@ export function EntryActions({
     setError(null)
     setMessage('')
     try {
-      setMessage(
-        launchMessage(
-          await request<number>('actions.execute', { ownershipId: entry.ownershipId }, operation),
-        ),
-      )
+      const send = () => request<number>('actions.execute', { ownershipId: entry.ownershipId }, operation)
+      const result = feedback
+        ? await feedback.track(
+            entry.ownershipId,
+            launchTitle ?? entry.title,
+            storeLabel(entry.store),
+            kind,
+            send,
+          )
+        : await send()
+      setMessage(feedback && kind === 'Play' ? '' : launchMessage(result))
       setAttempt(null)
     } catch (failure) {
       setError(failure)

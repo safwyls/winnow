@@ -11,7 +11,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { ArrowLeft, ChevronDown, ListPlus, X, Image, Pencil, Search, EyeOff } from 'lucide-react'
 import { useApiQuery, useCommand, useDetails, useLibrary, useWorkspace } from '../api/hooks'
 import { dateLabel, hours, storeLabel } from '../api/client'
-import { primaryEntry } from '../../shared/game-actions'
+import { primaryEntry, primaryAction, noActionSentence } from '../../shared/game-actions'
 import type { GameDetails, LibraryGame, Mode, Workspace } from '../api/types'
 import { Artwork } from '../components/Artwork'
 import { EntryActions, GameLinks, HideGame, ListMembership } from './Details'
@@ -38,6 +38,7 @@ import { ArtworkBrowserDialog } from './artwork-browser'
 import { AvalonBackdrop } from '../themes/avalon-backdrop'
 import { restoreFocusWhenReady } from './restore-focus'
 import { AvalonAction, AvalonActions } from '../themes/avalon-actions'
+import { ChooseLaunchVersion } from './choose-launch-version'
 import './details-layout.css'
 
 const desktopSections = ['Overview', 'Activity', 'Updates', 'Journal', 'Library'] as const
@@ -437,7 +438,7 @@ export function AvalonDetailsLayout({
           )}
           {game?.entries.map((entry) => (
             <div className="avalon-copy" key={entry.ownershipId}>
-              <EntryActions entry={entry} workspace={workspace.data} />
+              <EntryActions entry={entry} workspace={workspace.data} launchTitle={game?.title} />
               <p>
                 Last played{' '}
                 {entry.lastPlayedAt
@@ -506,13 +507,17 @@ export function AvalonDetailsLayout({
               ` · ${primary.installed ? 'Installed' : 'Not installed'}`}
           </p>
           <div className="avalon-details-actions" aria-label="Game actions">
-            {primary && (
+            {primary && primaryAction(primary, workspace.data) && (
               <EntryActions
                 key={primary.ownershipId}
                 entry={primary}
                 workspace={workspace.data}
                 primaryOnly
+                launchTitle={game?.title}
               />
+            )}
+            {fullscreen && game && game.entries.length > 1 && (
+              <ChooseLaunchVersion game={game} workspace={workspace.data} />
             )}
             {game && !fullscreen && (
               <AddToListButton
@@ -556,6 +561,13 @@ export function AvalonDetailsLayout({
               }
             />
           </div>
+          {!fullscreen && primary && !primaryAction(primary, workspace.data) && (
+            <p className="detail-support">
+              {primary.store === 'manual'
+                ? 'Manual entries can be tracked here. Launch this game from its shortcut.'
+                : noActionSentence(primary, workspace.data)}
+            </p>
+          )}
         </div>
         {!fullscreen && (
           <button className="avalon-details-close" aria-label="Close game details" onClick={onClose}>
@@ -605,6 +617,18 @@ export function AvalonDetailsLayout({
         tabIndex={fullscreen ? -1 : 0}
         data-controller-scroll-step={fullscreen && reading === 'About' ? 160 : undefined}
       >
+        {fullscreen &&
+          section === 'Overview' &&
+          !reading &&
+          !tool &&
+          primary &&
+          !primaryAction(primary, workspace.data) && (
+            <p className="detail-support">
+              {primary.store === 'manual'
+                ? 'Manual entries can be tracked here. Launch this game from its shortcut.'
+                : noActionSentence(primary, workspace.data)}
+            </p>
+          )}
         {panel}
       </div>
       <MetadataRefreshStatus state={refresh} className="detail-refetch-status" polite />

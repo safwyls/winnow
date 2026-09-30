@@ -1,0 +1,59 @@
+@layer components {
+  .launch-feedback {
+    position: fixed;
+    z-index: 950;
+    pointer-events: none;
+    color: var(--text);
+  }
+  .launch-feedback.desktop {
+    left: 18px;
+    bottom: 18px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    width: min(352px, calc(100vw - 36px));
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--raised);
+    font: calc(12px * var(--theme-text-scale, 1)) / 1.5 var(--font-body);
+  }
+  .launch-feedback-message {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .launch-feedback-dot {
+    flex: 0 0 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .launch-feedback[data-problem='true'] .launch-feedback-dot {
+    background: var(--avalon-amber, #f6b44d);
+  }
+  .launch-feedback.fullscreen {
+    top: clamp(82px, 6.51vw, 125px);
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 80vw;
+    font: calc(clamp(19px, 1.458vw, 28px) * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1)) /
+      1.4 var(--font-body);
+  }
+  .launch-feedback.fullscreen[data-problem='true'] {
+    color: var(--avalon-amber-foreground, var(--avalon-amber, #f6b44d));
+  }
+  :root:not(.reduced-motion) .launch-feedback[data-waiting='true'] .launch-feedback-dot {
+    animation: launch-feedback-pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes launch-feedback-pulse {
+    50% {
+      opacity: 0.25;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .launch-feedback-dot {
+      animation: none !important;
+    }
+  }
+}

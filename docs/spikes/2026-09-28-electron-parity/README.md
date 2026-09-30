@@ -45,6 +45,12 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [launch checkpoint](checkpoint-fifty-two.md) records all 3,321 component/live API
+cases, 34 native launch/Details/controller cases and two new backend HTTP cases passing.
+Shared watcher-driven launch feedback and fullscreen version selection preserve ownership
+attribution and the original notice lifetimes. Eight source methods gain complete evidence;
+439 pending and 101 partial methods remain. The completion gate and release cutover remain open.
+
 The [controller checkpoint](checkpoint-fifty-one.md) records all 3,296 component/live API
 cases and 13 native controller, Details and merge cases passing. Desktop controller input,
 original input filtering and fullscreen Details focus rows are present. The complete prior

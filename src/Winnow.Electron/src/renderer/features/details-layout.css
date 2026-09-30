@@ -404,6 +404,9 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+  .avalon-shell .avalon-details.fullscreen .feature-panel p {
+    font-size: inherit;
+  }
   .avalon-shell .avalon-details.fullscreen .avalon-latest-note {
     margin-top: 24px;
     padding-top: 20px;

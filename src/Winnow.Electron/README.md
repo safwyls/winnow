@@ -342,6 +342,14 @@ after two minutes. A draft or pending save stays open and cannot be replaced by 
 Dismissal writes nothing. Save failures keep the draft, and an unchanged stored revision lets
 the same Save button retry. An accepted save finishes in the backend even if the frontend closes.
 
+Library and Details share an ambient launch status across desktop and fullscreen. A launcher
+handoff shows Starting; a matching watcher observation confirms that the game is running.
+Waiting disappears silently after 90 seconds, confirmation after three, and refusal after seven.
+Fullscreen Details offers **Choose launch version** for games with multiple copies. Choosing
+a version carries that copy's ownership through dispatch and feedback. Desktop's per-copy
+actions remain in Details' Library section. Install and management actions do not show a
+gameplay status, and uncertain retries retain their original operation ID.
+
 Complete Avalonia parity has not yet been established. The [migration inventory](../../docs/spikes/2026-09-28-electron-parity/test-inventory.json)
 tracks original presentation contracts individually; unported and partially verified tests
 remain visible and fail the completion gate. Provider connections and game actions depend on backend
