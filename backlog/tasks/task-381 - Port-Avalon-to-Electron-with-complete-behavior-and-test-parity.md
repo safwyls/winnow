@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 21:41'
+updated_date: '2026-09-30 22:49'
 labels: []
 dependencies: []
 priority: high
@@ -274,4 +274,6 @@ User-directed review cadence established on 2026-09-30. TASK-381.1 splits the re
 Review checkpoint: TASK-381.2 completed in 9b47da85 with fullscreen clock/controller status, all 3351 component/live API tests and 23 distinct native regressions passing. Three source contracts are now ported; 417 pending plus 96 partial remain. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-fifty-seven.md. No parent acceptance criterion is complete. Stopped for user review as requested. Next eligible task is TASK-381.3, Electron: finish fullscreen lifecycle and navigation; do not start it until the user prompts continuation.
 
 Review checkpoint: TASK-381.3 completed in f9e22fc3. All 3358 component/live API cases and 87 distinct relevant native cases pass. Startup entry, cursor ownership, section hints and stable geometry, native restoration, quick-menu return focus and independent presentation state have equivalent executed coverage for all 17 assigned source contracts. Inventory: 1284 ported, 625 retained backend, 30 framework-specific, 403 pending and 93 partial; 496 unresolved. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-fifty-eight.md. No parent acceptance criterion is complete. Stopped for user review; next is TASK-381.4 only after an explicit continuation prompt.
+
+Review checkpoint: TASK-381.4 completed in 359e79da, following root LB/RB correction d5746fd0. Restored baseline/display scaling, artwork padding, shelf targets, Activity reading hierarchy and original decorative backdrops. Build, all 3,369 component/API cases, 94 distinct affected native cases and two migrated application-service cases pass. All 19 assigned contracts are ported; inventory has 1,303 ported, 625 retained backend, 30 framework-specific, 391 pending and 86 partial (477 unresolved). Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-fifty-nine.md. No parent acceptance criterion is complete. Stopped for review; next is TASK-381.5, controller keyboard and accessible modal routes, only after the user prompts continuation.
 <!-- SECTION:NOTES:END -->

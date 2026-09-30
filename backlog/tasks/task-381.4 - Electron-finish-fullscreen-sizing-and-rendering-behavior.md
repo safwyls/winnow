@@ -1,11 +1,11 @@
 ---
 id: TASK-381.4
 title: 'Electron: finish fullscreen sizing and rendering behavior'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:44'
-updated_date: '2026-09-30 22:48'
+updated_date: '2026-09-30 22:49'
 labels:
   - electron
   - parity
@@ -77,7 +77,7 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [x] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -98,6 +98,8 @@ Restored the 0.85 fullscreen baseline and reference display scaling, normalized 
 Verification: build/typecheck and formatting pass; all 3,369 component/live API cases across 165 files pass (54.20s). All 94 distinct affected native cases pass across saved batches, including the final 69-case regression (6.6m) and both final reading-size cases (18.9s). Both migrated application-service legacy preference cases pass. Source review findings on margins, decorations and typography were corrected and verified; screenshots inspected. Fullscreen physical devices/TV-distance validation remains TASK-381.40.
 
 All 19 assigned source methods now have executed replacement evidence. Inventory: 1,303 ported, 625 retained backend, 30 framework-specific, 391 pending and 86 partial; complete migration gate remains expected-failing for 477 unresolved methods. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-fifty-nine.md and .tmp/fullscreen-sizing-native-summary.json. This is affected-suite evidence, not a full native or .NET aggregate rerun. Task stops for review before TASK-381.5.
+
+Reviewable milestone: 359e79da (Preserve fullscreen sizing and rendering in Electron). Root LB/RB correction is d5746fd0. All acceptance criteria verified; stop here for review before TASK-381.5.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
