@@ -41,6 +41,7 @@ import type { ApplicationUpdateAction, ApplicationUpdateSnapshot } from '../shar
 import type { ApiRequest, ApplicationActivation, BackendEvent, ConnectionState } from '../shared/bridge'
 import {
   pluginInstallLink,
+  registersGlobalProtocol,
   quoteArgument,
   readActivation,
   validateActivationArguments,
@@ -236,10 +237,8 @@ async function initialize(): Promise<void> {
   if (app.isPackaged && process.platform === 'win32') {
     const scope = createHash('sha256').update(profileRoot.toLowerCase()).digest('hex').slice(0, 16)
     app.setAppUserModelId(`Winnow.Electron.${scope}`)
-    app.setAsDefaultProtocolClient('winnow', process.execPath, [
-      ...(dataDirectory ? ['--data-dir', dataDirectory] : []),
-      '--uri',
-    ])
+    if (registersGlobalProtocol(app.isPackaged, process.platform, dataDirectory))
+      app.setAsDefaultProtocolClient('winnow', process.execPath, ['--uri'])
   }
   const developmentOrigin = !app.isPackaged ? process.env.ELECTRON_RENDERER_URL : undefined
   if (developmentOrigin) {

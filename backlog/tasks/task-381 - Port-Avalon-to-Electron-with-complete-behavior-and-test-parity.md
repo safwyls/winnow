@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 05:00'
+updated_date: '2026-09-30 05:11'
 labels: []
 dependencies: []
 priority: high
@@ -114,6 +114,10 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 43. Audit the ten original architecture boundary methods: retain the seven shared .NET core/recommend/ingest rules only after checking current backend composition and focused original tests; add Electron source and bundled dependency guards for renderer and embedded sign-in hosts, including adversarial boundary fixtures. Then extract the bounded native activation queue, preserve FIFO and Show coalescing, reject malformed structured payloads without dispatch, and test real profile isolation and early handoff. Keep any Int64 transport limitation explicit until end-to-end behavior is implemented and tested.
 
 44. Close the remaining typed activation ID gap: preserve valid Int64 ownership IDs as canonical decimal strings when they exceed JavaScript precision; validate them without numeric rounding through the named route boundary. Add an additive backend Primary action that selects the existing current play/install action, keeping launch authorization and idempotency in the backend. Use it only for extended-ID shell activation, retaining ordinary theme launch behavior. Verify original FIFO/cold-start order, both presentation paths, exact HTTP path and real backend dispatch with an Int64-max fixture and a fake OS dispatcher. Also exercise a real secondary launch during primary readiness. Keep packaged executable/shortcut validation separate until exercised.
+
+45. Build the current unpacked Windows Electron distribution and verify the actual packaged executable plus Windows shortcuts against isolated library profiles. Exercise show, fullscreen, game and installation-link handoff; assert secondary exit and unchanged backend ownership, and reject malformed links without a native modal blocking the fixture. Keep all shortcut files under the fixture directory and prevent test game/provider requests from launching external software. Run the full .NET regression suite for the additive action contract before packaging, then retain packaging and native evidence. Do not install or publish a release.
+
+45a. Before packaged launches, prevent explicit --data-dir sessions from claiming the global winnow URI association. Keep normal packaged-profile registration and profile-scoped Jump Lists. Verify the registration decision independently and use actual packaged launch tests only with explicit throwaway profiles.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -228,4 +232,6 @@ Checkpoint28 complete: all214native Electron cases pass in one18.0minute run wit
 Plan 43 verification: all 2,882 component/live API cases in 144 files pass without skips (48.48s), with build and final typecheck passing. All ten original architecture checks pass against a fresh .NET build. Four new native activation workflows pass together (26.8s): early background restoration, FIFO/coalescing, rejection without dispatch, bounded recovery, profile isolation/restart and second-process exit before database creation. A fixture top-level readiness deadlock was corrected; no production startup deadlock was found. Inventory: 1,053 ported, 559 retained backend, 17 framework-specific, 696 pending, 110 partial. Int64 activation IDs, packaged/shortcut launches and listener startup remain outstanding. Evidence: checkpoint-twenty-nine.md. No acceptance criteria checked.
 
 Plan 44 verified: all 2,907 component/live API cases in 145 files pass without skips (49.32s), plus build and final typecheck. All 109 backend tests pass, including exact Int64-max HTTP/SQLite dispatch and operation deduplication. All eight native activation workflows pass together (49.8s), including a real pre-readiness secondary request and exact extended-ID URLs on desktop and fullscreen. Two fixture failures assumed setup despite --seed-sample; explicit step-null and navigation assertions corrected them without weakening request checks. Typed FIFO and listener-startup contracts are ported. Inventory: 1,055 ported, 559 retained backend, 17 framework-specific, 695 pending, 109 partial. Evidence checkpoint-thirty.md; packaged/shortcut variants and general numeric JSON identity limits remain documented. All AC remain unchecked.
+
+Plan 45 verified: fresh full .NET Release build/test passes 6,863 tests across 13 assemblies, including 896 Avalonia UI cases; two Linux-only cases skip on Windows. The unpacked Windows Electron package and self-contained backend build successfully. All nine actual executable/shortcut checks pass (18.5s), preserving backend ownership and the global protocol registry snapshot. Explicit data-directory runs no longer claim the global URI handler. All 2,908 component/live API cases in 145 files pass without skips (51.10s), with final typecheck passing. Full original process-handoff matrix is ported. Inventory: 1,056 ported, 559 retained backend, 17 framework-specific, 695 pending, 108 partial. Evidence checkpoint-thirty-one.md. All acceptance criteria remain unchecked.
 <!-- SECTION:NOTES:END -->

@@ -1,6 +1,15 @@
 import type { ApplicationActivation } from '../shared/bridge'
 import { ownershipId } from '../shared/ownership-id'
 
+/** An explicitly selected library must not take over the installed profile's global URI handler. */
+export function registersGlobalProtocol(
+  packaged: boolean,
+  platform: string,
+  dataDirectory?: string,
+): boolean {
+  return packaged && platform === 'win32' && !dataDirectory
+}
+
 /** URI launch syntax is checked before options can select or create a data directory. */
 export function validateActivationArguments(args: string[]): void {
   const hasUri = args.some(

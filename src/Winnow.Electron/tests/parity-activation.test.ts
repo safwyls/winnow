@@ -1,12 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import {
   pluginInstallLink,
+  registersGlobalProtocol,
   quoteArgument,
   readActivation,
   validateActivationArguments,
   validatedActivation,
 } from '../src/main/activation'
 describe('native activation arguments', () => {
+  it('only the ordinary packaged Windows profile registers a global installation-link handler', () => {
+    expect(registersGlobalProtocol(true, 'win32')).toBe(true)
+    expect(registersGlobalProtocol(true, 'win32', 'isolated-library')).toBe(false)
+    expect(registersGlobalProtocol(false, 'win32')).toBe(false)
+    expect(registersGlobalProtocol(true, 'linux')).toBe(false)
+    expect(registersGlobalProtocol(true, 'darwin')).toBe(false)
+  })
   it('validates structured second-instance messages without interpreting them as arguments', () => {
     expect(validatedActivation({ kind: 'plugin', pluginId: 'xbox', releaseTag: 'v1.2.3' })).toEqual({
       kind: 'plugin',

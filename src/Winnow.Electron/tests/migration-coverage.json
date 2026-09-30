@@ -15,9 +15,9 @@
     "reason": "The complete original game-23/fullscreen/Int64-max FIFO sequence survives cold start and real second-process delivery. Decimal strings preserve IDs beyond JavaScript precision. Both surfaces wait for startup before issuing an exact named-route request; native HTTP paths retain all digits. Backend HTTP/SQLite fixtures dispatch the exact ID, select current play/install facts and deduplicate retries without a real OS launch."
   },
   "SingleInstanceActivationTests.Second_process_activates_owner_and_exits_before_database_initialization": {
-    "status": "partial",
-    "tests": [{"file":"tests/electron/parity.spec.ts","case":"a second process delivers fullscreen and starts plugin installation in the same library session"}],
-    "reason": "Native activation.spec.ts additionally verifies show/fullscreen/game/plugin launches against an owner without a backend: all secondary processes exit without creating a database, and an invalid installation URI exits 2 without dispatch. Packaged executable and Windows shortcut variants still need disposable-machine validation, so this source method remains partial."
+    "status": "ported",
+    "tests": [{"file":"tests/electron/parity.spec.ts","case":"a second process delivers fullscreen and starts plugin installation in the same library session"}, {"file":"tests/electron/activation.spec.ts","case":"secondary startup exits before creating a database and an invalid installation URI never activates its owner"}, {"file":"tests/packaged/activation.spec.ts","case":"restores the packaged owner and retains its backend"}],
+    "reason": "The full original launch matrix is covered. Real development secondary processes handle show/fullscreen/game/plugin requests against an owner without creating a backend/database; invalid URI startup exits 2 without dispatch. The actual Windows packaged executable and native .lnk shortcuts deliver all four request kinds, restore the owner and retain its bundled backend process and epoch. Packaged probes intercept game/provider delivery after main dispatch to avoid launching external software; the existing native workflow separately verifies actual fullscreen and plugin presentation."
   },
   "GameLinkRouterTests.Store_conversion_rejects_noncanonical_addresses": {
     "status": "ported",

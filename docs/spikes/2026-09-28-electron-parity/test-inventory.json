@@ -2,8 +2,8 @@
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
     "pending": 695,
-    "partial": 109,
-    "ported": 1055,
+    "partial": 108,
+    "ported": 1056,
     "retained-backend": 559,
     "framework-specific": 17
   },
@@ -13293,14 +13293,22 @@
     {
       "id": "SingleInstanceActivationTests.Second_process_activates_owner_and_exits_before_database_initialization",
       "source": "tests/Winnow.Tests/SingleInstanceActivationTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/electron/parity.spec.ts",
           "case": "a second process delivers fullscreen and starts plugin installation in the same library session"
+        },
+        {
+          "file": "tests/electron/activation.spec.ts",
+          "case": "secondary startup exits before creating a database and an invalid installation URI never activates its owner"
+        },
+        {
+          "file": "tests/packaged/activation.spec.ts",
+          "case": "restores the packaged owner and retains its backend"
         }
       ],
-      "reason": "Native activation.spec.ts additionally verifies show/fullscreen/game/plugin launches against an owner without a backend: all secondary processes exit without creating a database, and an invalid installation URI exits 2 without dispatch. Packaged executable and Windows shortcut variants still need disposable-machine validation, so this source method remains partial."
+      "reason": "The full original launch matrix is covered. Real development secondary processes handle show/fullscreen/game/plugin requests against an owner without creating a backend/database; invalid URI startup exits 2 without dispatch. The actual Windows packaged executable and native .lnk shortcuts deliver all four request kinds, restore the owner and retain its bundled backend process and epoch. Packaged probes intercept game/provider delivery after main dispatch to avoid launching external software; the existing native workflow separately verifies actual fullscreen and plugin presentation."
     },
     {
       "id": "SingleInstanceActivationTests.Launches_queue_until_ready_and_repeated_requests_reach_the_same_session",

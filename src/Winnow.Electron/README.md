@@ -273,6 +273,7 @@ npm run test:integration
 npm run test:rendered
 npm run migration:report
 npm run package
+npm run test:packaged
 ```
 
 `test:rendered` launches the built Electron app and an isolated sample backend. Set
@@ -298,6 +299,13 @@ the production dependencies' license notices, including the bundled fonts, under
 Windows builds are unsigned. Windows x64 is the locally verified target; macOS/Linux
 configuration is provisional and has not been packaged or device-tested. This frontend is
 not part of the repository's existing Avalonia release or update pipeline.
+
+`test:packaged` runs Windows executable and real shortcut activation checks against the
+unpacked build and its bundled backend. It creates a temporary library whose path contains
+spaces, verifies profile ownership and preserves the global installation-link association.
+Explicit `--data-dir` sessions do not register themselves as the global `winnow://` handler;
+the ordinary packaged profile registers that handler on startup. The packaged suite does
+not install or publish a release. `WINNOW_PACKAGED_EXE` can select another unpacked build.
 
 The integration runner starts and stops its own backend with a fresh sample database,
 adds a synthetic recorded session, and clears inherited IGDB credentials in that process.
