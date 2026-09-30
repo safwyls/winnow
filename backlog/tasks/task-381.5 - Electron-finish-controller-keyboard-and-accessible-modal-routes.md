@@ -1,11 +1,11 @@
 ---
 id: TASK-381.5
 title: 'Electron: finish controller keyboard and accessible modal routes'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:44'
-updated_date: '2026-09-30 23:41'
+updated_date: '2026-09-30 23:42'
 labels:
   - electron
   - parity
@@ -58,7 +58,7 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [x] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -80,5 +80,5 @@ Implemented the five-row 57-key controller keyboard, main-owned fullscreen file 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Restored complete keyboard geometry and controller edits, accessible settings/modal routes, fullscreen file selection and exact opener focus. Verified 3,388 component/live API cases and 65 distinct native cases on both surfaces, plus build/typecheck and visual inspection. All ten assigned source contracts now have executed replacement evidence; 467 remain unresolved elsewhere. Checkpoint sixty records logs, screenshots, initial failures and validation limits. Milestone commit and review boundary will be recorded before closing.
+Completed in milestone c355f48b. Restored five-row keyboard geometry and controller edits, accessible settings/modal routes, fullscreen file selection with explicit overwrite consent, and exact opener focus. Build/typecheck, Prettier, diff checks, all 3,388 component/live API cases across 166 files, and 65 distinct native cases pass. All ten assigned source contracts now have executed replacement evidence; 467 remain unresolved elsewhere. Checkpoint sixty records logs, screenshots, initial failures and validation limits. Stopped for user review; TASK-381.6 remains To Do until the next continuation prompt.
 <!-- SECTION:FINAL_SUMMARY:END -->
