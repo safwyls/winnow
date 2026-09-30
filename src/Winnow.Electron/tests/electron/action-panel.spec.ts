@@ -52,6 +52,7 @@ async function press(button: number) {
           {
             index: 0,
             connected: true,
+            mapping: 'standard',
             axes: [0, 0, 0, 0],
             buttons: Array.from({ length: 17 }, (_, index) => ({
               pressed: buttons.includes(index),
@@ -175,6 +176,7 @@ for (const [text, reduced] of [
           {
             index: 0,
             connected: true,
+            mapping: 'standard',
             axes: [0, 0, 0, 0],
             buttons: Array.from({ length: 17 }, (_, index) => ({
               pressed: index === 13,

@@ -715,6 +715,7 @@ export function MergeQueue({
                             <div
                               className={`merge-row${row.workId === card.parent ? ' main-row' : ''}`}
                               data-included={card.included.includes(row.workId)}
+                              data-blocked={blocked}
                               key={row.workId}
                               onMouseEnter={() => setHovered({ card: card.key, work: row.workId })}
                               onMouseLeave={() => setHovered(null)}

@@ -81,6 +81,9 @@
   .merge-row:hover {
     background: color-mix(in srgb, var(--raised) 55%, transparent);
   }
+  .merge-row[data-blocked='true'] {
+    pointer-events: none;
+  }
   .merge-row.main-row {
     background: var(--raised);
     border-left-color: var(--accent);

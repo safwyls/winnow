@@ -163,6 +163,7 @@ async function controller() {
         {
           index: 0,
           connected: true,
+          mapping: 'standard',
           axes: [0, 0, 0, 0],
           buttons: Array.from({ length: 17 }, (_, index) => ({
             pressed: state.pressed.includes(index),
@@ -416,6 +417,39 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await rows.nth(1).locator('.merge-cover').click()
       await expect(radio).toBeChecked()
       await expect(rows.first().getByRole('radio')).toBeEnabled()
+      await rows.first().getByRole('radio').press('Space')
+      await expect(rows.first().getByRole('radio')).toBeChecked()
+      await application.evaluate(() => {
+        Object.assign(globalThis, { __identityHoldNext: true })
+      })
+      await page.getByRole('button', { name: 'Refresh suggestions', exact: true }).click()
+      await expect
+        .poll(() =>
+          application.evaluate(
+            () => typeof (globalThis as unknown as { __identityRelease?: () => void }).__identityRelease,
+          ),
+        )
+        .toBe('function')
+      await expect(radio).toBeDisabled()
+      let coverClickFinished = false
+      const coverClick = rows
+        .nth(1)
+        .locator('.merge-cover')
+        .click()
+        .then(() => {
+          coverClickFinished = true
+        })
+      try {
+        // The image shares the row's disabled state while a refreshed revision is outstanding.
+        await page.waitForTimeout(180)
+        expect(coverClickFinished).toBe(false)
+      } finally {
+        await application.evaluate(() =>
+          (globalThis as unknown as { __identityRelease?: () => void }).__identityRelease?.(),
+        )
+        await coverClick
+      }
+      await expect(radio).toBeChecked()
       await rows.first().getByRole('radio').press('Space')
       await expect(rows.first().getByRole('radio')).toBeChecked()
       await rows.nth(1).getByRole('checkbox').uncheck()

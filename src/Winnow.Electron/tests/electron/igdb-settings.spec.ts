@@ -72,6 +72,7 @@ for (const [mode, scale] of [
               {
                 index: 0,
                 connected: true,
+                mapping: 'standard',
                 axes: [0, 0, 0, 0],
                 buttons: Array.from({ length: 17 }, (_, i) => ({ pressed: controller.pressed.includes(i) })),
               },

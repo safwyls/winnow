@@ -136,6 +136,8 @@ beforeEach(() => {
     value: vi.fn(() => [
       {
         index: 0,
+        connected: true,
+        mapping: 'standard',
         get buttons() {
           return pressed.map((pressed) => ({ pressed }))
         },

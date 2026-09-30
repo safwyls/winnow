@@ -721,10 +721,21 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details compo
     first.focus()
     fireEvent.keyDown(first, { key: 'ArrowRight' })
     expect(document.activeElement).toBe(screen.getByRole('tab', { name: names[1] }))
+    expect(
+      screen
+        .getByRole('tab', { name: mode === 'desktop' ? names[1] : 'Library' })
+        .getAttribute('aria-selected'),
+    ).toBe('true')
     fireEvent.keyDown(document.activeElement!, { key: 'End' })
     expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Library' }))
     fireEvent.keyDown(document.activeElement!, { key: 'Home' })
     expect(document.activeElement).toBe(first)
+    expect(
+      screen
+        .getByRole('tab', { name: mode === 'desktop' ? 'Overview' : 'Library' })
+        .getAttribute('aria-selected'),
+    ).toBe('true')
+    if (mode === 'fullscreen') fireEvent.click(first)
     expect(screen.getByText('No description yet. Metadata fills in automatically.')).toBeDefined()
     expect(screen.queryByText(/unread updates/)).toBeNull()
     expect(screen.queryByText('Related games & expansions')).toBeNull()
@@ -744,7 +755,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details compo
     expect(document.activeElement).toBe(
       document.querySelector('.avalon-details-menu button, .avalon-actions-body button'),
     )
-    expect(document.activeElement?.textContent).toBe('View in Steam')
+    expect(document.activeElement?.textContent).toBe(mode === 'desktop' ? 'View in Steam' : 'Add to list')
     fireEvent.click(screen.getByRole('button', { name: 'Edit details' }))
     if (mode === 'fullscreen') fireEvent.click(await screen.findByRole('button', { name: 'Name · IGDB' }))
     const input = await screen.findByRole('textbox', { name: 'Name' })

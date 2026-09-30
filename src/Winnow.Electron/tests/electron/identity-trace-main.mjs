@@ -8,6 +8,15 @@ globalThis.fetch = async (input, init) => {
   const entry = { path: url.pathname, method: init?.method ?? 'GET' }
   if (typeof init?.body === 'string') entry.expected = JSON.parse(init.body).expectedRevision
   globalThis.__identityTrace.push(entry)
+  if (globalThis.__identityHoldNext) {
+    globalThis.__identityHoldNext = false
+    await new Promise((resolve) => {
+      globalThis.__identityRelease = () => {
+        globalThis.__identityRelease = undefined
+        resolve()
+      }
+    })
+  }
   const response = await originalFetch(input, init)
   entry.status = response.status
   void response

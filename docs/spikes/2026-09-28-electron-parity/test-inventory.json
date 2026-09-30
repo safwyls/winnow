@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 464,
+    "pending": 447,
     "partial": 101,
-    "ported": 1222,
+    "ported": 1239,
     "retained-backend": 625,
     "framework-specific": 23
   },
@@ -7516,47 +7516,110 @@
     {
       "id": "GamepadInputTests.RightStickScrollUsesDeadzone",
       "source": "tests/Winnow.Tests/GamepadInputTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-controller-input.test.ts",
+          "case": "maps original right-stick Y %s through the preserved deadzone"
+        }
+      ],
+      "reason": "The production renderer consumes the shared input filter. Tests retain the original deadzone, logical actions, independent held-input suppression and exact repeat boundaries. Chromium owns native device normalization; only connected standard-mapped browser devices are accepted. Synthetic device input does not establish physical-controller validation."
     },
     {
       "id": "GamepadInputTests.HeldScrollRepeatsWithoutRepeatingAccept",
       "source": "tests/Winnow.Tests/GamepadInputTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-controller-input.test.ts",
+          "case": "repeats held scroll after 400ms and every 110ms without repeating Accept"
+        }
+      ],
+      "reason": "The production renderer consumes the shared input filter. Tests retain the original deadzone, logical actions, independent held-input suppression and exact repeat boundaries. Chromium owns native device normalization; only connected standard-mapped browser devices are accepted. Synthetic device input does not establish physical-controller validation."
     },
     {
       "id": "GamepadInputTests.HeldAcceptDoesNotRepeatOrFireAfterFocusReturns",
       "source": "tests/Winnow.Tests/GamepadInputTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-controller-input.test.ts",
+          "case": "does not repeat Accept or fire it on focus return until it releases"
+        }
+      ],
+      "reason": "The production renderer consumes the shared input filter. Tests retain the original deadzone, logical actions, independent held-input suppression and exact repeat boundaries. Chromium owns native device normalization; only connected standard-mapped browser devices are accepted. Synthetic device input does not establish physical-controller validation."
     },
     {
       "id": "GamepadInputTests.DirectionsRepeatAfterDelayAndStallsDoNotQueueActions",
       "source": "tests/Winnow.Tests/GamepadInputTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-controller-input.test.ts",
+          "case": "repeats directions at exact boundaries, resets on reversal and never replays stalled frames"
+        }
+      ],
+      "reason": "The production renderer consumes the shared input filter. Tests retain the original deadzone, logical actions, independent held-input suppression and exact repeat boundaries. Chromium owns native device normalization; only connected standard-mapped browser devices are accepted. Synthetic device input does not establish physical-controller validation."
     },
     {
       "id": "GamepadInputTests.ReconnectRequiresHeldControlsToBeReleasedIndividually",
       "source": "tests/Winnow.Tests/GamepadInputTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-controller-input.test.ts",
+          "case": "releases reconnect suppression independently so a fresh direction works while Accept stays held"
+        }
+      ],
+      "reason": "The production renderer consumes the shared input filter. Tests retain the original deadzone, logical actions, independent held-input suppression and exact repeat boundaries. Chromium owns native device normalization; only connected standard-mapped browser devices are accepted. Synthetic device input does not establish physical-controller validation."
     },
     {
       "id": "GamepadInputTests.StickHasDeadzoneAndChoosesDominantDirection",
       "source": "tests/Winnow.Tests/GamepadInputTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-controller-input.test.ts",
+          "case": "chooses the original dominant stick direction for %s,%s"
+        }
+      ],
+      "reason": "The production renderer consumes the shared input filter. Tests retain the original deadzone, logical actions, independent held-input suppression and exact repeat boundaries. Chromium owns native device normalization; only connected standard-mapped browser devices are accepted. Synthetic device input does not establish physical-controller validation."
     },
     {
       "id": "GamepadInputTests.PlatformMappingsAgreeOnFaceAndShoulderActions",
       "source": "tests/Winnow.Tests/GamepadInputTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-controller-input.test.ts",
+          "case": "preserves the standard face, shoulder or navigation action %s"
+        }
+      ],
+      "reason": "The production renderer consumes the shared input filter. Tests retain the original deadzone, logical actions, independent held-input suppression and exact repeat boundaries. Chromium owns native device normalization; only connected standard-mapped browser devices are accepted. Synthetic device input does not establish physical-controller validation."
     },
     {
       "id": "GamepadInputTests.TriggerMappingsIgnoreRestAndExposeBothPagesIndependently",
       "source": "tests/Winnow.Tests/GamepadInputTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-controller-input.test.ts",
+          "case": "maps independent trigger values %s and %s at the original threshold"
+        }
+      ],
+      "reason": "The production renderer consumes the shared input filter. Tests retain the original deadzone, logical actions, independent held-input suppression and exact repeat boundaries. Chromium owns native device normalization; only connected standard-mapped browser devices are accepted. Synthetic device input does not establish physical-controller validation."
     },
     {
       "id": "GamepadInputTests.LaunchSearchAndPagingAreSuppressedOnReconnectAndNeverRepeatWhileHeld",
       "source": "tests/Winnow.Tests/GamepadInputTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-controller-input.test.ts",
+          "case": "suppresses launch, search and paging on reconnect and never repeats held actions"
+        }
+      ],
+      "reason": "The production renderer consumes the shared input filter. Tests retain the original deadzone, logical actions, independent held-input suppression and exact repeat boundaries. Chromium owns native device normalization; only connected standard-mapped browser devices are accepted. Synthetic device input does not establish physical-controller validation."
     },
     {
       "id": "GamepadInputTests.UnknownBatteryIsAbsentRatherThanAnError",
@@ -23840,7 +23903,14 @@
     {
       "id": "FullscreenDetailsTests.Overview_controller_moves_between_actions_and_the_screenshot_row",
       "source": "tests/Winnow.Ui.Tests/FullscreenDetailsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/controller-parity.spec.ts",
+          "case": "fullscreen Details preserves action, tab and media focus rows with ${count} screenshots at text ${scale}"
+        }
+      ],
+      "reason": "The original 0/1/2 screenshot graph runs at 1920x1080 with text scales 1 and 1.4. Directional tabs move focus without selection; selected-only borders remain intact. Explicit rows preserve and clamp columns through primary, tabs, History/About, Journal/screenshots and Gallery, including return to the original action."
     },
     {
       "id": "FullscreenDetailsTests.Cinematic_details_lease_saved_landscape_across_the_canvas_and_release_on_close",
@@ -23908,7 +23978,14 @@
     {
       "id": "FullscreenDetailsTests.Long_description_has_an_explicit_controller_reading_region",
       "source": "tests/Winnow.Ui.Tests/FullscreenDetailsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/controller-parity.spec.ts",
+          "case": "fullscreen About scrolls from Back immediately by 160px and restores the Overview origin"
+        }
+      ],
+      "reason": "The long About reading region consumes Down immediately from Back, scrolls 160px, returns to zero on Up, supports the same right-stick step and returns to the original About action on Back."
     },
     {
       "id": "FullscreenFilePickerTests.Saving_an_existing_file_requires_confirmation_and_picker_never_writes_it",
@@ -25229,32 +25306,98 @@
     {
       "id": "GamepadNavigationTests.Dpad_moves_between_ordinary_controls_inside_a_flyout",
       "source": "tests/Winnow.Ui.Tests/GamepadNavigationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-controller-dispatch.test.tsx",
+          "case": "desktop direction and Accept operate checkboxes inside the active flyout and Back closes only that scope"
+        },
+        {
+          "file": "tests/electron/controller-parity.spec.ts",
+          "case": "desktop controller stays in flyouts, toggles checkboxes and skips disabled controls on shoulder navigation"
+        }
+      ],
+      "reason": "The production desktop hook moves between two ordinary checkboxes inside a flyout, activates the second and consumes Back within the flyout. The native fixture uses the actual App hook, which is now enabled on desktop."
     },
     {
       "id": "GamepadNavigationTests.Controller_focus_stays_inside_an_open_prompt_and_accept_toggles_checkboxes",
       "source": "tests/Winnow.Ui.Tests/GamepadNavigationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-controller-dispatch.test.tsx",
+          "case": "desktop shoulders wrap inside a passive prompt in both directions without activating background actions"
+        },
+        {
+          "file": "tests/parity-controller-dispatch.test.tsx",
+          "case": "desktop direction and Accept operate checkboxes inside the active flyout and Back closes only that scope"
+        },
+        {
+          "file": "tests/electron/controller-parity.spec.ts",
+          "case": "fullscreen About scrolls from Back immediately by 160px and restores the Overview origin"
+        }
+      ],
+      "reason": "Thirty shoulder steps remain inside the prompt in both directions. A background action remains inactive until the prompt closes; Accept toggles a focused checkbox. The native Add-to-list dialog additionally retains controller scope for fifteen steps each way and returns focus to More after Back."
     },
     {
       "id": "GamepadNavigationTests.Right_stick_scrolls_long_content_without_changing_focus",
       "source": "tests/Winnow.Ui.Tests/GamepadNavigationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-controller-dispatch.test.tsx",
+          "case": "%s right-stick scrolling moves a quarter viewport and keeps focus"
+        },
+        {
+          "file": "tests/electron/controller-parity.spec.ts",
+          "case": "desktop right stick scrolls the focused 300px viewport by 75px and preserves focus"
+        }
+      ],
+      "reason": "A 300px viewport over 2000px content moves exactly 75px downward and back to zero without changing focused controls. Both renderer surfaces use the same production scroll routing; the native fixture removes generic dialog borders so the viewport is exactly the source size."
     },
     {
       "id": "GamepadNavigationTests.Shoulder_buttons_move_focus_and_accept_activates_the_focused_control",
       "source": "tests/Winnow.Ui.Tests/GamepadNavigationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-controller-dispatch.test.tsx",
+          "case": "desktop movement %s skips disabled controls and Accept raises exactly one click"
+        },
+        {
+          "file": "tests/electron/controller-parity.spec.ts",
+          "case": "desktop controller stays in flyouts, toggles checkboxes and skips disabled controls on shoulder navigation"
+        }
+      ],
+      "reason": "The original first/disabled/last control sequence is exercised through both shoulder and directional input. Accept fires once and previous restores the first control. Native input also verifies disabled-control skipping and modal containment."
     },
     {
       "id": "GamepadNavigationTests.Direction_moves_focus_and_skips_disabled_controls",
       "source": "tests/Winnow.Ui.Tests/GamepadNavigationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-controller-dispatch.test.tsx",
+          "case": "desktop movement %s skips disabled controls and Accept raises exactly one click"
+        },
+        {
+          "file": "tests/electron/controller-parity.spec.ts",
+          "case": "desktop controller stays in flyouts, toggles checkboxes and skips disabled controls on shoulder navigation"
+        }
+      ],
+      "reason": "The original first/disabled/last control sequence is exercised through both shoulder and directional input. Accept fires once and previous restores the first control. Native input also verifies disabled-control skipping and modal containment."
     },
     {
       "id": "GamepadNavigationTests.Controller_opens_keyboard_and_Escape_closes_only_text_entry",
       "source": "tests/Winnow.Ui.Tests/GamepadNavigationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/controller-parity.spec.ts",
+          "case": "desktop controller opens the keyboard for Weekend, restores the field and opens fullscreen and its quick menu"
+        }
+      ],
+      "reason": "The production desktop search contains Weekend. Controller Accept opens text entry; Escape closes only the keyboard, preserves the value and restores field focus. Menu enters fullscreen, a second Menu opens the quick menu, and F11 returns to desktop."
     },
     {
       "id": "GameplayStatsInteractionTests.Xbox_import_updates_open_gameplay_store_choices_and_library_counts",

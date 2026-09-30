@@ -48,6 +48,14 @@ Desktop About keeps its 410px reading measure and the card follows the original 
 caps. Technical facts are visible directly in Library. Refetch metadata closes More and
 reports progress and completion in a persistent footer outside the reading area; fullscreen
 uses its own text scale. Refreshing keeps the selected section and returns focus to More.
+
+Controllers work on both surfaces. Desktop shoulders move among controls in the active
+dialog or flyout; fullscreen shoulders switch root pages. Accept operates the focused control
+or opens text entry. Right-stick scrolling keeps focus in place. Fullscreen Details uses
+explicit focus rows: left/right moves tab focus, A selects, and triggers switch sections.
+Its Add to list action lives in More, and About supports directional reading from Back.
+Held controls are suppressed independently after reconnect or focus return. Device input
+uses Chromium's standard mapping; physical-device and battery validation remain open.
 Reading links use the same validation before rendering and dispatch: valid HTTP and HTTPS
 destinations remain available, while invalid targets or empty labels produce no button.
 Desktop and controller settings share the saved reading destination. Browser fallback

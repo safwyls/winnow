@@ -191,6 +191,8 @@ for (const [mode, scale] of [
             value: () => [
               {
                 index: 0,
+                connected: true,
+                mapping: 'standard',
                 axes: [0, 0, 0, 0],
                 buttons: Array.from({ length: 17 }, (_, i) => ({ pressed: pad.pressed.includes(i) })),
               },

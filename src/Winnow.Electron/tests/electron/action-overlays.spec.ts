@@ -90,6 +90,7 @@ async function pad(buttons: number[]) {
         {
           index: 0,
           connected: true,
+          mapping: 'standard',
           axes: [0, 0, 0, 0],
           buttons: Array.from({ length: 17 }, (_, index) => ({
             pressed: buttons.includes(index),

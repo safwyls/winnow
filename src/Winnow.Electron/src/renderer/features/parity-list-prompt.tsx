@@ -77,16 +77,40 @@ export function AddToListButton({
   )
 }
 
-function ListPrompt({
-  games,
-  mode,
-  origin,
+export function AddToListDialog({
   onClose,
+  ...props
 }: {
   games: LibraryGame[]
   mode: Mode
   origin: string
   onClose(): void
+  restoreFocus(): void
+}) {
+  return (
+    <Dialog.Root
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
+      <ListPrompt {...props} onClose={onClose} />
+    </Dialog.Root>
+  )
+}
+
+function ListPrompt({
+  games,
+  mode,
+  origin,
+  onClose,
+  restoreFocus,
+}: {
+  games: LibraryGame[]
+  mode: Mode
+  origin: string
+  onClose(): void
+  restoreFocus?(): void
 }) {
   const library = useLibrary(),
     client = useQueryClient()
@@ -170,6 +194,14 @@ function ListPrompt({
     <Dialog.Portal>
       <Dialog.Overlay className="dialog-overlay" />
       <Dialog.Content
+        onCloseAutoFocus={
+          restoreFocus
+            ? (event) => {
+                event.preventDefault()
+                restoreFocus()
+              }
+            : undefined
+        }
         className={`dialog-content feature-panel list-prompt-dialog mode-${mode}`}
         onOpenAutoFocus={(event) => {
           event.preventDefault()

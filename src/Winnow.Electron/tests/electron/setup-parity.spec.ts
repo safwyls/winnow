@@ -14,6 +14,7 @@ async function controller(page: Page) {
         {
           index: 0,
           connected: true,
+          mapping: 'standard',
           axes: [0, 0, 0, 0],
           buttons: Array.from({ length: 17 }, (_, index) => ({
             pressed: state.pressed.includes(index),

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { ControllerInput, ControllerButton as B, type ControllerPadState } from '../shared/controller-input'
 
 export type Direction = 'left' | 'right' | 'up' | 'down'
 type Rect = { left: number; top: number; width: number; height: number }
@@ -31,39 +32,6 @@ export function spatialTarget(rectangles: Rect[], current: number, direction: Di
   return target
 }
 
-/** Reconnecting or returning from another window requires every held input to release. */
-export class ControllerEdges {
-  private ready = false
-  private identity: number | null = null
-  private previous: boolean[] = []
-  reset() {
-    this.ready = false
-    this.identity = null
-    this.previous = []
-  }
-  sample(index: number, buttons: boolean[], axes: number[], active: boolean) {
-    if (!active) {
-      this.reset()
-      return []
-    }
-    if (this.identity !== index) {
-      this.reset()
-      this.identity = index
-    }
-    if (!this.ready) {
-      this.ready = buttons.every((value) => !value) && axes.every((value) => Math.abs(value) < 0.35)
-      this.previous = buttons
-      return []
-    }
-    const edges = buttons.flatMap((value, button) => (value && !this.previous[button] ? [button] : []))
-    this.previous = buttons
-    return edges
-  }
-  get armed() {
-    return this.ready
-  }
-}
-
 export function editable(element: Element | null): element is HTMLInputElement | HTMLTextAreaElement {
   return (
     element instanceof HTMLTextAreaElement ||
@@ -78,19 +46,74 @@ export function setTextValue(input: HTMLInputElement | HTMLTextAreaElement, valu
   input.dispatchEvent(new Event('input', { bubbles: true }))
   input.dispatchEvent(new Event('change', { bubbles: true }))
 }
+function available(element: HTMLElement) {
+  return (
+    !element.closest(
+      '[inert],[hidden],[aria-hidden="true"],[role="dialog"][data-state="closed"],[role="alertdialog"][data-state="closed"],[role="menu"][data-state="closed"],[data-controller-scope][data-state="closed"]',
+    ) &&
+    getComputedStyle(element).display !== 'none' &&
+    getComputedStyle(element).visibility !== 'hidden'
+  )
+}
+function controls(scope: ParentNode) {
+  return [
+    ...scope.querySelectorAll<HTMLElement>(
+      'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]',
+    ),
+  ].filter(
+    (element) =>
+      available(element) &&
+      !element.matches(':disabled') &&
+      element.getBoundingClientRect().width > 0 &&
+      element.getBoundingClientRect().height > 0,
+  )
+}
 export function controllerScope(): ParentNode {
-  const dialogs = document.querySelectorAll('[role="dialog"], [role="alertdialog"]')
-  return dialogs[dialogs.length - 1] ?? document
+  const overlays = [
+    ...document.querySelectorAll<HTMLElement>(
+      '[role="dialog"], [role="alertdialog"], [role="menu"], [data-controller-scope]',
+    ),
+  ].filter(available)
+  return overlays.at(-1) ?? document
 }
 export function controllerActivationTarget(): HTMLElement | null {
   const scope = controllerScope()
   const focused = document.activeElement as HTMLElement | null
-  if (scope === document || (scope as HTMLElement).contains(focused)) return focused
-  // A passive prompt must not steal focus on arrival; the first controller action enters its scope.
-  return (
-    scope.querySelector<HTMLElement>('[data-controller-initial]:not(:disabled)') ??
-    scope.querySelector<HTMLElement>('button:not(:disabled)')
+  if (
+    focused &&
+    focused !== document.body &&
+    available(focused) &&
+    !focused.matches(':disabled') &&
+    (scope === document || (scope as HTMLElement).contains(focused))
   )
+    return focused
+  // Passive prompts keep arrival focus; the first controller action enters their scope.
+  return (
+    [...scope.querySelectorAll<HTMLElement>('[data-controller-initial]:not(:disabled)')].find(available) ??
+    controls(scope)[0] ??
+    null
+  )
+}
+export function moveControllerTab(previous: boolean) {
+  const active = document.activeElement as HTMLElement | null
+  const event = new KeyboardEvent('keydown', {
+    key: 'Tab',
+    shiftKey: previous,
+    bubbles: true,
+    cancelable: true,
+  })
+  active?.dispatchEvent(event)
+  if (event.defaultPrevented) return
+  const candidates = controls(controllerScope()).filter((element) => element.tabIndex >= 0)
+  const index = candidates.indexOf(active!)
+  const next =
+    index < 0
+      ? previous
+        ? candidates.length - 1
+        : 0
+      : (index + (previous ? -1 : 1) + candidates.length) % candidates.length
+  candidates[next]?.focus({ preventScroll: true })
+  candidates[next]?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' })
 }
 export function moveControllerFocus(direction: Direction) {
   const active = document.activeElement as HTMLElement | null
@@ -121,16 +144,7 @@ export function moveControllerFocus(direction: Direction) {
     }
     return
   }
-  const candidates = [
-    ...controllerScope().querySelectorAll<HTMLElement>(
-      'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]',
-    ),
-  ].filter(
-    (element) =>
-      !element.closest('[inert],[hidden],[aria-hidden="true"]') &&
-      element.getBoundingClientRect().width > 0 &&
-      element.getBoundingClientRect().height > 0,
-  )
+  const candidates = controls(controllerScope())
   const selected = spatialTarget(
     candidates.map((element) => element.getBoundingClientRect()),
     candidates.indexOf(active!),
@@ -141,22 +155,47 @@ export function moveControllerFocus(direction: Direction) {
 }
 interface Actions {
   enabled: boolean
+  surface?: 'desktop' | 'fullscreen'
   menu(): void
   search(): void
   switchPage(delta: number): void
   keyboard(input: HTMLInputElement | HTMLTextAreaElement): void
   play(): void
 }
+export function scrollControllerRegion(direction: -1 | 1) {
+  const scope = controllerScope()
+  const scrollable = (element: HTMLElement) =>
+    /^(auto|scroll|overlay)$/.test(getComputedStyle(element).overflowY) &&
+    element.scrollHeight > element.clientHeight &&
+    element.clientHeight > 0 &&
+    !element.closest('[hidden],[inert],[aria-hidden="true"]')
+  const active = document.activeElement as HTMLElement | null
+  let target = scope === document || (scope as HTMLElement).contains(active) ? active : null
+  while (target && !scrollable(target)) target = target === scope ? null : target.parentElement
+  if (!target)
+    target =
+      [...scope.querySelectorAll<HTMLElement>('*')]
+        .filter(scrollable)
+        .sort(
+          (left, right) => right.clientWidth * right.clientHeight - left.clientWidth * left.clientHeight,
+        )[0] ?? null
+  if (target) {
+    const step = Number(target.dataset.controllerScrollStep)
+    target.scrollBy({
+      top: direction * (step > 0 && Number.isFinite(step) ? step : target.clientHeight * 0.25),
+      behavior: 'instant',
+    })
+  }
+}
 export function useController(actions: Actions) {
   const latest = useRef(actions)
   latest.current = actions
   useEffect(() => {
-    const edges = new ControllerEdges()
-    let frame = 0,
-      lastMove = 0
+    const input = new ControllerInput()
+    let frame = 0
     const mouse = () => delete document.documentElement.dataset.controller
     const reset = () => {
-      edges.reset()
+      input.reset()
       mouse()
     }
     window.addEventListener('blur', reset)
@@ -165,102 +204,118 @@ export function useController(actions: Actions) {
     window.addEventListener('pointerdown', mouse)
     const tick = (time: number) => {
       const action = latest.current
-      const pad = Array.from(navigator.getGamepads?.() ?? []).find(Boolean)
+      const pad =
+        Array.from(navigator.getGamepads?.() ?? []).find(
+          (pad): pad is Gamepad => !!pad?.connected && pad.mapping === 'standard',
+        ) ?? null
       const active = document.visibilityState === 'visible' && document.hasFocus()
-      if (!pad) edges.reset()
-      else {
-        const pressed = pad.buttons.map((button) => button.pressed)
-        const clicked = edges.sample(pad.index, pressed, [...pad.axes], active)
-        if (active && edges.armed) {
-          if (clicked.length || pad.axes.some((axis) => Math.abs(axis) > 0.5))
-            document.documentElement.dataset.controller = 'true'
-          if (clicked.includes(9)) action.menu()
-          if (action.enabled) {
-            if (clicked.includes(0)) {
-              const focused = controllerActivationTarget()
-              if (focused && focused !== document.activeElement) focused.focus({ preventScroll: true })
-              if (editable(focused) && !focused.readOnly && !focused.disabled) action.keyboard(focused)
-              else (focused as HTMLElement)?.click()
-            }
-            if (clicked.includes(1))
-              (document.activeElement ?? document.body).dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+      const clicked = input.sample(pad as ControllerPadState | null, active, time)
+      const dispatch = () => {
+        if (!clicked.length) return
+        document.documentElement.dataset.controller = 'true'
+        if (clicked.includes(B.Menu)) {
+          action.menu()
+          return
+        }
+        if (!action.enabled) return
+        const focused = controllerActivationTarget()
+        if (focused && focused !== document.activeElement) focused.focus({ preventScroll: true })
+        if (clicked.includes(B.Back)) {
+          ;(document.activeElement ?? document.body).dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+          )
+          return
+        }
+        if (clicked.includes(B.Context) || (clicked.includes(B.Accept) && editable(focused))) {
+          if (editable(focused) && !focused.readOnly && !focused.disabled) action.keyboard(focused)
+          else if (action.surface !== 'desktop')
+            controllerScope()
+              .querySelector<HTMLButtonElement>('[data-controller-context]:not(:disabled)')
+              ?.click()
+          return
+        }
+        if (clicked.includes(B.Previous) || clicked.includes(B.Next)) {
+          if (action.surface === 'desktop') moveControllerTab(clicked.includes(B.Previous))
+          else if (controllerScope() === document) action.switchPage(clicked.includes(B.Previous) ? -1 : 1)
+          return
+        }
+        if (clicked.includes(B.Accept)) {
+          focused?.click()
+          return
+        }
+        const scope = controllerScope()
+        // Keyboard editing shortcuts apply on both presentation surfaces.
+        if (clicked.includes(B.Play)) {
+          const backspace = scope.querySelector<HTMLButtonElement>('[data-keyboard-backspace]')
+          const pageAction = scope.querySelector<HTMLButtonElement>('[data-controller-play]:not(:disabled)')
+          if (backspace) backspace.click()
+          else if (action.surface !== 'desktop') {
+            if (pageAction) pageAction.click()
+            else action.play()
+          }
+          return
+        }
+        const enter = scope.querySelector<HTMLButtonElement>('[data-keyboard-enter]')
+        if (enter && clicked.includes(B.PageNext)) {
+          enter.click()
+          return
+        }
+        if (action.surface !== 'desktop') {
+          if (scope === document && clicked.includes(B.Search)) {
+            action.search()
+            return
+          }
+          for (const [button, delta] of [
+            [B.PagePrevious, -1],
+            [B.PageNext, 1],
+          ]) {
+            if (!clicked.includes(button)) continue
+            const pager = scope.querySelector<HTMLElement>('[data-controller-page]')
+            if (pager) {
+              pager.dispatchEvent(
+                new KeyboardEvent('keydown', {
+                  key: delta < 0 ? 'PageUp' : 'PageDown',
+                  bubbles: true,
+                  cancelable: true,
+                }),
               )
-            if (clicked.includes(2)) {
-              const backspace =
-                controllerScope().querySelector<HTMLButtonElement>('[data-keyboard-backspace]')
-              const pageAction = controllerScope().querySelector<HTMLButtonElement>(
-                '[data-controller-play]:not(:disabled)',
-              )
-              if (backspace) backspace.click()
-              else if (pageAction) pageAction.click()
-              else action.play()
+              return
             }
-            if (clicked.includes(3))
-              controllerScope().querySelector<HTMLButtonElement>('[data-controller-context]')?.click()
-            const modal = controllerScope() !== document
-            if (!modal && clicked.includes(8)) action.search()
-            if (!modal && clicked.includes(4)) action.switchPage(-1)
-            if (!modal && clicked.includes(5)) action.switchPage(1)
-            for (const [button, delta] of [
-              [6, -1],
-              [7, 1],
-            ]) {
-              if (!clicked.includes(button)) continue
-              const enter = controllerScope().querySelector<HTMLButtonElement>('[data-keyboard-enter]')
-              if (enter && button === 7) {
-                enter.click()
-                continue
-              }
-              const scope = controllerScope()
-              const pager = scope.querySelector<HTMLElement>('[data-controller-page]')
-              if (pager) {
-                pager.dispatchEvent(
-                  new KeyboardEvent('keydown', {
-                    key: delta < 0 ? 'PageUp' : 'PageDown',
-                    bubbles: true,
-                    cancelable: true,
-                  }),
-                )
-                continue
-              }
-              const explicit = scope.querySelectorAll<HTMLButtonElement>('[data-controller-tab]')
-              const tabs = [
-                ...(explicit.length ? explicit : scope.querySelectorAll<HTMLButtonElement>('.tabs button')),
-              ].filter((tab) => !tab.disabled && tab.getBoundingClientRect().height > 0)
-              const index = tabs.findIndex(
-                (tab) =>
-                  tab.getAttribute('aria-pressed') === 'true' ||
-                  tab.getAttribute('aria-selected') === 'true' ||
-                  tab.getAttribute('aria-current') === 'true',
-              )
-              tabs[(index + delta + tabs.length) % tabs.length]?.click()
-            }
-            if (time - lastMove > 180) {
-              const direction =
-                pressed[12] || pad.axes[1] < -0.5
-                  ? 'up'
-                  : pressed[13] || pad.axes[1] > 0.5
-                    ? 'down'
-                    : pressed[14] || pad.axes[0] < -0.5
-                      ? 'left'
-                      : pressed[15] || pad.axes[0] > 0.5
-                        ? 'right'
-                        : null
-              if (direction) {
-                moveControllerFocus(direction)
-                lastMove = time
-              }
-            }
-            const scroll = pad.axes[3] ?? 0
-            if (Math.abs(scroll) > 0.25) {
-              let target = document.activeElement as HTMLElement | null
-              while (target && target.scrollHeight <= target.clientHeight) target = target.parentElement
-              target?.scrollBy({ top: scroll * 18, behavior: 'instant' })
-            }
+            const explicit = scope.querySelectorAll<HTMLButtonElement>('[data-controller-tab]')
+            const tabs = [
+              ...(explicit.length ? explicit : scope.querySelectorAll<HTMLButtonElement>('.tabs button')),
+            ].filter((tab) => !tab.disabled && available(tab) && tab.getBoundingClientRect().height > 0)
+            const index = tabs.findIndex((tab) =>
+              ['aria-pressed', 'aria-selected', 'aria-current'].some(
+                (attribute) => tab.getAttribute(attribute) === 'true',
+              ),
+            )
+            const target = tabs[(index + delta + tabs.length) % tabs.length]
+            target?.focus({ preventScroll: true })
+            target?.click()
+            return
           }
         }
+        if (clicked.includes(B.ScrollUp)) {
+          scrollControllerRegion(-1)
+          return
+        }
+        if (clicked.includes(B.ScrollDown)) {
+          scrollControllerRegion(1)
+          return
+        }
+        const direction = clicked.includes(B.Up)
+          ? 'up'
+          : clicked.includes(B.Down)
+            ? 'down'
+            : clicked.includes(B.Left)
+              ? 'left'
+              : clicked.includes(B.Right)
+                ? 'right'
+                : null
+        if (direction) moveControllerFocus(direction)
       }
+      if (pad && active) dispatch()
       frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)

@@ -25,7 +25,7 @@ import {
   LifecycleEvidence,
 } from './details-presentation'
 import { DetailsRelationships } from './parity-details-identity'
-import { AddToListButton } from './parity-list-prompt'
+import { AddToListButton, AddToListDialog } from './parity-list-prompt'
 import { ActivityTimeline } from './activity-timeline'
 import { SteamReportedActivity } from './activity-steam'
 import { JournalEditor, SessionRows } from './Journal'
@@ -86,6 +86,7 @@ export function AvalonDetailsLayout({
   const game = detailsGame(workId, library.data?.games ?? [], workspace.data)
   const provisionalTitle = workspace.data?.works.find((work) => work.id === game?.workId)?.nameIsProvisional
   const [section, setSection] = useState<string>('Overview')
+  const [listPrompt, setListPrompt] = useState(false)
   const [reading, setReading] = useState<Reading | null>(null),
     [tool, setTool] = useState<Tool | null>(null)
   const [expanded, setExpanded] = useState(false)
@@ -228,9 +229,54 @@ export function AvalonDetailsLayout({
         ? 0
         : event.key === 'End'
           ? buttons.length - 1
-          : (index + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length
+          : fullscreen
+            ? Math.max(0, Math.min(buttons.length - 1, index + (event.key === 'ArrowRight' ? 1 : -1)))
+            : (index + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length
     buttons[next]?.focus()
-    buttons[next]?.click()
+    if (!fullscreen) buttons[next]?.click()
+  }
+  function fullscreenKeys(event: KeyboardEvent<HTMLElement>) {
+    escape(event)
+    if (event.defaultPrevented || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key))
+      return
+    const target = event.target as HTMLElement
+    if (target.closest('[role="dialog"],[role="alertdialog"],[role="menu"]') || tool) return
+    if (reading === 'About' && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+      event.preventDefault()
+      event.stopPropagation()
+      body.current?.scrollBy({ top: event.key === 'ArrowUp' ? -160 : 160, behavior: 'instant' })
+      return
+    }
+    if (target.matches('input,textarea,select')) return
+    const visible = (element: HTMLElement) =>
+      !element.matches(':disabled') &&
+      !element.closest('[hidden],[inert],[aria-hidden="true"]') &&
+      element.getBoundingClientRect().height > 0
+    const row = (selector: string) =>
+      [...root.current!.querySelectorAll<HTMLElement>(selector)].filter(visible)
+    const rows = [
+      row('.avalon-details-actions button'),
+      row('.avalon-details-tabs [role="tab"], .avalon-details-back-row button'),
+      ...(!reading && section === 'Overview'
+        ? [
+            row('[data-details-reading="History"], [data-details-reading="About"]'),
+            row('.avalon-latest-note button, .screenshot-strip button'),
+            row('.screenshot-gallery-link'),
+          ]
+        : row('.avalon-details-reading button, .avalon-details-reading a[href]').map((element) => [element])),
+    ].filter((entries) => entries.length)
+    const rowIndex = rows.findIndex((entries) => entries.includes(target))
+    if (rowIndex < 0) return
+    const column = rows[rowIndex]!.indexOf(target)
+    const vertical = event.key === 'ArrowUp' || event.key === 'ArrowDown'
+    const delta = event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -1 : 1
+    const nextRow = vertical ? Math.max(0, Math.min(rows.length - 1, rowIndex + delta)) : rowIndex
+    const nextColumn = Math.max(0, Math.min(rows[nextRow]!.length - 1, column + (vertical ? 0 : delta)))
+    event.preventDefault()
+    event.stopPropagation()
+    const next = rows[nextRow]![nextColumn]!
+    next.focus({ preventScroll: true })
+    next.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' })
   }
   const history = (
     <>
@@ -468,7 +514,7 @@ export function AvalonDetailsLayout({
                 primaryOnly
               />
             )}
-            {game && (
+            {game && !fullscreen && (
               <AddToListButton
                 games={[game]}
                 mode={mode}
@@ -478,6 +524,7 @@ export function AvalonDetailsLayout({
               />
             )}
             <MoreActions
+              addToList={game ? () => setListPrompt(true) : undefined}
               fullscreen={fullscreen}
               open={moreOpen}
               setOpen={setMoreOpen}
@@ -555,12 +602,22 @@ export function AvalonDetailsLayout({
         role={tool || reading ? 'region' : 'tabpanel'}
         aria-labelledby={tool || reading ? undefined : `${id}-${section}`}
         aria-label={tool ?? reading ?? undefined}
-        tabIndex={0}
+        tabIndex={fullscreen ? -1 : 0}
+        data-controller-scroll-step={fullscreen && reading === 'About' ? 160 : undefined}
       >
         {panel}
       </div>
       <MetadataRefreshStatus state={refresh} className="detail-refetch-status" polite />
       {editing != null && <JournalEditor sessionId={editing} onClose={() => setEditing(null)} />}
+      {listPrompt && game && (
+        <AddToListDialog
+          games={[game]}
+          mode={mode}
+          origin="details"
+          onClose={() => setListPrompt(false)}
+          restoreFocus={() => more.current?.focus({ preventScroll: true })}
+        />
+      )}
       {metadataOpen && (
         <MetadataDialog
           workId={workId}
@@ -588,7 +645,7 @@ export function AvalonDetailsLayout({
   )
   if (fullscreen)
     return (
-      <div ref={root} className="avalon-details fullscreen" onKeyDown={escape}>
+      <div ref={root} className="avalon-details fullscreen" onKeyDown={fullscreenKeys}>
         {content}
       </div>
     )
@@ -644,6 +701,7 @@ function Achievements({ game, details }: { game?: LibraryGame; details?: GameDet
   )
 }
 function MoreActions({
+  addToList,
   fullscreen,
   open,
   setOpen,
@@ -658,6 +716,7 @@ function MoreActions({
   management,
   hide,
 }: {
+  addToList?(): void
   fullscreen: boolean
   open: boolean
   setOpen(open: boolean): void
@@ -697,6 +756,17 @@ function MoreActions({
   }
   const items = (
     <>
+      {fullscreen && addToList && (
+        <AvalonAction
+          label="Add to list"
+          icon={ListPlus}
+          onChoose={() => {
+            skipRestore.current = true
+            setOpen(false)
+            addToList()
+          }}
+        />
+      )}
       <GameLinks links={links} />
       {management}
       {folder}
@@ -814,7 +884,12 @@ function MoreActions({
         </AvalonActions>
       ) : (
         open && (
-          <div className="avalon-details-menu" ref={menu} aria-label="More game actions">
+          <div
+            className="avalon-details-menu"
+            data-controller-scope
+            ref={menu}
+            aria-label="More game actions"
+          >
             {items}
           </div>
         )

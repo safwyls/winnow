@@ -403,13 +403,14 @@ export function App() {
     setQuickMenu(false)
   }, [mode, position.page])
   useController({
-    enabled: mode === 'fullscreen',
+    enabled: true,
+    surface: mode,
     menu: () => {
-      if (setupOpen || startup.visible || keyboardInput || quickMenu) return
       if (mode !== 'fullscreen') {
         toggleFullscreen()
         return
       }
+      if (setupOpen || startup.visible || keyboardInput || quickMenu) return
       quickMenuAtRoot.current =
         controllerScope() === document &&
         ['discover', 'library', 'journal', 'settings'].includes(position.page)

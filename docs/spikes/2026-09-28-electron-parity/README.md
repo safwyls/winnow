@@ -45,6 +45,13 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [controller checkpoint](checkpoint-fifty-one.md) records all 3,296 component/live API
+cases and 13 native controller, Details and merge cases passing. Desktop controller input,
+original input filtering and fullscreen Details focus rows are present. The complete prior
+native run passed 347 cases and found one lost merge-cover click; the controlled reproduction
+and fix pass in the final focused run. Seventeen source methods gain complete evidence;
+447 pending and 101 partial methods remain. The complete migration and release cutover are open.
+
 The [saved destination checkpoint](checkpoint-fifty.md) records all 3,249 component/live
 API cases and all eight final native destination cases passing. Library-created Details,
 desktop/controller preferences and browser fallback use the production composition.

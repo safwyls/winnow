@@ -350,6 +350,11 @@
   .avalon-shell .avalon-details.fullscreen .avalon-details-tabs button {
     padding: 10px 14px;
   }
+  .avalon-shell .avalon-details.fullscreen .avalon-details-tabs button:focus {
+    background: var(--raised);
+    box-shadow: none;
+    outline: 0;
+  }
   .avalon-shell .avalon-details.fullscreen .avalon-details-reading {
     padding: 20px 20px 24px 0;
   }

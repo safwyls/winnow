@@ -130,6 +130,8 @@ test('fullscreen metadata keeps field order, keyboard editing, validation and Ba
       value: () => [
         {
           index: 0,
+          connected: true,
+          mapping: 'standard',
           axes: [0, 0, 0, 0],
           buttons: Array.from({ length: 17 }, (_, index) => ({ pressed: state.pressed.includes(index) })),
         },

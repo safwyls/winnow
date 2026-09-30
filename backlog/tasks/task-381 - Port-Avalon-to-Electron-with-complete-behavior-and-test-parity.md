@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 15:26'
+updated_date: '2026-09-30 16:20'
 labels: []
 dependencies: []
 priority: high
@@ -346,4 +346,6 @@ Plan 62 verified: final build/typecheck and all 3201 component/live API cases in
 Plan63 verified: build/typecheck, all247focused cases and all3241component/liveAPI cases in158files pass without skips50.27s. Shared renderer/main reading validation restores HTTP destinations, omits unsafe targets and empty labels, and normalizes dispatch. Steam script errors now return failed probes; pagination requests fresh documents in the same private session. Initial native20/22 passed; two interceptor Cookie-header assumptions were replaced by direct private-session/cookie-jar checks, while actual cache headers remain asserted. All7final native browser/account cases pass20.5s; all15Details cases passed in the first group. Eighteen source methods completed; inventory1217ported625retained23framework469pending101partial. Evidence checkpoint-forty-nine.md. All AC remain unchecked.
 
 Plan64 verified: build/typecheck, all3249component/liveAPI cases in158files without skips53.65s, and all8final native destination cases33.9s pass. Earlier group also passes all6action-panel and2isolated-reader cases. Native tests exposed notices behind scrims, detached-host popover exceptions and Escape dismissing the owner; all fixed with reachable modal-scoped top-layer notices and origin restoration. Shared destination persistence is verified through desktop, real fullscreen/controller A and reload. Five source methods completed; inventory1222ported625retained23framework464pending101partial. Checkpoint-fifty.md records evidence. User requested clearer forecast after30hours; clarified that77percent is test accounting, not product completeness. Consolidated controller/Details audit and explicit release/CI cutover remain; all AC remain unchecked.
+
+Checkpoint 51: enabled desktop controller dispatch, preserved original mapping/deadzone/trigger/reconnect/repeat rules, scoped flyout/dialog navigation, and restored fullscreen Details focus rows, tab selection, Add-to-list placement and About scrolling. Full native baseline at 0b196c5f: 347 pass, 1 merge-cover failure in31.0m. Held-refresh reproduction failed before the fix; disabled row hit testing now prevents silently dropped cover input. Final verification: build/typecheck pass;3296 component/live API cases in160 files pass without skips;13 native cases pass without retries/skips in70.83s, including six screenshot/text-scale combinations and both merge presentations. Inspected the1920x1080 fullscreen capture at140%text. Seventeen source methods gain complete evidence:1239 ported,625 retained backend,23 framework-specific,447 pending,101 partial. Full migration remains incomplete; physical controller/battery, clock/status, remaining Details behavior and primary release/CI cutover are open. Evidence:docs/spikes/2026-09-28-electron-parity/checkpoint-fifty-one.md. The focused native fix is not represented as a new full-suite green result.
 <!-- SECTION:NOTES:END -->

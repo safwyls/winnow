@@ -207,6 +207,7 @@ test('desktop and controller link settings share confirmed values and persist th
         {
           index: 0,
           connected: true,
+          mapping: 'standard',
           axes: [0, 0, 0, 0],
           buttons: Array.from({ length: 17 }, (_, index) => ({ pressed: index === 0 && pad.pressed })),
         },
