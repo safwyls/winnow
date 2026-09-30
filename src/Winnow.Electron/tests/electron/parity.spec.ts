@@ -159,7 +159,11 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await surface(mode, 1280, 720)
     const navigation = page.getByRole('navigation', { name: 'Main navigation' })
     await page.getByRole('button', { name: 'Settings', exact: true }).click()
-    await expect(page.getByRole('heading', { name: 'Make yourself at home.' })).toBeVisible()
+    await expect(
+      page.getByRole('heading', {
+        name: mode === 'fullscreen' ? 'Make yourself comfortable' : 'Make yourself at home.',
+      }),
+    ).toBeVisible()
     await page
       .getByRole('navigation', { name: 'Settings section' })
       .getByRole('button', { name: 'Application', exact: true })
@@ -179,8 +183,9 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await page.getByRole('button', { name: 'Settings', exact: true }).click()
     await page
       .getByRole('navigation', { name: 'Settings section' })
-      .getByRole('button', { name: 'Spending', exact: true })
+      .getByRole('button', { name: mode === 'fullscreen' ? 'Library' : 'Spending', exact: true })
       .click()
+    if (mode === 'fullscreen') await page.getByRole('button', { name: 'Spending', exact: true }).click()
     const statistics = page.getByRole('region', { name: 'Account spending' })
     await expect(statistics.getByText('33.3%', { exact: true })).toBeVisible()
     await expect(statistics.getByText('50%', { exact: true })).toBeVisible()

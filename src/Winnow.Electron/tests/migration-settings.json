@@ -147,14 +147,18 @@
     "reason": "Opening or cancelling confirmation writes nothing. Confirming resets only the five named fullscreen appearance preferences."
   },
   "FullscreenSettingsTests.Cover_art_setting_tracks_shared_preference_and_controller_input": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-settings.test.tsx",
-        "case": "keeps expansions ungrouped by default and saves the shared cover fit preference"
+        "file": "tests/parity-fullscreen-settings.test.tsx",
+        "case": "reflects the current shared cover crop and uses either direction or accept to change it"
+      },
+      {
+        "file": "tests/electron/fullscreen-settings.spec.ts",
+        "case": "fullscreen Appearance keeps source adjustment switch reset and shared cover behavior"
       }
     ],
-    "reason": "Both settings surfaces persist the shared fit/fill preference. Controller input and cover rendering consumption require integration coverage."
+    "reason": "The row follows external preference changes and Left, Right and A toggle Fit/Fill. Real fullscreen Chromium verifies saved state, cover rendering policy, retained controller focus and preservation across fullscreen reset."
   },
   "FullscreenSettingsTests.Shared_visibility_change_refreshes_the_independent_fullscreen_library": {
     "status": "partial",

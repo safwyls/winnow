@@ -135,6 +135,9 @@ type Fixture = {
   connected: boolean
   holdSignIn: boolean
   releaseSignIn(): void
+  holdRestart: boolean
+  restartStarted: boolean
+  releaseRestart(): void
 }
 async function calls(application: ElectronApplication) {
   return application.evaluate(
@@ -309,10 +312,23 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await page.screenshot({ path: info.outputPath(`${mode}-plugin-management.png`) })
       const beforeRestart = (await calls(application)).filter((call) => call.path === '').length
       const restart = page.getByRole('button', { name: 'Restart library service', exact: true })
+      await application.evaluate(() => {
+        ;(globalThis as unknown as { __pluginFixture: Fixture }).__pluginFixture.holdRestart = true
+      })
       await restart.focus()
       if (mode === 'fullscreen') await tap(0)
       else await page.keyboard.press('Enter')
+      await expect
+        .poll(() =>
+          application.evaluate(
+            () => (globalThis as unknown as { __pluginFixture: Fixture }).__pluginFixture.restartStarted,
+          ),
+        )
+        .toBe(true)
       await expect(restart).toBeDisabled()
+      await application.evaluate(() => {
+        ;(globalThis as unknown as { __pluginFixture: Fixture }).__pluginFixture.releaseRestart()
+      })
       await expect(
         page.getByText('The library service restarted. Provider changes are now applied.'),
       ).toBeVisible()

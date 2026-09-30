@@ -114,6 +114,7 @@ function fixture(
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   )
   const view = render(<Settings mode={mode} />, { wrapper })
+  fireEvent.click(screen.getByRole('button', { name: 'Platforms' }))
   return { ...view, request, signIn, openExternal, client, wrapper }
 }
 async function begin(capture = false) {

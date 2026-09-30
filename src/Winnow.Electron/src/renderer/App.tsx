@@ -26,6 +26,7 @@ import { catalogue } from './themes/catalogue'
 import { rift } from './themes/rift'
 import { useThemeRuntime, ThemeBoundary, installThemeSDK } from './theming/runtime'
 import { ThemeStudio } from './theming/ThemeStudio'
+import { FullscreenThemeSettings } from './features/FullscreenThemeSettings'
 import { GameCard, Impression } from './components/primitives'
 import { Artwork } from './components/Artwork'
 import { GamePreview } from './components/GamePreview'
@@ -65,7 +66,10 @@ export function App() {
   const [activationInFlight, setActivationInFlight] = useState(false)
   const extendedActivationLauncher = useRef(new ExtendedActivationLauncher())
   const [setupSuspended, setSetupSuspended] = useViewState('setup:suspended', false)
-  const [settingsTab, setSettingsTab] = useViewState(`${mode}:settings:tab`, 'Platforms')
+  const [settingsTab, setSettingsTab] = useViewState(
+    `${mode}:settings:tab`,
+    mode === 'fullscreen' ? 'Appearance' : 'Platforms',
+  )
   const [, setInstallationPage] = useViewState(`${mode}:plugins:installation`, false)
   const [, setFollowInstallation] = useViewState(`${mode}:plugins:installation-follow`, false)
   const [, setInstalledPluginPage] = useViewState<string | null>(`${mode}:plugins:installed`, null)
@@ -445,6 +449,9 @@ export function App() {
         <Settings
           mode={mode}
           ratingCapInDisplayPreferences={mode === 'desktop' && runtime.profile.themeId === 'avalon'}
+          fullscreenThemeControls={
+            <FullscreenThemeSettings runtime={runtime} openStudio={() => navigate('studio')} />
+          }
         />
       )
     return position.workId !== null ? (

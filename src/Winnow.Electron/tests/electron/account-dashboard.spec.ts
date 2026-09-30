@@ -59,8 +59,9 @@ async function surface(mode: 'desktop' | 'fullscreen', width: number, scale = 1)
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page
     .getByRole('navigation', { name: 'Settings section' })
-    .getByRole('button', { name: 'Spending', exact: true })
+    .getByRole('button', { name: mode === 'fullscreen' ? 'Library' : 'Spending', exact: true })
     .click()
+  if (mode === 'fullscreen') await page.getByRole('button', { name: 'Spending', exact: true }).click()
   const stats = page.getByRole('region', { name: 'Account spending' })
   await expect(stats.getByRole('button', { name: 'Refresh Steam spending' })).toBeEnabled()
   if (mode === 'desktop') {

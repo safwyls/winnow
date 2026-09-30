@@ -36,6 +36,15 @@ draft, and leaving the form clears it. Fullscreen provides the controller text k
 Manual games in **Manage library** report
 validation and identifier conflicts beside their fields and ask before removing a named entry.
 
+Fullscreen Settings opens on **Appearance**, followed by **Controller**, **Library**,
+**Platforms**, **Metadata & artwork**, **Plugins** and **Application**. Appearance has
+directional adjustment rows, visible On/Off switches, shared theme and font pickers, and
+a live cover preview. Text size moves in ten-point steps; interface scale moves in
+five-point steps. Reset confirms the five fullscreen preferences and preserves shared
+theme, typography and cover choices. The Controller guide keeps ten mappings and keyboard
+help on one screen. Spending and recommendation history open from Library; background
+operations open from Application.
+
 **Plugins** gives every runtime-loaded provider its own tab, followed by **Manage plugins**.
 Overflow arrows scroll the tabs without changing the selection. Ordinary drafts survive
 navigation; secret replacements clear on departure or successful save. Advanced fields

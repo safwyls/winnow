@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Check, RefreshCw } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
@@ -30,31 +30,49 @@ import { RatingCapPreference, useLibraryPreferenceChange } from './RatingCap'
 import { IgdbConnectionPanel } from './IgdbSettings'
 export { IgdbForm } from './IgdbSettings'
 import { useSteamModal } from './SteamModals'
+import { FullscreenAppearance } from './FullscreenAppearance'
+import { ControllerGuide } from './ControllerGuide'
+import { FullscreenSettingsAction } from './FullscreenSettingRows'
 
 export function Settings({
   mode = 'desktop',
   ratingCapInDisplayPreferences = false,
+  fullscreenThemeControls,
 }: {
   mode?: Mode
   ratingCapInDisplayPreferences?: boolean
+  fullscreenThemeControls?: ReactNode
 }) {
-  const [savedTab, setTab] = useViewState(`${mode}:settings:tab`, 'Platforms')
+  const [savedTab, setTab] = useViewState(
+    `${mode}:settings:tab`,
+    mode === 'fullscreen' ? 'Appearance' : 'Platforms',
+  )
   const tab = savedTab === 'Connections' ? 'Platforms' : savedTab === 'Providers' ? 'Plugins' : savedTab
-  const stores = useApiQuery<StoreConnections>('connections.get')
-  const preferences = useApiQuery<LibraryPreferences>('preferences.library.get')
-  const operations = useApiQuery<BackendOperation[]>('operations.get')
-  const command = useCommand()
-  return (
-    <section className={`feature-page settings-page mode-${mode}`}>
-      <header className="feature-heading">
-        <div>
-          <p className="eyebrow">A PLACE FOR EVERYTHING</p>
-          <h1>Make yourself at home.</h1>
-          <p>Your library stays on this computer. Connections enrich what is already yours.</p>
-        </div>
-      </header>
-      <nav className="tabs" aria-label="Settings section">
-        {[
+  const parentTab =
+    tab === 'Spending' || tab === 'Recommendations' ? 'Library' : tab === 'Operations' ? 'Application' : tab
+  const page = useRef<HTMLElement>(null)
+  const previousTab = useRef(tab)
+  useEffect(() => {
+    const previous = previousTab.current
+    previousTab.current = tab
+    if (mode !== 'fullscreen' || previous === tab) return
+    const timer = setTimeout(() => {
+      if (page.current?.closest('[inert]')) return
+      const target =
+        parentTab !== tab
+          ? page.current?.querySelector<HTMLButtonElement>('[data-settings-child-back]')
+          : [
+              ...(page.current?.querySelectorAll<HTMLButtonElement>('.fullscreen-settings-content button') ??
+                []),
+            ].find((button) => button.getAttribute('aria-label') === previous)
+      target?.focus()
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [mode, tab, parentTab])
+  const sections =
+    mode === 'fullscreen'
+      ? ['Appearance', 'Controller', 'Library', 'Platforms', 'Metadata & artwork', 'Plugins', 'Application']
+      : [
           'Platforms',
           'Metadata & artwork',
           'Plugins',
@@ -64,18 +82,66 @@ export function Settings({
           'Spending',
           'Recommendations',
           'Operations',
-        ].map((name) => (
+        ]
+  const stores = useApiQuery<StoreConnections>('connections.get')
+  const preferences = useApiQuery<LibraryPreferences>('preferences.library.get')
+  const operations = useApiQuery<BackendOperation[]>('operations.get')
+  const command = useCommand()
+  return (
+    <section
+      ref={page}
+      className={`feature-page settings-page mode-${mode}${mode === 'fullscreen' && tab === 'Controller' ? ' fullscreen-controller-page' : ''}`}
+      onKeyDown={(event) => {
+        // A portal's Escape belongs to its own layer even though React bubbles through this page.
+        if (
+          event.defaultPrevented ||
+          !event.currentTarget.contains(event.target as Node) ||
+          (event.target as Element).closest('[role="dialog"], [role="alertdialog"], [role="menu"]')
+        )
+          return
+        if (mode === 'fullscreen' && parentTab !== tab && event.key === 'Escape') {
+          event.preventDefault()
+          event.stopPropagation()
+          setTab(parentTab)
+        }
+      }}
+    >
+      <header className="feature-heading">
+        <div>
+          {mode === 'fullscreen' ? (
+            <h1>Make yourself comfortable</h1>
+          ) : (
+            <>
+              <p className="eyebrow">A PLACE FOR EVERYTHING</p>
+              <h1>Make yourself at home.</h1>
+              <p>Your library stays on this computer. Connections enrich what is already yours.</p>
+            </>
+          )}
+        </div>
+      </header>
+      <nav className="tabs" aria-label="Settings section">
+        {sections.map((name) => (
           <button
             key={name}
             data-controller-tab
-            aria-pressed={tab === name}
-            onClick={() => setTab(name)}
+            aria-pressed={(mode === 'fullscreen' ? parentTab : tab) === name}
+            onClick={(event) => {
+              setTab(name)
+              if (mode === 'fullscreen' && name === 'Controller')
+                event.currentTarget.focus({ preventScroll: true })
+            }}
             onFocus={(event) => event.currentTarget.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })}
           >
             {name}
           </button>
         ))}
       </nav>
+      {mode === 'fullscreen' && parentTab !== tab && (
+        <button data-settings-child-back onClick={() => setTab(parentTab)}>
+          Back to {parentTab}
+        </button>
+      )}
+      {mode === 'fullscreen' && tab === 'Controller' && <ControllerGuide />}
       {tab === 'Platforms' && (
         <div className="feature-grid">
           {stores.data ? (
@@ -120,13 +186,32 @@ export function Settings({
             <AccountVisibility />
           </section>
           <LibraryPresentationPreferences />
+          {mode === 'fullscreen' && (
+            <section className="fullscreen-settings-content" aria-label="Library tools">
+              <FullscreenSettingsAction label="Spending" onClick={() => setTab('Spending')} />
+              <FullscreenSettingsAction label="Recommendations" onClick={() => setTab('Recommendations')} />
+            </section>
+          )}
         </>
       )}
-      {tab === 'Application' && <ApplicationPreferences />}
+      {tab === 'Application' && (
+        <>
+          <ApplicationPreferences />
+          {mode === 'fullscreen' && (
+            <section className="fullscreen-settings-content">
+              <FullscreenSettingsAction label="Operations" onClick={() => setTab('Operations')} />
+            </section>
+          )}
+        </>
+      )}
       {tab === 'Spending' && <AccountStatistics mode={mode} />}
       {tab === 'Appearance' && (
         <>
-          <FullscreenPreferences mode={mode} />
+          {mode === 'fullscreen' ? (
+            <FullscreenAppearance themeControls={fullscreenThemeControls} />
+          ) : (
+            <FullscreenPreferences mode={mode} />
+          )}
         </>
       )}
       {tab === 'Recommendations' && <FeedbackHistory />}

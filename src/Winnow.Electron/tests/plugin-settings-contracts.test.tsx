@@ -169,6 +169,7 @@ describe.each(['desktop', 'fullscreen'] as const)('%s plugin settings source con
   it('loads lazily on first opening, refreshes on return and preserves the selected runtime tab', async () => {
     const { request, wrapper } = fixture()
     render(<Settings mode={mode} />, { wrapper })
+    fireEvent.click(screen.getByRole('button', { name: 'Platforms' }))
     await screen.findByRole('button', { name: 'GOG' })
     expect(request.mock.calls.some(([input]) => input.route === 'plugins.get')).toBe(false)
     fireEvent.click(screen.getByRole('button', { name: 'Plugins' }))

@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 646,
-    "partial": 106,
-    "ported": 1107,
+    "pending": 642,
+    "partial": 104,
+    "ported": 1113,
     "retained-backend": 559,
     "framework-specific": 17
   },
@@ -23319,19 +23319,34 @@
     {
       "id": "FullscreenSettingsTests.Cover_art_setting_tracks_shared_preference_and_controller_input",
       "source": "tests/Winnow.Ui.Tests/FullscreenSettingsTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/parity-settings.test.tsx",
-          "case": "keeps expansions ungrouped by default and saves the shared cover fit preference"
+          "file": "tests/parity-fullscreen-settings.test.tsx",
+          "case": "reflects the current shared cover crop and uses either direction or accept to change it"
+        },
+        {
+          "file": "tests/electron/fullscreen-settings.spec.ts",
+          "case": "fullscreen Appearance keeps source adjustment switch reset and shared cover behavior"
         }
       ],
-      "reason": "Both settings surfaces persist the shared fit/fill preference. Controller input and cover rendering consumption require integration coverage."
+      "reason": "The row follows external preference changes and Left, Right and A toggle Fit/Fill. Real fullscreen Chromium verifies saved state, cover rendering policy, retained controller focus and preservation across fullscreen reset."
     },
     {
       "id": "FullscreenSettingsTests.Dormancy_toggle_tracks_desktop_changes_and_controller_changes_update_desktop",
       "source": "tests/Winnow.Ui.Tests/FullscreenSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-fullscreen-settings.test.tsx",
+          "case": "reflects desktop dormancy changes in the fullscreen switch and writes back the shared preference"
+        },
+        {
+          "file": "tests/electron/fullscreen-settings.spec.ts",
+          "case": "fullscreen Appearance keeps source adjustment switch reset and shared cover behavior"
+        }
+      ],
+      "reason": "Desktop and fullscreen controls observe the same confirmed preference in both directions. Native Left/Right updates the rendered dormancy policy immediately, and confirmed fullscreen reset preserves disabled dimming."
     },
     {
       "id": "FullscreenSettingsTests.Fullscreen_startup_setting_is_shared_with_desktop_application_toggle",
@@ -23341,17 +23356,46 @@
     {
       "id": "FullscreenSettingsTests.Switches_report_state_and_direction_sets_a_value_without_repeated_toggling",
       "source": "tests/Winnow.Ui.Tests/FullscreenSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-fullscreen-settings.test.tsx",
+          "case": "sets switch directions idempotently and exposes the confirmed on/off state"
+        },
+        {
+          "file": "tests/electron/fullscreen-settings.spec.ts",
+          "case": "fullscreen Appearance keeps source adjustment switch reset and shared cover behavior"
+        }
+      ],
+      "reason": "Accessible switches expose On/Off and aria-checked. Right sets true, Left sets false, repeated same-direction input does not toggle or write, A toggles, and native focus remains on the row after persistence."
     },
     {
       "id": "FullscreenSettingsTests.Controller_guide_fits_one_screen_at_16_by_9",
       "source": "tests/Winnow.Ui.Tests/FullscreenSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/fullscreen-settings.spec.ts",
+          "case": "fullscreen Controller guide retains ten mappings and fits"
+        }
+      ],
+      "reason": "All four original resolution/text/margin combinations retain ten mappings, source-scaled labels and keyboard help without scrolling or overlap. The original controller outline keeps its 1.4–1.5 aspect ratio. Triggers reach Library's journal preference and return to the guide. Captures were inspected at 1080p and 720p with 140% text and 10% margins."
     },
     {
       "id": "FullscreenSettingsTests.Appearance_adjustment_stays_on_its_row_and_leaves_desktop_preferences_alone",
       "source": "tests/Winnow.Ui.Tests/FullscreenSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-fullscreen-settings.test.tsx",
+          "case": "uses ten-point text steps with bounded adjustment and pointer steppers outside sequential focus"
+        },
+        {
+          "file": "tests/electron/fullscreen-settings.spec.ts",
+          "case": "fullscreen Appearance keeps source adjustment switch reset and shared cover behavior"
+        }
+      ],
+      "reason": "The production fullscreen Appearance row uses ten-point 70–140% steps, bounded writes and separate pointer steppers. Native controller input retains the same row after asynchronous persistence; shared cover choices survive fullscreen-only reset."
     },
     {
       "id": "FullscreenSettingsTests.Reset_opens_confirmation_without_mutating_preferences",
@@ -25422,14 +25466,14 @@
     {
       "id": "ThemeTypographyControlsTests.Fullscreen_font_actions_and_theme_size_update_shared_appearance_and_keep_controller_focus",
       "source": "tests/Winnow.Ui.Tests/ThemeTypographyControlsTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/avalon-typography.test.tsx",
-          "case": "keeps independent role fonts and size through palette switches, restart and reset"
+          "file": "tests/electron/fullscreen-settings.spec.ts",
+          "case": "fullscreen theme typography keeps controller focus and remains reachable at maximum sizes"
         }
       ],
-      "reason": "Fullscreen controls share profile appearance and reset per palette. Original directional controller adjustment, clamp and font chooser focus require controller integration coverage."
+      "reason": "Real fullscreen Settings at 720p and 1080p verifies controller five-point changes, 120% clamping without changing page scale, selecting a bundled heading font through the picker, persisted shared typography, return focus and reset to authored defaults. Controls remain reachable with combined 120% theme and 140% page text."
     },
     {
       "id": "ThemeTypographyRuntimeTests.Desktop_text_and_reading_line_height_follow_live_resources_without_scaling_geometry",

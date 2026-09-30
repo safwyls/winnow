@@ -27,6 +27,9 @@ never sent after attachment. Only startup-specific native waits were aligned wit
 - All 3,051 component/live API cases pass in 149 files without skips, in 52.56s:
   `.tmp/igdb-full-integration.log`. The focused startup/settings group passes 129 cases.
 - Build and type checking pass: `.tmp/igdb-build-feedback.log`.
+- The complete native suite on commit `7c48c35b` passes all 236 cases in 21.8 minutes:
+  `.tmp/igdb-complete-native/results.json`. This includes both Epic sign-in workflows,
+  activation, browse-spine, IGDB and the delayed initial handshake on both surfaces.
 - All 133 backend HTTP cases pass in 21 seconds: `.tmp/igdb-backend-full.log`.
   The 12 added credential cases also pass separately. They use production HTTP and SQLite,
   a controlled opaque test protector and mid-transaction storage faults to verify protection,
@@ -55,6 +58,5 @@ never sent after attachment. Only startup-specific native waits were aligned wit
 
 Eleven IGDB settings methods and two previously partial interaction methods now have named
 replacement evidence. Inventory: 1,107 ported, 559 retained backend, 17 framework-specific,
-646 pending and 106 partial, out of 2,435 frozen source methods. The complete 236-case native
-run is still outstanding. Overall migration and fullscreen Settings structure/controller
+646 pending and 106 partial, out of 2,435 frozen source methods. Overall migration and fullscreen Settings structure/controller
 coverage remain incomplete; no overall acceptance criterion is marked complete.

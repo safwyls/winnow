@@ -45,20 +45,16 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [loading dragon checkpoint](checkpoint-twenty-eight.md) records 2,861 passing component/API
-cases across 142 files, with build and typecheck passing. Native geometry, palette and worker
-lifetime checks pass, along with all four startup workflows. The expanded 214-case native
-run is in progress. The [startup checkpoint](checkpoint-twenty-seven.md) records the preceding
-198-case pass and its shared list-suite setup failure; all ten affected list cases pass twice
-with corrected ordering.
-The [updater checkpoint](checkpoint-twenty-six.md) records the last complete native pass:
-all 204 cases in one run, including the preceding Epic workflows and corrected feed fixture.
-The [Epic sign-in checkpoint](checkpoint-twenty-five.md) also records all 105 backend tests
-and 24 retained Epic cases passing.
-The migration inventory contains 1,044 ported, 552 retained backend, 15 framework-specific,
-714 pending and 110 partial methods. The migration gate remains incomplete.
-The [Library and metadata checkpoint](checkpoint-ten.md)
-records the latest full .NET pass: 6,839 passed and two Linux-only skips across 13 assemblies,
+The [fullscreen Settings checkpoint](checkpoint-thirty-six.md) records 3,071 passing component/API
+cases across 151 files, with build and typecheck passing. Native Appearance, typography,
+Controller guide, Spending return navigation and controlled service restart checks pass.
+The last complete native run is recorded in the [IGDB and startup checkpoint](checkpoint-thirty-five.md):
+all 236 cases on commit `7c48c35b`, including delayed first attachment and both Epic workflows.
+All 133 backend HTTP cases also pass there, including credential protection and rollback.
+The migration inventory contains 1,113 ported, 559 retained backend, 17 framework-specific,
+642 pending and 104 partial methods. The migration gate remains incomplete.
+The [journal checkpoint](checkpoint-thirty-three.md)
+records the latest full .NET pass: 6,869 passed and two Linux-only skips across 13 assemblies,
 including all 896 Avalonia UI cases. The table below preserves earlier measured checkpoints.
 
 All runtime checks use disposable directories beneath the repository's ignored `.tmp`

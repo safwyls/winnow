@@ -39,6 +39,9 @@ for (const [family, file] of [
     `## ${family} (Avalon bundled fonts)\n\n${await readFile(resolve(root, `resources/licenses/${file}-OFL.txt`), 'utf8')}\n`,
   )
 }
+sections.push(
+  `## Controller guide artwork\n\nAdapted from Kenney Input Prompts 1.5A, matching Winnow's Avalonia controller diagram.\n\n${await readFile(resolve(root, 'resources/licenses/kenney-input-prompts-CC0.txt'), 'utf8')}\n`,
+)
 await mkdir(resolve(root, '.staging'), { recursive: true })
 await writeFile(resolve(root, '.staging/THIRD-PARTY-NOTICES.md'), sections.join('\n'))
 console.log(

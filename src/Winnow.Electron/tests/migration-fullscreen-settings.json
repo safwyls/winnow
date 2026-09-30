@@ -1,0 +1,54 @@
+{
+  "FullscreenSettingsTests.Appearance_adjustment_stays_on_its_row_and_leaves_desktop_preferences_alone": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-fullscreen-settings.test.tsx",
+        "case": "uses ten-point text steps with bounded adjustment and pointer steppers outside sequential focus"
+      },
+      {
+        "file": "tests/electron/fullscreen-settings.spec.ts",
+        "case": "fullscreen Appearance keeps source adjustment switch reset and shared cover behavior"
+      }
+    ],
+    "reason": "The production fullscreen Appearance row uses ten-point 70–140% steps, bounded writes and separate pointer steppers. Native controller input retains the same row after asynchronous persistence; shared cover choices survive fullscreen-only reset."
+  },
+  "FullscreenSettingsTests.Dormancy_toggle_tracks_desktop_changes_and_controller_changes_update_desktop": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-fullscreen-settings.test.tsx",
+        "case": "reflects desktop dormancy changes in the fullscreen switch and writes back the shared preference"
+      },
+      {
+        "file": "tests/electron/fullscreen-settings.spec.ts",
+        "case": "fullscreen Appearance keeps source adjustment switch reset and shared cover behavior"
+      }
+    ],
+    "reason": "Desktop and fullscreen controls observe the same confirmed preference in both directions. Native Left/Right updates the rendered dormancy policy immediately, and confirmed fullscreen reset preserves disabled dimming."
+  },
+  "FullscreenSettingsTests.Switches_report_state_and_direction_sets_a_value_without_repeated_toggling": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-fullscreen-settings.test.tsx",
+        "case": "sets switch directions idempotently and exposes the confirmed on/off state"
+      },
+      {
+        "file": "tests/electron/fullscreen-settings.spec.ts",
+        "case": "fullscreen Appearance keeps source adjustment switch reset and shared cover behavior"
+      }
+    ],
+    "reason": "Accessible switches expose On/Off and aria-checked. Right sets true, Left sets false, repeated same-direction input does not toggle or write, A toggles, and native focus remains on the row after persistence."
+  },
+  "FullscreenSettingsTests.Controller_guide_fits_one_screen_at_16_by_9": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/fullscreen-settings.spec.ts",
+        "case": "fullscreen Controller guide retains ten mappings and fits"
+      }
+    ],
+    "reason": "All four original resolution/text/margin combinations retain ten mappings, source-scaled labels and keyboard help without scrolling or overlap. The original controller outline keeps its 1.4–1.5 aspect ratio. Triggers reach Library's journal preference and return to the guide. Captures were inspected at 1080p and 720p with 140% text and 10% margins."
+  }
+}

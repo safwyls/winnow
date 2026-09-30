@@ -266,6 +266,7 @@ describe.each(['desktop', 'fullscreen'])('%s Steam connection presentation', (mo
               : null,
       )
       render(<Settings mode={mode as 'desktop' | 'fullscreen'} />, { wrapper: harness.wrapper })
+      fireEvent.click(screen.getByRole('button', { name: 'Platforms' }))
       fireEvent.click(await screen.findByRole('button', { name: /^EPIC/ }))
       await screen.findByText(
         live

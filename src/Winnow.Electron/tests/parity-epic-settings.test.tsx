@@ -85,6 +85,7 @@ describe.each(['desktop', 'fullscreen'])('%s Epic connection workflow', (mode) =
         <Settings mode={mode as 'desktop' | 'fullscreen'} />
       </QueryClientProvider>,
     )
+    fireEvent.click(screen.getByRole('button', { name: 'Platforms' }))
     fireEvent.click(await screen.findByRole('button', { name: /^EPIC/ }))
     return { ...h, state }
   }

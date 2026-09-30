@@ -476,14 +476,14 @@
     "reason": "Per-palette role controls and size restore are covered; original externally changed case-normalized picker selection is not yet asserted through the live control."
   },
   "ThemeTypographyControlsTests.Fullscreen_font_actions_and_theme_size_update_shared_appearance_and_keep_controller_focus": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/avalon-typography.test.tsx",
-        "case": "keeps independent role fonts and size through palette switches, restart and reset"
+        "file": "tests/electron/fullscreen-settings.spec.ts",
+        "case": "fullscreen theme typography keeps controller focus and remains reachable at maximum sizes"
       }
     ],
-    "reason": "Fullscreen controls share profile appearance and reset per palette. Original directional controller adjustment, clamp and font chooser focus require controller integration coverage."
+    "reason": "Real fullscreen Settings at 720p and 1080p verifies controller five-point changes, 120% clamping without changing page scale, selecting a bundled heading font through the picker, persisted shared typography, return focus and reset to authored defaults. Controls remain reachable with combined 120% theme and 140% page text."
   },
   "ThemeTypographyControlsTests.Desktop_maximum_size_keeps_typography_controls_reachable_and_reset_restores_authored_values": {
     "status": "partial",

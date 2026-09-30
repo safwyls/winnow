@@ -103,6 +103,11 @@ function fixture(
       <Settings mode={mode} />
     </QueryClientProvider>,
   )
+  fireEvent.click(
+    within(screen.getByRole('navigation', { name: 'Settings section' })).getByRole('button', {
+      name: 'Platforms',
+    }),
+  )
   return { request, client, state, steamSignIn, steamCapturePages }
 }
 

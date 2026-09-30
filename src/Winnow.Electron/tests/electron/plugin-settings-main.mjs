@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises'
+import { ipcMain } from 'electron'
 
 const fixture = (globalThis.__pluginFixture = {
   plugins: JSON.parse(await readFile(process.env.WINNOW_PLUGIN_FIXTURE, 'utf8')),
@@ -8,7 +9,25 @@ const fixture = (globalThis.__pluginFixture = {
   connected: false,
   holdSignIn: false,
   releaseSignIn: null,
+  holdRestart: false,
+  restartStarted: false,
+  releaseRestart: null,
 })
+const register = ipcMain.handle.bind(ipcMain)
+ipcMain.handle = (channel, handler) =>
+  register(
+    channel,
+    channel === 'winnow:backend:restart'
+      ? async (...args) => {
+          fixture.restartStarted = true
+          if (fixture.holdRestart)
+            await new Promise((done) => {
+              fixture.releaseRestart = done
+            })
+          return handler(...args)
+        }
+      : handler,
+  )
 const originalFetch = globalThis.fetch
 globalThis.fetch = async (input, init) => {
   const url = new URL(input instanceof Request ? input.url : input)
